@@ -1,0 +1,33 @@
+[submodule "extern/tinyobjloader"]
+	path = extern/tinyobjloader
+	url = https://github.com/tinyobjloader/tinyobjloader.git
+[submodule "extern/glm"]
+	path = extern/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "extern/glfw"]
+	path = extern/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "extern/stb"]
+	path = extern/stb
+	url = https://github.com/nothings/stb.git
+[submodule "extern/glslang"]
+	path = extern/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "extern/shaderc"]
+	path = extern/shaderc
+	url = https://github.com/google/shaderc.git
+[submodule "extern/spirv_headers"]
+	path = extern/spirv_headers
+	url = https://github.com/KhronosGroup/SPIRV-Headers.git
+[submodule "extern/spirv_reflect"]
+	path = extern/spirv_reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect.git
+[submodule "extern/spirv_tools"]
+	path = extern/spirv_tools
+	url = https://github.com/KhronosGroup/SPIRV-Tools.git
+[submodule "extern/googletest"]
+	path = extern/googletest
+	url = https://github.com/google/googletest.git
+[submodule "extern/asciidoctor"]
+	path = extern/asciidoctor
+	url = https://github.com/asciidoctor/asciidoctor.git
