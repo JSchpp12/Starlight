@@ -28,6 +28,3 @@
 [submodule "extern/googletest"]
 	path = extern/googletest
 	url = https://github.com/google/googletest.git
-[submodule "extern/asciidoctor"]
-	path = extern/asciidoctor
-	url = https://github.com/asciidoctor/asciidoctor.git
