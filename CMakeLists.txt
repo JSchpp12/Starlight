@@ -49,9 +49,30 @@ add_subdirectory("extern/tinyobjloader")
 
 set(${PROJECT_NAME}_SOURCE 
     "src/main.cpp"
+    "src/Renderer.cpp"
+    "src/BasicDevice.cpp" 
+    "src/BasicWindow.cpp" 
+    "src/ManagerShader.cpp"  
+    "src/BasicRenderer.cpp"
+    "src/virtual/StarRenderer.cpp" 
+    "src/virtual/StarEngine.cpp" 
+    "src/virtual/StarManager.cpp"
+    "src/virtual/StarWindow.cpp" 
+    "src/virtual/StarApp.cpp"
+    "src/virtual/StarDevice.cpp"
 )
 
-set(${PROJECT_NAME}_HEADERS "")
+set(${PROJECT_NAME}_HEADERS
+    "include/BasicRenderer.hpp"
+    "include/BasicDevice.hpp" 
+    "include/BasicWindow.hpp" 
+    "include/virtual/StarManager.hpp"
+    "include/virtual/StarRenderer.hpp" 
+    "include/virtual/StarWindow.hpp" 
+    "include/virtual/StarEngine.hpp" 
+    "include/virtual/StarApp.hpp"
+    "include/virtual/StarDevice.hpp"
+)
 
 add_executable(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
 
@@ -67,6 +88,8 @@ target_link_libraries(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         ${STB_DIRECTORY}
+        "include/"
+        "include/virtual/"
     PUBLIC
         ${Vulkan_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -74,6 +97,6 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         #${CMAKE_CURRENT_SOURCE_DIR}/external/tinyobjectloader
-        "external/tinyobjloader"
+        "extern/tinyobjloader"
         ${GLM_HEADER_DIR}
 )
