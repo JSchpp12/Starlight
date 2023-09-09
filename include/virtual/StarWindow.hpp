@@ -16,15 +16,12 @@ public:
 		glfwTerminate(); 
 	};
 
-	StarWindow(const StarWindow&) = delete; 
-	StarWindow& operator=(const StarWindow&) = delete; 
-
 	void createWindowSurface(vk::Instance instance, vk::UniqueSurfaceKHR& surface);
 
 protected:
 	StarWindow(int width, int height, std::string title) : width(width), height(height), title(title) {};
 
-	void create(); 
+	void onCreate();
 
 	virtual void init() = 0;
 
@@ -34,6 +31,7 @@ private:
 	int width, height;
 	std::string title;
 	GLFWwindow* window = nullptr;
+
 
 };
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BasicRenderer.hpp"
 #include "BasicWindow.hpp"
 
 #include <memory>
@@ -21,7 +22,8 @@ public:
 	virtual ~StarEngine();
 
 protected:
-	std::unique_ptr<BasicWindow> window;
+	std::unique_ptr<StarWindow> window;
+	std::unique_ptr<StarRenderer> renderer; 
 
 	StarEngine();
 

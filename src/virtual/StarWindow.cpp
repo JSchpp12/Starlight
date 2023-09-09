@@ -27,7 +27,7 @@ void StarWindow::createWindowSurface(vk::Instance instance, vk::UniqueSurfaceKHR
 	surface = vk::UniqueSurfaceKHR(surfaceTmp, instance);
 }
 
-void StarWindow::create()
+void StarWindow::onCreate()
 {
 	this->init(); 
 	createWindow(); 

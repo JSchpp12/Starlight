@@ -63,9 +63,9 @@ set(${PROJECT_NAME}_SOURCE
 )
 
 set(${PROJECT_NAME}_HEADERS
-    "include/BasicRenderer.hpp"
     "include/BasicDevice.hpp" 
     "include/BasicWindow.hpp" 
+    "include/BasicRenderer.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
