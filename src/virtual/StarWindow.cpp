@@ -16,6 +16,8 @@ void StarWindow::createWindow()
 	//need to give GLFW a pointer to current instance of this class
 	glfwSetWindowUserPointer(this->window, this);
 
+	//glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
 }
 
 void StarWindow::createWindowSurface(vk::Instance instance, vk::UniqueSurfaceKHR& surface)

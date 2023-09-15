@@ -248,7 +248,7 @@ bool StarDevice::checkDeviceExtensionSupport(vk::PhysicalDevice device) {
 	return requiredExtensions.empty();
 }
 
-StarDevice::QueueFamilyIndicies StarDevice::findQueueFamilies(vk::PhysicalDevice device) {
+QueueFamilyIndicies StarDevice::findQueueFamilies(vk::PhysicalDevice device) {
 	QueueFamilyIndicies indicies;
 
 	// device.getQueueFamilyProperties(queueFamilyCount, queueFamilies.data()); 
@@ -502,7 +502,7 @@ void StarDevice::createImageWithInfo(const vk::ImageCreateInfo& imageInfo, vk::M
 	this->vulkanDevice.bindImageMemory(image, imageMemory, 0);
 }
 
-StarDevice::SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice device) {
+SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice device) {
 	SwapChainSupportDetails details;
 	uint32_t formatCount, presentModeCount;
 

@@ -18,6 +18,12 @@ public:
 
 	void createWindowSurface(vk::Instance instance, vk::UniqueSurfaceKHR& surface);
 
+	bool shouldClose() { return glfwWindowShouldClose(this->window); }
+	vk::Extent2D getExtent() { return { static_cast<uint32_t>(this->width), static_cast<uint32_t>(this->height) }; }
+	bool wasWindowResized() { return this->frambufferResized; }
+	void resetWindowResizedFlag() { this->frambufferResized = false; }
+	GLFWwindow* getGLFWwindow() const { return this->window; }
+
 protected:
 	StarWindow(int width, int height, std::string title) : width(width), height(height), title(title) {};
 
@@ -28,6 +34,7 @@ protected:
 	virtual void createWindow(); 
 
 private: 
+	bool frambufferResized = false;
 	int width, height;
 	std::string title;
 	GLFWwindow* window = nullptr;
