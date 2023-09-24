@@ -34,6 +34,16 @@ void star::InteractionSystem::registerWorldUpdateCallback(std::unique_ptr<std::f
 void star::InteractionSystem::glfwKeyHandle(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	std::function<void(int, int, int, int)> call;
+
+	//mark key
+	if (action == GLFW_RELEASE) {
+		KeyStates::release(star::KEY(key)); 
+	}
+
+	if (action == GLFW_PRESS) {
+		KeyStates::press(star::KEY(key)); 
+	}
+
 	//call all registered functions
 	for (size_t i = 0; i < keyboardCallbacks.size(); i++) {
 		call = *keyboardCallbacks.at(i);

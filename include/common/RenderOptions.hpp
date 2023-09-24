@@ -1,6 +1,8 @@
 #pragma once 
 #include "Enums.hpp"
 
+#include <cstdint>
+
 namespace star {
 
 class RenderOptions {
@@ -24,6 +26,7 @@ public:
 		else
 			this->renderFeatures &= ~(1 << feature);
 	}
+
 	/// <summary>
 	/// Check if specific feature is enabled.
 	/// </summary>

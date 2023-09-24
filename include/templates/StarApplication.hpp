@@ -1,11 +1,11 @@
 #pragma once
 
-#include "FileResourceManager.hpp"
-#include "Shader.hpp"
-#include "ConfigFile.hpp"
+#include "CameraController.hpp"
+#include "StarShader.hpp"
 #include "Handle.hpp"
 #include "Camera.hpp"
 #include "Time.hpp"
+#include "Interactivity.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -14,20 +14,9 @@
 #include <vector>
 
 namespace star {
-    template<typename shaderManagerT, typename textureManagerT, typename lightManagerT, typename sceneBuilderT>
-    class StarApplication {
+    class StarApplication : public Interactivity {
     public:
-        StarApplication(ConfigFile* configFile, std::vector<Handle>* objectList, std::vector<Handle>& lightList, shaderManagerT* shaderManager,
-            textureManagerT* textureManager, lightManagerT* lightManager, sceneBuilderT& sceneManager,
-            Camera* inCamera) :
-            lightList(lightList), 
-            configFile(configFile),
-            objectList(objectList),
-            shaderManager(shaderManager),
-            sceneBuilder(sceneManager),
-            textureManager(textureManager),
-            lightManager(lightManager),
-            camera(inCamera) { }
+        StarApplication(){ }
 
         virtual ~StarApplication() {};
 
@@ -35,22 +24,30 @@ namespace star {
 
         virtual void Update() = 0;
 
+        virtual void onKeyPress(int key, int scancode, int mods) override {};
+
+        virtual void onKeyRelease(int key, int scancode, int mods) override {};
+
+        virtual void onMouseMovement(double xpos, double ypos) override {};
+
+        virtual void onMouseButtonAction(int button, int action, int mods) override {};
+
+        virtual void onScroll(double xoffset, double yoffset) override {};
+
         std::vector<Handle> getLights() { return lightList; }
 
-        lightManagerT* getLightManager() { return lightManager; }
+        std::vector<Handle> getObjects() { return objectList; }
 
-        ConfigFile* configFile;
+        virtual Camera& getCamera() { return camera;  }
 
     protected:
-        sceneBuilderT& sceneBuilder;
-        shaderManagerT* shaderManager;
-        textureManagerT* textureManager;
-        lightManagerT* lightManager;
-        std::vector<Handle>* objectList = nullptr;
-        std::vector<Handle>& lightList = nullptr;
-        Camera* camera;
+        CameraController camera;
+
+        std::vector<Handle> lightList;
+        std::vector<Handle> objectList; 
 
         Time time = Time();
+
     private:
 
     };

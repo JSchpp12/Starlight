@@ -64,6 +64,50 @@ public:
 	std::vector<vk::CommandBuffer>* getGraphicsCommandBuffers() { return &this->graphicsCommandBuffers; }
 	void setGraphicsCommandBuffers(std::vector<vk::CommandBuffer>& newBuffers) { this->graphicsCommandBuffers = newBuffers; }
 #pragma endregion
+
+#pragma region helperFunctions
+	void createPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits flags, vk::CommandPool& pool);
+	/// <summary>
+	/// Create a buffer with the given arguments
+	/// </summary>
+	void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags properties,
+		vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
+	/// <summary>
+	/// Helper function to execute single time use command buffers
+	/// </summary>
+	/// <param name="useTransferPool">Should command be submitted to the transfer command pool. Will be submitted to the graphics pool otherwise.</param>
+	/// <returns></returns>
+	vk::CommandBuffer beginSingleTimeCommands(bool useTransferPool = false);
+	/// <summary>
+	/// Helper function to end execution of single time use command buffer
+	/// </summary>
+	/// <param name="commandBuffer"></param>
+	/// <param name="useTransferPool">Was command buffer submitted to the transfer pool. Assumed graphics pool otherwise.</param>
+	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, bool useTransferPool = false);
+
+	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
+	/// <summary>
+	/// Copy a buffer to an image.
+	/// </summary>
+	/// <param name="buffer"></param>
+	/// <param name="image"></param>
+	/// <param name="width"></param>
+	/// <param name="height"></param>
+	void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+
+	void createImageWithInfo(const vk::ImageCreateInfo& imageInfo, vk::MemoryPropertyFlags properties, vk::Image& image,
+		vk::DeviceMemory& imageMemory);
+
+	/// <summary>
+	/// Query the GPU for the proper memory type that matches properties defined in passed arguments. 
+	/// </summary>
+	/// <param name="typeFilter">Which bit field of memory types that are suitable</param>
+	/// <param name="properties"></param>
+	/// <returns></returns>
+	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags propertyFlags);
+
+#pragma endregion
+
 protected: 
 	StarDevice(StarWindow& window);
 
@@ -111,15 +155,6 @@ protected:
 	};
 #endif
 
-
-	/// <summary>
-	/// Query the GPU for the proper memory type that matches properties defined in passed arguments. 
-	/// </summary>
-	/// <param name="typeFilter">Which bit field of memory types that are suitable</param>
-	/// <param name="properties"></param>
-	/// <returns></returns>
-	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags propertyFlags);
-
 	//Create the vulkan instance machine 
 	void createInstance();
 
@@ -164,42 +199,6 @@ protected:
 	/// Request specific details about swap chain support for a given device
 	/// </summary>
 	SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device);
-
-
-#pragma region helperFunctions
-	void createPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits flags, vk::CommandPool& pool);
-	/// <summary>
-	/// Create a buffer with the given arguments
-	/// </summary>
-	void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags properties,
-		vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
-	/// <summary>
-	/// Helper function to execute single time use command buffers
-	/// </summary>
-	/// <param name="useTransferPool">Should command be submitted to the transfer command pool. Will be submitted to the graphics pool otherwise.</param>
-	/// <returns></returns>
-	vk::CommandBuffer beginSingleTimeCommands(bool useTransferPool = false);
-	/// <summary>
-	/// Helper function to end execution of single time use command buffer
-	/// </summary>
-	/// <param name="commandBuffer"></param>
-	/// <param name="useTransferPool">Was command buffer submitted to the transfer pool. Assumed graphics pool otherwise.</param>
-	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, bool useTransferPool = false);
-
-	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
-	/// <summary>
-	/// Copy a buffer to an image.
-	/// </summary>
-	/// <param name="buffer"></param>
-	/// <param name="image"></param>
-	/// <param name="width"></param>
-	/// <param name="height"></param>
-	void copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
-
-	void createImageWithInfo(const vk::ImageCreateInfo& imageInfo, vk::MemoryPropertyFlags properties, vk::Image& image,
-		vk::DeviceMemory& imageMemory);
-
-#pragma endregion
 
 private: 
 

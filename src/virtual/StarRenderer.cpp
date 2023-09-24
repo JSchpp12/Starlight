@@ -1,6 +1,11 @@
 #include "StarRenderer.hpp"
 
 namespace star {
+void StarRenderer::pollEvents()
+{
+	glfwPollEvents();
+}
+
 vk::SurfaceFormatKHR StarRenderer::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
 {
 	for (const auto& availableFormat : availableFormats) {

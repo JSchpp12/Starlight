@@ -2,13 +2,14 @@
 
 #include "BasicRenderer.hpp"
 #include "BasicWindow.hpp"
+#include "ConfigFile.hpp"
 #include "Light.hpp"
 #include "StarApplication.hpp "
-
 #include "ShaderManager.hpp"
 #include "TextureManager.hpp"
 #include "LightManager.hpp"
 #include "SceneBuilder.hpp"
+#include "MaterialManager.hpp"
 
 #include <memory>
 #include <vector>
@@ -18,26 +19,40 @@ class StarEngine {
 public:
 	class Builder {
 	public:
-		Builder(StarApplication<ShaderManager, TextureManager, LightManager, SceneBuilder>& application) : application(application) {};
-		std::unique_ptr<StarEngine> build() {
-			auto lightHandles = application.getLights();
-			auto lightManager = application.getLightManager(); 
-			return std::unique_ptr<StarEngine>(new StarEngine(lightHandles, lightManager));
+		Builder(){};
+
+		std::unique_ptr<StarEngine> build(Camera& camera, std::vector<Handle> lightHandles, std::vector<Handle> objectHandles, RenderOptions& renderOptions) {
+			auto engine = std::unique_ptr<StarEngine>(new StarEngine(camera, lightHandles, objectHandles, renderOptions));
+			return std::move(engine); 
 		}
 
 	private:
-		StarApplication< ShaderManager, TextureManager, LightManager, SceneBuilder>& application;
-
 	};
 
+	static ConfigFile configFile;
+	static ShaderManager shaderManager;
+	static TextureManager textureManager;
+	static LightManager lightManager;
+	static ObjectManager objectManager;
+	static MaterialManager materialManager;
+	static MapManager mapManager;
+	static SceneBuilder sceneBuilder;
+
+	static std::string GetSetting(Config_Settings setting) {
+		return configFile.GetSetting(setting);
+	}
+
 	virtual ~StarEngine() = default;
+
+	void Run();
+
+	void init(); 
 
 protected:
 	std::unique_ptr<StarWindow> window;
 	std::unique_ptr<StarRenderer> renderer; 
-	std::vector<Handle> lightHandles;
 
-	StarEngine(std::vector<Handle> lightHandles, LightManager* lightManager);
+	StarEngine(Camera& camera, std::vector<Handle> lightHandles, std::vector<Handle> objectHandles, RenderOptions& renderOptions);
 
 private:
 

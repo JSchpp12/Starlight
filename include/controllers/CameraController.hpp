@@ -1,6 +1,7 @@
 #pragma once 
 #include "Camera.hpp"
 #include "Interactivity.hpp"
+#include "KeyStates.hpp"
 #include "Time.hpp"
 
 #include <GLFW/glfw3.h>
@@ -17,6 +18,9 @@ namespace star {
 		public Interactivity
 	{
 	public:
+		CameraController(); 
+		~CameraController() = default; 
+
 		/// <summary>
 		/// Key callback for camera object. Implements default controls for the camera. 
 		/// </summary>
@@ -24,14 +28,16 @@ namespace star {
 		/// <param name="scancode"></param>
 		/// <param name="action"></param>
 		/// <param name="mods"></param>
-		virtual void keyCallback(int key, int scancode, int action, int mods) override;
+		virtual void onKeyPress(int key, int scancode, int mods) override;
+
+		virtual void onKeyRelease(int key, int scancode, int mods) override; 
 
 		/// <summary>
 		/// Mouse callback for camera objects. Implements default controls for the camera. 
 		/// </summary>
 		/// <param name="xpos"></param>
 		/// <param name="ypos"></param>
-		virtual void mouseMovementCallback(double xpos, double ypos) override;
+		virtual void onMouseMovement(double xpos, double ypos) override;
 
 		/// <summary>
 		/// Mouse button callback for camera object. 
@@ -39,12 +45,14 @@ namespace star {
 		/// <param name="button"></param>
 		/// <param name="action"></param>
 		/// <param name="mods"></param>
-		virtual void mouseButtonCallback(int button, int action, int mods) override;
+		virtual void onMouseButtonAction(int button, int action, int mods) override;
 
 		/// <summary>
 		/// Update camera locations as needed 
 		/// </summary>
-		virtual void worldUpdate() override;
+		virtual void onWorldUpdate() override;
+
+		void onScroll(double xoffset, double yoffset) override {};
 
 	protected:
 
@@ -61,6 +69,5 @@ namespace star {
 		float pitch = -0.f, yaw = -90.0f;
 
 		bool click = false;
-		bool moveLeft, moveRight = false, moveForward = false, moveBack = false;
 	};
 }

@@ -5,7 +5,7 @@
 #include "StarResourceContainer.hpp"
 #include "ConfigFile.hpp"
 #include "FileResourceManager.hpp"
-#include "Shader.hpp"
+#include "StarShader.hpp"
 
 #include "Compiler.hpp"
 
@@ -14,18 +14,18 @@
 #include <memory>
 
 namespace star {
-    class ShaderManager : public FileResourceManager<Shader> {
+    class ShaderManager : public FileResourceManager<StarShader> {
     public:
         /// <summary>
         /// Create shader manager with default shaders to be used if objects are not explicitly provided shaders
         /// </summary>
-        /// <param name="defaultVert"></param>
-        /// <param name="defaultFrag"></param>
-        ShaderManager(const std::string& defaultVert, const std::string& defaultFrag);
+        ShaderManager() {};
+
+        void setDefault(const std::string& defaultVert, const std::string& defaultFrag);
 
         ~ShaderManager();
 
-        Shader& resource(const Handle& resourceHandle) override;
+        StarShader& resource(const Handle& resourceHandle) override;
     protected:
 
         Handle createAppropriateHandle() override;

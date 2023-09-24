@@ -18,6 +18,10 @@ void StarWindow::createWindow()
 
 	//glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
+	auto callback = glfwSetKeyCallback(this->window, InteractionSystem::glfwKeyHandle); 
+	auto mouseButtonCallback = glfwSetMouseButtonCallback(this->window, InteractionSystem::glfwMouseButtonCallback); 
+	auto cursorCallback = glfwSetCursorPosCallback(this->window, InteractionSystem::glfwMouseMovement); 
+	auto mouseScrollCallback = glfwSetScrollCallback(this->window, InteractionSystem::glfwScrollCallback); 
 }
 
 void StarWindow::createWindowSurface(vk::Instance instance, vk::UniqueSurfaceKHR& surface)

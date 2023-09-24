@@ -1,40 +1,18 @@
 #include "CameraController.hpp"
 
-void star::CameraController::keyCallback(int key, int scancode, int action, int mods) {
-	if (action != GLFW_RELEASE) {
-		if (!this->moveForward && key == GLFW_KEY_W) {
-			this->moveForward = true;
-		}
-		if (!this->moveBack && key == GLFW_KEY_S) {
-			this->moveBack = true;
-			//cameraPos -= moveAmt * cameraLookDir;
-			//this->setPosition(cameraPos);
-		}
-		if (!this->moveLeft && key == GLFW_KEY_A) {
-			this->moveLeft = true;
-		}
-		if (!this->moveRight && key == GLFW_KEY_D) {
-			this->moveRight = true;
-		}
-	}
-
-	if (action == GLFW_RELEASE) {
-		if (this->moveLeft && key == GLFW_KEY_A) {
-			this->moveLeft = false;
-		}
-		if (this->moveRight && key == GLFW_KEY_D) {
-			this->moveRight = false;
-		}
-		if (this->moveForward && key == GLFW_KEY_W) {
-			this->moveForward = false;
-		}
-		if (this->moveBack && key == GLFW_KEY_S) {
-			this->moveBack = false;
-		}
-	}
+star::CameraController::CameraController()
+{
+	this->registerInteractions(); 
 }
 
-void star::CameraController::mouseMovementCallback(double xpos, double ypos) {
+void star::CameraController::onKeyPress(int key, int scancode, int mods) {
+}
+
+void star::CameraController::onKeyRelease(int key, int scancode, int mods)
+{
+}
+
+void star::CameraController::onMouseMovement(double xpos, double ypos) {
 	if (this->click) {
 		//prime camera
 		if (!this->init) {
@@ -42,6 +20,7 @@ void star::CameraController::mouseMovementCallback(double xpos, double ypos) {
 			this->prevY = ypos;
 			this->init = true;
 		}
+
 		this->xMovement = xpos - this->prevX;
 		this->yMovement = ypos - this->prevY;
 		this->prevX = xpos;
@@ -49,7 +28,7 @@ void star::CameraController::mouseMovementCallback(double xpos, double ypos) {
 	}
 }
 
-void star::CameraController::mouseButtonCallback(int button, int action, int mods)
+void star::CameraController::onMouseButtonAction(int button, int action, int mods)
 {
 	if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT) {
 		this->click = true;
@@ -60,34 +39,40 @@ void star::CameraController::mouseButtonCallback(int button, int action, int mod
 	}
 }
 
-void star::CameraController::worldUpdate() {
+void star::CameraController::onWorldUpdate() {
 	//TODO: improve time var allocation 
+	bool moveLeft		= KeyStates::state(A); 
+	bool moveRight		= KeyStates::state(D); 
+	bool moveForward	= KeyStates::state(W); 
+	bool moveBack		= KeyStates::state(S);
+
 	if ((double)time.timeElapsedLastFrameSeconds() > 1) {
 		time.updateLastFrameTime();
 	}
 
-	if (this->moveLeft || this->moveRight || this->moveForward || this->moveBack) {
+	if (moveLeft || moveRight || moveForward || moveBack) {
 		float moveAmt = 0.1f * time.timeElapsedLastFrameSeconds();
 
 		glm::vec3 cameraPos = this->getPosition();
 		glm::vec3 cameraLookDir = -this->getLookDirection();
 
-		if (this->moveLeft) {
+		if (moveLeft) {
 			this->moveRelative(glm::cross(cameraLookDir, *this->upVector), moveAmt);
 		}
-		if (this->moveRight) {
+		if (moveRight) {
 			this->moveRelative(glm::cross(cameraLookDir, -*this->upVector), moveAmt);
 		}
-		if (this->moveForward) {
+		if (moveForward) {
 			this->moveRelative(*this->lookDirection, moveAmt);
 		}
-		if (this->moveBack) {
+		if (moveBack) {
 			this->moveRelative(-*this->lookDirection, moveAmt);
 		}
 		//std::cout << cameraPos.x << "," << cameraPos.y << "," << cameraPos.z << std::endl;
+		time.updateLastFrameTime();
 	}
 
-	if (this->click) {
+	if (this->click && this->init) {
 		this->xMovement *= this->sensitivity;
 		this->yMovement *= this->sensitivity;
 
@@ -110,5 +95,5 @@ void star::CameraController::worldUpdate() {
 		this->lookDirection = std::make_unique<glm::vec3>(glm::normalize(direction));
 	}
 
-	time.updateLastFrameTime();
+
 }

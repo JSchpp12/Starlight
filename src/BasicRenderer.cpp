@@ -1,9 +1,15 @@
 #include "BasicRenderer.hpp"
+#include "BasicRenderer.hpp"
+
+typedef std::chrono::high_resolution_clock Clock;
 
 namespace star {
 
-BasicRenderer::BasicRenderer(StarWindow& window, std::vector<Light*> inLightList) :
-	StarRenderer(window), lightList(inLightList)
+BasicRenderer::BasicRenderer(StarWindow& window, MaterialManager& materialManager, 
+	TextureManager& textureManager, MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, 
+	std::vector<std::reference_wrapper<Light>> inLightList, std::vector<std::reference_wrapper<GameObject>> objectList, Camera& camera, RenderOptions& renderOptions) :
+	StarRenderer(window, shaderManager, objectManager, camera), materialManager(materialManager), textureManager(textureManager), 
+	mapManager(mapManager), shaderManager(shaderManager), lightList(inLightList), objectList(objectList), renderOptions(renderOptions)
 {
 	device = StarDevice::New(window); 
 }
@@ -19,6 +25,202 @@ void BasicRenderer::prepare()
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * this->swapChainImages.size())
 		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->swapChainImages.size())
 		.build();
+
+	this->globalSetLayout = StarDescriptorSetLayout::Builder(*this->device.get())
+		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+		.build();
+
+	this->globalDescriptorSets.resize(this->swapChainImages.size());
+
+	vk::ShaderStageFlagBits stages{};
+	vk::Device device = this->device->getDevice();
+	this->RenderSysObjs.push_back(std::make_unique<StarSystemRenderObject>(*this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
+	StarSystemRenderObject* tmpRenderSysObj = this->RenderSysObjs.at(0).get();
+	uint32_t meshVertCounter = 0;
+
+	for (size_t i = 0; i < this->objectList.size(); i++) {
+		GameObject& currObject = this->objectList.at(i);
+		meshVertCounter = 0;
+
+		//check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
+		for (size_t j = 0; j < this->RenderSysObjs.size(); j++) {
+			//check if object shaders are in vulkan object
+			StarSystemRenderObject* object = this->RenderSysObjs.at(j).get();
+			if (!object->hasShader(vk::ShaderStageFlagBits::eVertex) && (!object->hasShader(vk::ShaderStageFlagBits::eFragment))) {
+				//vulkan object does not have either a vertex or a fragment shader 
+				object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
+				object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
+				StarRenderObject::Builder builder(*this->device, currObject);
+				builder.setNumFrames(this->swapChainImages.size());
+
+				for (auto& mesh : currObject.getMeshes()) {
+					builder.addMesh(
+						StarRenderMesh::Builder(*this->device)
+						.setMesh(*mesh)
+						.setRenderSettings(object->getNumVerticies() + meshVertCounter)
+						.setMaterial(StarRenderMaterial::Builder(*this->device, this->materialManager, this->textureManager, this->mapManager)
+							.setMaterial(mesh->getMaterial())
+							.build())
+						.build());
+					meshVertCounter += mesh->getTriangles()->size() * 3;
+				}
+				object->addObject(std::move(builder.build()));
+			}
+			else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject.getVertShader().containerIndex) ||
+				(object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject.getFragShader().containerIndex)) {
+				//vulkan object has shaders but they are not the same as the shaders needed for current render object
+				this->RenderSysObjs.push_back(std::make_unique<StarSystemRenderObject>(*this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
+				StarSystemRenderObject* newObject = this->RenderSysObjs.at(this->RenderSysObjs.size()).get();
+				newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
+				newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
+				newObject->addObject(std::move(StarRenderObject::Builder(*this->device, currObject)
+					.setNumFrames(this->swapChainImages.size())
+					.build()));
+			}
+			else {
+				//vulkan object has the same shaders as the render object 
+				StarRenderObject::Builder builder(*this->device, currObject);
+				builder.setNumFrames(this->swapChainImages.size());
+
+				for (auto& mesh : currObject.getMeshes()) {
+					builder.addMesh(StarRenderMesh::Builder(*this->device)
+						.setMesh(*mesh)
+						.setRenderSettings(object->getNumVerticies() + meshVertCounter)
+						.setMaterial(StarRenderMaterial::Builder(*this->device, this->materialManager, this->textureManager, this->mapManager)
+							.setMaterial(mesh->getMaterial())
+							.build())
+						.build());
+					meshVertCounter += mesh->getTriangles()->size() * 3;
+				}
+				object->addObject(builder.build());
+			}
+		}
+	}
+	std::vector<vk::DescriptorSetLayout> globalSets = { this->globalSetLayout->getDescriptorSetLayout() };
+	tmpRenderSysObj->init(globalSets);
+
+	/* Init Point Light Render System */
+
+	GameObject* currLinkedObj = nullptr;
+	int vertexCounter = 0;
+	for (Light& light : this->lightList) {
+		if (light.hasLinkedObject()) {
+			if (!lightRenderSys) {
+				this->lightRenderSys = std::make_unique<StarSystemRenderPointLight>(*this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+			}
+			currLinkedObj = &this->objectManager.resource(light.getLinkedObjectHandle());
+			if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
+				this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader());
+				this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader());
+			}
+			if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
+				|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
+				auto builder = StarRenderObject::Builder(*this->device, this->objectManager.resource(light.getLinkedObjectHandle()));
+				builder.setNumFrames(this->swapChainImages.size());
+
+				for (auto& mesh : currLinkedObj->getMeshes()) {
+					builder.addMesh(StarRenderMesh::Builder(*this->device)
+						.setMesh(*mesh)
+						.setRenderSettings(vertexCounter)
+						.setMaterial(StarRenderMaterial::Builder(*this->device, this->materialManager, this->textureManager, this->mapManager)
+							.setMaterial(mesh->getMaterial())
+							.build())
+						.build());
+					vertexCounter += mesh->getTriangles()->size() * 3;
+				}
+				lightRenderSys->addLight(&light, builder.build(), this->swapChainImages.size());
+			}
+			else {
+				throw std::runtime_error("More than one shader type is not permitted for light linked object");
+			}
+		}
+	}
+	//init light render system if it was created 
+	if (lightRenderSys) {
+		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
+		this->lightRenderSys->init(globalSets);
+	}
+
+	createDepthResources();
+	createFramebuffers();
+	createRenderingBuffers();
+
+
+	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
+	for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+		//global
+		bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
+
+		auto globalBufferInfo = vk::DescriptorBufferInfo{
+			this->globalUniformBuffers[i]->getBuffer(),
+			0,
+			sizeof(GlobalUniformBufferObject) };
+
+		//buffer descriptors for point light locations 
+		auto lightBufferInfo = vk::DescriptorBufferInfo{
+			this->lightBuffers[i]->getBuffer(),
+			0,
+			sizeof(LightBufferObject) * this->lightList.size() };
+
+		StarDescriptorWriter(*this->device.get(), *this->globalSetLayout, *this->globalPool)
+			.writeBuffer(0, &globalBufferInfo)
+			.writeBuffer(1, &lightBufferInfo)
+			.build(this->globalDescriptorSets.at(i));
+	}
+
+	createCommandBuffers();
+	createSemaphores();
+	createFences();
+	createFenceImageTracking();
+}
+
+void BasicRenderer::updateUniformBuffer(uint32_t currentImage)
+{
+	static auto startTime = std::chrono::high_resolution_clock::now();
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+	//update global ubo 
+	GlobalUniformBufferObject globalUbo;
+	globalUbo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+	//glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
+	globalUbo.proj[1][1] *= -1;
+	globalUbo.view = this->camera.getDisplayMatrix();
+	globalUbo.inverseView = this->camera.getInverseViewMatrix();
+	globalUbo.numLights = static_cast<uint32_t>(this->lightList.size());
+	globalUbo.renderOptions = this->renderOptions.getRenderOptions();
+
+	this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
+
+	//update buffer for light positions
+	std::vector<LightBufferObject> lightInformation(this->lightList.size());
+	LightBufferObject newBufferObject{};
+
+	//write buffer information
+	for (size_t i = 0; i < this->lightList.size(); i++) {
+		Light& currLight = this->lightList.at(i);
+		newBufferObject.position = glm::vec4{ currLight.getPosition(), 1.0f };
+		newBufferObject.direction = currLight.direction;
+		newBufferObject.ambient = currLight.getAmbient();
+		newBufferObject.diffuse = currLight.getDiffuse();
+		newBufferObject.specular = currLight.getSpecular();
+		newBufferObject.settings.x = currLight.getEnabled() ? 1 : 0;
+		newBufferObject.settings.y = currLight.getType();
+		newBufferObject.controls.x = glm::cos(glm::radians(currLight.getInnerDiameter()));		//represent the diameter of light as the cos of the light (increase shader performance when doing comparison)
+		newBufferObject.controls.y = glm::cos(glm::radians(currLight.getOuterDiameter()));
+		lightInformation[i] = newBufferObject;
+	}
+	this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
+
+	for (size_t i = 0; i < this->RenderSysObjs.size(); i++) {
+		RenderSysObjs.at(i)->updateBuffers(currentImage);
+	}
+
+	if (lightRenderSys) {
+		this->lightRenderSys->updateBuffers(currentImage);
+	}
 }
 
 BasicRenderer::~BasicRenderer()
@@ -27,16 +229,146 @@ BasicRenderer::~BasicRenderer()
 	cleanup(); 
 }
 
+void BasicRenderer::draw()
+{
+	/* Goals of each call to drawFrame:
+	   *   get an image from the swap chain
+	   *   execute command buffer with that image as attachment in the framebuffer
+	   *   return the image to swapchain for presentation
+	   * by default each of these steps would be executed asynchronously so need method of synchronizing calls with rendering
+	   * two ways of doing this:
+	   *   1. fences
+	   *       accessed through calls to vkWaitForFences
+	   *       designed to synchronize appliecation itself with rendering ops
+	   *   2. semaphores
+	   *       designed to synchronize opertaions within or across command queues
+	   * need to sync queu operations of draw and presentation commmands -> using semaphores
+	   */
+
+	   //wait for fence to be ready 
+	   // 3. 'VK_TRUE' -> waiting for all fences
+	   // 4. timeout 
+	this->device->getDevice().waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
+	/* Get Image From Swapchain */
+
+	//as is extension we must use vk*KHR naming convention
+	//UINT64_MAX -> 3rd argument: used to specify timeout in nanoseconds for image to become available
+	/* Suboptimal SwapChain notes */
+		//vulkan can return two different flags 
+		// 1. VK_ERROR_OUT_OF_DATE_KHR: swap chain has become incompatible with the surface and cant be used for rendering. (Window resize)
+		// 2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no longer match
+	auto result = this->device->getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame]);
+
+	if (result.result == vk::Result::eErrorOutOfDateKHR) {
+		//the swapchain is no longer optimal according to vulkan. Must recreate a more efficient swap chain
+		recreateSwapChain();
+		return;
+	}
+	else if (result.result != vk::Result::eSuccess && result.result != vk::Result::eSuboptimalKHR) {
+		//for VK_SUBOPTIMAL_KHR can also recreate swap chain. However, chose to continue to presentation stage
+		throw std::runtime_error("failed to acquire swap chain image");
+	}
+	uint32_t imageIndex = result.value;
+
+	//check if a previous frame is using the current image
+	if (imagesInFlight[imageIndex]) {
+		this->device->getDevice().waitForFences(1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+	}
+	//mark image as now being in use by this frame by assigning the fence to it 
+	imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+
+	updateUniformBuffer(imageIndex);
+
+
+	/* Command Buffer */
+	vk::SubmitInfo submitInfo{};
+	submitInfo.sType = vk::StructureType::eSubmitInfo;
+
+	vk::Semaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+
+	//where in the pipeline should the wait happen, want to wait until image becomes available
+	//wait at stage of color attachment -> theoretically allows for shader execution before wait 
+	vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput }; //each entry corresponds through index to waitSemaphores[]
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+
+	//which command buffers to submit for execution -- should submit command buffer that binds the swap chain image that was just acquired as color attachment
+	submitInfo.commandBufferCount = 1;
+	//submitInfo.pCommandBuffers = &graphicsCommandBuffers[imageIndex];
+	submitInfo.pCommandBuffers = &this->device->getGraphicsCommandBuffers()->at(imageIndex);
+
+	//what semaphores to signal when command buffers have finished
+	vk::Semaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	//set fence to unsignaled state
+	this->device->getDevice().resetFences(1, &inFlightFences[currentFrame]);
+	auto submitResult = this->device->getGraphicsQueue().submit(1, &submitInfo, inFlightFences[currentFrame]);
+	if (submitResult != vk::Result::eSuccess) {
+		throw std::runtime_error("failed to submit draw command buffer");
+	}
+
+	/* Presentation */
+	vk::PresentInfoKHR presentInfo{};
+	//presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.sType = vk::StructureType::ePresentInfoKHR;
+
+	//what to wait for 
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = signalSemaphores;
+
+	//what swapchains to present images to 
+	vk::SwapchainKHR swapChains[] = { swapChain };
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &imageIndex;
+
+	//can use this to get results from swap chain to check if presentation was successful
+	presentInfo.pResults = nullptr; // Optional
+
+	//make call to present image
+	auto presentResult = this->device->getPresentQueue().presentKHR(presentInfo);
+
+	//if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || frameBufferResized) {
+	if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || frameBufferResized) {
+		frameBufferResized = false;
+		recreateSwapChain();
+	}
+	else if (presentResult != vk::Result::eSuccess) {
+		throw std::runtime_error("failed to present swap chain image");
+	}
+
+	//advance to next frame
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
 void BasicRenderer::cleanup()
 {
-	cleanupSwapChain(); 
+	cleanupSwapChain();
+
+	this->device->getDevice().destroySampler(this->textureSampler);
+	this->device->getDevice().destroyImageView(this->textureImageView);
+	this->device->getDevice().destroyImage(this->textureImage);
+	this->device->getDevice().freeMemory(this->textureImageMemory);
+
+	StarSystemRenderObject* currRenderSysObj = this->RenderSysObjs.at(0).get();
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		this->device->getDevice().destroySemaphore(renderFinishedSemaphores[i]);
+		this->device->getDevice().destroySemaphore(imageAvailableSemaphores[i]);
+		this->device->getDevice().destroyFence(inFlightFences[i]);
+	}
 }
 
 void BasicRenderer::cleanupSwapChain()
 {
-	//this->device->getDevice().destroyImageView(this->depthImageView);
-	//this->device->getDevice().destroyImage(this->depthImage);
-	//this->device->getDevice().freeMemory(this->depthImageMemory);
+	this->device->getDevice().destroyImageView(this->depthImageView);
+	this->device->getDevice().destroyImage(this->depthImage);
+	this->device->getDevice().freeMemory(this->depthImageMemory);
 
 	for (auto framebuffer : this->swapChainFramebuffers) {
 		this->device->getDevice().destroyFramebuffer(framebuffer);
@@ -49,6 +381,44 @@ void BasicRenderer::cleanupSwapChain()
 	}
 
 	this->device->getDevice().destroySwapchainKHR(this->swapChain);
+}
+
+void BasicRenderer::recreateSwapChain()
+{
+	int width = 0, height = 0;
+
+	//check for window minimization and wait for window size to no longer be 0
+	glfwGetFramebufferSize(this->window.getGLFWwindow(), &width, &height);
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(this->window.getGLFWwindow(), &width, &height);
+		glfwWaitEvents();
+	}
+	//wait for device to finish any current actions
+	vkDeviceWaitIdle(this->device->getDevice());
+
+	cleanupSwapChain();
+
+	//create swap chain itself 
+	createSwapChain();
+
+	//image views depend directly on swap chain images so these need to be recreated
+	createImageViews();
+
+	//render pass depends on the format of swap chain images
+	createRenderPass();
+
+	createDepthResources();
+
+	createFramebuffers();
+
+	//uniform buffers are dependent on the number of swap chain images, will need to recreate since they are destroyed in cleanupSwapchain()
+	createRenderingBuffers();
+
+	//createDescriptorPool();
+
+	//createDescriptorSets();
+
+	createCommandBuffers();
 }
 
 void BasicRenderer::createSwapChain()
@@ -270,6 +640,306 @@ void BasicRenderer::createRenderPass()
 	}
 }
 
+void BasicRenderer::createDepthResources()
+{
+	//depth image should have:
+		//  same resolution as the color attachment (in swap chain extent)
+		//  optimal tiling and device local memory 
+		//Need to decide format - need to decide format for the accuracy since no direct access to the depth image from CPU side 
+		//Formats for color image: 
+		//  VK_FORMAT_D32_SFLOAT: 32-bit-float
+		//  VK_FORMAT_D32_SFLOAT_S8_UINT: 32-bit signed float for depth and 8 bit stencil component
+		//  VK_FORMAT_D24_UNFORM_S8_UINT: 24-bit float for depth and 8 bit stencil component
 
+	vk::Format depthFormat = findDepthFormat();
+
+	createImage(swapChainExtent.width, swapChainExtent.height, depthFormat,
+		vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
+
+	this->depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
+}
+
+void BasicRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory)
+{
+	/* Create vulkan image */
+	vk::ImageCreateInfo imageInfo{};
+	imageInfo.sType = vk::StructureType::eImageCreateInfo;
+	imageInfo.imageType = vk::ImageType::e2D;
+	imageInfo.extent.width = width;
+	imageInfo.extent.height = height;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = format;
+	imageInfo.tiling = tiling;
+	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+	imageInfo.usage = usage;
+	imageInfo.samples = vk::SampleCountFlagBits::e1;
+	imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+	image = this->device->getDevice().createImage(imageInfo);
+	if (!image) {
+		throw std::runtime_error("failed to create image");
+	}
+
+	/* Allocate the memory for the imag*/
+	vk::MemoryRequirements memRequirements = this->device->getDevice().getImageMemoryRequirements(image);
+
+	vk::MemoryAllocateInfo allocInfo{};
+	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = this->device->findMemoryType(memRequirements.memoryTypeBits, properties);
+
+	imageMemory = this->device->getDevice().allocateMemory(allocInfo);
+	if (!imageMemory) {
+		throw std::runtime_error("failed to allocate image memory!");
+	}
+
+	this->device->getDevice().bindImageMemory(image, imageMemory, 0);
+}
+
+void BasicRenderer::createFramebuffers()
+{
+	swapChainFramebuffers.resize(swapChainImageViews.size());
+
+	//iterate through each image and create a buffer for it 
+	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+		std::array<vk::ImageView, 2> attachments = {
+			swapChainImageViews[i],
+			depthImageView //same depth image is going to be used for all swap chain images 
+		};
+
+		vk::FramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = vk::StructureType::eFramebufferCreateInfo;
+		//make sure that framebuffer is compatible with renderPass (same # and type of attachments)
+		framebufferInfo.renderPass = renderPass;
+		//specify which vkImageView objects to bind to the attachment descriptions in the render pass pAttachment array
+		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		framebufferInfo.pAttachments = attachments.data();
+		framebufferInfo.width = swapChainExtent.width;
+		framebufferInfo.height = swapChainExtent.height;
+		framebufferInfo.layers = 1; //# of layers in image arrays
+
+		swapChainFramebuffers[i] = this->device->getDevice().createFramebuffer(framebufferInfo);
+		if (!swapChainFramebuffers[i]) {
+			throw std::runtime_error("failed to create framebuffer");
+		}
+	}
+}
+
+void BasicRenderer::createRenderingBuffers()
+{
+	StarSystemRenderObject* tmpRenderSysObj = this->RenderSysObjs.at(0).get();
+	vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * tmpRenderSysObj->getNumRenderObjects();
+
+	this->globalUniformBuffers.resize(this->swapChainImages.size());
+	if (this->lightList.size() > 0) {
+		this->lightBuffers.resize(this->swapChainImages.size());
+	}
+
+	for (size_t i = 0; i < swapChainImages.size(); i++) {
+		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(*this->device.get(), tmpRenderSysObj->getNumRenderObjects(), sizeof(GlobalUniformBufferObject),
+			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		this->globalUniformBuffers[i]->map();
+
+		//create light buffers 
+		if (this->lightList.size() > 0) {
+			this->lightBuffers[i] = std::make_unique<StarBuffer>(*this->device, this->lightList.size(), sizeof(LightBufferObject) * this->lightList.size(),
+				vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			this->lightBuffers[i]->map();
+		}
+	}
+}
+
+void BasicRenderer::createCommandBuffers()
+{
+
+	for (auto& RenderSysObj : this->RenderSysObjs) {
+		/* Graphics Command Buffer */
+		this->device->getGraphicsCommandBuffers()->resize(swapChainFramebuffers.size());
+
+		vk::CommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
+		allocInfo.commandPool = this->device->getGraphicsCommandPool();
+		// .level - specifies if the allocated command buffers are primay or secondary
+		// ..._PRIMARY : can be submitted to a queue for execution, but cannot be called from other command buffers
+		// ..._SECONDARY : cannot be submitted directly, but can be called from primary command buffers (good for reuse of common operations)
+		allocInfo.level = vk::CommandBufferLevel::ePrimary;
+		allocInfo.commandBufferCount = (uint32_t)device->getGraphicsCommandBuffers()->size();
+
+		std::vector<vk::CommandBuffer> newBuffers = this->device->getDevice().allocateCommandBuffers(allocInfo);
+		newBuffers = this->device->getDevice().allocateCommandBuffers(allocInfo);
+		if (newBuffers.size() == 0) {
+			throw std::runtime_error("failed to allocate command buffers");
+		}
+
+		if (this->RenderSysObjs.size() > 1) {
+			throw std::runtime_error("More than one shader group is not yet supported");
+		}
+		StarSystemRenderObject* tmpRenderSysObj = this->RenderSysObjs.at(0).get();
+
+		/* Begin command buffer recording */
+		for (size_t i = 0; i < newBuffers.size(); i++) {
+			vk::CommandBufferBeginInfo beginInfo{};
+			//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
+
+			//flags parameter specifies command buffer use 
+				//VK_COMMAND_BUFFER_USEAGE_ONE_TIME_SUBMIT_BIT: command buffer recorded right after executing it once
+				//VK_COMMAND_BUFFER_USEAGE_RENDER_PASS_CONTINUE_BIT: secondary command buffer that will be within a single render pass 
+				//VK_COMMAND_BUFFER_USEAGE_SIMULTANEOUS_USE_BIT: command buffer can be resubmitted while another instance has already been submitted for execution
+			beginInfo.flags = {};
+
+			//only relevant for secondary command buffers -- which state to inherit from the calling primary command buffers 
+			beginInfo.pInheritanceInfo = nullptr;
+
+			/* NOTE:
+				if the command buffer has already been recorded once, simply call vkBeginCommandBuffer->implicitly reset.
+				commands cannot be added after creation
+			*/
+
+			newBuffers[i].begin(beginInfo);
+			if (!newBuffers[i]) {
+				throw std::runtime_error("failed to begin recording command buffer");
+			}
+
+			vk::Viewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = (float)this->swapChainExtent.width;
+			viewport.height = (float)this->swapChainExtent.height;
+			//Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+
+			newBuffers[i].setViewport(0, viewport);
+
+
+			/* Begin render pass */
+			//drawing starts by beginning a render pass 
+			vk::RenderPassBeginInfo renderPassInfo{};
+			//renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassInfo.sType = vk::StructureType::eRenderPassBeginInfo;
+
+			//define the render pass we want
+			renderPassInfo.renderPass = renderPass;
+
+			//what attachments do we need to bind
+			//previously created swapChainbuffers to hold this information 
+			renderPassInfo.framebuffer = swapChainFramebuffers[i];
+
+			//define size of render area -- should match size of attachments for best performance
+			renderPassInfo.renderArea.offset = vk::Offset2D{ 0, 0 };
+			renderPassInfo.renderArea.extent = swapChainExtent;
+
+			//size of clearValues and order, should match the order of attachments
+			std::array<vk::ClearValue, 2> clearValues{};
+			clearValues[0].color = std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f }; //clear color for background color will be used with VK_ATTACHMENT_LOAD_OP_CLEAR
+			//depth values: 
+				//0.0 - closest viewing plane 
+				//1.0 - furthest possible depth
+			clearValues[1].depthStencil = vk::ClearDepthStencilValue{ 1.0, 0 };
+
+			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+			renderPassInfo.pClearValues = clearValues.data();
+
+			/* vkCmdBeginRenderPass */
+			//Args: 
+				//1. command buffer to set recording to 
+				//2. details of the render pass
+				//3. how drawing commands within the render pass will be provided
+					//OPTIONS: 
+						//VK_SUBPASS_CONTENTS_INLINE: render pass commands will be embedded in the primary command buffer. No secondary command buffers executed 
+						//VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: render pass commands will be executed from the secondary command buffers
+			newBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+
+			/* Drawing Commands */
+			//Args: 
+				//2. compute or graphics pipeline
+				//3. pipeline object
+			//vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+			//newBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, RenderSysObj->getPipeline());
+
+			tmpRenderSysObj->bind(newBuffers[i]);
+
+			/* vkCmdBindDescriptorSets:
+			*   1.
+			*   2. Descriptor sets are not unique to graphics pipeliens, must specify to use in graphics or compute pipelines.
+			*   3. layout that the descriptors are based on
+			*   4. index of first descriptor set
+			*   5. number of sets to bind
+			*   6. array of sets to bind
+			*   7 - 8. array of offsets used for dynamic descriptors (not used here)
+			*/
+			//bind the right descriptor set for each swap chain image to the descripts in the shader
+			//bind global descriptor
+			newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, tmpRenderSysObj->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
+			tmpRenderSysObj->render(newBuffers[i], i);
+
+			//bind light pipe 
+			if (lightRenderSys) {
+				this->lightRenderSys->bind(newBuffers[i]);
+				this->lightRenderSys->render(newBuffers[i], i);
+			}
+
+			newBuffers[i].endRenderPass();
+
+			//record command buffer
+			newBuffers[i].end();
+		}
+
+		this->device->setGraphicsCommandBuffers(newBuffers);
+	}
+}
+
+void BasicRenderer::createSemaphores()
+{
+	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+
+	vk::SemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		this->imageAvailableSemaphores[i] = this->device->getDevice().createSemaphore(semaphoreInfo);
+		this->renderFinishedSemaphores[i] = this->device->getDevice().createSemaphore(semaphoreInfo);
+
+		if (!this->imageAvailableSemaphores[i]) {
+			throw std::runtime_error("failed to create semaphores for a frame");
+		}
+	}
+}
+
+void BasicRenderer::createFences()
+{
+	//note: fence creation can be rolled into semaphore creation. Seperated for understanding
+	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+	vk::FenceCreateInfo fenceInfo{};
+	fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
+
+	//create the fence in a signaled state 
+	//fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		this->inFlightFences[i] = this->device->getDevice().createFence(fenceInfo);
+		if (!this->inFlightFences[i]) {
+			throw std::runtime_error("failed to create fence object for a frame");
+		}
+	}
+}
+
+void BasicRenderer::createFenceImageTracking()
+{
+	//note: just like createFences() this too can be wrapped into semaphore creation. Seperated for understanding.
+
+	//need to ensure the frame that is going to be drawn to, is the one linked to the expected fence.
+	//If, for any reason, vulkan returns an image out of order, we will be able to handle that with this link
+	imagesInFlight.resize(swapChainImages.size(), VK_NULL_HANDLE);
+
+	//initially, no frame is using any image so this is going to be created without an explicit link
+}
 
 }

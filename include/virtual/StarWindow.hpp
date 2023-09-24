@@ -1,12 +1,14 @@
 #pragma once
 
+#include <vulkan/vulkan.hpp>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "InteractionSystem.hpp"
+
 #include <memory>
 #include <string>
-
-#include <vulkan/vulkan.hpp>
 
 namespace star {
 class StarWindow {
@@ -31,7 +33,7 @@ protected:
 
 	virtual void init() = 0;
 
-	virtual void createWindow(); 
+	virtual void createWindow();
 
 private: 
 	bool frambufferResized = false;
