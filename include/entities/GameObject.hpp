@@ -7,13 +7,10 @@
 #include "Vertex.hpp"
 #include "Mesh.hpp"
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
-#include <glm/gtx/transform.hpp>
-#include <glm/gtx/matrix_cross_product.hpp>
 
 #include <stb_image.h>
+#include <tiny_obj_loader.h>
 
 #include <queue>
 #include <memory>
@@ -22,8 +19,29 @@
 namespace star {
 class GameObject : public StarEntity {
 public:
+    static std::vector<std::unique_ptr<Mesh>> loadFromFile(const std::string path); 
+
     GameObject(glm::vec3 position, glm::vec3 scale, Handle& vertShaderHandle,
         Handle& fragShaderHandle, std::vector<std::unique_ptr<Mesh>> meshes) :
+        StarEntity(),
+        meshes(std::move(meshes)),
+        vertShader(std::make_unique<Handle>(vertShaderHandle)),
+        fragShader(std::make_unique<Handle>(fragShaderHandle))
+    {
+        this->setScale(scale);
+        this->setPosition(position);
+    }
+
+    /// <summary>
+    /// Create a game object loading the meshes from a file. 
+    /// </summary>
+    /// <param name="position"></param>
+    /// <param name="scale"></param>
+    /// <param name="vertShaderHandle"></param>
+    /// <param name="fragShaderHandle"></param>
+    /// <param name="path"></param>
+    GameObject(glm::vec3 position, glm::vec3 scale, Handle& vertShaderHandle,
+        Handle& fragShaderHandle, const std::string path) :
         StarEntity(),
         meshes(std::move(meshes)),
         vertShader(std::make_unique<Handle>(vertShaderHandle)),
@@ -43,10 +61,11 @@ public:
     glm::mat4 getNormalMatrix() { return glm::inverseTranspose(getDisplayMatrix()); }
 
 protected:
-
-private:
-    //is the mmodel matrix updated with most recent changes 
+    //is the model matrix updated with most recent changes 
     std::unique_ptr<Handle> vertShader, fragShader;
     std::vector<std::unique_ptr<Mesh>> meshes;
+
+private:
+
 };
 }

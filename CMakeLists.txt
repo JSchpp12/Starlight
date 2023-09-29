@@ -56,6 +56,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/KeyStates.cpp"
     "src/virtual/StarRenderer.cpp" 
     "src/StarEngine.cpp" 
+    "src/entities/GameObject.cpp"
     "src/virtual/StarManager.cpp"
     "src/virtual/StarWindow.cpp" 
     "src/virtual/StarDevice.cpp"
