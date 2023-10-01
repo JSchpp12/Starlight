@@ -10,13 +10,13 @@
 namespace star {
     class StarShader {
     public:
-        std::string path;
         StarShader(const std::string& path); 
         virtual ~StarShader() {};
 
         std::unique_ptr<std::vector<uint32_t>> compiledCode;
 
     protected:
+        std::string path;
 
     private:
 
