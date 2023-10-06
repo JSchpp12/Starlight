@@ -8,9 +8,11 @@
 #include "ObjectManager.hpp"
 #include "InteractionSystem.hpp"
 
+#include "MapManager.hpp"
 #include "StarSystemRenderPointLight.hpp"
 #include "StarSystemRenderObj.hpp"
 #include "ShaderManager.hpp"
+#include "TextureManager.hpp"
 #include "LightManager.hpp"
 #include "RenderOptions.hpp"
 
@@ -24,11 +26,11 @@ class BasicRenderer : public StarRenderer {
 public:
 	class Builder {
 	public:
-		Builder(StarWindow& window, MaterialManager& materialManager, 
-			TextureManager& textureManager, MapManager& mapManager, ShaderManager& shaderManager, 
-			ObjectManager& objectManager, Camera& camera, RenderOptions& renderOptions)
-			: window(window), materialManager(materialManager), 
-			textureManager(textureManager), mapManager(mapManager), shaderManager(shaderManager), 
+		Builder(StarWindow& window, TextureManager& textureManager, 
+			MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, 
+			Camera& camera, RenderOptions& renderOptions)
+			: window(window), textureManager(textureManager), 
+			mapManager(mapManager), shaderManager(shaderManager), 
 			objectManager(objectManager), camera(camera), renderOptions(renderOptions) {};
 
 		Builder& addLight(Light& light) {
@@ -42,7 +44,7 @@ public:
 		}
 
 		std::unique_ptr<BasicRenderer> build() {
-			auto newRenderer = std::unique_ptr<BasicRenderer>(new BasicRenderer(window, materialManager, textureManager, 
+			auto newRenderer = std::unique_ptr<BasicRenderer>(new BasicRenderer(window, textureManager, 
 				mapManager, shaderManager, objectManager, lightList, objectList, camera, renderOptions));
 			newRenderer->prepare();
 			return newRenderer;
@@ -50,7 +52,6 @@ public:
 
 	private:
 		StarWindow& window;
-		MaterialManager& materialManager;
 		TextureManager& textureManager;
 		MapManager& mapManager;
 		ShaderManager& shaderManager; 
@@ -79,7 +80,6 @@ protected:
 		//settings.y = type
 		glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
 	};
-	MaterialManager& materialManager;
 	TextureManager& textureManager;
 	MapManager& mapManager;
 	ShaderManager& shaderManager; 
@@ -137,7 +137,7 @@ protected:
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
 
-	BasicRenderer(StarWindow& window, MaterialManager& materialManager, TextureManager& textureManager, 
+	BasicRenderer(StarWindow& window, TextureManager& textureManager, 
 		MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, std::vector<std::reference_wrapper<Light>> inLightList, 
 		std::vector<std::reference_wrapper<GameObject>> objectList, Camera& camera, RenderOptions& renderOptions);
 

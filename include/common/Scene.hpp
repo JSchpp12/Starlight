@@ -1,8 +1,10 @@
 #pragma once 
 
 #include "Handle.hpp"
+#include "Camera.hpp"
 
 #include <vector>
+
 namespace star {
 class Scene {
 

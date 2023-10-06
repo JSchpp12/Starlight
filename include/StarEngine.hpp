@@ -9,7 +9,6 @@
 #include "TextureManager.hpp"
 #include "LightManager.hpp"
 #include "SceneBuilder.hpp"
-#include "MaterialManager.hpp"
 
 #include <memory>
 #include <vector>
@@ -34,7 +33,6 @@ public:
 	static TextureManager textureManager;
 	static LightManager lightManager;
 	static ObjectManager objectManager;
-	static MaterialManager materialManager;
 	static MapManager mapManager;
 	static SceneBuilder sceneBuilder;
 

@@ -5,7 +5,6 @@
 #include "Enums.hpp"
 #include "StarShader.hpp"
 #include "Light.hpp"
-#include "Material.hpp"
 #include "VulkanVertex.hpp"
 #include "StarRenderObject.hpp"
 #include "StarDescriptors.hpp"

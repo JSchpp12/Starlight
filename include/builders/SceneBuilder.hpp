@@ -3,12 +3,12 @@
 #include "FileHelpers.hpp"
 #include "Light.hpp"
 #include "Handle.hpp"
+#include "BumpMaterial.hpp"
 #include "GameObject.hpp"
 #include "Triangle.hpp"
 #include "Vertex.hpp"
 
 #include "ObjectManager.hpp"
-#include "MaterialManager.hpp"
 #include "LightManager.hpp"
 #include "TextureManager.hpp"
 #include "MapManager.hpp"
@@ -116,62 +116,24 @@ namespace star {
 
 
 		};
-		//TODO: change this to 'Materials'
-		class Materials {
-		public:
-			class Builder {
-			public:
-				Builder(SceneBuilder& sceneBuilder) : sceneBuilder(sceneBuilder),
-					diffuse(sceneBuilder.defaultMaterial->diffuse),
-					specular(sceneBuilder.defaultMaterial->specular) {}
-				Builder& setSurfaceColor(const glm::vec4& surfaceColor);
-				Builder& setHighlightColor(const glm::vec4& highlightColor);
-				Builder& setAmbient(const glm::vec4& ambient);
-				Builder& setDiffuse(const glm::vec4& diffuse);
-				Builder& setSpecular(const glm::vec4& specular);
-				Builder& setShinyCoefficient(const int& shinyCoefficient);
-				Builder& setBaseColorTexture(const std::string& path);
-				Builder& setTexture(Handle texture);
-				Builder& setBumpMap(const Handle& bumpHandle);
-				Handle build();
-				Material& buildGet();
-
-			private:
-				SceneBuilder& sceneBuilder;
-				glm::vec4 surfaceColor = sceneBuilder.defaultMaterial->surfaceColor;
-				glm::vec4 highlightColor = sceneBuilder.defaultMaterial->highlightColor;
-				glm::vec4 diffuse;
-				glm::vec4 specular;
-				glm::vec4 ambient;
-				int shinyCoefficient = sceneBuilder.defaultMaterial->shinyCoefficient;
-				Handle texture = Handle::getDefault();
-				Handle bumpMap = Handle::getDefault();
-			};
-		};
 
 		std::vector<Light> lightList;
 
-		SceneBuilder(ObjectManager& objectManager, MaterialManager& materialManager, TextureManager& textureManager,
+		SceneBuilder(ObjectManager& objectManager, TextureManager& textureManager,
 			MapManager& mapManager, LightManager& lightManager)
-			: objectManager(objectManager), materialManager(materialManager),
-			defaultMaterial(&materialManager.resource(Handle::getDefault())), textureManager(textureManager),
+			: objectManager(objectManager), textureManager(textureManager),
 			mapManager(mapManager), lightManager(lightManager) { }
 		~SceneBuilder() = default;
 
 		//todo: currently this only returns game objects, see if there is way to expand this
 		GameObject& entity(const Handle& handle);
 		Light& light(const Handle& handle);
-		Material& getMaterial(const Handle& handle);
 
 	private:
 		ObjectManager& objectManager;
-		MaterialManager& materialManager;
 		TextureManager& textureManager;
 		LightManager& lightManager;
 		MapManager& mapManager;
-
-		//defaults -- TODO: remove this in favor of each manager having its own default 
-		Material* defaultMaterial = nullptr;
 
 		Handle addObject(const std::string& pathToFile, glm::vec3& position, glm::vec3& scaleAmt,
 			Handle* materialHandle, Handle& vertShader,
@@ -179,9 +141,9 @@ namespace star {
 			std::string* materialFilePath, std::string* textureDir,
 			const glm::vec4* overrideColor = nullptr, const GameObjects::Builder::OverrideMaterialProperties* matPropOverride = nullptr);
 
-		Handle addMaterial(const glm::vec4& surfaceColor, const glm::vec4& hightlightColor, const glm::vec4& ambient,
-			const glm::vec4& diffuse, const glm::vec4& specular,
-			const int& shinyCoefficient, Handle* texture, Handle* bumpMap);
+		//Handle addMaterial(const glm::vec4& surfaceColor, const glm::vec4& hightlightColor, const glm::vec4& ambient,
+		//	const glm::vec4& diffuse, const glm::vec4& specular,
+		//	const int& shinyCoefficient, Handle* texture, Handle* bumpMap);
 		/// <summary>
 		/// Create a light object with a linked game object
 		/// </summary>
@@ -216,7 +178,6 @@ namespace star {
 			const glm::vec4* direction = nullptr, const float* innerCutoff = nullptr,
 			const float* outerCutoff = nullptr);
 
-		friend class Mesh::Builder;
 		friend class GameObjects::Builder;
 	};
 }

@@ -1,4 +1,5 @@
 #include "StarRenderObject.hpp"
+#include "StarRenderObject.hpp"
 
 namespace star {
 #pragma region Builder
@@ -37,6 +38,13 @@ void StarRenderObject::initDescriptors(StarDescriptorSetLayout& constLayout, Sta
 void StarRenderObject::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum) {
 	for (auto& mesh : this->meshes) {
 		mesh->render(commandBuffer, pipelineLayout, swapChainIndexNum);
+	}
+}
+
+void StarRenderObject::prepRender(StarDevice& device)
+{
+	for (auto& mesh : this->meshes) {
+		mesh->prepRender(device); 
 	}
 }
 

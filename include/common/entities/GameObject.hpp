@@ -1,9 +1,9 @@
 #pragma once 
 
+#include "StarDevice.hpp"
 #include "StarEntity.hpp"
 #include "Time.hpp"
 #include "Handle.hpp"
-#include "Material.hpp"
 #include "Vertex.hpp"
 #include "Mesh.hpp"
 
@@ -34,6 +34,8 @@ public:
     }
 
     virtual ~GameObject() {};
+
+    virtual void prepRender(StarDevice& device);
 
     //get the handle for the vertex shader 
     Handle getVertShader() { return *this->vertShader.get(); }
