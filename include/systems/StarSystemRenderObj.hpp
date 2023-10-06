@@ -5,7 +5,6 @@
 #include "Enums.hpp"
 #include "StarShader.hpp"
 #include "Light.hpp"
-#include "Material.hpp"
 #include "VulkanVertex.hpp"
 #include "StarRenderObject.hpp"
 #include "StarDescriptors.hpp"
@@ -44,7 +43,7 @@ namespace star {
 
 		virtual ~StarSystemRenderObject();
 
-		virtual void init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
+		virtual void init(StarDevice& device, std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
 
 		virtual void registerShader(vk::ShaderStageFlagBits stage, StarShader& newShader, Handle newShaderHandle);
 

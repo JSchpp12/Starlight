@@ -1,14 +1,13 @@
 #include "BasicRenderer.hpp"
-#include "BasicRenderer.hpp"
 
 typedef std::chrono::high_resolution_clock Clock;
 
 namespace star {
 
-BasicRenderer::BasicRenderer(StarWindow& window, MaterialManager& materialManager, 
-	TextureManager& textureManager, MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, 
+BasicRenderer::BasicRenderer(StarWindow& window, TextureManager& textureManager, 
+	MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, 
 	std::vector<std::reference_wrapper<Light>> inLightList, std::vector<std::reference_wrapper<GameObject>> objectList, Camera& camera, RenderOptions& renderOptions) :
-	StarRenderer(window, shaderManager, objectManager, camera), materialManager(materialManager), textureManager(textureManager), 
+	StarRenderer(window, shaderManager, objectManager, camera), textureManager(textureManager), 
 	mapManager(mapManager), shaderManager(shaderManager), lightList(inLightList), objectList(objectList), renderOptions(renderOptions)
 {
 	device = StarDevice::New(window); 
@@ -56,13 +55,7 @@ void BasicRenderer::prepare()
 
 				for (auto& mesh : currObject.getMeshes()) {
 					builder.addMesh(
-						StarRenderMesh::Builder(*this->device)
-						.setMesh(*mesh)
-						.setRenderSettings(object->getNumVerticies() + meshVertCounter)
-						.setMaterial(StarRenderMaterial::Builder(*this->device, this->materialManager, this->textureManager, this->mapManager)
-							.setMaterial(mesh->getMaterial())
-							.build())
-						.build());
+						std::unique_ptr<StarRenderMesh>(new StarRenderMesh(*this->device, *mesh, object->getNumVerticies() + meshVertCounter)));
 					meshVertCounter += mesh->getTriangles()->size() * 3;
 				}
 				object->addObject(std::move(builder.build()));
@@ -87,9 +80,6 @@ void BasicRenderer::prepare()
 					builder.addMesh(StarRenderMesh::Builder(*this->device)
 						.setMesh(*mesh)
 						.setRenderSettings(object->getNumVerticies() + meshVertCounter)
-						.setMaterial(StarRenderMaterial::Builder(*this->device, this->materialManager, this->textureManager, this->mapManager)
-							.setMaterial(mesh->getMaterial())
-							.build())
 						.build());
 					meshVertCounter += mesh->getTriangles()->size() * 3;
 				}
@@ -98,7 +88,7 @@ void BasicRenderer::prepare()
 		}
 	}
 	std::vector<vk::DescriptorSetLayout> globalSets = { this->globalSetLayout->getDescriptorSetLayout() };
-	tmpRenderSysObj->init(globalSets);
+	tmpRenderSysObj->init(*this->device, globalSets);
 
 	/* Init Point Light Render System */
 
@@ -123,9 +113,6 @@ void BasicRenderer::prepare()
 					builder.addMesh(StarRenderMesh::Builder(*this->device)
 						.setMesh(*mesh)
 						.setRenderSettings(vertexCounter)
-						.setMaterial(StarRenderMaterial::Builder(*this->device, this->materialManager, this->textureManager, this->mapManager)
-							.setMaterial(mesh->getMaterial())
-							.build())
 						.build());
 					vertexCounter += mesh->getTriangles()->size() * 3;
 				}
@@ -139,7 +126,7 @@ void BasicRenderer::prepare()
 	//init light render system if it was created 
 	if (lightRenderSys) {
 		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
-		this->lightRenderSys->init(globalSets);
+		this->lightRenderSys->init(*this->device, globalSets);
 	}
 
 	createDepthResources();

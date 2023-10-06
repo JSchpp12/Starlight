@@ -4,7 +4,6 @@
 #include "Handle.hpp"
 #include "GameObject.hpp"
 #include "Vertex.hpp"
-#include "Material.hpp"
 #include "FileHelpers.hpp"
 
 #include <tiny_obj_loader.h>

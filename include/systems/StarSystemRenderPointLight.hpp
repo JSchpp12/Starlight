@@ -20,7 +20,7 @@ public:
 
 	virtual ~StarSystemRenderPointLight();
 
-	virtual void init(std::vector<vk::DescriptorSetLayout> globalSets) override { this->StarSystemRenderObject::init(globalSets); }
+	virtual void init(StarDevice& device, std::vector<vk::DescriptorSetLayout> globalSets) override { this->StarSystemRenderObject::init(device, globalSets); }
 
 	virtual void addLight(Light* newLight, std::unique_ptr<StarRenderObject> linkedRenderObject, size_t numSwapChainImages);
 

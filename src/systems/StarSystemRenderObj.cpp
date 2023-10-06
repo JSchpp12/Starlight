@@ -92,7 +92,10 @@ void StarSystemRenderObject::render(vk::CommandBuffer& commandBuffer, int swapCh
 	}
 }
 
-void StarSystemRenderObject::init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets) {
+void StarSystemRenderObject::init(StarDevice& device, std::vector<vk::DescriptorSetLayout> globalDescriptorSets) {
+	for (auto& obj : this->renderObjects) {
+		obj->prepRender(device); 
+	}
 	//create needed buffers 
 	createVertexBuffer();
 	createIndexBuffer();

@@ -144,46 +144,6 @@ namespace star {
 		return this->sceneBuilder.addLight(*this->type, *this->position, *this->ambient, *this->diffuse, *this->specular, this->lightDirection, innerDiameter, outerDiameter);
 	}
 
-	/* Material */
-
-	SceneBuilder::Materials::Builder& SceneBuilder::Materials::Builder::setSurfaceColor(const glm::vec4& surfaceColor) {
-		this->surfaceColor = surfaceColor;
-		return *this;
-	}
-	SceneBuilder::Materials::Builder& SceneBuilder::Materials::Builder::setHighlightColor(const glm::vec4& highlightColor)
-	{
-		this->highlightColor = highlightColor;
-		return *this;
-	}
-	SceneBuilder::Materials::Builder& SceneBuilder::Materials::Builder::setAmbient(const glm::vec4& ambient) {
-		this->ambient = ambient;
-		return *this;
-	}
-	SceneBuilder::Materials::Builder& SceneBuilder::Materials::Builder::setDiffuse(const glm::vec4& diffuse) {
-		this->diffuse = diffuse;
-		return *this;
-	}
-	SceneBuilder::Materials::Builder& SceneBuilder::Materials::Builder::setSpecular(const glm::vec4& specular) {
-		this->specular = specular;
-		return *this;
-	}
-	SceneBuilder::Materials::Builder& SceneBuilder::Materials::Builder::setShinyCoefficient(const int& shinyCoefficient) {
-		this->shinyCoefficient = shinyCoefficient;
-		return *this;
-	}
-	SceneBuilder::Materials::Builder& SceneBuilder::Materials::Builder::setTexture(Handle texture) {
-		this->texture = texture;
-		return *this;
-	}
-	SceneBuilder::Materials::Builder& SceneBuilder::Materials::Builder::setBumpMap(const Handle& bumpHandle) {
-		this->bumpMap = bumpHandle;
-		return *this;
-	}
-	Handle SceneBuilder::Materials::Builder::build() {
-		return this->sceneBuilder.addMaterial(this->surfaceColor, this->highlightColor, this->diffuse,
-			this->diffuse, this->specular, this->shinyCoefficient, &this->texture, &this->bumpMap);
-	}
-
 	/* Mesh */
 
 	/* Scene Builder */
@@ -194,14 +154,6 @@ namespace star {
 		}
 
 		throw std::runtime_error("Requested handle is not a game object handle");
-	}
-
-	Material& SceneBuilder::getMaterial(const Handle& handle) {
-		if (handle.type & Handle_Type::material) {
-			return this->materialManager.resource(handle);
-		}
-
-		throw std::runtime_error("Requested handle is not a material handle");
 	}
 
 	Handle SceneBuilder::addObject(const std::string& pathToFile, glm::vec3& position, glm::vec3& scaleAmt,
@@ -248,18 +200,17 @@ namespace star {
 		std::unique_ptr<std::vector<Vertex>> verticies;
 		std::unique_ptr<std::vector<uint32_t>> indicies;
 		std::unique_ptr<std::vector<std::pair<unsigned int, unsigned int>>> sortedIds;
+		std::vector<std::unique_ptr<BumpMaterial>> objectMaterials;
 		std::vector<std::unique_ptr<Mesh>> meshes(shapes.size());
-		std::vector<Handle> objectMaterialHandles;
-		std::vector<std::reference_wrapper<Material>> objectMaterials;
 		std::unique_ptr<std::vector<Triangle>> triangles;
 		tinyobj::material_t* currMaterial = nullptr;
-		std::unique_ptr<Material> objectMaterial;
+		std::unique_ptr<StarMaterial> objectMaterial;
 
 		if (loadMaterials && materials.size() > 0) {
 			//create needed materials
 			for (size_t i = 0; i < materials.size(); i++) {
 				currMaterial = &materials.at(i);
-				auto& builder = Materials::Builder(*this)
+				/*auto& builder = Materials::Builder(*this)
 					.setDiffuse(glm::vec4{
 						currMaterial->diffuse[0],
 						currMaterial->diffuse[1],
@@ -270,28 +221,42 @@ namespace star {
 								currMaterial->specular[1],
 								currMaterial->specular[2],
 								1.0f })
-								.setShinyCoefficient(currMaterial->shininess);
-				//check if need to override texture 
+								.setShinyCoefficient(currMaterial->shininess);*/
+								//check if need to override texture 
+				Handle texture = Handle::getDefault();
 				if (matPropOverride != nullptr && matPropOverride->baseColorTexture != nullptr) {
-					builder.setTexture(*matPropOverride->baseColorTexture);
+					texture = *matPropOverride->baseColorTexture;
 				}
 				else if (currMaterial->diffuse_texname != "") {
-					loadMaterialTexture = this->textureManager.addResource(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname));
-					builder.setTexture(loadMaterialTexture);
+					texture = this->textureManager.addResource(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname));
 				}
 
 				//apply maps 
+				Handle bumpMap = Handle::getDefault();
 				if (currMaterial->bump_texname != "") {
-					auto bumpTexture = this->textureManager.addResource(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname));
-					builder.setBumpMap(bumpTexture);
-				}
-				else {
-					builder.setBumpMap(Handle::getDefault());
+					bumpMap = this->textureManager.addResource(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname));
 				}
 
-				objectMaterialHandles.push_back(builder.build());
-				//record material to avoid multiple fetches
-				objectMaterials.push_back(this->materialManager.resource(objectMaterialHandles.at(i)));
+				//objectMaterialHandles.push_back(builder.build());
+				////record material to avoid multiple fetches
+				//objectMaterials.push_back(this->materialManager.resource(objectMaterialHandles.at(i)));
+				objectMaterials.push_back(std::make_unique<BumpMaterial>(glm::vec4(1.0),
+					glm::vec4(1.0),
+					glm::vec4(1.0),
+					glm::vec4{
+						currMaterial->diffuse[0],
+						currMaterial->diffuse[1],
+						currMaterial->diffuse[2],
+						1.0f },
+						glm::vec4{
+							currMaterial->specular[0],
+							currMaterial->specular[1],
+							currMaterial->specular[2],
+							1.0f },
+							currMaterial->shininess,
+							this->textureManager.resource(texture),
+							this->textureManager.resource(bumpMap)
+							));
 			}
 		}
 
@@ -348,17 +313,10 @@ namespace star {
 					};
 					if (loadMaterials && shape.mesh.material_ids.at(faceIndex) != -1) {
 						//use the overridden material if provided, otherwise use the prop from mtl file
-						triangleVerticies[i].matAmbient = (matPropOverride != nullptr && matPropOverride->ambient != nullptr) ? *matPropOverride->ambient : objectMaterials.at(shape.mesh.material_ids.at(faceIndex)).get().ambient;
-						triangleVerticies[i].matDiffuse = (matPropOverride != nullptr && matPropOverride->diffuse != nullptr) ? *matPropOverride->diffuse : objectMaterials.at(shape.mesh.material_ids.at(faceIndex)).get().diffuse;
-						triangleVerticies[i].matSpecular = (matPropOverride != nullptr && matPropOverride->specular != nullptr) ? *matPropOverride->specular : objectMaterials.at(shape.mesh.material_ids.at(faceIndex)).get().specular;
-						triangleVerticies[i].matShininess = (matPropOverride != nullptr && matPropOverride->shiny != nullptr) ? *matPropOverride->shiny : objectMaterials.at(shape.mesh.material_ids.at(faceIndex)).get().shinyCoefficient;
-					}
-					else {
-						//use either the overriden material property or the passed material
-						triangleVerticies[i].matAmbient = (matPropOverride != nullptr && matPropOverride->ambient != nullptr) ? *matPropOverride->ambient : this->materialManager.resource(selectedMaterial).ambient;
-						triangleVerticies[i].matDiffuse = (matPropOverride != nullptr && matPropOverride->diffuse != nullptr) ? *matPropOverride->diffuse : this->materialManager.resource(selectedMaterial).diffuse;
-						triangleVerticies[i].matSpecular = (matPropOverride != nullptr && matPropOverride->specular != nullptr) ? *matPropOverride->specular : this->materialManager.resource(selectedMaterial).specular;
-						triangleVerticies[i].matShininess = (matPropOverride != nullptr && matPropOverride->shiny != nullptr) ? *matPropOverride->shiny : this->materialManager.resource(selectedMaterial).shinyCoefficient;
+						triangleVerticies[i].matAmbient = (matPropOverride != nullptr && matPropOverride->ambient != nullptr) ? *matPropOverride->ambient : objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->ambient;
+						triangleVerticies[i].matDiffuse = (matPropOverride != nullptr && matPropOverride->diffuse != nullptr) ? *matPropOverride->diffuse : objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->diffuse;
+						triangleVerticies[i].matSpecular = (matPropOverride != nullptr && matPropOverride->specular != nullptr) ? *matPropOverride->specular : objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->specular;
+						triangleVerticies[i].matShininess = (matPropOverride != nullptr && matPropOverride->shiny != nullptr) ? *matPropOverride->shiny : objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->shinyCoefficient;
 					}
 				}
 
@@ -367,16 +325,7 @@ namespace star {
 
 			if (loadMaterials && shape.mesh.material_ids.at(shapeCounter) != -1) {
 				//apply material from files to mesh -- will ignore passed values 
-				meshes.at(shapeCounter) = std::move(Mesh::Builder()
-					.setTriangles(std::move(triangles))
-					.setMaterial(objectMaterialHandles.at(shape.mesh.material_ids[0]))
-					.build());
-			}
-			else {
-				meshes.at(shapeCounter) = std::move(Mesh::Builder()
-					.setTriangles(std::move(triangles))
-					.setMaterial(selectedMaterial)
-					.build());
+				meshes.at(shapeCounter) = std::make_unique<Mesh>(std::move(triangles), std::move(objectMaterials.at(shape.mesh.material_ids[0]))); 
 			}
 			shapeCounter++;
 		}
@@ -394,15 +343,15 @@ namespace star {
 		return lightManager.resource(handle);
 	}
 
-	Handle SceneBuilder::addMaterial(const glm::vec4& surfaceColor, const glm::vec4& hightlightColor, const glm::vec4& ambient,
-		const glm::vec4& diffuse, const glm::vec4& specular,
-		const int& shinyCoefficient, Handle* texture,
-		Handle* bumpMap) {
-		if (texture != nullptr && bumpMap != nullptr) {
-			return this->materialManager.add(surfaceColor, hightlightColor, ambient, diffuse, specular, shinyCoefficient, *texture, *bumpMap);
-		}
-		return this->materialManager.add(surfaceColor, hightlightColor, ambient, diffuse, specular, shinyCoefficient);
-	}
+	//Handle SceneBuilder::addMaterial(const glm::vec4& surfaceColor, const glm::vec4& hightlightColor, const glm::vec4& ambient,
+	//	const glm::vec4& diffuse, const glm::vec4& specular,
+	//	const int& shinyCoefficient, Handle* texture,
+	//	Handle* bumpMap) {
+	//	if (texture != nullptr && bumpMap != nullptr) {
+	//		return this->materialManager.add(surfaceColor, hightlightColor, ambient, diffuse, specular, shinyCoefficient, *texture, *bumpMap);
+	//	}
+	//	return this->materialManager.add(surfaceColor, hightlightColor, ambient, diffuse, specular, shinyCoefficient);
+	//}
 
 	Handle SceneBuilder::addLight(const Type::Light& type, const glm::vec3& position, const Handle& linkedHandle,
 		const glm::vec4& ambient, const glm::vec4& diffuse,

@@ -1,9 +1,8 @@
 #pragma once 
 
 #include "Mesh.hpp"
-#include "Material.hpp"
 #include "StarDescriptors.hpp"
-#include "StarRenderMaterial.hpp"
+#include "StarMaterial.hpp"
 #include "StarPipeline.hpp"
 #include "StarDevice.hpp"
 
@@ -29,21 +28,22 @@ public:
 		/// <param name="vertexBufferOffset">Offset within the vertex buffer that will be used when submitting draw commands</param>
 		/// <returns></returns>
 		Builder& setRenderSettings(uint32_t vertexBufferOffset);
-		Builder& setMaterial(std::unique_ptr<StarRenderMaterial> renderMaterial);
 		std::unique_ptr<StarRenderMesh> build();
 
 	private:
 		StarDevice& starDevice;
-		std::unique_ptr<StarRenderMaterial> renderMaterial;
 		Mesh* mesh = nullptr;
 		uint32_t beginIndex = 0;
 
 	};
 
-	StarRenderMesh(StarDevice& starDevice, Mesh& mesh, std::unique_ptr<StarRenderMaterial> material, uint32_t vbOffset = 0)
-		: starDevice(starDevice), mesh(mesh), renderMaterial(std::move(material)) {
+	StarRenderMesh(StarDevice& starDevice, Mesh& mesh, uint32_t vbOffset = 0)
+		: starDevice(starDevice), mesh(mesh), renderMaterial(renderMaterial) {
 		this->startIndex = vbOffset;
 	}
+
+	virtual void prepRender(StarDevice& device); 
+
 	void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder);
 	/// <summary>
 	/// Init object with needed structures such as descriptors
@@ -53,14 +53,14 @@ public:
 	void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex);
 
 	void setVBOffset(uint32_t offset) { this->startIndex = offset; }
-	StarRenderMaterial& getStarRenderMaterial() { return *this->renderMaterial; }
+	StarMaterial& getStarRenderMaterial() { return this->renderMaterial; }
 	Mesh& getMesh() { return this->mesh; }
-	vk::DescriptorSet& getDescriptor() { return this->renderMaterial->getDescriptor(); }
+	vk::DescriptorSet& getDescriptor() { return this->renderMaterial.getDescriptorSet(); }
 
 private:
 	StarDevice& starDevice;
 	Mesh& mesh;
-	std::unique_ptr<StarRenderMaterial> renderMaterial;
+	StarMaterial& renderMaterial;
 	uint32_t startIndex;								//index in vertex buffer where draw will begin             
 
 };
