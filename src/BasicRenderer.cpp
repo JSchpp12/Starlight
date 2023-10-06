@@ -88,7 +88,7 @@ void BasicRenderer::prepare()
 		}
 	}
 	std::vector<vk::DescriptorSetLayout> globalSets = { this->globalSetLayout->getDescriptorSetLayout() };
-	tmpRenderSysObj->init(globalSets);
+	tmpRenderSysObj->init(*this->device, globalSets);
 
 	/* Init Point Light Render System */
 
@@ -126,7 +126,7 @@ void BasicRenderer::prepare()
 	//init light render system if it was created 
 	if (lightRenderSys) {
 		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
-		this->lightRenderSys->init(globalSets);
+		this->lightRenderSys->init(*this->device, globalSets);
 	}
 
 	createDepthResources();

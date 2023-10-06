@@ -43,7 +43,7 @@ namespace star {
 
 		virtual ~StarSystemRenderObject();
 
-		virtual void init(std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
+		virtual void init(StarDevice& device, std::vector<vk::DescriptorSetLayout> globalDescriptorSets);
 
 		virtual void registerShader(vk::ShaderStageFlagBits stage, StarShader& newShader, Handle newShaderHandle);
 

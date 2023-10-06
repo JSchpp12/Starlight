@@ -53,6 +53,8 @@ public:
 	void initDescriptors(StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool);
 	void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum);
 
+	void prepRender(StarDevice& device); 
+
 	//TODO: might want to create render function for each mesh as they get more complicated
 	//void render(vk::CommandBuffer& commandBuffer); 
 
