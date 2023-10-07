@@ -2,8 +2,8 @@
 
 void star::BumpMaterial::prepRender(StarDevice& device)
 {
-	renderTexture = std::unique_ptr<StarTexture>(new StarTexture(device, this->texture)); 
-	renderBumpMap = std::unique_ptr<StarTexture>(new StarTexture(device, this->bumpMap)); 
+	renderTexture = std::unique_ptr<StarTexture>(new StarTexture(device, *this->texture)); 
+	renderBumpMap = std::unique_ptr<StarTexture>(new StarTexture(device, *this->bumpMap)); 
 }
 
 void star::BumpMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder)

@@ -223,18 +223,16 @@ namespace star {
 								1.0f })
 								.setShinyCoefficient(currMaterial->shininess);*/
 								//check if need to override texture 
-				Handle texture = Handle::getDefault();
-				if (matPropOverride != nullptr && matPropOverride->baseColorTexture != nullptr) {
-					texture = *matPropOverride->baseColorTexture;
-				}
-				else if (currMaterial->diffuse_texname != "") {
-					texture = this->textureManager.addResource(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname));
+				std::unique_ptr<Texture> texture; 
+
+				if (currMaterial->diffuse_texname != "") {
+					texture = std::unique_ptr<Texture>(new Texture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
 				}
 
 				//apply maps 
-				Handle bumpMap = Handle::getDefault();
+				std::unique_ptr<Texture> bumpMap;
 				if (currMaterial->bump_texname != "") {
-					bumpMap = this->textureManager.addResource(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname));
+					bumpMap = std::unique_ptr<Texture>(new Texture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
 				}
 
 				//objectMaterialHandles.push_back(builder.build());
@@ -254,8 +252,8 @@ namespace star {
 							currMaterial->specular[2],
 							1.0f },
 							currMaterial->shininess,
-							this->textureManager.resource(texture),
-							this->textureManager.resource(bumpMap)
+							std::move(texture),
+							std::move(bumpMap)
 							));
 			}
 		}

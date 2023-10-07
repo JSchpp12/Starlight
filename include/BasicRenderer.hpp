@@ -26,12 +26,11 @@ class BasicRenderer : public StarRenderer {
 public:
 	class Builder {
 	public:
-		Builder(StarWindow& window, TextureManager& textureManager, 
+		Builder(StarWindow& window, 
 			MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, 
-			Camera& camera, RenderOptions& renderOptions)
-			: window(window), textureManager(textureManager), 
-			mapManager(mapManager), shaderManager(shaderManager), 
-			objectManager(objectManager), camera(camera), renderOptions(renderOptions) {};
+			Camera& camera, RenderOptions& renderOptions, StarDevice& device)
+			: window(window), mapManager(mapManager), shaderManager(shaderManager), 
+			objectManager(objectManager), camera(camera), renderOptions(renderOptions), device(device) {};
 
 		Builder& addLight(Light& light) {
 			this->lightList.push_back(light);
@@ -44,19 +43,19 @@ public:
 		}
 
 		std::unique_ptr<BasicRenderer> build() {
-			auto newRenderer = std::unique_ptr<BasicRenderer>(new BasicRenderer(window, textureManager, 
-				mapManager, shaderManager, objectManager, lightList, objectList, camera, renderOptions));
+			auto newRenderer = std::unique_ptr<BasicRenderer>(new BasicRenderer(window, 
+				mapManager, shaderManager, objectManager, lightList, objectList, camera, renderOptions, device));
 			newRenderer->prepare();
 			return newRenderer;
 		}
 
 	private:
 		StarWindow& window;
-		TextureManager& textureManager;
 		MapManager& mapManager;
 		ShaderManager& shaderManager; 
 		ObjectManager& objectManager; 
 		Camera& camera;
+		StarDevice& device; 
 		RenderOptions& renderOptions; 
 		std::vector<std::reference_wrapper<Light>> lightList;
 		std::vector<std::reference_wrapper<GameObject>> objectList; 
@@ -80,7 +79,6 @@ protected:
 		//settings.y = type
 		glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
 	};
-	TextureManager& textureManager;
 	MapManager& mapManager;
 	ShaderManager& shaderManager; 
 	RenderOptions& renderOptions; 
@@ -137,9 +135,9 @@ protected:
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
 
-	BasicRenderer(StarWindow& window, TextureManager& textureManager, 
+	BasicRenderer(StarWindow& window, 
 		MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, std::vector<std::reference_wrapper<Light>> inLightList, 
-		std::vector<std::reference_wrapper<GameObject>> objectList, Camera& camera, RenderOptions& renderOptions);
+		std::vector<std::reference_wrapper<GameObject>> objectList, Camera& camera, RenderOptions& renderOptions, StarDevice& device);
 
 	virtual void prepare();
 

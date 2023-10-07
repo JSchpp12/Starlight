@@ -6,9 +6,10 @@
 #include "Light.hpp"
 #include "StarApplication.hpp "
 #include "ShaderManager.hpp"
-#include "TextureManager.hpp"
 #include "LightManager.hpp"
 #include "SceneBuilder.hpp"
+
+#include <vulkan/vulkan.hpp>
 
 #include <memory>
 #include <vector>
@@ -16,25 +17,13 @@
 namespace star {
 class StarEngine {
 public:
-	class Builder {
-	public:
-		Builder(){};
-
-		std::unique_ptr<StarEngine> build(Camera& camera, std::vector<Handle> lightHandles, std::vector<Handle> objectHandles, RenderOptions& renderOptions) {
-			auto engine = std::unique_ptr<StarEngine>(new StarEngine(camera, lightHandles, objectHandles, renderOptions));
-			return std::move(engine); 
-		}
-
-	private:
-	};
+	StarEngine();
 
 	static ConfigFile configFile;
 	static ShaderManager shaderManager;
-	static TextureManager textureManager;
-	static LightManager lightManager;
-	static ObjectManager objectManager;
+
 	static MapManager mapManager;
-	static SceneBuilder sceneBuilder;
+
 
 	static std::string GetSetting(Config_Settings setting) {
 		return configFile.GetSetting(setting);
@@ -44,13 +33,24 @@ public:
 
 	void Run();
 
-	void init(); 
+	void init(RenderOptions& renderOptions, StarApplication& app);
 
+
+	std::vector<Handle>& getObjList() { return this->objList; }
+	std::vector<Handle>& getLightList() { return this->lightList; }
+	ObjectManager& getObjectManager() { return this->objectManager; }
+	LightManager& getLightManager() { return this->lightManager; }
+	SceneBuilder& getSceneBuilder() { return *this->sceneBuilder; }
 protected:
 	std::unique_ptr<StarWindow> window;
+	std::unique_ptr<StarDevice> renderingDevice; 
 	std::unique_ptr<StarRenderer> renderer; 
+	std::vector<Handle> objList; 
+	std::vector<Handle> lightList; 
 
-	StarEngine(Camera& camera, std::vector<Handle> lightHandles, std::vector<Handle> objectHandles, RenderOptions& renderOptions);
+	LightManager lightManager;
+	ObjectManager objectManager;
+	std::unique_ptr<SceneBuilder> sceneBuilder;
 
 private:
 

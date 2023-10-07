@@ -16,11 +16,11 @@ namespace star {
 	public:
 		BumpMaterial(const glm::vec4& surfaceColor, const glm::vec4& highlightColor, 
 			const glm::vec4& ambient, const glm::vec4& diffuse, const glm::vec4& specular,
-			const int& shiny,Texture& texture, Texture& bumpMap) :
+			const int& shiny,std::unique_ptr<Texture> texture, std::unique_ptr<Texture> bumpMap) :
 			surfaceColor(surfaceColor), highlightColor(highlightColor),
 			ambient(ambient), diffuse(diffuse),
 			specular(specular), shinyCoefficient(shiny), 
-			texture(texture), bumpMap(bumpMap) {};
+			texture(std::move(texture)), bumpMap(std::move(bumpMap)) {};
 
 		// Inherited via StarMaterial
 		void prepRender(StarDevice& device) override;
@@ -38,8 +38,7 @@ namespace star {
 
 	protected:
 		std::unique_ptr<StarTexture> renderTexture, renderBumpMap; 
-		Texture& texture;
-		Texture& bumpMap;
+		std::unique_ptr<Texture> texture, bumpMap; 
 
 	};
 }

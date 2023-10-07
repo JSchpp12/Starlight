@@ -119,9 +119,9 @@ namespace star {
 
 		std::vector<Light> lightList;
 
-		SceneBuilder(ObjectManager& objectManager, TextureManager& textureManager,
+		SceneBuilder(ObjectManager& objectManager,
 			MapManager& mapManager, LightManager& lightManager)
-			: objectManager(objectManager), textureManager(textureManager),
+			: objectManager(objectManager),
 			mapManager(mapManager), lightManager(lightManager) { }
 		~SceneBuilder() = default;
 
@@ -131,7 +131,6 @@ namespace star {
 
 	private:
 		ObjectManager& objectManager;
-		TextureManager& textureManager;
 		LightManager& lightManager;
 		MapManager& mapManager;
 
