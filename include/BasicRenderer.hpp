@@ -7,6 +7,7 @@
 #include "LightBufferObject.hpp"
 #include "ObjectManager.hpp"
 #include "InteractionSystem.hpp"
+#include "StarObject.hpp"
 
 #include "MapManager.hpp"
 #include "StarSystemRenderPointLight.hpp"
@@ -18,6 +19,7 @@
 
 #include "Light.hpp"
 
+#include <chrono>
 #include <memory>
 #include <vulkan/vulkan.hpp>
 
@@ -26,40 +28,38 @@ class BasicRenderer : public StarRenderer {
 public:
 	class Builder {
 	public:
-		Builder(StarWindow& window, TextureManager& textureManager, 
-			MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, 
-			Camera& camera, RenderOptions& renderOptions)
-			: window(window), textureManager(textureManager), 
-			mapManager(mapManager), shaderManager(shaderManager), 
-			objectManager(objectManager), camera(camera), renderOptions(renderOptions) {};
+		Builder(StarWindow& window, 
+			MapManager& mapManager, ShaderManager& shaderManager, 
+			Camera& camera, RenderOptions& renderOptions, StarDevice& device)
+			: window(window), mapManager(mapManager), shaderManager(shaderManager), 
+			camera(camera), renderOptions(renderOptions), device(device) {};
 
 		Builder& addLight(Light& light) {
 			this->lightList.push_back(light);
 			return *this;
 		}
 
-		Builder& addObject(GameObject& gameObject) {
+		Builder& addObject(StarObject& gameObject) {
 			objectList.emplace_back(gameObject); 
 			return *this; 
 		}
 
 		std::unique_ptr<BasicRenderer> build() {
-			auto newRenderer = std::unique_ptr<BasicRenderer>(new BasicRenderer(window, textureManager, 
-				mapManager, shaderManager, objectManager, lightList, objectList, camera, renderOptions));
+			auto newRenderer = std::unique_ptr<BasicRenderer>(new BasicRenderer(window, 
+				mapManager, shaderManager, lightList, objectList, camera, renderOptions, device));
 			newRenderer->prepare();
 			return newRenderer;
 		}
 
 	private:
 		StarWindow& window;
-		TextureManager& textureManager;
 		MapManager& mapManager;
 		ShaderManager& shaderManager; 
-		ObjectManager& objectManager; 
 		Camera& camera;
+		StarDevice& device; 
 		RenderOptions& renderOptions; 
 		std::vector<std::reference_wrapper<Light>> lightList;
-		std::vector<std::reference_wrapper<GameObject>> objectList; 
+		std::vector<std::reference_wrapper<StarObject>> objectList; 
 	}; 
 
 	virtual ~BasicRenderer();
@@ -80,15 +80,14 @@ protected:
 		//settings.y = type
 		glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
 	};
-	TextureManager& textureManager;
 	MapManager& mapManager;
 	ShaderManager& shaderManager; 
 	RenderOptions& renderOptions; 
 
 	std::vector<std::reference_wrapper<Light>> lightList;
-	std::vector<std::reference_wrapper<GameObject>> objectList; 
+	std::vector<std::reference_wrapper<StarObject>> objectList; 
 	std::vector<std::unique_ptr<StarSystemRenderObject>> RenderSysObjs;
-	std::unique_ptr<StarSystemRenderPointLight> lightRenderSys;
+	//std::unique_ptr<StarSystemRenderPointLight> lightRenderSys;
 
 	//texture information
 	vk::ImageView textureImageView;
@@ -137,9 +136,9 @@ protected:
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
 
-	BasicRenderer(StarWindow& window, TextureManager& textureManager, 
-		MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, std::vector<std::reference_wrapper<Light>> inLightList, 
-		std::vector<std::reference_wrapper<GameObject>> objectList, Camera& camera, RenderOptions& renderOptions);
+	BasicRenderer(StarWindow& window, 
+		MapManager& mapManager, ShaderManager& shaderManager, std::vector<std::reference_wrapper<Light>> inLightList, 
+		std::vector<std::reference_wrapper<StarObject>> objectList, Camera& camera, RenderOptions& renderOptions, StarDevice& device);
 
 	virtual void prepare();
 

@@ -1,16 +1,16 @@
 #pragma once 
 
-#include "GameObject.hpp"
+#include "StarObject.hpp"
 #include "Handle.hpp"
 #include "Enums.hpp"
 #include "StarShader.hpp"
 #include "Light.hpp"
 #include "VulkanVertex.hpp"
-#include "StarRenderObject.hpp"
 #include "StarDescriptors.hpp"
 #include "StarDevice.hpp"
 #include "StarPipeline.hpp"
 #include "StarBuffer.hpp"
+#include "StarObject.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -55,7 +55,7 @@ namespace star {
 		/// <summary>
 		/// Register a light color and location for rendering light effects on objects
 		/// </summary>
-		virtual void addObject(std::unique_ptr<StarRenderObject> newRenderObject);
+		virtual void addObject(StarObject& newRenderObject);
 		virtual void addLight(Light* newLight) { this->lights.push_back(newLight); }
 		/// <summary>
 		/// Check if the object has a shader for the requestd stage
@@ -70,7 +70,7 @@ namespace star {
 
 		virtual size_t getNumRenderObjects();
 
-		virtual StarRenderObject* getRenderObjectAt(size_t index);
+		virtual StarObject& getRenderObjectAt(size_t index);
 
 		virtual void bind(vk::CommandBuffer& commandBuffer);
 
@@ -108,7 +108,7 @@ namespace star {
 
 		vk::DescriptorSetLayout globalSetLayout;
 		std::vector<Light*> lights;
-		std::vector<std::unique_ptr<StarRenderObject>> renderObjects;
+		std::vector<std::reference_wrapper<StarObject>> renderObjects;
 		std::unique_ptr<StarDescriptorPool> descriptorPool;
 		std::unique_ptr<StarPipeline> starPipeline;
 		vk::PipelineLayout pipelineLayout;

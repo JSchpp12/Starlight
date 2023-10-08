@@ -13,13 +13,14 @@ namespace star {
 	class StarMaterial {
 	public:
 		StarMaterial() = default; 
+		virtual ~StarMaterial() = default; 
 
 		/// <summary>
 		/// Function which should contain processes to create all needed functionalities
 		/// for rendering operations. Example is creating needed rendering textures for 
 		/// and gpu memory. 
 		/// </summary>
-		/// <param name="device">Device that is being used in rendering operationss</param>
+		/// <param name="device">Device that is being used in rendering operations</param>
 		virtual void prepRender(StarDevice& device) = 0; 
 
 		/// <summary>

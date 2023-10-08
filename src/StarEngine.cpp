@@ -7,13 +7,14 @@ namespace star {
 ConfigFile StarEngine::configFile = ConfigFile("./StarEngine.cfg"); 
 
 ShaderManager StarEngine::shaderManager = ShaderManager(); 
-TextureManager StarEngine::textureManager = TextureManager(StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "images/texture.png");
-LightManager StarEngine::lightManager = LightManager();
-ObjectManager StarEngine::objectManager = ObjectManager();
+//TextureManager StarEngine::textureManager = TextureManager(StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "images/texture.png");
 MapManager StarEngine::mapManager = MapManager(std::unique_ptr<Texture>(new Texture(
 	std::unique_ptr<std::vector<unsigned char>>(new std::vector<unsigned char>{ 0x00, 0x00, 0x00, 0x00 }),
 	1, 1, 4)));
-SceneBuilder StarEngine::sceneBuilder = SceneBuilder(StarEngine::objectManager, StarEngine::textureManager, StarEngine::mapManager, StarEngine::lightManager);
+
+StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene())) {
+	//sceneBuilder = std::unique_ptr<SceneBuilder>(new SceneBuilder(objectManager, mapManager, lightManager)); 
+}
 
 void StarEngine::Run()
 {
@@ -24,27 +25,23 @@ void StarEngine::Run()
 	}
 }
 
-void StarEngine::init() {
+void StarEngine::init(RenderOptions& renderOptions, Camera& camera) {
 	StarEngine::shaderManager.setDefault(StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.vert",
 		StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.frag");
-}
-
-StarEngine::StarEngine(Camera& camera, std::vector<Handle> lightHandles, std::vector<Handle> objectHandles, RenderOptions& renderOptions) {
-	this->init(); 
 
 	//parse light information
 	this->window = BasicWindow::New(800, 600, "Test");
 
-	auto renderBuilder = BasicRenderer::Builder(*this->window, textureManager, 
-		mapManager, shaderManager, objectManager, camera, renderOptions);
-
-	for (int i = 0; i < lightHandles.size(); i++) {
-		renderBuilder.addLight(lightManager.resource(lightHandles[i])); 
+	this->renderingDevice = StarDevice::New(*window);
+	auto renderBuilder = BasicRenderer::Builder(*this->window,
+		mapManager, shaderManager, camera, renderOptions, *this->renderingDevice);
+	for (auto& light : this->currentScene->getLights()) {
+		renderBuilder.addLight(*light);
+	}
+	for (auto& obj : this->currentScene->getObjects()) {
+		renderBuilder.addObject(*obj);
 	}
 
-	for (int i = 0; i < objectHandles.size(); i++) {
-		renderBuilder.addObject(objectManager.resource(objectHandles[i])); 
-	}
-	this->renderer = renderBuilder.build(); 
+	this->renderer = renderBuilder.build();
 }
 }

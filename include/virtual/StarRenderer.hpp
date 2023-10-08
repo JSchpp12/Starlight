@@ -4,7 +4,6 @@
 #include "StarWindow.hpp"
 #include "StarShader.hpp"
 #include "FileResourceManager.hpp"
-#include "GameObject.hpp"
 #include "Camera.hpp"
 
 #include <memory>
@@ -34,16 +33,14 @@ protected:
         uint32_t numLights;                             //number of lights in render
         alignas(4) uint32_t renderOptions;
     };
-    FileResourceManager<GameObject>& objectManager; 
     FileResourceManager<StarShader>& shaderManager;
     Camera& camera;
     StarWindow& window;
+    StarDevice& device;
 
-    std::unique_ptr<StarDevice> device;
-
-	StarRenderer(StarWindow& window, FileResourceManager<StarShader>& shaderManager, 
-        FileResourceManager<GameObject>& objectManager, Camera& inCamera) 
-        : window(window), shaderManager(shaderManager), objectManager(objectManager), camera(inCamera){};
+	StarRenderer(StarWindow& window, FileResourceManager<StarShader>& shaderManager,
+        Camera& inCamera, StarDevice& device) 
+        : window(window), shaderManager(shaderManager), camera(inCamera), device(device){};
 
 #pragma region helpers
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);

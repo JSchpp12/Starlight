@@ -1,11 +1,13 @@
 #pragma once
 
 #include "CameraController.hpp"
-#include "StarShader.hpp"
 #include "Handle.hpp"
 #include "Camera.hpp"
 #include "Time.hpp"
 #include "Interactivity.hpp"
+#include "StarObject.hpp"
+#include "StarScene.hpp"
+#include "StarShader.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -16,13 +18,14 @@
 namespace star {
     class StarApplication : public Interactivity {
     public:
-        StarApplication(){ }
+        StarApplication(StarScene& scene)
+            : scene(scene){ 
+            this->registerInteractions();
+        }
 
         virtual ~StarApplication() {};
 
-        virtual void Load() = 0;
-
-        virtual void Update() = 0;
+        virtual void onWorldUpdate() = 0;
 
         virtual void onKeyPress(int key, int scancode, int mods) override {};
 
@@ -34,18 +37,11 @@ namespace star {
 
         virtual void onScroll(double xoffset, double yoffset) override {};
 
-        std::vector<Handle> getLights() { return lightList; }
-
-        std::vector<Handle> getObjects() { return objectList; }
-
         virtual Camera& getCamera() { return camera;  }
 
     protected:
         CameraController camera;
-
-        std::vector<Handle> lightList;
-        std::vector<Handle> objectList; 
-
+        StarScene& scene; 
         Time time = Time();
 
     private:

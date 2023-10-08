@@ -45,6 +45,7 @@ public:
 	virtual void setPosition(glm::vec3 newPosition) {
 		positionCoords = newPosition;
 		translationMat = glm::translate(newPosition);
+		updateCoordsTranslation(translationMat);
 	}
 	/// <summary>T
 	/// Apply translation to object's current position vector and update accordingly
@@ -108,7 +109,7 @@ public:
 
 		updateCoordsRot(rotationMat);
 	}
-	void rotateGolbal(const Type::Axis& axis, const float& amt, bool inDegrees = true) {
+	void rotateGlobal(const Type::Axis& axis, const float& amt, bool inDegrees = true) {
 		float radians = 0.0f;
 		glm::vec3 rotationVector = glm::vec3();
 		assert((axis == Type::Axis::x || axis == Type::Axis::y || axis == Type::Axis::z) && "Invalid axis type provided");

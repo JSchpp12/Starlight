@@ -4,13 +4,13 @@ typedef std::chrono::high_resolution_clock Clock;
 
 namespace star {
 
-BasicRenderer::BasicRenderer(StarWindow& window, TextureManager& textureManager, 
-	MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, 
-	std::vector<std::reference_wrapper<Light>> inLightList, std::vector<std::reference_wrapper<GameObject>> objectList, Camera& camera, RenderOptions& renderOptions) :
-	StarRenderer(window, shaderManager, objectManager, camera), textureManager(textureManager), 
+BasicRenderer::BasicRenderer(StarWindow& window , 
+	MapManager& mapManager, ShaderManager& shaderManager, 
+	std::vector<std::reference_wrapper<Light>> inLightList, std::vector<std::reference_wrapper<StarObject>> objectList, 
+	Camera& camera, RenderOptions& renderOptions, StarDevice& device) :
+	StarRenderer(window, shaderManager, camera, device), 
 	mapManager(mapManager), shaderManager(shaderManager), lightList(inLightList), objectList(objectList), renderOptions(renderOptions)
 {
-	device = StarDevice::New(window); 
 }
 
 void BasicRenderer::prepare()
@@ -19,13 +19,13 @@ void BasicRenderer::prepare()
 	createImageViews();
 	createRenderPass();
 
-	this->globalPool = StarDescriptorPool::Builder(*this->device.get())
+	this->globalPool = StarDescriptorPool::Builder(this->device)
 		.setMaxSets(15)
 		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * this->swapChainImages.size())
 		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->swapChainImages.size())
 		.build();
 
-	this->globalSetLayout = StarDescriptorSetLayout::Builder(*this->device.get())
+	this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 		.build();
@@ -33,13 +33,15 @@ void BasicRenderer::prepare()
 	this->globalDescriptorSets.resize(this->swapChainImages.size());
 
 	vk::ShaderStageFlagBits stages{};
-	vk::Device device = this->device->getDevice();
-	this->RenderSysObjs.push_back(std::make_unique<StarSystemRenderObject>(*this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
+	vk::Device device = this->device.getDevice();
+	this->RenderSysObjs.push_back(std::make_unique<StarSystemRenderObject>(this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
 	StarSystemRenderObject* tmpRenderSysObj = this->RenderSysObjs.at(0).get();
 	uint32_t meshVertCounter = 0;
 
 	for (size_t i = 0; i < this->objectList.size(); i++) {
-		GameObject& currObject = this->objectList.at(i);
+		StarObject& currObject = this->objectList.at(i);
+		currObject.prepRender(this->device); 
+
 		meshVertCounter = 0;
 
 		//check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
@@ -50,84 +52,65 @@ void BasicRenderer::prepare()
 				//vulkan object does not have either a vertex or a fragment shader 
 				object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
 				object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
-				StarRenderObject::Builder builder(*this->device, currObject);
-				builder.setNumFrames(this->swapChainImages.size());
-
-				for (auto& mesh : currObject.getMeshes()) {
-					builder.addMesh(
-						std::unique_ptr<StarRenderMesh>(new StarRenderMesh(*this->device, *mesh, object->getNumVerticies() + meshVertCounter)));
-					meshVertCounter += mesh->getTriangles()->size() * 3;
-				}
-				object->addObject(std::move(builder.build()));
+				 
+				object->addObject(currObject);
 			}
 			else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject.getVertShader().containerIndex) ||
 				(object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject.getFragShader().containerIndex)) {
 				//vulkan object has shaders but they are not the same as the shaders needed for current render object
-				this->RenderSysObjs.push_back(std::make_unique<StarSystemRenderObject>(*this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
+				this->RenderSysObjs.push_back(std::make_unique<StarSystemRenderObject>(this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
 				StarSystemRenderObject* newObject = this->RenderSysObjs.at(this->RenderSysObjs.size()).get();
 				newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
 				newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
-				newObject->addObject(std::move(StarRenderObject::Builder(*this->device, currObject)
-					.setNumFrames(this->swapChainImages.size())
-					.build()));
+				newObject->addObject(currObject);
 			}
 			else {
 				//vulkan object has the same shaders as the render object 
-				StarRenderObject::Builder builder(*this->device, currObject);
-				builder.setNumFrames(this->swapChainImages.size());
-
-				for (auto& mesh : currObject.getMeshes()) {
-					builder.addMesh(StarRenderMesh::Builder(*this->device)
-						.setMesh(*mesh)
-						.setRenderSettings(object->getNumVerticies() + meshVertCounter)
-						.build());
-					meshVertCounter += mesh->getTriangles()->size() * 3;
-				}
-				object->addObject(builder.build());
+				object->addObject(currObject);
 			}
 		}
 	}
 	std::vector<vk::DescriptorSetLayout> globalSets = { this->globalSetLayout->getDescriptorSetLayout() };
-	tmpRenderSysObj->init(*this->device, globalSets);
+	tmpRenderSysObj->init(this->device, globalSets);
 
 	/* Init Point Light Render System */
 
-	GameObject* currLinkedObj = nullptr;
-	int vertexCounter = 0;
-	for (Light& light : this->lightList) {
-		if (light.hasLinkedObject()) {
-			if (!lightRenderSys) {
-				this->lightRenderSys = std::make_unique<StarSystemRenderPointLight>(*this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
-			}
-			currLinkedObj = &this->objectManager.resource(light.getLinkedObjectHandle());
-			if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
-				this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader());
-				this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader());
-			}
-			if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
-				|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
-				auto builder = StarRenderObject::Builder(*this->device, this->objectManager.resource(light.getLinkedObjectHandle()));
-				builder.setNumFrames(this->swapChainImages.size());
+	//StarObject* currLinkedObj = nullptr;
+	//int vertexCounter = 0;
+	//for (Light& light : this->lightList) {
+	//	if (light.hasLinkedObject()) {
+	//		if (!lightRenderSys) {
+	//			this->lightRenderSys = std::make_unique<StarSystemRenderPointLight>(this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+	//		}
+	//		currLinkedObj = &this->objectManager.resource(light.getLinkedObjectHandle());
+	//		if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
+	//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader());
+	//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader());
+	//		}
+	//		if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
+	//			|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
+	//			auto builder = StarRenderObject::Builder(this->device, this->objectManager.resource(light.getLinkedObjectHandle()));
+	//			builder.setNumFrames(this->swapChainImages.size());
 
-				for (auto& mesh : currLinkedObj->getMeshes()) {
-					builder.addMesh(StarRenderMesh::Builder(*this->device)
-						.setMesh(*mesh)
-						.setRenderSettings(vertexCounter)
-						.build());
-					vertexCounter += mesh->getTriangles()->size() * 3;
-				}
-				lightRenderSys->addLight(&light, builder.build(), this->swapChainImages.size());
-			}
-			else {
-				throw std::runtime_error("More than one shader type is not permitted for light linked object");
-			}
-		}
-	}
-	//init light render system if it was created 
-	if (lightRenderSys) {
-		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
-		this->lightRenderSys->init(*this->device, globalSets);
-	}
+	//			for (auto& mesh : currLinkedObj->getMeshes()) {
+	//				builder.addMesh(StarRenderMesh::Builder(this->device)
+	//					.setMesh(*mesh)
+	//					.setRenderSettings(vertexCounter)
+	//					.build());
+	//				vertexCounter += mesh->getTriangles()->size() * 3;
+	//			}
+	//			lightRenderSys->addLight(&light, builder.build(), this->swapChainImages.size());
+	//		}
+	//		else {
+	//			throw std::runtime_error("More than one shader type is not permitted for light linked object");
+	//		}
+	//	}
+	//}
+	////init light render system if it was created 
+	//if (lightRenderSys) {
+	//	this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
+	//	this->lightRenderSys->init(this->device, globalSets);
+	//}
 
 	createDepthResources();
 	createFramebuffers();
@@ -150,7 +133,7 @@ void BasicRenderer::prepare()
 			0,
 			sizeof(LightBufferObject) * this->lightList.size() };
 
-		StarDescriptorWriter(*this->device.get(), *this->globalSetLayout, *this->globalPool)
+		StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
 			.writeBuffer(0, &globalBufferInfo)
 			.writeBuffer(1, &lightBufferInfo)
 			.build(this->globalDescriptorSets.at(i));
@@ -205,14 +188,14 @@ void BasicRenderer::updateUniformBuffer(uint32_t currentImage)
 		RenderSysObjs.at(i)->updateBuffers(currentImage);
 	}
 
-	if (lightRenderSys) {
-		this->lightRenderSys->updateBuffers(currentImage);
-	}
+	//if (lightRenderSys) {
+	//	this->lightRenderSys->updateBuffers(currentImage);
+	//}
 }
 
 BasicRenderer::~BasicRenderer()
 {
-	device->getDevice().waitIdle(); 
+	device.getDevice().waitIdle(); 
 	cleanup(); 
 }
 
@@ -235,7 +218,7 @@ void BasicRenderer::draw()
 	   //wait for fence to be ready 
 	   // 3. 'VK_TRUE' -> waiting for all fences
 	   // 4. timeout 
-	this->device->getDevice().waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+	this->device.getDevice().waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	/* Get Image From Swapchain */
 
@@ -245,7 +228,7 @@ void BasicRenderer::draw()
 		//vulkan can return two different flags 
 		// 1. VK_ERROR_OUT_OF_DATE_KHR: swap chain has become incompatible with the surface and cant be used for rendering. (Window resize)
 		// 2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no longer match
-	auto result = this->device->getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame]);
+	auto result = this->device.getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame]);
 
 	if (result.result == vk::Result::eErrorOutOfDateKHR) {
 		//the swapchain is no longer optimal according to vulkan. Must recreate a more efficient swap chain
@@ -260,7 +243,7 @@ void BasicRenderer::draw()
 
 	//check if a previous frame is using the current image
 	if (imagesInFlight[imageIndex]) {
-		this->device->getDevice().waitForFences(1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		this->device.getDevice().waitForFences(1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
 	}
 	//mark image as now being in use by this frame by assigning the fence to it 
 	imagesInFlight[imageIndex] = inFlightFences[currentFrame];
@@ -284,7 +267,7 @@ void BasicRenderer::draw()
 	//which command buffers to submit for execution -- should submit command buffer that binds the swap chain image that was just acquired as color attachment
 	submitInfo.commandBufferCount = 1;
 	//submitInfo.pCommandBuffers = &graphicsCommandBuffers[imageIndex];
-	submitInfo.pCommandBuffers = &this->device->getGraphicsCommandBuffers()->at(imageIndex);
+	submitInfo.pCommandBuffers = &this->device.getGraphicsCommandBuffers()->at(imageIndex);
 
 	//what semaphores to signal when command buffers have finished
 	vk::Semaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
@@ -293,8 +276,8 @@ void BasicRenderer::draw()
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
 	//set fence to unsignaled state
-	this->device->getDevice().resetFences(1, &inFlightFences[currentFrame]);
-	auto submitResult = this->device->getGraphicsQueue().submit(1, &submitInfo, inFlightFences[currentFrame]);
+	this->device.getDevice().resetFences(1, &inFlightFences[currentFrame]);
+	auto submitResult = this->device.getGraphicsQueue().submit(1, &submitInfo, inFlightFences[currentFrame]);
 	if (submitResult != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to submit draw command buffer");
 	}
@@ -318,7 +301,7 @@ void BasicRenderer::draw()
 	presentInfo.pResults = nullptr; // Optional
 
 	//make call to present image
-	auto presentResult = this->device->getPresentQueue().presentKHR(presentInfo);
+	auto presentResult = this->device.getPresentQueue().presentKHR(presentInfo);
 
 	//if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || frameBufferResized) {
 	if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || frameBufferResized) {
@@ -337,37 +320,37 @@ void BasicRenderer::cleanup()
 {
 	cleanupSwapChain();
 
-	this->device->getDevice().destroySampler(this->textureSampler);
-	this->device->getDevice().destroyImageView(this->textureImageView);
-	this->device->getDevice().destroyImage(this->textureImage);
-	this->device->getDevice().freeMemory(this->textureImageMemory);
+	this->device.getDevice().destroySampler(this->textureSampler);
+	this->device.getDevice().destroyImageView(this->textureImageView);
+	this->device.getDevice().destroyImage(this->textureImage);
+	this->device.getDevice().freeMemory(this->textureImageMemory);
 
 	StarSystemRenderObject* currRenderSysObj = this->RenderSysObjs.at(0).get();
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		this->device->getDevice().destroySemaphore(renderFinishedSemaphores[i]);
-		this->device->getDevice().destroySemaphore(imageAvailableSemaphores[i]);
-		this->device->getDevice().destroyFence(inFlightFences[i]);
+		this->device.getDevice().destroySemaphore(renderFinishedSemaphores[i]);
+		this->device.getDevice().destroySemaphore(imageAvailableSemaphores[i]);
+		this->device.getDevice().destroyFence(inFlightFences[i]);
 	}
 }
 
 void BasicRenderer::cleanupSwapChain()
 {
-	this->device->getDevice().destroyImageView(this->depthImageView);
-	this->device->getDevice().destroyImage(this->depthImage);
-	this->device->getDevice().freeMemory(this->depthImageMemory);
+	this->device.getDevice().destroyImageView(this->depthImageView);
+	this->device.getDevice().destroyImage(this->depthImage);
+	this->device.getDevice().freeMemory(this->depthImageMemory);
 
 	for (auto framebuffer : this->swapChainFramebuffers) {
-		this->device->getDevice().destroyFramebuffer(framebuffer);
+		this->device.getDevice().destroyFramebuffer(framebuffer);
 	}
 
-	this->device->getDevice().destroyRenderPass(this->renderPass);
+	this->device.getDevice().destroyRenderPass(this->renderPass);
 
 	for (auto imageView : this->swapChainImageViews) {
-		this->device->getDevice().destroyImageView(imageView);
+		this->device.getDevice().destroyImageView(imageView);
 	}
 
-	this->device->getDevice().destroySwapchainKHR(this->swapChain);
+	this->device.getDevice().destroySwapchainKHR(this->swapChain);
 }
 
 void BasicRenderer::recreateSwapChain()
@@ -381,7 +364,7 @@ void BasicRenderer::recreateSwapChain()
 		glfwWaitEvents();
 	}
 	//wait for device to finish any current actions
-	vkDeviceWaitIdle(this->device->getDevice());
+	vkDeviceWaitIdle(this->device.getDevice());
 
 	cleanupSwapChain();
 
@@ -412,7 +395,7 @@ void BasicRenderer::createSwapChain()
 {
 	//TODO: current implementation requires halting to all rendering when recreating swapchain. Can place old swap chain in oldSwapChain field 
 		//  in order to prevent this and allow rendering to continue
-	SwapChainSupportDetails swapChainSupport = this->device->getSwapChainSupportDetails();
+	SwapChainSupportDetails swapChainSupport = this->device.getSwapChainSupportDetails();
 
 	vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 	vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
@@ -430,7 +413,7 @@ void BasicRenderer::createSwapChain()
 	vk::SwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;
 	//createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;     
-	createInfo.surface = this->device->getSurface();
+	createInfo.surface = this->device.getSurface();
 
 	//specify image information for the surface 
 	createInfo.minImageCount = imageCount;
@@ -441,7 +424,7 @@ void BasicRenderer::createSwapChain()
 	//createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
 	createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
 
-	QueueFamilyIndicies indicies = this->device->findPhysicalQueueFamilies();
+	QueueFamilyIndicies indicies = this->device.findPhysicalQueueFamilies();
 	std::vector<uint32_t> queueFamilyIndicies;
 	if (indicies.transferFamily.has_value())
 		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value(), indicies.transferFamily.value(), indicies.presentFamily.value() };
@@ -485,14 +468,14 @@ void BasicRenderer::createSwapChain()
 	//for now, only assume we are making one swapchain
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	this->swapChain = this->device->getDevice().createSwapchainKHR(createInfo);
+	this->swapChain = this->device.getDevice().createSwapchainKHR(createInfo);
 
 	//if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
 	//    throw std::runtime_error("failed to create swap chain");
 	//}
 
 	//get images in the newly created swapchain 
-	this->swapChainImages = this->device->getDevice().getSwapchainImagesKHR(this->swapChain);
+	this->swapChainImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain);
 
 	//save swapChain information for later use
 	swapChainImageFormat = surfaceFormat.format;
@@ -523,7 +506,7 @@ vk::ImageView BasicRenderer::createImageView(vk::Image image, vk::Format format,
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
-	vk::ImageView imageView = this->device->getDevice().createImageView(viewInfo);
+	vk::ImageView imageView = this->device.getDevice().createImageView(viewInfo);
 
 	if (!imageView) {
 		throw std::runtime_error("failed to create texture image view!");
@@ -621,7 +604,7 @@ void BasicRenderer::createRenderPass()
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	this->renderPass = this->device->getDevice().createRenderPass(renderPassInfo);
+	this->renderPass = this->device.getDevice().createRenderPass(renderPassInfo);
 	if (!renderPass) {
 		throw std::runtime_error("failed to create render pass");
 	}
@@ -665,25 +648,25 @@ void BasicRenderer::createImage(uint32_t width, uint32_t height, vk::Format form
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
 
-	image = this->device->getDevice().createImage(imageInfo);
+	image = this->device.getDevice().createImage(imageInfo);
 	if (!image) {
 		throw std::runtime_error("failed to create image");
 	}
 
 	/* Allocate the memory for the imag*/
-	vk::MemoryRequirements memRequirements = this->device->getDevice().getImageMemoryRequirements(image);
+	vk::MemoryRequirements memRequirements = this->device.getDevice().getImageMemoryRequirements(image);
 
 	vk::MemoryAllocateInfo allocInfo{};
 	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = this->device->findMemoryType(memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = this->device.findMemoryType(memRequirements.memoryTypeBits, properties);
 
-	imageMemory = this->device->getDevice().allocateMemory(allocInfo);
+	imageMemory = this->device.getDevice().allocateMemory(allocInfo);
 	if (!imageMemory) {
 		throw std::runtime_error("failed to allocate image memory!");
 	}
 
-	this->device->getDevice().bindImageMemory(image, imageMemory, 0);
+	this->device.getDevice().bindImageMemory(image, imageMemory, 0);
 }
 
 void BasicRenderer::createFramebuffers()
@@ -708,7 +691,7 @@ void BasicRenderer::createFramebuffers()
 		framebufferInfo.height = swapChainExtent.height;
 		framebufferInfo.layers = 1; //# of layers in image arrays
 
-		swapChainFramebuffers[i] = this->device->getDevice().createFramebuffer(framebufferInfo);
+		swapChainFramebuffers[i] = this->device.getDevice().createFramebuffer(framebufferInfo);
 		if (!swapChainFramebuffers[i]) {
 			throw std::runtime_error("failed to create framebuffer");
 		}
@@ -726,13 +709,13 @@ void BasicRenderer::createRenderingBuffers()
 	}
 
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(*this->device.get(), tmpRenderSysObj->getNumRenderObjects(), sizeof(GlobalUniformBufferObject),
+		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(this->device, tmpRenderSysObj->getNumRenderObjects(), sizeof(GlobalUniformBufferObject),
 			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		this->globalUniformBuffers[i]->map();
 
 		//create light buffers 
 		if (this->lightList.size() > 0) {
-			this->lightBuffers[i] = std::make_unique<StarBuffer>(*this->device, this->lightList.size(), sizeof(LightBufferObject) * this->lightList.size(),
+			this->lightBuffers[i] = std::make_unique<StarBuffer>(this->device, this->lightList.size(), sizeof(LightBufferObject) * this->lightList.size(),
 				vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 			this->lightBuffers[i]->map();
 		}
@@ -744,19 +727,19 @@ void BasicRenderer::createCommandBuffers()
 
 	for (auto& RenderSysObj : this->RenderSysObjs) {
 		/* Graphics Command Buffer */
-		this->device->getGraphicsCommandBuffers()->resize(swapChainFramebuffers.size());
+		this->device.getGraphicsCommandBuffers()->resize(swapChainFramebuffers.size());
 
 		vk::CommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
-		allocInfo.commandPool = this->device->getGraphicsCommandPool();
+		allocInfo.commandPool = this->device.getGraphicsCommandPool();
 		// .level - specifies if the allocated command buffers are primay or secondary
 		// ..._PRIMARY : can be submitted to a queue for execution, but cannot be called from other command buffers
 		// ..._SECONDARY : cannot be submitted directly, but can be called from primary command buffers (good for reuse of common operations)
 		allocInfo.level = vk::CommandBufferLevel::ePrimary;
-		allocInfo.commandBufferCount = (uint32_t)device->getGraphicsCommandBuffers()->size();
+		allocInfo.commandBufferCount = (uint32_t)device.getGraphicsCommandBuffers()->size();
 
-		std::vector<vk::CommandBuffer> newBuffers = this->device->getDevice().allocateCommandBuffers(allocInfo);
-		newBuffers = this->device->getDevice().allocateCommandBuffers(allocInfo);
+		std::vector<vk::CommandBuffer> newBuffers = this->device.getDevice().allocateCommandBuffers(allocInfo);
+		newBuffers = this->device.getDevice().allocateCommandBuffers(allocInfo);
 		if (newBuffers.size() == 0) {
 			throw std::runtime_error("failed to allocate command buffers");
 		}
@@ -865,10 +848,10 @@ void BasicRenderer::createCommandBuffers()
 			tmpRenderSysObj->render(newBuffers[i], i);
 
 			//bind light pipe 
-			if (lightRenderSys) {
-				this->lightRenderSys->bind(newBuffers[i]);
-				this->lightRenderSys->render(newBuffers[i], i);
-			}
+			//if (lightRenderSys) {
+			//	this->lightRenderSys->bind(newBuffers[i]);
+			//	this->lightRenderSys->render(newBuffers[i], i);
+			//}
 
 			newBuffers[i].endRenderPass();
 
@@ -876,7 +859,7 @@ void BasicRenderer::createCommandBuffers()
 			newBuffers[i].end();
 		}
 
-		this->device->setGraphicsCommandBuffers(newBuffers);
+		this->device.setGraphicsCommandBuffers(newBuffers);
 	}
 }
 
@@ -889,8 +872,8 @@ void BasicRenderer::createSemaphores()
 	semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		this->imageAvailableSemaphores[i] = this->device->getDevice().createSemaphore(semaphoreInfo);
-		this->renderFinishedSemaphores[i] = this->device->getDevice().createSemaphore(semaphoreInfo);
+		this->imageAvailableSemaphores[i] = this->device.getDevice().createSemaphore(semaphoreInfo);
+		this->renderFinishedSemaphores[i] = this->device.getDevice().createSemaphore(semaphoreInfo);
 
 		if (!this->imageAvailableSemaphores[i]) {
 			throw std::runtime_error("failed to create semaphores for a frame");
@@ -911,7 +894,7 @@ void BasicRenderer::createFences()
 	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		this->inFlightFences[i] = this->device->getDevice().createFence(fenceInfo);
+		this->inFlightFences[i] = this->device.getDevice().createFence(fenceInfo);
 		if (!this->inFlightFences[i]) {
 			throw std::runtime_error("failed to create fence object for a frame");
 		}

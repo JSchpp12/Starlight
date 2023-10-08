@@ -35,7 +35,7 @@ void StarRenderMesh::initDescriptors(StarDescriptorSetLayout& constLayout, StarD
 void StarRenderMesh::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex) {
 	this->mesh.getMaterial().bind(commandBuffer, pipelineLayout, swapChainImageIndex); 
 
-	auto testTriangle = this->mesh.getTriangles()->size() * 3;
+	auto testTriangle = this->mesh.getTriangles().size() * 3;
 	commandBuffer.drawIndexed(testTriangle, 1, 0, this->startIndex, 0);
 }
 }
