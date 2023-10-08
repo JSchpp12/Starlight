@@ -6,7 +6,6 @@
 #include "Light.hpp"
 #include "ShaderManager.hpp"
 #include "LightManager.hpp"
-#include "SceneBuilder.hpp"
 #include "StarObject.hpp"
 #include "StarScene.hpp"
 
