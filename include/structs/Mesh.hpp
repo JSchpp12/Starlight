@@ -14,7 +14,7 @@ public:
     Mesh(std::unique_ptr<std::vector<Triangle>> triangles, std::unique_ptr<StarMaterial> material) :
         triangles(std::move(triangles)), material(std::move(material)) { };
 
-    const std::unique_ptr<std::vector<Triangle>>& getTriangles() { return this->triangles; }
+    std::vector<Triangle>& getTriangles() { return *this->triangles; }
     StarMaterial& getMaterial() { return *this->material; }
 
 private:

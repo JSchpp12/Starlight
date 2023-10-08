@@ -31,4 +31,7 @@ void star::BumpMaterial::buildConstDescriptor(StarDescriptorWriter writer)
 
 void star::BumpMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
 {
+	if (this->descriptorSet) {
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 2, 1, &this->descriptorSet, 0, nullptr);
+	}
 }

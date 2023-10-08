@@ -5,10 +5,10 @@ typedef std::chrono::high_resolution_clock Clock;
 namespace star {
 
 BasicRenderer::BasicRenderer(StarWindow& window , 
-	MapManager& mapManager, ShaderManager& shaderManager, ObjectManager& objectManager, 
-	std::vector<std::reference_wrapper<Light>> inLightList, std::vector<std::reference_wrapper<GameObject>> objectList, 
+	MapManager& mapManager, ShaderManager& shaderManager, 
+	std::vector<std::reference_wrapper<Light>> inLightList, std::vector<std::reference_wrapper<StarObject>> objectList, 
 	Camera& camera, RenderOptions& renderOptions, StarDevice& device) :
-	StarRenderer(window, shaderManager, objectManager, camera, device), 
+	StarRenderer(window, shaderManager, camera, device), 
 	mapManager(mapManager), shaderManager(shaderManager), lightList(inLightList), objectList(objectList), renderOptions(renderOptions)
 {
 }
@@ -39,7 +39,9 @@ void BasicRenderer::prepare()
 	uint32_t meshVertCounter = 0;
 
 	for (size_t i = 0; i < this->objectList.size(); i++) {
-		GameObject& currObject = this->objectList.at(i);
+		StarObject& currObject = this->objectList.at(i);
+		currObject.prepRender(this->device); 
+
 		meshVertCounter = 0;
 
 		//check if the vulkan object has a shader registered for the desired stage that is different than the one needed for the current object
@@ -50,15 +52,8 @@ void BasicRenderer::prepare()
 				//vulkan object does not have either a vertex or a fragment shader 
 				object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
 				object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
-				StarRenderObject::Builder builder(this->device, currObject);
-				builder.setNumFrames(this->swapChainImages.size());
-
-				for (auto& mesh : currObject.getMeshes()) {
-					builder.addMesh(
-						std::unique_ptr<StarRenderMesh>(new StarRenderMesh(this->device, *mesh, object->getNumVerticies() + meshVertCounter)));
-					meshVertCounter += mesh->getTriangles()->size() * 3;
-				}
-				object->addObject(std::move(builder.build()));
+				 
+				object->addObject(currObject);
 			}
 			else if ((object->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex != currObject.getVertShader().containerIndex) ||
 				(object->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex != currObject.getFragShader().containerIndex)) {
@@ -67,23 +62,11 @@ void BasicRenderer::prepare()
 				StarSystemRenderObject* newObject = this->RenderSysObjs.at(this->RenderSysObjs.size()).get();
 				newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
 				newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
-				newObject->addObject(std::move(StarRenderObject::Builder(this->device, currObject)
-					.setNumFrames(this->swapChainImages.size())
-					.build()));
+				newObject->addObject(currObject);
 			}
 			else {
 				//vulkan object has the same shaders as the render object 
-				StarRenderObject::Builder builder(this->device, currObject);
-				builder.setNumFrames(this->swapChainImages.size());
-
-				for (auto& mesh : currObject.getMeshes()) {
-					builder.addMesh(StarRenderMesh::Builder(this->device)
-						.setMesh(*mesh)
-						.setRenderSettings(object->getNumVerticies() + meshVertCounter)
-						.build());
-					meshVertCounter += mesh->getTriangles()->size() * 3;
-				}
-				object->addObject(builder.build());
+				object->addObject(currObject);
 			}
 		}
 	}
@@ -92,42 +75,42 @@ void BasicRenderer::prepare()
 
 	/* Init Point Light Render System */
 
-	GameObject* currLinkedObj = nullptr;
-	int vertexCounter = 0;
-	for (Light& light : this->lightList) {
-		if (light.hasLinkedObject()) {
-			if (!lightRenderSys) {
-				this->lightRenderSys = std::make_unique<StarSystemRenderPointLight>(this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
-			}
-			currLinkedObj = &this->objectManager.resource(light.getLinkedObjectHandle());
-			if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
-				this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader());
-				this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader());
-			}
-			if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
-				|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
-				auto builder = StarRenderObject::Builder(this->device, this->objectManager.resource(light.getLinkedObjectHandle()));
-				builder.setNumFrames(this->swapChainImages.size());
+	//StarObject* currLinkedObj = nullptr;
+	//int vertexCounter = 0;
+	//for (Light& light : this->lightList) {
+	//	if (light.hasLinkedObject()) {
+	//		if (!lightRenderSys) {
+	//			this->lightRenderSys = std::make_unique<StarSystemRenderPointLight>(this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass);
+	//		}
+	//		currLinkedObj = &this->objectManager.resource(light.getLinkedObjectHandle());
+	//		if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
+	//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader());
+	//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader());
+	//		}
+	//		if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
+	//			|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
+	//			auto builder = StarRenderObject::Builder(this->device, this->objectManager.resource(light.getLinkedObjectHandle()));
+	//			builder.setNumFrames(this->swapChainImages.size());
 
-				for (auto& mesh : currLinkedObj->getMeshes()) {
-					builder.addMesh(StarRenderMesh::Builder(this->device)
-						.setMesh(*mesh)
-						.setRenderSettings(vertexCounter)
-						.build());
-					vertexCounter += mesh->getTriangles()->size() * 3;
-				}
-				lightRenderSys->addLight(&light, builder.build(), this->swapChainImages.size());
-			}
-			else {
-				throw std::runtime_error("More than one shader type is not permitted for light linked object");
-			}
-		}
-	}
-	//init light render system if it was created 
-	if (lightRenderSys) {
-		this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
-		this->lightRenderSys->init(this->device, globalSets);
-	}
+	//			for (auto& mesh : currLinkedObj->getMeshes()) {
+	//				builder.addMesh(StarRenderMesh::Builder(this->device)
+	//					.setMesh(*mesh)
+	//					.setRenderSettings(vertexCounter)
+	//					.build());
+	//				vertexCounter += mesh->getTriangles()->size() * 3;
+	//			}
+	//			lightRenderSys->addLight(&light, builder.build(), this->swapChainImages.size());
+	//		}
+	//		else {
+	//			throw std::runtime_error("More than one shader type is not permitted for light linked object");
+	//		}
+	//	}
+	//}
+	////init light render system if it was created 
+	//if (lightRenderSys) {
+	//	this->lightRenderSys->setPipelineLayout(this->RenderSysObjs.at(0)->getPipelineLayout());
+	//	this->lightRenderSys->init(this->device, globalSets);
+	//}
 
 	createDepthResources();
 	createFramebuffers();
@@ -205,9 +188,9 @@ void BasicRenderer::updateUniformBuffer(uint32_t currentImage)
 		RenderSysObjs.at(i)->updateBuffers(currentImage);
 	}
 
-	if (lightRenderSys) {
-		this->lightRenderSys->updateBuffers(currentImage);
-	}
+	//if (lightRenderSys) {
+	//	this->lightRenderSys->updateBuffers(currentImage);
+	//}
 }
 
 BasicRenderer::~BasicRenderer()
@@ -865,10 +848,10 @@ void BasicRenderer::createCommandBuffers()
 			tmpRenderSysObj->render(newBuffers[i], i);
 
 			//bind light pipe 
-			if (lightRenderSys) {
-				this->lightRenderSys->bind(newBuffers[i]);
-				this->lightRenderSys->render(newBuffers[i], i);
-			}
+			//if (lightRenderSys) {
+			//	this->lightRenderSys->bind(newBuffers[i]);
+			//	this->lightRenderSys->render(newBuffers[i], i);
+			//}
 
 			newBuffers[i].endRenderPass();
 

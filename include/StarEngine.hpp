@@ -4,10 +4,11 @@
 #include "BasicWindow.hpp"
 #include "ConfigFile.hpp"
 #include "Light.hpp"
-#include "StarApplication.hpp "
 #include "ShaderManager.hpp"
 #include "LightManager.hpp"
 #include "SceneBuilder.hpp"
+#include "StarObject.hpp"
+#include "StarScene.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -33,24 +34,20 @@ public:
 
 	void Run();
 
-	void init(RenderOptions& renderOptions, StarApplication& app);
+	void init(RenderOptions& renderOptions, Camera& camera);
 
 
-	std::vector<Handle>& getObjList() { return this->objList; }
-	std::vector<Handle>& getLightList() { return this->lightList; }
-	ObjectManager& getObjectManager() { return this->objectManager; }
-	LightManager& getLightManager() { return this->lightManager; }
-	SceneBuilder& getSceneBuilder() { return *this->sceneBuilder; }
+	std::vector<std::unique_ptr<StarObject>>& getObjList() { return this->objects; }
+	StarScene& getScene() { return *this->currentScene; }
 protected:
 	std::unique_ptr<StarWindow> window;
 	std::unique_ptr<StarDevice> renderingDevice; 
 	std::unique_ptr<StarRenderer> renderer; 
-	std::vector<Handle> objList; 
+	std::vector<std::unique_ptr<StarObject>> objects;
 	std::vector<Handle> lightList; 
-
+	std::unique_ptr<StarScene> currentScene; 
 	LightManager lightManager;
-	ObjectManager objectManager;
-	std::unique_ptr<SceneBuilder> sceneBuilder;
+
 
 private:
 

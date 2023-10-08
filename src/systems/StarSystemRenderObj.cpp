@@ -18,12 +18,12 @@ void StarSystemRenderObject::registerShader(vk::ShaderStageFlagBits stage, StarS
 	}
 }
 
-void StarSystemRenderObject::addObject(std::unique_ptr<StarRenderObject> newRenderObject) {
-	this->numMeshes += newRenderObject->getMeshes().size();
-	for (auto& mesh : newRenderObject->getGameObject().getMeshes()) {
-		this->totalNumVerticies += mesh->getTriangles()->size() * 3;
+void StarSystemRenderObject::addObject(StarObject& newObject) {
+	this->numMeshes += newObject.getMeshes().size();
+	for (auto& mesh : newObject.getMeshes()) {
+		this->totalNumVerticies += mesh->getTriangles().size() * 3;
 	}
-	this->renderObjects.push_back(std::move(newRenderObject));
+	this->renderObjects.push_back(newObject);
 }
 
 bool StarSystemRenderObject::hasShader(vk::ShaderStageFlagBits stage) {
@@ -55,7 +55,7 @@ size_t StarSystemRenderObject::getNumRenderObjects()
 	return this->renderObjects.size();
 }
 
-StarRenderObject* StarSystemRenderObject::getRenderObjectAt(size_t index) {
+StarObject& StarSystemRenderObject::getRenderObjectAt(size_t index) {
 	return this->renderObjects.at(index).get();
 }
 
@@ -70,8 +70,8 @@ void StarSystemRenderObject::updateBuffers(uint32_t currentImage) {
 	auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), minProp);
 
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
-		newBufferObject.modelMatrix = this->renderObjects.at(i)->getGameObject().getDisplayMatrix();
-		newBufferObject.normalMatrix = this->renderObjects.at(i)->getGameObject().getNormalMatrix();
+		newBufferObject.modelMatrix = this->renderObjects.at(i).get().getDisplayMatrix();
+		newBufferObject.normalMatrix = this->renderObjects.at(i).get().getNormalMatrix();
 
 		this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements * i);
 	}
@@ -84,18 +84,15 @@ void StarSystemRenderObject::render(vk::CommandBuffer& commandBuffer, int swapCh
 	commandBuffer.bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
 	int vertexCount = 0;
-	StarRenderObject* currRenderObject = nullptr;
+	StarObject* currRenderObject = nullptr;
 	for (size_t i = 0; i < this->renderObjects.size(); i++) {
 		//TODO: move per gameobject binding to the renderObjects class 
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i)->getDefaultDescriptorSets().at(swapChainImageIndex), 0, nullptr);
-		this->renderObjects.at(i)->render(commandBuffer, this->pipelineLayout, swapChainImageIndex);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, this->pipelineLayout, 1, 1, &this->renderObjects.at(i).get().getDefaultDescriptorSets().at(swapChainImageIndex), 0, nullptr);
+		this->renderObjects.at(i).get().render(commandBuffer, this->pipelineLayout, swapChainImageIndex);
 	}
 }
 
 void StarSystemRenderObject::init(StarDevice& device, std::vector<vk::DescriptorSetLayout> globalDescriptorSets) {
-	for (auto& obj : this->renderObjects) {
-		obj->prepRender(device); 
-	}
 	//create needed buffers 
 	createVertexBuffer();
 	createIndexBuffer();
@@ -112,20 +109,20 @@ void StarSystemRenderObject::createVertexBuffer() {
 	vk::DeviceSize bufferSize;
 
 	//TODO: ensure that more objects can be drawn 
-	GameObject* currObject = nullptr;
+	StarObject* currObject = nullptr;
 	std::vector<Vertex> vertexList(this->totalNumVerticies);
 	size_t vertexCounter = 0;
 
 	for (auto& object : this->renderObjects) {
-		const std::vector<std::unique_ptr<Mesh>>& currObjectMeshes = object->getGameObject().getMeshes();
+		const std::vector<std::unique_ptr<Mesh>>& currObjectMeshes = object.get().getMeshes();
 
 		//copy verticies from the render object into the total vertex list for the vulkan object
 		for (size_t i = 0; i < currObjectMeshes.size(); i++) {
 			auto& triangles = currObjectMeshes.at(i)->getTriangles();
 
-			for (size_t j = 0; j < triangles->size(); j++) {
+			for (size_t j = 0; j < triangles.size(); j++) {
 				for (int k = 0; k < 3; k++) {
-					vertexList.at(vertexCounter) = triangles->at(j).vertices[k];
+					vertexList.at(vertexCounter) = triangles.at(j).vertices[k];
 					vertexCounter++;
 				}
 			}
@@ -170,15 +167,14 @@ void StarSystemRenderObject::createRenderBuffers() {
 void StarSystemRenderObject::createIndexBuffer() {
 	//TODO: will only support one object at the moment
 	std::vector<uint32_t> indiciesList(this->totalNumVerticies);
-	StarRenderObject* currRenderObject = nullptr;
-	GameObject* currObject = nullptr;
+	StarObject* currObject = nullptr;
 	size_t indexCounter = 0; //used to keep track of index offsets 
 
 	//ENSURE THIS IS COUNTING RIGHT -- draw triangles in order
-	for (auto& object : this->renderObjects) {
-		for (size_t j = 0; j < object->getGameObject().getMeshes().size(); j++) {
-			auto& mesh = object->getGameObject().getMeshes().at(j);
-			for (size_t k = 0; k < mesh->getTriangles()->size(); k++) {
+	for (StarObject& object : this->renderObjects) {
+		for (size_t j = 0; j < object.getMeshes().size(); j++) {
+			auto& mesh = object.getMeshes().at(j);
+			for (size_t k = 0; k < mesh->getTriangles().size(); k++) {
 				indiciesList.at(indexCounter + 0) = indexCounter + 0;
 				indiciesList.at(indexCounter + 1) = indexCounter + 1;
 				indiciesList.at(indexCounter + 2) = indexCounter + 2;
@@ -221,15 +217,13 @@ void StarSystemRenderObject::createDescriptorPool() {
 
 //PER RENDER SYSTEM DESCRIPTORS
 void StarSystemRenderObject::createDescriptorLayouts() {
-	StarRenderObject* currRenderObj = nullptr;
-
 	this->staticDescriptorSetLayout = StarDescriptorSetLayout::Builder(this->starDevice)
 		.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)		//texture 
 		.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
 		.build();
 
-	for (auto& obj : this->renderObjects) {
-		obj->initDescriptors(*this->staticDescriptorSetLayout, *this->descriptorPool);
+	for (StarObject& obj : this->renderObjects) {
+		obj.initDescriptors(*this->staticDescriptorSetLayout, *this->descriptorPool);
 	}
 }
 
@@ -256,7 +250,7 @@ void StarSystemRenderObject::createDescriptors() {
 			auto writer = StarDescriptorWriter(this->starDevice, *this->descriptorSetLayout, *this->descriptorPool)
 				.writeBuffer(0, &bufferInfo);
 
-			writer.build(this->renderObjects.at(j)->getDefaultDescriptorSets().at(i));
+			writer.build(this->renderObjects.at(j).get().getDefaultDescriptorSets().at(i));
 		}
 	}
 }

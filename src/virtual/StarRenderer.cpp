@@ -73,7 +73,7 @@ vk::Extent2D StarRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& ca
 vk::Format StarRenderer::findDepthFormat()
 {
 	//utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
-	return this->device->findSupportedFormat(
+	return this->device.findSupportedFormat(
 		{ vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint },
 		vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);

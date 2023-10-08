@@ -53,13 +53,16 @@ set(${PROJECT_NAME}_SOURCE
     "src/BasicWindow.cpp" 
     "src/BasicRenderer.cpp"
     "src/common/Compiler.cpp"
+    "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
-    "src/common/entities/GameObject.cpp"
+    
     "src/virtual/StarRenderer.cpp" 
     "src/StarEngine.cpp" 
     "src/virtual/StarManager.cpp"
     "src/virtual/StarWindow.cpp" 
     "src/virtual/StarDevice.cpp"
+    "src/virtual/StarObject.cpp"
+    "src/virtual/StarScene.cpp"
     "src/wrappers/graphics/StarDescriptors.cpp"  
     "src/wrappers/graphics/StarBuffer.cpp"  
     "src/wrappers/graphics/StarPipeline.cpp"  
@@ -69,18 +72,18 @@ set(${PROJECT_NAME}_SOURCE
     "src/managers/LightManager.cpp"
     "src/managers/ObjectManager.cpp"
     "src/builders/SceneBuilder.cpp"
-      
-     "src/managers/MapManager.cpp" 
-     "src/controllers/CameraController.cpp" 
-     "src/controllers/OptionsController.cpp"
-     "src/modules/InteractionSystem.cpp"
-     "src/systems/StarSystemRenderObj.cpp" 
-     "src/wrappers/graphics/StarPipeline.cpp" 
-     "src/renderers/StarRenderObject.cpp" 
-     "src/renderers/StarRenderMesh.cpp"
-     "src/systems/StarSystemRenderPointLight.cpp" 
-      
-     "src/virtual/StarShader.cpp" "src/common/Interactivity.cpp" "src/virtual/StarMaterial.cpp" "src/common/materials/BumpMaterial.cpp")
+    "src/managers/MapManager.cpp" 
+    "src/controllers/CameraController.cpp" 
+    "src/controllers/OptionsController.cpp"
+    "src/modules/InteractionSystem.cpp"
+    "src/systems/StarSystemRenderObj.cpp" 
+    "src/wrappers/graphics/StarPipeline.cpp" 
+    "src/renderers/StarRenderMesh.cpp"
+    "src/systems/StarSystemRenderPointLight.cpp" 
+    "src/virtual/StarShader.cpp" 
+    "src/virtual/StarMaterial.cpp" 
+    "src/common/materials/BumpMaterial.cpp"
+    "src/common/objects/BasicObject.cpp")
 
 
 set(${PROJECT_NAME}_HEADERS
@@ -88,15 +91,17 @@ set(${PROJECT_NAME}_HEADERS
     "include/BasicDevice.hpp" 
     "include/BasicWindow.hpp" 
     "include/BasicRenderer.hpp"
-    "include/common/entities/GameObject.hpp"
     "include/common/Compiler.hpp"
     "include/common/Interactivity.hpp"
     "include/common/KeyStates.hpp"
     "include/common/materials/BumpMaterial.hpp"
+    "include/common/objects/BasicObject.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
     "include/virtual/StarDevice.hpp"
+    "include/virtual/StarObject.hpp"
+    "include/virtual/StarScene.hpp"
     "include/wrappers/graphics/StarDescriptors.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
     "include/wrappers/graphics/StarTexture.hpp"
@@ -111,7 +116,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/controllers/OptionsController.hpp"
     "include/modules/InteractionSystem.hpp"
     "include/systems/StarSystemRenderObj.hpp"
-    "include/renderers/StarRenderObject.hpp"
     "include/renderers/StarRenderMesh.hpp"
     "include/virtual/StarMaterial.hpp"
     #header only
@@ -138,7 +142,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/FileHelpers.hpp"
     "include/common/helpers/Time.hpp"
     "include/common/VulkanVertex.hpp"
-    "include/common/Scene.hpp"
 )
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
@@ -166,6 +169,7 @@ target_include_directories(${PROJECT_NAME}
         "include/common/entities/"
         "include/common/materials/"
         "include/common/helpers/"
+        "include/common/objects/"
         "include/builders/"
         "include/controllers/"
         "include/modules/"

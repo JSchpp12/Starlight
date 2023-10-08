@@ -2,8 +2,8 @@
 
 #include "Enums.hpp"
 #include "StarEntity.hpp"
+#include "StarObject.hpp"
 #include "Handle.hpp"
-#include "GameObject.hpp"
 
 #include <glm/glm.hpp>
 
@@ -40,7 +40,7 @@ public:
 	}
 	//create light with linked object
 	Light(Type::Light type, glm::vec3 position, glm::vec3 scale,
-		Handle linkedObjectHandle, GameObject& linkedObject,
+		Handle linkedObjectHandle, StarObject& linkedObject,
 		const glm::vec4& ambient, const glm::vec4& diffuse,
 		const glm::vec4& specular, const glm::vec4* direction = nullptr,
 		const float* innerCutoff = nullptr, const float* outerCutoff = nullptr) 
@@ -115,7 +115,7 @@ public:
 	}
 
 	void setLinkedObjectHandle(Handle handle) { this->linkedObjectHandle = handle; }
-	void setLinkedObject(GameObject& object) { this->linkedObject = &object; }
+	void setLinkedObject(StarObject& object) { this->linkedObject = &object; }
 	Handle getLinkedObjectHandle() { return this->linkedObjectHandle.value(); }
 	bool hasLinkedObject() {
 		if (this->linkedObjectHandle)
@@ -133,7 +133,7 @@ public:
 private:
 	//handle to the object that will be rendered along with the light (positional object such as billboard)
 	std::optional<Handle> linkedObjectHandle; 
-	GameObject* linkedObject = nullptr;
+	StarObject* linkedObject = nullptr;
 	float innerDiameter = 0.0f;
 	float outerDiameter = 1.0f;
 	bool enabled = true;
