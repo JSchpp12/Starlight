@@ -44,7 +44,6 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(con
 	std::unique_ptr<std::vector<std::pair<unsigned int, unsigned int>>> sortedIds;
 	std::vector<std::unique_ptr<BumpMaterial>> objectMaterials;
 	std::vector<std::unique_ptr<StarMesh>> meshes(shapes.size());
-	std::unique_ptr<std::vector<Triangle>> triangles;
 	tinyobj::material_t* currMaterial = nullptr;
 	std::unique_ptr<StarMaterial> objectMaterial;
 
@@ -86,60 +85,62 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(con
 
 		//need to scale object so that it fits on screen
 		//combine all attributes into a single object 
-		std::array<Vertex, 3> triangleVerticies;
 		int dIndex = 0;
 		for (const auto& shape : shapes) {
 			triangleCounter = 0;
 			threeCounter = 0;
 			counter = 0;
 
-			//tinyobj ensures three verticies per triangle  -- assuming unique verticies 
-			verticies = std::make_unique<std::vector<Vertex>>(shape.mesh.indices.size());
+			//tinyobj ensures three verticies per triangle  -- assuming unique vertices 
 			const std::vector<tinyobj::index_t>& indicies = shape.mesh.indices;
-			triangles = std::make_unique<std::vector<Triangle>>(shape.mesh.material_ids.size());
-
+			auto fullInd = std::make_unique<std::vector<uint32_t>>(shape.mesh.indices.size());
+			auto vertices = std::make_unique<std::vector<Vertex>>(shape.mesh.indices.size());
+			size_t vertCounter = 0;
 			for (size_t faceIndex = 0; faceIndex < shape.mesh.material_ids.size(); faceIndex++) {
 				for (int i = 0; i < 3; i++) {
 					dIndex = (3 * faceIndex) + i;
-					triangleVerticies[i].pos = {
+					auto newVertex = Vertex(); 
+					newVertex.pos = glm::vec3{
 						attrib.vertices[3 * indicies[dIndex].vertex_index + 0],
 						attrib.vertices[3 * indicies[dIndex].vertex_index + 1],
-						attrib.vertices[3 * indicies[dIndex].vertex_index + 2],
+						attrib.vertices[3 * indicies[dIndex].vertex_index + 2]
 					};
-
-					triangleVerticies[i].color = {
+					newVertex.color = glm::vec3{
 						attrib.colors[3 * indicies[dIndex].vertex_index + 0],
 						attrib.colors[3 * indicies[dIndex].vertex_index + 1],
 						attrib.colors[3 * indicies[dIndex].vertex_index + 2],
 					};
 
 					if (attrib.normals.size() > 0) {
-						triangleVerticies[i].normal = {
+						newVertex.normal = {
 							attrib.normals[3 * indicies[dIndex].normal_index + 0],
 							attrib.normals[3 * indicies[dIndex].normal_index + 1],
 							attrib.normals[3 * indicies[dIndex].normal_index + 2],
 						};
 					}
 
-					triangleVerticies[i].texCoord = {
+					newVertex.texCoord = {
 						attrib.texcoords[2 * indicies[dIndex].texcoord_index + 0],
 						1.0f - attrib.texcoords[2 * indicies[dIndex].texcoord_index + 1]
 					};
+
 					if (shape.mesh.material_ids.at(faceIndex) != -1) {
 						//use the overridden material if provided, otherwise use the prop from mtl file
-						triangleVerticies[i].matAmbient = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->ambient;
-						triangleVerticies[i].matDiffuse = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->diffuse;
-						triangleVerticies[i].matSpecular = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->specular;
-						triangleVerticies[i].matShininess = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->shinyCoefficient;
+						newVertex.matAmbient = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->ambient;
+						newVertex.matDiffuse = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->diffuse;
+						newVertex.matSpecular = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->specular;
+						newVertex.matShininess = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->shinyCoefficient;
 					}
-				}
 
-				triangles->at(faceIndex) = Triangle(triangleVerticies);
+					vertices->at(vertCounter) = newVertex;
+					fullInd->at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter); 
+					vertCounter++; 
+				};
 			}
 
 			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
 				//apply material from files to mesh -- will ignore passed values 
-				meshes.at(shapeCounter) = std::make_unique<StarMesh>(std::move(triangles), std::move(objectMaterials.at(shape.mesh.material_ids[0])));
+				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(std::move(vertices), std::move(fullInd), std::move(objectMaterials.at(shape.mesh.material_ids[0]))));
 			}
 			shapeCounter++;
 		}

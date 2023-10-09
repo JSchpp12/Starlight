@@ -1,5 +1,6 @@
 #pragma once 
 
+#include "CastHelpers.hpp"
 #include "StarObject.hpp"
 #include "Handle.hpp"
 #include "Enums.hpp"
@@ -31,7 +32,8 @@ namespace star {
 			glm::mat4 modelMatrix;
 			glm::mat4 normalMatrix;
 		};
-		uint32_t totalNumVerticies = 0;
+		uint32_t totalNumIndices = 0;
+		uint32_t totalNumVertices = 0; 
 
 		StarSystemRenderObject(StarDevice& device, size_t numSwapChainImages, vk::DescriptorSetLayout globalSetLayout,
 			vk::Extent2D swapChainExtent, vk::RenderPass renderPass) :
@@ -39,7 +41,7 @@ namespace star {
 			globalSetLayout(globalSetLayout), swapChainExtent(swapChainExtent),
 			renderPass(renderPass) {};
 
-		StarSystemRenderObject(const StarSystemRenderObject& baseObject);
+		StarSystemRenderObject(const StarSystemRenderObject& baseObject) = default;
 
 		virtual ~StarSystemRenderObject();
 
@@ -88,7 +90,7 @@ namespace star {
 		virtual StarDescriptorSetLayout* getSetLayout() { return this->descriptorSetLayout.get(); }
 		virtual StarDescriptorPool* getDescriptorPool() { return this->descriptorPool.get(); }
 		virtual StarBuffer* getBufferAt(int i) { return this->uniformBuffers.at(i).get(); }
-		uint32_t getNumVerticies() { return this->totalNumVerticies; }
+		uint32_t getNumIndices() { return this->totalNumIndices; }
 	protected:
 		bool ownerOfSetLayout = true;
 		StarDevice& starDevice;
