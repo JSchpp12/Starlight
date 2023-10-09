@@ -82,7 +82,9 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarMaterial.cpp" 
     "src/common/materials/BumpMaterial.cpp"
     "src/common/materials/VertColorMaterial.cpp"
-    "src/common/objects/BasicObject.cpp")
+    "src/common/objects/BasicObject.cpp"
+    "src/common/objects/Square.cpp"
+)
 
 
 set(${PROJECT_NAME}_HEADERS
@@ -96,6 +98,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/materials/BumpMaterial.hpp"
     "include/common/materials/VertColorMaterial.hpp"
     "include/common/objects/BasicObject.hpp"
+    "include/common/objects/Square.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
