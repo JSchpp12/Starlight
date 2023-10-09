@@ -4,7 +4,7 @@
 
 #include "StarEntity.hpp"
 #include "StarDescriptors.hpp"
-#include "StarRenderMesh.hpp"
+#include "StarMesh.hpp"
 #include "StarTexture.hpp"
 
 #include <glm/glm.hpp>
@@ -29,8 +29,8 @@ namespace star {
 		/// Create an object from manually defined/generated mesh structures
 		/// </summary>
 		/// <param name="meshes"></param>
-		StarObject(std::vector<std::unique_ptr<Mesh>> meshes)
-			: meshes(std::move(meshes)), uboDescriptorSets(3) {
+		StarObject()
+			: uboDescriptorSets(3) {
 			vertShader.shaderStage = Shader_Stage::vertex; 
 			fragShader.shaderStage = Shader_Stage::fragment;
 		};
@@ -38,23 +38,29 @@ namespace star {
 		virtual ~StarObject() = default;
 
 		/// <summary>
-		/// Create any necessary objects needed for rendering operations
+		/// Function which loads a mesh.
+		/// </summary>
+		/// <returns></returns>
+		virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes() = 0; 
+
+		/// <summary>
+		/// Prepare needed objects for rendering operations.
 		/// </summary>
 		/// <param name="device"></param>
-		virtual void prepRender(StarDevice& device) = 0;
+		virtual void prepRender(StarDevice& device);
 
 		///// <summary>
 		///// Function which is called before render pass. Should be used to update buffers.
 		///// </summary>
 		//virtual void update() = 0;
 
-		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout) = 0;
+		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout);
 
 		/// <summary>
 		/// Init object with needed descriptors
 		/// </summary>
 		/// <param name="descriptorWriter"></param>
-		virtual void initDescriptors(StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool) = 0;
+		virtual void initDescriptors(StarDevice& device, StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool);
 
 		/// <summary>
 		/// Create render call
@@ -62,8 +68,7 @@ namespace star {
 		/// <param name="commandBuffer"></param>
 		/// <param name="pipelineLayout"></param>
 		/// <param name="swapChainIndexNum"></param>
-		virtual void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum) = 0; 
-
+		virtual void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum); 
 
 #pragma region getters
 		//get the handle for the vertex shader 
@@ -71,14 +76,13 @@ namespace star {
 		//get the handle for the fragment shader
 		Handle getFragShader() { return fragShader; }
 		glm::mat4 getNormalMatrix() { return glm::inverseTranspose(getDisplayMatrix()); }
-		const std::vector<std::unique_ptr<Mesh>>& getMeshes() { return this->meshes; }
+		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
 		std::vector<vk::DescriptorSet>& getDefaultDescriptorSets() { return this->uboDescriptorSets; }
 #pragma endregion
 
 	protected:
-		std::vector<std::unique_ptr<Mesh>> meshes;
 		std::vector<vk::DescriptorSet> uboDescriptorSets;
-		std::vector<std::unique_ptr<StarRenderMesh>> renderMeshes;
+		std::vector<std::unique_ptr<StarMesh>> meshes;
 		Handle vertShader = Handle::getDefault(), fragShader = Handle::getDefault();
 	};
 }

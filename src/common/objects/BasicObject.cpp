@@ -2,45 +2,15 @@
 
 std::unique_ptr<star::BasicObject> star::BasicObject::New(std::string objPath)
 {
-	std::vector<std::unique_ptr<Mesh>> meshes = loadFromFile(objPath); 
-
-	return std::unique_ptr<BasicObject>(new BasicObject(std::move(meshes)));
+	return std::unique_ptr<BasicObject>(new BasicObject(objPath));
 }
 
-void star::BasicObject::prepRender(StarDevice& device)
+std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes()
 {
-	uint32_t vertCounter = 0; 
-
-	for (int i = 0; i < this->meshes.size(); i++) {
-		this->renderMeshes.emplace_back(std::make_unique<StarRenderMesh>(device, *meshes[i], vertCounter));
-		this->renderMeshes[i]->prepRender(device); 
-		vertCounter += meshes[i]->getTriangles().size() * 3;
-	}
+	return std::move(loadFromFile(objectFilePath)); 
 }
 
-void star::BasicObject::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout)
-{
-	for (auto& rmesh : this->renderMeshes) {
-		rmesh->initDescriptorLayouts(constLayout);
-	}
-}
-
-void star::BasicObject::initDescriptors(StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool)
-{
-	//add descriptors for each mesh -- right now this is the image descriptor
-	for (auto& rmesh : this->renderMeshes) {
-		rmesh->initDescriptors(constLayout, descriptorPool);
-	}
-}
-
-void star::BasicObject::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum)
-{
-	for (auto& rmesh : this->renderMeshes) {
-		rmesh->render(commandBuffer, pipelineLayout, swapChainIndexNum);
-	}
-}
-
-std::vector<std::unique_ptr<star::Mesh>> star::BasicObject::loadFromFile(const std::string objectFilePath)
+std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(const std::string objectFilePath)
 {
 	std::string texturePath = FileHelpers::GetBaseFileDirectory(objectFilePath);
 	std::string materialFile = FileHelpers::GetBaseFileDirectory(objectFilePath);
@@ -73,7 +43,7 @@ std::vector<std::unique_ptr<star::Mesh>> star::BasicObject::loadFromFile(const s
 	std::unique_ptr<std::vector<uint32_t>> indicies;
 	std::unique_ptr<std::vector<std::pair<unsigned int, unsigned int>>> sortedIds;
 	std::vector<std::unique_ptr<BumpMaterial>> objectMaterials;
-	std::vector<std::unique_ptr<Mesh>> meshes(shapes.size());
+	std::vector<std::unique_ptr<StarMesh>> meshes(shapes.size());
 	std::unique_ptr<std::vector<Triangle>> triangles;
 	tinyobj::material_t* currMaterial = nullptr;
 	std::unique_ptr<StarMaterial> objectMaterial;
@@ -169,7 +139,7 @@ std::vector<std::unique_ptr<star::Mesh>> star::BasicObject::loadFromFile(const s
 
 			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
 				//apply material from files to mesh -- will ignore passed values 
-				meshes.at(shapeCounter) = std::make_unique<Mesh>(std::move(triangles), std::move(objectMaterials.at(shape.mesh.material_ids[0])));
+				meshes.at(shapeCounter) = std::make_unique<StarMesh>(std::move(triangles), std::move(objectMaterials.at(shape.mesh.material_ids[0])));
 			}
 			shapeCounter++;
 		}
