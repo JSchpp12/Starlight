@@ -81,6 +81,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarShader.cpp" 
     "src/virtual/StarMaterial.cpp" 
     "src/common/materials/BumpMaterial.cpp"
+    "src/common/materials/VertColorMaterial.cpp"
     "src/common/objects/BasicObject.cpp")
 
 
@@ -93,6 +94,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/Interactivity.hpp"
     "include/common/KeyStates.hpp"
     "include/common/materials/BumpMaterial.hpp"
+    "include/common/materials/VertColorMaterial.hpp"
     "include/common/objects/BasicObject.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
@@ -123,7 +125,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/enums/Key.hpp"
     "include/structs/Handle.hpp"
     "include/structs/LightBufferObject.hpp"
-    "include/structs/Triangle.hpp"
     "include/structs/Vertex.hpp"
     "include/templates/StarMemoryManager.hpp"
     "include/templates/StarApplication.hpp"
@@ -137,6 +138,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/DebugHelpers.hpp"
     "include/common/helpers/FileHelpers.hpp"
     "include/common/helpers/Time.hpp"
+    "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
 )
 

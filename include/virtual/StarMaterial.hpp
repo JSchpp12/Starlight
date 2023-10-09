@@ -35,7 +35,7 @@ namespace star {
 		/// <param name="staticDescriptorSetLayout">DescriptorSetLayout to be used when creating object descriptors which are updated once (during init)</param>
 		virtual void buildConstDescriptor(StarDescriptorWriter writer) = 0;
 
-		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex) = 0; 
+		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)=0; 
 
 #pragma region getters
 		vk::DescriptorSet& getDescriptorSet() { return this->descriptorSet; }

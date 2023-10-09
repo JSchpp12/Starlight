@@ -20,6 +20,6 @@ void star::StarMesh::initDescriptors(StarDevice& device, star::StarDescriptorSet
 void star::StarMesh::render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex) {
 	this->material->bind(commandBuffer, pipelineLayout, swapChainImageIndex);
 
-	auto vertCount = this->triangles->size() * 3; 
+	uint32_t vertCount = CastHelpers::size_t_to_unsigned_int(this->indices->size());
 	commandBuffer.drawIndexed(vertCount, 1, 0, this->vbOffset, 0);
 }

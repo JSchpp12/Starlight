@@ -1,9 +1,11 @@
 #pragma once
 
+#include "CastHelpers.hpp"
 #include "FileHelpers.hpp"
 #include "StarMesh.hpp"
 #include "StarDevice.hpp"
 #include "StarObject.hpp"
+
 
 #include <tiny_obj_loader.h>
 

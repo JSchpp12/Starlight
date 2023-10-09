@@ -21,8 +21,10 @@ void StarSystemRenderObject::registerShader(vk::ShaderStageFlagBits stage, StarS
 void StarSystemRenderObject::addObject(StarObject& newObject) {
 	this->numMeshes += newObject.getMeshes().size();
 	for (auto& mesh : newObject.getMeshes()) {
-		this->totalNumVerticies += mesh->getTriangles().size() * 3;
+		this->totalNumIndices += mesh->getIndices().size();
+		this->totalNumVertices += mesh->getVertices().size(); 
 	}
+
 	this->renderObjects.push_back(newObject);
 }
 
@@ -110,21 +112,15 @@ void StarSystemRenderObject::createVertexBuffer() {
 
 	//TODO: ensure that more objects can be drawn 
 	StarObject* currObject = nullptr;
-	std::vector<Vertex> vertexList(this->totalNumVerticies);
+	std::vector<Vertex> vertexList(this->totalNumVertices);
 	size_t vertexCounter = 0;
 
-	for (auto& object : this->renderObjects) {
-		const std::vector<std::unique_ptr<StarMesh>>& currObjectMeshes = object.get().getMeshes();
-
-		//copy verticies from the render object into the total vertex list for the vulkan object
-		for (size_t i = 0; i < currObjectMeshes.size(); i++) {
-			auto& triangles = currObjectMeshes.at(i)->getTriangles();
-
-			for (size_t j = 0; j < triangles.size(); j++) {
-				for (int k = 0; k < 3; k++) {
-					vertexList.at(vertexCounter) = triangles.at(j).vertices[k];
-					vertexCounter++;
-				}
+	//copy verts from each object in this system and combine into big list
+	for (StarObject& object : this->renderObjects) {;
+		for (auto& mesh : object.getMeshes()) {
+			for (int i = 0; i < mesh->getVertices().size(); i++) {
+				vertexList.at(vertexCounter) = mesh->getVertices().at(i); 
+				vertexCounter++; 
 			}
 		}
 	}
@@ -165,21 +161,19 @@ void StarSystemRenderObject::createRenderBuffers() {
 }
 
 void StarSystemRenderObject::createIndexBuffer() {
-	//TODO: will only support one object at the moment
-	std::vector<uint32_t> indiciesList(this->totalNumVerticies);
+	std::vector<uint32_t> indiciesList(this->totalNumIndices);
 	StarObject* currObject = nullptr;
-	size_t indexCounter = 0; //used to keep track of index offsets 
+	uint32_t totalVertCounter = 0;
+	uint32_t startVertCounter = 0; //used to keep track of index offsets 
 
-	//ENSURE THIS IS COUNTING RIGHT -- draw triangles in order
 	for (StarObject& object : this->renderObjects) {
-		for (size_t j = 0; j < object.getMeshes().size(); j++) {
-			auto& mesh = object.getMeshes().at(j);
-			for (size_t k = 0; k < mesh->getTriangles().size(); k++) {
-				indiciesList.at(indexCounter + 0) = indexCounter + 0;
-				indiciesList.at(indexCounter + 1) = indexCounter + 1;
-				indiciesList.at(indexCounter + 2) = indexCounter + 2;
-				indexCounter += 3;
+		for (auto& mesh : object.getMeshes()) {
+			for (size_t i = 0; i < mesh->getIndices().size(); i++) {
+				uint32_t ind = CastHelpers::size_t_to_unsigned_int(mesh->getIndices().at(i)) + startVertCounter;
+				indiciesList.at(totalVertCounter) = ind;
+				totalVertCounter++;
 			}
+			startVertCounter += mesh->getVertices().size();
 		}
 	}
 
