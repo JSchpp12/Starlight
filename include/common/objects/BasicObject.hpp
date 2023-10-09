@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FileHelpers.hpp"
+#include "StarMesh.hpp"
 #include "StarDevice.hpp"
 #include "StarObject.hpp"
 
@@ -16,23 +18,18 @@ namespace star {
 
 		virtual ~BasicObject() = default; 
 
-		void prepRender(StarDevice& device) override;
-
-		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout) override;
-
-		void initDescriptors(StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool) override;
-
-		void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum) override;
-
+		std::vector<std::unique_ptr<StarMesh>> loadMeshes() override;
 	protected:
-		BasicObject(std::vector<std::unique_ptr<Mesh>> meshes)
-			: StarObject(std::move(meshes)) {}; 
+		BasicObject(std::string objectFilePath)
+			: StarObject(), objectFilePath(objectFilePath){};
+
+		std::string objectFilePath;
 
 		/// <summary>
 		/// Load meshes from file
 		/// </summary>
 		/// <param name="objectFilePath">Path of the file to load</param>
 		/// <returns></returns>
-		static std::vector<std::unique_ptr<Mesh>> loadFromFile(const std::string objectFilePath);
+		static std::vector<std::unique_ptr<StarMesh>> loadFromFile(const std::string objectFilePath);
 	};
 }

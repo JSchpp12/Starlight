@@ -114,7 +114,7 @@ void StarSystemRenderObject::createVertexBuffer() {
 	size_t vertexCounter = 0;
 
 	for (auto& object : this->renderObjects) {
-		const std::vector<std::unique_ptr<Mesh>>& currObjectMeshes = object.get().getMeshes();
+		const std::vector<std::unique_ptr<StarMesh>>& currObjectMeshes = object.get().getMeshes();
 
 		//copy verticies from the render object into the total vertex list for the vulkan object
 		for (size_t i = 0; i < currObjectMeshes.size(); i++) {
@@ -223,7 +223,7 @@ void StarSystemRenderObject::createDescriptorLayouts() {
 		.build();
 
 	for (StarObject& obj : this->renderObjects) {
-		obj.initDescriptors(*this->staticDescriptorSetLayout, *this->descriptorPool);
+		obj.initDescriptors(this->starDevice, *this->staticDescriptorSetLayout, *this->descriptorPool);
 	}
 }
 
