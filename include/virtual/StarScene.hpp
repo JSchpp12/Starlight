@@ -3,7 +3,7 @@
 #include "StarObject.hpp"
 #include "Light.hpp"
 
-#include "Camera.hpp"
+#include "StarCamera.hpp"
 
 #include <vector>
 #include <memory>

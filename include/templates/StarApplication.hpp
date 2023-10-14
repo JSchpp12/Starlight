@@ -1,8 +1,7 @@
 #pragma once
 
-#include "CameraController.hpp"
+#include "BasicCamera.hpp"
 #include "Handle.hpp"
-#include "Camera.hpp"
 #include "Time.hpp"
 #include "Interactivity.hpp"
 #include "StarObject.hpp"
@@ -37,10 +36,10 @@ namespace star {
 
         virtual void onScroll(double xoffset, double yoffset) override {};
 
-        virtual Camera& getCamera() { return camera;  }
+        virtual StarCamera& getCamera() { return camera;  }
 
     protected:
-        CameraController camera;
+        BasicCamera camera;
         StarScene& scene; 
         Time time = Time();
 

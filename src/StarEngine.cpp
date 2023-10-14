@@ -25,12 +25,12 @@ void StarEngine::Run()
 	}
 }
 
-void StarEngine::init(RenderOptions& renderOptions, Camera& camera) {
+void StarEngine::init(RenderOptions& renderOptions, StarCamera& camera) {
 	StarEngine::shaderManager.setDefault(StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.vert",
 		StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.frag");
 
 	//parse light information
-	this->window = BasicWindow::New(800, 600, "Test");
+	this->window = BasicWindow::New(1600, 1200, "Test");
 
 	this->renderingDevice = StarDevice::New(*window);
 	auto renderBuilder = BasicRenderer::Builder(*this->window,

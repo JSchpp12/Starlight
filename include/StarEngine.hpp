@@ -33,7 +33,7 @@ public:
 
 	void Run();
 
-	void init(RenderOptions& renderOptions, Camera& camera);
+	void init(RenderOptions& renderOptions, StarCamera& camera);
 
 
 	std::vector<std::unique_ptr<StarObject>>& getObjList() { return this->objects; }

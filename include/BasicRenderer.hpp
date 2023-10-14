@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Camera.hpp"
+#include "StarCamera.hpp"
 #include "StarRenderer.hpp"
 #include "StarWindow.hpp"
 #include "StarDescriptors.hpp"
@@ -30,7 +30,7 @@ public:
 	public:
 		Builder(StarWindow& window, 
 			MapManager& mapManager, ShaderManager& shaderManager, 
-			Camera& camera, RenderOptions& renderOptions, StarDevice& device)
+			StarCamera& camera, RenderOptions& renderOptions, StarDevice& device)
 			: window(window), mapManager(mapManager), shaderManager(shaderManager), 
 			camera(camera), renderOptions(renderOptions), device(device) {};
 
@@ -55,7 +55,7 @@ public:
 		StarWindow& window;
 		MapManager& mapManager;
 		ShaderManager& shaderManager; 
-		Camera& camera;
+		StarCamera& camera;
 		StarDevice& device; 
 		RenderOptions& renderOptions; 
 		std::vector<std::reference_wrapper<Light>> lightList;
@@ -138,7 +138,7 @@ protected:
 
 	BasicRenderer(StarWindow& window, 
 		MapManager& mapManager, ShaderManager& shaderManager, std::vector<std::reference_wrapper<Light>> inLightList, 
-		std::vector<std::reference_wrapper<StarObject>> objectList, Camera& camera, RenderOptions& renderOptions, StarDevice& device);
+		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, RenderOptions& renderOptions, StarDevice& device);
 
 	virtual void prepare();
 

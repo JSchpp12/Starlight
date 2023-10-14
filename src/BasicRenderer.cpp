@@ -7,7 +7,7 @@ namespace star {
 BasicRenderer::BasicRenderer(StarWindow& window , 
 	MapManager& mapManager, ShaderManager& shaderManager, 
 	std::vector<std::reference_wrapper<Light>> inLightList, std::vector<std::reference_wrapper<StarObject>> objectList, 
-	Camera& camera, RenderOptions& renderOptions, StarDevice& device) :
+	StarCamera& camera, RenderOptions& renderOptions, StarDevice& device) :
 	StarRenderer(window, shaderManager, camera, device), 
 	mapManager(mapManager), shaderManager(shaderManager), lightList(inLightList), objectList(objectList), renderOptions(renderOptions)
 {

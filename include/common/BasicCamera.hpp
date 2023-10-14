@@ -1,5 +1,5 @@
 #pragma once 
-#include "Camera.hpp"
+#include "StarCamera.hpp"
 #include "Interactivity.hpp"
 #include "KeyStates.hpp"
 #include "Time.hpp"
@@ -13,13 +13,13 @@ namespace star {
 	/// <summary>
 	/// Camera with default controls
 	/// </summary>
-	class CameraController :
-		public Camera,
+	class BasicCamera :
+		public StarCamera,
 		public Interactivity
 	{
 	public:
-		CameraController(); 
-		~CameraController() = default; 
+		BasicCamera();
+		~BasicCamera() = default;
 
 		/// <summary>
 		/// Key callback for camera object. Implements default controls for the camera. 
@@ -30,7 +30,7 @@ namespace star {
 		/// <param name="mods"></param>
 		virtual void onKeyPress(int key, int scancode, int mods) override;
 
-		virtual void onKeyRelease(int key, int scancode, int mods) override; 
+		virtual void onKeyRelease(int key, int scancode, int mods) override;
 
 		/// <summary>
 		/// Mouse callback for camera objects. Implements default controls for the camera. 

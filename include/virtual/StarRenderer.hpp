@@ -4,7 +4,7 @@
 #include "StarWindow.hpp"
 #include "StarShader.hpp"
 #include "FileResourceManager.hpp"
-#include "Camera.hpp"
+#include "StarCamera.hpp"
 
 #include <memory>
 
@@ -34,12 +34,12 @@ protected:
         alignas(4) uint32_t renderOptions;
     };
     FileResourceManager<StarShader>& shaderManager;
-    Camera& camera;
+    StarCamera& camera;
     StarWindow& window;
     StarDevice& device;
 
 	StarRenderer(StarWindow& window, FileResourceManager<StarShader>& shaderManager,
-        Camera& inCamera, StarDevice& device) 
+        StarCamera& inCamera, StarDevice& device) 
         : window(window), shaderManager(shaderManager), camera(inCamera), device(device){};
 
 #pragma region helpers

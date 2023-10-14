@@ -72,7 +72,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/managers/LightManager.cpp"
     "src/managers/ObjectManager.cpp"
     "src/managers/MapManager.cpp" 
-    "src/controllers/CameraController.cpp" 
+     
     "src/controllers/OptionsController.cpp"
     "src/modules/InteractionSystem.cpp"
     "src/systems/StarSystemRenderObj.cpp" 
@@ -80,10 +80,12 @@ set(${PROJECT_NAME}_SOURCE
     "src/systems/StarSystemRenderPointLight.cpp" 
     "src/virtual/StarShader.cpp" 
     "src/virtual/StarMaterial.cpp" 
+    "src/virtual/StarCamera.cpp"
     "src/common/materials/BumpMaterial.cpp"
     "src/common/materials/VertColorMaterial.cpp"
     "src/common/objects/BasicObject.cpp"
     "src/common/objects/Square.cpp"
+    "src/common/BasicCamera.cpp"
 )
 
 
@@ -99,6 +101,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/materials/VertColorMaterial.hpp"
     "include/common/objects/BasicObject.hpp"
     "include/common/objects/Square.hpp"
+    "include/common/BasicCamera.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
@@ -106,6 +109,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarObject.hpp"
     "include/virtual/StarScene.hpp"
     "include/virtual/StarMesh.hpp"
+    "include/virtual/StarCamera.hpp"
     "include/wrappers/graphics/StarDescriptors.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
     "include/wrappers/graphics/StarTexture.hpp"
@@ -115,7 +119,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/managers/LightManager.hpp"
     "include/managers/ObjectManager.hpp"
     "include/managers/MapManager.hpp"
-    "include/controllers/CameraController.hpp"
     "include/controllers/OptionsController.hpp"
     "include/modules/InteractionSystem.hpp"
     "include/systems/StarSystemRenderObj.hpp"
@@ -135,7 +138,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/templates/FileResourceManager.hpp"
     "include/templates/FileResourceContainer.hpp"
     "include/common/ConfigFile.hpp"
-    "include/common/Camera.hpp"
     "include/common/Texture.hpp"
     "include/common/RenderOptions.hpp"
     "include/common/helpers/DebugHelpers.hpp"
