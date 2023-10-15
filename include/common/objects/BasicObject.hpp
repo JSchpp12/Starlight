@@ -35,11 +35,5 @@ namespace star {
 		/// <param name="objectFilePath">Path of the file to load</param>
 		/// <returns></returns>
 		void loadFromFile(const std::string objectFilePath);
-
-		// Inherited via StarObject
-		void prepRender(StarDevice& device) override;
-		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout) override;
-		void initDescriptors(StarDevice& device, StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool) override;
-		void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum) override;
 	};
 }

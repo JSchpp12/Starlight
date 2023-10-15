@@ -42,20 +42,20 @@ namespace star {
 		/// Prepare needed objects for rendering operations.
 		/// </summary>
 		/// <param name="device"></param>
-		virtual void prepRender(StarDevice& device)=0;
+		virtual void prepRender(StarDevice& device);
 
 		///// <summary>
 		///// Function which is called before render pass. Should be used to update buffers.
 		///// </summary>
 		//virtual void update() = 0;
 
-		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout)=0;
+		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout);
 
 		/// <summary>
 		/// Init object with needed descriptors
 		/// </summary>
 		/// <param name="descriptorWriter"></param>
-		virtual void initDescriptors(StarDevice& device, StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool)=0;
+		virtual void initDescriptors(StarDevice& device, StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool);
 
 		/// <summary>
 		/// Create render call
@@ -63,7 +63,7 @@ namespace star {
 		/// <param name="commandBuffer"></param>
 		/// <param name="pipelineLayout"></param>
 		/// <param name="swapChainIndexNum"></param>
-		virtual void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum)=0; 
+		virtual void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum); 
 
 #pragma region getters
 		//get the handle for the vertex shader 
