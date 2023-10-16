@@ -2,6 +2,7 @@
 
 #include "BasicRenderer.hpp"
 #include "BasicWindow.hpp"
+#include "Color.hpp"
 #include "ConfigFile.hpp"
 #include "Light.hpp"
 #include "ShaderManager.hpp"

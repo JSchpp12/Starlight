@@ -132,6 +132,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/structs/Handle.hpp"
     "include/structs/LightBufferObject.hpp"
     "include/structs/Vertex.hpp"
+    "include/structs/Color.hpp"
     "include/templates/StarMemoryManager.hpp"
     "include/templates/StarApplication.hpp"
     "include/templates/StarResourceContainer.hpp"

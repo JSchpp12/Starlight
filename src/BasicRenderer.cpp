@@ -209,10 +209,10 @@ void BasicRenderer::draw()
 	   * two ways of doing this:
 	   *   1. fences
 	   *       accessed through calls to vkWaitForFences
-	   *       designed to synchronize appliecation itself with rendering ops
+	   *       designed to synchronize application itself with rendering ops
 	   *   2. semaphores
 	   *       designed to synchronize opertaions within or across command queues
-	   * need to sync queu operations of draw and presentation commmands -> using semaphores
+	   * need to sync queue operations of draw and presentation commmands -> using semaphores
 	   */
 
 	   //wait for fence to be ready 

@@ -153,9 +153,9 @@ void StarTexture::createImageSampler() {
 	samplerInfo.minFilter = vk::Filter::eLinear;                       //how to sample textures that are minified
 
 	//repeat mode - repeat the texture when going beyond the image dimensions
-	samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+	samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
+	samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
+	samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
 
 	//should anisotropic filtering be used? Really only matters if performance is a concern
 	samplerInfo.anisotropyEnable = VK_TRUE;
