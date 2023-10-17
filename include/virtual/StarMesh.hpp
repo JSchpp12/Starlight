@@ -22,12 +22,10 @@ namespace star {
 			for (int i = 0; i < this->indices->size() - 3; i += 3) {
 				//go through each group of 3 verts -- assume they are triangles
 				//apply needed calculations
-				auto center = this->indices->at(i);
-				auto middle = this->indices->at(i + 1);
 
 				std::array<Vertex*, 3> triVerts{
 					&this->vertices->at(this->indices->at(i)),
-					&this->vertices->at(middle),
+					&this->vertices->at(this->indices->at(i + 1)),
 					&this->vertices->at(this->indices->at(i + 2))
 				};
 				calculateTangentSpaceVectors(triVerts);

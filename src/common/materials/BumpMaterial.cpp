@@ -2,8 +2,8 @@
 
 void star::BumpMaterial::prepRender(StarDevice& device)
 {
-	renderTexture = std::unique_ptr<StarTexture>(new StarTexture(device, *this->texture)); 
-	renderBumpMap = std::unique_ptr<StarTexture>(new StarTexture(device, *this->bumpMap)); 
+	texture->prepRender(device); 
+	bumpMap->prepRender(device); 
 }
 
 void star::BumpMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder)
@@ -15,14 +15,14 @@ void star::BumpMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder&
 void star::BumpMaterial::buildConstDescriptor(StarDescriptorWriter writer)
 {
 	auto texInfo = vk::DescriptorImageInfo{
-		renderTexture->getSampler(),
-		renderTexture->getImageView(),
+		texture->getSampler(),
+		texture->getImageView(),
 		vk::ImageLayout::eShaderReadOnlyOptimal };
 	writer.writeImage(0, texInfo);
 
 	auto bumpInfo = vk::DescriptorImageInfo{
-		renderBumpMap->getSampler(),
-		renderBumpMap->getImageView(),
+		bumpMap->getSampler(),
+		bumpMap->getImageView(),
 		vk::ImageLayout::eShaderReadOnlyOptimal };
 	writer.writeImage(1, bumpInfo);
 
