@@ -7,6 +7,7 @@
 #include "StarObject.hpp"
 #include "StarScene.hpp"
 #include "StarShader.hpp"
+#include "BasicRenderer.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -35,6 +36,8 @@ namespace star {
         virtual void onMouseButtonAction(int button, int action, int mods) override {};
 
         virtual void onScroll(double xoffset, double yoffset) override {};
+
+        virtual std::unique_ptr<StarRenderer> getRenderer(StarDevice& device, StarWindow& window, RenderOptions& options);
 
         virtual StarCamera& getCamera() { return camera;  }
 

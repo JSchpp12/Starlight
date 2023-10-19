@@ -7,6 +7,9 @@ namespace star {
 		Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a) : rr(r), rg(g), rb(b), ra(a) {}; 
 		Color(int r, int g, int b, int a) : rr(r), rg(g), rb(b), ra(a) {};
 
+		//void r(int r) { rr = r; }
+		//void g(int g) { rg = g; }
+		//void b(int b) { rb = b; }
 		int r() { return int(rr); }
 		int g() { return int(rg); }
 		int b() { return int(rb); }

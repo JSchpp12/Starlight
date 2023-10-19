@@ -91,7 +91,6 @@ void StarTexture::transitionImageLayout(vk::Image image, vk::Format format, vk::
 
 	//create a barrier to prevent pipeline from moving forward until image transition is complete
 	vk::ImageMemoryBarrier barrier{};
-	//barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;     //specific flag for image operations
 	barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
 	barrier.oldLayout = oldLayout;
 	barrier.newLayout = newLayout;
@@ -131,14 +130,23 @@ void StarTexture::transitionImageLayout(vk::Image image, vk::Format format, vk::
 		sourceStage = vk::PipelineStageFlagBits::eTransfer;
 		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
 	}
-	else {
+	else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+		//preparing to update texture during runtime, need to wait for top of pipe
+		//barrier.srcAccessMask = vk::AccessFlagBits::;
+		barrier.srcAccessMask = {}; 
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; 
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else{
 		throw std::invalid_argument("unsupported layout transition!");
 	}
 
 	//transfer writes must occurr during the pipeline transfer stage
 	commandBuffer.pipelineBarrier(
 		sourceStage,                        //which pipeline stages should occurr before barrier 
-		destinationStage,                   //pipeline stage in which operations iwll wait on the barrier 
+		destinationStage,                   //pipeline stage in which operations will wait on the barrier 
 		{},
 		{},
 		nullptr,

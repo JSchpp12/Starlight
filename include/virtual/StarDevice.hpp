@@ -83,7 +83,7 @@ public:
 	/// </summary>
 	/// <param name="commandBuffer"></param>
 	/// <param name="useTransferPool">Was command buffer submitted to the transfer pool. Assumed graphics pool otherwise.</param>
-	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, bool useTransferPool = false);
+	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, bool useTransferPool = false, vk::Semaphore* signalFinishSemaphore = nullptr);
 
 	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
 	/// <summary>

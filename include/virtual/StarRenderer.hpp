@@ -5,6 +5,7 @@
 #include "StarShader.hpp"
 #include "FileResourceManager.hpp"
 #include "StarCamera.hpp"
+#include "ShaderManager.hpp"
 
 #include <memory>
 
@@ -18,6 +19,8 @@ public:
 	StarRenderer& operator=(const StarRenderer&) = delete; 
 
     void pollEvents();
+
+    virtual void prepare(ShaderManager& shaderManager) = 0;
 
     virtual void draw() = 0; 
 
@@ -33,14 +36,15 @@ protected:
         uint32_t numLights;                             //number of lights in render
         alignas(4) uint32_t renderOptions;
     };
-    FileResourceManager<StarShader>& shaderManager;
-    StarCamera& camera;
+    StarCamera& camera; 
     StarWindow& window;
     StarDevice& device;
 
-	StarRenderer(StarWindow& window, FileResourceManager<StarShader>& shaderManager,
-        StarCamera& inCamera, StarDevice& device) 
-        : window(window), shaderManager(shaderManager), camera(inCamera), device(device){};
+	StarRenderer(StarWindow& window, StarCamera& inCamera, StarDevice& device) 
+        : window(window), camera(inCamera), device(device){};
+
+    //should be called in destructor
+    //virtual void cleanupRenderer() = 0;
 
 #pragma region helpers
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);

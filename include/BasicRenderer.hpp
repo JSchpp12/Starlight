@@ -26,43 +26,13 @@
 namespace star {
 class BasicRenderer : public StarRenderer {
 public:
-	class Builder {
-	public:
-		Builder(StarWindow& window, 
-			MapManager& mapManager, ShaderManager& shaderManager, 
-			StarCamera& camera, RenderOptions& renderOptions, StarDevice& device)
-			: window(window), mapManager(mapManager), shaderManager(shaderManager), 
-			camera(camera), renderOptions(renderOptions), device(device) {};
-
-		Builder& addLight(Light& light) {
-			this->lightList.push_back(light);
-			return *this;
-		}
-
-		Builder& addObject(StarObject& gameObject) {
-			objectList.emplace_back(gameObject); 
-			return *this; 
-		}
-
-		std::unique_ptr<BasicRenderer> build() {
-			auto newRenderer = std::unique_ptr<BasicRenderer>(new BasicRenderer(window, 
-				mapManager, shaderManager, lightList, objectList, camera, renderOptions, device));
-			newRenderer->prepare();
-			return newRenderer;
-		}
-
-	private:
-		StarWindow& window;
-		MapManager& mapManager;
-		ShaderManager& shaderManager; 
-		StarCamera& camera;
-		StarDevice& device; 
-		RenderOptions& renderOptions; 
-		std::vector<std::reference_wrapper<Light>> lightList;
-		std::vector<std::reference_wrapper<StarObject>> objectList; 
-	}; 
+	BasicRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
+		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, RenderOptions& renderOptions, StarDevice& device);
 
 	virtual ~BasicRenderer();
+
+
+	virtual void prepare(ShaderManager& shaderManager) override;
 
 	virtual void draw(); 
 
@@ -80,14 +50,11 @@ protected:
 		//settings.y = type
 		glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
 	};
-	MapManager& mapManager;
-	ShaderManager& shaderManager; 
 	RenderOptions& renderOptions; 
 
-	std::vector<std::reference_wrapper<Light>> lightList;
+	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
 	std::vector<std::unique_ptr<StarSystemRenderObject>> RenderSysObjs;
-	//std::unique_ptr<StarSystemRenderPointLight> lightRenderSys;
 
 	//texture information
 	vk::ImageView textureImageView;
@@ -129,20 +96,13 @@ protected:
 	vk::ImageView depthImageView;
 
 	//how many frames will be sent through the pipeline
-	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const int MAX_FRAMES_IN_FLIGHT = 1;
 	//tracker for which frame is being processed of the available permitted frames
 	size_t currentFrame = 0;
 
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
-
-	BasicRenderer(StarWindow& window, 
-		MapManager& mapManager, ShaderManager& shaderManager, std::vector<std::reference_wrapper<Light>> inLightList, 
-		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, RenderOptions& renderOptions, StarDevice& device);
-
-	virtual void prepare();
-
-	void updateUniformBuffer(uint32_t currentImage);
+	virtual void updateUniformBuffer(uint32_t currentImage);
 
 	virtual void cleanup();
 
@@ -151,18 +111,18 @@ protected:
 	/// <summary>
 	/// If the swapchain is no longer compatible, it must be recreated.
 	/// </summary>
-	void recreateSwapChain();
+	virtual void recreateSwapChain();
 
 	/// <summary>
 	/// Create a swap chain that will be used in rendering images
 	/// </summary>
-	void createSwapChain();
+	virtual void createSwapChain();
 
 	/// <summary>
 	/// Create an image view object for use in the rendering pipeline
 	/// 'Image View': describes how to access an image and what part of an image to access
 	/// </summary>
-	void createImageViews();
+	virtual void createImageViews();
 
 	vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
 
@@ -170,12 +130,12 @@ protected:
 	/// Create a rendering pass object which will tell vulkan information about framebuffer attachments:
 	/// number of color and depth buffers, how many samples to use for each, how to handle contents
 	/// </summary>
-	void createRenderPass();
+	virtual void createRenderPass();
 
 	/// <summary>
 	/// Create the depth images that will be used by vulkan to run depth tests on fragments. 
 	/// </summary>
-	void createDepthResources();
+	virtual void createDepthResources();
 
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 
@@ -188,37 +148,37 @@ protected:
 	/// <param name="properties"></param>
 	/// <param name="image"></param>
 	/// <param name="imageMemory"></param>
-	void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory);
+	virtual void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory);
 
 	/// <summary>
 	/// Create framebuffers that will hold representations of the images in the swapchain
 	/// </summary>
-	void createFramebuffers();
+	virtual void createFramebuffers();
 
 	/// <summary>
 	/// Create a buffer to hold the UBO data for each shader. Create a buffer for each swap chain image
 	/// </summary>
-	void createRenderingBuffers();
+	virtual void createRenderingBuffers();
 
 	/// <summary>
 	/// Allocate and record the commands for each swapchain image
 	/// </summary>
-	void createCommandBuffers();
+	virtual void createCommandBuffers();
 
 	/// <summary>
 	/// Create semaphores that are going to be used to sync rendering and presentation queues
 	/// </summary>
-	void createSemaphores();
+	virtual void createSemaphores();
 
 	/// <summary>
 	/// Fences are needed for CPU-GPU sync. Creates these required objects
 	/// </summary>
-	void createFences();
+	virtual void createFences();
 
 	/// <summary>
 	/// Create tracking information in order to link fences with the swap chain images using 
 	/// </summary>
-	void createFenceImageTracking();
+	virtual void createFenceImageTracking();
 private:
 
 };

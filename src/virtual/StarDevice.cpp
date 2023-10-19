@@ -401,7 +401,7 @@ vk::CommandBuffer StarDevice::beginSingleTimeCommands(bool useTransferPool) {
 	return tmpCommandBuffer;
 }
 
-void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTransferPool) {
+void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTransferPool, vk::Semaphore* signalFinishSemaphore) {
 	commandBuff.end();
 	if (!this->hasDedicatedTransferQueue)
 		useTransferPool = false;
@@ -412,6 +412,10 @@ void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTr
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuff;
 
+	if (signalFinishSemaphore != nullptr) {
+		submitInfo.pSignalSemaphores = signalFinishSemaphore; 
+		submitInfo.signalSemaphoreCount = 1; 
+	}
 	if (useTransferPool) {
 		this->transferQueue.submit(submitInfo);
 		this->transferQueue.waitIdle();

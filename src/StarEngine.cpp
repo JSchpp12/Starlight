@@ -15,6 +15,8 @@ StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene
 
 void StarEngine::Run()
 {
+	renderer->prepare(shaderManager); 
+
 	while (!window->shouldClose()) {
 		renderer->pollEvents();
 		InteractionSystem::callWorldUpdates();
@@ -22,7 +24,7 @@ void StarEngine::Run()
 	}
 }
 
-void StarEngine::init(RenderOptions& renderOptions, StarCamera& camera) {
+void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 	StarEngine::shaderManager.setDefault(StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.vert",
 		StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.frag");
 
@@ -30,15 +32,7 @@ void StarEngine::init(RenderOptions& renderOptions, StarCamera& camera) {
 	this->window = BasicWindow::New(1600, 1200, "Test");
 
 	this->renderingDevice = StarDevice::New(*window);
-	auto renderBuilder = BasicRenderer::Builder(*this->window,
-		mapManager, shaderManager, camera, renderOptions, *this->renderingDevice);
-	for (auto& light : this->currentScene->getLights()) {
-		renderBuilder.addLight(*light);
-	}
-	for (auto& obj : this->currentScene->getObjects()) {
-		renderBuilder.addObject(*obj);
-	}
 
-	this->renderer = renderBuilder.build();
+	this->renderer = app.getRenderer(*renderingDevice, *window, renderOptions); 
 }
 }
