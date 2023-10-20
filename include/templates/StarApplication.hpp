@@ -15,6 +15,7 @@
 #include <string> 
 #include <vector>
 
+
 namespace star {
     class StarApplication : public Interactivity {
     public:
@@ -22,6 +23,8 @@ namespace star {
             : scene(scene){ 
             this->registerInteractions();
         }
+
+        virtual std::string getApplicationName() = 0; 
 
         virtual ~StarApplication() {};
 
