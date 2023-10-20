@@ -11,25 +11,24 @@
 #include <array>
 
 namespace star {
+
 	class StarMesh {
 	public:
 		StarMesh(std::unique_ptr<std::vector<Vertex>> vertices, std::unique_ptr<std::vector<uint32_t>> indices, 
-			std::unique_ptr<StarMaterial> material, uint32_t vbOffset = 0) : 
+			StarMaterial& material, uint32_t vbOffset = 0) : 
 			vertices(std::move(vertices)), indices(std::move(indices)),
-			material(std::move(material)), vbOffset(vbOffset) {
+			material(material), vbOffset(vbOffset) {
 			//calculate tangents for all provided verts and indices
-			for (int i = 0; i < this->indices->size()-3; i += 3) {
+			for (int i = 0; i < this->indices->size() - 3; i += 3) {
 				//go through each group of 3 verts -- assume they are triangles
 				//apply needed calculations
-				auto center = this->indices->at(i); 
-				auto middle = this->indices->at(i + 1); 
 
 				std::array<Vertex*, 3> triVerts{
 					&this->vertices->at(this->indices->at(i)),
-					&this->vertices->at(middle),
-					&this->vertices->at(this->indices->at(i+2))
+					&this->vertices->at(this->indices->at(i + 1)),
+					&this->vertices->at(this->indices->at(i + 2))
 				};
-				calculateTangentSpaceVectors(triVerts); 
+				calculateTangentSpaceVectors(triVerts);
 			}
 		};
 
@@ -47,7 +46,7 @@ namespace star {
 		std::unique_ptr<std::vector<Vertex>> vertices; 
 		std::unique_ptr<std::vector<uint32_t>> indices; 
 
-		std::unique_ptr<StarMaterial> material; 
+		StarMaterial& material; 
 		uint32_t vbOffset; 
 
 		/// <summary>

@@ -5,12 +5,12 @@ std::unique_ptr<star::BasicObject> star::BasicObject::New(std::string objPath)
 	return std::unique_ptr<BasicObject>(new BasicObject(objPath));
 }
 
-std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes()
+star::BasicObject::BasicObject(std::string objectFilePath)
 {
-	return std::move(loadFromFile(objectFilePath)); 
+	loadFromFile(objectFilePath);
 }
 
-std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(const std::string objectFilePath)
+void star::BasicObject::loadFromFile(const std::string objectFilePath)
 {
 	std::string texturePath = FileHelpers::GetBaseFileDirectory(objectFilePath);
 	std::string materialFile = FileHelpers::GetBaseFileDirectory(objectFilePath);
@@ -42,7 +42,6 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(con
 	std::unique_ptr<std::vector<Vertex>> verticies;
 	std::unique_ptr<std::vector<uint32_t>> indicies;
 	std::unique_ptr<std::vector<std::pair<unsigned int, unsigned int>>> sortedIds;
-	std::vector<std::unique_ptr<BumpMaterial>> objectMaterials;
 	std::vector<std::unique_ptr<StarMesh>> meshes(shapes.size());
 	tinyobj::material_t* currMaterial = nullptr;
 	std::unique_ptr<StarMaterial> objectMaterial;
@@ -64,7 +63,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(con
 				bumpMap = std::unique_ptr<Texture>(new Texture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
 			}
 
-			objectMaterials.push_back(std::unique_ptr<BumpMaterial>( new BumpMaterial(glm::vec4(1.0),
+			this->materials.emplace_back(BumpMaterial(glm::vec4(1.0),
 				glm::vec4(1.0),
 				glm::vec4(1.0),
 				glm::vec4{
@@ -80,7 +79,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(con
 						currMaterial->shininess,
 						std::move(texture),
 						std::move(bumpMap)
-						)));
+						));
 		}
 
 		//need to scale object so that it fits on screen
@@ -126,10 +125,10 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(con
 
 					if (shape.mesh.material_ids.at(faceIndex) != -1) {
 						//use the overridden material if provided, otherwise use the prop from mtl file
-						newVertex.matAmbient = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->ambient;
-						newVertex.matDiffuse = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->diffuse;
-						newVertex.matSpecular = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->specular;
-						newVertex.matShininess = objectMaterials.at(shape.mesh.material_ids.at(faceIndex))->shinyCoefficient;
+						newVertex.matAmbient = this->materials.at(shape.mesh.material_ids.at(faceIndex)).ambient;
+						newVertex.matDiffuse = this->materials.at(shape.mesh.material_ids.at(faceIndex)).diffuse;
+						newVertex.matSpecular = this->materials.at(shape.mesh.material_ids.at(faceIndex)).specular;
+						newVertex.matShininess = this->materials.at(shape.mesh.material_ids.at(faceIndex)).shinyCoefficient;
 					}
 
 					vertices->at(vertCounter) = newVertex;
@@ -140,11 +139,11 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadFromFile(con
 
 			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
 				//apply material from files to mesh -- will ignore passed values 
-				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(std::move(vertices), std::move(fullInd), std::move(objectMaterials.at(shape.mesh.material_ids[0]))));
+				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(std::move(vertices), std::move(fullInd), this->materials.at(shape.mesh.material_ids[0])));
 			}
 			shapeCounter++;
 		}
 	}
 
-	return std::move(meshes);
+	this->meshes = std::move(meshes); 
 }

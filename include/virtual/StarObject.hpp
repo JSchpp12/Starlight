@@ -4,6 +4,7 @@
 
 #include "StarEntity.hpp"
 #include "StarDescriptors.hpp"
+#include "StarMaterial.hpp"
 #include "StarMesh.hpp"
 #include "StarTexture.hpp"
 
@@ -38,12 +39,6 @@ namespace star {
 		virtual ~StarObject() = default;
 
 		/// <summary>
-		/// Function which loads a mesh.
-		/// </summary>
-		/// <returns></returns>
-		virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes() = 0; 
-
-		/// <summary>
 		/// Prepare needed objects for rendering operations.
 		/// </summary>
 		/// <param name="device"></param>
@@ -53,7 +48,6 @@ namespace star {
 		///// Function which is called before render pass. Should be used to update buffers.
 		///// </summary>
 		//virtual void update() = 0;
-
 		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout);
 
 		/// <summary>
@@ -76,13 +70,12 @@ namespace star {
 		//get the handle for the fragment shader
 		Handle getFragShader() { return fragShader; }
 		glm::mat4 getNormalMatrix() { return glm::inverseTranspose(getDisplayMatrix()); }
-		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
-		std::vector<vk::DescriptorSet>& getDefaultDescriptorSets() { return this->uboDescriptorSets; }
+		virtual const std::vector<std::unique_ptr<StarMesh>>& getMeshes() = 0; 
+		virtual std::vector<vk::DescriptorSet>& getDefaultDescriptorSets() { return this->uboDescriptorSets; }
 #pragma endregion
 
 	protected:
 		std::vector<vk::DescriptorSet> uboDescriptorSets;
-		std::vector<std::unique_ptr<StarMesh>> meshes;
 		Handle vertShader = Handle::getDefault(), fragShader = Handle::getDefault();
 	};
 }

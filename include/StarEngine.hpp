@@ -2,13 +2,14 @@
 
 #include "BasicRenderer.hpp"
 #include "BasicWindow.hpp"
+#include "Color.hpp"
 #include "ConfigFile.hpp"
 #include "Light.hpp"
 #include "ShaderManager.hpp"
 #include "LightManager.hpp"
 #include "StarObject.hpp"
 #include "StarScene.hpp"
-
+#include "StarApplication.hpp"
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
@@ -33,7 +34,7 @@ public:
 
 	void Run();
 
-	void init(RenderOptions& renderOptions, StarCamera& camera);
+	void init(StarApplication& application, RenderOptions& renderOptions);
 
 
 	std::vector<std::unique_ptr<StarObject>>& getObjList() { return this->objects; }

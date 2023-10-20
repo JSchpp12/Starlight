@@ -1,39 +1,44 @@
 #include "StarTexture.hpp"
 
 namespace star {
-StarTexture::StarTexture(StarDevice& starDevice, Texture& texture) : starDevice(starDevice) {
-	createTextureImage(texture);
+StarTexture::~StarTexture() {
+	this->device->getDevice().destroySampler(this->textureSampler);
+	this->device->getDevice().destroyImageView(this->textureImageView);
+	this->device->getDevice().destroyImage(this->textureImage);
+
+	this->device->getDevice().freeMemory(this->imageMemory);
+}
+
+void StarTexture::prepRender(StarDevice& device) {
+	this->device = &device; 
+
+	createTextureImage();
 	createTextureImageView();
 	createImageSampler();
 }
 
-StarTexture::~StarTexture() {
-	this->starDevice.getDevice().destroySampler(this->textureSampler);
-	this->starDevice.getDevice().destroyImageView(this->textureImageView);
-	this->starDevice.getDevice().destroyImage(this->textureImage);
+void StarTexture::createTextureImage() {
+	int height = this->getHeight(); 
+	int width = this->getWidth(); 
 
-	this->starDevice.getDevice().freeMemory(this->imageMemory);
-}
-
-void StarTexture::createTextureImage(Texture& texture) {
-	vk::DeviceSize imageSize = texture.width * texture.height * 4;
+	vk::DeviceSize imageSize = width * height * 4;
 
 	StarBuffer stagingBuffer(
-		starDevice,
+		*device,
 		imageSize,
 		1,
 		vk::BufferUsageFlagBits::eTransferSrc,
 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 	stagingBuffer.map();
-	std::unique_ptr<unsigned char> textureData(texture.data());
+	std::unique_ptr<unsigned char> textureData(this->data());
 	stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
-	createImage(texture.width, texture.height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
+	createImage(width, height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
 
 	//copy staging buffer to texture image 
 	transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-	starDevice.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(texture.width), static_cast<uint32_t>(texture.height));
+	device->copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
 	//prepare final image for texture mapping in shaders 
 	transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -59,34 +64,33 @@ void StarTexture::createImage(uint32_t width, uint32_t height, vk::Format format
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
 
-	image = this->starDevice.getDevice().createImage(imageInfo);
+	image = device->getDevice().createImage(imageInfo);
 	if (!image) {
 		throw std::runtime_error("failed to create image");
 	}
 
 	/* Allocate the memory for the imag*/
-	vk::MemoryRequirements memRequirements = this->starDevice.getDevice().getImageMemoryRequirements(image);
+	vk::MemoryRequirements memRequirements = device->getDevice().getImageMemoryRequirements(image);
 
 	vk::MemoryAllocateInfo allocInfo{};
 	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = this->starDevice.findMemoryType(memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = device->findMemoryType(memRequirements.memoryTypeBits, properties);
 
-	imageMemory = this->starDevice.getDevice().allocateMemory(allocInfo);
+	imageMemory = device->getDevice().allocateMemory(allocInfo);
 	if (!imageMemory) {
 		throw std::runtime_error("failed to allocate image memory!");
 	}
 
-	this->starDevice.getDevice().bindImageMemory(image, imageMemory, 0);
+	device->getDevice().bindImageMemory(image, imageMemory, 0);
 }
 
 void StarTexture::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
 	vk::ImageLayout newLayout) {
-	vk::CommandBuffer commandBuffer = this->starDevice.beginSingleTimeCommands();
+	vk::CommandBuffer commandBuffer = device->beginSingleTimeCommands();
 
 	//create a barrier to prevent pipeline from moving forward until image transition is complete
 	vk::ImageMemoryBarrier barrier{};
-	//barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;     //specific flag for image operations
 	barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
 	barrier.oldLayout = oldLayout;
 	barrier.newLayout = newLayout;
@@ -119,33 +123,42 @@ void StarTexture::transitionImageLayout(vk::Image image, vk::Format format, vk::
 		destinationStage = vk::PipelineStageFlagBits::eTransfer;
 	}
 	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
-		//transfer destination shdaer reading, will need to wait for completion. Especially in the frag shader where reads will happen
+		//transfer destination shader reading, will need to wait for completion. Especially in the frag shader where reads will happen
 		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
 		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
 		sourceStage = vk::PipelineStageFlagBits::eTransfer;
 		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
 	}
-	else {
+	else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+		//preparing to update texture during runtime, need to wait for top of pipe
+		//barrier.srcAccessMask = vk::AccessFlagBits::;
+		barrier.srcAccessMask = {}; 
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; 
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else{
 		throw std::invalid_argument("unsupported layout transition!");
 	}
 
 	//transfer writes must occurr during the pipeline transfer stage
 	commandBuffer.pipelineBarrier(
 		sourceStage,                        //which pipeline stages should occurr before barrier 
-		destinationStage,                   //pipeline stage in which operations iwll wait on the barrier 
+		destinationStage,                   //pipeline stage in which operations will wait on the barrier 
 		{},
 		{},
 		nullptr,
 		barrier
 	);
 
-	this->starDevice.endSingleTimeCommands(commandBuffer);
+	device->endSingleTimeCommands(commandBuffer);
 }
 
 void StarTexture::createImageSampler() {
 	//get device properties for amount of anisotropy permitted
-	vk::PhysicalDeviceProperties deviceProperties = this->starDevice.getPhysicalDevice().getProperties();
+	vk::PhysicalDeviceProperties deviceProperties = device->getPhysicalDevice().getProperties();
 
 	vk::SamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
@@ -153,9 +166,9 @@ void StarTexture::createImageSampler() {
 	samplerInfo.minFilter = vk::Filter::eLinear;                       //how to sample textures that are minified
 
 	//repeat mode - repeat the texture when going beyond the image dimensions
-	samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
-	samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+	samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
+	samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
+	samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
 
 	//should anisotropic filtering be used? Really only matters if performance is a concern
 	samplerInfo.anisotropyEnable = VK_TRUE;
@@ -178,13 +191,12 @@ void StarTexture::createImageSampler() {
 	samplerInfo.maxLod = 0.0f;
 	samplerInfo.anisotropyEnable = VK_FALSE;
 
-	this->textureSampler = this->starDevice.getDevice().createSampler(samplerInfo);
+	this->textureSampler = device->getDevice().createSampler(samplerInfo);
 	if (!this->textureSampler) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
 }
 
-//TODO: allow for more formats 
 void StarTexture::createTextureImageView() {
 	this->textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
 }
@@ -201,7 +213,7 @@ vk::ImageView StarTexture::createImageView(vk::Image image, vk::Format format, v
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
-	vk::ImageView imageView = this->starDevice.getDevice().createImageView(viewInfo);
+	vk::ImageView imageView = device->getDevice().createImageView(viewInfo);
 
 	if (!imageView) {
 		throw std::runtime_error("failed to create texture image view!");

@@ -4,16 +4,13 @@ typedef std::chrono::high_resolution_clock Clock;
 
 namespace star {
 
-BasicRenderer::BasicRenderer(StarWindow& window , 
-	MapManager& mapManager, ShaderManager& shaderManager, 
-	std::vector<std::reference_wrapper<Light>> inLightList, std::vector<std::reference_wrapper<StarObject>> objectList, 
+BasicRenderer::BasicRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, 
+	std::vector<std::reference_wrapper<StarObject>> objectList, 
 	StarCamera& camera, RenderOptions& renderOptions, StarDevice& device) :
-	StarRenderer(window, shaderManager, camera, device), 
-	mapManager(mapManager), shaderManager(shaderManager), lightList(inLightList), objectList(objectList), renderOptions(renderOptions)
-{
-}
+	StarRenderer(window, camera, device), lightList(lightList), objectList(objectList), renderOptions(renderOptions){ }
 
-void BasicRenderer::prepare()
+
+void BasicRenderer::prepare(ShaderManager& shaderManager)
 {
 	createSwapChain(); 
 	createImageViews();
@@ -50,8 +47,8 @@ void BasicRenderer::prepare()
 			StarSystemRenderObject* object = this->RenderSysObjs.at(j).get();
 			if (!object->hasShader(vk::ShaderStageFlagBits::eVertex) && (!object->hasShader(vk::ShaderStageFlagBits::eFragment))) {
 				//vulkan object does not have either a vertex or a fragment shader 
-				object->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
-				object->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
+				object->registerShader(vk::ShaderStageFlagBits::eVertex, shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
+				object->registerShader(vk::ShaderStageFlagBits::eFragment, shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
 				 
 				object->addObject(currObject);
 			}
@@ -60,8 +57,8 @@ void BasicRenderer::prepare()
 				//vulkan object has shaders but they are not the same as the shaders needed for current render object
 				this->RenderSysObjs.push_back(std::make_unique<StarSystemRenderObject>(this->device, this->swapChainImages.size(), this->globalSetLayout->getDescriptorSetLayout(), this->swapChainExtent, this->renderPass));
 				StarSystemRenderObject* newObject = this->RenderSysObjs.at(this->RenderSysObjs.size()).get();
-				newObject->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
-				newObject->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
+				newObject->registerShader(vk::ShaderStageFlagBits::eVertex, shaderManager.resource(currObject.getVertShader()), currObject.getVertShader());
+				newObject->registerShader(vk::ShaderStageFlagBits::eFragment, shaderManager.resource(currObject.getFragShader()), currObject.getFragShader());
 				newObject->addObject(currObject);
 			}
 			else {
@@ -84,8 +81,8 @@ void BasicRenderer::prepare()
 	//		}
 	//		currLinkedObj = &this->objectManager.resource(light.getLinkedObjectHandle());
 	//		if (!this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eVertex) && !this->lightRenderSys->hasShader(vk::ShaderStageFlagBits::eFragment)) {
-	//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, this->shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader());
-	//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, this->shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader());
+	//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eVertex, shaderManager.resource(currLinkedObj->getVertShader()), currLinkedObj->getVertShader());
+	//			this->lightRenderSys->registerShader(vk::ShaderStageFlagBits::eFragment, shaderManager.resource(currLinkedObj->getFragShader()), currLinkedObj->getFragShader());
 	//		}
 	//		if ((lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eFragment).containerIndex == currLinkedObj->getFragShader().containerIndex)
 	//			|| (lightRenderSys->getBaseShader(vk::ShaderStageFlagBits::eVertex).containerIndex == currLinkedObj->getVertShader().containerIndex)) {
@@ -170,7 +167,7 @@ void BasicRenderer::updateUniformBuffer(uint32_t currentImage)
 
 	//write buffer information
 	for (size_t i = 0; i < this->lightList.size(); i++) {
-		Light& currLight = this->lightList.at(i);
+		Light& currLight = *this->lightList.at(i);
 		newBufferObject.position = glm::vec4{ currLight.getPosition(), 1.0f };
 		newBufferObject.direction = currLight.direction;
 		newBufferObject.ambient = currLight.getAmbient();
@@ -209,10 +206,10 @@ void BasicRenderer::draw()
 	   * two ways of doing this:
 	   *   1. fences
 	   *       accessed through calls to vkWaitForFences
-	   *       designed to synchronize appliecation itself with rendering ops
+	   *       designed to synchronize application itself with rendering ops
 	   *   2. semaphores
 	   *       designed to synchronize opertaions within or across command queues
-	   * need to sync queu operations of draw and presentation commmands -> using semaphores
+	   * need to sync queue operations of draw and presentation commmands -> using semaphores
 	   */
 
 	   //wait for fence to be ready 
@@ -785,7 +782,6 @@ void BasicRenderer::createCommandBuffers()
 
 			newBuffers[i].setViewport(0, viewport);
 
-
 			/* Begin render pass */
 			//drawing starts by beginning a render pass 
 			vk::RenderPassBeginInfo renderPassInfo{};
@@ -813,7 +809,7 @@ void BasicRenderer::createCommandBuffers()
 
 			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 			renderPassInfo.pClearValues = clearValues.data();
-
+			
 			/* vkCmdBeginRenderPass */
 			//Args: 
 				//1. command buffer to set recording to 
@@ -828,8 +824,6 @@ void BasicRenderer::createCommandBuffers()
 			//Args: 
 				//2. compute or graphics pipeline
 				//3. pipeline object
-			//vkCmdBindPipeline(graphicsCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-			//newBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, RenderSysObj->getPipeline());
 
 			tmpRenderSysObj->bind(newBuffers[i]);
 

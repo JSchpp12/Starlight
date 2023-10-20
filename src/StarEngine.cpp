@@ -1,5 +1,4 @@
 #include "StarEngine.hpp"
-#include "StarEngine.hpp"
 
 namespace star {
 
@@ -8,9 +7,7 @@ ConfigFile StarEngine::configFile = ConfigFile("./StarEngine.cfg");
 
 ShaderManager StarEngine::shaderManager = ShaderManager(); 
 //TextureManager StarEngine::textureManager = TextureManager(StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "images/texture.png");
-MapManager StarEngine::mapManager = MapManager(std::unique_ptr<Texture>(new Texture(
-	std::unique_ptr<std::vector<unsigned char>>(new std::vector<unsigned char>{ 0x00, 0x00, 0x00, 0x00 }),
-	1, 1, 4)));
+MapManager StarEngine::mapManager = MapManager(std::make_unique<Texture>(1, 1));
 
 StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene())) {
 	//sceneBuilder = std::unique_ptr<SceneBuilder>(new SceneBuilder(objectManager, mapManager, lightManager)); 
@@ -18,6 +15,8 @@ StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene
 
 void StarEngine::Run()
 {
+	renderer->prepare(shaderManager); 
+
 	while (!window->shouldClose()) {
 		renderer->pollEvents();
 		InteractionSystem::callWorldUpdates();
@@ -25,23 +24,15 @@ void StarEngine::Run()
 	}
 }
 
-void StarEngine::init(RenderOptions& renderOptions, StarCamera& camera) {
+void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 	StarEngine::shaderManager.setDefault(StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.vert",
 		StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.frag");
 
 	//parse light information
-	this->window = BasicWindow::New(1600, 1200, "Test");
+	this->window = BasicWindow::New(800, 600, app.getApplicationName());
 
 	this->renderingDevice = StarDevice::New(*window);
-	auto renderBuilder = BasicRenderer::Builder(*this->window,
-		mapManager, shaderManager, camera, renderOptions, *this->renderingDevice);
-	for (auto& light : this->currentScene->getLights()) {
-		renderBuilder.addLight(*light);
-	}
-	for (auto& obj : this->currentScene->getObjects()) {
-		renderBuilder.addObject(*obj);
-	}
 
-	this->renderer = renderBuilder.build();
+	this->renderer = app.getRenderer(*renderingDevice, *window, renderOptions); 
 }
 }

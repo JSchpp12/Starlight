@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StarMaterial.hpp"
+#include "Texture.hpp"
 
 #include "Handle.hpp"
 
@@ -37,7 +38,6 @@ namespace star {
 		int shinyCoefficient = 1;
 
 	protected:
-		std::unique_ptr<StarTexture> renderTexture, renderBumpMap; 
 		std::unique_ptr<Texture> texture, bumpMap; 
 
 	};

@@ -1,8 +1,6 @@
 //wrapper class for textures 
 #pragma once
 
-#include "Texture.hpp"
-
 #include "StarDevice.hpp"
 #include "StarBuffer.hpp"
 #include "StarDescriptors.hpp"
@@ -14,22 +12,34 @@
 namespace star {
 class StarTexture {
 public:
-	StarTexture(StarDevice& starDevice, Texture& texture);
-	~StarTexture();
+	StarTexture() = default;
+	virtual ~StarTexture();
 
+	void prepRender(StarDevice& device); 
+
+	/// <summary>
+	/// Read the image from disk into memory or provide the image which is in memory
+	/// </summary>
+	/// <returns></returns>
+	virtual std::unique_ptr<unsigned char> data() = 0;
 
 	vk::ImageView getImageView() { return this->textureImageView; }
 	vk::Sampler getSampler() { return this->textureSampler; }
 
-private:
-	StarDevice& starDevice;
+protected:
+	StarDevice* device = nullptr;
 	vk::Image textureImage;
 	vk::ImageView textureImageView;				//image view: describe to vulkan how to access an image
 	vk::Sampler textureSampler;					//using sampler to apply filtering or other improvements over raw texel access
 	vk::DeviceMemory imageMemory;				//device memory where image will be stored
 	vk::DescriptorSet descriptorSet;
 
-	void createTextureImage(Texture& texture);
+	virtual int getWidth() = 0;
+	virtual int getHeight() = 0;
+	virtual int getChannels() = 0;
+
+	void createTextureImage();
+
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 
 	/// </summary>

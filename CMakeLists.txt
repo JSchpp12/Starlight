@@ -55,6 +55,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/Compiler.cpp"
     "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
+    "src/common/RuntimeUpdateTexture.cpp"
     "src/virtual/StarMesh.cpp"
     "src/virtual/StarRenderer.cpp" 
     "src/StarEngine.cpp" 
@@ -72,7 +73,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/managers/LightManager.cpp"
     "src/managers/ObjectManager.cpp"
     "src/managers/MapManager.cpp" 
-     
+    "src/templates/StarApplication.cpp"
     "src/controllers/OptionsController.cpp"
     "src/modules/InteractionSystem.cpp"
     "src/systems/StarSystemRenderObj.cpp" 
@@ -83,8 +84,10 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarCamera.cpp"
     "src/common/materials/BumpMaterial.cpp"
     "src/common/materials/VertColorMaterial.cpp"
+    "src/common/materials/HeightDisplacementMaterial.cpp"
     "src/common/objects/BasicObject.cpp"
     "src/common/objects/Square.cpp"
+    "src/common/objects/Grid.cpp"
     "src/common/BasicCamera.cpp"
 )
 
@@ -102,6 +105,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/objects/BasicObject.hpp"
     "include/common/objects/Square.hpp"
     "include/common/BasicCamera.hpp"
+    "include/common/RuntimeUpdateTexture.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
@@ -132,6 +136,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/structs/Handle.hpp"
     "include/structs/LightBufferObject.hpp"
     "include/structs/Vertex.hpp"
+    "include/structs/Color.hpp"
     "include/templates/StarMemoryManager.hpp"
     "include/templates/StarApplication.hpp"
     "include/templates/StarResourceContainer.hpp"

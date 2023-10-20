@@ -20,18 +20,20 @@ namespace star {
 
 		virtual ~BasicObject() = default; 
 
-		std::vector<std::unique_ptr<StarMesh>> loadMeshes() override;
+		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() override { return this->meshes; };
 	protected:
-		BasicObject(std::string objectFilePath)
-			: StarObject(), objectFilePath(objectFilePath){};
+		BasicObject(std::string objectFilePath);
 
 		std::string objectFilePath;
+		std::vector<BumpMaterial> materials; 
+		std::vector<std::unique_ptr<StarMesh>> meshes;
+
 
 		/// <summary>
 		/// Load meshes from file
 		/// </summary>
 		/// <param name="objectFilePath">Path of the file to load</param>
 		/// <returns></returns>
-		static std::vector<std::unique_ptr<StarMesh>> loadFromFile(const std::string objectFilePath);
+		void loadFromFile(const std::string objectFilePath);
 	};
 }
