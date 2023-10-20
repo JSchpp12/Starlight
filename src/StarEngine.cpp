@@ -29,7 +29,7 @@ void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 		StarEngine::configFile.GetSetting(Config_Settings::mediadirectory) + "shaders/default.frag");
 
 	//parse light information
-	this->window = BasicWindow::New(1600, 1200, "Test");
+	this->window = BasicWindow::New(800, 600, "Test");
 
 	this->renderingDevice = StarDevice::New(*window);
 

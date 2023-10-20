@@ -48,7 +48,6 @@ namespace star {
 		///// Function which is called before render pass. Should be used to update buffers.
 		///// </summary>
 		//virtual void update() = 0;
-
 		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout);
 
 		/// <summary>
