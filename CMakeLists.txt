@@ -84,8 +84,10 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarCamera.cpp"
     "src/common/materials/BumpMaterial.cpp"
     "src/common/materials/VertColorMaterial.cpp"
+    "src/common/materials/HeightDisplacementMaterial.cpp"
     "src/common/objects/BasicObject.cpp"
     "src/common/objects/Square.cpp"
+    "src/common/objects/Grid.cpp"
     "src/common/BasicCamera.cpp"
 )
 
