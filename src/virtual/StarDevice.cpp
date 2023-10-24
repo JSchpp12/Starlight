@@ -98,7 +98,8 @@ void StarDevice::createLogicalDevice() {
 
 	//need multiple structs since we now have a seperate family for presenting and graphics 
 	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = indicies.isFullySupported() ? std::set<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value(), indicies.transferFamily.value() } : std::set<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value() };
+	std::set<uint32_t> uniqueQueueFamilies = 
+		indicies.isFullySupported() ? std::set<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value(), indicies.transferFamily.value() } : std::set<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value() };
 
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
 		//create a struct to contain the information required 
@@ -136,7 +137,9 @@ void StarDevice::createLogicalDevice() {
 	this->presentQueue = this->vulkanDevice.getQueue(indicies.presentFamily.value(), 0);
 
 	if (indicies.transferFamily.has_value())
-		this->transferQueue = this->vulkanDevice.getQueue(indicies.transferFamily.value(), 0);
+		this->transferQueue = std::make_optional<vk::Queue>(this->vulkanDevice.getQueue(indicies.transferFamily.value(), 0));
+	if (indicies.computeFamily.has_value())
+		this->computeQueue = std::make_optional<vk::Queue>(this->vulkanDevice.getQueue(indicies.computeFamily.value(), 0)); 
 }
 
 void StarDevice::createCommandPool() {
@@ -263,13 +266,23 @@ QueueFamilyIndicies StarDevice::findQueueFamilies(vk::PhysicalDevice device) {
 		if (presentSupport) {
 			indicies.presentFamily = i;
 		}
-		//pick family that has graphics support
-		if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
-			indicies.graphicsFamily = i;
+
+		if (!(queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)) {
+			//could be dedicated other type of queue
+			if (queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
+				indicies.transferFamily = i; 
+			if (queueFamily.queueFlags & vk::QueueFlagBits::eCompute)
+				indicies.computeFamily = i; 
 		}
-		else if (queueFamily.queueFlags & vk::QueueFlagBits::eTransfer) {
-			//for transfer family, pick family that does not support graphics but does support transfer queue
-			indicies.transferFamily = i;
+		else {
+			indicies.graphicsFamily = i;
+
+			if ((queueFamily.queueFlags & vk::QueueFlagBits::eTransfer) && (!indicies.transferFamily.has_value()))
+				indicies.transferFamily = i; 
+
+			if ((queueFamily.queueFlags & vk::QueueFlagBits::eCompute) && (!indicies.computeFamily.has_value()))
+				indicies.computeFamily = i; 
+
 		}
 
 		//--COULD DO :: pick a device that supports both of these in the same queue for increased performance--
@@ -417,8 +430,8 @@ void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTr
 		submitInfo.signalSemaphoreCount = 1; 
 	}
 	if (useTransferPool) {
-		this->transferQueue.submit(submitInfo);
-		this->transferQueue.waitIdle();
+		this->transferQueue.value().submit(submitInfo);
+		this->transferQueue.value().waitIdle();
 		this->vulkanDevice.freeCommandBuffers(this->transferCommandPool, 1, &commandBuff);
 	}
 	else {

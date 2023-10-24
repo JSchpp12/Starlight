@@ -19,9 +19,10 @@ struct QueueFamilyIndicies {
 	std::optional<uint32_t> graphicsFamily;
 	std::optional<uint32_t> presentFamily;
 	std::optional<uint32_t> transferFamily;
+	std::optional<uint32_t> computeFamily; 
 
 	bool isFullySupported() {
-		return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
+		return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
 	}
 	bool isSuitable() {
 		return graphicsFamily.has_value() && presentFamily.has_value();
@@ -60,7 +61,18 @@ public:
 	vk::SurfaceKHR getSurface() { return this->surface.get(); }
 	vk::Queue getGraphicsQueue() { return this->graphicsQueue; }
 	vk::Queue getPresentQueue() { return this->presentQueue; }
-	vk::Queue getTransferQueue() { return this->transferQueue; }
+	vk::Queue getTransferQueue() { 
+		if (this->transferQueue.has_value())
+			return this->transferQueue.value();
+		else
+			return this->graphicsQueue; 
+		};
+	vk::Queue getComputeQueue() {
+		if (this->computeQueue.has_value())
+			return this->computeQueue.value();
+		else
+			return this->graphicsQueue;
+	}
 	std::vector<vk::CommandBuffer>* getGraphicsCommandBuffers() { return &this->graphicsCommandBuffers; }
 	void setGraphicsCommandBuffers(std::vector<vk::CommandBuffer>& newBuffers) { this->graphicsCommandBuffers = newBuffers; }
 #pragma endregion
@@ -133,7 +145,7 @@ protected:
 	vk::CommandPool tempCommandPool; //command pool for temporary use in small operations
 
 	const std::vector<const char*> validationLayers = {
-	"VK_LAYER_KHRONOS_validation"
+		"VK_LAYER_KHRONOS_validation"
 	};
 
 	std::vector<const char*> deviceExtensions = {
@@ -141,7 +153,8 @@ protected:
 	};
 
 	//queue family information
-	vk::Queue graphicsQueue, presentQueue, transferQueue;
+	vk::Queue graphicsQueue, presentQueue; 
+	std::optional<vk::Queue> transferQueue, computeQueue;
 
 #if defined(WIN32) || defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__NT__)
 	bool isMac = false;

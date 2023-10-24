@@ -117,11 +117,11 @@ void StarPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configInfo,
 
 }
 
-void StarPipeline::createGraphicsPipeline(const StarShader& inVertShader, const StarShader& inFragShader, PipelineConfigSettings& configSettings) {
+void StarPipeline::createGraphicsPipeline(StarShader& inVertShader, StarShader& inFragShader, PipelineConfigSettings& configSettings) {
 	assert(configSettings.pipelineLayout && "Pipeline layout must be defined");
 
-	this->vertShaderModule = createShaderModule(*inVertShader.compiledCode);
-	this->fragShaderModule = createShaderModule(*inFragShader.compiledCode);
+	this->vertShaderModule = createShaderModule(*inVertShader.compile());
+	this->fragShaderModule = createShaderModule(*inFragShader.compile());
 
 	auto bindingDescriptions = VulkanVertex::getBindingDescription();
 	auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();

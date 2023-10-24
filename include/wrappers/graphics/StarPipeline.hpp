@@ -50,7 +50,7 @@ private:
 	vk::Pipeline graphicsPipeline;
 	vk::ShaderModule vertShaderModule, fragShaderModule;
 
-	void createGraphicsPipeline(const StarShader& inVertShader, const StarShader& inFragShader, PipelineConfigSettings& configSettings);
+	void createGraphicsPipeline(StarShader& inVertShader, StarShader& inFragShader, PipelineConfigSettings& configSettings);
 
 	vk::ShaderModule createShaderModule(const std::vector<uint32_t>& sourceCode);
 };
