@@ -21,8 +21,19 @@ struct QueueFamilyIndicies {
 	std::optional<uint32_t> transferFamily;
 	std::optional<uint32_t> computeFamily; 
 
+	//check if queue families are all seperate -- this means more parallel work
+	bool isOptimalSupport(){
+		if ((graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value())
+			&& (graphicsFamily.value() != transferFamily.value() && graphicsFamily.value() != computeFamily.value())) {
+				return true;
+		}
+		return false; 
+	}
 	bool isFullySupported() {
-		return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value();
+		if (graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value()) {
+			return true; 
+		}
+		return false; 
 	}
 	bool isSuitable() {
 		return graphicsFamily.has_value() && presentFamily.has_value();

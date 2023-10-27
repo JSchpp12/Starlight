@@ -36,7 +36,7 @@ void StarDevice::createInstance() {
 	vk::ApplicationInfo appInfo{};
 	appInfo.sType = vk::StructureType::eApplicationInfo;
 	// appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Hello Triangle";
+	appInfo.pApplicationName = "Starlight";
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.pEngineName = "Starlight";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -75,19 +75,38 @@ void StarDevice::createInstance() {
 void StarDevice::pickPhysicalDevice() {
 	std::vector<vk::PhysicalDevice> devices = this->instance.enumeratePhysicalDevices();
 
+	std::vector<vk::PhysicalDevice> suitableDevices; 
+
 	//check devices and see if they are suitable for use
 	for (const auto& device : devices) {
 		if (isDeviceSuitable(device)) {
-			physicalDevice = device;
-			break;
+			if (device)
+				suitableDevices.push_back(device); 
 		}
 	}
 
-	if (devices.size() == 0) {
-		throw std::runtime_error("failed to find suitable GPU!");
+	//pick the best device of the potential devices that are suitable
+	vk::PhysicalDevice optimalDevice; 
+	for (const auto& device : suitableDevices) {
+		auto indicies = findQueueFamilies(device); 
+		if (indicies.isOptimalSupport()) {
+			//try to pick the device that has the most seperate queue families
+			this->physicalDevice = device; 
+		}
+
 	}
 
-	if (!physicalDevice) {
+	//check for a fully supported device
+	if (!optimalDevice) {
+		for (const auto& device : devices) {
+			auto indicies = findQueueFamilies(device); 
+			if (indicies.isFullySupported()) {
+				this->physicalDevice = device; 
+			}	
+		}
+	}
+
+	if ((devices.size() == 0) || !physicalDevice) {
 		throw std::runtime_error("failed to find suitable GPU!");
 	}
 }
@@ -99,7 +118,8 @@ void StarDevice::createLogicalDevice() {
 	//need multiple structs since we now have a seperate family for presenting and graphics 
 	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> uniqueQueueFamilies = 
-		indicies.isFullySupported() ? std::set<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value(), indicies.transferFamily.value() } : std::set<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value() };
+		indicies.isFullySupported() ? std::set<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value(), indicies.transferFamily.value(), indicies.computeFamily.value() } 
+									: std::set<uint32_t>{indicies.graphicsFamily.value(), indicies.presentFamily.value()};
 
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
 		//create a struct to contain the information required 
@@ -136,10 +156,10 @@ void StarDevice::createLogicalDevice() {
 	this->graphicsQueue = this->vulkanDevice.getQueue(indicies.graphicsFamily.value(), 0);
 	this->presentQueue = this->vulkanDevice.getQueue(indicies.presentFamily.value(), 0);
 
-	if (indicies.transferFamily.has_value())
+	if (indicies.isFullySupported()) {
 		this->transferQueue = std::make_optional<vk::Queue>(this->vulkanDevice.getQueue(indicies.transferFamily.value(), 0));
-	if (indicies.computeFamily.has_value())
-		this->computeQueue = std::make_optional<vk::Queue>(this->vulkanDevice.getQueue(indicies.computeFamily.value(), 0)); 
+		this->computeQueue = std::make_optional<vk::Queue>(this->vulkanDevice.getQueue(indicies.computeFamily.value(), 0));
+	}
 }
 
 void StarDevice::createCommandPool() {
@@ -263,32 +283,31 @@ QueueFamilyIndicies StarDevice::findQueueFamilies(vk::PhysicalDevice device) {
 		vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, this->surface.get());
 
 		//pick the family that supports presenting to the display 
-		if (presentSupport) {
+		if (presentSupport && !indicies.presentFamily) {
 			indicies.presentFamily = i;
 		}
-
-		if (!(queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)) {
-			//could be dedicated other type of queue
-			if (queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
-				indicies.transferFamily = i; 
-			if (queueFamily.queueFlags & vk::QueueFlagBits::eCompute)
-				indicies.computeFamily = i; 
+		else if (!(indicies.graphicsFamily) && (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)) {
+			indicies.graphicsFamily = i; 
 		}
-		else {
-			indicies.graphicsFamily = i;
-
-			if ((queueFamily.queueFlags & vk::QueueFlagBits::eTransfer) && (!indicies.transferFamily.has_value()))
-				indicies.transferFamily = i; 
-
-			if ((queueFamily.queueFlags & vk::QueueFlagBits::eCompute) && (!indicies.computeFamily.has_value()))
-				indicies.computeFamily = i; 
-
+		else if (!(indicies.transferFamily) && (queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)) {
+			indicies.transferFamily = i; 
+		}
+		else if (!(indicies.computeFamily) && (queueFamily.queueFlags & vk::QueueFlagBits::eCompute)) {
+			indicies.computeFamily = i; 
 		}
 
-		//--COULD DO :: pick a device that supports both of these in the same queue for increased performance--
 		i++;
 	}
 
+	//check if present family is capable of graphics
+	const auto& presentFamily = queueFamilies.at(indicies.presentFamily.value());
+
+	if (!indicies.graphicsFamily && (presentFamily.queueFlags & vk::QueueFlagBits::eGraphics))
+		indicies.graphicsFamily = indicies.presentFamily.value();
+	if (!indicies.transferFamily && (presentFamily.queueFlags & vk::QueueFlagBits::eTransfer))
+		indicies.transferFamily = indicies.presentFamily.value(); 
+	if (!indicies.computeFamily && (presentFamily.queueFlags & vk::QueueFlagBits::eCompute))
+		indicies.computeFamily = indicies.presentFamily.value(); 
 	return indicies;
 }
 
