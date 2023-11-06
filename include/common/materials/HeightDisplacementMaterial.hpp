@@ -17,17 +17,19 @@ namespace star {
 		// Inherited via StarMaterial
 		void prepRender(StarDevice& device) override;
 
-		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder) override;
-
-		void buildConstDescriptor(StarDescriptorWriter writer) override;
-
-		void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex) override;
+		void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& constBuilder) override;
 
 		RuntimeUpdateTexture& getTexture() { return this->displaceTexture; }
 
 	protected:
 		RuntimeUpdateTexture displaceTexture; 
 		int size_x = 0, size_y = 0;
+
+
+		// Inherited via StarMaterial
+		void cleanupRender(StarDevice& device) override;
+
+		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool) override;
 
 	};
 }

@@ -11,7 +11,7 @@
 
 #include "MapManager.hpp"
 #include "StarSystemRenderPointLight.hpp"
-#include "StarSystemRenderObj.hpp"
+#include "StarRenderGroup.hpp"
 #include "ShaderManager.hpp"
 #include "TextureManager.hpp"
 #include "LightManager.hpp"
@@ -32,7 +32,7 @@ public:
 	virtual ~BasicRenderer();
 
 
-	virtual void prepare(ShaderManager& shaderManager) override;
+	virtual void prepare() override;
 
 	virtual void draw(); 
 
@@ -54,7 +54,8 @@ protected:
 
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
-	std::vector<std::unique_ptr<StarSystemRenderObject>> RenderSysObjs;
+
+	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer; 
 
 	//texture information
 	vk::ImageView textureImageView;
@@ -65,7 +66,6 @@ protected:
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
 	std::vector<vk::Semaphore> renderFinishedSemaphores;
-
 
 	//storage for multiple buffers for each swap chain image  
 	std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
@@ -82,6 +82,8 @@ protected:
 	vk::Format swapChainImageFormat;
 	vk::Extent2D swapChainExtent;
 
+	vk::Pipeline test; 
+
 	std::vector<vk::ImageView> swapChainImageViews;
 	std::vector<vk::Framebuffer> swapChainFramebuffers;
 	std::vector<vk::Fence> inFlightFences;
@@ -89,6 +91,8 @@ protected:
 
 	std::unique_ptr<StarDescriptorPool> globalPool{};
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
+
+	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
 	//depth testing storage 
 	vk::Image depthImage;
@@ -101,6 +105,11 @@ protected:
 	size_t currentFrame = 0;
 
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
+
+	/// <summary>
+	/// Create vertex buffer + index buffers + any rendering groups for operations
+	/// </summary>
+	virtual void createRenderingGroups();
 
 	virtual void updateUniformBuffer(uint32_t currentImage);
 

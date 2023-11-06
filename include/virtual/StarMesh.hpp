@@ -1,5 +1,6 @@
 #pragma once 
 
+#include "StarMaterialMesh.hpp"
 #include "CastHelpers.hpp"
 #include "StarMaterial.hpp"
 #include "StarDevice.hpp"
@@ -10,14 +11,13 @@
 
 #include <array>
 
-namespace star {
-
+namespace star{
 	class StarMesh {
 	public:
 		StarMesh(std::unique_ptr<std::vector<Vertex>> vertices, std::unique_ptr<std::vector<uint32_t>> indices, 
-			StarMaterial& material, uint32_t vbOffset = 0) : 
+			std::unique_ptr<StarMaterial> material) : 
 			vertices(std::move(vertices)), indices(std::move(indices)),
-			material(material), vbOffset(vbOffset) {
+			material(std::move(material)) {
 			//calculate tangents for all provided verts and indices
 			for (int i = 0; i < this->indices->size() - 3; i += 3) {
 				//go through each group of 3 verts -- assume they are triangles
@@ -32,22 +32,18 @@ namespace star {
 			}
 		};
 
-		virtual void prepRender(StarDevice& device); 
+		virtual void prepRender(StarDevice& device);
 
-		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder); 
-
-		virtual void initDescriptors(StarDevice& device, StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool);
-
-		virtual void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex); 
+		virtual void recordCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex, uint32_t vb_start, uint32_t ib_start);
 
 		std::vector<Vertex>& getVertices() { return *this->vertices; }
 		std::vector<uint32_t>& getIndices() { return *this->indices; }
+		StarMaterial& getMaterial() { return *this->material; }
+
 	protected:
 		std::unique_ptr<std::vector<Vertex>> vertices; 
 		std::unique_ptr<std::vector<uint32_t>> indices; 
-
-		StarMaterial& material; 
-		uint32_t vbOffset; 
+		std::unique_ptr<StarMaterial> material; 
 
 		/// <summary>
 		/// Calculate the tangent and bitangent vectors for each vertex in the triangle

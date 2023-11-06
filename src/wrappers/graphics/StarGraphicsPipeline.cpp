@@ -1,20 +1,20 @@
-#include "StarPipeline.hpp"
+#include "StarGraphicsPipeline.hpp"
 
 namespace star {
-StarPipeline::StarPipeline(StarDevice* device, StarShader& inVertShader, StarShader& inFragShader, PipelineConfigSettings& configSettings) :
-	starDevice(device) {
-	createGraphicsPipeline(inVertShader, inFragShader, configSettings);
+StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, StarShader& inVertShader, StarShader& inFragShader, PipelineConfigSettings& configSettings) :
+	StarPipeline(device), configSettings(configSettings), vertShader(inVertShader), fragShader(inFragShader) {
+	this->hash = inVertShader.getPath() + inFragShader.getPath(); 
 }
 
-StarPipeline::~StarPipeline() {
-	this->starDevice->getDevice().destroyPipeline(this->graphicsPipeline);
+StarGraphicsPipeline::~StarGraphicsPipeline()
+{
 }
 
-void StarPipeline::bind(vk::CommandBuffer commandBuffer) {
-	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, this->graphicsPipeline);
+void StarGraphicsPipeline::bind(vk::CommandBuffer commandBuffer) {
+	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
 }
 
-void StarPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configInfo, vk::Extent2D swapChainExtent) {
+void StarGraphicsPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent) {
 
 	//vk::Rect2D scissor{};
 	//scissor.offset = vk::Offset2D{ 0, 0 };
@@ -108,20 +108,18 @@ void StarPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configInfo,
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
 
-	configInfo.rasterizationInfo = rasterizer;
-	configInfo.multisampleInfo = multisampling;
-	configInfo.depthStencilInfo = depthStencil;
-	configInfo.colorBlendInfo = colorBlending;
-	configInfo.colorBlendAttachment = colorBlendAttachment;
+	configSettings.rasterizationInfo = rasterizer;
+	configSettings.multisampleInfo = multisampling;
+	configSettings.depthStencilInfo = depthStencil;
+	configSettings.colorBlendInfo = colorBlending;
+	configSettings.colorBlendAttachment = colorBlendAttachment;
 	//configInfo.viewportInfo = viewportState; 
-
 }
 
-void StarPipeline::createGraphicsPipeline(StarShader& inVertShader, StarShader& inFragShader, PipelineConfigSettings& configSettings) {
-	assert(configSettings.pipelineLayout && "Pipeline layout must be defined");
-
-	this->vertShaderModule = createShaderModule(*inVertShader.compile());
-	this->fragShaderModule = createShaderModule(*inFragShader.compile());
+vk::Pipeline StarGraphicsPipeline::buildPipeline(vk::Extent2D swapChainExtent)
+{
+	vk::ShaderModule vertShaderModule = createShaderModule(*vertShader.compile());
+	vk::ShaderModule fragShaderModule = createShaderModule(*fragShader.compile());
 
 	auto bindingDescriptions = VulkanVertex::getBindingDescription();
 	auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
@@ -130,13 +128,13 @@ void StarPipeline::createGraphicsPipeline(StarShader& inVertShader, StarShader& 
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
 	vertShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
 	vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
-	vertShaderStageInfo.module = this->vertShaderModule;
+	vertShaderStageInfo.module = vertShaderModule;
 	vertShaderStageInfo.pName = "main"; //the function to invoke in the shader module
 
 	vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
 	fragShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
 	fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
-	fragShaderStageInfo.module = this->fragShaderModule;
+	fragShaderStageInfo.module = fragShaderModule;
 	fragShaderStageInfo.pName = "main";
 
 	//store these creation infos for later use 
@@ -154,20 +152,6 @@ void StarPipeline::createGraphicsPipeline(StarShader& inVertShader, StarShader& 
 	inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-
-	/* Depth and Stencil Testing */
-	//if using depth or stencil buffer, a depth and stencil tests are neeeded
-	vk::PipelineDepthStencilStateCreateInfo depthStencil{};
-	depthStencil.sType = vk::StructureType::ePipelineDepthStencilStateCreateInfo;
-	depthStencil.depthTestEnable = VK_TRUE;             //specifies if depth of new fragments should be compared to the depth buffer to test for actual display state
-	depthStencil.depthWriteEnable = VK_TRUE;            //specifies if the new depth of fragments that pass the depth tests should be written to the depth buffer 
-	depthStencil.depthCompareOp = vk::CompareOp::eLess;   //comparison that is performed to keep or discard fragments - here this is: lower depth = closer, so depth of new frags should be less
-	//following are for optional depth bound testing - keep frags within a specific range 
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.minDepthBounds = 0.0f;                 //optional 
-	depthStencil.maxDepthBounds = 1.0f;                 //optional
-	//following are used for stencil tests - make sure that format of depth image contains a stencil component
-	depthStencil.stencilTestEnable = VK_FALSE;
 
 	/* Dynamic State */
 	//some parts of the pipeline can be changed without recreating the entire pipeline
@@ -206,31 +190,19 @@ void StarPipeline::createGraphicsPipeline(StarShader& inVertShader, StarShader& 
 	//finally creating the pipeline -- this call has the capability of creating multiple pipelines in one call
 	//2nd arg is set to null -> normally for graphics pipeline cache (can be used to store and reuse data relevant to pipeline creation across multiple calls to vkCreateGraphicsPipeline)
 
-	//this->graphicsPipeline = this->starDevice->getDevice().get().createGraphicsPipeline(VK_NULL_HANDLE, pipelineInfo); 
-	auto result = this->starDevice->getDevice().createGraphicsPipelines(VK_NULL_HANDLE, pipelineInfo);
+	auto result = this->device.getDevice().createGraphicsPipelines(VK_NULL_HANDLE, pipelineInfo);
 	if (result.result != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to create graphics pipeline");
 	}
 	if (result.value.size() > 1) {
 		throw std::runtime_error("unknown error has occurred, more than one pipeline was created ");
 	}
-	this->graphicsPipeline = result.value.at(0);
 
 	//destroy the shader modules that were created 
-	this->starDevice->getDevice().destroyShaderModule(this->vertShaderModule);
-	this->starDevice->getDevice().destroyShaderModule(this->fragShaderModule);
+	this->device.getDevice().destroyShaderModule(vertShaderModule);
+	this->device.getDevice().destroyShaderModule(fragShaderModule);
+
+	return result.value.at(0);
 }
 
-vk::ShaderModule StarPipeline::createShaderModule(const std::vector<uint32_t>& sourceCode) {
-	vk::ShaderModuleCreateInfo createInfo{};
-	createInfo.sType = vk::StructureType::eShaderModuleCreateInfo;
-	createInfo.codeSize = 4 * sourceCode.size();
-	createInfo.pCode = sourceCode.data();
-
-	VkShaderModule shaderModule = this->starDevice->getDevice().createShaderModule(createInfo);
-	if (!shaderModule) {
-		throw std::runtime_error("failed to create shader module");
-	}
-	return shaderModule;
-}
 }

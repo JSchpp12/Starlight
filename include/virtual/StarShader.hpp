@@ -12,7 +12,7 @@
 namespace star {
     class StarShader {
     public:
-        StarShader(const std::string& path); 
+        StarShader(const std::string& path, star::Shader_Stage stage); 
         ~StarShader() = default;
 
         /// <summary>
@@ -21,10 +21,12 @@ namespace star {
         /// <returns></returns>
         std::unique_ptr<std::vector<uint32_t>> compile();
 
+        star::Shader_Stage getStage() { return this->stage; }
+
+        std::string getPath() { return this->path;  }
     protected:
         std::string path;
-
-    private:
+        star::Shader_Stage stage;
 
     };
 }

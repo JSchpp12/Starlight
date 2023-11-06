@@ -2,6 +2,7 @@
 
 #include "StarMaterial.hpp"
 #include "Texture.hpp"
+#include "StarEngine.hpp"
 
 #include "Handle.hpp"
 
@@ -23,12 +24,9 @@ namespace star {
 			specular(specular), shinyCoefficient(shiny), 
 			texture(std::move(texture)), bumpMap(std::move(bumpMap)) {};
 
-		// Inherited via StarMaterial
 		void prepRender(StarDevice& device) override;
-		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder) override;
-		void buildConstDescriptor(StarDescriptorWriter writer) override;
-		void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex) override;
-
+		void getDescriptorSetLayout(star::StarDescriptorSetLayout::Builder& newLayout) override;
+		void cleanupRender(StarDevice& device) override;
 
 		glm::vec4 surfaceColor{ 0.5f, 0.5f, 0.5f, 1.0f };
 		glm::vec4 highlightColor{ 0.5f, 0.5f, 0.5f, 1.0f };
@@ -39,6 +37,9 @@ namespace star {
 
 	protected:
 		std::unique_ptr<Texture> texture, bumpMap; 
+
+		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
+			StarDescriptorPool& groupPool) override;
 
 	};
 }

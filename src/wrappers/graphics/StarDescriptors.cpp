@@ -23,6 +23,41 @@ std::unique_ptr<StarDescriptorSetLayout> StarDescriptorSetLayout::Builder::build
 StarDescriptorSetLayout::StarDescriptorSetLayout(StarDevice& device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings) :
 	starDevice(device),
 	bindings{ bindings } {
+}
+
+StarDescriptorSetLayout::~StarDescriptorSetLayout() {
+	this->starDevice.getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
+}
+
+bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout& compare)
+{
+	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>* largerBindingSet = &this->bindings; 
+	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>* smallerBindingSet = &compare.bindings; 
+	if (compare.bindings.size() > this->bindings.size()) {
+		largerBindingSet = &compare.bindings;
+		smallerBindingSet = &this->bindings;
+	}
+
+
+	for (auto& binding : *largerBindingSet) {
+		//check if the other layout has a binding of the same type
+		if (smallerBindingSet->find(binding.first) == smallerBindingSet->end()) {
+			return false;
+		}
+	}
+	return true;
+}
+
+vk::DescriptorSetLayout StarDescriptorSetLayout::getDescriptorSetLayout()
+{
+	if (!descriptorSetLayout) {
+		this->build();
+	}
+	return this->descriptorSetLayout;
+}
+
+void StarDescriptorSetLayout::build()
+{
 	std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings;
 
 	for (auto& binding : bindings) {
@@ -40,13 +75,20 @@ StarDescriptorSetLayout::StarDescriptorSetLayout(StarDevice& device, std::unorde
 	}
 }
 
-StarDescriptorSetLayout::~StarDescriptorSetLayout() {
-	this->starDevice.getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
-}
-
 
 /* Descriptor Pool */
 StarDescriptorPool::Builder& StarDescriptorPool::Builder::addPoolSize(vk::DescriptorType descriptorType, uint32_t count) {
+	//check if pool already contains descriptorType
+	int foundIndex = -1; 
+	for (int i = 0; i < this->poolSizes.size(); i++) {
+		if (this->poolSizes.at(i).type == descriptorType)
+		{
+			this->poolSizes.at(i).descriptorCount = this->poolSizes.at(i).descriptorCount + count;
+			return *this; 
+		}
+	}
+
+	//new type add to pool
 	this->poolSizes.push_back({ descriptorType, count });
 	return *this;
 }
@@ -101,7 +143,7 @@ bool StarDescriptorPool::allocateDescriptorSet(const vk::DescriptorSetLayout des
 	allocInfo.pSetLayouts = &descriptorSetLayout;
 	allocInfo.descriptorSetCount = 1;
 
-	auto result = this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet);
+auto result = this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet);
 	if (result != vk::Result::eSuccess) {
 		std::cout << "Failed to allocate descriptor set " << result << std::endl;
 		return false;

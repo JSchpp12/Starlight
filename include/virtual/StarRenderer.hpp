@@ -5,7 +5,6 @@
 #include "StarShader.hpp"
 #include "FileResourceManager.hpp"
 #include "StarCamera.hpp"
-#include "ShaderManager.hpp"
 
 #include <memory>
 
@@ -20,7 +19,7 @@ public:
 
     void pollEvents();
 
-    virtual void prepare(ShaderManager& shaderManager) = 0;
+    virtual void prepare() = 0;
 
     virtual void draw() = 0; 
 
@@ -60,9 +59,5 @@ protected:
 	/// <returns></returns>
 	vk::Format findDepthFormat();
 #pragma endregion
-
-
-private: 
-
 };
 }

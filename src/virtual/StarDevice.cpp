@@ -81,7 +81,8 @@ void StarDevice::pickPhysicalDevice() {
 	for (const auto& device : devices) {
 		if (isDeviceSuitable(device)) {
 			if (device)
-				suitableDevices.push_back(device); 
+				this->physicalDevice = device;
+				//suitableDevices.push_back(device); 
 		}
 	}
 

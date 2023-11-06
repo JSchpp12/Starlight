@@ -1,5 +1,7 @@
 #pragma once
 
+#include "StarMaterialMesh.hpp"
+#include "StarShader.hpp"
 #include "StarDevice.hpp"
 #include "StarTexture.hpp"
 
@@ -8,12 +10,17 @@
 #include <glm/glm.hpp>
 
 #include <string>
+#include <memory>
+#include <unordered_map>
 
 namespace star {
 	class StarMaterial {
 	public:
 		StarMaterial() = default; 
+
 		virtual ~StarMaterial() = default; 
+
+		//virtual std::unique_ptr<StarMaterialMesh> getMeshMaterials(StarDevice& device) = 0; 
 
 		/// <summary>
 		/// Function which should contain processes to create all needed functionalities
@@ -23,27 +30,33 @@ namespace star {
 		/// <param name="device">Device that is being used in rendering operations</param>
 		virtual void prepRender(StarDevice& device) = 0; 
 
-		/// <summary>
-		/// Initalize the const descriptor set layouts with needed descriptor slots
-		/// </summary>
-		/// <param name="constBuilder"></param>
-		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder) = 0;
+		virtual void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout) = 0;
+
+		virtual void buildDescriptorSets(StarDevice& device, StarDescriptorSetLayout& groupLayout,
+			StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets, 
+			int numSwapChainImages);
+
+		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
 		/// <summary>
-		/// Init Render Material with proper descriptors
+		/// Cleanup any vulkan objects created by this material
 		/// </summary>
-		/// <param name="staticDescriptorSetLayout">DescriptorSetLayout to be used when creating object descriptors which are updated once (during init)</param>
-		virtual void buildConstDescriptor(StarDescriptorWriter writer) = 0;
+		/// <param name="device"></param>
+		virtual void cleanupRender(StarDevice& device)=0; 
 
-		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)=0; 
-
-#pragma region getters
-		vk::DescriptorSet& getDescriptorSet() { return this->descriptorSet; }
-#pragma endregion
 	protected:
-		vk::DescriptorSet descriptorSet; 
+		//Map of swap chain image index to each descriptor set 
+		std::unordered_map<int, std::vector<vk::DescriptorSet>> descriptorSets;
 
-	private: 
+		/// <summary>
+		/// Each material should build a descriptor set for each swap chain image. This 
+		/// function should provide a single descriptor set for use. 
+		/// </summary>
+		/// <param name="device"></param>
+		/// <param name=""></param>
+		/// <returns></returns>
+		virtual vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
+			StarDescriptorPool& groupPool) = 0;
 
 	};
 }

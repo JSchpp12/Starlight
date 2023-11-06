@@ -1,8 +1,8 @@
 #include "StarShader.hpp"
 
 namespace star {
-StarShader::StarShader(const std::string& path) : 
-    path(path){
+StarShader::StarShader(const std::string& path, star::Shader_Stage stage) : 
+    path(path), stage(stage){
     //generateDescriptorList(); 
 }
 

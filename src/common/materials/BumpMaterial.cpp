@@ -6,14 +6,18 @@ void star::BumpMaterial::prepRender(StarDevice& device)
 	bumpMap->prepRender(device); 
 }
 
-void star::BumpMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder)
+void star::BumpMaterial::getDescriptorSetLayout(star::StarDescriptorSetLayout::Builder& newLayout)
 {
-	constBuilder.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
-	constBuilder.addBinding(2, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+	newLayout.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+	newLayout.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 }
 
-void star::BumpMaterial::buildConstDescriptor(StarDescriptorWriter writer)
+vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
+	StarDescriptorPool& groupPool)
 {
+	auto sets = std::vector<vk::DescriptorSet>(); 
+	auto writer = StarDescriptorWriter(device, groupLayout, groupPool); 
+
 	auto texInfo = vk::DescriptorImageInfo{
 		texture->getSampler(),
 		texture->getImageView(),
@@ -26,12 +30,14 @@ void star::BumpMaterial::buildConstDescriptor(StarDescriptorWriter writer)
 		vk::ImageLayout::eShaderReadOnlyOptimal };
 	writer.writeImage(1, bumpInfo);
 
-	writer.build(this->descriptorSet);
+	vk::DescriptorSet newSet; 
+	writer.build(newSet);
+
+	return newSet; 
 }
 
-void star::BumpMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
+void star::BumpMaterial::cleanupRender(StarDevice& device)
 {
-	if (this->descriptorSet) {
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 2, 1, &this->descriptorSet, 0, nullptr);
-	}
+	texture.reset(); 
+	bumpMap.reset(); 
 }

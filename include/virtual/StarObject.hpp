@@ -1,12 +1,12 @@
 #pragma once
 
-#include "BumpMaterial.hpp"
-
+#include "StarDevice.hpp"
 #include "StarEntity.hpp"
 #include "StarDescriptors.hpp"
 #include "StarMaterial.hpp"
+#include "StarShader.hpp"
+#include "StarPipeline.hpp"
 #include "StarMesh.hpp"
-#include "StarTexture.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -16,45 +16,53 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <optional>
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace star {
 	/// <summary>
 	/// Base class for renderable objects.
 	/// </summary>
-	class StarObject : public StarEntity{
+	class StarObject : public StarEntity {
 	public:
 		/// <summary>
 		/// Create an object from manually defined/generated mesh structures
 		/// </summary>
 		/// <param name="meshes"></param>
-		StarObject()
-			: uboDescriptorSets(3) {
-			vertShader.shaderStage = Shader_Stage::vertex; 
-			fragShader.shaderStage = Shader_Stage::fragment;
-		};
+		StarObject() = default; 
 
 		virtual ~StarObject() = default;
+
+		virtual void cleanupRender(StarDevice& device); 
+
+		//flag to set if some object requires that a unique pipeline be used for it. This object must create these structures. 
+		virtual bool requiresUniquePipeline() { return false; }
+
+		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
+			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass) = 0;
 
 		/// <summary>
 		/// Prepare needed objects for rendering operations.
 		/// </summary>
 		/// <param name="device"></param>
-		virtual void prepRender(StarDevice& device);
-
-		///// <summary>
-		///// Function which is called before render pass. Should be used to update buffers.
-		///// </summary>
-		//virtual void update() = 0;
-		virtual void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constLayout);
+		virtual void prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
+			vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, StarDescriptorSetLayout& groupLayout,
+			StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets);
 
 		/// <summary>
-		/// Init object with needed descriptors
+		/// Initalize this object. This object wil not have its own pipeline. It will expect to share one.
 		/// </summary>
-		/// <param name="descriptorWriter"></param>
-		virtual void initDescriptors(StarDevice& device, StarDescriptorSetLayout& constLayout, StarDescriptorPool& descriptorPool);
+		/// <param name="device"></param>
+		/// <param name="numSwapChainImages"></param>
+		/// <param name="groupLayout"></param>
+		/// <param name="groupPool"></param>
+		/// <param name="globalSets"></param>
+		/// <param name="sharedPipeline"></param>
+		virtual void prepRender(star::StarDevice& device, int numSwapChainImages, StarDescriptorSetLayout& groupLayout,
+			StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets, StarPipeline& sharedPipeline);
 
 		/// <summary>
 		/// Create render call
@@ -62,20 +70,32 @@ namespace star {
 		/// <param name="commandBuffer"></param>
 		/// <param name="pipelineLayout"></param>
 		/// <param name="swapChainIndexNum"></param>
-		virtual void render(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum); 
+		virtual void recordCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start);
+
+		/// <summary>
+		/// Every material must provide a method to return shaders within a map. The keys of the map will contain the stages in which the 
+		/// corresponding shader will be used. 
+		/// </summary>
+		/// <returns></returns>
+		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() = 0;
 
 #pragma region getters
-		//get the handle for the vertex shader 
-		Handle getVertShader() { return vertShader; }
-		//get the handle for the fragment shader
-		Handle getFragShader() { return fragShader; }
 		glm::mat4 getNormalMatrix() { return glm::inverseTranspose(getDisplayMatrix()); }
-		virtual const std::vector<std::unique_ptr<StarMesh>>& getMeshes() = 0; 
-		virtual std::vector<vk::DescriptorSet>& getDefaultDescriptorSets() { return this->uboDescriptorSets; }
+		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
+		virtual StarPipeline& getPipline() {
+			assert(this->pipeline && "This object is expecting to share a pipeline with another object."); 
+			return *this->pipeline; 
+		}
 #pragma endregion
 
 	protected:
-		std::vector<vk::DescriptorSet> uboDescriptorSets;
-		Handle vertShader = Handle::getDefault(), fragShader = Handle::getDefault();
+		///pipeline + rendering infos
+		StarPipeline* sharedPipeline = nullptr;
+		std::unique_ptr<StarPipeline> pipeline; 
+
+		std::vector<std::unique_ptr<StarMesh>> meshes;
+
+		void prepareDescriptors(star::StarDevice& device, int numSwapChainImages, 
+			StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets);
 	};
 }

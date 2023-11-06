@@ -5,18 +5,17 @@ void star::VertColorMaterial::prepRender(StarDevice& device)
 
 }
 
-void star::VertColorMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder)
+void star::VertColorMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout)
 {
+
 }
 
-void star::VertColorMaterial::buildConstDescriptor(StarDescriptorWriter writer)
+void star::VertColorMaterial::cleanupRender(StarDevice& device)
 {
-	writer.build(this->descriptorSet);
+
 }
 
-void star::VertColorMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
+vk::DescriptorSet star::VertColorMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
 {
-	if (this->descriptorSet) {
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 2, 1, &this->descriptorSet, 0, nullptr);
-	}
+	return vk::DescriptorSet();
 }
