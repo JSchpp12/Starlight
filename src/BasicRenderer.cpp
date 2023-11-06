@@ -101,13 +101,13 @@ void BasicRenderer::createRenderingGroups()
 		//add object verts to vertex buffer + index buffer
 		for (auto& mesh : object.getMeshes()) {
 			//copy verts
-			uint32_t startVertexCounter = currentNumVert; 
+			uint32_t startVertexCounter = currentNumVert;
+			uint32_t startIndexCounter = currentNumVert;
 			for (size_t i = 0; i < mesh->getVertices().size(); i++) {
 				vertexList.at(currentNumVert) = mesh->getVertices().at(i); 
 				currentNumVert++;
 			}
 
-			uint32_t startIndexCounter = currentNumInd; 
 			//copy indicies
 			for (size_t i = 0; i < mesh->getIndices().size(); i++) {
 				uint32_t ind = CastHelpers::size_t_to_unsigned_int(mesh->getIndices().at(i)) + startIndexCounter; 
@@ -355,8 +355,6 @@ void BasicRenderer::cleanup()
 	this->device.getDevice().destroyImageView(this->textureImageView);
 	this->device.getDevice().destroyImage(this->textureImage);
 	this->device.getDevice().freeMemory(this->textureImageMemory);
-
-	StarRenderGroup* currRenderSysObj = this->renderGroups.at(0).get();
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		this->device.getDevice().destroySemaphore(renderFinishedSemaphores[i]);
@@ -771,10 +769,6 @@ void BasicRenderer::createCommandBuffers()
 	newBuffers = this->device.getDevice().allocateCommandBuffers(allocInfo);
 	if (newBuffers.size() == 0) {
 		throw std::runtime_error("failed to allocate command buffers");
-	}
-
-	if (this->renderGroups.size() > 1) {
-		throw std::runtime_error("More than one shader group is not yet supported");
 	}
 
 	/* Begin command buffer recording */

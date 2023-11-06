@@ -15,9 +15,15 @@ namespace star{
 	class StarMesh {
 	public:
 		StarMesh(std::unique_ptr<std::vector<Vertex>> vertices, std::unique_ptr<std::vector<uint32_t>> indices, 
-			std::unique_ptr<StarMaterial> material) : 
+			std::shared_ptr<StarMaterial> material) : 
 			vertices(std::move(vertices)), indices(std::move(indices)),
 			material(std::move(material)) {
+			//ensure that all verticies have their proper materials applied
+			for (int i = 0; i < this->vertices->size(); i++) {
+				this->vertices->at(i).matAmbient = this->material->ambient; 
+				this->vertices->at(i).matDiffuse = this->material->diffuse; 
+			}
+
 			//calculate tangents for all provided verts and indices
 			for (int i = 0; i < this->indices->size() - 3; i += 3) {
 				//go through each group of 3 verts -- assume they are triangles
@@ -43,7 +49,7 @@ namespace star{
 	protected:
 		std::unique_ptr<std::vector<Vertex>> vertices; 
 		std::unique_ptr<std::vector<uint32_t>> indices; 
-		std::unique_ptr<StarMaterial> material; 
+		std::shared_ptr<StarMaterial> material; 
 
 		/// <summary>
 		/// Calculate the tangent and bitangent vectors for each vertex in the triangle

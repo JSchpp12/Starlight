@@ -91,7 +91,7 @@ void StarDevice::pickPhysicalDevice() {
 		auto indicies = findQueueFamilies(device); 
 		if (indicies.isOptimalSupport()) {
 			//try to pick the device that has the most seperate queue families
-			this->physicalDevice = device; 
+			optimalDevice = device; 
 		}
 
 	}
@@ -104,6 +104,9 @@ void StarDevice::pickPhysicalDevice() {
 				this->physicalDevice = device; 
 			}	
 		}
+	}
+	else {
+		this->physicalDevice = optimalDevice;
 	}
 
 	if ((devices.size() == 0) || !physicalDevice) {

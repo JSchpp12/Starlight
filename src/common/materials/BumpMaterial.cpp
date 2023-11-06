@@ -1,15 +1,17 @@
 #include "BumpMaterial.hpp"
 
-void star::BumpMaterial::prepRender(StarDevice& device)
-{
-	texture->prepRender(device); 
-	bumpMap->prepRender(device); 
-}
-
 void star::BumpMaterial::getDescriptorSetLayout(star::StarDescriptorSetLayout::Builder& newLayout)
 {
 	newLayout.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 	newLayout.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+}
+
+void star::BumpMaterial::cleanupRender(StarDevice& device)
+{
+	if (this->texture)
+		this->texture.reset();
+	if (this->bumpMap)
+		this->bumpMap.reset();
 }
 
 vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
@@ -36,8 +38,8 @@ vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, Sta
 	return newSet; 
 }
 
-void star::BumpMaterial::cleanupRender(StarDevice& device)
+void star::BumpMaterial::prepRender(StarDevice& device)
 {
-	texture.reset(); 
-	bumpMap.reset(); 
+	this->TextureMaterial::prepRender(device);
+	bumpMap->prepRender(device);
 }

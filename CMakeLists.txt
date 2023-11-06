@@ -93,7 +93,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
     "src/virtual/StarSystemPipeline.cpp"
-)
+ "src/common/materials/TextureMaterial.cpp")
 
 
 set(${PROJECT_NAME}_HEADERS

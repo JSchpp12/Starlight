@@ -40,14 +40,14 @@ namespace star {
         Texture(const std::string& pathToImage)
             : pathToFile(pathToImage) {
             onDisk = true;
-            init();
+            loadFromDisk();
         }
 
         int getHeight() override {return this->height; }
         int getWidth() override { return this->width; }
         int getChannels() override { return this->channels; }
 
-        void init() {
+        void loadFromDisk() {
             //load from disk to get properties of image
             auto pixelData = stbi_load(pathToFile.c_str(), &width, &height, &channels, STBI_rgb_alpha);
             if (!pixelData) {

@@ -172,4 +172,12 @@
 //
 //		return scaledPosition;
 //	}
+//	std::unique_ptr<StarPipeline> Grid::buildPipeline(StarDevice& device, vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass)
+//	{
+//		return std::unique_ptr<StarPipeline>();
+//	}
+//	std::unordered_map<star::Shader_Stage, StarShader> Grid::getShaders()
+//	{
+//		return std::unordered_map<star::Shader_Stage, StarShader>();
+//	}
 //}

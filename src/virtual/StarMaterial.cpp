@@ -1,19 +1,32 @@
 #include "StarMaterial.hpp"
 
-void star::StarMaterial::buildDescriptorSets(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, 
+void star::StarMaterial::prepareRender(StarDevice& device)
+{
+	//since multiple meshes can share a material, ensure that the material has not already been prepared
+
+	if (!this->isPrepared) {
+		this->prepRender(device); 
+		this->isPrepared = true; 
+	}
+}
+
+void star::StarMaterial::buildDescriptorSets(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool,
 	std::vector<std::vector<vk::DescriptorSet>> globalSets, int numSwapChainImages)
 {
-	for (int i = 0; i < numSwapChainImages; i++) {
-		auto allDescriptors = std::vector<vk::DescriptorSet>{
-			globalSets.at(i)
-		};
+	//only build descriptor sets if this object hasnt already been initialized
+	if (this->descriptorSets.size() == 0) {
+		for (int i = 0; i < numSwapChainImages; i++) {
+			auto allDescriptors = std::vector<vk::DescriptorSet>{
+				globalSets.at(i)
+			};
 
-		vk::DescriptorSet newDescriptor = this->buildDescriptorSet(device, groupLayout, groupPool);
-		
-		if (newDescriptor)
-			allDescriptors.push_back(newDescriptor); 
+			vk::DescriptorSet newDescriptor = this->buildDescriptorSet(device, groupLayout, groupPool);
 
-		this->descriptorSets.insert(std::pair<int, std::vector<vk::DescriptorSet>>(i, allDescriptors)); 
+			if (newDescriptor)
+				allDescriptors.push_back(newDescriptor);
+
+			this->descriptorSets.insert(std::pair<int, std::vector<vk::DescriptorSet>>(i, allDescriptors));
+		}
 	}
 }
 

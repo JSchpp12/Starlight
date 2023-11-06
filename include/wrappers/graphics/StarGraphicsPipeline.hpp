@@ -33,7 +33,7 @@ public:
 		uint32_t subpass = 0;
 	};
 
-	StarGraphicsPipeline(StarDevice& device, StarShader& inVertShader, StarShader& inFragShader, PipelineConfigSettings& configSettings);
+	StarGraphicsPipeline(StarDevice& device, StarShader inVertShader, StarShader inFragShader, PipelineConfigSettings& configSettings);
 	virtual ~StarGraphicsPipeline();
 
 	//no copy
@@ -45,7 +45,7 @@ public:
 	static void defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent);
 
 protected:
-	StarShader& vertShader, fragShader; 
+	StarShader vertShader, fragShader; 
 	PipelineConfigSettings& configSettings; 
 
 	virtual vk::Pipeline buildPipeline(vk::Extent2D swapChainExtent) override; 

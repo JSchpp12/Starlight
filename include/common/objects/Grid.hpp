@@ -26,7 +26,6 @@
 //
 //		std::optional<glm::vec2> getXYCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head);
 //
-//		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() override { return this->meshes; };
 //		Color getTexColorAt(int x, int y) { return this->material.getTexture().getRawData()->at(x).at(y); }
 //		int getSizeX() { return this->vertX; }
 //		int getSizeY() { return this->vertY; }
@@ -39,5 +38,9 @@
 //		std::unique_ptr<RuntimeUpdateTexture> displacementTexture;
 //
 //		glm::vec3 getCenter();
+//
+//		// Inherited via StarObject
+//		std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device, vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass) override;
+//		std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 //	};
 //}

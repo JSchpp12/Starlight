@@ -37,9 +37,8 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 	//for now only check if they share the same shader
 	for (auto& group : this->groups) {
 		//check the first object in each group just to see if they have the same shaders
-		auto& baseObjectInfo = group.objects.front(); 
-		
-		auto objectShaders = baseObjectInfo.object.getShaders(); 
+
+		auto objectShaders = group.baseObject.object.getShaders();
 		auto newObjectShaders = newObject.getShaders();
 
 		bool isMatch = true; 
@@ -64,14 +63,24 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 
 	if (targetGroup == nullptr) {
 		//requires new pipeline -- and group
-		auto objInfo = RenderObjectInfo(newObject, indexStartOffset, vertexStartOffset);
+		auto objInfo = RenderObjectInfo(newObject, vertexStartOffset, indexStartOffset);
 		this->groups.push_back(Group(objInfo));
 
 	}
 	else {
-		auto objInfo = RenderObjectInfo(newObject, indexStartOffset, vertexStartOffset); 
+		auto objInfo = RenderObjectInfo(newObject, vertexStartOffset, indexStartOffset);
 		targetGroup->objects.push_back(objInfo);
 	}
+
+	//check if this new object has a larger descriptor set layout than the current one
+	auto layoutBuilder = StarDescriptorSetLayout::Builder(device);
+	newObject.getMeshes().at(0)->getMaterial().getDescriptorSetLayout(layoutBuilder);
+	auto newLayout = layoutBuilder.build(); 
+
+	if (newLayout->getBindings().size() > this->largestObjectDescriptorSetLayout->getBindings().size()) {
+		this->largestObjectDescriptorSetLayout = std::move(newLayout); 
+	}
+
 
 	this->numObjects++;
 	this->numMeshes += newObject.getMeshes().size();
@@ -89,6 +98,7 @@ void StarRenderGroup::updateBuffers(uint32_t currentImage) {
 		newBufferObject.modelMatrix = group.baseObject.object.getDisplayMatrix(); 
 		newBufferObject.normalMatrix = group.baseObject.object.getNormalMatrix(); 
 		this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements* objectCountIt); 
+		objectCountIt++; 
 
 		for (auto& obj : group.objects) {
 			newBufferObject.modelMatrix = obj.object.getDisplayMatrix();
@@ -160,12 +170,12 @@ void StarRenderGroup::createDescriptorPool() {
 
 	//add objects needs
 	for (auto& it : types) {
-		newPoolBuilder.addPoolSize(it.second.descriptorType, it.second.descriptorCount * this->numSwapChainImages * this->numObjects);
+		newPoolBuilder.addPoolSize(it.second.descriptorType, it.second.descriptorCount * this->numSwapChainImages * this->numMeshes);
 	}
 
 	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>& globalTypes = this->globalSetLayout->getBindings();
 	for (auto& it : globalTypes) {
-		newPoolBuilder.addPoolSize(it.second.descriptorType, it.second.descriptorCount * this->numSwapChainImages * this->numObjects);
+		newPoolBuilder.addPoolSize(it.second.descriptorType, it.second.descriptorCount * this->numSwapChainImages * this->numMeshes);
 	}
 
 	this->descriptorPool = newPoolBuilder.build(); 
@@ -184,12 +194,12 @@ void StarRenderGroup::prepareObjects(vk::RenderPass engineRenderPass, std::vecto
 
 	for (auto& group : this->groups) {
 		//prepare base object
-		auto globalObjDesc = getObjectGlobalDescriptorSets(objCounter, enginePerImageDescriptors);
+		auto globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
 		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, engineRenderPass, numSwapChainImages, *largestObjectDescriptorSetLayout, *descriptorPool, globalObjDesc);
 		objCounter++; 
 
 		for (auto& renderObject : group.objects) {
-			globalObjDesc = getObjectGlobalDescriptorSets(objCounter, enginePerImageDescriptors);
+			globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
 			renderObject.object.prepRender(device, numSwapChainImages, *largestObjectDescriptorSetLayout, *descriptorPool, globalObjDesc, group.baseObject.object.getPipline()); 
 
 			objCounter++;
@@ -197,7 +207,7 @@ void StarRenderGroup::prepareObjects(vk::RenderPass engineRenderPass, std::vecto
 	}
 }
 
-std::vector<std::vector<vk::DescriptorSet>> star::StarRenderGroup::getObjectGlobalDescriptorSets(int objectOffset,
+std::vector<std::vector<vk::DescriptorSet>> star::StarRenderGroup::generateObjectExternalDescriptors(int objectOffset,
 	std::vector<vk::DescriptorSet> enginePerImageDescriptors)
 {
 	vk::DescriptorBufferInfo bufferInfo{};

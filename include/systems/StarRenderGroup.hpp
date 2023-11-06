@@ -126,7 +126,7 @@ namespace star {
 		/// </summary>
 		virtual void prepareObjects(vk::RenderPass engineRenderPass, std::vector<vk::DescriptorSet> enginePerImageDescriptors);
 
-		std::vector<std::vector<vk::DescriptorSet>> getObjectGlobalDescriptorSets(int objectOffset, 
+		std::vector<std::vector<vk::DescriptorSet>> generateObjectExternalDescriptors(int objectOffset,
 			std::vector<vk::DescriptorSet> enginePerObjectDescriptors);
 
 		virtual void createPipelineLayout(StarDescriptorSetLayout& engineSetLayout);

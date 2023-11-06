@@ -134,8 +134,8 @@ std::unique_ptr<star::StarPipeline> star::BasicObject::buildPipeline(StarDevice&
 	config.renderPass = renderPass;
 
 	auto shaders = this->getShaders(); 
-	StarShader& vertShader = shaders.at(Shader_Stage::vertex); 
-	StarShader& fragShader = shaders.at(Shader_Stage::fragment); 
+	StarShader vertShader = shaders.at(Shader_Stage::vertex); 
+	StarShader fragShader = shaders.at(Shader_Stage::fragment); 
 
 	auto newPipeline = std::unique_ptr<StarPipeline>(new StarGraphicsPipeline(device, vertShader, fragShader, config));
 	newPipeline->init(swapChainExtent); 
@@ -183,7 +183,7 @@ void star::BasicObject::loadFromFile(const std::string objectFilePath)
 	std::vector<std::unique_ptr<StarMesh>> meshes(shapes.size());
 	tinyobj::material_t* currMaterial = nullptr;
 	std::unique_ptr<StarMaterial> objectMaterial;
-	std::vector<std::unique_ptr<BumpMaterial>> preparedMaterials; 
+	std::vector<std::shared_ptr<StarMaterial>> preparedMaterials; 
 
 
 	if (materials.size() > 0) {
@@ -202,23 +202,53 @@ void star::BasicObject::loadFromFile(const std::string objectFilePath)
 				bumpMap = std::unique_ptr<Texture>(new Texture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
 			}
 
-			preparedMaterials.emplace_back(std::unique_ptr<BumpMaterial>(new BumpMaterial(glm::vec4(1.0),
-				glm::vec4(1.0),
-				glm::vec4(1.0),
-				glm::vec4{
-					currMaterial->diffuse[0],
-					currMaterial->diffuse[1],
-					currMaterial->diffuse[2],
-					1.0f },
+			//check if any material values are 0 - ambient is important
+			if (currMaterial->ambient[0] == 0) {
+				currMaterial->ambient[0] = 1.0; 
+				currMaterial->ambient[1] = 1.0; 
+				currMaterial->ambient[2] = 1.0; 
+			}
+
+			if (bumpMap)
+			{
+				this->isBumpyMaterial = true; 
+				preparedMaterials.push_back(std::shared_ptr<BumpMaterial>(new BumpMaterial(glm::vec4(1.0),
+					glm::vec4(1.0),
+					glm::vec4(1.0),
 					glm::vec4{
-						currMaterial->specular[0],
-						currMaterial->specular[1],
-						currMaterial->specular[2],
+						currMaterial->diffuse[0],
+						currMaterial->diffuse[1],
+						currMaterial->diffuse[2],
 						1.0f },
-						currMaterial->shininess,
-						std::move(texture),
-						std::move(bumpMap)
-						)));
+						glm::vec4{
+							currMaterial->specular[0],
+							currMaterial->specular[1],
+							currMaterial->specular[2],
+							1.0f },
+							currMaterial->shininess,
+							std::move(texture),
+							std::move(bumpMap)
+							)));
+			}
+			else {
+				preparedMaterials.push_back(std::shared_ptr<TextureMaterial>(new TextureMaterial(glm::vec4(1.0),
+					glm::vec4(1.0),
+					glm::vec4(1.0),
+					glm::vec4{
+						currMaterial->diffuse[0],
+						currMaterial->diffuse[1],
+						currMaterial->diffuse[2],
+						1.0f },
+						glm::vec4{
+							currMaterial->specular[0],
+							currMaterial->specular[1],
+							currMaterial->specular[2],
+							1.0f },
+							currMaterial->shininess,
+							std::move(texture)
+							)));
+			}
+
 		}
 
 		//need to scale object so that it fits on screen
@@ -262,14 +292,6 @@ void star::BasicObject::loadFromFile(const std::string objectFilePath)
 						1.0f - attrib.texcoords[2 * indicies[dIndex].texcoord_index + 1]
 					};
 
-					if (shape.mesh.material_ids.at(faceIndex) != -1) {
-						//use the overridden material if provided, otherwise use the prop from mtl file
-						newVertex.matAmbient = preparedMaterials.at(shape.mesh.material_ids.at(faceIndex))->ambient;
-						newVertex.matDiffuse = preparedMaterials.at(shape.mesh.material_ids.at(faceIndex))->diffuse;
-						newVertex.matSpecular = preparedMaterials.at(shape.mesh.material_ids.at(faceIndex))->specular;
-						newVertex.matShininess = preparedMaterials.at(shape.mesh.material_ids.at(faceIndex))->shinyCoefficient;
-					}
-
 					vertices->at(vertCounter) = newVertex;
 					fullInd->at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter); 
 					vertCounter++; 
@@ -278,7 +300,7 @@ void star::BasicObject::loadFromFile(const std::string objectFilePath)
 
 			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
 				//apply material from files to mesh -- will ignore passed values 
-				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(std::move(vertices), std::move(fullInd), std::move(preparedMaterials.at(shape.mesh.material_ids[0]))));
+				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(std::move(vertices), std::move(fullInd), preparedMaterials.at(shape.mesh.material_ids[0])));
 			}
 			shapeCounter++;
 		}
@@ -291,13 +313,24 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
 {
 	std::unordered_map<star::Shader_Stage, StarShader> shaders; 
 	
-	//load vertex shader
-	std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.vert";
-	shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
-	
-	//load fragment shader
-	std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.frag";
-	shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment))); 
-		
+	if (isBumpyMaterial) {
+		//load vertex shader
+		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.vert";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
+
+		//load fragment shader
+		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.frag";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
+	}
+	else {
+		//load vertex shader
+		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.vert";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
+
+		//load fragment shader
+		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.frag";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
+	}
+			
 	return shaders; 
 }

@@ -1,7 +1,7 @@
 #include "StarGraphicsPipeline.hpp"
 
 namespace star {
-StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, StarShader& inVertShader, StarShader& inFragShader, PipelineConfigSettings& configSettings) :
+StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, StarShader inVertShader, StarShader inFragShader, PipelineConfigSettings& configSettings) :
 	StarPipeline(device), configSettings(configSettings), vertShader(inVertShader), fragShader(inFragShader) {
 	this->hash = inVertShader.getPath() + inFragShader.getPath(); 
 }

@@ -39,9 +39,13 @@ bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout& co
 	}
 
 
-	for (auto& binding : *largerBindingSet) {
+	for (auto& binding : *smallerBindingSet) {
 		//check if the other layout has a binding of the same type
-		if (smallerBindingSet->find(binding.first) == smallerBindingSet->end()) {
+		if (largerBindingSet->find(binding.first) == largerBindingSet->end()) {
+			return false;
+		}
+		else if (binding.second.descriptorType != largerBindingSet->at(binding.first).descriptorType) {
+			// contains a binding in the same place, check the type
 			return false;
 		}
 	}

@@ -147,11 +147,11 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::Square::getShader
 	std::unordered_map<star::Shader_Stage, StarShader> shaders;
 
 	//load vertex shader
-	std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/square.vert";
+	std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.vert";
 	shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
 
 	//load fragment shader
-	std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/square.frag";
+	std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.frag";
 	shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
 
 	return shaders;
@@ -165,26 +165,26 @@ star::Square::Square()
 void star::Square::load()
 {
 	std::unique_ptr<std::vector<star::Vertex>> verts = std::unique_ptr<std::vector<star::Vertex>>(new std::vector<star::Vertex>{
-		star::Vertex{
-			glm::vec3{-1.0f, -1.0f, 0.0f},	//position
-			glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
-			glm::vec3{0.0f, 1.0f, 0.0f}		//color
-		},
-		star::Vertex{
-			glm::vec3{1.0f, -1.0f, 0.0f},	//position
-			glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
-			glm::vec3{0.0f, 1.0f, 0.0f}		//color
-		},
-		star::Vertex{
-			glm::vec3{1.0f, 1.0f, 0.0f},	//position
-			glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
-			glm::vec3{1.0f, 0.0f, 0.0f}		//color
-		},
-		star::Vertex{
-			glm::vec3{-1.0f, 1.0f, 0.0f},	//position
-			glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
-			glm::vec3{0.0f, 1.0f, 0.0f}		//color
-		},
+			star::Vertex{
+				glm::vec3{-0.5f, 0.0f, -0.5f},	//position
+				glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
+				glm::vec3{0.0f, 1.0f, 0.0f}		//color
+			},
+			star::Vertex{
+				glm::vec3{0.5f, 0.0f, -0.5f},	//position
+				glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
+				glm::vec3{0.0f, 1.0f, 0.0f}		//color
+			},
+			star::Vertex{
+				glm::vec3{0.5f, 0.0f, 0.5f},	//position
+				glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
+				glm::vec3{1.0f, 0.0f, 0.0f}		//color
+			},
+			star::Vertex{
+				glm::vec3{-0.5f, 0.0f, 0.5f},	//position
+				glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
+				glm::vec3{0.0f, 1.0f, 0.0f}		//color
+			},
 		});
 	std::unique_ptr<std::vector<uint32_t>> inds = std::unique_ptr<std::vector<uint32_t>>(new std::vector<uint32_t>{
 		0,3,2,0,2,1
