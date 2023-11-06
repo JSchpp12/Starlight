@@ -2,8 +2,6 @@
 
 namespace star {
 
-MapManager StarEngine::mapManager = MapManager(std::make_unique<Texture>(1, 1));
-
 StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene())) {
 	ConfigFile::load("./StarEngine.cfg"); 
 }

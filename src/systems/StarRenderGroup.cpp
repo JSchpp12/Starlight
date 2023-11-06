@@ -85,6 +85,11 @@ void StarRenderGroup::updateBuffers(uint32_t currentImage) {
 	size_t objectCountIt = 0; 
 
 	for (auto& group : this->groups) {
+		//need to update the base object too
+		newBufferObject.modelMatrix = group.baseObject.object.getDisplayMatrix(); 
+		newBufferObject.normalMatrix = group.baseObject.object.getNormalMatrix(); 
+		this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements* objectCountIt); 
+
 		for (auto& obj : group.objects) {
 			newBufferObject.modelMatrix = obj.object.getDisplayMatrix();
 			newBufferObject.normalMatrix = obj.object.getNormalMatrix();

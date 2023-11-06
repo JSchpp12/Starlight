@@ -166,22 +166,22 @@ void star::Square::load()
 {
 	std::unique_ptr<std::vector<star::Vertex>> verts = std::unique_ptr<std::vector<star::Vertex>>(new std::vector<star::Vertex>{
 		star::Vertex{
-			glm::vec3{-0.5f, 0.0f, -0.5f},	//position
+			glm::vec3{-1.0f, -1.0f, 0.0f},	//position
 			glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
 			glm::vec3{0.0f, 1.0f, 0.0f}		//color
 		},
 		star::Vertex{
-			glm::vec3{0.5f, 0.0f, -0.5f},	//position
+			glm::vec3{1.0f, -1.0f, 0.0f},	//position
 			glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
 			glm::vec3{0.0f, 1.0f, 0.0f}		//color
 		},
 		star::Vertex{
-			glm::vec3{0.5f, 0.0f, 0.5f},	//position
+			glm::vec3{1.0f, 1.0f, 0.0f},	//position
 			glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
 			glm::vec3{1.0f, 0.0f, 0.0f}		//color
 		},
 		star::Vertex{
-			glm::vec3{-0.5f, 0.0f, 0.5f},	//position
+			glm::vec3{-1.0f, 1.0f, 0.0f},	//position
 			glm::vec3{0.0f, 1.0f, 0.0f},	//normal - posy
 			glm::vec3{0.0f, 1.0f, 0.0f}		//color
 		},

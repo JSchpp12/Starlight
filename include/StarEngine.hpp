@@ -20,8 +20,6 @@ class StarEngine {
 public:
 	StarEngine();
 
-	static MapManager mapManager;
-
 	virtual ~StarEngine() = default;
 
 	void Run();

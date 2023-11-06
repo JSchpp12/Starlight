@@ -33,7 +33,6 @@ void BasicRenderer::prepare()
 	createFramebuffers();
 	createRenderingBuffers();
 
-
 	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
 	for (size_t i = 0; i < this->swapChainImages.size(); i++) {
 		//global
@@ -740,6 +739,7 @@ void BasicRenderer::createRenderingBuffers()
 	}
 
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
+		auto numOfObjects = this->objectList.size(); 
 		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(this->device, this->objectList.size(), sizeof(GlobalUniformBufferObject),
 			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		this->globalUniformBuffers[i]->map();
