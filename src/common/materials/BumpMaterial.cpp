@@ -6,7 +6,7 @@ void star::BumpMaterial::getDescriptorSetLayout(star::StarDescriptorSetLayout::B
 	newLayout.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 }
 
-void star::BumpMaterial::cleanupRender(StarDevice& device)
+void star::BumpMaterial::cleanup(StarDevice& device)
 {
 	if (this->texture)
 		this->texture.reset();
@@ -38,8 +38,8 @@ vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, Sta
 	return newSet; 
 }
 
-void star::BumpMaterial::prepRender(StarDevice& device)
+void star::BumpMaterial::prep(StarDevice& device)
 {
-	this->TextureMaterial::prepRender(device);
+	this->TextureMaterial::prep(device);
 	bumpMap->prepRender(device);
 }

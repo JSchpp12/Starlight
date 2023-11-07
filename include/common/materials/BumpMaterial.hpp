@@ -25,7 +25,7 @@ namespace star {
 
 
 		void getDescriptorSetLayout(star::StarDescriptorSetLayout::Builder& newLayout) override;
-		void cleanupRender(StarDevice& device) override;
+		void cleanup(StarDevice& device) override;
 
 	protected:
 		std::unique_ptr<Texture> bumpMap; 
@@ -33,7 +33,7 @@ namespace star {
 		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
 			StarDescriptorPool& groupPool) override;
 
-		void prepRender(StarDevice& device) override;
+		void prep(StarDevice& device) override;
 
 	};
 }

@@ -1,11 +1,19 @@
 #include "StarMaterial.hpp"
 
-void star::StarMaterial::prepareRender(StarDevice& device)
+void star::StarMaterial::cleanupRender(StarDevice& device)
+{
+	if (this->isPrepared) {
+		this->cleanup(device); 
+		this->isPrepared = false; 
+	}
+}
+
+void star::StarMaterial::prepRender(StarDevice& device)
 {
 	//since multiple meshes can share a material, ensure that the material has not already been prepared
 
 	if (!this->isPrepared) {
-		this->prepRender(device); 
+		this->prep(device); 
 		this->isPrepared = true; 
 	}
 }

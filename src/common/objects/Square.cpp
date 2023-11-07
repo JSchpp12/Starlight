@@ -11,7 +11,7 @@ std::unique_ptr<star::StarPipeline> star::Square::buildPipeline(StarDevice& devi
 
 	StarGraphicsPipeline::PipelineConfigSettings settings;
 	vk::Extent2D extent;
-	star::StarGraphicsPipeline::defaultPipelineConfigInfo(settings, extent);
+	star::StarGraphicsPipeline::defaultPipelineConfigInfo(settings, extent, renderPass, pipelineLayout);
 
 	/* Scissor */
 	//this defines in which regions pixels will actually be stored. 
@@ -137,7 +137,7 @@ std::unique_ptr<star::StarPipeline> star::Square::buildPipeline(StarDevice& devi
 	StarShader& fragShader = shaders.at(Shader_Stage::fragment);
 
 	auto newPipeline = std::unique_ptr<StarPipeline>(new StarGraphicsPipeline(device, vertShader, fragShader, config));
-	newPipeline->init(swapChainExtent);
+	newPipeline->init();
 
 	return std::move(newPipeline);
 }

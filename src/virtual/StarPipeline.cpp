@@ -5,9 +5,9 @@ star::StarPipeline::~StarPipeline()
 	device.getDevice().destroyPipeline(pipeline); 
 }
 
-void star::StarPipeline::init(vk::Extent2D swapChainExtent)
+void star::StarPipeline::init()
 {
-	pipeline = this->buildPipeline(swapChainExtent);
+	pipeline = this->buildPipeline();
 }
 
 bool star::StarPipeline::isSame(StarPipeline& compPipe)

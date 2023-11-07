@@ -1,8 +1,9 @@
 #include "StarGraphicsPipeline.hpp"
 
 namespace star {
-StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, StarShader inVertShader, StarShader inFragShader, PipelineConfigSettings& configSettings) :
-	StarPipeline(device), configSettings(configSettings), vertShader(inVertShader), fragShader(inFragShader) {
+StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, StarShader inVertShader, StarShader inFragShader, 
+	PipelineConfigSettings& configSettings) 
+	: StarPipeline(device), configSettings(configSettings), vertShader(inVertShader), fragShader(inFragShader) {
 	this->hash = inVertShader.getPath() + inFragShader.getPath(); 
 }
 
@@ -14,19 +15,23 @@ void StarGraphicsPipeline::bind(vk::CommandBuffer commandBuffer) {
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
 }
 
-void StarGraphicsPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent) {
+void StarGraphicsPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent, vk::RenderPass renderPass, vk::PipelineLayout pipelineLayout) {
+	configSettings.swapChainExtent = swapChainExtent; 
+	configSettings.pipelineLayout = pipelineLayout; 
+	configSettings.renderPass = renderPass; 
 
-	//vk::Rect2D scissor{};
-	//scissor.offset = vk::Offset2D{ 0, 0 };
-	//scissor.extent = swapChainExtent;
+	vk::Rect2D scissor{};
+	scissor.offset = vk::Offset2D{ 0, 0 };
+	scissor.extent = configSettings.swapChainExtent;
+	configSettings.scissor = scissor; 
 
-	//vk::PipelineViewportStateCreateInfo viewportState{};
-	//viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
-	//viewportState.viewportCount = 1;
-	//viewportState.pViewports = VK_NULL_HANDLE;
-	//viewportState.scissorCount = 1;
-	//viewportState.pScissors = &scissor;
-
+	vk::PipelineViewportStateCreateInfo viewportState{};
+	viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
+	viewportState.viewportCount = 1;
+	viewportState.pViewports = VK_NULL_HANDLE;
+	viewportState.scissorCount = 1;
+	viewportState.pScissors = &configSettings.scissor;
+	
 	/* Rasterizer */
 	//takes the geometry and creates fragments which are then passed onto the fragment shader 
 	//also does: depth testing, face culling, and the scissor test
@@ -57,72 +62,85 @@ void StarGraphicsPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& con
 	rasterizer.depthBiasClamp = 0.0f; //optional 
 	rasterizer.depthBiasSlopeFactor = 0.0f; //optional
 
-	/* Multisampling */
-	//this is one of the methods of performing anti-aliasing
-	//enabling requires GPU feature -- left off for this tutorial 
-	vk::PipelineMultisampleStateCreateInfo multisampling{};
-	multisampling.sType = vk::StructureType::ePipelineMultisampleStateCreateInfo;
-	multisampling.sampleShadingEnable = VK_FALSE;
-	multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
-	multisampling.minSampleShading = 1.0f; //optional 
-	multisampling.pSampleMask = nullptr; //optional
-	multisampling.alphaToCoverageEnable = VK_FALSE; //optional
-	multisampling.alphaToOneEnable = VK_FALSE; //optional
+	{
+		/* Multisampling */
+		//this is one of the methods of performing anti-aliasing
+		//enabling requires GPU feature -- left off for this tutorial 
+		vk::PipelineMultisampleStateCreateInfo multisampling{};
+		multisampling.sType = vk::StructureType::ePipelineMultisampleStateCreateInfo;
+		multisampling.sampleShadingEnable = VK_FALSE;
+		multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
+		multisampling.minSampleShading = 1.0f; //optional 
+		multisampling.pSampleMask = nullptr; //optional
+		multisampling.alphaToCoverageEnable = VK_FALSE; //optional
+		multisampling.alphaToOneEnable = VK_FALSE; //optional
+		configSettings.multisampleInfo = multisampling;
+	}
 
-	/* Depth and Stencil Testing */
-	//if using depth or stencil buffer, a depth and stencil tests are neeeded
-	vk::PipelineDepthStencilStateCreateInfo depthStencil{};
-	depthStencil.sType = vk::StructureType::ePipelineDepthStencilStateCreateInfo;
-	depthStencil.depthTestEnable = VK_TRUE;             //specifies if depth of new fragments should be compared to the depth buffer to test for actual display state
-	depthStencil.depthWriteEnable = VK_TRUE;            //specifies if the new depth of fragments that pass the depth tests should be written to the depth buffer 
-	depthStencil.depthCompareOp = vk::CompareOp::eLess;   //comparison that is performed to keep or discard fragments - here this is: lower depth = closer, so depth of new frags should be less
-	//following are for optional depth bound testing - keep frags within a specific range 
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.minDepthBounds = 0.0f;                 //optional 
-	depthStencil.maxDepthBounds = 1.0f;                 //optional
-	//following are used for stencil tests - make sure that format of depth image contains a stencil component
-	depthStencil.stencilTestEnable = VK_FALSE;
+	{
+		/* Depth and Stencil Testing */
+		//if using depth or stencil buffer, a depth and stencil tests are neeeded
+		vk::PipelineDepthStencilStateCreateInfo depthStencil{};
+		depthStencil.sType = vk::StructureType::ePipelineDepthStencilStateCreateInfo;
+		depthStencil.depthTestEnable = VK_TRUE;             //specifies if depth of new fragments should be compared to the depth buffer to test for actual display state
+		depthStencil.depthWriteEnable = VK_TRUE;            //specifies if the new depth of fragments that pass the depth tests should be written to the depth buffer 
+		depthStencil.depthCompareOp = vk::CompareOp::eLess;   //comparison that is performed to keep or discard fragments - here this is: lower depth = closer, so depth of new frags should be less
+		//following are for optional depth bound testing - keep frags within a specific range 
+		depthStencil.depthBoundsTestEnable = VK_FALSE;
+		depthStencil.minDepthBounds = 0.0f;                 //optional 
+		depthStencil.maxDepthBounds = 1.0f;                 //optional
+		//following are used for stencil tests - make sure that format of depth image contains a stencil component
+		depthStencil.stencilTestEnable = VK_FALSE;
+		configSettings.depthStencilInfo = depthStencil;
+	}
 
-	/* Color blending */
-	// after the fragShader has returned a color, it must be combined with the color already in the framebuffer
-	// there are two ways to do this: 
-	//      1. mix the old and new value to produce final color
-	//      2. combine the old a new value using a bitwise operation 
-	//two structs are needed to create this functionality: 
-	//  1. VkPipelineColorBlendAttachmentState: configuration per attached framebuffer 
-	//  2. VkPipelineColorBlendStateCreateInfo: global configuration
-	//only using one framebuffer in this project -- both of these are disabled in this project
-	vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
-	//colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-	colorBlendAttachment.blendEnable = VK_FALSE;
+	{
+		/* Color blending */
+		// after the fragShader has returned a color, it must be combined with the color already in the framebuffer
+		// there are two ways to do this: 
+		//      1. mix the old and new value to produce final color
+		//      2. combine the old a new value using a bitwise operation 
+		//two structs are needed to create this functionality: 
+		//  1. VkPipelineColorBlendAttachmentState: configuration per attached framebuffer 
+		//  2. VkPipelineColorBlendStateCreateInfo: global configuration
+		//only using one framebuffer in this project -- both of these are disabled in this project
+		vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
+		//colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+		colorBlendAttachment.blendEnable = VK_FALSE;
+		configSettings.colorBlendAttachment = colorBlendAttachment;
+	}
 
-	vk::PipelineColorBlendStateCreateInfo colorBlending{};
-	colorBlending.sType = vk::StructureType::ePipelineColorBlendStateCreateInfo;
-	colorBlending.logicOpEnable = VK_FALSE;
-	colorBlending.logicOp = vk::LogicOp::eCopy;
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments = &colorBlendAttachment;
-	colorBlending.blendConstants[0] = 0.0f;
-	colorBlending.blendConstants[1] = 0.0f;
-	colorBlending.blendConstants[2] = 0.0f;
-	colorBlending.blendConstants[3] = 0.0f;
+	{
+		vk::PipelineColorBlendStateCreateInfo colorBlending{};
+		colorBlending.sType = vk::StructureType::ePipelineColorBlendStateCreateInfo;
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = vk::LogicOp::eCopy;
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &configSettings.colorBlendAttachment;
+		colorBlending.blendConstants[0] = 0.0f;
+		colorBlending.blendConstants[1] = 0.0f;
+		colorBlending.blendConstants[2] = 0.0f;
+		colorBlending.blendConstants[3] = 0.0f;
+		configSettings.colorBlendInfo = colorBlending;
+	}
+
+	{
+		vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
+		inputAssembly.sType = vk::StructureType::ePipelineInputAssemblyStateCreateInfo;
+		inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+		inputAssembly.primitiveRestartEnable = VK_FALSE;
+		configSettings.inputAssemblyInfo = inputAssembly; 
+	}
 
 	configSettings.rasterizationInfo = rasterizer;
-	configSettings.multisampleInfo = multisampling;
-	configSettings.depthStencilInfo = depthStencil;
-	configSettings.colorBlendInfo = colorBlending;
-	configSettings.colorBlendAttachment = colorBlendAttachment;
-	//configInfo.viewportInfo = viewportState; 
+	configSettings.viewportInfo = viewportState;
 }
 
-vk::Pipeline StarGraphicsPipeline::buildPipeline(vk::Extent2D swapChainExtent)
+vk::Pipeline StarGraphicsPipeline::buildPipeline()
 {
 	vk::ShaderModule vertShaderModule = createShaderModule(*vertShader.compile());
 	vk::ShaderModule fragShaderModule = createShaderModule(*fragShader.compile());
-
-	auto bindingDescriptions = VulkanVertex::getBindingDescription();
-	auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
 
 	//TODO: move this out of here
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
@@ -137,8 +155,8 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline(vk::Extent2D swapChainExtent)
 	fragShaderStageInfo.module = fragShaderModule;
 	fragShaderStageInfo.pName = "main";
 
-	//store these creation infos for later use 
-	vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+	auto bindingDescriptions = VulkanVertex::getBindingDescription();
+	auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
 
 	vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
@@ -147,11 +165,8 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline(vk::Extent2D swapChainExtent)
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
-	inputAssembly.sType = vk::StructureType::ePipelineInputAssemblyStateCreateInfo;
-	inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
-	inputAssembly.primitiveRestartEnable = VK_FALSE;
-
+	//store these creation infos for later use 
+	vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
 	/* Dynamic State */
 	//some parts of the pipeline can be changed without recreating the entire pipeline
@@ -170,9 +185,10 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline(vk::Extent2D swapChainExtent)
 	pipelineInfo.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
 	pipelineInfo.stageCount = 2;
 	pipelineInfo.pStages = shaderStages;
+
 	//ref all previously created structs
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
-	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pInputAssemblyState = &configSettings.inputAssemblyInfo;
 	pipelineInfo.pViewportState = &configSettings.viewportInfo;
 	pipelineInfo.pRasterizationState = &configSettings.rasterizationInfo;
 	pipelineInfo.pMultisampleState = &configSettings.multisampleInfo;

@@ -19,6 +19,7 @@ public:
 		PipelineConfigSettings(const PipelineConfigSettings&) = delete;
 		PipelineConfigSettings& operator=(const PipelineConfigSettings&) = delete;
 
+		vk::Rect2D scissor; 
 		vk::PipelineViewportStateCreateInfo viewportInfo;
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
 		vk::PipelineRasterizationStateCreateInfo rasterizationInfo;
@@ -30,6 +31,7 @@ public:
 		vk::PipelineDynamicStateCreateInfo dynamicStateInfo;
 		vk::PipelineLayout pipelineLayout = nullptr;
 		vk::RenderPass renderPass = nullptr;
+		vk::Extent2D swapChainExtent; 
 		uint32_t subpass = 0;
 	};
 
@@ -42,13 +44,13 @@ public:
 
 	virtual void bind(vk::CommandBuffer commandBuffer) override;
 
-	static void defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent);
+	static void defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent, vk::RenderPass renderPass, vk::PipelineLayout pipelineLayout);
 
 protected:
 	StarShader vertShader, fragShader; 
 	PipelineConfigSettings& configSettings; 
 
-	virtual vk::Pipeline buildPipeline(vk::Extent2D swapChainExtent) override; 
+	virtual vk::Pipeline buildPipeline() override; 
 
 };
 }

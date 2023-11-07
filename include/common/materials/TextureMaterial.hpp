@@ -13,13 +13,14 @@ namespace star {
 			texture(std::move(texture)) {};
 
 		// Inherited via StarMaterial
-		void prepRender(StarDevice& device) override;
 		void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout) override;
-		void cleanupRender(StarDevice& device) override;
+		void cleanup(StarDevice& device) override;
 		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool) override;
 
 	protected:
 		std::unique_ptr<Texture> texture;
+
+		void prep(StarDevice& device) override;
 
 	};
 }

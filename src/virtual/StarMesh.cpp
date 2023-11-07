@@ -2,7 +2,7 @@
 
 void star::StarMesh::prepRender(star::StarDevice& device)
 {
-	this->material->prepareRender(device);
+	this->material->prepRender(device);
 }
 
 void star::StarMesh::recordCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex, uint32_t vb_start, uint32_t ib_start) {

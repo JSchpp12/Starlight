@@ -33,13 +33,16 @@ namespace star {
 
 		virtual ~StarMaterial() = default; 
 
-		//virtual std::unique_ptr<StarMaterialMesh> getMeshMaterials(StarDevice& device) = 0; 
+		/// <summary>
+		/// Engine entrypoint for cleanup operations
+		/// </summary>
+		void cleanupRender(StarDevice& device); 
 
 		/// <summary>
 		/// Entry point for rendering preparations
 		/// </summary>
 		/// <param name="device"></param>
-		void prepareRender(StarDevice& device); 
+		void prepRender(StarDevice& device); 
 
 		virtual void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout) = 0;
 
@@ -49,13 +52,6 @@ namespace star {
 
 		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
-		/// <summary>
-		/// Cleanup any vulkan objects created by this material
-		/// </summary>
-		/// <param name="device"></param>
-		virtual void cleanupRender(StarDevice& device)=0; 
-
-
 	protected:
 
 		/// <summary>
@@ -64,7 +60,7 @@ namespace star {
 		/// and gpu memory. 
 		/// </summary>
 		/// <param name="device">Device that is being used in rendering operations</param>
-		virtual void prepRender(StarDevice& device) = 0;
+		virtual void prep(StarDevice& device) = 0;
 
 		//Map of swap chain image index to each descriptor set 
 		std::unordered_map<int, std::vector<vk::DescriptorSet>> descriptorSets;
@@ -78,6 +74,13 @@ namespace star {
 		/// <returns></returns>
 		virtual vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
 			StarDescriptorPool& groupPool) = 0;
+
+
+		/// <summary>
+		/// Cleanup any vulkan objects created by this material
+		/// </summary>
+		/// <param name="device"></param>
+		virtual void cleanup(StarDevice& device)=0;
 
 	private:
 		//flag to determine if the material has been prepped for rendering operations

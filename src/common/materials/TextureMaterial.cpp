@@ -1,6 +1,6 @@
 #include "TextureMaterial.hpp"
 
-void star::TextureMaterial::prepRender(StarDevice& device)
+void star::TextureMaterial::prep(StarDevice& device)
 {
 	texture->prepRender(device);
 }
@@ -10,7 +10,7 @@ void star::TextureMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Buil
 	newLayout.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 }
 
-void star::TextureMaterial::cleanupRender(StarDevice& device)
+void star::TextureMaterial::cleanup(StarDevice& device)
 {
 	if (texture)
 		texture.reset(); 

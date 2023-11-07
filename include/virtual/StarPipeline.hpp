@@ -12,7 +12,7 @@ namespace star {
 	public:
 		virtual ~StarPipeline();
 
-		void init(vk::Extent2D swapChainExtent);
+		void init();
 
 		virtual void bind(vk::CommandBuffer commandBuffer)=0;
 
@@ -23,7 +23,7 @@ namespace star {
 
 		StarPipeline(StarDevice& device) : device(device) {};
 
-		virtual vk::Pipeline buildPipeline(vk::Extent2D swapChainExtent)=0;
+		virtual vk::Pipeline buildPipeline()=0;
 
 		bool isSame(StarPipeline& compPipe); 
 
