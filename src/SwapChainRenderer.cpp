@@ -1,16 +1,16 @@
-#include "BasicRenderer.hpp"
+#include "SwapChainRenderer.hpp"
 
 typedef std::chrono::high_resolution_clock Clock;
 
 namespace star {
 
-BasicRenderer::BasicRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, 
+SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, 
 	std::vector<std::reference_wrapper<StarObject>> objectList, 
 	StarCamera& camera, RenderOptions& renderOptions, StarDevice& device) :
 	StarRenderer(window, camera, device), lightList(lightList), objectList(objectList), renderOptions(renderOptions){ }
 
 
-void BasicRenderer::prepare()
+void SwapChainRenderer::prepare()
 {
 	createSwapChain(); 
 	createImageViews();
@@ -28,7 +28,7 @@ void BasicRenderer::prepare()
 	createFenceImageTracking();
 }
 	
-void BasicRenderer::createRenderingGroups()
+void SwapChainRenderer::createRenderingGroups()
 {
 	uint32_t totalNumInd = 0, totalNumVert = 0; 
 	uint32_t currentNumInd = 0, currentNumVert = 0; 
@@ -142,7 +142,7 @@ void BasicRenderer::createRenderingGroups()
 	}
 }
 
-void BasicRenderer::updateUniformBuffer(uint32_t currentImage)
+void SwapChainRenderer::updateUniformBuffer(uint32_t currentImage)
 {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -190,18 +190,18 @@ void BasicRenderer::updateUniformBuffer(uint32_t currentImage)
 	//}
 }
 
-BasicRenderer::~BasicRenderer()
+SwapChainRenderer::~SwapChainRenderer()
 {
 	device.getDevice().waitIdle(); 
 	cleanup(); 
 }
 
-void BasicRenderer::pollEvents()
+void SwapChainRenderer::pollEvents()
 {
 	glfwPollEvents();
 }
 
-void BasicRenderer::submit()
+void SwapChainRenderer::submit()
 {
 	/* Goals of each call to drawFrame:
 	   *   get an image from the swap chain
@@ -292,7 +292,7 @@ void BasicRenderer::submit()
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void BasicRenderer::cleanup()
+void SwapChainRenderer::cleanup()
 {
 	cleanupSwapChain();
 
@@ -308,7 +308,7 @@ void BasicRenderer::cleanup()
 	}
 }
 
-void BasicRenderer::cleanupSwapChain()
+void SwapChainRenderer::cleanupSwapChain()
 {
 	this->device.getDevice().destroyImageView(this->depthImageView);
 	this->device.getDevice().destroyImage(this->depthImage);
@@ -327,7 +327,7 @@ void BasicRenderer::cleanupSwapChain()
 	this->device.getDevice().destroySwapchainKHR(this->swapChain);
 }
 
-void BasicRenderer::recreateSwapChain()
+void SwapChainRenderer::recreateSwapChain()
 {
 	int width = 0, height = 0;
 
@@ -363,7 +363,7 @@ void BasicRenderer::recreateSwapChain()
 	createCommandBuffers();
 }
 
-void BasicRenderer::createSwapChain()
+void SwapChainRenderer::createSwapChain()
 {
 	//TODO: current implementation requires halting to all rendering when recreating swapchain. Can place old swap chain in oldSwapChain field 
 		//  in order to prevent this and allow rendering to continue
@@ -454,7 +454,7 @@ void BasicRenderer::createSwapChain()
 	swapChainExtent = extent;
 }
 
-void BasicRenderer::createImageViews()
+void SwapChainRenderer::createImageViews()
 {
 	swapChainImageViews.resize(swapChainImages.size());
 
@@ -465,7 +465,7 @@ void BasicRenderer::createImageViews()
 	}
 }
 
-vk::ImageView BasicRenderer::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags)
+vk::ImageView SwapChainRenderer::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags)
 {
 	vk::ImageViewCreateInfo viewInfo{};
 	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
@@ -487,7 +487,7 @@ vk::ImageView BasicRenderer::createImageView(vk::Image image, vk::Format format,
 	return imageView;
 }
 
-void BasicRenderer::createDescriptors()
+void SwapChainRenderer::createDescriptors()
 {
 	this->globalPool = StarDescriptorPool::Builder(this->device)
 		.setMaxSets(15)
@@ -525,7 +525,7 @@ void BasicRenderer::createDescriptors()
 	}
 }
 
-void BasicRenderer::createRenderPass()
+void SwapChainRenderer::createRenderPass()
 {
 	/*  Single render pass consists of many small subpasses
 		each subpasses are subsequent rendering operations that depend on the contents of framebuffers in the previous pass.
@@ -620,7 +620,7 @@ void BasicRenderer::createRenderPass()
 	}
 }
 
-void BasicRenderer::createDepthResources()
+void SwapChainRenderer::createDepthResources()
 {
 	//depth image should have:
 		//  same resolution as the color attachment (in swap chain extent)
@@ -640,7 +640,7 @@ void BasicRenderer::createDepthResources()
 	this->depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
 }
 
-void BasicRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory)
+void SwapChainRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory)
 {
 	/* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
@@ -679,7 +679,7 @@ void BasicRenderer::createImage(uint32_t width, uint32_t height, vk::Format form
 	this->device.getDevice().bindImageMemory(image, imageMemory, 0);
 }
 
-void BasicRenderer::createFramebuffers()
+void SwapChainRenderer::createFramebuffers()
 {
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 
@@ -708,7 +708,7 @@ void BasicRenderer::createFramebuffers()
 	}
 }
 
-void BasicRenderer::createRenderingBuffers()
+void SwapChainRenderer::createRenderingBuffers()
 {
 	vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * this->objectList.size();
 
@@ -732,7 +732,7 @@ void BasicRenderer::createRenderingBuffers()
 	}
 }
 
-void BasicRenderer::createCommandBuffers()
+void SwapChainRenderer::createCommandBuffers()
 {
 	/* Graphics Command Buffer */
 
@@ -869,7 +869,7 @@ void BasicRenderer::createCommandBuffers()
 	}
 }
 
-void BasicRenderer::createSemaphores()
+void SwapChainRenderer::createSemaphores()
 {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -887,7 +887,7 @@ void BasicRenderer::createSemaphores()
 	}
 }
 
-void BasicRenderer::createFences()
+void SwapChainRenderer::createFences()
 {
 	//note: fence creation can be rolled into semaphore creation. Seperated for understanding
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -907,7 +907,7 @@ void BasicRenderer::createFences()
 	}
 }
 
-void BasicRenderer::createFenceImageTracking()
+void SwapChainRenderer::createFenceImageTracking()
 {
 	//note: just like createFences() this too can be wrapped into semaphore creation. Seperated for understanding.
 
@@ -919,7 +919,7 @@ void BasicRenderer::createFenceImageTracking()
 }
 
 
-vk::SurfaceFormatKHR BasicRenderer::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
+vk::SurfaceFormatKHR SwapChainRenderer::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
 {
 	for (const auto& availableFormat : availableFormats) {
 		//check if a format allows 8 bits for R,G,B, and alpha channel
@@ -934,7 +934,7 @@ vk::SurfaceFormatKHR BasicRenderer::chooseSwapSurfaceFormat(const std::vector<vk
 	return availableFormats[0];
 }
 
-vk::PresentModeKHR BasicRenderer::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes) {
+vk::PresentModeKHR SwapChainRenderer::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes) {
 	/*
 	* There are a number of swap modes that are in vulkan
 	* 1. VK_PRESENT_MODE_IMMEDIATE_KHR: images submitted by application are sent to the screen right away -- can cause tearing
@@ -955,7 +955,7 @@ vk::PresentModeKHR BasicRenderer::chooseSwapPresentMode(const std::vector<vk::Pr
 	//only VK_PRESENT_MODE_FIFO_KHR is guaranteed to be available
 	return vk::PresentModeKHR::eFifo;
 }
-vk::Extent2D BasicRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities)
+vk::Extent2D SwapChainRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities)
 {
 	/*
 	* "swap extent" -> resolution of the swap chain images (usually the same as window resultion
@@ -983,7 +983,7 @@ vk::Extent2D BasicRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& c
 		return actualExtent;
 	}
 }
-vk::Format BasicRenderer::findDepthFormat()
+vk::Format SwapChainRenderer::findDepthFormat()
 {
 	//utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
 	return this->device.findSupportedFormat(

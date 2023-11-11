@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BasicRenderer.hpp"
+#include "SwapChainRenderer.hpp"
 #include "BasicWindow.hpp"
 #include "Color.hpp"
 #include "ConfigFile.hpp"
@@ -35,7 +35,7 @@ protected:
 	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<StarWindow> window;
 	std::unique_ptr<StarDevice> renderingDevice; 
-	std::unique_ptr<BasicRenderer> mainRenderer; 
+	std::unique_ptr<SwapChainRenderer> mainRenderer; 
 	std::vector<Handle> lightList; 
 
 	std::vector<std::reference_wrapper<StarCommandBuffer>> registeredCommandBuffers; 

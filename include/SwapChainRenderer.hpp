@@ -25,12 +25,12 @@
 #include <vulkan/vulkan.hpp>
 
 namespace star {
-class BasicRenderer : public StarRenderer {
+class SwapChainRenderer : public StarRenderer {
 public:
-	BasicRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
+	SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, RenderOptions& renderOptions, StarDevice& device);
 
-	virtual ~BasicRenderer();
+	virtual ~SwapChainRenderer();
 
 	void pollEvents(); 
 

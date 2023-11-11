@@ -51,7 +51,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarObject.cpp"
     "src/Renderer.cpp"
     "src/BasicWindow.cpp" 
-    "src/BasicRenderer.cpp"
+    "src/SwapChainRenderer.cpp"
     "src/common/Compiler.cpp"
     "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
@@ -100,7 +100,7 @@ set(${PROJECT_NAME}_SOURCE
 set(${PROJECT_NAME}_HEADERS
     "include/StarEngine.hpp"
     "include/BasicWindow.hpp" 
-    "include/BasicRenderer.hpp"
+    "include/SwapChainRenderer.hpp"
     "include/common/Compiler.hpp"
     "include/common/Interactivity.hpp"
     "include/common/KeyStates.hpp"
