@@ -7,6 +7,7 @@
 #include "StarShader.hpp"
 #include "StarPipeline.hpp"
 #include "StarMesh.hpp"
+#include "StarGraphicsPipeline.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -42,7 +43,7 @@ namespace star {
 		virtual bool requiresUniquePipeline() { return false; }
 
 		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
-			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass) = 0;
+			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass);
 
 		/// <summary>
 		/// Prepare needed objects for rendering operations.

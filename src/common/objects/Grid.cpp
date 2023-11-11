@@ -1,15 +1,78 @@
 #include "Grid.hpp"
 namespace star {
 	Grid::Grid(int vertX, int vertY) :vertX(vertX), vertY(vertY) {
-		//calculate everything in x-y
-		std::vector<std::unique_ptr<StarMesh>> grid;
-		std::vector<std::vector<Color>> textureData = std::vector<std::vector<Color>>(vertY, std::vector<Color>(vertX));
+		std::unique_ptr<std::vector<Vertex>> verts = std::make_unique<std::vector<Vertex>>(); 
+		std::unique_ptr<std::vector<uint32_t>> indices = std::make_unique<std::vector<uint32_t>>(); 
+		std::shared_ptr<VertColorMaterial> material = std::shared_ptr<VertColorMaterial>(new VertColorMaterial());
 
-		std::shared_ptr<HeightDisplacementMaterial> material = std::shared_ptr<HeightDisplacementMaterial>(new HeightDisplacementMaterial(vertX, vertY)); 
+		this->loadGeometry(verts, indices); 
+		this->meshes.push_back(std::unique_ptr<StarMesh>(new StarMesh(std::move(verts), std::move(indices), material)));
+	}
 
-		auto verts = std::unique_ptr<std::vector<Vertex>>(new std::vector<Vertex>());
-		auto indices = std::unique_ptr<std::vector<uint32_t>>(new std::vector<uint32_t>());
-		bool test = true;
+	Grid::Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material)
+	{
+		std::unique_ptr<std::vector<Vertex>> verts = std::make_unique<std::vector<Vertex>>();
+		std::unique_ptr<std::vector<uint32_t>> indices = std::make_unique<std::vector<uint32_t>>();
+
+		this->loadGeometry(verts, indices); 
+
+		this->meshes.push_back(std::unique_ptr<StarMesh>(new StarMesh(std::move(verts), std::move(indices), material)));
+	}
+
+	std::optional<glm::vec3> Grid::getWorldCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head)
+	{
+		glm::vec3 vectorDirection = glm::normalize((head - tail));
+		glm::vec3 planeNorm = glm::vec3(this->upVector);
+
+		//check for parallel vector plane
+		float denm = glm::dot(planeNorm, vectorDirection);
+		if (glm::abs(denm) > 0.0001f) {
+			auto dis = this->getCenter() - tail;
+			auto dot = glm::dot(glm::vec4(dis, 0.0), this->upVector);
+			float t = dot / denm;
+			if (t >= 0) {
+				auto point = tail + t * vectorDirection;
+				return std::optional<glm::vec3>(point);
+			}
+		}
+
+		return std::optional<glm::vec3>();
+	}
+
+	std::optional<glm::vec2> Grid::getXYCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head)
+	{
+		glm::vec3 modelLoc;
+
+		auto worldLoc = getWorldCoordsWhereRayIntersectsMe(tail, head);
+		if (!worldLoc.has_value())
+			return std::optional<glm::vec2>();
+		else
+			modelLoc = glm::inverse(this->getDisplayMatrix()) * glm::vec4(worldLoc.value(), 1.0);
+
+		//calculate step sizes 
+		float stepX = 1.0f / this->vertX;
+		float stepY = 1.0f / this->vertY;
+
+		int numXSteps = glm::floor(modelLoc.x / stepX);
+		int numYSteps = glm::floor(modelLoc.z / stepY);
+
+		return std::optional<glm::vec2>(glm::vec2(numXSteps, numYSteps));
+	}
+
+	glm::vec3 Grid::getCenter() {
+		glm::vec3 position = this->getPosition();
+		//position begins at corner, move to center
+		position.x = position.x + 0.5;
+		position.z = position.y + 0.5;
+
+		//scale it
+		glm::vec3 scaledPosition = position * this->getScale();
+
+		return scaledPosition;
+	}
+
+	void Grid::loadGeometry(std::unique_ptr<std::vector<Vertex>>& verts, std::unique_ptr<std::vector<uint32_t>>& indices)
+	{
 		float stepSizeX = 1.0f / (vertX - 1);
 		float stepSizeY = 1.0f / (vertY - 1);
 		float xCounter = 0.0f;
@@ -21,11 +84,9 @@ namespace star {
 				verts->push_back(Vertex{
 					glm::vec3{stepSizeY * j, 0.0f, stepSizeX * i},
 					glm::vec3{0.0f, 1.0f, 0.0f},
-					glm::vec3{0.0f,0.0f,0.0f},
+					glm::vec3{1.0f, 1.0f, 1.0f},
 					glm::vec2{stepSizeY * i, stepSizeX * j}							//texture coordinate
 					});
-
-				material->getTexture().getRawData()->at(i).at(j) = Color{ 40,40,40,255 };
 
 				if (j % 2 == 1 && i % 2 == 1) {
 					//this is a 'central' vert where drawing should be based around
@@ -107,96 +168,19 @@ namespace star {
 				indexCounter++;
 			}
 		}
-
-		displacementMaterial = material.get(); 
-		this->meshes.push_back(std::unique_ptr<StarMesh>(new StarMesh(std::move(verts), std::move(indices), material)));
 	}
 
-	void Grid::updateTexture(std::vector<int> locsX, std::vector<int> locsY, const std::vector<Color> newColor) {
-		assert(this->meshes.size() > 0 && "Make sure this function is only called after the prepRender phase");
-
-		auto tex = displacementMaterial->getTexture(); 
-		for (int i = 0; i < locsX.size(); i++) {
-			tex.getRawData()->at(locsX[i]).at(locsY[i]) = newColor[i];
-		}
-
-		tex.updateGPU();
-	}
-
-	std::optional<glm::vec3> Grid::getWorldCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head)
-	{
-		glm::vec3 vectorDirection = glm::normalize((head - tail));
-		glm::vec3 planeNorm = glm::vec3(this->upVector);
-
-		//check for parallel vector plane
-		float denm = glm::dot(planeNorm, vectorDirection);
-		if (glm::abs(denm) > 0.0001f) {
-			auto dis = this->getCenter() - tail;
-			auto dot = glm::dot(glm::vec4(dis, 0.0), this->upVector);
-			float t = dot / denm;
-			if (t >= 0) {
-				auto point = tail + t * vectorDirection;
-				return std::optional<glm::vec3>(point);
-			}
-		}
-
-		return std::optional<glm::vec3>();
-	}
-
-	std::optional<glm::vec2> Grid::getXYCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head)
-	{
-		glm::vec3 modelLoc;
-
-		auto worldLoc = getWorldCoordsWhereRayIntersectsMe(tail, head);
-		if (!worldLoc.has_value())
-			return std::optional<glm::vec2>();
-		else
-			modelLoc = glm::inverse(this->getDisplayMatrix()) * glm::vec4(worldLoc.value(), 1.0);
-
-		//calculate step sizes 
-		float stepX = 1.0f / this->vertX;
-		float stepY = 1.0f / this->vertY;
-
-		int numXSteps = glm::floor(modelLoc.x / stepX);
-		int numYSteps = glm::floor(modelLoc.z / stepY);
-
-		return std::optional<glm::vec2>(glm::vec2(numXSteps, numYSteps));
-	}
-
-	glm::vec3 Grid::getCenter() {
-		glm::vec3 position = this->getPosition();
-		//position begins at corner, move to center
-		position.x = position.x + 0.5;
-		position.z = position.y + 0.5;
-
-		//scale it
-		glm::vec3 scaledPosition = position * this->getScale();
-
-		return scaledPosition;
-	}
-	std::unique_ptr<StarPipeline> Grid::buildPipeline(StarDevice& device, vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass)
-	{
-		StarGraphicsPipeline::PipelineConfigSettings settings; 
-
-		StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, pipelineLayout); 
-
-		auto graphicsShaders = this->getShaders(); 
-
-		auto newPipeline = std::make_unique<StarGraphicsPipeline>(device, graphicsShaders.at(Shader_Stage::vertex), graphicsShaders.at(Shader_Stage::fragment), settings);
-		newPipeline->init(); 
-
-		return std::move(newPipeline); 
-	}
 	std::unordered_map<star::Shader_Stage, StarShader> Grid::getShaders()
 	{
+		//default shader is 
 		auto shaders = std::unordered_map<Shader_Stage, StarShader>(); 
 
 		//load vertex shader
-		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.vert";
+		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.vert";
 		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
 
 		//load fragment shader
-		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.frag";
+		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.frag";
 		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
 
 		return shaders; 

@@ -13,8 +13,19 @@ namespace star {
 		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Command_Buffer_Type type);
 		~StarCommandBuffer(); 
 
+		/// <summary>
+		/// Signal for begin of command recording.
+		/// </summary>
+		/// <param name="buffIndex">Buffer index to prepare.(Should equal swap chain image number in main renderer)</param>
+		/// <returns>The command buffer which is ready for command recording.</returns>
 		vk::CommandBuffer& begin(int buffIndex); 
 
+		/// <summary>
+		/// Signal for begin of command recording. This function will allow callee to manually define begin information.
+		/// </summary>
+		/// <param name="buffIndex">Buffer index to prepare.(Should equal swap chain image number in main renderer)</param>
+		/// <param name="beginInfo">Vulkan begin info</param>
+		/// <returns>The command buffer which is ready for command recording.</returns>
 		vk::CommandBuffer& begin(int buffIndex, vk::CommandBufferBeginInfo beginInfo);
 
 		/// <summary>
@@ -34,8 +45,6 @@ namespace star {
 		/// <param name="semaphores"></param>
 		/// <param name="flags"></param>
 		void waitFor(std::vector<vk::Semaphore> semaphores, vk::PipelineStageFlags whereWait); 
-
-		//void before(StarCommandBuffer& otherBuffer); 
 
 		/// <summary>
 		/// Returns the semaphores that will be signaled once this buffer is done executing. 

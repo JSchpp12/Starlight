@@ -11,9 +11,6 @@ namespace star {
 	public:
 		static std::unique_ptr<Square> New(); 
 
-		// Inherited via StarObject
-		std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device, vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass) override;
-
 		std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 
 	protected:

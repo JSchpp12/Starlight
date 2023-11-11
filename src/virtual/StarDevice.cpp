@@ -27,15 +27,6 @@ StarDevice::~StarDevice() {
 	this->instance.destroy();
 }
 
-//void StarDevice::prep()
-//{
-//	assert(!this->initComplete && "Should only be called once"); 
-//
-//	allocateCommandBuffers(); 
-//
-//	this->initComplete = true; 
-//}
-
 void StarDevice::createInstance() {
 	uint32_t extensionCount = 0;
 
@@ -112,7 +103,6 @@ void StarDevice::pickPhysicalDevice() {
 			//try to pick the device that has the most seperate queue families
 			optimalDevice = device;
 		}
-
 	}
 
 	//check for a fully supported device
@@ -120,13 +110,11 @@ void StarDevice::pickPhysicalDevice() {
 		for (const auto& device : devices) {
 			auto indicies = findQueueFamilies(device); 
 			if (indicies.isFullySupported()) {
-				std::cout << "Minimal supported device found" << std::endl; 
 				picked = device; 
 			}	
 		}
 	}
 	else {
-		std::cout << "Engine optimal device found" << std::endl; 
 		picked = optimalDevice;
 	}
 
@@ -630,14 +618,4 @@ SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice dev
 
 	return details;
 }
-//void StarDevice::allocateCommandBuffers()
-//{
-//	//need to organize commands into types 
-//	for (auto& it : this->commandBuffersToAllocate) {
-//		switch (it.first) {
-//		case(star::Command_Pool_Type::Tgraphics):
-//
-//		}
-//	}
-//}
 }

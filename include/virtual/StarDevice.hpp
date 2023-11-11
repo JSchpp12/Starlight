@@ -136,8 +136,6 @@ public:
 protected: 
 	StarDevice(StarWindow& window);
 
-	bool initComplete = false; 
-
 #ifdef NDEBUG 
 	const bool enableValidationLayers = false;
 #else
@@ -183,8 +181,6 @@ protected:
 	};
 #endif
 
-	//std::vector<std::pair<star::Command_Pool_Type, vk::CommandBuffer*>> commandBuffersToAllocate; 
-
 	//Create the vulkan instance machine 
 	void createInstance();
 
@@ -225,12 +221,11 @@ protected:
 	/// Check if the given device supports required extensions.
 	/// </summary>
 	bool checkDeviceExtensionSupport(vk::PhysicalDevice device);
+
 	/// <summary>
 	/// Request specific details about swap chain support for a given device
 	/// </summary>
 	SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device);
-
-	void allocateCommandBuffers(); 
 
 private: 
 

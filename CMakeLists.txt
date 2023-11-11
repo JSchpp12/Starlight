@@ -90,11 +90,12 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/objects/BasicObject.cpp"
     "src/common/objects/Square.cpp"
     "src/common/objects/Grid.cpp"
+    
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
     "src/common/ComputeTexture.cpp"
     "src/virtual/StarSystemPipeline.cpp"
- "src/common/materials/TextureMaterial.cpp")
+ "src/common/materials/TextureMaterial.cpp" )
 
 
 set(${PROJECT_NAME}_HEADERS

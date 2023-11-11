@@ -2,7 +2,7 @@
 
 void star::HeightDisplacementMaterial::prep(StarDevice& device)
 {
-	displaceTexture->prepRender(device);
+	texture->prepRender(device);
 }
 
 void star::HeightDisplacementMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Builder& constBuilder)
@@ -12,7 +12,7 @@ void star::HeightDisplacementMaterial::getDescriptorSetLayout(StarDescriptorSetL
 
 void star::HeightDisplacementMaterial::cleanup(StarDevice& device)
 {
-	this->displaceTexture.reset(); 
+	this->texture.reset();
 }
 
 vk::DescriptorSet star::HeightDisplacementMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
@@ -20,8 +20,8 @@ vk::DescriptorSet star::HeightDisplacementMaterial::buildDescriptorSet(StarDevic
 	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
 
 	auto texInfo = vk::DescriptorImageInfo{
-		displaceTexture->getSampler(),
-		displaceTexture->getImageView(),
+		texture->getSampler(),
+		texture->getImageView(),
 		vk::ImageLayout::eShaderReadOnlyOptimal
 	};
 

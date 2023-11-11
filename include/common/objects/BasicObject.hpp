@@ -26,18 +26,6 @@ namespace star {
 
 		virtual ~BasicObject() = default;
 
-		/// <summary>
-		/// Build the pipeline for this object. Can use shared objects if they are provided
-		/// </summary>
-		/// <param name="device"></param>
-		/// <param name="swapChainExtent"></param>
-		/// <param name="globalDescriptorLayouts"></param>
-		/// <param name="pipelineLayout"></param>
-		/// <param name="renderPass"></param>
-		/// <returns></returns>
-		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
-			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass) override;
-
 		// Inherited via StarObject
 		std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 	protected:

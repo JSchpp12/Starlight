@@ -5,23 +5,6 @@ std::unique_ptr<star::BasicObject> star::BasicObject::New(std::string objPath)
 	return std::unique_ptr<BasicObject>(new BasicObject(objPath));
 }
 
-std::unique_ptr<star::StarPipeline> star::BasicObject::buildPipeline(StarDevice& device,
-	vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass)
-{
-	assert(pipelineLayout != nullptr && renderPass != nullptr && "These must be provided for now"); 
-	StarGraphicsPipeline::PipelineConfigSettings settings; 
-	StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, pipelineLayout); 
-
-	auto shaders = this->getShaders(); 
-	StarShader vertShader = shaders.at(Shader_Stage::vertex); 
-	StarShader fragShader = shaders.at(Shader_Stage::fragment); 
-
-	auto newPipeline = std::unique_ptr<StarPipeline>(new StarGraphicsPipeline(device, vertShader, fragShader, settings));
-	newPipeline->init(); 
-	
-	return std::move(newPipeline); 
-}
-
 star::BasicObject::BasicObject(std::string objectFilePath)
 {
 	loadFromFile(objectFilePath);

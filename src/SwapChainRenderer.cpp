@@ -17,10 +17,8 @@ void SwapChainRenderer::prepare()
 	createRenderPass();
 	createRenderingBuffers();
 	createDescriptors(); 
-
 	createDepthResources();
 	createFramebuffers();
-
 	createRenderingGroups();
 	createCommandBuffers();
 	createSemaphores();
@@ -945,5 +943,4 @@ vk::Format SwapChainRenderer::findDepthFormat()
 		vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
-
 }

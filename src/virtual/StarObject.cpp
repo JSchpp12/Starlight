@@ -12,6 +12,20 @@ void star::StarObject::cleanupRender(StarDevice& device)
 		this->pipeline.reset(); 
 }
 
+std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& device, vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass)
+{
+	StarGraphicsPipeline::PipelineConfigSettings settings;
+
+	StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, pipelineLayout);
+
+	auto graphicsShaders = this->getShaders();
+
+	auto newPipeline = std::make_unique<StarGraphicsPipeline>(device, graphicsShaders.at(Shader_Stage::vertex), graphicsShaders.at(Shader_Stage::fragment), settings);
+	newPipeline->init();
+
+	return std::move(newPipeline);
+}
+
 void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
 	vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, StarDescriptorSetLayout& groupLayout, 
 	StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets)
