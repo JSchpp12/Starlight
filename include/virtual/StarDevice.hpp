@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Enums.hpp"
 #include "StarWindow.hpp"
 
 #include <optional>
@@ -63,6 +64,9 @@ public:
 	/// <returns></returns>
 	vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
+	vk::CommandPool& getCommandPool(star::Command_Buffer_Type type);
+
+	vk::Queue& getQueue(star::Command_Buffer_Type type);
 
 #pragma region getters
 	SwapChainSupportDetails getSwapChainSupportDetails() { return querySwapChainSupport(this->physicalDevice); }
@@ -134,6 +138,8 @@ public:
 protected: 
 	StarDevice(StarWindow& window);
 
+	bool initComplete = false; 
+
 #ifdef NDEBUG 
 	const bool enableValidationLayers = false;
 #else
@@ -153,6 +159,7 @@ protected:
 	std::vector<vk::CommandBuffer> graphicsCommandBuffers;
 	vk::CommandPool transferCommandPool;
 	std::vector<vk::CommandBuffer> transferCommandBuffers;
+	vk::CommandPool computeCommandPool; 
 	vk::CommandPool tempCommandPool; //command pool for temporary use in small operations
 
 	const std::vector<const char*> validationLayers = {
@@ -178,6 +185,8 @@ protected:
 		"VK_KHR_portability_enumeration"
 	};
 #endif
+
+	//std::vector<std::pair<star::Command_Pool_Type, vk::CommandBuffer*>> commandBuffersToAllocate; 
 
 	//Create the vulkan instance machine 
 	void createInstance();
@@ -223,6 +232,8 @@ protected:
 	/// Request specific details about swap chain support for a given device
 	/// </summary>
 	SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device);
+
+	void allocateCommandBuffers(); 
 
 private: 
 

@@ -8,6 +8,7 @@
 #include "ObjectManager.hpp"
 #include "InteractionSystem.hpp"
 #include "StarObject.hpp"
+#include "StarCommandBuffer.hpp"
 
 #include "MapManager.hpp"
 #include "StarSystemRenderPointLight.hpp"
@@ -31,12 +32,25 @@ public:
 
 	virtual ~BasicRenderer();
 
+	void pollEvents(); 
 
 	virtual void prepare() override;
 
-	virtual void draw(); 
+	virtual void submit() override; 
 
 protected:
+	struct RenderOptionsObject {
+		bool drawMatAmbient;
+	};
+
+	struct GlobalUniformBufferObject {
+		alignas(16) glm::mat4 proj;
+		alignas(16) glm::mat4 view;
+		alignas(16) glm::mat4 inverseView;              //used to extrapolate camera position, can be used to convert from camera to world space
+		uint32_t numLights;                             //number of lights in render
+		alignas(4) uint32_t renderOptions;
+	};
+
 	struct LightBufferObject {
 		glm::vec4 position = glm::vec4(1.0f);
 		glm::vec4 direction = glm::vec4(1.0f);     //direction in which the light is pointing
@@ -82,8 +96,6 @@ protected:
 	vk::Format swapChainImageFormat;
 	vk::Extent2D swapChainExtent;
 
-	vk::Pipeline test; 
-
 	std::vector<vk::ImageView> swapChainImageViews;
 	std::vector<vk::Framebuffer> swapChainFramebuffers;
 	std::vector<vk::Fence> inFlightFences;
@@ -94,13 +106,15 @@ protected:
 
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
+	std::unique_ptr<StarCommandBuffer> graphicsCommandBuffer; 
+
 	//depth testing storage 
 	vk::Image depthImage;
 	vk::DeviceMemory depthImageMemory;
 	vk::ImageView depthImageView;
 
 	//how many frames will be sent through the pipeline
-	const int MAX_FRAMES_IN_FLIGHT = 1;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 	//tracker for which frame is being processed of the available permitted frames
 	size_t currentFrame = 0;
 
@@ -134,6 +148,11 @@ protected:
 	virtual void createImageViews();
 
 	vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
+	
+	/// <summary>
+	/// Create descriptor pools for the descriptors used by the main rendering engine.
+	/// </summary>
+	virtual void createDescriptors();
 
 	/// <summary>
 	/// Create a rendering pass object which will tell vulkan information about framebuffer attachments:
@@ -188,6 +207,21 @@ protected:
 	/// Create tracking information in order to link fences with the swap chain images using 
 	/// </summary>
 	virtual void createFenceImageTracking();
+
+#pragma region helpers
+	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+
+	//Look through givent present modes and pick the "best" one
+	vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+
+	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+
+	/// <summary>
+	/// Helper function -- TODO 
+	/// </summary>
+	/// <returns></returns>
+	vk::Format findDepthFormat();
+#pragma endregion
 private:
 
 };

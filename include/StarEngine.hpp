@@ -10,6 +10,8 @@
 #include "StarObject.hpp"
 #include "StarScene.hpp"
 #include "StarApplication.hpp"
+#include "StarCommandBuffer.hpp"
+
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
@@ -33,8 +35,10 @@ protected:
 	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<StarWindow> window;
 	std::unique_ptr<StarDevice> renderingDevice; 
-	std::unique_ptr<StarRenderer> renderer; 
+	std::unique_ptr<BasicRenderer> mainRenderer; 
 	std::vector<Handle> lightList; 
+
+	std::vector<std::reference_wrapper<StarCommandBuffer>> registeredCommandBuffers; 
 
 	LightManager lightManager;
 

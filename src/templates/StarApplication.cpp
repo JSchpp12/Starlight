@@ -1,6 +1,6 @@
 #include "StarApplication.hpp"
 
-std::unique_ptr<star::StarRenderer> star::StarApplication::getRenderer(star::StarDevice& device, star::StarWindow& window, RenderOptions& options ) {
+std::unique_ptr<star::BasicRenderer> star::StarApplication::getMainRenderer(star::StarDevice& device, star::StarWindow& window, RenderOptions& options ) {
 	std::vector<std::unique_ptr<Light>>& lightList = scene.getLights(); 
 	std::vector<std::reference_wrapper<StarObject>> prepObjects; 
 	for (auto& obj : scene.getObjects()) {

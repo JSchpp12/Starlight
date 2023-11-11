@@ -1,6 +1,11 @@
 #pragma once
 
 namespace star {
+    enum Command_Buffer_Type {
+        Tgraphics, 
+        Ttransfer, 
+        Tcompute
+    };
     enum Shader_File_Type {
         spirv,
         glsl

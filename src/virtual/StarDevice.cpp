@@ -19,6 +19,7 @@ std::unique_ptr<StarDevice> StarDevice::New(StarWindow& window)
 }
 
 StarDevice::~StarDevice() {
+	this->vulkanDevice.destroyCommandPool(this->computeCommandPool); 
 	this->vulkanDevice.destroyCommandPool(this->transferCommandPool);
 	this->vulkanDevice.destroyCommandPool(this->graphicsCommandPool);
 	this->vulkanDevice.destroy();
@@ -26,8 +27,19 @@ StarDevice::~StarDevice() {
 	this->instance.destroy();
 }
 
+//void StarDevice::prep()
+//{
+//	assert(!this->initComplete && "Should only be called once"); 
+//
+//	allocateCommandBuffers(); 
+//
+//	this->initComplete = true; 
+//}
+
 void StarDevice::createInstance() {
 	uint32_t extensionCount = 0;
+
+	std::cout << "Creating vulkan instance..." << std::endl; 
 
 	if (enableValidationLayers && !checkValidationLayerSupport()) {
 		throw std::runtime_error("validation layers requested, but not available");
@@ -44,6 +56,11 @@ void StarDevice::createInstance() {
 
 	//enumerate required extensions
 	auto requriedExtensions = this->getRequiredExtensions();
+
+	std::cout << "Instance requested with extensions: " << std::endl; 
+	for (auto ext : requriedExtensions) {
+		std::cout << ext << std::endl; 
+	}
 
 	vk::InstanceCreateInfo createInfo{};
 	createInfo.sType = vk::StructureType::eInstanceCreateInfo;
@@ -74,8 +91,10 @@ void StarDevice::createInstance() {
 
 void StarDevice::pickPhysicalDevice() {
 	std::vector<vk::PhysicalDevice> devices = this->instance.enumeratePhysicalDevices();
-
+	
 	std::vector<vk::PhysicalDevice> suitableDevices; 
+
+	vk::PhysicalDevice picked; 
 
 	//check devices and see if they are suitable for use
 	for (const auto& device : devices) {
@@ -91,7 +110,7 @@ void StarDevice::pickPhysicalDevice() {
 		auto indicies = findQueueFamilies(device); 
 		if (indicies.isOptimalSupport()) {
 			//try to pick the device that has the most seperate queue families
-			optimalDevice = device; 
+			optimalDevice = device;
 		}
 
 	}
@@ -101,12 +120,28 @@ void StarDevice::pickPhysicalDevice() {
 		for (const auto& device : devices) {
 			auto indicies = findQueueFamilies(device); 
 			if (indicies.isFullySupported()) {
-				this->physicalDevice = device; 
+				std::cout << "Minimal supported device found" << std::endl; 
+				picked = device; 
 			}	
 		}
 	}
 	else {
-		this->physicalDevice = optimalDevice;
+		std::cout << "Engine optimal device found" << std::endl; 
+		picked = optimalDevice;
+	}
+
+	if (picked) {
+		auto properties = picked.getProperties();
+		std::cout << "Selected device properties:" << std::endl;
+		if (optimalDevice) {
+			std::cout << "Starlight Device Support: Optimal" << std::endl;
+		}
+		else {
+			std::cout << "Starlight Device Support: Minimal" << std::endl;
+		}
+		std::cout << "Name: " << properties.deviceName << std::endl;
+		std::cout << "Vulkan Api Version: " << properties.apiVersion << std::endl;
+		this->physicalDevice = picked; 
 	}
 
 	if ((devices.size() == 0) || !physicalDevice) {
@@ -175,6 +210,9 @@ void StarDevice::createCommandPool() {
 	if (queueFamilyIndicies.transferFamily.has_value()) {
 		this->hasDedicatedTransferQueue = true;
 		createPool(queueFamilyIndicies.transferFamily.value(), vk::CommandPoolCreateFlagBits{}, transferCommandPool);
+	}
+	if (queueFamilyIndicies.computeFamily.has_value()) {
+		createPool(queueFamilyIndicies.computeFamily.value(), vk::CommandPoolCreateFlagBits{}, computeCommandPool); 
 	}
 }
 
@@ -354,6 +392,32 @@ vk::Format StarDevice::findSupportedFormat(const std::vector<vk::Format>& candid
 	}
 
 	throw std::runtime_error("failed to find supported format!");
+}
+
+vk::CommandPool& StarDevice::getCommandPool(star::Command_Buffer_Type type)
+{
+	// TODO: insert return statement here
+	if (type == Command_Buffer_Type::Tgraphics) {
+		return this->graphicsCommandPool; 
+	}
+	else if (type == Command_Buffer_Type::Ttransfer) {
+		return this->transferCommandPool;
+	}
+	else if (type == Command_Buffer_Type::Tcompute) {
+		return this->computeCommandPool; 
+	}
+}
+
+vk::Queue& StarDevice::getQueue(star::Command_Buffer_Type type)
+{
+	if (type == Command_Buffer_Type::Tgraphics)
+		return this->graphicsQueue;
+	else if (type == Command_Buffer_Type::Tcompute)
+		return this->computeQueue.value();
+	else if (type == Command_Buffer_Type::Ttransfer)
+		return this->transferQueue.value();
+	else
+		throw std::runtime_error("Unrecgonized type provided to getQueue"); 
 }
 
 void StarDevice::createPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits flags, vk::CommandPool& pool) {
@@ -566,4 +630,14 @@ SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice dev
 
 	return details;
 }
+//void StarDevice::allocateCommandBuffers()
+//{
+//	//need to organize commands into types 
+//	for (auto& it : this->commandBuffersToAllocate) {
+//		switch (it.first) {
+//		case(star::Command_Pool_Type::Tgraphics):
+//
+//		}
+//	}
+//}
 }

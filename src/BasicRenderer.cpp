@@ -15,45 +15,11 @@ void BasicRenderer::prepare()
 	createSwapChain(); 
 	createImageViews();
 	createRenderPass();
-
-	this->globalPool = StarDescriptorPool::Builder(this->device)
-		.setMaxSets(15)
-		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * this->swapChainImages.size())
-		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->swapChainImages.size())
-		.build();
-
-	this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
-		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-		.build();
-
-	this->globalDescriptorSets.resize(this->swapChainImages.size());
+	createRenderingBuffers();
+	createDescriptors(); 
 
 	createDepthResources();
 	createFramebuffers();
-	createRenderingBuffers();
-
-	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
-	for (size_t i = 0; i < this->swapChainImages.size(); i++) {
-		//global
-		bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
-
-		auto globalBufferInfo = vk::DescriptorBufferInfo{
-			this->globalUniformBuffers[i]->getBuffer(),
-			0,
-			sizeof(GlobalUniformBufferObject) };
-
-		//buffer descriptors for point light locations 
-		auto lightBufferInfo = vk::DescriptorBufferInfo{
-			this->lightBuffers[i]->getBuffer(),
-			0,
-			sizeof(LightBufferObject) * this->lightList.size() };
-
-		StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
-			.writeBuffer(0, &globalBufferInfo)
-			.writeBuffer(1, &lightBufferInfo)
-			.build(this->globalDescriptorSets.at(i));
-	}
 
 	createRenderingGroups();
 	createCommandBuffers();
@@ -230,7 +196,12 @@ BasicRenderer::~BasicRenderer()
 	cleanup(); 
 }
 
-void BasicRenderer::draw()
+void BasicRenderer::pollEvents()
+{
+	glfwPollEvents();
+}
+
+void BasicRenderer::submit()
 {
 	/* Goals of each call to drawFrame:
 	   *   get an image from the swap chain
@@ -281,37 +252,11 @@ void BasicRenderer::draw()
 
 	updateUniformBuffer(imageIndex);
 
-
-	/* Command Buffer */
-	vk::SubmitInfo submitInfo{};
-	submitInfo.sType = vk::StructureType::eSubmitInfo;
-
-	vk::Semaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
-
-	//where in the pipeline should the wait happen, want to wait until image becomes available
-	//wait at stage of color attachment -> theoretically allows for shader execution before wait 
-	vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput }; //each entry corresponds through index to waitSemaphores[]
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
-
-	//which command buffers to submit for execution -- should submit command buffer that binds the swap chain image that was just acquired as color attachment
-	submitInfo.commandBufferCount = 1;
-	//submitInfo.pCommandBuffers = &graphicsCommandBuffers[imageIndex];
-	submitInfo.pCommandBuffers = &this->device.getGraphicsCommandBuffers()->at(imageIndex);
-
-	//what semaphores to signal when command buffers have finished
-	vk::Semaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
-
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
+	const vk::Semaphore& doneSemaphore = this->graphicsCommandBuffer->getCompleteSemaphores().at(imageIndex); 
 
 	//set fence to unsignaled state
 	this->device.getDevice().resetFences(1, &inFlightFences[currentFrame]);
-	auto submitResult = this->device.getGraphicsQueue().submit(1, &submitInfo, inFlightFences[currentFrame]);
-	if (submitResult != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to submit draw command buffer");
-	}
+	this->graphicsCommandBuffer->submit(imageIndex, inFlightFences[currentFrame], std::pair<vk::Semaphore, vk::PipelineStageFlags>(imageAvailableSemaphores[currentFrame], vk::PipelineStageFlagBits::eColorAttachmentOutput));
 
 	/* Presentation */
 	vk::PresentInfoKHR presentInfo{};
@@ -320,7 +265,7 @@ void BasicRenderer::draw()
 
 	//what to wait for 
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = signalSemaphores;
+	presentInfo.pWaitSemaphores = &doneSemaphore;
 
 	//what swapchains to present images to 
 	vk::SwapchainKHR swapChains[] = { swapChain };
@@ -413,9 +358,7 @@ void BasicRenderer::recreateSwapChain()
 	//uniform buffers are dependent on the number of swap chain images, will need to recreate since they are destroyed in cleanupSwapchain()
 	createRenderingBuffers();
 
-	//createDescriptorPool();
-
-	//createDescriptorSets();
+	createDescriptors();
 
 	createCommandBuffers();
 }
@@ -542,6 +485,44 @@ vk::ImageView BasicRenderer::createImageView(vk::Image image, vk::Format format,
 	}
 
 	return imageView;
+}
+
+void BasicRenderer::createDescriptors()
+{
+	this->globalPool = StarDescriptorPool::Builder(this->device)
+		.setMaxSets(15)
+		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * this->swapChainImages.size())
+		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->swapChainImages.size())
+		.build();
+
+	this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
+		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+		.build();
+
+	this->globalDescriptorSets.resize(this->swapChainImages.size());
+
+	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
+	for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+		//global
+		bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
+
+		auto globalBufferInfo = vk::DescriptorBufferInfo{
+			this->globalUniformBuffers[i]->getBuffer(),
+			0,
+			sizeof(GlobalUniformBufferObject) };
+
+		//buffer descriptors for point light locations 
+		auto lightBufferInfo = vk::DescriptorBufferInfo{
+			this->lightBuffers[i]->getBuffer(),
+			0,
+			sizeof(LightBufferObject) * this->lightList.size() };
+
+		StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+			.writeBuffer(0, &globalBufferInfo)
+			.writeBuffer(1, &lightBufferInfo)
+			.build(this->globalDescriptorSets.at(i));
+	}
 }
 
 void BasicRenderer::createRenderPass()
@@ -754,6 +735,9 @@ void BasicRenderer::createRenderingBuffers()
 void BasicRenderer::createCommandBuffers()
 {
 	/* Graphics Command Buffer */
+
+	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, this->swapChainFramebuffers.size(), Command_Buffer_Type::Tgraphics); 
+	
 	this->device.getGraphicsCommandBuffers()->resize(swapChainFramebuffers.size());
 
 	vk::CommandBufferAllocateInfo allocInfo{};
@@ -772,7 +756,7 @@ void BasicRenderer::createCommandBuffers()
 	}
 
 	/* Begin command buffer recording */
-	for (size_t i = 0; i < newBuffers.size(); i++) {
+	for (size_t i = 0; i < this->swapChainFramebuffers.size(); i++) {
 		vk::CommandBufferBeginInfo beginInfo{};
 		//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
@@ -790,11 +774,13 @@ void BasicRenderer::createCommandBuffers()
 			if the command buffer has already been recorded once, simply call vkBeginCommandBuffer->implicitly reset.
 			commands cannot be added after creation
 		*/
-
+		auto buffer = this->graphicsCommandBuffer->begin(i, beginInfo); 
 		newBuffers[i].begin(beginInfo);
 		if (!newBuffers[i]) {
 			throw std::runtime_error("failed to begin recording command buffer");
 		}
+
+		// vk::CommandBuffer& buffer = this->graphicsCommandBuffer->begin(i, beginInfo);
 
 		vk::Viewport viewport{};
 		viewport.x = 0.0f;
@@ -805,7 +791,7 @@ void BasicRenderer::createCommandBuffers()
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
-		newBuffers[i].setViewport(0, viewport);
+		buffer.setViewport(0, viewport);
 
 		/* Begin render pass */
 		//drawing starts by beginning a render pass 
@@ -843,7 +829,7 @@ void BasicRenderer::createCommandBuffers()
 				//OPTIONS: 
 					//VK_SUBPASS_CONTENTS_INLINE: render pass commands will be embedded in the primary command buffer. No secondary command buffers executed 
 					//VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: render pass commands will be executed from the secondary command buffers
-		newBuffers[i].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+		buffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
 		/* Drawing Commands */
 		//Args: 
@@ -862,12 +848,12 @@ void BasicRenderer::createCommandBuffers()
 		//bind the right descriptor set for each swap chain image to the descripts in the shader
 		//bind global descriptor
 		vk::DeviceSize offsets{};
-		newBuffers[i].bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
-		newBuffers[i].bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+		buffer.bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
+		buffer.bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
 		for (auto& group : this->renderGroups) {
 			//newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, group->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
-			group->recordCommands(newBuffers[i], i);
+			group->recordCommands(buffer, i);
 		}
 
 		//bind light pipe 
@@ -876,13 +862,11 @@ void BasicRenderer::createCommandBuffers()
 		//	this->lightRenderSys->render(newBuffers[i], i);
 		//}
 
-		newBuffers[i].endRenderPass();
+		buffer.endRenderPass();
 
 		//record command buffer
-		newBuffers[i].end();
+		buffer.end();
 	}
-
-	this->device.setGraphicsCommandBuffers(newBuffers);
 }
 
 void BasicRenderer::createSemaphores()
@@ -932,6 +916,80 @@ void BasicRenderer::createFenceImageTracking()
 	imagesInFlight.resize(swapChainImages.size(), VK_NULL_HANDLE);
 
 	//initially, no frame is using any image so this is going to be created without an explicit link
+}
+
+
+vk::SurfaceFormatKHR BasicRenderer::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
+{
+	for (const auto& availableFormat : availableFormats) {
+		//check if a format allows 8 bits for R,G,B, and alpha channel
+		//use SRGB color space
+
+		if (availableFormat.format == vk::Format::eB8G8R8A8Srgb && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+			return availableFormat;
+		}
+	}
+
+	//if nothing matches what we are looking for, just take what is available
+	return availableFormats[0];
+}
+
+vk::PresentModeKHR BasicRenderer::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes) {
+	/*
+	* There are a number of swap modes that are in vulkan
+	* 1. VK_PRESENT_MODE_IMMEDIATE_KHR: images submitted by application are sent to the screen right away -- can cause tearing
+	* 2. VK_PRESENT_MODE_FIFO_RELAXED_KHR: images are placed in a queue and images are sent to the display in time with display refresh (VSYNC like). If queue is full, application has to wait
+	*   "Vertical blank" -> time when the display is refreshed
+	* 3. VK_PRESENT_MODE_FIFO_RELAXED_KHR: same as above. Except if the application is late, and the queue is empty: the next image submitted is sent to display right away instead of waiting for next blank.
+	* 4. VK_PRESENT_MODE_MAILBOX_KHR: similar to #2 option. Instead of blocking applicaiton when the queue is full, the images in the queue are replaced with newer images.
+	*   This mode can be used to render frames as fast as possible while still avoiding tearing. Kind of like "tripple buffering". Does not mean that framerate is unlocked however.
+	*   Author of tutorial statement: this mode [4] is a good tradeoff if energy use is not a concern. On mobile devices it might be better to go with [2]
+	*/
+
+	for (const auto& availablePresentMode : availablePresentModes) {
+		if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
+			return availablePresentMode;
+		}
+	}
+
+	//only VK_PRESENT_MODE_FIFO_KHR is guaranteed to be available
+	return vk::PresentModeKHR::eFifo;
+}
+vk::Extent2D BasicRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities)
+{
+	/*
+	* "swap extent" -> resolution of the swap chain images (usually the same as window resultion
+	* Range of available resolutions are defined in VkSurfaceCapabilitiesKHR
+	* Resolution can be changed by setting value in currentExtent to the maximum value of a uint32_t
+	*   then: the resolution can be picked by matching window size in minImageExtent and maxImageExtent
+	*/
+	if (capabilities.currentExtent.width != UINT32_MAX) {
+		return capabilities.currentExtent;
+	}
+	else {
+		//vulkan requires that resultion be defined in pixels -- if a high DPI display is used, screen coordinates do not match with pixels
+		int width, height;
+		glfwGetFramebufferSize(this->window.getGLFWwindow(), &width, &height);
+
+		vk::Extent2D actualExtent = {
+			static_cast<uint32_t>(width),
+			static_cast<uint32_t>(height)
+		};
+
+		//(clamp) -- keep the width and height bounded by the permitted resolutions 
+		actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+		actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+		return actualExtent;
+	}
+}
+vk::Format BasicRenderer::findDepthFormat()
+{
+	//utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
+	return this->device.findSupportedFormat(
+		{ vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint },
+		vk::ImageTiling::eOptimal,
+		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
 
 }

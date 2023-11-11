@@ -79,6 +79,13 @@ namespace star {
 		/// <returns></returns>
 		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() = 0;
 
+		/// <summary>
+		/// Signal to the engine if this object is a 'typical' graphics object that should be drawn along with all of the other
+		/// 'typical' graphics objects
+		/// </summary>
+		/// <returns></returns>
+		virtual bool isTypicalGraphicsObject() { return true; }
+
 #pragma region getters
 		glm::mat4 getNormalMatrix() { return glm::inverseTranspose(getDisplayMatrix()); }
 		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }

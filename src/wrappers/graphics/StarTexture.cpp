@@ -9,20 +9,26 @@ StarTexture::~StarTexture() {
 	this->device->getDevice().freeMemory(this->imageMemory);
 }
 
-void StarTexture::prepRender(StarDevice& device) {
+void StarTexture::prepRender(StarDevice& device, TextureCreateSettings* settings) {
 	this->device = &device; 
 
-	createTextureImage();
+	createTextureImage(settings);
 	createTextureImageView();
 	createImageSampler();
 }
 
-void StarTexture::createTextureImage() {
+void StarTexture::createTextureImage(TextureCreateSettings* settings) {
 	int height = this->getHeight(); 
 	int width = this->getWidth(); 
 
 	vk::DeviceSize imageSize = width * height * 4;
+	vk::Flags<vk::ImageUsageFlagBits> useFlags = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled; 
+	if (settings != nullptr) {
+		useFlags = settings->imageUsage;
+	}
+	createImage(width, height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, useFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
 
+	auto data = this->data(); 
 	StarBuffer stagingBuffer(
 		*device,
 		imageSize,
@@ -32,8 +38,6 @@ void StarTexture::createTextureImage() {
 	stagingBuffer.map();
 	std::unique_ptr<unsigned char> textureData(this->data());
 	stagingBuffer.writeToBuffer(textureData.get(), imageSize);
-
-	createImage(width, height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
 
 	//copy staging buffer to texture image 
 	transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
@@ -100,7 +104,6 @@ void StarTexture::transitionImageLayout(vk::Image image, vk::Format format, vk::
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
 	barrier.image = image;
-	//barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 	barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
 	barrier.subresourceRange.levelCount = 1;                            //image is not an array

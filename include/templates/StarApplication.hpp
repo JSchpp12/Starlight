@@ -40,7 +40,7 @@ namespace star {
 
         virtual void onScroll(double xoffset, double yoffset) override {};
 
-        virtual std::unique_ptr<StarRenderer> getRenderer(StarDevice& device, StarWindow& window, RenderOptions& options);
+        virtual std::unique_ptr<BasicRenderer> getMainRenderer(StarDevice& device, StarWindow& window, RenderOptions& options);
 
         virtual StarCamera& getCamera() { return camera;  }
 

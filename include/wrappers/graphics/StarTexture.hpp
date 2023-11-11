@@ -12,10 +12,24 @@
 namespace star {
 class StarTexture {
 public:
+	/// <summary>
+	/// Options to be used when creating a new texture
+	/// </summary>
+	/// <returns></returns>
+	struct TextureCreateSettings {
+		TextureCreateSettings(vk::Flags<vk::ImageUsageFlagBits> imageUsage, 
+			bool createSampler)
+			: imageUsage(imageUsage), createSampler(createSampler) {}
+			~TextureCreateSettings() = default; 
+
+		vk::Flags<vk::ImageUsageFlagBits> imageUsage;
+		bool createSampler;
+	}; 
+
 	StarTexture() = default;
 	virtual ~StarTexture();
 
-	void prepRender(StarDevice& device); 
+	void prepRender(StarDevice& device, TextureCreateSettings* settings = nullptr);
 
 	/// <summary>
 	/// Read the image from disk into memory or provide the image which is in memory
@@ -38,7 +52,7 @@ protected:
 	virtual int getHeight() = 0;
 	virtual int getChannels() = 0;
 
-	void createTextureImage();
+	void createTextureImage(TextureCreateSettings* settings);
 
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 

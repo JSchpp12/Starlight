@@ -8,12 +8,12 @@ StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene
 
 void StarEngine::Run()
 {
-	renderer->prepare();
+	mainRenderer->prepare();
 
 	while (!window->shouldClose()) {
-		renderer->pollEvents();
+		mainRenderer->pollEvents();
 		InteractionSystem::callWorldUpdates();
-		renderer->draw();
+		mainRenderer->submit();
 	}
 }
 
@@ -23,6 +23,6 @@ void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 
 	this->renderingDevice = StarDevice::New(*window);
 
-	this->renderer = app.getRenderer(*renderingDevice, *window, renderOptions); 
+	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window, renderOptions); 
 }
 }
