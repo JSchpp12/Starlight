@@ -26,6 +26,29 @@ star::StarCommandBuffer::~StarCommandBuffer()
 	}
 }
 
+vk::CommandBuffer& star::StarCommandBuffer::begin(int buffIndex)
+{
+	vk::CommandBufferBeginInfo beginInfo{};
+	//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
+
+	//flags parameter specifies command buffer use 
+		//VK_COMMAND_BUFFER_USEAGE_ONE_TIME_SUBMIT_BIT: command buffer recorded right after executing it once
+		//VK_COMMAND_BUFFER_USEAGE_RENDER_PASS_CONTINUE_BIT: secondary command buffer that will be within a single render pass 
+		//VK_COMMAND_BUFFER_USEAGE_SIMULTANEOUS_USE_BIT: command buffer can be resubmitted while another instance has already been submitted for execution
+	beginInfo.flags = {};
+
+	//only relevant for secondary command buffers -- which state to inherit from the calling primary command buffers 
+	beginInfo.pInheritanceInfo = nullptr;
+
+	/* NOTE:
+		if the command buffer has already been recorded once, simply call vkBeginCommandBuffer->implicitly reset.
+		commands cannot be added after creation
+	*/
+
+	return this->begin(buffIndex, beginInfo); 
+}
+
 void star::StarCommandBuffer::submit(int targetIndex, vk::Fence& fence)
 {
 	assert(this->recorded && "Buffer should be recorded before submission"); 
@@ -98,6 +121,14 @@ void star::StarCommandBuffer::submit(int targetIndex, vk::Fence& fence, std::pai
 
 void star::StarCommandBuffer::waitFor(std::vector<vk::Semaphore> semaphores, vk::PipelineStageFlags whereWait)
 {
+	//check for double record 
+	for (auto& waits : this->waitSemaphores.at(0)) {
+		if (waits.first == semaphores.at(0)) {
+			std::cout << "Duplicate request for wait semaphore detected...skipping" << std::endl;
+			return; 
+		}
+	}
+
 	for (int i = 0; i < semaphores.size(); i++) {
 		this->waitSemaphores.at(i).push_back(std::pair<vk::Semaphore, vk::PipelineStageFlags>(semaphores.at(i), whereWait)); 
 	}

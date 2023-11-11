@@ -88,8 +88,6 @@ public:
 		else
 			return this->graphicsQueue;
 	}
-	std::vector<vk::CommandBuffer>* getGraphicsCommandBuffers() { return &this->graphicsCommandBuffers; }
-	void setGraphicsCommandBuffers(std::vector<vk::CommandBuffer>& newBuffers) { this->graphicsCommandBuffers = newBuffers; }
 #pragma endregion
 
 #pragma region helperFunctions
@@ -156,7 +154,6 @@ protected:
 
 	//vulkan command storage
 	vk::CommandPool graphicsCommandPool;
-	std::vector<vk::CommandBuffer> graphicsCommandBuffers;
 	vk::CommandPool transferCommandPool;
 	std::vector<vk::CommandBuffer> transferCommandBuffers;
 	vk::CommandPool computeCommandPool; 

@@ -13,6 +13,8 @@ namespace star {
 		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Command_Buffer_Type type);
 		~StarCommandBuffer(); 
 
+		vk::CommandBuffer& begin(int buffIndex); 
+
 		vk::CommandBuffer& begin(int buffIndex, vk::CommandBufferBeginInfo beginInfo);
 
 		/// <summary>

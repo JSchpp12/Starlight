@@ -737,50 +737,10 @@ void SwapChainRenderer::createCommandBuffers()
 	/* Graphics Command Buffer */
 
 	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, this->swapChainFramebuffers.size(), Command_Buffer_Type::Tgraphics); 
-	
-	this->device.getGraphicsCommandBuffers()->resize(swapChainFramebuffers.size());
-
-	vk::CommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
-	allocInfo.commandPool = this->device.getGraphicsCommandPool();
-	// .level - specifies if the allocated command buffers are primay or secondary
-	// ..._PRIMARY : can be submitted to a queue for execution, but cannot be called from other command buffers
-	// ..._SECONDARY : cannot be submitted directly, but can be called from primary command buffers (good for reuse of common operations)
-	allocInfo.level = vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandBufferCount = (uint32_t)device.getGraphicsCommandBuffers()->size();
-
-	std::vector<vk::CommandBuffer> newBuffers = this->device.getDevice().allocateCommandBuffers(allocInfo);
-	newBuffers = this->device.getDevice().allocateCommandBuffers(allocInfo);
-	if (newBuffers.size() == 0) {
-		throw std::runtime_error("failed to allocate command buffers");
-	}
 
 	/* Begin command buffer recording */
 	for (size_t i = 0; i < this->swapChainFramebuffers.size(); i++) {
-		vk::CommandBufferBeginInfo beginInfo{};
-		//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
-
-		//flags parameter specifies command buffer use 
-			//VK_COMMAND_BUFFER_USEAGE_ONE_TIME_SUBMIT_BIT: command buffer recorded right after executing it once
-			//VK_COMMAND_BUFFER_USEAGE_RENDER_PASS_CONTINUE_BIT: secondary command buffer that will be within a single render pass 
-			//VK_COMMAND_BUFFER_USEAGE_SIMULTANEOUS_USE_BIT: command buffer can be resubmitted while another instance has already been submitted for execution
-		beginInfo.flags = {};
-
-		//only relevant for secondary command buffers -- which state to inherit from the calling primary command buffers 
-		beginInfo.pInheritanceInfo = nullptr;
-
-		/* NOTE:
-			if the command buffer has already been recorded once, simply call vkBeginCommandBuffer->implicitly reset.
-			commands cannot be added after creation
-		*/
-		auto buffer = this->graphicsCommandBuffer->begin(i, beginInfo); 
-		newBuffers[i].begin(beginInfo);
-		if (!newBuffers[i]) {
-			throw std::runtime_error("failed to begin recording command buffer");
-		}
-
-		// vk::CommandBuffer& buffer = this->graphicsCommandBuffer->begin(i, beginInfo);
+		auto buffer = this->graphicsCommandBuffer->begin(i); 
 
 		vk::Viewport viewport{};
 		viewport.x = 0.0f;
@@ -855,12 +815,6 @@ void SwapChainRenderer::createCommandBuffers()
 			//newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, group->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
 			group->recordCommands(buffer, i);
 		}
-
-		//bind light pipe 
-		//if (lightRenderSys) {
-		//	this->lightRenderSys->bind(newBuffers[i]);
-		//	this->lightRenderSys->render(newBuffers[i], i);
-		//}
 
 		buffer.endRenderPass();
 
