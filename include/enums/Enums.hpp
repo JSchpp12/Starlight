@@ -6,6 +6,13 @@ namespace star {
         Ttransfer, 
         Tcompute
     };
+
+    enum Command_Execution_Order {
+        before_main_graphics, 
+        after_main_graphics,
+        dont_care
+    };
+
     enum Shader_File_Type {
         spirv,
         glsl

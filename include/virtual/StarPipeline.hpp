@@ -14,7 +14,7 @@ namespace star {
 
 		void init();
 
-		virtual void bind(vk::CommandBuffer commandBuffer)=0;
+		virtual void bind(vk::CommandBuffer& commandBuffer)=0;
 
 	protected:
 		StarDevice& device; 

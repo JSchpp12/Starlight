@@ -2,53 +2,71 @@
 
 namespace star {
 StarTexture::~StarTexture() {
-	this->device->getDevice().destroySampler(this->textureSampler);
-	this->device->getDevice().destroyImageView(this->textureImageView);
-	this->device->getDevice().destroyImage(this->textureImage);
 
-	this->device->getDevice().freeMemory(this->imageMemory);
 }
 
-void StarTexture::prepRender(StarDevice& device, TextureCreateSettings* settings) {
-	this->device = &device; 
+void StarTexture::prepRender(StarDevice& device) {
+	assert(!this->isRenderReady && "Each texture should only be prepared once"); 
 
-	createTextureImage(settings);
-	createTextureImageView();
-	createImageSampler();
+	createTextureImage(device);
+	createTextureImageView(device);
+	createImageSampler(device);
+
+	this->createSettings.release(); 
+	this->isRenderReady = true; 
 }
 
-void StarTexture::createTextureImage(TextureCreateSettings* settings) {
+void StarTexture::cleanupRender(StarDevice& device)
+{
+	assert(this->isRenderReady && "Only textures which are ready for rendering operations need to be cleaned up"); 
+
+	device.getDevice().destroySampler(this->textureSampler);
+	device.getDevice().destroyImageView(this->textureImageView);
+	device.getDevice().destroyImage(this->textureImage);
+	device.getDevice().freeMemory(this->imageMemory);
+
+	this->isRenderReady = false; 
+}
+
+void StarTexture::createTextureImage(StarDevice& device) {
 	int height = this->getHeight(); 
 	int width = this->getWidth(); 
+	int channels = this->getChannels(); 
 
-	vk::DeviceSize imageSize = width * height * 4;
-	vk::Flags<vk::ImageUsageFlagBits> useFlags = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled; 
-	if (settings != nullptr) {
-		useFlags = settings->imageUsage;
+	//image has data in cpu memory, it must be copied over
+	if (this->data().get()[0] != '\0') {
+		vk::DeviceSize imageSize = width * height * 4;
+
+		//image will be transfered from cpu memory, make sure proper flags are set
+		this->createSettings->imageUsage = this->createSettings->imageUsage | vk::ImageUsageFlagBits::eTransferDst;
+
+		createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
+
+		auto data = this->data();
+		StarBuffer stagingBuffer(
+			device,
+			imageSize,
+			1,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		stagingBuffer.map();
+		std::unique_ptr<unsigned char> textureData(this->data());
+		stagingBuffer.writeToBuffer(textureData.get(), imageSize);
+
+		//copy staging buffer to texture image 
+		transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+
+		device.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+		//prepare final image for texture mapping in shaders 
+		transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
-	createImage(width, height, vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal, useFlags, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
-
-	auto data = this->data(); 
-	StarBuffer stagingBuffer(
-		*device,
-		imageSize,
-		1,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-	stagingBuffer.map();
-	std::unique_ptr<unsigned char> textureData(this->data());
-	stagingBuffer.writeToBuffer(textureData.get(), imageSize);
-
-	//copy staging buffer to texture image 
-	transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-
-	device->copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-
-	//prepare final image for texture mapping in shaders 
-	transitionImageLayout(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+	else {
+		createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
+	}
 }
 
-void StarTexture::createImage(uint32_t width, uint32_t height, vk::Format format,
+void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t height, vk::Format format,
 	vk::ImageTiling tiling, vk::ImageUsageFlags usage,
 	vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory) {
 
@@ -68,30 +86,32 @@ void StarTexture::createImage(uint32_t width, uint32_t height, vk::Format format
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
 
-	image = device->getDevice().createImage(imageInfo);
+	device.verifyImageCreate(imageInfo);
+
+	image = device.getDevice().createImage(imageInfo);
 	if (!image) {
 		throw std::runtime_error("failed to create image");
 	}
 
 	/* Allocate the memory for the imag*/
-	vk::MemoryRequirements memRequirements = device->getDevice().getImageMemoryRequirements(image);
+	vk::MemoryRequirements memRequirements = device.getDevice().getImageMemoryRequirements(image);
 
 	vk::MemoryAllocateInfo allocInfo{};
 	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = device->findMemoryType(memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = device.findMemoryType(memRequirements.memoryTypeBits, properties);
 
-	imageMemory = device->getDevice().allocateMemory(allocInfo);
+	imageMemory = device.getDevice().allocateMemory(allocInfo);
 	if (!imageMemory) {
 		throw std::runtime_error("failed to allocate image memory!");
 	}
 
-	device->getDevice().bindImageMemory(image, imageMemory, 0);
+	device.getDevice().bindImageMemory(image, imageMemory, 0);
 }
 
-void StarTexture::transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
+void StarTexture::transitionImageLayout(StarDevice& device, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
 	vk::ImageLayout newLayout) {
-	vk::CommandBuffer commandBuffer = device->beginSingleTimeCommands();
+	vk::CommandBuffer commandBuffer = device.beginSingleTimeCommands();
 
 	//create a barrier to prevent pipeline from moving forward until image transition is complete
 	vk::ImageMemoryBarrier barrier{};
@@ -156,18 +176,18 @@ void StarTexture::transitionImageLayout(vk::Image image, vk::Format format, vk::
 		barrier
 	);
 
-	device->endSingleTimeCommands(commandBuffer);
+	device.endSingleTimeCommands(commandBuffer);
 }
 
-void StarTexture::createImageSampler() {
+void StarTexture::createImageSampler(StarDevice& device) {
 	//get device properties for amount of anisotropy permitted
-	vk::PhysicalDeviceProperties deviceProperties = device->getPhysicalDevice().getProperties();
+	vk::PhysicalDeviceProperties deviceProperties = device.getPhysicalDevice().getProperties();
 
 	vk::SamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
 	samplerInfo.magFilter = vk::Filter::eLinear;                       //how to sample textures that are magnified 
 	samplerInfo.minFilter = vk::Filter::eLinear;                       //how to sample textures that are minified
-
+	
 	//repeat mode - repeat the texture when going beyond the image dimensions
 	samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
 	samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
@@ -194,17 +214,18 @@ void StarTexture::createImageSampler() {
 	samplerInfo.maxLod = 0.0f;
 	samplerInfo.anisotropyEnable = VK_FALSE;
 
-	this->textureSampler = device->getDevice().createSampler(samplerInfo);
+	this->textureSampler = device.getDevice().createSampler(samplerInfo);
 	if (!this->textureSampler) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
 }
 
-void StarTexture::createTextureImageView() {
-	this->textureImageView = createImageView(textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageAspectFlagBits::eColor);
+void StarTexture::createTextureImageView(StarDevice& device) {
+	this->textureImageView = createImageView(device, textureImage, this->createSettings->imageFormat, vk::ImageAspectFlagBits::eColor);
 }
 
-vk::ImageView StarTexture::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags) {
+vk::ImageView StarTexture::createImageView(StarDevice& device, vk::Image image, 
+	vk::Format format, vk::ImageAspectFlagBits aspectFlags) {
 	vk::ImageViewCreateInfo viewInfo{};
 	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
 	viewInfo.image = image;
@@ -216,7 +237,7 @@ vk::ImageView StarTexture::createImageView(vk::Image image, vk::Format format, v
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
-	vk::ImageView imageView = device->getDevice().createImageView(viewInfo);
+	vk::ImageView imageView = device.getDevice().createImageView(viewInfo);
 
 	if (!imageView) {
 		throw std::runtime_error("failed to create texture image view!");

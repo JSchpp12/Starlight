@@ -42,7 +42,7 @@ public:
 	StarGraphicsPipeline(const StarGraphicsPipeline&) = delete;
 	StarGraphicsPipeline& operator=(const StarGraphicsPipeline&) = delete;
 
-	virtual void bind(vk::CommandBuffer commandBuffer) override;
+	virtual void bind(vk::CommandBuffer& commandBuffer) override;
 
 	static void defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent, vk::RenderPass renderPass, vk::PipelineLayout pipelineLayout);
 

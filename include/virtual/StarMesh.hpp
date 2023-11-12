@@ -1,10 +1,11 @@
 #pragma once 
 
-#include "StarMaterialMesh.hpp"
 #include "CastHelpers.hpp"
-#include "StarMaterial.hpp"
+#include "StarCommandBuffer.hpp"
 #include "StarDevice.hpp"
 #include "StarDescriptors.hpp"
+#include "StarMaterialMesh.hpp"
+#include "StarMaterial.hpp"
 #include "Vertex.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -40,7 +41,7 @@ namespace star{
 
 		virtual void prepRender(StarDevice& device);
 
-		virtual void recordCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex, uint32_t vb_start, uint32_t ib_start);
+		virtual void recordCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex, uint32_t vb_start, uint32_t ib_start);
 
 		std::vector<Vertex>& getVertices() { return *this->vertices; }
 		std::vector<uint32_t>& getIndices() { return *this->indices; }

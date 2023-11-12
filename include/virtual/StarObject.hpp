@@ -8,6 +8,7 @@
 #include "StarPipeline.hpp"
 #include "StarMesh.hpp"
 #include "StarGraphicsPipeline.hpp"
+#include "StarCommandBuffer.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -39,9 +40,6 @@ namespace star {
 
 		virtual void cleanupRender(StarDevice& device); 
 
-		//flag to set if some object requires that a unique pipeline be used for it. This object must create these structures. 
-		virtual bool requiresUniquePipeline() { return false; }
-
 		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
 			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass);
 
@@ -71,7 +69,13 @@ namespace star {
 		/// <param name="commandBuffer"></param>
 		/// <param name="pipelineLayout"></param>
 		/// <param name="swapChainIndexNum"></param>
-		virtual void recordCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start);
+		virtual void recordCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start);
+
+		/// <summary>
+		/// Runtime update to allow object to update anything it needs to prepare for the next 
+		/// main draw command.
+		/// </summary>
+		virtual void prepDraw() { }
 
 		/// <summary>
 		/// Every material must provide a method to return shaders within a map. The keys of the map will contain the stages in which the 
@@ -79,13 +83,6 @@ namespace star {
 		/// </summary>
 		/// <returns></returns>
 		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() = 0;
-
-		/// <summary>
-		/// Signal to the engine if this object is a 'typical' graphics object that should be drawn along with all of the other
-		/// 'typical' graphics objects
-		/// </summary>
-		/// <returns></returns>
-		virtual bool isTypicalGraphicsObject() { return true; }
 
 #pragma region getters
 		glm::mat4 getNormalMatrix() { return glm::inverseTranspose(getDisplayMatrix()); }
@@ -102,6 +99,8 @@ namespace star {
 		std::unique_ptr<StarPipeline> pipeline; 
 
 		std::vector<std::unique_ptr<StarMesh>> meshes;
+
+		void prepareMeshes(star::StarDevice& device); 
 
 		void prepareDescriptors(star::StarDevice& device, int numSwapChainImages, 
 			StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets);

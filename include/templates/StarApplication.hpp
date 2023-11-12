@@ -42,7 +42,7 @@ namespace star {
 
         virtual std::unique_ptr<SwapChainRenderer> getMainRenderer(StarDevice& device, StarWindow& window, RenderOptions& options);
 
-        virtual StarCamera& getCamera() { return camera;  }
+        virtual StarCamera& getCamera() { return camera; }
 
     protected:
         BasicCamera camera;

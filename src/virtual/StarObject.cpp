@@ -33,6 +33,7 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 	//handle pipeline infos
 	this->pipeline = this->buildPipeline(device, swapChainExtent, pipelineLayout, renderPass);
 
+	prepareMeshes(device); 
 	prepareDescriptors(device, numSwapChainImages, groupLayout, groupPool, globalSets); 
 }
 
@@ -42,12 +43,13 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 {
 	this->sharedPipeline = &sharedPipeline; 
 
+	prepareMeshes(device); 
 	prepareDescriptors(device, numSwapChainImages, groupLayout, groupPool, globalSets); 
 }
 
-void star::StarObject::recordCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start) {
+void star::StarObject::recordCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start) {
 	if (this->pipeline)
-		this->pipeline->bind(commandBuffer); 
+		this->pipeline->bind(commandBuffer.buffer(swapChainIndexNum)); 
 
 	for (auto& rmesh : this->getMeshes()) {
 		rmesh->recordCommands(commandBuffer, pipelineLayout, swapChainIndexNum, vb_start, ib_start);
@@ -57,12 +59,17 @@ void star::StarObject::recordCommands(vk::CommandBuffer& commandBuffer, vk::Pipe
 	}
 }
 
-void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapChainImages, 
-	StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets)
+void star::StarObject::prepareMeshes(star::StarDevice& device)
 {
 	for (auto& mesh : this->getMeshes()) {
 		mesh->prepRender(device);
+	}
+}
 
+void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapChainImages,
+	StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets)
+{
+	for (auto& mesh : this->getMeshes()) {
 		//descriptors
 		mesh->getMaterial().buildDescriptorSets(device, groupLayout, groupPool, globalSets, numSwapChainImages);
 	}

@@ -11,7 +11,7 @@ StarGraphicsPipeline::~StarGraphicsPipeline()
 {
 }
 
-void StarGraphicsPipeline::bind(vk::CommandBuffer commandBuffer) {
+void StarGraphicsPipeline::bind(vk::CommandBuffer& commandBuffer) {
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
 }
 

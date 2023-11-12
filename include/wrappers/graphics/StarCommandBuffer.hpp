@@ -18,7 +18,7 @@ namespace star {
 		/// </summary>
 		/// <param name="buffIndex">Buffer index to prepare.(Should equal swap chain image number in main renderer)</param>
 		/// <returns>The command buffer which is ready for command recording.</returns>
-		vk::CommandBuffer& begin(int buffIndex); 
+		void begin(int buffIndex); 
 
 		/// <summary>
 		/// Signal for begin of command recording. This function will allow callee to manually define begin information.
@@ -26,7 +26,9 @@ namespace star {
 		/// <param name="buffIndex">Buffer index to prepare.(Should equal swap chain image number in main renderer)</param>
 		/// <param name="beginInfo">Vulkan begin info</param>
 		/// <returns>The command buffer which is ready for command recording.</returns>
-		vk::CommandBuffer& begin(int buffIndex, vk::CommandBufferBeginInfo beginInfo);
+		void begin(int buffIndex, vk::CommandBufferBeginInfo beginInfo);
+
+		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
 
 		/// <summary>
 		/// Submit the command buffer for execution

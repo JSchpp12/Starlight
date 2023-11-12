@@ -738,7 +738,7 @@ void SwapChainRenderer::createCommandBuffers()
 
 	/* Begin command buffer recording */
 	for (size_t i = 0; i < this->swapChainFramebuffers.size(); i++) {
-		auto buffer = this->graphicsCommandBuffer->begin(i); 
+		this->graphicsCommandBuffer->begin(i); 
 
 		vk::Viewport viewport{};
 		viewport.x = 0.0f;
@@ -749,7 +749,7 @@ void SwapChainRenderer::createCommandBuffers()
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
-		buffer.setViewport(0, viewport);
+		this->graphicsCommandBuffer->buffer(i).setViewport(0, viewport);
 
 		/* Begin render pass */
 		//drawing starts by beginning a render pass 
@@ -787,7 +787,7 @@ void SwapChainRenderer::createCommandBuffers()
 				//OPTIONS: 
 					//VK_SUBPASS_CONTENTS_INLINE: render pass commands will be embedded in the primary command buffer. No secondary command buffers executed 
 					//VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: render pass commands will be executed from the secondary command buffers
-		buffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+		this->graphicsCommandBuffer->buffer(i).beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
 		/* Drawing Commands */
 		//Args: 
@@ -806,18 +806,17 @@ void SwapChainRenderer::createCommandBuffers()
 		//bind the right descriptor set for each swap chain image to the descripts in the shader
 		//bind global descriptor
 		vk::DeviceSize offsets{};
-		buffer.bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
-		buffer.bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+		this->graphicsCommandBuffer->buffer(i).bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
+		this->graphicsCommandBuffer->buffer(i).bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
 		for (auto& group : this->renderGroups) {
-			//newBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, group->getPipelineLayout(), 0, 1, &this->globalDescriptorSets.at(i), 0, nullptr);
-			group->recordCommands(buffer, i);
+			group->recordCommands(*this->graphicsCommandBuffer, i);
 		}
 
-		buffer.endRenderPass();
+		this->graphicsCommandBuffer->buffer(i).endRenderPass();
 
 		//record command buffer
-		buffer.end();
+		this->graphicsCommandBuffer->buffer(i).end();
 	}
 }
 

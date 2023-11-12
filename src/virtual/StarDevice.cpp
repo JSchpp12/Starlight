@@ -362,6 +362,18 @@ uint32_t StarDevice::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags
 	throw std::runtime_error("failed to find suitable memory type");
 }
 
+bool StarDevice::verifyImageCreate(vk::ImageCreateInfo imageInfo)
+{
+	try {
+		vk::ImageFormatProperties pros = this->physicalDevice.getImageFormatProperties(imageInfo.format, imageInfo.imageType, imageInfo.tiling, imageInfo.usage, imageInfo.flags);
+	}
+	catch (std::exception ex) {
+		std::cout << "An error occurred while attempting to verify new image: " << ex.what() << std::endl; 
+		return false; 
+	}
+	return true; 
+}
+
 vk::Format StarDevice::findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
 	for (vk::Format format : candidates) {
 		//VkFormatProperties: 
@@ -549,8 +561,6 @@ void StarDevice::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t 
 	region.imageSubresource.mipLevel = 0;
 	region.imageSubresource.baseArrayLayer = 0;
 	region.imageSubresource.layerCount = 1;
-	//region.imageOffset = { 0, 0, 0 };
-	region.imageOffset = vk::Offset3D{};
 	region.imageOffset = vk::Offset3D{};
 	region.imageExtent = vk::Extent3D{
 		width,

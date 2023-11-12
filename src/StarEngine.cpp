@@ -8,6 +8,7 @@ StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene
 
 void StarEngine::Run()
 {
+	//objects will be prepared for render during the initialization of the main renderer
 	mainRenderer->prepare();
 
 	while (!window->shouldClose()) {
@@ -23,6 +24,6 @@ void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 
 	this->renderingDevice = StarDevice::New(*window);
 
-	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window, renderOptions); 
+	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window, renderOptions); 	
 }
 }

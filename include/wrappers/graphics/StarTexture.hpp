@@ -17,19 +17,25 @@ public:
 	/// </summary>
 	/// <returns></returns>
 	struct TextureCreateSettings {
-		TextureCreateSettings(vk::Flags<vk::ImageUsageFlagBits> imageUsage, 
-			bool createSampler)
-			: imageUsage(imageUsage), createSampler(createSampler) {}
+		TextureCreateSettings() = default; 
+
+		TextureCreateSettings(vk::Flags<vk::ImageUsageFlagBits> imageUsage, vk::Format imageFormat)
+			: imageUsage(imageUsage), imageFormat(imageFormat) {}
 			~TextureCreateSettings() = default; 
 
-		vk::Flags<vk::ImageUsageFlagBits> imageUsage;
-		bool createSampler;
+		vk::Flags<vk::ImageUsageFlagBits> imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+		vk::Format imageFormat = vk::Format::eR8G8B8A8Srgb;
 	}; 
 
-	StarTexture() = default;
+	StarTexture() : createSettings(std::make_unique<TextureCreateSettings>()) {}; 
+	StarTexture(TextureCreateSettings& settings)
+		: createSettings(std::make_unique<TextureCreateSettings>(settings)) {}; 
+
 	virtual ~StarTexture();
 
-	void prepRender(StarDevice& device, TextureCreateSettings* settings = nullptr);
+	virtual void prepRender(StarDevice& device);
+
+	void cleanupRender(StarDevice& device); 
 
 	/// <summary>
 	/// Read the image from disk into memory or provide the image which is in memory
@@ -41,7 +47,9 @@ public:
 	vk::Sampler getSampler() { return this->textureSampler; }
 
 protected:
-	StarDevice* device = nullptr;
+	std::unique_ptr<TextureCreateSettings> createSettings = nullptr; 
+
+	bool isRenderReady = false; 
 	vk::Image textureImage;
 	vk::ImageView textureImageView;				//image view: describe to vulkan how to access an image
 	vk::Sampler textureSampler;					//using sampler to apply filtering or other improvements over raw texel access
@@ -52,7 +60,7 @@ protected:
 	virtual int getHeight() = 0;
 	virtual int getChannels() = 0;
 
-	void createTextureImage(TextureCreateSettings* settings);
+	void createTextureImage(StarDevice& device);
 
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 
@@ -65,17 +73,17 @@ protected:
 	/// <param name="properties"></param>
 	/// <param name="image"></param>
 	/// <param name="imageMemory"></param>
-	void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
+	void createImage(StarDevice& device, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
 		vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties,
 		vk::Image& image, vk::DeviceMemory& imageMemory);
 
-	void transitionImageLayout(vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
+	void transitionImageLayout(StarDevice& device, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
 		vk::ImageLayout newLayout);
 
-	void createImageSampler();
+	void createImageSampler(StarDevice& device);
 
-	void createTextureImageView();
+	void createTextureImageView(StarDevice& device);
 
-	vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
+	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
 };
 }

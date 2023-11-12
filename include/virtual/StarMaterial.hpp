@@ -4,6 +4,7 @@
 #include "StarShader.hpp"
 #include "StarDevice.hpp"
 #include "StarTexture.hpp"
+#include "StarCommandBuffer.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -50,7 +51,7 @@ namespace star {
 			StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets, 
 			int numSwapChainImages);
 
-		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
+		virtual void bind(StarCommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
 	protected:
 

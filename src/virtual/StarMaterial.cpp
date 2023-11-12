@@ -38,10 +38,10 @@ void star::StarMaterial::buildDescriptorSets(StarDevice& device, StarDescriptorS
 	}
 }
 
-void star::StarMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
+void star::StarMaterial::bind(StarCommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
 {
 	//bind the descriptor sets for the given image index
 	auto& descriptors = this->descriptorSets.at(swapChainImageIndex); 
 
-	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(), descriptors.data(), 0, nullptr);
+	commandBuffer.buffer(swapChainImageIndex).bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(), descriptors.data(), 0, nullptr);
 }

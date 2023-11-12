@@ -22,14 +22,19 @@ namespace star {
         bool onDisk = false;
 
         Texture(int texWidth, int texHeight)
-            : rawData(std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texWidth, std::vector<Color>(texHeight, Color{ 0,0,0,0 })))),
-            width(texWidth), height(texHeight), channels(4) {};
+            : width(texWidth), height(texHeight), channels(4), onDisk(false) {};
 
-        Texture(std::vector<std::vector<Color>> rawData, int texWidth, int texHeight)
+        Texture(int texWidth, int texHeight, TextureCreateSettings& settings)
+            : StarTexture(settings), rawData(std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texWidth, std::vector<Color>(texHeight, Color{ 0,0,0,0 })))),
+            width(texWidth), height(texHeight), channels(4), onDisk(false) {};
+
+        Texture(std::vector<std::vector<Color>> rawData)
+            : rawData(rawData), width(rawData.size()),
+            height(rawData.front().size()), channels(4) {};
+
+        Texture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData)
             : rawData(rawData), width(texWidth),
-            height(texHeight), channels(3) {
-            onDisk = false;
-        }
+            height(texHeight), channels(4), onDisk(false) {};
         /// <summary>
         /// Initalize texture with provided raw data. For use with programatically generated textures. 
         /// </summary>
@@ -77,10 +82,17 @@ namespace star {
                 auto data = std::vector<unsigned char>(numPix);
                 for (int i = 0; i < height; i++) {
                     for (int j = 0; j < width; j++) {
-                        data.at(channels * pixCounter + 0) = rawData.value().at(i).at(j).raw_r();
-                        data.at(channels * pixCounter + 1) = rawData.value().at(i).at(j).raw_g();
-                        data.at(channels * pixCounter + 2) = rawData.value().at(i).at(j).raw_b();
-                        data.at(channels * pixCounter + 3) = rawData.value().at(i).at(j).raw_a();
+                        if (this->channels == 3) {
+                            data.at(channels * pixCounter + 0) = rawData.value().at(i).at(j).raw_r();
+                            data.at(channels * pixCounter + 1) = rawData.value().at(i).at(j).raw_g();
+                            data.at(channels * pixCounter + 2) = rawData.value().at(i).at(j).raw_b();
+                        } else if (this->channels == 4) {
+                            data.at(channels * pixCounter + 0) = rawData.value().at(i).at(j).raw_r();
+                            data.at(channels * pixCounter + 1) = rawData.value().at(i).at(j).raw_g();
+                            data.at(channels * pixCounter + 2) = rawData.value().at(i).at(j).raw_b();
+                            data.at(channels * pixCounter + 3) = rawData.value().at(i).at(j).raw_a();
+                        }
+
                         pixCounter++;
                     }
                 }
@@ -92,7 +104,7 @@ namespace star {
 
             }
             else {
-                return std::unique_ptr<unsigned char>(new unsigned char[] {0x00, 0x00, 0x00, 0x00});
+                return std::unique_ptr<unsigned char>();
             }
         }
 
@@ -109,8 +121,6 @@ namespace star {
     protected:
         std::optional<std::vector<std::vector<Color>>> rawData;
         int width = 0, height = 0, channels = 0;
-
-
     };
 
 }

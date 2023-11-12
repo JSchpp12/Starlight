@@ -1,6 +1,6 @@
 #include "Grid.hpp"
 namespace star {
-	Grid::Grid(int vertX, int vertY) :vertX(vertX), vertY(vertY) {
+	Grid::Grid(int vertX, int vertY) :StarObject(), vertX(vertX), vertY(vertY) {
 		std::unique_ptr<std::vector<Vertex>> verts = std::make_unique<std::vector<Vertex>>(); 
 		std::unique_ptr<std::vector<uint32_t>> indices = std::make_unique<std::vector<uint32_t>>(); 
 		std::shared_ptr<VertColorMaterial> material = std::shared_ptr<VertColorMaterial>(new VertColorMaterial());
@@ -9,7 +9,7 @@ namespace star {
 		this->meshes.push_back(std::unique_ptr<StarMesh>(new StarMesh(std::move(verts), std::move(indices), material)));
 	}
 
-	Grid::Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material)
+	Grid::Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material): vertX(vertX), vertY(vertY)
 	{
 		std::unique_ptr<std::vector<Vertex>> verts = std::make_unique<std::vector<Vertex>>();
 		std::unique_ptr<std::vector<uint32_t>> indices = std::make_unique<std::vector<uint32_t>>();

@@ -28,17 +28,15 @@ public:
 
 	void init(StarApplication& application, RenderOptions& renderOptions);
 
-	std::vector<std::unique_ptr<StarObject>>& getObjList() { return this->objects; }
 	StarScene& getScene() { return *this->currentScene; }
 protected:
-	std::vector<std::unique_ptr<StarObject>> objects;
 	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<StarWindow> window;
 	std::unique_ptr<StarDevice> renderingDevice; 
 	std::unique_ptr<SwapChainRenderer> mainRenderer; 
 	std::vector<Handle> lightList; 
 
-	std::vector<std::reference_wrapper<StarCommandBuffer>> registeredCommandBuffers; 
+	std::vector<StarCommandBuffer*> additionalBuffers; 
 
 	LightManager lightManager;
 

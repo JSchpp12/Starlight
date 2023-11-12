@@ -131,6 +131,8 @@ public:
 	/// <returns></returns>
 	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags propertyFlags);
 
+	bool verifyImageCreate(vk::ImageCreateInfo imageInfo);
+
 #pragma endregion
 
 protected: 

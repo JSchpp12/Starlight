@@ -13,7 +13,7 @@ void star::TextureMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Buil
 void star::TextureMaterial::cleanup(StarDevice& device)
 {
 	if (texture)
-		texture.reset(); 
+		texture->cleanupRender(device); 
 }
 
 vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)

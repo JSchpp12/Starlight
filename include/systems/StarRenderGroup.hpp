@@ -13,6 +13,7 @@
 #include "StarBuffer.hpp"
 #include "StarObject.hpp"
 #include "StarSystemPipeline.hpp"
+#include "StarCommandBuffer.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -67,7 +68,7 @@ namespace star {
 		/// <summary>
 		/// Render the object
 		/// </summary>
-		virtual void recordCommands(vk::CommandBuffer& commandBuffer, int swapChainImageIndex);
+		virtual void recordCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex);
 
 		//TODO: remove
 		virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }

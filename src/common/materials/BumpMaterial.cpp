@@ -8,10 +8,15 @@ void star::BumpMaterial::getDescriptorSetLayout(star::StarDescriptorSetLayout::B
 
 void star::BumpMaterial::cleanup(StarDevice& device)
 {
-	if (this->texture)
-		this->texture.reset();
-	if (this->bumpMap)
-		this->bumpMap.reset();
+	if (this->texture){
+		this->texture->cleanupRender(device);
+		this->texture.reset(); 
+	}
+
+	if (this->bumpMap) {
+		this->bumpMap->cleanupRender(device);
+		this->bumpMap.reset(); 
+	}
 }
 
 vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,

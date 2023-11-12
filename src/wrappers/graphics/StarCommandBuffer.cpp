@@ -26,7 +26,7 @@ star::StarCommandBuffer::~StarCommandBuffer()
 	}
 }
 
-vk::CommandBuffer& star::StarCommandBuffer::begin(int buffIndex)
+void star::StarCommandBuffer::begin(int buffIndex)
 {
 	vk::CommandBufferBeginInfo beginInfo{};
 	//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -46,8 +46,22 @@ vk::CommandBuffer& star::StarCommandBuffer::begin(int buffIndex)
 		commands cannot be added after creation
 	*/
 
-	return this->begin(buffIndex, beginInfo); 
+	this->begin(buffIndex, beginInfo); 
 }
+
+void star::StarCommandBuffer::begin(int buffIndex, vk::CommandBufferBeginInfo beginInfo)
+{
+	assert(buffIndex < this->commandBuffers.size() && "Requested swap chain index is too high");
+	this->recorded = true;
+
+	//create begin 
+	this->commandBuffers[buffIndex].begin(beginInfo);
+
+	if (!this->commandBuffers[buffIndex]) {
+		throw std::runtime_error("failed to begin recording command buffer");
+	}
+}
+
 
 void star::StarCommandBuffer::submit(int targetIndex, vk::Fence& fence)
 {
@@ -149,18 +163,4 @@ const std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores
 	}
 
 	return this->completeSemaphores;
-}
-
-vk::CommandBuffer& star::StarCommandBuffer::begin(int buffIndex, vk::CommandBufferBeginInfo beginInfo)
-{
-	assert(buffIndex < this->commandBuffers.size() && "Requested swap chain index is too high");
-	this->recorded = true; 
-
-	//create begin 
-	this->commandBuffers[buffIndex].begin(beginInfo); 
-
-	if (!this->commandBuffers[buffIndex]) {
-		throw std::runtime_error("failed to begin recording command buffer"); 
-	}
-	return this->commandBuffers[buffIndex]; 
 }

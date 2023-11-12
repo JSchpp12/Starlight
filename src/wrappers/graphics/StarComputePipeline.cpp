@@ -1,6 +1,6 @@
 #include "StarComputePipeline.hpp"
 
-void star::StarComputePipeline::bind(vk::CommandBuffer commandBuffer)
+void star::StarComputePipeline::bind(vk::CommandBuffer& commandBuffer)
 {
 }
 
