@@ -171,16 +171,16 @@ protected:
 	vk::Queue graphicsQueue, presentQueue; 
 	std::optional<vk::Queue> transferQueue, computeQueue;
 
-#if defined(WIN32) || defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__NT__)
-	bool isMac = false;
-	std::vector<const char*> platformInstanceRequiredExtensions = { };
-#elif __APPLE__
+#if __APPLE__
 	bool isMac = true;
 	std::vector<const char*> platformInstanceRequiredExtensions = {
 		VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 		// VK_KHR_SURFACE_EXTENSION_NAME,
 		"VK_KHR_portability_enumeration"
 	};
+#else
+	bool isMac = false;
+	std::vector<const char*> platformInstanceRequiredExtensions = { };
 #endif
 
 	//Create the vulkan instance machine 

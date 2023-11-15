@@ -2,6 +2,7 @@
 #include "Enums.hpp"
 
 #include <optional>
+#include <stdint.h>
 
 namespace star {
 struct Handle {

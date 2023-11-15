@@ -17,8 +17,6 @@ if (NOT IS_DIRECTORY ${STB_DIRECTORY})
 	message(FATAL_ERROR "Stb is needed for compilation. Pull copy into external directory.")
 endif()
 
-add_subdirectory("extern/googletest")
-
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
 
@@ -27,8 +25,8 @@ set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
 
 set(GLFW_STANDALONE OFF CACHE BOOL "" FORCE)
-add_subdirectory("extern/glfw")
 add_subdirectory("extern/glm")
+add_subdirectory("extern/glfw")
 
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
@@ -46,6 +44,8 @@ set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
 add_subdirectory("extern/tinyobjloader")
+
+add_subdirectory("extern/googletest") 
 
 set(${PROJECT_NAME}_SOURCE 
     "src/virtual/StarObject.cpp"
