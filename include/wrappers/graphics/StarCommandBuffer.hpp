@@ -4,6 +4,8 @@
 
 #include "vulkan/vulkan.hpp"
 
+#include <vector>
+
 namespace star {
 	/// <summary>
 	/// Create reusable command buffer object
@@ -28,17 +30,17 @@ namespace star {
 		/// <returns>The command buffer which is ready for command recording.</returns>
 		void begin(int buffIndex, vk::CommandBufferBeginInfo beginInfo);
 
-		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
+		void submit(int bufferIndex); 
 
 		/// <summary>
 		/// Submit the command buffer for execution
 		/// </summary>
-		void submit(int targetIndex, vk::Fence& fence); 
+		void submit(int bufferIndex, vk::Fence& fence); 
 
 		/// <summary>
 		/// Submit the command buffer for execution, adding any one time wait information. 
 		/// </summary>
-		void submit(int targetIndex, vk::Fence& fence, std::pair<vk::Semaphore, vk::PipelineStageFlags> overrideWait);
+		void submit(int bufferIndex, vk::Fence& fence, std::pair<vk::Semaphore, vk::PipelineStageFlags> overrideWait);
 
 		/// <summary>
 		/// This command buffer should wait for the provided semaphores to complete before proceeding.
@@ -53,6 +55,7 @@ namespace star {
 		/// </summary>
 		const std::vector<vk::Semaphore>& getCompleteSemaphores(); 
 
+		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
 	protected:
 		StarDevice& device; 
 		vk::Queue& targetQueue; 
@@ -60,5 +63,6 @@ namespace star {
 		std::vector<vk::Semaphore> completeSemaphores; 
 		std::vector<std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>> waitSemaphores; 
 		bool recorded = false; 
+
 	};
 }

@@ -62,70 +62,106 @@ void star::StarCommandBuffer::begin(int buffIndex, vk::CommandBufferBeginInfo be
 	}
 }
 
+void star::StarCommandBuffer::submit(int bufferIndex){
+	assert(this->recorded && "Buffer should be recorded before submission");
 
-void star::StarCommandBuffer::submit(int targetIndex, vk::Fence& fence)
+	vk::SubmitInfo submitInfo{}; 
+
+	std::vector<vk::Semaphore> waits; 
+	std::vector<vk::PipelineStageFlags> waitPoints; 
+
+	if (this->waitSemaphores.at(bufferIndex).size() > 0) {
+		//there are some semaphores which must be waited on before execution
+		for (auto& waitInfos : this->waitSemaphores.at(bufferIndex)) {
+			waits.push_back(waitInfos.first);
+			waitPoints.push_back(waitInfos.second);
+		}
+	}
+
+	if (waits.size() > 0){
+		submitInfo.waitSemaphoreCount = (uint32_t)waits.size();
+		submitInfo.pWaitSemaphores = waits.data(); 
+		submitInfo.pWaitDstStageMask = waitPoints.data(); 
+	}
+
+	//check if need to signal complete semaphore
+	if (this->completeSemaphores.size() > 0) {
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &this->completeSemaphores.at(bufferIndex);
+	}
+
+	submitInfo.pCommandBuffers = &this->commandBuffers.at(bufferIndex);
+	submitInfo.commandBufferCount = 1;
+	this->targetQueue.submit(submitInfo);  
+}
+
+void star::StarCommandBuffer::submit(int bufferIndex, vk::Fence& fence)
 {
 	assert(this->recorded && "Buffer should be recorded before submission"); 
 
 	vk::SubmitInfo submitInfo{}; 
 
-	std::vector<vk::Semaphore> waits;
-	std::vector<vk::PipelineStageFlags> whereWaits;
-	if (this->waitSemaphores.size() > 0) {
+	std::vector<vk::Semaphore> waits; 
+	std::vector<vk::PipelineStageFlags> waitPoints; 
+
+	if (this->waitSemaphores.at(bufferIndex).size() > 0) {
 		//there are some semaphores which must be waited on before execution
-		for (auto& waitInfos : this->waitSemaphores.at(targetIndex)) {
-			waits.push_back(waitInfos.first); 
-			whereWaits.push_back(waitInfos.second); 
+		for (auto& waitInfos : this->waitSemaphores.at(bufferIndex)) {
+			waits.push_back(waitInfos.first);
+			waitPoints.push_back(waitInfos.second);
 		}
 	}
-	submitInfo.waitSemaphoreCount = (uint32_t)waits.size();
-	submitInfo.pWaitSemaphores = waits.data();
-	submitInfo.pWaitDstStageMask = whereWaits.data(); 
+
+	if (waits.size() > 0){
+		submitInfo.waitSemaphoreCount = (uint32_t)waits.size();
+		submitInfo.pWaitSemaphores = waits.data(); 
+		submitInfo.pWaitDstStageMask = waitPoints.data(); 
+	}
 
 	//check if need to signal complete semaphore
 	if (this->completeSemaphores.size() > 0) {
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &this->completeSemaphores.at(targetIndex); 
+		submitInfo.pSignalSemaphores = &this->completeSemaphores.at(bufferIndex);
 	}
 
-	submitInfo.pCommandBuffers = &this->commandBuffers.at(targetIndex); 
-	submitInfo.commandBufferCount = 1; 
+	submitInfo.pCommandBuffers = &this->commandBuffers.at(bufferIndex);
+	submitInfo.commandBufferCount = 1;
 	auto commandResult = this->targetQueue.submit(1, &submitInfo, fence); 
 	if (commandResult != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to submit draw command buffer");
 	}
 }
 
-void star::StarCommandBuffer::submit(int targetIndex, vk::Fence& fence, std::pair<vk::Semaphore, vk::PipelineStageFlags> overrideWait)
+void star::StarCommandBuffer::submit(int bufferIndex, vk::Fence& fence, std::pair<vk::Semaphore, vk::PipelineStageFlags> overrideWait)
 {
 	assert(this->recorded && "Buffer should be recorded before submission");
 
+	std::vector<vk::Semaphore> waits{overrideWait.first}; 
+	std::vector<vk::PipelineStageFlags> waitPoints{overrideWait.second}; 
+
 	vk::SubmitInfo submitInfo{};
 
-	std::vector<vk::Semaphore> waits{
-		overrideWait.first
-	};
-	std::vector<vk::PipelineStageFlags> whereWaits{
-		overrideWait.second
-	};
-
-	if (this->waitSemaphores.size() > 0) {
+	if (this->waitSemaphores.at(bufferIndex).size() > 0) {
 		//there are some semaphores which must be waited on before execution
-		for (auto& waitInfos : this->waitSemaphores.at(targetIndex)) {
+		for (auto& waitInfos : this->waitSemaphores.at(bufferIndex)) {
 			waits.push_back(waitInfos.first);
-			whereWaits.push_back(waitInfos.second);
+			waitPoints.push_back(waitInfos.second);
 		}
 	}
-	submitInfo.waitSemaphoreCount = (uint32_t)waits.size();
-	submitInfo.pWaitSemaphores = waits.data(); 
-	submitInfo.pWaitDstStageMask = whereWaits.data(); 
+
+	if (waits.size() > 0){
+		submitInfo.waitSemaphoreCount = (uint32_t)waits.size();
+		submitInfo.pWaitSemaphores = waits.data(); 
+		submitInfo.pWaitDstStageMask = waitPoints.data(); 
+	}
+
 	//check if need to signal complete semaphore
 	if (this->completeSemaphores.size() > 0) {
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &this->completeSemaphores.at(targetIndex);
+		submitInfo.pSignalSemaphores = &this->completeSemaphores.at(bufferIndex);
 	}
 
-	submitInfo.pCommandBuffers = &this->commandBuffers.at(targetIndex);
+	submitInfo.pCommandBuffers = &this->commandBuffers.at(bufferIndex);
 	submitInfo.commandBufferCount = 1;
 	auto commandResult = this->targetQueue.submit(1, &submitInfo, fence);
 	if (commandResult != vk::Result::eSuccess) {
