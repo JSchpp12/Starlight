@@ -36,7 +36,7 @@ namespace star {
 		/// <param name="meshes"></param>
 		StarObject() = default; 
 
-		virtual ~StarObject() = default;
+		virtual ~StarObject(){}
 
 		virtual void cleanupRender(StarDevice& device); 
 

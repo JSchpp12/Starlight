@@ -1,5 +1,7 @@
 #include "Grid.hpp"
 namespace star {
+	Grid::~Grid(){}
+	
 	Grid::Grid(int vertX, int vertY) :StarObject(), vertX(vertX), vertY(vertY) {
 		std::unique_ptr<std::vector<Vertex>> verts = std::make_unique<std::vector<Vertex>>(); 
 		std::unique_ptr<std::vector<uint32_t>> indices = std::make_unique<std::vector<uint32_t>>(); 

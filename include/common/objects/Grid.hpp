@@ -20,6 +20,8 @@ namespace star {
 	/// </summary>
 	class Grid : public StarObject {
 	public:
+		virtual ~Grid(); 
+		
 		Grid(int vertX, int vertY);
 
 		Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material);
