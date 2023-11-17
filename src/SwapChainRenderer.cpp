@@ -58,7 +58,7 @@ void SwapChainRenderer::createRenderingGroups()
 		}
 		else {
 			//create a new one and add object
-			this->renderGroups.push_back(std::unique_ptr<StarRenderGroup>(new StarRenderGroup(device, swapChainImages.size(), 
+			this->renderGroups.push_back(std::unique_ptr<StarRenderGroup>(new StarRenderGroup(device, MAX_FRAMES_IN_FLIGHT, 
 				swapChainExtent, object, currentNumInd, currentNumVert)));
 		}
 
@@ -182,10 +182,6 @@ void SwapChainRenderer::updateUniformBuffer(uint32_t currentImage)
 	for (size_t i = 0; i < this->renderGroups.size(); i++) {
 		renderGroups.at(i)->updateBuffers(currentImage);
 	}
-
-	//if (lightRenderSys) {
-	//	this->lightRenderSys->updateBuffers(currentImage);
-	//}
 }
 
 SwapChainRenderer::~SwapChainRenderer()
@@ -248,13 +244,17 @@ void SwapChainRenderer::submit()
 	//mark image as now being in use by this frame by assigning the fence to it 
 	imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
-	updateUniformBuffer(imageIndex);
+	updateUniformBuffer(currentFrame);
 
-	const vk::Semaphore& doneSemaphore = this->graphicsCommandBuffer->getCompleteSemaphores().at(imageIndex); 
+	const vk::Semaphore& doneSemaphore = this->graphicsCommandBuffer->getCompleteSemaphores().at(currentFrame); 
 
 	//set fence to unsignaled state
 	this->device.getDevice().resetFences(1, &inFlightFences[currentFrame]);
-	this->graphicsCommandBuffer->submit(imageIndex, inFlightFences[currentFrame], std::pair<vk::Semaphore, vk::PipelineStageFlags>(imageAvailableSemaphores[currentFrame], vk::PipelineStageFlagBits::eColorAttachmentOutput));
+
+	//re-record command buffer
+	this->graphicsCommandBuffer->buffer(currentFrame).reset(); 
+	recordCommandBuffer(currentFrame, imageIndex); 
+	this->graphicsCommandBuffer->submit(currentFrame, inFlightFences[currentFrame], std::pair<vk::Semaphore, vk::PipelineStageFlags>(imageAvailableSemaphores[currentFrame], vk::PipelineStageFlagBits::eColorAttachmentOutput));
 
 	/* Presentation */
 	vk::PresentInfoKHR presentInfo{};
@@ -733,12 +733,11 @@ void SwapChainRenderer::createRenderingBuffers()
 void SwapChainRenderer::createCommandBuffers()
 {
 	/* Graphics Command Buffer */
+	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics); 
+}
 
-	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, this->swapChainFramebuffers.size(), Command_Buffer_Type::Tgraphics); 
-
-	/* Begin command buffer recording */
-	for (size_t i = 0; i < this->swapChainFramebuffers.size(); i++) {
-		this->graphicsCommandBuffer->begin(i); 
+void SwapChainRenderer::recordCommandBuffer(uint32_t bufferIndex, uint32_t imageIndex){
+		this->graphicsCommandBuffer->begin(bufferIndex); 
 
 		vk::Viewport viewport{};
 		viewport.x = 0.0f;
@@ -749,7 +748,7 @@ void SwapChainRenderer::createCommandBuffers()
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
-		this->graphicsCommandBuffer->buffer(i).setViewport(0, viewport);
+		this->graphicsCommandBuffer->buffer(bufferIndex).setViewport(0, viewport);
 
 		/* Begin render pass */
 		//drawing starts by beginning a render pass 
@@ -762,7 +761,7 @@ void SwapChainRenderer::createCommandBuffers()
 
 		//what attachments do we need to bind
 		//previously created swapChainbuffers to hold this information 
-		renderPassInfo.framebuffer = swapChainFramebuffers[i];
+		renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
 
 		//define size of render area -- should match size of attachments for best performance
 		renderPassInfo.renderArea.offset = vk::Offset2D{ 0, 0 };
@@ -787,7 +786,7 @@ void SwapChainRenderer::createCommandBuffers()
 				//OPTIONS: 
 					//VK_SUBPASS_CONTENTS_INLINE: render pass commands will be embedded in the primary command buffer. No secondary command buffers executed 
 					//VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: render pass commands will be executed from the secondary command buffers
-		this->graphicsCommandBuffer->buffer(i).beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+		this->graphicsCommandBuffer->buffer(bufferIndex).beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
 
 		/* Drawing Commands */
 		//Args: 
@@ -806,18 +805,17 @@ void SwapChainRenderer::createCommandBuffers()
 		//bind the right descriptor set for each swap chain image to the descripts in the shader
 		//bind global descriptor
 		vk::DeviceSize offsets{};
-		this->graphicsCommandBuffer->buffer(i).bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
-		this->graphicsCommandBuffer->buffer(i).bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+		this->graphicsCommandBuffer->buffer(bufferIndex).bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
+		this->graphicsCommandBuffer->buffer(bufferIndex).bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
 		for (auto& group : this->renderGroups) {
-			group->recordCommands(*this->graphicsCommandBuffer, i);
+			group->recordCommands(*this->graphicsCommandBuffer, bufferIndex);
 		}
 
-		this->graphicsCommandBuffer->buffer(i).endRenderPass();
+		this->graphicsCommandBuffer->buffer(bufferIndex).endRenderPass();
 
 		//record command buffer
-		this->graphicsCommandBuffer->buffer(i).end();
-	}
+		this->graphicsCommandBuffer->buffer(bufferIndex).end();
 }
 
 void SwapChainRenderer::createSemaphores()

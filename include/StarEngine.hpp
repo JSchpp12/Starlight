@@ -40,5 +40,7 @@ protected:
 
 	LightManager lightManager;
 
+	void submitMainDraw(); 
+
 };
 }

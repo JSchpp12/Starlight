@@ -193,6 +193,8 @@ protected:
 	/// </summary>
 	virtual void createCommandBuffers();
 
+	virtual void recordCommandBuffer(uint32_t bufferIndex, uint32_t imageIndex); 
+
 	/// <summary>
 	/// Create semaphores that are going to be used to sync rendering and presentation queues
 	/// </summary>

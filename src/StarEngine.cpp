@@ -26,4 +26,8 @@ void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 
 	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window, renderOptions); 	
 }
+
+void StarEngine::submitMainDraw(){
+	
+}
 }

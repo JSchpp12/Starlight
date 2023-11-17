@@ -192,7 +192,7 @@ void StarDevice::createCommandPool() {
 	auto queueFamilyIndicies = findQueueFamilies(physicalDevice);
 
 	//graphics command buffer
-	createPool(queueFamilyIndicies.graphicsFamily.value(), vk::CommandPoolCreateFlagBits{}, graphicsCommandPool);
+	createPool(queueFamilyIndicies.graphicsFamily.value(), vk::CommandPoolCreateFlagBits::eResetCommandBuffer, graphicsCommandPool);
 
 	//command buffer for transfer queue 
 	if (queueFamilyIndicies.transferFamily.has_value()) {

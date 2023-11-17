@@ -75,7 +75,7 @@ namespace star {
 		/// Runtime update to allow object to update anything it needs to prepare for the next 
 		/// main draw command.
 		/// </summary>
-		virtual void prepDraw() { }
+		virtual void prepDraw(int swapChainTarget) { }
 
 		/// <summary>
 		/// Every material must provide a method to return shaders within a map. The keys of the map will contain the stages in which the 
