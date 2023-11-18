@@ -16,7 +16,5 @@ namespace star {
 	protected:
 		StarShader compShader; 
 		vk::PipelineLayout& pipelineLayout; //Compute pipes have their own layout -- much smaller than graphics 
-
-		void createPipelineLayout();
 	};
 }

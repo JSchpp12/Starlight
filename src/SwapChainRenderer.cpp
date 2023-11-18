@@ -186,13 +186,18 @@ void SwapChainRenderer::updateUniformBuffer(uint32_t currentImage)
 
 SwapChainRenderer::~SwapChainRenderer()
 {
-	device.getDevice().waitIdle(); 
 	cleanup(); 
 }
 
 void SwapChainRenderer::pollEvents()
 {
 	glfwPollEvents();
+}
+
+void SwapChainRenderer::init()
+{
+	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size());
+	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->MAX_FRAMES_IN_FLIGHT);
 }
 
 void SwapChainRenderer::submit()
@@ -440,10 +445,6 @@ void SwapChainRenderer::createSwapChain()
 
 	this->swapChain = this->device.getDevice().createSwapchainKHR(createInfo);
 
-	//if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
-	//    throw std::runtime_error("failed to create swap chain");
-	//}
-
 	//get images in the newly created swapchain 
 	this->swapChainImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain);
 
@@ -487,12 +488,6 @@ vk::ImageView SwapChainRenderer::createImageView(vk::Image image, vk::Format for
 
 void SwapChainRenderer::createDescriptors()
 {
-	this->globalPool = StarDescriptorPool::Builder(this->device)
-		.setMaxSets(15)
-		.addPoolSize(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size() * this->swapChainImages.size())
-		.addPoolSize(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->swapChainImages.size())
-		.build();
-
 	this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
@@ -516,7 +511,7 @@ void SwapChainRenderer::createDescriptors()
 			0,
 			sizeof(LightBufferObject) * this->lightList.size() };
 
-		StarDescriptorWriter(this->device, *this->globalSetLayout, *this->globalPool)
+		StarDescriptorWriter(this->device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
 			.writeBuffer(0, &globalBufferInfo)
 			.writeBuffer(1, &lightBufferInfo)
 			.build(this->globalDescriptorSets.at(i));

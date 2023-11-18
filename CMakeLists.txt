@@ -75,6 +75,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/managers/LightManager.cpp"
     "src/managers/ObjectManager.cpp"
     "src/managers/MapManager.cpp" 
+    "src/managers/ManagerDescriptorPool.cpp"
     "src/templates/StarApplication.cpp"
     "src/controllers/OptionsController.cpp"
     "src/modules/InteractionSystem.cpp"
@@ -90,7 +91,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/objects/BasicObject.cpp"
     "src/common/objects/Square.cpp"
     "src/common/objects/Grid.cpp"
-    
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
     "src/common/ComputeTexture.cpp"
@@ -133,6 +133,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/managers/LightManager.hpp"
     "include/managers/ObjectManager.hpp"
     "include/managers/MapManager.hpp"
+    "include/managers/ManagerDescriptorPool.hpp"
     "include/controllers/OptionsController.hpp"
     "include/modules/InteractionSystem.hpp"
     "include/systems/StarRenderGroup.hpp"

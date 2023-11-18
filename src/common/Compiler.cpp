@@ -30,6 +30,9 @@ namespace star {
         else if (extension == ".frag") {
             return shaderc_shader_kind::shaderc_fragment_shader;
         }
+        else if (extension == ".comp") {
+            return shaderc_shader_kind::shaderc_compute_shader;
+        }
 
         throw std::runtime_error("Compiler::GetShaderCStageFlag invalid shader stage");
     }

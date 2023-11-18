@@ -26,6 +26,11 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& 
 	return std::move(newPipeline);
 }
 
+void star::StarObject::initRender(int numFramesInFlight)
+{
+	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight); 
+}
+
 void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
 	vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, StarDescriptorSetLayout& groupLayout, 
 	StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets)

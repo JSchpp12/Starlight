@@ -61,6 +61,7 @@ namespace star {
 		return std::optional<glm::vec2>(glm::vec2(numXSteps, numYSteps));
 	}
 
+
 	glm::vec3 Grid::getCenter() {
 		glm::vec3 position = this->getPosition();
 		//position begins at corner, move to center

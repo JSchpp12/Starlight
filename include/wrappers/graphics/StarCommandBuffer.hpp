@@ -61,8 +61,10 @@ namespace star {
 		vk::Queue& targetQueue; 
 		std::vector<vk::CommandBuffer> commandBuffers; 
 		std::vector<vk::Semaphore> completeSemaphores; 
+		std::vector<vk::Fence> readyFence; 
 		std::vector<std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>> waitSemaphores; 
 		bool recorded = false; 
 
+		void wait(int bufferIndex);
 	};
 }

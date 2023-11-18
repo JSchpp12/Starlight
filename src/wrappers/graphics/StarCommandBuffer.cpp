@@ -17,10 +17,22 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 	
 	this->commandBuffers = this->device.getDevice().allocateCommandBuffers(allocateInfo); 
 
+	this->readyFence.resize(numBuffersToCreate); 
+
+	vk::FenceCreateInfo fenceInfo{}; 
+	fenceInfo.sType = vk::StructureType::eFenceCreateInfo; 
+	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled; 
+
+	for (int i = 0; i < numBuffersToCreate; i++) {
+		this->readyFence[i] = this->device.getDevice().createFence(fenceInfo); 
+	}
 }
 
 star::StarCommandBuffer::~StarCommandBuffer()
 {
+	for (auto& fence : this->readyFence) {
+		this->device.getDevice().destroyFence(fence); 
+	}
 	for (auto& semaphore : this->completeSemaphores) {
 		this->device.getDevice().destroySemaphore(semaphore); 
 	}
@@ -65,6 +77,8 @@ void star::StarCommandBuffer::begin(int buffIndex, vk::CommandBufferBeginInfo be
 void star::StarCommandBuffer::submit(int bufferIndex){
 	assert(this->recorded && "Buffer should be recorded before submission");
 
+	wait(bufferIndex); 
+
 	vk::SubmitInfo submitInfo{}; 
 
 	std::vector<vk::Semaphore> waits; 
@@ -92,7 +106,11 @@ void star::StarCommandBuffer::submit(int bufferIndex){
 
 	submitInfo.pCommandBuffers = &this->commandBuffers.at(bufferIndex);
 	submitInfo.commandBufferCount = 1;
-	this->targetQueue.submit(submitInfo);  
+
+	auto commandResult = this->targetQueue.submit(1, &submitInfo, this->readyFence[bufferIndex]);
+	if (commandResult != vk::Result::eSuccess) {
+		throw std::runtime_error("failed to submit draw command buffer");
+	}
 }
 
 void star::StarCommandBuffer::submit(int bufferIndex, vk::Fence& fence)
@@ -199,4 +217,11 @@ const std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores
 	}
 
 	return this->completeSemaphores;
+}
+
+void star::StarCommandBuffer::wait(int bufferIndex)
+{
+	this->device.getDevice().waitForFences(this->readyFence.at(bufferIndex), VK_TRUE, UINT64_MAX); 
+
+	this->device.getDevice().resetFences(this->readyFence[bufferIndex]); 
 }

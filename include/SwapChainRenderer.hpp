@@ -17,6 +17,7 @@
 #include "TextureManager.hpp"
 #include "LightManager.hpp"
 #include "RenderOptions.hpp"
+#include "ManagerDescriptorPool.hpp"
 
 #include "Light.hpp"
 
@@ -27,6 +28,9 @@
 namespace star {
 class SwapChainRenderer : public StarRenderer {
 public:
+	//how many frames will be sent through the pipeline
+	const int MAX_FRAMES_IN_FLIGHT = 1;
+
 	SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, RenderOptions& renderOptions, StarDevice& device);
 
@@ -34,9 +38,13 @@ public:
 
 	void pollEvents(); 
 
+	virtual void init(); 
+
 	virtual void prepare() override;
 
 	virtual void submit() override; 
+
+	int getFrameToBeDrawn() { return this->currentFrame; }
 
 protected:
 	struct RenderOptionsObject {
@@ -101,7 +109,7 @@ protected:
 	std::vector<vk::Fence> inFlightFences;
 	std::vector<vk::Fence> imagesInFlight;
 
-	std::unique_ptr<StarDescriptorPool> globalPool{};
+	//std::unique_ptr<StarDescriptorPool> globalPool{};
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
 
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
@@ -113,8 +121,7 @@ protected:
 	vk::DeviceMemory depthImageMemory;
 	vk::ImageView depthImageView;
 
-	//how many frames will be sent through the pipeline
-	const int MAX_FRAMES_IN_FLIGHT = 2;
+
 	//tracker for which frame is being processed of the available permitted frames
 	size_t currentFrame = 0;
 

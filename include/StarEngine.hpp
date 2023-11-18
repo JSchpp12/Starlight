@@ -11,6 +11,8 @@
 #include "StarScene.hpp"
 #include "StarApplication.hpp"
 #include "StarCommandBuffer.hpp"
+#include "ManagerDescriptorPool.hpp"
+#include "StarRenderGroup.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -22,7 +24,7 @@ class StarEngine {
 public:
 	StarEngine();
 
-	virtual ~StarEngine() = default;
+	virtual ~StarEngine();
 
 	void Run();
 
@@ -36,11 +38,12 @@ protected:
 	std::unique_ptr<SwapChainRenderer> mainRenderer; 
 	std::vector<Handle> lightList; 
 
-	std::vector<StarCommandBuffer*> additionalBuffers; 
-
 	LightManager lightManager;
+	ManagerDescriptorPool descriptorManager;
 
-	void submitMainDraw(); 
+
+	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
+	std::vector<StarRenderGroup> renderGroups;  
 
 };
 }

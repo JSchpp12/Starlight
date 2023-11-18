@@ -9,6 +9,7 @@
 #include "StarMesh.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "StarCommandBuffer.hpp"
+#include "ManagerDescriptorPool.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -42,6 +43,11 @@ namespace star {
 
 		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
 			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass);
+
+		/// <summary>
+		/// Prepare memory needed for render operations. 
+		/// </summary>
+		virtual void initRender(int numFramesInFlight);
 
 		/// <summary>
 		/// Prepare needed objects for rendering operations.
