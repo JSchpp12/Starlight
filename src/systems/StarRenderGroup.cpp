@@ -110,14 +110,24 @@ void StarRenderGroup::updateBuffers(uint32_t currentImage) {
 	}
 }
 
-void StarRenderGroup::recordCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
+void StarRenderGroup::recordRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
 	int vertexCount = 0;
 
 	for (auto& group : this->groups) {
-		group.baseObject.object.recordCommands(mainDrawBuffer, pipelineLayout, swapChainImageIndex, group.baseObject.startVBIndex, group.baseObject.startIBIndex);
+		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, swapChainImageIndex, group.baseObject.startVBIndex, group.baseObject.startIBIndex);
 		for (auto& obj : group.objects) {
 			//record commands for each object
-			obj.object.recordCommands(mainDrawBuffer, this->pipelineLayout, swapChainImageIndex, obj.startVBIndex, obj.startIBIndex);
+			obj.object.recordRenderPassCommands(mainDrawBuffer, this->pipelineLayout, swapChainImageIndex, obj.startVBIndex, obj.startIBIndex);
+		}
+	}
+}
+
+void StarRenderGroup::recordPreRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex)
+{
+	for (auto& group : this->groups) {
+		group.baseObject.object.recordPreRenderPassCommands(mainDrawBuffer, swapChainImageIndex); 
+		for (auto& obj : group.objects) {
+			obj.object.recordPreRenderPassCommands(mainDrawBuffer, swapChainImageIndex);
 		}
 	}
 }

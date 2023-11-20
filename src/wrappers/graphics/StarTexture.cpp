@@ -21,17 +21,38 @@ void StarTexture::cleanupRender(StarDevice& device)
 	assert(this->isRenderReady && "Only textures which are ready for rendering operations need to be cleaned up"); 
 
 	device.getDevice().destroySampler(this->textureSampler);
-	device.getDevice().destroyImageView(this->textureImageView);
+	for (auto& item : this->imageViews) {
+		device.getDevice().destroyImageView(item.second);
+	}
+
 	device.getDevice().destroyImage(this->textureImage);
 	device.getDevice().freeMemory(this->imageMemory);
 
 	this->isRenderReady = false; 
 }
 
+vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat){
+	if (requestedFormat != nullptr) {
+		//make sure the image view actually exists for the requested format
+		assert(this->imageViews.find(*requestedFormat) != this->imageViews.end() && "The image must be created with the proper image view before being requested");
+		return this->imageViews.at(*requestedFormat);
+	}else {
+		//just grab the first one
+		for (auto& view : this->imageViews) {
+			return view.second; 
+		}
+	}
+}
+
 void StarTexture::createTextureImage(StarDevice& device) {
 	int height = this->getHeight(); 
 	int width = this->getWidth(); 
 	int channels = this->getChannels(); 
+	bool isMutable = false; 
+
+	if (this->createSettings->viewFormats.size() > 1) {
+		isMutable = true; 
+	}
 
 	//image has data in cpu memory, it must be copied over
 	if (this->data().get()[0] != '\0') {
@@ -40,7 +61,7 @@ void StarTexture::createTextureImage(StarDevice& device) {
 		//image will be transfered from cpu memory, make sure proper flags are set
 		this->createSettings->imageUsage = this->createSettings->imageUsage | vk::ImageUsageFlagBits::eTransferDst;
 
-		createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
+		createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
 
 		auto data = this->data();
 		StarBuffer stagingBuffer(
@@ -60,15 +81,16 @@ void StarTexture::createTextureImage(StarDevice& device) {
 
 		//prepare final image for texture mapping in shaders 
 		transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+		this->layout = vk::ImageLayout::eTransferDstOptimal; 
 	}
 	else {
-		createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory);
+		createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
 	}
 }
 
 void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t height, vk::Format format,
 	vk::ImageTiling tiling, vk::ImageUsageFlags usage,
-	vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory) {
+	vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory, bool isMutable) {
 
 	/* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
@@ -85,6 +107,9 @@ void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t heigh
 	imageInfo.usage = usage;
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+	if (isMutable)
+		imageInfo.flags = vk::ImageCreateFlagBits::eMutableFormat; 
 
 	device.verifyImageCreate(imageInfo);
 
@@ -107,6 +132,39 @@ void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t heigh
 	}
 
 	device.getDevice().bindImageMemory(image, imageMemory, 0);
+}
+
+void StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, 
+	vk::ImageLayout newLayout, vk::AccessFlags srcFlags, vk::AccessFlags dstFlags, 
+	vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage)
+{
+	vk::ImageMemoryBarrier barrier{};
+	barrier.sType = vk::StructureType::eImageMemoryBarrier;
+	barrier.oldLayout = this->layout;
+	barrier.newLayout = newLayout;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+	barrier.image = this->textureImage;
+	barrier.srcAccessMask = srcFlags;
+	barrier.dstAccessMask = dstFlags;
+
+	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+	barrier.subresourceRange.levelCount = 1;                            //image is not an array
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+
+	commandBuffer.pipelineBarrier(
+		sourceStage,                        //which pipeline stages should occurr before barrier 
+		dstStage,                   //pipeline stage in which operations will wait on the barrier 
+		{},
+		{},
+		nullptr,
+		barrier
+	);
+
+	this->layout = newLayout; 
 }
 
 void StarTexture::transitionImageLayout(StarDevice& device, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
@@ -221,7 +279,10 @@ void StarTexture::createImageSampler(StarDevice& device) {
 }
 
 void StarTexture::createTextureImageView(StarDevice& device) {
-	this->textureImageView = createImageView(device, textureImage, this->createSettings->imageFormat, vk::ImageAspectFlagBits::eColor);
+	for (auto& format : this->createSettings->viewFormats) {
+		auto imageView = createImageView(device, textureImage, this->createSettings->imageFormat, vk::ImageAspectFlagBits::eColor);
+		this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(format, imageView)); 
+	}
 }
 
 vk::ImageView StarTexture::createImageView(StarDevice& device, vk::Image image, 
@@ -231,6 +292,7 @@ vk::ImageView StarTexture::createImageView(StarDevice& device, vk::Image image,
 	viewInfo.image = image;
 	viewInfo.viewType = vk::ImageViewType::e2D;
 	viewInfo.format = format;
+
 	viewInfo.subresourceRange.aspectMask = aspectFlags;
 	viewInfo.subresourceRange.baseMipLevel = 0;
 	viewInfo.subresourceRange.levelCount = 1;

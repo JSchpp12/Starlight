@@ -69,13 +69,15 @@ namespace star {
 		virtual void prepRender(star::StarDevice& device, int numSwapChainImages, StarDescriptorSetLayout& groupLayout,
 			StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets, StarPipeline& sharedPipeline);
 
+		virtual void recordPreRenderPassCommands(StarCommandBuffer& commandBuffer, int swapChainIndexNum) {};
+
 		/// <summary>
 		/// Create render call
 		/// </summary>
 		/// <param name="commandBuffer"></param>
 		/// <param name="pipelineLayout"></param>
 		/// <param name="swapChainIndexNum"></param>
-		virtual void recordCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start);
+		virtual void recordRenderPassCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start);
 
 		/// <summary>
 		/// Runtime update to allow object to update anything it needs to prepare for the next 

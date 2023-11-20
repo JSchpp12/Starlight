@@ -52,7 +52,7 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 	prepareDescriptors(device, numSwapChainImages, groupLayout, groupPool, globalSets); 
 }
 
-void star::StarObject::recordCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start) {
+void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start) {
 	if (this->pipeline)
 		this->pipeline->bind(commandBuffer.buffer(swapChainIndexNum)); 
 

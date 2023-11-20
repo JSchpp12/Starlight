@@ -21,6 +21,7 @@ vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, 
 	auto sets = std::vector<vk::DescriptorSet>();
 	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
 
+	auto format = vk::Format::eR8G8B8A8Srgb;
 	auto texInfo = vk::DescriptorImageInfo{
 		texture->getSampler(),
 		texture->getImageView(),

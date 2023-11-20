@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "StarDevice.hpp"
+#include "StarTexture.hpp"
 
 #include "vulkan/vulkan.hpp"
 
@@ -50,10 +51,16 @@ namespace star {
 		/// <param name="flags"></param>
 		void waitFor(std::vector<vk::Semaphore> semaphores, vk::PipelineStageFlags whereWait); 
 
+		void reset(); 
+
 		/// <summary>
 		/// Returns the semaphores that will be signaled once this buffer is done executing. 
 		/// </summary>
 		const std::vector<vk::Semaphore>& getCompleteSemaphores(); 
+
+		void transitionImageLayout(int bufferIndex, star::StarTexture& texture, vk::ImageLayout newLayout, 
+			vk::AccessFlags srcFlags, vk::AccessFlags dstFlags,
+			vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage); 
 
 		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
 	protected:
@@ -63,8 +70,11 @@ namespace star {
 		std::vector<vk::Semaphore> completeSemaphores; 
 		std::vector<vk::Fence> readyFence; 
 		std::vector<std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>> waitSemaphores; 
+		std::vector<std::unique_ptr<std::unordered_map<StarTexture*, std::pair<vk::ImageLayout, vk::ImageLayout>>>> recordedImageTransitions; 
 		bool recorded = false; 
 
 		void wait(int bufferIndex);
+
+		void checkForImageTransitions(int bufferIndex); 
 	};
 }

@@ -745,6 +745,10 @@ void SwapChainRenderer::recordCommandBuffer(uint32_t bufferIndex, uint32_t image
 
 		this->graphicsCommandBuffer->buffer(bufferIndex).setViewport(0, viewport);
 
+		for (auto& group : this->renderGroups) {
+			group->recordPreRenderPassCommands(*this->graphicsCommandBuffer, bufferIndex);
+		}
+
 		/* Begin render pass */
 		//drawing starts by beginning a render pass 
 		vk::RenderPassBeginInfo renderPassInfo{};
@@ -804,7 +808,7 @@ void SwapChainRenderer::recordCommandBuffer(uint32_t bufferIndex, uint32_t image
 		this->graphicsCommandBuffer->buffer(bufferIndex).bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
 		for (auto& group : this->renderGroups) {
-			group->recordCommands(*this->graphicsCommandBuffer, bufferIndex);
+			group->recordRenderPassCommands(*this->graphicsCommandBuffer, bufferIndex);
 		}
 
 		this->graphicsCommandBuffer->buffer(bufferIndex).endRenderPass();
