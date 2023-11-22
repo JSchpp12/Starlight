@@ -200,7 +200,7 @@ void StarDevice::createCommandPool() {
 		createPool(queueFamilyIndicies.transferFamily.value(), vk::CommandPoolCreateFlagBits{}, transferCommandPool);
 	}
 	if (queueFamilyIndicies.computeFamily.has_value()) {
-		createPool(queueFamilyIndicies.computeFamily.value(), vk::CommandPoolCreateFlagBits{}, computeCommandPool); 
+		createPool(queueFamilyIndicies.computeFamily.value(), vk::CommandPoolCreateFlagBits::eResetCommandBuffer, computeCommandPool);
 	}
 }
 

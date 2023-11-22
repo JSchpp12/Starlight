@@ -208,18 +208,18 @@ void star::StarCommandBuffer::waitFor(std::vector<vk::Semaphore> semaphores, vk:
 	}
 }
 
-void star::StarCommandBuffer::reset()
+void star::StarCommandBuffer::reset(int bufferIndex)
 {
+	//wait for fence before reset
+	
+	this->device.getDevice().waitForFences(this->readyFence[bufferIndex], VK_TRUE, UINT64_MAX);
+
 	//reset image transitions
-	for (auto& imageTransition : this->recordedImageTransitions) {
-		imageTransition.reset();
-		imageTransition = std::make_unique<std::unordered_map<StarTexture*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
-	}
+	this->recordedImageTransitions.at(bufferIndex).reset();
+	this->recordedImageTransitions.at(bufferIndex) = std::make_unique<std::unordered_map<StarTexture*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
 
 	//reset vulkan buffers
-	for (auto& buffer : this->commandBuffers) {
-		buffer.reset(); 
-	}
+	this->commandBuffers.at(bufferIndex).reset();
 
 	this->recorded = false; 
 }

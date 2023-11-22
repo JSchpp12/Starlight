@@ -51,7 +51,7 @@ namespace star {
 		/// <param name="flags"></param>
 		void waitFor(std::vector<vk::Semaphore> semaphores, vk::PipelineStageFlags whereWait); 
 
-		void reset(); 
+		void reset(int bufferIndex); 
 
 		/// <summary>
 		/// Returns the semaphores that will be signaled once this buffer is done executing. 
