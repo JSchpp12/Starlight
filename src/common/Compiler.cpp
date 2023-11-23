@@ -1,9 +1,19 @@
 #include "Compiler.hpp"
 
 namespace star {
+
+#ifdef NDEBUG
+    bool Compiler::compileDebug = false;
+#else
+    bool Compiler::compileDebug = true;
+#endif
+
     std::unique_ptr<std::vector<uint32_t>> Compiler::compile(const std::string& pathToFile, bool optimize) {
         shaderc::Compiler shaderCompiler;
         shaderc::CompileOptions compilerOptions;
+
+        if (compileDebug)
+            compilerOptions.SetGenerateDebugInfo(); 
 
         auto stageC = getShaderCStageFlag(pathToFile);
         auto name = FileHelpers::GetFileNameWithExtension(pathToFile);
@@ -29,6 +39,9 @@ namespace star {
         }
         else if (extension == ".frag") {
             return shaderc_shader_kind::shaderc_fragment_shader;
+        }
+        else if (extension == ".comp") {
+            return shaderc_shader_kind::shaderc_compute_shader;
         }
 
         throw std::runtime_error("Compiler::GetShaderCStageFlag invalid shader stage");

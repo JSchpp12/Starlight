@@ -8,14 +8,16 @@
 #include "ObjectManager.hpp"
 #include "InteractionSystem.hpp"
 #include "StarObject.hpp"
+#include "StarCommandBuffer.hpp"
 
 #include "MapManager.hpp"
 #include "StarSystemRenderPointLight.hpp"
-#include "StarSystemRenderObj.hpp"
+#include "StarRenderGroup.hpp"
 #include "ShaderManager.hpp"
 #include "TextureManager.hpp"
 #include "LightManager.hpp"
 #include "RenderOptions.hpp"
+#include "ManagerDescriptorPool.hpp"
 
 #include "Light.hpp"
 
@@ -24,19 +26,39 @@
 #include <vulkan/vulkan.hpp>
 
 namespace star {
-class BasicRenderer : public StarRenderer {
+class SwapChainRenderer : public StarRenderer {
 public:
-	BasicRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
+	//how many frames will be sent through the pipeline
+	const int MAX_FRAMES_IN_FLIGHT = 1;
+
+	SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, RenderOptions& renderOptions, StarDevice& device);
 
-	virtual ~BasicRenderer();
+	virtual ~SwapChainRenderer();
 
+	void pollEvents(); 
 
-	virtual void prepare(ShaderManager& shaderManager) override;
+	virtual void init(); 
 
-	virtual void draw(); 
+	virtual void prepare() override;
+
+	virtual void submit() override; 
+
+	int getFrameToBeDrawn() { return this->currentFrame; }
 
 protected:
+	struct RenderOptionsObject {
+		bool drawMatAmbient;
+	};
+
+	struct GlobalUniformBufferObject {
+		alignas(16) glm::mat4 proj;
+		alignas(16) glm::mat4 view;
+		alignas(16) glm::mat4 inverseView;              //used to extrapolate camera position, can be used to convert from camera to world space
+		uint32_t numLights;                             //number of lights in render
+		alignas(4) uint32_t renderOptions;
+	};
+
 	struct LightBufferObject {
 		glm::vec4 position = glm::vec4(1.0f);
 		glm::vec4 direction = glm::vec4(1.0f);     //direction in which the light is pointing
@@ -54,7 +76,8 @@ protected:
 
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
-	std::vector<std::unique_ptr<StarSystemRenderObject>> RenderSysObjs;
+
+	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer; 
 
 	//texture information
 	vk::ImageView textureImageView;
@@ -65,7 +88,6 @@ protected:
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
 	std::vector<vk::Semaphore> renderFinishedSemaphores;
-
 
 	//storage for multiple buffers for each swap chain image  
 	std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
@@ -87,20 +109,28 @@ protected:
 	std::vector<vk::Fence> inFlightFences;
 	std::vector<vk::Fence> imagesInFlight;
 
-	std::unique_ptr<StarDescriptorPool> globalPool{};
+	//std::unique_ptr<StarDescriptorPool> globalPool{};
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
+
+	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
+
+	std::unique_ptr<StarCommandBuffer> graphicsCommandBuffer; 
 
 	//depth testing storage 
 	vk::Image depthImage;
 	vk::DeviceMemory depthImageMemory;
 	vk::ImageView depthImageView;
 
-	//how many frames will be sent through the pipeline
-	const int MAX_FRAMES_IN_FLIGHT = 1;
+
 	//tracker for which frame is being processed of the available permitted frames
 	size_t currentFrame = 0;
 
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
+
+	/// <summary>
+	/// Create vertex buffer + index buffers + any rendering groups for operations
+	/// </summary>
+	virtual void createRenderingGroups();
 
 	virtual void updateUniformBuffer(uint32_t currentImage);
 
@@ -125,6 +155,11 @@ protected:
 	virtual void createImageViews();
 
 	vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
+	
+	/// <summary>
+	/// Create descriptor pools for the descriptors used by the main rendering engine.
+	/// </summary>
+	virtual void createDescriptors();
 
 	/// <summary>
 	/// Create a rendering pass object which will tell vulkan information about framebuffer attachments:
@@ -165,6 +200,8 @@ protected:
 	/// </summary>
 	virtual void createCommandBuffers();
 
+	virtual void recordCommandBuffer(uint32_t bufferIndex, uint32_t imageIndex); 
+
 	/// <summary>
 	/// Create semaphores that are going to be used to sync rendering and presentation queues
 	/// </summary>
@@ -179,6 +216,21 @@ protected:
 	/// Create tracking information in order to link fences with the swap chain images using 
 	/// </summary>
 	virtual void createFenceImageTracking();
+
+#pragma region helpers
+	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+
+	//Look through givent present modes and pick the "best" one
+	vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+
+	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+
+	/// <summary>
+	/// Helper function -- TODO 
+	/// </summary>
+	/// <returns></returns>
+	vk::Format findDepthFormat();
+#pragma endregion
 private:
 
 };

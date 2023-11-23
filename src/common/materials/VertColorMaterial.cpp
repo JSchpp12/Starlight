@@ -1,22 +1,22 @@
 #include "VertColorMaterial.hpp"
 
-void star::VertColorMaterial::prepRender(StarDevice& device)
+void star::VertColorMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout)
 {
 
 }
 
-void star::VertColorMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder)
+
+vk::DescriptorSet star::VertColorMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
 {
+	return vk::DescriptorSet();
 }
 
-void star::VertColorMaterial::buildConstDescriptor(StarDescriptorWriter writer)
+void star::VertColorMaterial::cleanup(StarDevice& device)
 {
-	writer.build(this->descriptorSet);
+
 }
 
-void star::VertColorMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
+void star::VertColorMaterial::prep(StarDevice& device)
 {
-	if (this->descriptorSet) {
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 2, 1, &this->descriptorSet, 0, nullptr);
-	}
+
 }

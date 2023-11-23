@@ -7,6 +7,8 @@
 #include "StarObject.hpp"
 #include "Vertex.hpp"
 #include "Color.hpp"
+#include "StarGraphicsPipeline.hpp"
+#include "ConfigFile.hpp"
 
 #include <glm/glm.hpp>
 
@@ -18,26 +20,28 @@ namespace star {
 	/// </summary>
 	class Grid : public StarObject {
 	public:
+		virtual ~Grid(); 
+		
 		Grid(int vertX, int vertY);
 
-		void updateTexture(std::vector<int> locsX, std::vector<int> locY, const std::vector<Color> newColor);
+		Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material);
 
 		std::optional<glm::vec3> getWorldCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head);
 
 		std::optional<glm::vec2> getXYCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head);
 
-		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() override { return this->meshes; };
-		Color getTexColorAt(int x, int y) { return this->material.getTexture().getRawData()->at(x).at(y); }
 		int getSizeX() { return this->vertX; }
 		int getSizeY() { return this->vertY; }
 	protected:
+
 		int width = 0.5;
 
 		int vertX = 0, vertY = 0;
-		HeightDisplacementMaterial material;
-		std::vector<std::unique_ptr<StarMesh>> meshes;
-		std::unique_ptr<RuntimeUpdateTexture> displacementTexture;
 
 		glm::vec3 getCenter();
+
+		void loadGeometry(std::unique_ptr<std::vector<Vertex>>& verts, std::unique_ptr<std::vector<uint32_t>>& inds); 
+
+		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 	};
 }

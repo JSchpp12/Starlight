@@ -1,19 +1,30 @@
 #include "BumpMaterial.hpp"
 
-void star::BumpMaterial::prepRender(StarDevice& device)
+void star::BumpMaterial::getDescriptorSetLayout(star::StarDescriptorSetLayout::Builder& newLayout)
 {
-	texture->prepRender(device); 
-	bumpMap->prepRender(device); 
+	newLayout.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+	newLayout.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 }
 
-void star::BumpMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder)
+void star::BumpMaterial::cleanup(StarDevice& device)
 {
-	constBuilder.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
-	constBuilder.addBinding(2, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+	if (this->texture){
+		this->texture->cleanupRender(device);
+		this->texture.reset(); 
+	}
+
+	if (this->bumpMap) {
+		this->bumpMap->cleanupRender(device);
+		this->bumpMap.reset(); 
+	}
 }
 
-void star::BumpMaterial::buildConstDescriptor(StarDescriptorWriter writer)
+vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
+	StarDescriptorPool& groupPool)
 {
+	auto sets = std::vector<vk::DescriptorSet>(); 
+	auto writer = StarDescriptorWriter(device, groupLayout, groupPool); 
+
 	auto texInfo = vk::DescriptorImageInfo{
 		texture->getSampler(),
 		texture->getImageView(),
@@ -26,12 +37,14 @@ void star::BumpMaterial::buildConstDescriptor(StarDescriptorWriter writer)
 		vk::ImageLayout::eShaderReadOnlyOptimal };
 	writer.writeImage(1, bumpInfo);
 
-	writer.build(this->descriptorSet);
+	vk::DescriptorSet newSet; 
+	writer.build(newSet);
+
+	return newSet; 
 }
 
-void star::BumpMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
+void star::BumpMaterial::prep(StarDevice& device)
 {
-	if (this->descriptorSet) {
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 2, 1, &this->descriptorSet, 0, nullptr);
-	}
+	this->TextureMaterial::prep(device);
+	bumpMap->prepRender(device);
 }

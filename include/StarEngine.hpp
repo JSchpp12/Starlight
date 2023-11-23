@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BasicRenderer.hpp"
+#include "SwapChainRenderer.hpp"
 #include "BasicWindow.hpp"
 #include "Color.hpp"
 #include "ConfigFile.hpp"
@@ -10,6 +10,10 @@
 #include "StarObject.hpp"
 #include "StarScene.hpp"
 #include "StarApplication.hpp"
+#include "StarCommandBuffer.hpp"
+#include "ManagerDescriptorPool.hpp"
+#include "StarRenderGroup.hpp"
+
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
@@ -20,36 +24,26 @@ class StarEngine {
 public:
 	StarEngine();
 
-	static ConfigFile configFile;
-	static ShaderManager shaderManager;
-
-	static MapManager mapManager;
-
-
-	static std::string GetSetting(Config_Settings setting) {
-		return configFile.GetSetting(setting);
-	}
-
-	virtual ~StarEngine() = default;
+	virtual ~StarEngine();
 
 	void Run();
 
 	void init(StarApplication& application, RenderOptions& renderOptions);
 
-
-	std::vector<std::unique_ptr<StarObject>>& getObjList() { return this->objects; }
 	StarScene& getScene() { return *this->currentScene; }
 protected:
+	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<StarWindow> window;
 	std::unique_ptr<StarDevice> renderingDevice; 
-	std::unique_ptr<StarRenderer> renderer; 
-	std::vector<std::unique_ptr<StarObject>> objects;
+	std::unique_ptr<SwapChainRenderer> mainRenderer; 
 	std::vector<Handle> lightList; 
-	std::unique_ptr<StarScene> currentScene; 
+
 	LightManager lightManager;
+	ManagerDescriptorPool descriptorManager;
 
 
-private:
+	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
+	std::vector<StarRenderGroup> renderGroups;  
 
 };
 }

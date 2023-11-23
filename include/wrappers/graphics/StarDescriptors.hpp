@@ -33,9 +33,16 @@ public:
 
 	~StarDescriptorSetLayout();
 
-	vk::DescriptorSetLayout getDescriptorSetLayout() { return this->descriptorSetLayout; }
+	bool isCompatibleWith(const StarDescriptorSetLayout& compare); 
+
+	vk::DescriptorSetLayout getDescriptorSetLayout();
+
+	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>& getBindings() {
+		return this->bindings;
+	}
 
 protected:
+	virtual void build();
 
 private:
 	StarDevice& starDevice;
@@ -86,8 +93,7 @@ private:
 	//allow this class to read the private info of StarDescriptorSetLayout for construction 
 	friend class StarDescriptorWriter;
 };
-
-//allow access to the descriptor writer 
+ 
 class StarDescriptorWriter {
 public:
 	StarDescriptorWriter(StarDevice& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool);

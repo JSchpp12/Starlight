@@ -17,8 +17,6 @@ if (NOT IS_DIRECTORY ${STB_DIRECTORY})
 	message(FATAL_ERROR "Stb is needed for compilation. Pull copy into external directory.")
 endif()
 
-add_subdirectory("extern/googletest")
-
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
 
@@ -27,8 +25,8 @@ set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
 
 set(GLFW_STANDALONE OFF CACHE BOOL "" FORCE)
-add_subdirectory("extern/glfw")
 add_subdirectory("extern/glm")
+add_subdirectory("extern/glfw")
 
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
@@ -47,11 +45,13 @@ add_subdirectory("extern/shaderc")
 
 add_subdirectory("extern/tinyobjloader")
 
+add_subdirectory("extern/googletest") 
+
 set(${PROJECT_NAME}_SOURCE 
+    "src/virtual/StarObject.cpp"
     "src/Renderer.cpp"
-    "src/BasicDevice.cpp" 
     "src/BasicWindow.cpp" 
-    "src/BasicRenderer.cpp"
+    "src/SwapChainRenderer.cpp"
     "src/common/Compiler.cpp"
     "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
@@ -62,41 +62,46 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarManager.cpp"
     "src/virtual/StarWindow.cpp" 
     "src/virtual/StarDevice.cpp"
-    "src/virtual/StarObject.cpp"
     "src/virtual/StarScene.cpp"
     "src/wrappers/graphics/StarDescriptors.cpp"  
     "src/wrappers/graphics/StarBuffer.cpp"  
-    "src/wrappers/graphics/StarPipeline.cpp"  
+    "src/wrappers/graphics/StarGraphicsPipeline.cpp"  
+    "src/wrappers/graphics/StarComputePipeline.cpp"
     "src/wrappers/graphics/StarTexture.cpp"  
+    "src/wrappers/graphics/StarRenderPass.cpp"
+    "src/wrappers/graphics/StarCommandBuffer.cpp"
     "src/managers/ShaderManager.cpp" 
     "src/managers/TextureManager.cpp"
     "src/managers/LightManager.cpp"
     "src/managers/ObjectManager.cpp"
     "src/managers/MapManager.cpp" 
+    "src/managers/ManagerDescriptorPool.cpp"
     "src/templates/StarApplication.cpp"
     "src/controllers/OptionsController.cpp"
     "src/modules/InteractionSystem.cpp"
-    "src/systems/StarSystemRenderObj.cpp" 
-    "src/wrappers/graphics/StarPipeline.cpp" 
+    "src/systems/StarRenderGroup.cpp" 
     "src/systems/StarSystemRenderPointLight.cpp" 
     "src/virtual/StarShader.cpp" 
     "src/virtual/StarMaterial.cpp" 
     "src/virtual/StarCamera.cpp"
+    "src/virtual/StarPipeline.cpp"
     "src/common/materials/BumpMaterial.cpp"
     "src/common/materials/VertColorMaterial.cpp"
     "src/common/materials/HeightDisplacementMaterial.cpp"
     "src/common/objects/BasicObject.cpp"
     "src/common/objects/Square.cpp"
     "src/common/objects/Grid.cpp"
+    "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
-)
+    "src/common/ComputeTexture.cpp"
+    "src/virtual/StarSystemPipeline.cpp"
+ "src/common/materials/TextureMaterial.cpp" )
 
 
 set(${PROJECT_NAME}_HEADERS
     "include/StarEngine.hpp"
-    "include/BasicDevice.hpp" 
     "include/BasicWindow.hpp" 
-    "include/BasicRenderer.hpp"
+    "include/SwapChainRenderer.hpp"
     "include/common/Compiler.hpp"
     "include/common/Interactivity.hpp"
     "include/common/KeyStates.hpp"
@@ -106,6 +111,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/objects/Square.hpp"
     "include/common/BasicCamera.hpp"
     "include/common/RuntimeUpdateTexture.hpp"
+    "include/common/ComputeTexture.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
@@ -114,19 +120,26 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarScene.hpp"
     "include/virtual/StarMesh.hpp"
     "include/virtual/StarCamera.hpp"
+    "include/common/StarMaterialMesh.hpp"
     "include/wrappers/graphics/StarDescriptors.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
     "include/wrappers/graphics/StarTexture.hpp"
-    "include/wrappers/graphics/StarPipeline.hpp"
+    "include/wrappers/graphics/StarGraphicsPipeline.hpp"
+    "include/wrappers/graphics/StarComputePipeline.hpp"
+    "include/wrappers/graphics/StarRenderPass.hpp"
+    "include/wrappers/graphics/StarCommandBuffer.hpp"
     "include/managers/ShaderManager.hpp"
     "include/managers/TextureManager.hpp"
     "include/managers/LightManager.hpp"
     "include/managers/ObjectManager.hpp"
     "include/managers/MapManager.hpp"
+    "include/managers/ManagerDescriptorPool.hpp"
     "include/controllers/OptionsController.hpp"
     "include/modules/InteractionSystem.hpp"
-    "include/systems/StarSystemRenderObj.hpp"
+    "include/systems/StarRenderGroup.hpp"
     "include/virtual/StarMaterial.hpp"
+    "include/virtual/StarSystemPipeline.hpp"
+    "include/virtual/StarPipeline.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarEntity.hpp"

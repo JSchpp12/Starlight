@@ -21,6 +21,8 @@ public:
     static std::unique_ptr<std::vector<uint32_t>> compile(const std::string& pathToFile, bool optimize);
 
 private:
+    static bool compileDebug; 
+
     //get the shaderc stage flag for the shader stage
     static shaderc_shader_kind getShaderCStageFlag(const std::string& pathToFile);
 

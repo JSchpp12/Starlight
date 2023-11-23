@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Enums.hpp"
 #include "StarWindow.hpp"
 
 #include <optional>
@@ -19,9 +20,21 @@ struct QueueFamilyIndicies {
 	std::optional<uint32_t> graphicsFamily;
 	std::optional<uint32_t> presentFamily;
 	std::optional<uint32_t> transferFamily;
+	std::optional<uint32_t> computeFamily; 
 
+	//check if queue families are all seperate -- this means more parallel work
+	bool isOptimalSupport(){
+		if ((graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value())
+			&& (graphicsFamily.value() != transferFamily.value() && graphicsFamily.value() != computeFamily.value())) {
+				return true;
+		}
+		return false; 
+	}
 	bool isFullySupported() {
-		return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
+		if (graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value()) {
+			return true; 
+		}
+		return false; 
 	}
 	bool isSuitable() {
 		return graphicsFamily.has_value() && presentFamily.has_value();
@@ -51,6 +64,9 @@ public:
 	/// <returns></returns>
 	vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
+	vk::CommandPool& getCommandPool(star::Command_Buffer_Type type);
+
+	vk::Queue& getQueue(star::Command_Buffer_Type type);
 
 #pragma region getters
 	SwapChainSupportDetails getSwapChainSupportDetails() { return querySwapChainSupport(this->physicalDevice); }
@@ -60,9 +76,18 @@ public:
 	vk::SurfaceKHR getSurface() { return this->surface.get(); }
 	vk::Queue getGraphicsQueue() { return this->graphicsQueue; }
 	vk::Queue getPresentQueue() { return this->presentQueue; }
-	vk::Queue getTransferQueue() { return this->transferQueue; }
-	std::vector<vk::CommandBuffer>* getGraphicsCommandBuffers() { return &this->graphicsCommandBuffers; }
-	void setGraphicsCommandBuffers(std::vector<vk::CommandBuffer>& newBuffers) { this->graphicsCommandBuffers = newBuffers; }
+	vk::Queue getTransferQueue() { 
+		if (this->transferQueue.has_value())
+			return this->transferQueue.value();
+		else
+			return this->graphicsQueue; 
+		};
+	vk::Queue getComputeQueue() {
+		if (this->computeQueue.has_value())
+			return this->computeQueue.value();
+		else
+			return this->graphicsQueue;
+	}
 #pragma endregion
 
 #pragma region helperFunctions
@@ -106,6 +131,8 @@ public:
 	/// <returns></returns>
 	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags propertyFlags);
 
+	bool verifyImageCreate(vk::ImageCreateInfo imageInfo);
+
 #pragma endregion
 
 protected: 
@@ -127,13 +154,13 @@ protected:
 
 	//vulkan command storage
 	vk::CommandPool graphicsCommandPool;
-	std::vector<vk::CommandBuffer> graphicsCommandBuffers;
 	vk::CommandPool transferCommandPool;
 	std::vector<vk::CommandBuffer> transferCommandBuffers;
+	vk::CommandPool computeCommandPool; 
 	vk::CommandPool tempCommandPool; //command pool for temporary use in small operations
 
 	const std::vector<const char*> validationLayers = {
-	"VK_LAYER_KHRONOS_validation"
+		"VK_LAYER_KHRONOS_validation"
 	};
 
 	std::vector<const char*> deviceExtensions = {
@@ -141,18 +168,19 @@ protected:
 	};
 
 	//queue family information
-	vk::Queue graphicsQueue, presentQueue, transferQueue;
+	vk::Queue graphicsQueue, presentQueue; 
+	std::optional<vk::Queue> transferQueue, computeQueue;
 
-#if defined(WIN32) || defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__NT__)
-	bool isMac = false;
-	std::vector<const char*> platformInstanceRequiredExtensions = { };
-#elif __APPLE__
+#if __APPLE__
 	bool isMac = true;
 	std::vector<const char*> platformInstanceRequiredExtensions = {
 		VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
 		// VK_KHR_SURFACE_EXTENSION_NAME,
 		"VK_KHR_portability_enumeration"
 	};
+#else
+	bool isMac = false;
+	std::vector<const char*> platformInstanceRequiredExtensions = { };
 #endif
 
 	//Create the vulkan instance machine 
@@ -195,6 +223,7 @@ protected:
 	/// Check if the given device supports required extensions.
 	/// </summary>
 	bool checkDeviceExtensionSupport(vk::PhysicalDevice device);
+
 	/// <summary>
 	/// Request specific details about swap chain support for a given device
 	/// </summary>

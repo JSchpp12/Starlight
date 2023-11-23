@@ -1,30 +1,33 @@
 #include "HeightDisplacementMaterial.hpp"
 
-void star::HeightDisplacementMaterial::prepRender(StarDevice& device)
+void star::HeightDisplacementMaterial::prep(StarDevice& device)
 {
-	displaceTexture.prepRender(device);
+	texture->prepRender(device);
 }
 
-void star::HeightDisplacementMaterial::initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder)
+void star::HeightDisplacementMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Builder& constBuilder)
 {
 	constBuilder.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 }
 
-void star::HeightDisplacementMaterial::buildConstDescriptor(StarDescriptorWriter writer)
+void star::HeightDisplacementMaterial::cleanup(StarDevice& device)
 {
+	this->texture.reset();
+}
+
+vk::DescriptorSet star::HeightDisplacementMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
+{
+	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
+
 	auto texInfo = vk::DescriptorImageInfo{
-		displaceTexture.getSampler(),
-		displaceTexture.getImageView(),
-		vk::ImageLayout::eShaderReadOnlyOptimal 
+		texture->getSampler(),
+		texture->getImageView(),
+		vk::ImageLayout::eShaderReadOnlyOptimal
 	};
 
 	writer.writeImage(0, texInfo);
-	writer.build(this->descriptorSet);
-}
+	vk::DescriptorSet set;
+	writer.build(set);
 
-void star::HeightDisplacementMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
-{
-	if (this->descriptorSet) {
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 2, 1, &this->descriptorSet, 0, nullptr);
-	}
+	return set; 
 }

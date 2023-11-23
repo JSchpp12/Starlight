@@ -1,12 +1,21 @@
 #include "RuntimeUpdateTexture.hpp"
 
+void star::RuntimeUpdateTexture::prepRender(StarDevice& device)
+{
+    this->StarTexture::prepRender(device); 
+
+    this->device = &device; 
+}
+
 void star::RuntimeUpdateTexture::updateGPU()
 {
+    assert(this->device != nullptr && "Before requesting GPU update, the texture needs to be prepared"); 
+
     vk::DeviceSize imageSize = width * height * 4;
 
     //transfer image to writable layout
     //transitionImageLayout(this->textureImage)
-    transitionImageLayout(this->textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eTransferDstOptimal);
+    transitionImageLayout(*this->device, this->textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eTransferDstOptimal);
 
     //create staging buffer
     StarBuffer stagingBuffer(
@@ -21,6 +30,6 @@ void star::RuntimeUpdateTexture::updateGPU()
     stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
     device->copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-    transitionImageLayout(this->textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+    transitionImageLayout(*this->device, this->textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 }

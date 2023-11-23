@@ -9,12 +9,12 @@ namespace star {
 	class VertColorMaterial : public StarMaterial {
 	public:
 
-		void prepRender(StarDevice& device);
 
-		void initDescriptorLayouts(StarDescriptorSetLayout::Builder& constBuilder); 
+		void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout) override;
+		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool) override;
 
-		void buildConstDescriptor(StarDescriptorWriter writer);
-
-		void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
+	protected:
+		void cleanup(StarDevice& device) override;
+		void prep(StarDevice& device);
 	};
 }
