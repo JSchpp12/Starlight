@@ -7,7 +7,7 @@ void star::TextureMaterial::prep(StarDevice& device)
 
 void star::TextureMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout)
 {
-	newLayout.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+	newLayout.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eVertex);
 }
 
 void star::TextureMaterial::cleanup(StarDevice& device)

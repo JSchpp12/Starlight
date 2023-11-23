@@ -1,9 +1,19 @@
 #include "Compiler.hpp"
 
 namespace star {
+
+#ifdef NDEBUG
+    bool Compiler::compileDebug = false;
+#else
+    bool Compiler::compileDebug = true;
+#endif
+
     std::unique_ptr<std::vector<uint32_t>> Compiler::compile(const std::string& pathToFile, bool optimize) {
         shaderc::Compiler shaderCompiler;
         shaderc::CompileOptions compilerOptions;
+
+        if (compileDebug)
+            compilerOptions.SetGenerateDebugInfo(); 
 
         auto stageC = getShaderCStageFlag(pathToFile);
         auto name = FileHelpers::GetFileNameWithExtension(pathToFile);
