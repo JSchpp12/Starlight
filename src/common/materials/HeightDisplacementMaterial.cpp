@@ -5,7 +5,7 @@ void star::HeightDisplacementMaterial::prep(StarDevice& device)
 	texture->prepRender(device);
 }
 
-void star::HeightDisplacementMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Builder& constBuilder)
+void star::HeightDisplacementMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder)
 {
 	constBuilder.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 }
@@ -26,8 +26,7 @@ vk::DescriptorSet star::HeightDisplacementMaterial::buildDescriptorSet(StarDevic
 	};
 
 	writer.writeImage(0, texInfo);
-	vk::DescriptorSet set;
-	writer.build(set);
+	vk::DescriptorSet set = writer.build();
 
-	return set; 
+	return set;
 }

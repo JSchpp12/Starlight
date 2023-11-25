@@ -14,7 +14,7 @@ namespace star {
 			: StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
 			texture(texture) {};
 
-		void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout) override;
+		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) override;
 		void cleanup(StarDevice& device) override;
 		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool) override;
 

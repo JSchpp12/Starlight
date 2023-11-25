@@ -41,8 +41,6 @@ namespace star{
 
 		virtual void prepRender(StarDevice& device);
 
-		virtual void recordCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainImageIndex, uint32_t vb_start, uint32_t ib_start);
-
 		std::vector<Vertex>& getVertices() { return *this->vertices; }
 		std::vector<uint32_t>& getIndices() { return *this->indices; }
 		StarMaterial& getMaterial() { return *this->material; }

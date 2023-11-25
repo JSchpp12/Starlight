@@ -71,6 +71,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/wrappers/graphics/StarRenderPass.cpp"
     "src/wrappers/graphics/StarCommandBuffer.cpp"
     "src/managers/ShaderManager.cpp" 
+    "src/managers/ManagerBuffer.cpp"
     "src/managers/TextureManager.cpp"
     "src/managers/LightManager.cpp"
     "src/managers/ObjectManager.cpp"
@@ -91,11 +92,13 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/objects/BasicObject.cpp"
     "src/common/objects/Square.cpp"
     "src/common/objects/Grid.cpp"
+    "src/common/objects/StarObjectInstance.cpp"
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
     "src/common/ComputeTexture.cpp"
     "src/virtual/StarSystemPipeline.cpp"
- "src/common/materials/TextureMaterial.cpp" )
+    "src/common/materials/TextureMaterial.cpp"
+)
 
 
 set(${PROJECT_NAME}_HEADERS
@@ -109,6 +112,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/materials/VertColorMaterial.hpp"
     "include/common/objects/BasicObject.hpp"
     "include/common/objects/Square.hpp"
+    "include/common/objects/StarObjectInstance.hpp"
     "include/common/BasicCamera.hpp"
     "include/common/RuntimeUpdateTexture.hpp"
     "include/common/ComputeTexture.hpp"

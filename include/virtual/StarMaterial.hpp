@@ -45,7 +45,7 @@ namespace star {
 		/// <param name="device"></param>
 		void prepRender(StarDevice& device); 
 
-		virtual void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout) = 0;
+		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) = 0; 
 
 		virtual void buildDescriptorSets(StarDevice& device, StarDescriptorSetLayout& groupLayout,
 			StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets, 

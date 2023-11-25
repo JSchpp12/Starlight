@@ -10,8 +10,7 @@ StarRenderGroup::StarRenderGroup(StarDevice& device, size_t numSwapChainImages,
 	this->groups.push_back(Group(objInfo));
 
 	auto layoutBuilder = StarDescriptorSetLayout::Builder(device); 
-	this->groups.front().baseObject.object.getMeshes().front()->getMaterial().getDescriptorSetLayout(layoutBuilder);
-	this->largestObjectDescriptorSetLayout = layoutBuilder.build(); 
+	this->largestDescriptorSet = this->groups.front().baseObject.object.getDescriptorSetLayouts(device);
 
 	this->numObjects++; 
 	this->numMeshes = baseObject.getMeshes().size(); 
@@ -65,7 +64,6 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 		//requires new pipeline -- and group
 		auto objInfo = RenderObjectInfo(newObject, vertexStartOffset, indexStartOffset);
 		this->groups.push_back(Group(objInfo));
-
 	}
 	else {
 		auto objInfo = RenderObjectInfo(newObject, vertexStartOffset, indexStartOffset);
@@ -73,41 +71,19 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 	}
 
 	//check if this new object has a larger descriptor set layout than the current one
-	auto layoutBuilder = StarDescriptorSetLayout::Builder(device);
-	newObject.getMeshes().at(0)->getMaterial().getDescriptorSetLayout(layoutBuilder);
-	auto newLayout = layoutBuilder.build(); 
+	auto newLayouts = newObject.getDescriptorSetLayouts(device); 
 
-	if (newLayout->getBindings().size() > this->largestObjectDescriptorSetLayout->getBindings().size()) {
-		this->largestObjectDescriptorSetLayout = std::move(newLayout); 
+	//already assuming these are already compatible
+	for (int i = 0; i < newLayouts.size(); i++) {
+		if (newLayouts.at(i)->getBindings().size() > this->largestDescriptorSet.at(i)->getBindings().size()) {
+			//this->largestDescriptorSet.at(i) = std::move(newLayouts.at(i));
+			//the new set is larger than the current one, replace
+			this->largestDescriptorSet.at(i) = std::move(newLayouts.at(i)); 
+		}
 	}
-
 
 	this->numObjects++;
 	this->numMeshes += newObject.getMeshes().size();
-}
-
-void StarRenderGroup::updateBuffers(uint32_t currentImage) {
-	UniformBufferObject newBufferObject{};
-
-	auto minProp = this->device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
-	auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), minProp);
-	size_t objectCountIt = 0; 
-
-	for (auto& group : this->groups) {
-		//need to update the base object too
-		newBufferObject.modelMatrix = group.baseObject.object.getDisplayMatrix(); 
-		newBufferObject.normalMatrix = group.baseObject.object.getNormalMatrix(); 
-		this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements* objectCountIt); 
-		objectCountIt++; 
-
-		for (auto& obj : group.objects) {
-			newBufferObject.modelMatrix = obj.object.getDisplayMatrix();
-			newBufferObject.normalMatrix = obj.object.getNormalMatrix();
-
-			this->uniformBuffers[currentImage]->writeToBuffer(&newBufferObject, sizeof(UniformBufferObject), minAlignmentOfUBOElements * objectCountIt);
-			objectCountIt++; 
-		}
-	}
 }
 
 void StarRenderGroup::recordRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
@@ -135,9 +111,6 @@ void StarRenderGroup::recordPreRenderPassCommands(StarCommandBuffer& mainDrawBuf
 void StarRenderGroup::init(StarDescriptorSetLayout& engineSetLayout, vk::RenderPass engineRenderPass, 
 	std::vector<vk::DescriptorSet> enginePerImageDescriptors)
 {
-	createRenderBuffers(); 
-	createDescriptorSetLayout();
-	createDescriptorPool();
 	createPipelineLayout(engineSetLayout);
 	prepareObjects(engineRenderPass, enginePerImageDescriptors);
 }
@@ -147,55 +120,22 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 	bool descriptorSetsCompatible = false; 
 	//check if descriptor layouts are compatible
 	auto layoutBuilder = StarDescriptorSetLayout::Builder(device); 
-	object.getMeshes().front()->getMaterial().getDescriptorSetLayout(layoutBuilder);
+	auto compLayouts = object.getDescriptorSetLayouts(device);
 
-	auto layout = layoutBuilder.build(); 
+	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* largerSet = &this->largestDescriptorSet; 
+	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* smallerSet = &compLayouts; 
 
-	if (largestObjectDescriptorSetLayout->isCompatibleWith(*layout)) {
-		descriptorSetsCompatible = true; 
+	if (this->largestDescriptorSet.size() < compLayouts.size()) {
+		largerSet = &compLayouts;
+		smallerSet = &this->largestDescriptorSet;
+	}
+		
+	for (int i = 0; i < smallerSet->size(); i++) {
+		if (!largerSet->at(i)->isCompatibleWith(*smallerSet->at(i)))
+			return false; 
 	}
 
-	return descriptorSetsCompatible;
-}
-
-void StarRenderGroup::createRenderBuffers() {
-	this->uniformBuffers.resize(this->numSwapChainImages);
-
-	auto minUniformSize = this->device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
-
-	for (size_t i = 0; i < numSwapChainImages; i++) {
-		this->uniformBuffers[i] = std::make_unique<StarBuffer>(this->device, numObjects, sizeof(UniformBufferObject),
-			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, minUniformSize);
-		this->uniformBuffers[i]->map();
-	}
-}
-
-void StarRenderGroup::createDescriptorPool() {
-	//create descriptor pools 
-
-	//assume largest descriptor layout has the number we need
-	auto newPoolBuilder = StarDescriptorPool::Builder(this->device); 
-	
-	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>& types = this->largestObjectDescriptorSetLayout->getBindings();
-
-	//add objects needs
-	for (auto& it : types) {
-		newPoolBuilder.addPoolSize(it.second.descriptorType, it.second.descriptorCount * this->numSwapChainImages * this->numMeshes);
-	}
-
-	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>& globalTypes = this->globalSetLayout->getBindings();
-	for (auto& it : globalTypes) {
-		newPoolBuilder.addPoolSize(it.second.descriptorType, it.second.descriptorCount * this->numSwapChainImages * this->numMeshes);
-	}
-
-	this->descriptorPool = newPoolBuilder.build(); 
-}
-
-void StarRenderGroup::createDescriptorSetLayout()
-{
-	this->globalSetLayout = StarDescriptorSetLayout::Builder(device)
-		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-		.build();
+	return true;
 }
 
 void StarRenderGroup::prepareObjects(vk::RenderPass engineRenderPass, std::vector<vk::DescriptorSet> enginePerImageDescriptors) {
@@ -205,12 +145,12 @@ void StarRenderGroup::prepareObjects(vk::RenderPass engineRenderPass, std::vecto
 	for (auto& group : this->groups) {
 		//prepare base object
 		auto globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
-		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, engineRenderPass, numSwapChainImages, *largestObjectDescriptorSetLayout, *descriptorPool, globalObjDesc);
+		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, engineRenderPass, numSwapChainImages, this->largestDescriptorSet, globalObjDesc);
 		objCounter++; 
 
 		for (auto& renderObject : group.objects) {
 			globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
-			renderObject.object.prepRender(device, numSwapChainImages, *largestObjectDescriptorSetLayout, *descriptorPool, globalObjDesc, group.baseObject.object.getPipline()); 
+			renderObject.object.prepRender(device, numSwapChainImages, this->largestDescriptorSet, globalObjDesc, group.baseObject.object.getPipline()); 
 
 			objCounter++;
 		}
@@ -223,29 +163,11 @@ std::vector<std::vector<vk::DescriptorSet>> star::StarRenderGroup::generateObjec
 	vk::DescriptorBufferInfo bufferInfo{};
 	auto set = std::vector<std::vector<vk::DescriptorSet>>();
 
-	auto minProp = this->device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
-	auto minAlignmentOfUBOElements = StarBuffer::getAlignment(sizeof(UniformBufferObject), minProp);
-
 	for (int i = 0; i < this->numSwapChainImages; i++) {
 		auto descriptors = std::vector<vk::DescriptorSet>();
 
 		//add descriptors from engine
 		descriptors.push_back(enginePerImageDescriptors.at(i));
-
-		//where in the buffer is the ubo info for this object
-		bufferInfo = vk::DescriptorBufferInfo{
-			this->uniformBuffers[i]->getBuffer(),
-			minAlignmentOfUBOElements * objectOffset,
-			sizeof(UniformBufferObject)
-		};
-
-		auto writer = StarDescriptorWriter(this->device, *this->globalSetLayout, *this->descriptorPool)
-			.writeBuffer(0, &bufferInfo);
-
-		vk::DescriptorSet globalSet;
-		writer.build(globalSet);
-		descriptors.push_back(globalSet);
-
 		set.push_back(descriptors); 
 	}
 
@@ -253,18 +175,20 @@ std::vector<std::vector<vk::DescriptorSet>> star::StarRenderGroup::generateObjec
 }
 
 void StarRenderGroup::createPipelineLayout(StarDescriptorSetLayout& engineSetLayout) {
-	auto descriptorLayouts = std::vector<vk::DescriptorSetLayout>{
-		engineSetLayout.getDescriptorSetLayout(),
-		this->globalSetLayout->getDescriptorSetLayout(),
-		this->largestObjectDescriptorSetLayout->getDescriptorSetLayout()
-	}; 
+	std::vector<vk::DescriptorSetLayout> layouts{
+		engineSetLayout.getDescriptorSetLayout()
+	};
+	
+	for (auto& set : this->largestDescriptorSet) {
+		layouts.push_back(set->getDescriptorSetLayout()); 
+	}
 
 	/* Pipeline Layout */
 	//uniform values in shaders need to be defined here 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorLayouts.size());
-	pipelineLayoutInfo.pSetLayouts = descriptorLayouts.data();
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
+	pipelineLayoutInfo.pSetLayouts = layouts.data();
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 

@@ -171,7 +171,7 @@ StarDescriptorWriter::StarDescriptorWriter(StarDevice& device, StarDescriptorSet
 	setLayout{ setLayout },
 	pool{ pool } {}
 
-StarDescriptorWriter& StarDescriptorWriter::writeBuffer(uint32_t binding, vk::DescriptorBufferInfo* bufferInfos) {
+StarDescriptorWriter& StarDescriptorWriter::writeBuffer(uint32_t binding, vk::DescriptorBufferInfo& bufferInfos) {
 	assert(this->setLayout.bindings.count(binding) == 1 && "Layout does not contain binding specified");
 
 	auto& bindingDescription = this->setLayout.bindings[binding];
@@ -179,7 +179,7 @@ StarDescriptorWriter& StarDescriptorWriter::writeBuffer(uint32_t binding, vk::De
 	writeSet.sType = vk::StructureType::eWriteDescriptorSet;
 	writeSet.descriptorType = bindingDescription.descriptorType;
 	writeSet.dstBinding = binding;
-	writeSet.pBufferInfo = bufferInfos;
+	writeSet.pBufferInfo = &bufferInfos;
 	//writeSet.descriptorCount = static_cast<uint32_t>(bufferInfos->size());
 	writeSet.descriptorCount = 1;
 
@@ -187,7 +187,7 @@ StarDescriptorWriter& StarDescriptorWriter::writeBuffer(uint32_t binding, vk::De
 	return *this;
 }
 
-StarDescriptorWriter& StarDescriptorWriter::writeImage(uint32_t binding, const vk::DescriptorImageInfo& imageInfo) {
+StarDescriptorWriter& StarDescriptorWriter::writeImage(uint32_t binding, vk::DescriptorImageInfo& imageInfo) {
 	assert(this->setLayout.bindings.count(binding) == 1 && "Layout does not contain specified binding");
 
 	auto& bindingDescription = setLayout.bindings[binding];
@@ -204,13 +204,14 @@ StarDescriptorWriter& StarDescriptorWriter::writeImage(uint32_t binding, const v
 	return *this;
 }
 
-bool StarDescriptorWriter::build(vk::DescriptorSet& set) {
+vk::DescriptorSet StarDescriptorWriter::build() {
+	vk::DescriptorSet set; 
 	bool success = this->pool.allocateDescriptorSet(setLayout.getDescriptorSetLayout(), set);
 	if (!success) {
-		return false;
+		throw std::runtime_error("Failed"); 
 	}
 	overwrite(set);
-	return success;
+	return set;
 }
 
 void StarDescriptorWriter::overwrite(vk::DescriptorSet& set) {
