@@ -196,7 +196,7 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 			vk::DeviceSize size = minAlignmentOfUBOElements * instanceCount;
 
 
-			this->instanceUniformBuffers.at(i).emplace_back(std::make_unique<StarBuffer>(device, size, instanceCount, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible, minAlignmentOfUBOElements));
+			this->instanceUniformBuffers.at(i).emplace_back(std::make_unique<StarBuffer>(device, size, instanceCount, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible, minProp));
 		}
 	}
 }
