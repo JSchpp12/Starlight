@@ -17,11 +17,11 @@ namespace star {
 		/// @brief Update the information in the corresponding buffer for this object.
 		/// @param buffer The buffer to write to
 		/// @param bufferIndex The corresponding index for this buffer. Will match the requested buffer info from getBufferInfoSize().
-		void updateBufferData(StarBuffer& buffer, int bufferIndex);
+		virtual void updateBufferData(StarBuffer& buffer, int bufferIndex);
 
 		/// @brief Size of memory needed for each instance. Number returned needs to match number of requested buffers
 		/// @return 
-		std::vector<vk::DeviceSize> getBufferInfoSize() {
+		virtual std::vector<vk::DeviceSize> getBufferInfoSize() {
 			return std::vector<vk::DeviceSize>{
 				sizeof(glm::mat4),
 				sizeof(glm::mat4)
