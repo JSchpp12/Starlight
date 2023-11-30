@@ -8,9 +8,7 @@
 namespace star {
 	class VertColorMaterial : public StarMaterial {
 	public:
-
-
-		void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout) override;
+		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) override;
 		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool) override;
 
 	protected:

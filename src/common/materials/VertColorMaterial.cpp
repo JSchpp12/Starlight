@@ -1,10 +1,8 @@
 #include "VertColorMaterial.hpp"
 
-void star::VertColorMaterial::getDescriptorSetLayout(StarDescriptorSetLayout::Builder& newLayout)
+void star::VertColorMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder)
 {
-
 }
-
 
 vk::DescriptorSet star::VertColorMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
 {

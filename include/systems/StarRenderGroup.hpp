@@ -29,13 +29,6 @@ namespace star {
 	/// </summary>
 	class StarRenderGroup  {
 	public:
-		/// <summary>
-		/// Object type to be used per render object, updated each frame
-		/// </summary>
-		struct UniformBufferObject {
-			glm::mat4 modelMatrix;
-			glm::mat4 normalMatrix;
-		};
 
 		StarRenderGroup(StarDevice& device, size_t numSwapChainImages,
 			vk::Extent2D swapChainExtent, StarObject& baseObject, 
@@ -63,8 +56,6 @@ namespace star {
 
 		virtual void addLight(Light* newLight) { this->lights.push_back(newLight); }
 
-		virtual void updateBuffers(uint32_t currentImage);
-
 		/// <summary>
 		/// Render the object
 		/// </summary>
@@ -74,8 +65,6 @@ namespace star {
 
 		//TODO: remove
 		virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }
-		virtual StarDescriptorPool* getDescriptorPool() { return this->descriptorPool.get(); }
-		virtual StarBuffer* getBufferAt(int i) { return this->uniformBuffers.at(i).get(); }
 		int getNumObjects() { return numObjects; }
 
 	protected:
@@ -103,26 +92,13 @@ namespace star {
 		int numMeshes = 0; 
 		vk::Extent2D swapChainExtent;
 
-		std::unique_ptr<StarDescriptorPool> descriptorPool;
 		std::unique_ptr<StarPipeline> starPipeline;
 		vk::PipelineLayout pipelineLayout;
-		std::vector<std::unique_ptr<StarBuffer>> uniformBuffers;
-
-		std::unique_ptr<StarDescriptorSetLayout> globalSetLayout; 
-		std::unique_ptr<StarDescriptorSetLayout> largestObjectDescriptorSetLayout;
+		std::vector<std::unique_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
 
 		std::vector<Light*> lights;
 
 		std::vector<Group> groups;
-
-		virtual void createDescriptorPool();
-
-		virtual void createDescriptorSetLayout(); 
-
-		/// <summary>
-		/// Create buffers needed for render operations. Such as those used by descriptors
-		/// </summary>
-		virtual void createRenderBuffers();
 
 		/// <summary>
 		/// Create descriptors for binding render buffers to shaders.

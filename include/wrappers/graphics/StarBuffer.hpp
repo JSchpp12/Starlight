@@ -45,9 +45,6 @@ public:
 	vk::MemoryPropertyFlags getMemoryPropertyFlags() const { return memoryPropertyFlags; }
 	vk::DeviceSize getBufferSize() const { return bufferSize; }
 
-protected:
-
-
 private:
 	StarDevice& starDevice;
 	void* mapped = nullptr;

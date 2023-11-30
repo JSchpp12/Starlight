@@ -26,8 +26,7 @@ namespace star {
 
 		virtual ~BasicObject() = default;
 
-		// Inherited via StarObject
-		std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
+		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 	protected:
 		bool isBumpyMaterial = false; 
 

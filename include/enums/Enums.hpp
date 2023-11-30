@@ -1,6 +1,12 @@
 #pragma once
 
 namespace star {
+    enum Buffer_Type {
+        update_once_per_frame, 
+        once, 
+        geometry_data
+    };
+
     enum Command_Buffer_Type {
         Tgraphics, 
         Ttransfer, 

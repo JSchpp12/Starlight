@@ -61,12 +61,12 @@ public:
 		return this->linkedObjectHandle.has_value(); 
 	}
 
-	virtual void moveRelative(const glm::vec3& movement) override {
-		if (this->linkedObjectHandle) {
-			this->linkedObject->moveRelative(movement);
-		}
-		this->StarEntity::moveRelative(movement);
-	}
+	//virtual void moveRelative(const glm::vec3& movement) override {
+	//	if (this->linkedObjectHandle) {
+	//		this->linkedObject->moveRelative(movement);
+	//	}
+	//	this->StarEntity::moveRelative(movement);
+	//}
 
 	/// <summary>
 	/// Turn the light off or on. Default behavior is to simply switch the light status.

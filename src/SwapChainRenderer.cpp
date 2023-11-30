@@ -178,10 +178,6 @@ void SwapChainRenderer::updateUniformBuffer(uint32_t currentImage)
 		lightInformation[i] = newBufferObject;
 	}
 	this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
-
-	for (size_t i = 0; i < this->renderGroups.size(); i++) {
-		renderGroups.at(i)->updateBuffers(currentImage);
-	}
 }
 
 SwapChainRenderer::~SwapChainRenderer()
@@ -511,10 +507,10 @@ void SwapChainRenderer::createDescriptors()
 			0,
 			sizeof(LightBufferObject) * this->lightList.size() };
 
-		StarDescriptorWriter(this->device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
-			.writeBuffer(0, &globalBufferInfo)
-			.writeBuffer(1, &lightBufferInfo)
-			.build(this->globalDescriptorSets.at(i));
+		this->globalDescriptorSets.at(i) = StarDescriptorWriter(this->device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
+			.writeBuffer(0, globalBufferInfo)
+			.writeBuffer(1, lightBufferInfo)
+			.build();
 	}
 }
 

@@ -98,11 +98,11 @@ class StarDescriptorWriter {
 public:
 	StarDescriptorWriter(StarDevice& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool);
 
-	StarDescriptorWriter& writeBuffer(uint32_t binding, vk::DescriptorBufferInfo* bufferInfos);
+	StarDescriptorWriter& writeBuffer(uint32_t binding, vk::DescriptorBufferInfo& bufferInfos);
 
-	StarDescriptorWriter& writeImage(uint32_t binding, const vk::DescriptorImageInfo& imageInfo);
+	StarDescriptorWriter& writeImage(uint32_t binding, vk::DescriptorImageInfo& imageInfo);
 
-	bool build(vk::DescriptorSet& set);
+	vk::DescriptorSet build();
 
 	void overwrite(vk::DescriptorSet& set);
 

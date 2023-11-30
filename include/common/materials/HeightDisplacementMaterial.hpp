@@ -17,7 +17,7 @@ namespace star {
 		// Inherited via StarMaterial
 		void prep(StarDevice& device) override;
 
-		void getDescriptorSetLayout(StarDescriptorSetLayout::Builder& constBuilder) override;
+		void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) override;
 
 		Texture& getTexture() { return *this->texture; }
 
@@ -29,6 +29,5 @@ namespace star {
 		void cleanup(StarDevice& device) override;
 
 		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool) override;
-
 	};
 }

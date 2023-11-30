@@ -24,7 +24,7 @@ namespace star {
 			bumpMap(std::move(bumpMap)) {};
 
 
-		void getDescriptorSetLayout(star::StarDescriptorSetLayout::Builder& newLayout) override;
+		void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) override;
 		void cleanup(StarDevice& device) override;
 
 	protected:
@@ -32,6 +32,7 @@ namespace star {
 
 		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
 			StarDescriptorPool& groupPool) override;
+
 
 		void prep(StarDevice& device) override;
 

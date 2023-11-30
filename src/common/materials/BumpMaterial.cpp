@@ -1,9 +1,9 @@
 #include "BumpMaterial.hpp"
 
-void star::BumpMaterial::getDescriptorSetLayout(star::StarDescriptorSetLayout::Builder& newLayout)
+void star::BumpMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder)
 {
-	newLayout.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
-	newLayout.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+	constBuilder.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+	constBuilder.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 }
 
 void star::BumpMaterial::cleanup(StarDevice& device)
@@ -21,9 +21,10 @@ void star::BumpMaterial::cleanup(StarDevice& device)
 
 vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
 	StarDescriptorPool& groupPool)
+
 {
 	auto sets = std::vector<vk::DescriptorSet>(); 
-	auto writer = StarDescriptorWriter(device, groupLayout, groupPool); 
+	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
 
 	auto texInfo = vk::DescriptorImageInfo{
 		texture->getSampler(),
@@ -37,8 +38,7 @@ vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, Sta
 		vk::ImageLayout::eShaderReadOnlyOptimal };
 	writer.writeImage(1, bumpInfo);
 
-	vk::DescriptorSet newSet; 
-	writer.build(newSet);
+	vk::DescriptorSet newSet = writer.build();
 
 	return newSet; 
 }
