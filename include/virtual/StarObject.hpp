@@ -97,6 +97,9 @@ namespace star {
 		/// <returns></returns>
 		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() = 0;
 
+		/// @brief Create descriptor set layouts for this object. 
+		/// @param device 
+		/// @return 
 		virtual std::vector<std::unique_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(StarDevice& device);
 
 #pragma region getters
@@ -119,7 +122,7 @@ namespace star {
 
 		void prepareMeshes(star::StarDevice& device); 
 
-		void prepareDescriptors(star::StarDevice& device, int numSwapChainImages, 
+		virtual void prepareDescriptors(star::StarDevice& device, int numSwapChainImages, 
 			std::vector<std::unique_ptr<StarDescriptorSetLayout>>& groupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets);
 
 		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight); 
