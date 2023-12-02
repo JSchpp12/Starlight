@@ -18,20 +18,28 @@ void star::StarMaterial::prepRender(StarDevice& device)
 	}
 }
 
-void star::StarMaterial::buildDescriptorSets(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool,
-	std::vector<std::vector<vk::DescriptorSet>> globalSets, int numSwapChainImages)
+void star::StarMaterial::finalizeDescriptors(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool,
+	std::vector<std::unordered_map<int, vk::DescriptorSet>> globalSets, int numSwapChainImages)
 {
 	//only build descriptor sets if this object hasnt already been initialized
 	if (this->descriptorSets.size() == 0) {
 		for (int i = 0; i < numSwapChainImages; i++) {
-			auto allDescriptors = std::vector<vk::DescriptorSet>{
-				globalSets.at(i)
-			};
+			auto allDescriptors = std::vector<vk::DescriptorSet>();
 
 			vk::DescriptorSet newDescriptor = this->buildDescriptorSet(device, groupLayout, groupPool);
-
+			//another sign I need a better wrapper for descriptor set creation
 			if (newDescriptor)
-				allDescriptors.push_back(newDescriptor);
+			{
+				allDescriptors.resize(1 + globalSets.at(i).size());
+				allDescriptors.at(2) = newDescriptor;
+			}
+			else
+				allDescriptors.resize(1 + globalSets.at(i).size());
+
+			//ignoring set number for now, should rework this system in future
+			for (auto& it : globalSets.at(i)) {
+				allDescriptors.at(it.first) = it.second; 
+			}
 
 			this->descriptorSets.insert(std::pair<int, std::vector<vk::DescriptorSet>>(i, allDescriptors));
 		}

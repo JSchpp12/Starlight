@@ -92,7 +92,7 @@ namespace star {
 		int numMeshes = 0; 
 		vk::Extent2D swapChainExtent;
 
-		std::unique_ptr<StarPipeline> starPipeline;
+		std::unique_ptr<StarPipeline> starPipeline; 
 		vk::PipelineLayout pipelineLayout;
 		std::vector<std::unique_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
 
@@ -103,7 +103,8 @@ namespace star {
 		/// <summary>
 		/// Create descriptors for binding render buffers to shaders.
 		/// </summary>
-		virtual void prepareObjects(vk::RenderPass engineRenderPass, std::vector<vk::DescriptorSet> enginePerImageDescriptors);
+		virtual void prepareObjects(StarDescriptorSetLayout& engineLayout, vk::RenderPass engineRenderPass,
+			std::vector<vk::DescriptorSet> enginePerImageDescriptors);
 
 		std::vector<std::vector<vk::DescriptorSet>> generateObjectExternalDescriptors(int objectOffset,
 			std::vector<vk::DescriptorSet> enginePerObjectDescriptors);

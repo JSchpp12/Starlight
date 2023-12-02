@@ -66,6 +66,17 @@ namespace star {
             //load from disk
             if (onDisk) {
                 std::unique_ptr<unsigned char> pixelData(stbi_load(pathToFile.c_str(), &width, &height, &channels, STBI_rgb_alpha));
+
+                //apply overriden alpha value if needed
+                if (this->overrideAlpha.has_value() && channels == 4) {
+                    for (int i = 0; i < height; i++) {
+                        for (int j = 0; j < width; j++) {
+                            unsigned char* pixelOffset = pixelData.get() + (i + height * j) * channels; 
+                            pixelOffset[3] = this->overrideAlpha.value().raw_a(); 
+                        }
+                    }
+                }
+
                 if (!pixelData) {
                     throw std::runtime_error("Unable to load image");
                 }
@@ -90,7 +101,10 @@ namespace star {
                             data.at(channels * pixCounter + 0) = rawData.value().at(i).at(j).raw_r();
                             data.at(channels * pixCounter + 1) = rawData.value().at(i).at(j).raw_g();
                             data.at(channels * pixCounter + 2) = rawData.value().at(i).at(j).raw_b();
-                            data.at(channels * pixCounter + 3) = rawData.value().at(i).at(j).raw_a();
+                            if (this->overrideAlpha.has_value())
+                                data.at(channels * pixCounter + 3) = this->overrideAlpha.value().raw_a(); 
+                            else
+                                data.at(channels * pixCounter + 3) = rawData.value().at(i).at(j).raw_a();
                         }
 
                         pixCounter++;
@@ -118,7 +132,12 @@ namespace star {
             return &rawData.value();
         }
 
+        void setAlpha(Color setAlpha) {
+            this->overrideAlpha = setAlpha; 
+        }
+
     protected:
+        std::optional<Color> overrideAlpha; 
         std::optional<std::vector<std::vector<Color>>> rawData;
         int width = 0, height = 0, channels = 0;
     };
