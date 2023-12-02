@@ -112,7 +112,7 @@ void StarRenderGroup::init(StarDescriptorSetLayout& engineSetLayout, vk::RenderP
 	std::vector<vk::DescriptorSet> enginePerImageDescriptors)
 {
 	createPipelineLayout(engineSetLayout);
-	prepareObjects(engineRenderPass, enginePerImageDescriptors);
+	prepareObjects(engineSetLayout, engineRenderPass, enginePerImageDescriptors);
 }
 
 bool StarRenderGroup::isObjectCompatible(StarObject& object)
@@ -138,19 +138,26 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 	return true;
 }
 
-void StarRenderGroup::prepareObjects(vk::RenderPass engineRenderPass, std::vector<vk::DescriptorSet> enginePerImageDescriptors) {
+void StarRenderGroup::prepareObjects(StarDescriptorSetLayout& engineLayout, vk::RenderPass engineRenderPass, std::vector<vk::DescriptorSet> enginePerImageDescriptors) {
 	//get descriptor sets from objects and place into render structs
 	int objCounter = 0;
+
+	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> finalizedGroupLayouts{
+		engineLayout
+	}; 
+	for (auto& layout : this->largestDescriptorSet) {
+		finalizedGroupLayouts.push_back(*layout); 
+	}
 
 	for (auto& group : this->groups) {
 		//prepare base object
 		auto globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
-		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, engineRenderPass, numSwapChainImages, this->largestDescriptorSet, globalObjDesc);
+		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, engineRenderPass, numSwapChainImages, finalizedGroupLayouts, globalObjDesc);
 		objCounter++; 
 
 		for (auto& renderObject : group.objects) {
 			globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
-			renderObject.object.prepRender(device, numSwapChainImages, this->largestDescriptorSet, globalObjDesc, group.baseObject.object.getPipline()); 
+			renderObject.object.prepRender(device, numSwapChainImages, finalizedGroupLayouts, globalObjDesc, group.baseObject.object.getPipline());
 
 			objCounter++;
 		}
@@ -168,7 +175,8 @@ std::vector<std::vector<vk::DescriptorSet>> star::StarRenderGroup::generateObjec
 
 		//add descriptors from engine
 		descriptors.push_back(enginePerImageDescriptors.at(i));
-		set.push_back(descriptors); 
+
+		set.push_back(descriptors);
 	}
 
 	return set;
@@ -178,7 +186,7 @@ void StarRenderGroup::createPipelineLayout(StarDescriptorSetLayout& engineSetLay
 	std::vector<vk::DescriptorSetLayout> layouts{
 		engineSetLayout.getDescriptorSetLayout()
 	};
-	
+
 	for (auto& set : this->largestDescriptorSet) {
 		layouts.push_back(set->getDescriptorSetLayout()); 
 	}
@@ -193,6 +201,7 @@ void StarRenderGroup::createPipelineLayout(StarDescriptorSetLayout& engineSetLay
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
 	this->pipelineLayout = this->device.getDevice().createPipelineLayout(pipelineLayoutInfo);
+	
 	if (!this->pipelineLayout) {
 		throw std::runtime_error("failed to create pipeline layout");
 	}

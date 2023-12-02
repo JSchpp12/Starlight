@@ -47,8 +47,14 @@ namespace star {
 
 		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) = 0; 
 
-		virtual void buildDescriptorSets(StarDevice& device, StarDescriptorSetLayout& groupLayout,
-			StarDescriptorPool& groupPool, std::vector<std::vector<vk::DescriptorSet>> globalSets, 
+		/// @brief Create descriptor sets which will be used when this material is bound. Make sure that all global sets are provided 
+		/// @param device 
+		/// @param groupLayout 
+		/// @param groupPool 
+		/// @param globalSets 
+		/// @param numSwapChainImages 
+		virtual void finalizeDescriptors(StarDevice& device, StarDescriptorSetLayout& groupLayout,
+			StarDescriptorPool& groupPool, std::vector<std::unordered_map<int, vk::DescriptorSet>> globalSets,
 			int numSwapChainImages);
 
 		virtual void bind(StarCommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 

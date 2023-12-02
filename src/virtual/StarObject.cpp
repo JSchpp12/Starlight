@@ -41,7 +41,7 @@ void star::StarObject::initRender(int numFramesInFlight)
 
 void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
 	vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, 
-	std::vector<std::unique_ptr<StarDescriptorSetLayout>>& groupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets)
+	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets)
 {
 	//handle pipeline infos
 	this->pipeline = this->buildPipeline(device, swapChainExtent, pipelineLayout, renderPass);
@@ -54,7 +54,7 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 }
 
 void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImages, 
-	std::vector<std::unique_ptr<StarDescriptorSetLayout>>& groupLayout,
+	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout,
 	std::vector<std::vector<vk::DescriptorSet>> globalSets, StarPipeline& sharedPipeline)
 {
 	this->sharedPipeline = &sharedPipeline;
@@ -138,19 +138,21 @@ void star::StarObject::prepareMeshes(star::StarDevice& device)
 }
 
 void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapChainImages,
-	std::vector<std::unique_ptr<StarDescriptorSetLayout>>& fullGroupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets)
+	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> fullGroupLayout, 
+	std::vector<std::vector<vk::DescriptorSet>> globalSets)
 {
-	auto& groupLayout = *fullGroupLayout.at(1);
+	auto& groupLayout = fullGroupLayout.at(1);
 	StarDescriptorPool& pool = ManagerDescriptorPool::getPool(); 
+	std::vector<std::unordered_map<int, vk::DescriptorSet>> finalizedSets; 
 
-	//create descriptor layout
-	this->setLayout = StarDescriptorSetLayout::Builder(device )
-		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-		.addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-		.build();
 
 	for (int i = 0; i < numSwapChainImages; i++) {
-		star::StarDescriptorWriter writer = star::StarDescriptorWriter(device, *this->setLayout, ManagerDescriptorPool::getPool());
+		std::unordered_map<int, vk::DescriptorSet> set; 
+		for (int j = 0; j < globalSets.at(i).size(); j++) {
+			set[j] = globalSets.at(i).at(j); 
+		}
+
+		star::StarDescriptorWriter writer = star::StarDescriptorWriter(device, groupLayout, ManagerDescriptorPool::getPool());
 
 		std::vector<vk::DescriptorBufferInfo> bufferInfos = std::vector<vk::DescriptorBufferInfo>(this->instances.front()->getBufferInfoSize().size());
 
@@ -164,14 +166,15 @@ void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapC
 				bufferSize };
 			writer.writeBuffer(j, bufferInfos.at(j));
 		}
-		vk::DescriptorSet set = writer.build(); 
+		set[1] = writer.build();
 
-		globalSets.at(i).push_back(set);
+		finalizedSets.push_back(set); 
 	}
 	
+	auto& matLayout = fullGroupLayout.at(2); 
 	for (auto& mesh : this->getMeshes()) {
 		//descriptors
-		mesh->getMaterial().buildDescriptorSets(device, groupLayout, pool, globalSets, numSwapChainImages);
+		mesh->getMaterial().finalizeDescriptors(device, matLayout, pool, finalizedSets, numSwapChainImages);
 	}
 }
 
