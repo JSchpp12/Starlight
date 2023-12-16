@@ -171,10 +171,9 @@ void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapC
 		finalizedSets.push_back(set); 
 	}
 	
-	auto& matLayout = fullGroupLayout.at(2); 
 	for (auto& mesh : this->getMeshes()) {
 		//descriptors
-		mesh->getMaterial().finalizeDescriptors(device, matLayout, pool, finalizedSets, numSwapChainImages);
+		mesh->getMaterial().finalizeDescriptors(device, fullGroupLayout, pool, finalizedSets, numSwapChainImages);
 	}
 }
 

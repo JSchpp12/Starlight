@@ -53,7 +53,7 @@ namespace star {
 		/// @param groupPool 
 		/// @param globalSets 
 		/// @param numSwapChainImages 
-		virtual void finalizeDescriptors(StarDevice& device, StarDescriptorSetLayout& groupLayout,
+		virtual void finalizeDescriptors(StarDevice& device, std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayouts,
 			StarDescriptorPool& groupPool, std::vector<std::unordered_map<int, vk::DescriptorSet>> globalSets,
 			int numSwapChainImages);
 
