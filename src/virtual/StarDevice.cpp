@@ -1,9 +1,14 @@
 #include "StarDevice.hpp"
 
 namespace star {
-StarDevice::StarDevice(StarWindow& window) :
+StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures) :
 	starWindow(window)
 {
+	this->requiredDeviceFeatures.samplerAnisotropy = VK_TRUE;
+
+	if (requiredFeatures.size() > 0)
+		prepRequiredFeatures(requiredFeatures); 
+
 	createInstance();
 
 	this->starWindow.createWindowSurface(this->instance, this->surface);
@@ -13,9 +18,9 @@ StarDevice::StarDevice(StarWindow& window) :
 	createCommandPool();
 }
 
-std::unique_ptr<StarDevice> StarDevice::New(StarWindow& window)
+std::unique_ptr<StarDevice> StarDevice::New(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures)
 {
-	return std::unique_ptr<StarDevice>(new StarDevice(window)); 
+	return std::unique_ptr<StarDevice>(new StarDevice(window, requiredFeatures)); 
 }
 
 StarDevice::~StarDevice() {
@@ -25,6 +30,19 @@ StarDevice::~StarDevice() {
 	this->vulkanDevice.destroy();
 	this->surface.reset();
 	this->instance.destroy();
+}
+
+void StarDevice::prepRequiredFeatures(const std::vector<star::Rendering_Features>& features)
+{
+	for (auto& feature : features) {
+		switch (feature) {
+		case(Rendering_Features::geometry_shader):
+			this->requiredDeviceFeatures.geometryShader = VK_TRUE;
+			break;
+		default:
+			throw std::runtime_error("Unknown rendering feature requested"); 
+		}
+	}
 }
 
 void StarDevice::createInstance() {
@@ -160,10 +178,6 @@ void StarDevice::createLogicalDevice() {
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
 
-	//specifying device features that we want to use -- can pull any of the device features that was queried before...for now use nothing
-	const vk::PhysicalDeviceFeatures deviceFeatures{};
-	// deviceFeatures.samplerAnisotropy = VK_TRUE;  
-
 	//Create actual logical device
 	const vk::DeviceCreateInfo createInfo{
 		vk::DeviceCreateFlags(),                                                        //device creation flags
@@ -173,7 +187,7 @@ void StarDevice::createLogicalDevice() {
 		enableValidationLayers ? deviceExtensions.data() : VK_NULL_HANDLE,              //enables layer names
 		static_cast<uint32_t>(deviceExtensions.size()),                                 //enabled extension coun 
 		deviceExtensions.data(),                                                        //enabled extension names 
-		&deviceFeatures                                                                 //enabled features
+		&this->requiredDeviceFeatures                                                                 //enabled features
 	};
 
 	//call to create the logical device 
@@ -214,7 +228,14 @@ bool StarDevice::isDeviceSuitable(vk::PhysicalDevice device) {
 	}
 
 	vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
-	if (indicies.isSuitable() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy) {
+	bool supportsRequiredRenderingFeatures = true; 
+
+	if (requiredDeviceFeatures.samplerAnisotropy && !supportedFeatures.samplerAnisotropy)
+		supportsRequiredRenderingFeatures = false;
+	if (requiredDeviceFeatures.geometryShader && !supportedFeatures.geometryShader)
+		supportsRequiredRenderingFeatures = false;
+	
+	if (indicies.isSuitable() && extensionsSupported && swapChainAdequate && supportsRequiredRenderingFeatures) {
 		return true;
 	}
 	return false;
