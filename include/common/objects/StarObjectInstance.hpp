@@ -2,6 +2,7 @@
 
 #include "StarBuffer.hpp"
 #include "StarEntity.hpp"
+#include "StarDescriptors.hpp"
 
 #include <glm/gtc/matrix_inverse.hpp>
 

@@ -46,6 +46,10 @@ public:
 
 	int getFrameToBeDrawn() { return this->currentFrame; }
 
+	vk::RenderPass getMainRenderPass() { return this->renderPass; };
+	vk::Extent2D getMainExtent() { return this->swapChainExtent; }
+	StarDescriptorSetLayout& getGlobalDescriptorLayout() { return *this->globalSetLayout; }
+
 protected:
 	struct RenderOptionsObject {
 		bool drawMatAmbient;

@@ -1,10 +1,17 @@
 #include "StarGraphicsPipeline.hpp"
 
 namespace star {
-StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, StarShader inVertShader, StarShader inFragShader, 
-	PipelineConfigSettings& configSettings) 
-	: StarPipeline(device), configSettings(configSettings), vertShader(inVertShader), fragShader(inFragShader) {
-	this->hash = inVertShader.getPath() + inFragShader.getPath(); 
+
+StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader)
+	: StarPipeline(device), configSettings(configSettings), vertShader(vertShader), fragShader(fragShader)
+{
+	this->hash = vertShader.getPath() + fragShader.getPath(); 
+}
+
+StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader, StarShader geomShader)
+	: StarPipeline(device), configSettings(configSettings), vertShader(vertShader), fragShader(fragShader), geomShader(geomShader)
+{
+	this->hash = vertShader.getPath() + fragShader.getPath() + this->geomShader.value().getPath(); 
 }
 
 StarGraphicsPipeline::~StarGraphicsPipeline()
@@ -142,18 +149,32 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 	vk::ShaderModule vertShaderModule = createShaderModule(*vertShader.compile());
 	vk::ShaderModule fragShaderModule = createShaderModule(*fragShader.compile());
 
-	//TODO: move this out of here
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
+
 	vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
 	vertShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
 	vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
 	vertShaderStageInfo.module = vertShaderModule;
 	vertShaderStageInfo.pName = "main"; //the function to invoke in the shader module
+	shaderStages.push_back(vertShaderStageInfo); 
 
 	vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
 	fragShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
 	fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
 	fragShaderStageInfo.module = fragShaderModule;
 	fragShaderStageInfo.pName = "main";
+	shaderStages.push_back(fragShaderStageInfo); 
+
+	vk::ShaderModule geomShaderModule{}; 
+	if (this->geomShader.has_value()) {
+		geomShaderModule = createShaderModule(*this->geomShader.value().compile()); 
+		vk::PipelineShaderStageCreateInfo geomShaderStageInfo{};
+		geomShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo; 
+		geomShaderStageInfo.stage = vk::ShaderStageFlagBits::eGeometry; 
+		geomShaderStageInfo.module = geomShaderModule;
+		geomShaderStageInfo.pName = "main"; 
+		shaderStages.push_back(geomShaderStageInfo);
+	}
 
 	auto bindingDescriptions = VulkanVertex::getBindingDescription();
 	auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
@@ -164,9 +185,7 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescriptions;
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-	//store these creation infos for later use 
-	vk::PipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+	
 
 	/* Dynamic State */
 	//some parts of the pipeline can be changed without recreating the entire pipeline
@@ -183,8 +202,8 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 	/* Pipeline */
 	vk::GraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.stageCount = shaderStages.size();
+	pipelineInfo.pStages = shaderStages.data();
 
 	//ref all previously created structs
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
@@ -217,6 +236,8 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 	//destroy the shader modules that were created 
 	this->device.getDevice().destroyShaderModule(vertShaderModule);
 	this->device.getDevice().destroyShaderModule(fragShaderModule);
+	if (this->geomShader.has_value())
+		this->device.getDevice().destroyShaderModule(geomShaderModule);
 
 	return result.value.at(0);
 }

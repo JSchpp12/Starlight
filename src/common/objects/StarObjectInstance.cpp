@@ -1,5 +1,10 @@
 #include "StarObjectInstance.hpp"
 
+//void star::StarObjectInstance::cleanupSharedResources(StarDevice& device)
+//{
+//	requiredSetLayout.reset(); 
+//}
+
 void star::StarObjectInstance::updateBufferData(StarBuffer& buffer, int bufferIndex)
 {
 	switch (bufferIndex) {

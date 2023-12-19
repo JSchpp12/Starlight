@@ -17,7 +17,7 @@ namespace star {
 		// Inherited via StarMaterial
 		void prep(StarDevice& device) override;
 
-		void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) override;
+		void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
 
 		Texture& getTexture() { return *this->texture; }
 

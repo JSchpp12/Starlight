@@ -40,7 +40,7 @@ namespace star {
 
 		glm::vec3 getCenter();
 
-		void loadGeometry(std::unique_ptr<std::vector<Vertex>>& verts, std::unique_ptr<std::vector<uint32_t>>& inds); 
+		virtual void loadGeometry(std::unique_ptr<std::vector<Vertex>>& verts, std::unique_ptr<std::vector<uint32_t>>& inds); 
 
 		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 	};

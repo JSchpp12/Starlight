@@ -31,7 +31,8 @@ namespace star {
     enum Shader_Stage {
         vertex,
         fragment,
-        compute
+        compute, 
+        geometry
     };
 
     enum Config_Settings {

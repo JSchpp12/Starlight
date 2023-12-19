@@ -24,7 +24,7 @@ namespace star {
 			bumpMap(std::move(bumpMap)) {};
 
 
-		void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) override;
+		void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
 		void cleanup(StarDevice& device) override;
 
 	protected:

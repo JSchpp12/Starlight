@@ -98,7 +98,8 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/ComputeTexture.cpp"
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
-)
+ "src/common/helpers/GeometryHelpers.cpp"
+ )
 
 
 set(${PROJECT_NAME}_HEADERS

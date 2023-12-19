@@ -47,7 +47,6 @@ void star::BasicObject::loadFromFile(const std::string objectFilePath)
 	std::unique_ptr<StarMaterial> objectMaterial;
 	std::vector<std::shared_ptr<StarMaterial>> preparedMaterials; 
 
-
 	if (materials.size() > 0) {
 		//create needed materials
 		for (size_t i = 0; i < materials.size(); i++) {

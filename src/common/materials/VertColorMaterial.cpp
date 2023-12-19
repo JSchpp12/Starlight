@@ -1,6 +1,6 @@
 #include "VertColorMaterial.hpp"
 
-void star::VertColorMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder)
+void star::VertColorMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder)
 {
 }
 

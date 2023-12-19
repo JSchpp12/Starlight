@@ -5,6 +5,7 @@ StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features>
 	starWindow(window)
 {
 	this->requiredDeviceFeatures.samplerAnisotropy = VK_TRUE;
+	this->requiredDeviceFeatures.geometryShader = VK_TRUE;
 
 	if (requiredFeatures.size() > 0)
 		prepRequiredFeatures(requiredFeatures); 
@@ -36,9 +37,6 @@ void StarDevice::prepRequiredFeatures(const std::vector<star::Rendering_Features
 {
 	for (auto& feature : features) {
 		switch (feature) {
-		case(Rendering_Features::geometry_shader):
-			this->requiredDeviceFeatures.geometryShader = VK_TRUE;
-			break;
 		default:
 			throw std::runtime_error("Unknown rendering feature requested"); 
 		}
