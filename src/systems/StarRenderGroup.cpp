@@ -73,14 +73,27 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 	//check if this new object has a larger descriptor set layout than the current one
 	auto newLayouts = newObject.getDescriptorSetLayouts(device); 
 
+	std::vector<std::unique_ptr<StarDescriptorSetLayout>> combinedSet = std::vector<std::unique_ptr<StarDescriptorSetLayout>>(); 
+	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* largerSet = newLayouts.size() > this->largestDescriptorSet.size() ? &newLayouts : &this->largestDescriptorSet;
+	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* smallerSet = newLayouts.size() > this->largestDescriptorSet.size() ? &this->largestDescriptorSet : &newLayouts; 
+
 	//already assuming these are already compatible
-	for (int i = 0; i < newLayouts.size(); i++) {
-		if (newLayouts.at(i)->getBindings().size() > this->largestDescriptorSet.at(i)->getBindings().size()) {
-			//this->largestDescriptorSet.at(i) = std::move(newLayouts.at(i));
-			//the new set is larger than the current one, replace
-			this->largestDescriptorSet.at(i) = std::move(newLayouts.at(i)); 
+	for (int i = 0; i < largerSet->size(); i++) {
+		if (i < smallerSet->size()) {
+			if (largerSet->at(i)->getBindings().size() > this->largestDescriptorSet.at(i)->getBindings().size()) {
+				//this->largestDescriptorSet.at(i) = std::move(newLayouts.at(i));
+				//the new set is larger than the current one, replace
+				combinedSet.push_back(std::move(largerSet->at(i))); 
+			}
+			else {
+				combinedSet.push_back(std::move(smallerSet->at(i))); 
+			}
+		}
+		else {
+			combinedSet.push_back(std::move(largerSet->at(i))); 
 		}
 	}
+	this->largestDescriptorSet = std::move(combinedSet); 
 
 	this->numObjects++;
 	this->numMeshes += newObject.getMeshes().size();

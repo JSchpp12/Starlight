@@ -35,6 +35,9 @@ void star::StarMaterial::finalizeDescriptors(StarDevice& device, std::vector<std
 					allDescriptors.resize(1 + globalSets.at(i).size());
 					allDescriptors.at(2) = newDescriptor;
 				}
+				else {
+					allDescriptors.resize(globalSets.at(i).size()); 
+				}
 			}else
 				allDescriptors.resize(globalSets.at(i).size());
 

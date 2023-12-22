@@ -7,6 +7,7 @@
 #include "StarDevice.hpp"
 #include "StarObject.hpp"
 #include "StarGraphicsPipeline.hpp"
+#include "VertColorMaterial.hpp"
 
 #include <tiny_obj_loader.h>
 
@@ -29,6 +30,7 @@ namespace star {
 		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 	protected:
 		bool isBumpyMaterial = false; 
+		bool isTextureMaterial = false; 
 
 		BasicObject(std::string objectFilePath);
 
