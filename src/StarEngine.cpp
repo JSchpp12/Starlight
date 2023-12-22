@@ -14,8 +14,12 @@ StarEngine::~StarEngine()
 void StarEngine::Run()
 {
 	//objects will be prepared for render during the initialization of the main renderer
-
 	mainRenderer->prepare();
+
+	//prepare any shared resources
+	StarObject::initSharedResources(*this->renderingDevice, this->mainRenderer->getMainExtent(), 
+		this->mainRenderer->getMainRenderPass(), this->mainRenderer->MAX_FRAMES_IN_FLIGHT, 
+		this->mainRenderer->getGlobalDescriptorLayout());
 
 	while (!window->shouldClose()) {
 		int frameToDraw = this->mainRenderer->getFrameToBeDrawn(); 
@@ -28,13 +32,16 @@ void StarEngine::Run()
 		InteractionSystem::callWorldUpdates();
 		mainRenderer->submit();
 	}
+
+	this->renderingDevice->getDevice().waitIdle();
+	StarObject::cleanupSharedResources(*this->renderingDevice); 
 }
 
 void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 	//parse light information
-	this->window = BasicWindow::New(800, 600, app.getApplicationName());
+	this->window = BasicWindow::New(1280, 720, app.getApplicationName());
 
-	this->renderingDevice = StarDevice::New(*window);
+	this->renderingDevice = StarDevice::New(*window, app.getRequiredDeviceExtensions());
 
 	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window, renderOptions);
 

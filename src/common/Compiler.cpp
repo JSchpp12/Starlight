@@ -43,6 +43,9 @@ namespace star {
         else if (extension == ".comp") {
             return shaderc_shader_kind::shaderc_compute_shader;
         }
+        else if (extension == ".geom") {
+            return shaderc_shader_kind::shaderc_geometry_shader; 
+        }
 
         throw std::runtime_error("Compiler::GetShaderCStageFlag invalid shader stage");
     }

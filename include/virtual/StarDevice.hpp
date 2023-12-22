@@ -43,7 +43,7 @@ struct QueueFamilyIndicies {
 
 class StarDevice {
 public:
-	static std::unique_ptr<StarDevice> New(StarWindow& window); 
+	static std::unique_ptr<StarDevice> New(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures); 
 
 	virtual ~StarDevice();
 
@@ -136,7 +136,7 @@ public:
 #pragma endregion
 
 protected: 
-	StarDevice(StarWindow& window);
+	StarDevice(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures);
 
 #ifdef NDEBUG 
 	const bool enableValidationLayers = false;
@@ -167,6 +167,8 @@ protected:
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME//image presentation is not built into the vulkan core...need to enable it through an extension
 	};
 
+	vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
+
 	//queue family information
 	vk::Queue graphicsQueue, presentQueue; 
 	std::optional<vk::Queue> transferQueue, computeQueue;
@@ -182,6 +184,8 @@ protected:
 	bool isMac = false;
 	std::vector<const char*> platformInstanceRequiredExtensions = { };
 #endif
+
+	void prepRequiredFeatures(const std::vector<star::Rendering_Features>& features); 
 
 	//Create the vulkan instance machine 
 	void createInstance();

@@ -485,8 +485,8 @@ vk::ImageView SwapChainRenderer::createImageView(vk::Image image, vk::Format for
 void SwapChainRenderer::createDescriptors()
 {
 	this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
-		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
 		.build();
 
 	this->globalDescriptorSets.resize(this->swapChainImages.size());

@@ -1,6 +1,10 @@
 #pragma once
 
 namespace star {
+    enum Rendering_Features {
+        geometry_shader
+    };
+
     enum Buffer_Type {
         update_once_per_frame, 
         once, 
@@ -27,7 +31,8 @@ namespace star {
     enum Shader_Stage {
         vertex,
         fragment,
-        compute
+        compute, 
+        geometry
     };
 
     enum Config_Settings {

@@ -45,7 +45,7 @@ namespace star {
 		/// <param name="device"></param>
 		void prepRender(StarDevice& device); 
 
-		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder, StarDescriptorSetLayout::Builder& perDrawBuilder) = 0; 
+		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) = 0; 
 
 		/// @brief Create descriptor sets which will be used when this material is bound. Make sure that all global sets are provided 
 		/// @param device 
@@ -53,7 +53,7 @@ namespace star {
 		/// @param groupPool 
 		/// @param globalSets 
 		/// @param numSwapChainImages 
-		virtual void finalizeDescriptors(StarDevice& device, StarDescriptorSetLayout& groupLayout,
+		virtual void finalizeDescriptors(StarDevice& device, std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayouts,
 			StarDescriptorPool& groupPool, std::vector<std::unordered_map<int, vk::DescriptorSet>> globalSets,
 			int numSwapChainImages);
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConfigFile.hpp"
 #include "StarDevice.hpp"
 #include "StarEntity.hpp"
 #include "StarDescriptors.hpp"
@@ -32,6 +33,14 @@ namespace star {
 	/// </summary>
 	class StarObject {
 	public:
+		bool drawNormals = false;
+
+		static void initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent,
+			vk::RenderPass renderPass, int numSwapChainImages,
+			StarDescriptorSetLayout& globalDescriptors);
+
+		static void cleanupSharedResources(StarDevice& device);
+
 		/// <summary>
 		/// Create an object from manually defined/generated mesh structures
 		/// </summary>
@@ -43,7 +52,8 @@ namespace star {
 		virtual void cleanupRender(StarDevice& device); 
 
 		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
-			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass);
+			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, 
+			vk::RenderPass renderPass);
 
 		/// <summary>
 		/// Prepare memory needed for render operations. 
@@ -114,14 +124,16 @@ namespace star {
 #pragma endregion
 
 	protected:
+
 		///pipeline + rendering infos
 		StarPipeline* sharedPipeline = nullptr;
 		std::unique_ptr<StarPipeline> pipeline; 
+		std::unique_ptr<StarPipeline> normalExtrusionPipeline; 
 		std::unique_ptr<StarDescriptorSetLayout> setLayout; 
 		std::vector<std::vector<std::unique_ptr<StarBuffer>>> instanceUniformBuffers; 
 		std::vector<std::unique_ptr<StarMesh>> meshes;
 		std::vector<std::unique_ptr<StarObjectInstance>> instances; 
-
+		
 		void prepareMeshes(star::StarDevice& device); 
 
 		virtual void prepareDescriptors(star::StarDevice& device, int numSwapChainImages, 
@@ -129,5 +141,12 @@ namespace star {
 			std::vector<std::vector<vk::DescriptorSet>> globalSets);
 
 		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight); 
+
+		void recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex); 
+
+	private:
+		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout; 
+		static vk::PipelineLayout extrusionPipelineLayout; 
+		static std::unique_ptr<StarGraphicsPipeline> tri_normalExtrusionPipeline, triAdj_normalExtrusionPipeline; 
 	};
 }

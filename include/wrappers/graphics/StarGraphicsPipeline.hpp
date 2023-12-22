@@ -35,7 +35,13 @@ public:
 		uint32_t subpass = 0;
 	};
 
-	StarGraphicsPipeline(StarDevice& device, StarShader inVertShader, StarShader inFragShader, PipelineConfigSettings& configSettings);
+	StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, 
+		StarShader vertShader, StarShader fragShader);
+
+	StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, 
+		StarShader vertShader, StarShader fragShader, 
+		StarShader geomShader);
+
 	virtual ~StarGraphicsPipeline();
 
 	//no copy
@@ -48,6 +54,7 @@ public:
 
 protected:
 	StarShader vertShader, fragShader; 
+	std::optional<StarShader> geomShader;
 	PipelineConfigSettings& configSettings; 
 
 	virtual vk::Pipeline buildPipeline() override; 

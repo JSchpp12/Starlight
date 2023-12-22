@@ -44,6 +44,8 @@ namespace star {
 
         virtual StarCamera& getCamera() { return camera; }
 
+        virtual std::vector<star::Rendering_Features> getRequiredDeviceExtensions() { return std::vector<star::Rendering_Features>(); };
+
     protected:
         BasicCamera camera;
         StarScene& scene; 
