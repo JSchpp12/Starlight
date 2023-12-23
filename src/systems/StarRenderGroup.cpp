@@ -80,7 +80,7 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 	//already assuming these are already compatible
 	for (int i = 0; i < largerSet->size(); i++) {
 		if (i < smallerSet->size()) {
-			if (largerSet->at(i)->getBindings().size() > this->largestDescriptorSet.at(i)->getBindings().size()) {
+			if (largerSet->at(i)->getBindings().size() > smallerSet->at(i)->getBindings().size()) {
 				//this->largestDescriptorSet.at(i) = std::move(newLayouts.at(i));
 				//the new set is larger than the current one, replace
 				combinedSet.push_back(std::move(largerSet->at(i))); 
