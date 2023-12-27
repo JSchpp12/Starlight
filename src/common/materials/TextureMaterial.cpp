@@ -25,9 +25,7 @@ vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, 
 {
 	auto sets = std::vector<vk::DescriptorSet>(); 
 	auto layoutBuilder = star::StarDescriptorSetLayout::Builder(device); 
-	this->applyDescriptorSetLayouts(layoutBuilder);
-	auto layout = layoutBuilder.build(); 
-	auto writer = StarDescriptorWriter(device, *layout, groupPool);
+	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
 
 	auto format = vk::Format::eR8G8B8A8Srgb;	
 	auto texInfo = vk::DescriptorImageInfo{
