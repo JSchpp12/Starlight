@@ -5,6 +5,7 @@
 #include "StarDevice.hpp"
 #include "StarTexture.hpp"
 #include "StarCommandBuffer.hpp"
+#include "RenderResourceModifier.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -15,7 +16,7 @@
 #include <unordered_map>
 
 namespace star {
-	class StarMaterial {
+	class StarMaterial : private RenderResourceModifier{
 	public:
 		glm::vec4 surfaceColor{ 0.5f, 0.5f, 0.5f, 1.0f };
 		glm::vec4 highlightColor{ 0.5f, 0.5f, 0.5f, 1.0f };
@@ -88,6 +89,8 @@ namespace star {
 		/// </summary>
 		/// <param name="device"></param>
 		virtual void cleanup(StarDevice& device)=0;
+
+		virtual void initResources(int numFramesInFlight) override {};
 
 	private:
 		//flag to determine if the material has been prepped for rendering operations

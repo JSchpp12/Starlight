@@ -42,6 +42,5 @@ namespace star {
 		/// <param name="objectFilePath">Path of the file to load</param>
 		/// <returns></returns>
 		void loadFromFile(const std::string objectFilePath);
-
 	};
 }

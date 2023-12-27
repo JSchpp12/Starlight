@@ -48,3 +48,10 @@ void star::BumpMaterial::prep(StarDevice& device)
 	this->TextureMaterial::prep(device);
 	bumpMap->prepRender(device);
 }
+
+void star::BumpMaterial::initResources(const int numFramesInFlight)
+{
+	this->TextureMaterial::initResources(numFramesInFlight); 
+
+	ManagerDescriptorPool::request(vk::DescriptorType::eCombinedImageSampler, 1); 
+}

@@ -18,6 +18,7 @@
 #include "LightManager.hpp"
 #include "RenderOptions.hpp"
 #include "ManagerDescriptorPool.hpp"
+#include "RenderResourceModifier.hpp"
 
 #include "Light.hpp"
 
@@ -26,7 +27,7 @@
 #include <vulkan/vulkan.hpp>
 
 namespace star {
-class SwapChainRenderer : public StarRenderer {
+class SwapChainRenderer : public StarRenderer, private RenderResourceModifier {
 public:
 	//how many frames will be sent through the pipeline
 	const int MAX_FRAMES_IN_FLIGHT = 1;
@@ -37,8 +38,6 @@ public:
 	virtual ~SwapChainRenderer();
 
 	void pollEvents(); 
-
-	virtual void init(); 
 
 	virtual void prepare() override;
 
@@ -236,6 +235,10 @@ protected:
 	vk::Format findDepthFormat();
 #pragma endregion
 private:
+
+
+	// Inherited via RenderResourceModifier
+	void initResources(int numFramesInFlight) override;
 
 };
 }

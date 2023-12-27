@@ -7,12 +7,12 @@ namespace star {
 SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, 
 	std::vector<std::reference_wrapper<StarObject>> objectList, 
 	StarCamera& camera, RenderOptions& renderOptions, StarDevice& device) :
-	StarRenderer(window, camera, device), lightList(lightList), objectList(objectList), renderOptions(renderOptions){ }
-
+	StarRenderer(window, camera, device), lightList(lightList), objectList(objectList), renderOptions(renderOptions){
+	createSwapChain();
+}
 
 void SwapChainRenderer::prepare()
 {
-	createSwapChain(); 
 	createImageViews();
 	createRenderPass();
 	createRenderingBuffers();
@@ -188,12 +188,6 @@ SwapChainRenderer::~SwapChainRenderer()
 void SwapChainRenderer::pollEvents()
 {
 	glfwPollEvents();
-}
-
-void SwapChainRenderer::init()
-{
-	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size());
-	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->MAX_FRAMES_IN_FLIGHT);
 }
 
 void SwapChainRenderer::submit()
@@ -934,5 +928,10 @@ vk::Format SwapChainRenderer::findDepthFormat()
 		{ vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint },
 		vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+}
+void SwapChainRenderer::initResources(int numFramesInFlight)
+{
+	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size());
+	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, this->swapChainImages.size());
 }
 }

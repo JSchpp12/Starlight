@@ -30,21 +30,16 @@ StarDescriptorSetLayout::~StarDescriptorSetLayout() {
 }
 
 bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout& compare)
-{
-	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>* largerBindingSet = &this->bindings; 
-	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>* smallerBindingSet = &compare.bindings; 
-	if (compare.bindings.size() > this->bindings.size()) {
-		largerBindingSet = &compare.bindings;
-		smallerBindingSet = &this->bindings;
-	}
+{ 
+	if (compare.bindings.size() != this->bindings.size())
+		return false; 
 
-
-	for (auto& binding : *smallerBindingSet) {
+	for (auto& binding : this->bindings) {
 		//check if the other layout has a binding of the same type
-		if (largerBindingSet->find(binding.first) == largerBindingSet->end()) {
+		if (compare.bindings.find(binding.first) == compare.bindings.end()) {
 			return false;
 		}
-		else if (binding.second.descriptorType != largerBindingSet->at(binding.first).descriptorType) {
+		else if (binding.second.descriptorType != compare.bindings.at(binding.first).descriptorType) {
 			// contains a binding in the same place, check the type
 			return false;
 		}
@@ -206,6 +201,7 @@ StarDescriptorWriter& StarDescriptorWriter::writeImage(uint32_t binding, vk::Des
 
 vk::DescriptorSet StarDescriptorWriter::build() {
 	vk::DescriptorSet set; 
+
 	bool success = this->pool.allocateDescriptorSet(setLayout.getDescriptorSetLayout(), set);
 	if (!success) {
 		throw std::runtime_error("Failed"); 

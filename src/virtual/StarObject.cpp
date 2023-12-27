@@ -100,11 +100,6 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& 
 	return std::move(newPipeline);
 }
 
-void star::StarObject::initRender(int numFramesInFlight)
-{
-	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight);
-}
-
 void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
 	vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, 
 	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets)
@@ -293,4 +288,10 @@ void star::StarObject::recordDrawCommandNormals(star::StarCommandBuffer& command
 
 		ib += rmesh->getIndices().size();
 	}
+}
+
+void star::StarObject::initResources(int numFramesInFlight)
+{
+	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight * this->instances.size() * this->instances.front()->getBufferInfoSize().size());
+
 }

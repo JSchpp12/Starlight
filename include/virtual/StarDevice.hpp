@@ -8,6 +8,7 @@
 #include <set>
 #include <vector>
 #include <vulkan/vulkan.hpp>
+#include <iostream>
 
 namespace star {
 struct SwapChainSupportDetails {

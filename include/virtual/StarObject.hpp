@@ -12,6 +12,7 @@
 #include "StarGraphicsPipeline.hpp"
 #include "StarCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
+#include "RenderResourceModifier.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -31,7 +32,7 @@ namespace star {
 	/// <summary>
 	/// Base class for renderable objects.
 	/// </summary>
-	class StarObject {
+	class StarObject : private RenderResourceModifier {
 	public:
 		bool drawNormals = false;
 
@@ -54,11 +55,6 @@ namespace star {
 		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
 			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, 
 			vk::RenderPass renderPass);
-
-		/// <summary>
-		/// Prepare memory needed for render operations. 
-		/// </summary>
-		virtual void initRender(int numFramesInFlight);
 
 		/// <summary>
 		/// Prepare needed objects for rendering operations.
@@ -124,7 +120,6 @@ namespace star {
 #pragma endregion
 
 	protected:
-
 		///pipeline + rendering infos
 		StarPipeline* sharedPipeline = nullptr;
 		std::unique_ptr<StarPipeline> pipeline; 
@@ -144,9 +139,11 @@ namespace star {
 
 		void recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex); 
 
+		virtual void initResources(int numFramesInFlight) override;
+
 	private:
 		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout; 
 		static vk::PipelineLayout extrusionPipelineLayout; 
 		static std::unique_ptr<StarGraphicsPipeline> tri_normalExtrusionPipeline, triAdj_normalExtrusionPipeline; 
-	};
+};
 }
