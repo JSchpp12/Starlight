@@ -24,8 +24,12 @@ set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
 
-set(GLFW_STANDALONE OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_TESTS OFF)
 add_subdirectory("extern/glm")
+
+set(GLFW_STANDALONE OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF)
+set(GLFW_BUILD_TESTS OFF)
 add_subdirectory("extern/glfw")
 
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
