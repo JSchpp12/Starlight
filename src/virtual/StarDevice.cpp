@@ -6,6 +6,8 @@ StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features>
 {
 	this->requiredDeviceFeatures.samplerAnisotropy = VK_TRUE;
 	this->requiredDeviceFeatures.geometryShader = VK_TRUE;
+	this->requiredDeviceFeatures.fillModeNonSolid = VK_TRUE; 
+
 
 	if (requiredFeatures.size() > 0)
 		prepRequiredFeatures(requiredFeatures); 
@@ -547,13 +549,13 @@ void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTr
 	}
 }
 
-void StarDevice::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) {
+void StarDevice::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size, const vk::DeviceSize dstOffset) {
 	bool useTransferPool = this->hasDedicatedTransferQueue;
 	vk::CommandBuffer commandBuffer = beginSingleTimeCommands(useTransferPool);
 
 	vk::BufferCopy copyRegion{};
 	copyRegion.srcOffset = 0;
-	copyRegion.dstOffset = 0;
+	copyRegion.dstOffset = dstOffset;
 	copyRegion.size = size;
 
 	//note: cannot specify VK_WHOLE_SIZE as before 

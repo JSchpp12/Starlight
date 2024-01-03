@@ -90,10 +90,13 @@ namespace star {
 		/// <param name="device"></param>
 		virtual void cleanup(StarDevice& device)=0;
 
-		virtual void initResources(int numFramesInFlight) override {};
+		virtual void initResources(StarDevice& device, const int numFramesInFlight) override {};
 
 	private:
 		//flag to determine if the material has been prepped for rendering operations
 		bool isPrepared = false;
+
+		// Inherited via RenderResourceModifier
+		void destroyResources(StarDevice& device) override;
 	};
 }

@@ -58,3 +58,7 @@ void star::StarMaterial::bind(StarCommandBuffer& commandBuffer, vk::PipelineLayo
 
 	commandBuffer.buffer(swapChainImageIndex).bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(), descriptors.data(), 0, nullptr);
 }
+
+void star::StarMaterial::destroyResources(StarDevice& device)
+{
+}

@@ -36,7 +36,7 @@ namespace star {
 
 		void prep(StarDevice& device) override;
 
-		virtual void initResources(const int numFramesInFlight) override; 
+		virtual void initResources(StarDevice& device, const int numFramesInFlight) override; 
 
 	};
 }

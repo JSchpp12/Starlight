@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "StarDevice.hpp"
+#include "Enums.hpp"
 
 #include <vulkan/vulkan.hpp>
 

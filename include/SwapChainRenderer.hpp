@@ -80,8 +80,6 @@ protected:
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
 
-	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer; 
-
 	//texture information
 	vk::ImageView textureImageView;
 	vk::Sampler textureSampler;
@@ -235,10 +233,9 @@ protected:
 	vk::Format findDepthFormat();
 #pragma endregion
 private:
+	void initResources(StarDevice& device, const int numFramesInFlight) override;
 
-
-	// Inherited via RenderResourceModifier
-	void initResources(int numFramesInFlight) override;
+	void destroyResources(StarDevice& device) override;
 
 };
 }

@@ -23,24 +23,21 @@ namespace star {
 	/// </summary>
 	class BasicObject : public StarObject {
 	public:
-		static std::unique_ptr<BasicObject> New(std::string objPath); 
+		static std::unique_ptr<BasicObject> New(const std::string objPath); 
 
 		virtual ~BasicObject() = default;
 
 		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 	protected:
+		std::string filePath = "";
+
 		bool isBumpyMaterial = false; 
 		bool isTextureMaterial = false; 
 
-		BasicObject(std::string objectFilePath);
+		BasicObject(std::string objectFilePath) : objectFilePath(objectFilePath) {};
 
 		std::string objectFilePath;
 
-		/// <summary>
-		/// Load meshes from file
-		/// </summary>
-		/// <param name="objectFilePath">Path of the file to load</param>
-		/// <returns></returns>
-		void loadFromFile(const std::string objectFilePath);
+		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer) override;
 	};
 }

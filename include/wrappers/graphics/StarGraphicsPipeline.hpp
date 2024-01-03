@@ -32,6 +32,7 @@ public:
 		vk::PipelineLayout pipelineLayout = nullptr;
 		vk::RenderPass renderPass = nullptr;
 		vk::Extent2D swapChainExtent; 
+		std::vector<vk::VertexInputBindingDescription> vertInputBindingDescription = std::vector<vk::VertexInputBindingDescription>{ VulkanVertex::getBindingDescription() };
 		uint32_t subpass = 0;
 	};
 

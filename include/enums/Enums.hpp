@@ -8,7 +8,8 @@ namespace star {
     enum Buffer_Type {
         update_once_per_frame, 
         once, 
-        geometry_data
+        geometry_vertex, 
+        geometry_index
     };
 
     enum Command_Buffer_Type {
@@ -47,7 +48,8 @@ namespace star {
         texture,
         material,
         light,
-        map
+        map,
+        buffer
     };
 
     enum Buttons {

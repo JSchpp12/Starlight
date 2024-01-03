@@ -8,6 +8,7 @@
 #include "StarMaterialMesh.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
+#include "CastHelpers.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -16,79 +17,68 @@
 namespace star{
 	class StarMesh {
 	public:
-		StarMesh(std::unique_ptr<std::vector<Vertex>> vertices, std::unique_ptr<std::vector<uint32_t>> indices, 
-			std::shared_ptr<StarMaterial> material, bool packAdjacencies = false) : 
-			vertices(std::move(vertices)), indices(std::move(indices)),
-			material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), triangular(indices->size() % 3 == 0) {
-			//packing will also ensure no shared verts
-			if (packAdjacencies) {
-				star::GeometryHelpers::packTriangleAdjacency(*this->vertices, *this->indices);
-			}
+		StarMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, 
+			std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked) : 
+			material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), 
+			triangular(indices.size() % 3 == 0), numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())), 
+			numInds(CastHelpers::size_t_to_unsigned_int(indices.size())) {
 
-			prepTangents(); 
+			calcBoundingBox(vertices, this->boundBoxMaxCoord, this->boundBoxMinCoord);
+
+		};
+
+		StarMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices,
+			std::shared_ptr<StarMaterial> material, const glm::vec3& boundBoxMinCoord,
+			const glm::vec3& boundBoxMaxCoord, bool packAdjacencies = false) :
+			material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), 
+			triangular(indices.size() % 3 == 0), boundBoxMaxCoord(boundBoxMaxCoord), 
+			boundBoxMinCoord(boundBoxMinCoord), 
+			numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())),
+			numInds(CastHelpers::size_t_to_unsigned_int(indices.size()))
+		{
 		};
 
 		virtual void prepRender(StarDevice& device);
 
-		std::vector<Vertex>& getVertices() { return *this->vertices; }
-		std::vector<uint32_t>& getIndices() { return *this->indices; }
 		StarMaterial& getMaterial() { return *this->material; }
 		bool hasAdjacentVertsPacked() const { return this->hasAdjacenciesPacked; }
 		bool isTriangular() const { return this->triangular; }
+		void getBoundingBoxCoords(glm::vec3& lowerBoundCoord, glm::vec3& upperBoundCoord) const {
+			lowerBoundCoord = glm::vec3(this->boundBoxMinCoord.x, this->boundBoxMinCoord.y, this->boundBoxMinCoord.z);
+			upperBoundCoord = glm::vec3(this->boundBoxMaxCoord.x, this->boundBoxMaxCoord.y, this->boundBoxMaxCoord.z);
+		};
+		uint32_t getNumVerts() const { return this->numVerts; }
+		uint32_t getNumIndices() const { return this->numInds; }
+
 	protected:
 		bool hasAdjacenciesPacked = false; 
 		bool triangular = false; 
-		std::unique_ptr<std::vector<Vertex>> vertices; 
-		std::unique_ptr<std::vector<uint32_t>> indices; 
+		glm::vec3 boundBoxMinCoord, boundBoxMaxCoord; 
 		std::shared_ptr<StarMaterial> material; 
+		uint32_t numVerts=0, numInds=0; 
 
-		/// <summary>
-		/// Calculate the tangent and bitangent vectors for each vertex in the triangle
-		/// </summary>
-		void calculateTangentSpaceVectors(std::array<Vertex*, 3> verts) {
-			glm::vec3 tangent = glm::vec3(), bitangent = glm::vec3();
-			glm::vec3 edge1 = verts[1]->pos - verts[0]->pos;
-			glm::vec3 edge2 = verts[2]->pos - verts[0]->pos;
-			glm::vec2 deltaUV1 = verts[1]->texCoord - verts[0]->texCoord;
-			glm::vec2 deltaUV2 = verts[2]->texCoord - verts[0]->texCoord;
+		static void calcBoundingBox(const std::vector<Vertex>& verts, glm::vec3& upperBoundingBoxCoord, glm::vec3& lowerBoundingBoxCoord) {
+			glm::vec3 max{}, min{};
 
-			float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+			//calcualte bounding box info 
+			for (int i = 1; i < verts.size(); i++) {
+				if (verts.at(i).pos.x < min.x)
+					min.x = verts.at(i).pos.x;
+				if (verts.at(i).pos.y < min.y)
+					min.y = verts.at(i).pos.y;
+				if (verts.at(i).pos.z < min.z)
+					min.z = verts.at(i).pos.z;
 
-			tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-			tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-			tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+				if (verts.at(i).pos.x > max.x)
+					max.x = verts.at(i).pos.x;
+				if (verts.at(i).pos.y > max.y)
+					max.y = verts.at(i).pos.y; 
+				if (verts.at(i).pos.z > max.z)
+					max.z = verts.at(i).pos.z;
+			}
 
-			bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
-			bitangent.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
-			bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
-
-			verts[0]->aTangent = tangent;
-			verts[0]->aBitangent = bitangent;
-			verts[1]->aTangent = tangent;
-			verts[1]->aBitangent = bitangent;
-			verts[2]->aTangent = tangent;
-			verts[2]->aBitangent = bitangent;
+			lowerBoundingBoxCoord = min;
+			upperBoundingBoxCoord = max; 
 		}
-
-		void prepTangents() {
-			//ensure that all verticies have their proper materials applied
-			for (int i = 0; i < this->vertices->size(); i++) {
-				this->vertices->at(i).matAmbient = this->material->ambient;
-				this->vertices->at(i).matDiffuse = this->material->diffuse;
-			}
-
-			//calculate tangents for all provided verts and indices
-			for (int i = 0; i < this->indices->size() - 3; i += 3) {
-				//go through each group of 3 verts -- assume they are triangles
-				//apply needed calculations
-
-				std::array<Vertex*, 3> triVerts{
-					&this->vertices->at(this->indices->at(i)),
-					&this->vertices->at(this->indices->at(i + 1)),
-					&this->vertices->at(this->indices->at(i + 2))
-				};
-				calculateTangentSpaceVectors(triVerts);
-			}
-		};
 	};
 }

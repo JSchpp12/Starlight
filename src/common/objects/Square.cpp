@@ -55,7 +55,12 @@ void star::Square::load()
 
 	std::unique_ptr<star::VertColorMaterial> material = std::unique_ptr<star::VertColorMaterial>(new star::VertColorMaterial());
 	auto newMeshs = std::vector<std::unique_ptr<star::StarMesh>>();
-	newMeshs.emplace_back(std::unique_ptr<star::StarMesh>(new star::StarMesh(std::move(verts), std::move(inds), std::move(material))));
+	newMeshs.emplace_back(std::unique_ptr<star::StarMesh>(new star::StarMesh(*verts, *inds, std::move(material), false)));
 
 	this->meshes = std::move(newMeshs); 
+}
+
+std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::Square::loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer)
+{
+	return std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>();
 }

@@ -6,8 +6,7 @@
 #include "StarBuffer.hpp"
 
 namespace star {
-
-vk::DeviceSize StarBuffer::getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment) {
+	vk::DeviceSize StarBuffer::getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment) {
 	if (minOffsetAlignment > 0) {
 		return  (instanceSize + minOffsetAlignment - 1) & ~(minOffsetAlignment - 1);
 	}

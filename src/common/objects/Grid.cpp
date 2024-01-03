@@ -8,7 +8,7 @@ namespace star {
 		std::shared_ptr<VertColorMaterial> material = std::shared_ptr<VertColorMaterial>(new VertColorMaterial());
 
 		this->loadGeometry(verts, indices); 
-		this->meshes.push_back(std::unique_ptr<StarMesh>(new StarMesh(std::move(verts), std::move(indices), material)));
+		this->meshes.push_back(std::unique_ptr<StarMesh>(new StarMesh(*verts, *indices, material, false)));
 	}
 
 	Grid::Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material): vertX(vertX), vertY(vertY)
@@ -18,7 +18,7 @@ namespace star {
 
 		this->loadGeometry(verts, indices); 
 
-		this->meshes.push_back(std::unique_ptr<StarMesh>(new StarMesh(std::move(verts), std::move(indices), material)));
+		this->meshes.push_back(std::unique_ptr<StarMesh>(new StarMesh(*verts, *indices, material, false)));
 	}
 
 	void Grid::loadGeometry(std::unique_ptr<std::vector<Vertex>>& verts, std::unique_ptr<std::vector<uint32_t>>& indices)
