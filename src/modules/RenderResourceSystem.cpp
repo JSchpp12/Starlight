@@ -20,12 +20,22 @@ void star::RenderResourceSystem::bind(const Handle& resource, vk::CommandBuffer&
 {
 	switch (resource.type) {
 	case(Handle_Type::buffer):
-		assert(resource.id < this->buffers.size() && "Handle provided has an id which does not map to any resources");
+		assert(resource.id < buffers.size() && "Handle provided has an id which does not map to any resources");
+		{
+			StarBuffer& buffer = *buffers.at(resource.id);
+			if (buffer.getUsageFlags() & vk::BufferUsageFlagBits::eVertexBuffer) {
+				vk::DeviceSize offset{};
+				commandBuffer.bindVertexBuffers(0, buffer.getBuffer(), offset);
+			}
+			else if (buffer.getUsageFlags() & vk::BufferUsageFlagBits::eIndexBuffer)
+				commandBuffer.bindIndexBuffer(buffer.getBuffer(), {}, vk::IndexType::eUint32);
+			else
+				throw std::runtime_error("Unsupported buffer type requested for bind operation from Resource System");
+		}
 
 		break;
 	default:
 		throw std::runtime_error("Unsupported resource type requested for bind operation " + resource.type);
-		break;
 	}
 }
 
@@ -40,7 +50,7 @@ void star::RenderResourceSystem::preparyPrimaryGeometry(StarDevice& device)
 		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> result = function(device, primaryVertBuffer, primaryIndBuffer);
 
 		if (result.first->getUsageFlags() & vk::BufferUsageFlagBits::eVertexBuffer && result.second->getUsageFlags() & vk::BufferUsageFlagBits::eIndexBuffer) {
-			totalVertSize += result.first->getInstanceSize();
+			totalVertSize += result.first->getBufferSize();
 			totalVertInstanceCount += result.first->getInstanceCount();
 			totalIndSize += result.second->getInstanceSize(); 
 			totalIndInstanceCount += result.second->getInstanceCount();
@@ -48,9 +58,9 @@ void star::RenderResourceSystem::preparyPrimaryGeometry(StarDevice& device)
 			stagingBuffersIndex.push_back(std::move(result.second)); 
 		}
 		else {
-			totalVertSize += result.second->getInstanceSize(); 
+			totalVertSize += result.second->getBufferSize(); 
 			totalVertInstanceCount += result.second->getInstanceCount(); 
-			totalIndSize += result.first->getInstanceSize(); 
+			totalIndSize += result.first->getBufferSize(); 
 			totalIndInstanceCount += result.first->getInstanceCount();
 			stagingBuffersVert.push_back(std::move(result.second)); 
 			stagingBuffersIndex.push_back(std::move(result.first));
@@ -59,9 +69,10 @@ void star::RenderResourceSystem::preparyPrimaryGeometry(StarDevice& device)
 		loadGeometryCallbacks.pop();
 	}
 
+	vk::DeviceSize vBuffSize = totalVertInstanceCount * sizeof(star::Vertex);
 	std::unique_ptr<StarBuffer> vertBuffer = std::make_unique<StarBuffer>(
 		device, 
-		totalVertSize, 
+		vBuffSize, 
 		totalVertInstanceCount,
 		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, 
 		vk::MemoryPropertyFlagBits::eDeviceLocal
@@ -74,10 +85,10 @@ void star::RenderResourceSystem::preparyPrimaryGeometry(StarDevice& device)
 		}
 	}
 
-
+	vk::DeviceSize iBuffSize = totalIndInstanceCount * sizeof(uint32_t);
 	std::unique_ptr<StarBuffer> indBuffer = std::make_unique<StarBuffer>(
 		device,
-		totalIndSize,
+		iBuffSize,
 		totalIndInstanceCount,
 		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 		vk::MemoryPropertyFlagBits::eDeviceLocal
@@ -91,7 +102,8 @@ void star::RenderResourceSystem::preparyPrimaryGeometry(StarDevice& device)
 		}
 	}
 
-
+	buffers.push_back(std::move(vertBuffer));
+	buffers.push_back(std::move(indBuffer));
 }
 
 void star::RenderResourceSystem::runInits(StarDevice& device, const int numFramesInFlight)

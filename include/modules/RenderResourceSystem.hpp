@@ -3,6 +3,7 @@
 #include "StarDevice.hpp"
 #include "StarBuffer.hpp"
 #include "Handle.hpp"
+#include "Vertex.hpp"
 
 #include "BufferHandle.hpp"
 #include "StarCommandBuffer.hpp"

@@ -111,7 +111,8 @@ namespace star {
 		/// @return 
 		virtual std::vector<std::unique_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(StarDevice& device);
 
-		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer)=0;
+
+		virtual std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) = 0;
 
 #pragma region getters
 		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
@@ -142,6 +143,7 @@ namespace star {
 	private:
 		std::unique_ptr<StarBuffer> boundingBoxVertBuffer, boundingBoxIndBuffer; 
 		std::vector<std::vector<vk::DescriptorSet>> boundingDescriptors; 
+		std::unique_ptr<Handle> vertBuffer, indBuffer; 
 		uint32_t boundingBoxIndsCount = 0; 
 
 		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout; 
@@ -160,5 +162,7 @@ namespace star {
 		void destroyResources(StarDevice& device) override;
 
 		void initResources(StarDevice& device, const int numFramesInFlight) override;
+
+		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer);
 };
 }

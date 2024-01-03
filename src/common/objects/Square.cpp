@@ -60,7 +60,7 @@ void star::Square::load()
 	this->meshes = std::move(newMeshs); 
 }
 
-std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::Square::loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer)
+std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::Square::loadGeometryBuffers(StarDevice& device)
 {
 	return std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>();
 }

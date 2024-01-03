@@ -168,6 +168,9 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 
 void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, 
 	int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start) {
+	RenderResourceSystem::bind(*this->indBuffer, commandBuffer.buffer(swapChainIndexNum));
+	RenderResourceSystem::bind(*this->vertBuffer, commandBuffer.buffer(swapChainIndexNum));
+
 	if (this->pipeline)
 		this->pipeline->bind(commandBuffer.buffer(swapChainIndexNum)); 
 
@@ -409,6 +412,14 @@ void star::StarObject::initResources(StarDevice& device, const int numFramesInFl
 		);
 		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxIndBuffer->getBuffer(), bufferSize);
 	}
+}
+
+std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::StarObject::loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer)
+{
+	this->vertBuffer = std::make_unique<Handle>(primaryVertBuffer);
+	this->indBuffer = std::make_unique<Handle>(primaryIndexBuffer);
+
+	return this->loadGeometryBuffers(device);
 }
 
 void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)

@@ -5,7 +5,42 @@ std::unique_ptr<star::BasicObject> star::BasicObject::New(std::string objPath)
 	return std::unique_ptr<BasicObject>(new BasicObject(objPath));
 }
 
-std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::BasicObject::loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer)
+std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
+{
+	std::unordered_map<star::Shader_Stage, StarShader> shaders; 
+	
+	if (this->isBumpyMaterial) {
+		//load vertex shader
+		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.vert";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
+
+		//load fragment shader
+		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.frag";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
+	}
+	else if (this->isTextureMaterial){
+		//load vertex shader
+		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.vert";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
+
+		//load fragment shader
+		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.frag";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
+	}
+	else {
+		//load vertex shader
+		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.vert";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
+
+		//load fragment shader
+		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.frag";
+		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
+	}
+			
+	return shaders; 
+}
+
+std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::BasicObject::loadGeometryBuffers(StarDevice& device)
 {
 	std::string texturePath = FileHelpers::GetBaseFileDirectory(objectFilePath);
 	std::string materialFile = FileHelpers::GetBaseFileDirectory(objectFilePath);
@@ -15,7 +50,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 	std::cout << "Loading object file: " << objectFilePath << std::endl;
 
 	std::vector<std::unique_ptr<std::vector<Vertex>>> meshVerts;
-	std::vector<std::unique_ptr<std::vector<uint32_t>>> meshInds; 
+	std::vector<std::unique_ptr<std::vector<uint32_t>>> meshInds;
 
 	/* Load Object From File */
 	tinyobj::attrib_t attrib;
@@ -195,9 +230,8 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 
 	this->meshes = std::move(meshes);
 
-
 	//create buffers
-	std::unique_ptr<StarBuffer> vertStagingBuffer; 
+	std::unique_ptr<StarBuffer> vertStagingBuffer;
 	{
 		vk::DeviceSize vertSize = sizeof(Vertex) * totalNumVerts;
 		vertStagingBuffer = std::make_unique<StarBuffer>(
@@ -217,7 +251,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 		}
 		vertStagingBuffer->unmap();
 	}
-	
+
 	std::unique_ptr<StarBuffer> indStagingBuffer;
 	{
 		vk::DeviceSize indSize = sizeof(uint32_t) * totalNumInds;
@@ -233,8 +267,8 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 		vk::DeviceSize offset = 0;
 		for (auto& inds : meshInds) {
 			vk::DeviceSize meshIndSize = sizeof(uint32_t) * inds->size();
-			indStagingBuffer->writeToBuffer(inds->data(), meshIndSize, offset); 
-			
+			indStagingBuffer->writeToBuffer(inds->data(), meshIndSize, offset);
+
 			offset += meshIndSize;
 		}
 
@@ -242,39 +276,4 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 	}
 
 	return std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(std::move(vertStagingBuffer), std::move(indStagingBuffer));
-}
-
-std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
-{
-	std::unordered_map<star::Shader_Stage, StarShader> shaders; 
-	
-	if (this->isBumpyMaterial) {
-		//load vertex shader
-		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.vert";
-		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
-
-		//load fragment shader
-		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.frag";
-		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
-	}
-	else if (this->isTextureMaterial){
-		//load vertex shader
-		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.vert";
-		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
-
-		//load fragment shader
-		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.frag";
-		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
-	}
-	else {
-		//load vertex shader
-		std::string vertShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.vert";
-		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex, StarShader(vertShaderPath, Shader_Stage::vertex)));
-
-		//load fragment shader
-		std::string fragShaderPath = ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.frag";
-		shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment, StarShader(fragShaderPath, Shader_Stage::fragment)));
-	}
-			
-	return shaders; 
 }
