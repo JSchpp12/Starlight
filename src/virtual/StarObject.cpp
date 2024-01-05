@@ -319,6 +319,29 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 	}
 }
 
+void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
+{
+	assert(this->meshes.size() > 0 && "This function must be called after meshes are loaded");
+
+	glm::vec3 minBoundCoord{}, maxBoundCoord{};
+	this->meshes.front()->getBoundingBoxCoords(minBoundCoord, maxBoundCoord);
+
+	for (int i = 1; i < this->meshes.size(); i++) {
+		glm::vec3 curMin{}, curMax{};
+		this->meshes.at(i)->getBoundingBoxCoords(curMin, curMax);
+
+		if (glm::all(glm::lessThan(curMin, minBoundCoord)))
+			minBoundCoord = curMin;
+
+		if (glm::all(glm::greaterThan(curMax, maxBoundCoord)))
+			maxBoundCoord = curMax;
+	}
+
+	star::GeometryHelpers::calculateAxisAlignedBoundingBox(minBoundCoord, maxBoundCoord, verts, inds, true);
+
+	this->boundingBoxIndsCount = inds.size();
+}
+
 void star::StarObject::recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex)
 {
 	uint32_t ib = ib_start;
@@ -420,29 +443,6 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 
 
 	return this->loadGeometryBuffers(device);
-}
-
-void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
-{
-	assert(this->meshes.size() > 0 && "This function must be called after meshes are loaded");  
-
-	glm::vec3 minBoundCoord{}, maxBoundCoord{};
-	this->meshes.front()->getBoundingBoxCoords(minBoundCoord, maxBoundCoord);
-
-	for (int i = 1; i < this->meshes.size(); i++) {
-		glm::vec3 curMin{}, curMax{};
-		this->meshes.at(i)->getBoundingBoxCoords(curMin, curMax);
-
-		if (glm::all(glm::lessThan(curMin, minBoundCoord)))
-			minBoundCoord = curMin; 
-		
-		if (glm::all(glm::greaterThan(curMax, maxBoundCoord)))
-			maxBoundCoord = curMax; 
-	}
-
-	star::GeometryHelpers::calculateAxisAlignedBoundingBox(minBoundCoord, maxBoundCoord, verts, inds, true);
-
-	this->boundingBoxIndsCount = inds.size(); 
 }
 
 void star::StarObject::destroyResources(StarDevice& device)

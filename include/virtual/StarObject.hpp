@@ -140,6 +140,8 @@ namespace star {
 
 		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight);
 
+		virtual void calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
+
 	private:
 		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
 		static vk::PipelineLayout extrusionPipelineLayout;
@@ -156,8 +158,6 @@ namespace star {
 		void recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex);
 
 		void recordDrawCommandBoundingBox(star::StarCommandBuffer& commandBuffer, int inFlightIndex);
-		
-		void calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds); 
 
 		void destroyResources(StarDevice& device) override;
 
