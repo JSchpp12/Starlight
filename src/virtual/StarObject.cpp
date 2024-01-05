@@ -352,7 +352,6 @@ void star::StarObject::recordDrawCommandBoundingBox(star::StarCommandBuffer& com
 
 	this->boundBoxPipeline->bind(buffer); 
 	buffer.setLineWidth(1.0f);
-	//buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, extrusionPipelineLayout, 0, this->boundingDescriptors.at(inFlightIndex).size(), this->boundingDescriptors.at(inFlightIndex).data(), 0, nullptr);
 
 	buffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0); 
 }
@@ -378,7 +377,7 @@ void star::StarObject::initResources(StarDevice& device, const int numFramesInFl
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
 		}; 
 		stagingBuffer.map(); 
-		stagingBuffer.writeToBuffer(bbVerts.data());
+		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
 
 		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(device,
 			size,
@@ -414,10 +413,11 @@ void star::StarObject::initResources(StarDevice& device, const int numFramesInFl
 	}
 }
 
-std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::StarObject::loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer)
+std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::StarObject::loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer)
 {
-	this->vertBuffer = std::make_unique<Handle>(primaryVertBuffer);
-	this->indBuffer = std::make_unique<Handle>(primaryIndexBuffer);
+	this->vertBuffer = std::make_unique<BufferHandle>(primaryVertBuffer);
+	this->indBuffer = std::make_unique<BufferHandle>(primaryIndexBuffer);
+
 
 	return this->loadGeometryBuffers(device);
 }

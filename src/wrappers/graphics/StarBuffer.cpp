@@ -47,7 +47,7 @@ void StarBuffer::unmap() {
 void StarBuffer::writeToBuffer(void* data, vk::DeviceSize size, vk::DeviceSize offset) {
 	assert(this->mapped && "Cannot copy to unmapped buffer");
 
-	if (size == VK_WHOLE_SIZE) {
+	if (size == vk::WholeSize) {
 		memcpy(this->mapped, data, this->bufferSize);
 	}
 	else {

@@ -13,7 +13,7 @@ StarEngine::~StarEngine()
 
 void StarEngine::Run()
 {
-	RenderResourceSystem::preparyPrimaryGeometry(*this->renderingDevice);
+	RenderResourceSystem::preparePrimaryGeometry(*this->renderingDevice);
 	RenderResourceSystem::runInits(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
 
 	this->descriptorManager.build(*this->renderingDevice);
@@ -39,7 +39,7 @@ void StarEngine::Run()
 	}
 
 	this->renderingDevice->getDevice().waitIdle();
-	RenderResourceSystem::runDestroys(*this->renderingDevice);
+	RenderResourceSystem::cleanup(*this->renderingDevice);
 	StarObject::cleanupSharedResources(*this->renderingDevice); 
 }
 

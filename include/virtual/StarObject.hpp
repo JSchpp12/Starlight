@@ -141,17 +141,17 @@ namespace star {
 		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight);
 
 	private:
+		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
+		static vk::PipelineLayout extrusionPipelineLayout;
+		static std::unique_ptr<StarGraphicsPipeline> tri_normalExtrusionPipeline, triAdj_normalExtrusionPipeline;
+		static std::unique_ptr<StarDescriptorSetLayout> boundDescriptorLayout;
+		static vk::PipelineLayout boundPipelineLayout;
+		static std::unique_ptr<StarGraphicsPipeline> boundBoxPipeline;
+
 		std::unique_ptr<StarBuffer> boundingBoxVertBuffer, boundingBoxIndBuffer; 
 		std::vector<std::vector<vk::DescriptorSet>> boundingDescriptors; 
-		std::unique_ptr<Handle> vertBuffer, indBuffer; 
+		std::unique_ptr<BufferHandle> vertBuffer, indBuffer; 
 		uint32_t boundingBoxIndsCount = 0; 
-
-		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout; 
-		static vk::PipelineLayout extrusionPipelineLayout; 
-		static std::unique_ptr<StarGraphicsPipeline> tri_normalExtrusionPipeline, triAdj_normalExtrusionPipeline; 
-		static std::unique_ptr<StarDescriptorSetLayout> boundDescriptorLayout; 
-		static vk::PipelineLayout boundPipelineLayout; 
-		static std::unique_ptr<StarGraphicsPipeline> boundBoxPipeline; 
 
 		void recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex);
 
@@ -163,6 +163,6 @@ namespace star {
 
 		void initResources(StarDevice& device, const int numFramesInFlight) override;
 
-		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, Handle& primaryVertBuffer, Handle& primaryIndexBuffer);
+		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer);
 };
 }

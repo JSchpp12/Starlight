@@ -233,7 +233,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 	//create buffers
 	std::unique_ptr<StarBuffer> vertStagingBuffer;
 	{
-		vk::DeviceSize vertSize = sizeof(Vertex) * totalNumVerts;
+		vk::DeviceSize vertSize = sizeof(Vertex);
 		vertStagingBuffer = std::make_unique<StarBuffer>(
 			device,
 			vertSize,
@@ -254,7 +254,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 
 	std::unique_ptr<StarBuffer> indStagingBuffer;
 	{
-		vk::DeviceSize indSize = sizeof(uint32_t) * totalNumInds;
+		vk::DeviceSize indSize = sizeof(uint32_t);
 		indStagingBuffer = std::make_unique<StarBuffer>(
 			device,
 			indSize,

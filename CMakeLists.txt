@@ -60,7 +60,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
     "src/common/RuntimeUpdateTexture.cpp"
-    "src/common/BufferHandle.cpp"
     "src/virtual/ModulePlug/RenderResourceModifier.cpp"
     "src/virtual/ModulePlug/RenderResourceModifierGeometry.cpp"
     "src/virtual/StarMesh.cpp"
