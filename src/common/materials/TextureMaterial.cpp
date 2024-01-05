@@ -5,6 +5,11 @@ void star::TextureMaterial::prep(StarDevice& device)
 	texture->prepRender(device);
 }
 
+void star::TextureMaterial::initResources(StarDevice& device, const int numFramesInFlight)
+{
+	ManagerDescriptorPool::request(vk::DescriptorType::eCombinedImageSampler, 1); 
+}
+
 void star::TextureMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder)
 {
 	constBuilder.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
@@ -19,6 +24,7 @@ void star::TextureMaterial::cleanup(StarDevice& device)
 vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
 {
 	auto sets = std::vector<vk::DescriptorSet>(); 
+	auto layoutBuilder = star::StarDescriptorSetLayout::Builder(device); 
 	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
 
 	auto format = vk::Format::eR8G8B8A8Srgb;	

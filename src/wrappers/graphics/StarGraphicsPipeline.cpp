@@ -176,13 +176,12 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 		shaderStages.push_back(geomShaderStageInfo);
 	}
 
-	auto bindingDescriptions = VulkanVertex::getBindingDescription();
 	auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
 
 	vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescriptions;
+	vertexInputInfo.vertexBindingDescriptionCount = configSettings.vertInputBindingDescription.size();
+	vertexInputInfo.pVertexBindingDescriptions = configSettings.vertInputBindingDescription.data();
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 	

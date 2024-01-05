@@ -24,8 +24,12 @@ set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
 
-set(GLFW_STANDALONE OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_TESTS OFF)
 add_subdirectory("extern/glm")
+
+set(GLFW_STANDALONE OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF)
+set(GLFW_BUILD_TESTS OFF)
 add_subdirectory("extern/glfw")
 
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
@@ -56,6 +60,8 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
     "src/common/RuntimeUpdateTexture.cpp"
+    "src/virtual/ModulePlug/RenderResourceModifier.cpp"
+    "src/virtual/ModulePlug/RenderResourceModifierGeometry.cpp"
     "src/virtual/StarMesh.cpp"
     "src/virtual/StarRenderer.cpp" 
     "src/StarEngine.cpp" 
@@ -80,6 +86,8 @@ set(${PROJECT_NAME}_SOURCE
     "src/templates/StarApplication.cpp"
     "src/controllers/OptionsController.cpp"
     "src/modules/InteractionSystem.cpp"
+    "src/modules/RenderResourceSystem.cpp"
+    "src/modules/RenderMemorySystem.cpp"
     "src/systems/StarRenderGroup.cpp" 
     "src/systems/StarSystemRenderPointLight.cpp" 
     "src/virtual/StarShader.cpp" 
@@ -117,6 +125,8 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/BasicCamera.hpp"
     "include/common/RuntimeUpdateTexture.hpp"
     "include/common/ComputeTexture.hpp"
+    "include/virtual/ModulePlug/RenderResourceModifier.hpp"
+    "include/virtual/ModulePlug/RenderResourceModifierGeometry.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
@@ -141,6 +151,8 @@ set(${PROJECT_NAME}_HEADERS
     "include/managers/ManagerDescriptorPool.hpp"
     "include/controllers/OptionsController.hpp"
     "include/modules/InteractionSystem.hpp"
+    "include/modules/RenderResourceSystem.hpp"
+    "include/modules/RenderMemorySystem.hpp"
     "include/systems/StarRenderGroup.hpp"
     "include/virtual/StarMaterial.hpp"
     "include/virtual/StarSystemPipeline.hpp"
@@ -151,7 +163,8 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarShader.hpp"
     "include/enums/Enums.hpp"
     "include/enums/Key.hpp"
-    "include/structs/Handle.hpp"
+    "include/common/Handle.hpp"
+    "include/common/BufferHandle.hpp"
     "include/structs/LightBufferObject.hpp"
     "include/structs/Vertex.hpp"
     "include/structs/Color.hpp"
@@ -185,6 +198,7 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC
         "include/"
         "include/virtual/"
+        "include/virtual/ModulePlug"
         "include/wrappers/"
         "include/wrappers/graphics/"
         "include/structs/"

@@ -6,8 +6,7 @@
 #include "StarBuffer.hpp"
 
 namespace star {
-
-vk::DeviceSize StarBuffer::getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment) {
+	vk::DeviceSize StarBuffer::getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment) {
 	if (minOffsetAlignment > 0) {
 		return  (instanceSize + minOffsetAlignment - 1) & ~(minOffsetAlignment - 1);
 	}
@@ -48,7 +47,7 @@ void StarBuffer::unmap() {
 void StarBuffer::writeToBuffer(void* data, vk::DeviceSize size, vk::DeviceSize offset) {
 	assert(this->mapped && "Cannot copy to unmapped buffer");
 
-	if (size == VK_WHOLE_SIZE) {
+	if (size == vk::WholeSize) {
 		memcpy(this->mapped, data, this->bufferSize);
 	}
 	else {

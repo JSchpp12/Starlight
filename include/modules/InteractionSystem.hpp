@@ -1,6 +1,5 @@
 #pragma once 
 
-#include "Interactivity.hpp"
 #include "Key.hpp"
 #include "KeyStates.hpp"
 

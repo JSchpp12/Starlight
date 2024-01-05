@@ -12,6 +12,7 @@
 #include "StarGraphicsPipeline.hpp"
 #include "StarCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
+#include "RenderResourceModifierGeometry.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -31,9 +32,10 @@ namespace star {
 	/// <summary>
 	/// Base class for renderable objects.
 	/// </summary>
-	class StarObject {
+	class StarObject : private RenderResourceModifierGeometry {
 	public:
 		bool drawNormals = false;
+		bool drawBoundingBox = false; 
 
 		static void initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent,
 			vk::RenderPass renderPass, int numSwapChainImages,
@@ -54,11 +56,6 @@ namespace star {
 		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
 			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, 
 			vk::RenderPass renderPass);
-
-		/// <summary>
-		/// Prepare memory needed for render operations. 
-		/// </summary>
-		virtual void initRender(int numFramesInFlight);
 
 		/// <summary>
 		/// Prepare needed objects for rendering operations.
@@ -114,8 +111,10 @@ namespace star {
 		/// @return 
 		virtual std::vector<std::unique_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(StarDevice& device);
 
+
+		virtual std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) = 0;
+
 #pragma region getters
-		//glm::mat4 getNormalMatrix() { return glm::inverseTranspose(getDisplayMatrix()); }
 		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
 		virtual StarPipeline& getPipline() {
 			assert(this->pipeline && "This object is expecting to share a pipeline with another object."); 
@@ -124,7 +123,6 @@ namespace star {
 #pragma endregion
 
 	protected:
-
 		///pipeline + rendering infos
 		StarPipeline* sharedPipeline = nullptr;
 		std::unique_ptr<StarPipeline> pipeline; 
@@ -140,13 +138,31 @@ namespace star {
 			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, 
 			std::vector<std::vector<vk::DescriptorSet>> globalSets);
 
-		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight); 
-
-		void recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex); 
+		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight);
 
 	private:
-		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout; 
-		static vk::PipelineLayout extrusionPipelineLayout; 
-		static std::unique_ptr<StarGraphicsPipeline> tri_normalExtrusionPipeline, triAdj_normalExtrusionPipeline; 
-	};
+		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
+		static vk::PipelineLayout extrusionPipelineLayout;
+		static std::unique_ptr<StarGraphicsPipeline> tri_normalExtrusionPipeline, triAdj_normalExtrusionPipeline;
+		static std::unique_ptr<StarDescriptorSetLayout> boundDescriptorLayout;
+		static vk::PipelineLayout boundPipelineLayout;
+		static std::unique_ptr<StarGraphicsPipeline> boundBoxPipeline;
+
+		std::unique_ptr<StarBuffer> boundingBoxVertBuffer, boundingBoxIndBuffer; 
+		std::vector<std::vector<vk::DescriptorSet>> boundingDescriptors; 
+		std::unique_ptr<BufferHandle> vertBuffer, indBuffer; 
+		uint32_t boundingBoxIndsCount = 0; 
+
+		void recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex);
+
+		void recordDrawCommandBoundingBox(star::StarCommandBuffer& commandBuffer, int inFlightIndex);
+		
+		void calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds); 
+
+		void destroyResources(StarDevice& device) override;
+
+		void initResources(StarDevice& device, const int numFramesInFlight) override;
+
+		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer);
+};
 }

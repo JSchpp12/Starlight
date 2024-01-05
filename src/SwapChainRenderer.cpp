@@ -7,12 +7,12 @@ namespace star {
 SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, 
 	std::vector<std::reference_wrapper<StarObject>> objectList, 
 	StarCamera& camera, RenderOptions& renderOptions, StarDevice& device) :
-	StarRenderer(window, camera, device), lightList(lightList), objectList(objectList), renderOptions(renderOptions){ }
-
+	StarRenderer(window, camera, device), lightList(lightList), objectList(objectList), renderOptions(renderOptions){
+	createSwapChain();
+}
 
 void SwapChainRenderer::prepare()
 {
-	createSwapChain(); 
 	createImageViews();
 	createRenderPass();
 	createRenderingBuffers();
@@ -34,8 +34,8 @@ void SwapChainRenderer::createRenderingGroups()
 	//count total number of verticies 
 	for (StarObject& object : objectList) {
 		for (auto& mesh : object.getMeshes()) {
-			totalNumInd += mesh->getIndices().size(); 
-			totalNumVert += mesh->getVertices().size(); 
+			totalNumInd += mesh->getNumIndices(); 
+			totalNumVert += mesh->getNumVerts();
 		}
 	}
 
@@ -63,75 +63,6 @@ void SwapChainRenderer::createRenderingGroups()
 		}
 
 		//add object verts to vertex buffer + index buffer
-		for (auto& mesh : object.getMeshes()) {
-			//copy verts
-			uint32_t startVertexCounter = currentNumVert;
-			uint32_t startIndexCounter = currentNumVert;
-			for (size_t i = 0; i < mesh->getVertices().size(); i++) {
-				vertexList.at(currentNumVert) = mesh->getVertices().at(i); 
-				currentNumVert++;
-			}
-
-			//copy indicies
-			for (size_t i = 0; i < mesh->getIndices().size(); i++) {
-				uint32_t ind = CastHelpers::size_t_to_unsigned_int(mesh->getIndices().at(i)) + startIndexCounter; 
-				indiciesList.at(currentNumInd) = ind;
-				currentNumInd++; 
-			}
-		}
-	}
-
-	//create device buffers for rendering
-
-	//vertex buffer
-	{
-		vk::DeviceSize bufferSize = sizeof(vertexList.at(0)) * vertexList.size(); 
-		uint32_t vertexSize = sizeof(vertexList[0]);
-		uint32_t vertexCount = vertexList.size();
-
-		StarBuffer stagingBuffer{
-			this->device,
-			vertexSize,
-			vertexCount,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-		};
-		stagingBuffer.map();
-		stagingBuffer.writeToBuffer(vertexList.data());
-
-		this->vertexBuffer = std::make_unique<StarBuffer>(
-			this->device,
-			vertexSize,
-			vertexCount,
-			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		this->device.copyBuffer(stagingBuffer.getBuffer(), this->vertexBuffer->getBuffer(), bufferSize);
-	}
-
-	//index buffer
-	{
-		vk::DeviceSize bufferSize = sizeof(indiciesList.at(0)) * indiciesList.size();
-		uint32_t indexSize = sizeof(indiciesList[0]);
-		uint32_t indexCount = indiciesList.size();
-
-		StarBuffer stagingBuffer{
-			this->device,
-			indexSize,
-			indexCount,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-		};
-		stagingBuffer.map();
-		stagingBuffer.writeToBuffer(indiciesList.data());
-
-		this->indexBuffer = std::make_unique<StarBuffer>(
-			this->device,
-			indexSize,
-			indexCount,
-			vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-		this->device.copyBuffer(stagingBuffer.getBuffer(), this->indexBuffer->getBuffer(), bufferSize);
 	}
 
 	//init all groups
@@ -188,12 +119,6 @@ SwapChainRenderer::~SwapChainRenderer()
 void SwapChainRenderer::pollEvents()
 {
 	glfwPollEvents();
-}
-
-void SwapChainRenderer::init()
-{
-	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size());
-	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, this->lightList.size() * this->MAX_FRAMES_IN_FLIGHT);
 }
 
 void SwapChainRenderer::submit()
@@ -790,7 +715,7 @@ void SwapChainRenderer::recordCommandBuffer(uint32_t bufferIndex, uint32_t image
 
 		/* vkCmdBindDescriptorSets:
 		*   1.
-		*   2. Descriptor sets are not unique to graphics pipeliens, must specify to use in graphics or compute pipelines.
+		*   2. Descriptor sets are not unique to graphics pipelines, must specify to use in graphics or compute pipelines.
 		*   3. layout that the descriptors are based on
 		*   4. index of first descriptor set
 		*   5. number of sets to bind
@@ -800,8 +725,8 @@ void SwapChainRenderer::recordCommandBuffer(uint32_t bufferIndex, uint32_t image
 		//bind the right descriptor set for each swap chain image to the descripts in the shader
 		//bind global descriptor
 		vk::DeviceSize offsets{};
-		this->graphicsCommandBuffer->buffer(bufferIndex).bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
-		this->graphicsCommandBuffer->buffer(bufferIndex).bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+		//this->graphicsCommandBuffer->buffer(bufferIndex).bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
+		//this->graphicsCommandBuffer->buffer(bufferIndex).bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
 		for (auto& group : this->renderGroups) {
 			group->recordRenderPassCommands(*this->graphicsCommandBuffer, bufferIndex);
@@ -934,5 +859,13 @@ vk::Format SwapChainRenderer::findDepthFormat()
 		{ vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint },
 		vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+}
+void SwapChainRenderer::initResources(StarDevice& device, const int numFramesInFlight)
+{
+	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size());
+	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, this->swapChainImages.size());
+}
+void SwapChainRenderer::destroyResources(StarDevice& device)
+{
 }
 }

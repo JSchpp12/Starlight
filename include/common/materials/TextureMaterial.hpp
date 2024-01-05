@@ -2,6 +2,7 @@
 
 #include "StarMaterial.hpp"
 #include "Texture.hpp"
+#include "ManagerDescriptorPool.hpp"
 
 namespace star {
 	class TextureMaterial : public StarMaterial {
@@ -22,5 +23,7 @@ namespace star {
 		std::shared_ptr<Texture> texture;
 
 		void prep(StarDevice& device) override;
+
+		virtual void initResources(StarDevice& device, const int numFramesInFlight) override;
 	};
 }

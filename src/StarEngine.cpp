@@ -13,6 +13,11 @@ StarEngine::~StarEngine()
 
 void StarEngine::Run()
 {
+	RenderResourceSystem::preparePrimaryGeometry(*this->renderingDevice);
+	RenderResourceSystem::runInits(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
+
+	this->descriptorManager.build(*this->renderingDevice);
+
 	//objects will be prepared for render during the initialization of the main renderer
 	mainRenderer->prepare();
 
@@ -34,6 +39,7 @@ void StarEngine::Run()
 	}
 
 	this->renderingDevice->getDevice().waitIdle();
+	RenderResourceSystem::cleanup(*this->renderingDevice);
 	StarObject::cleanupSharedResources(*this->renderingDevice); 
 }
 
@@ -44,17 +50,5 @@ void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 	this->renderingDevice = StarDevice::New(*window, app.getRequiredDeviceExtensions());
 
 	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window, renderOptions);
-
-	this->mainRenderer->init(); 
-
-	//prepare objects 
-	auto& objects = this->currentScene->getObjects();
-
-	for (auto& obj : objects) {
-		obj.second->initRender(this->mainRenderer->MAX_FRAMES_IN_FLIGHT);
-	}
-
-	this->descriptorManager.build(*this->renderingDevice); 
 }
-
 }

@@ -18,5 +18,7 @@ namespace star {
 
 		void load(); 
 
+		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) override;
+
 	};
 }

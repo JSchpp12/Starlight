@@ -4,17 +4,15 @@ std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescrip
 vk::PipelineLayout star::StarObject::extrusionPipelineLayout = vk::PipelineLayout{}; 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::tri_normalExtrusionPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::triAdj_normalExtrusionPipeline = std::unique_ptr<star::StarGraphicsPipeline>();
+std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::boundDescriptorLayout = std::unique_ptr<star::StarDescriptorSetLayout>();
+vk::PipelineLayout star::StarObject::boundPipelineLayout = vk::PipelineLayout{}; 
+std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::boundBoxPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
 
 void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent, 
 	vk::RenderPass renderPass, int numSwapChainImages, 
 	StarDescriptorSetLayout& globalDescriptors)
 {
 	std::string mediaPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory);
-	std::string vertPath = mediaPath + "/shaders/extrudeNormals/extrudeNormals.vert";
-	std::string fragPath = mediaPath + "/shaders/extrudeNormals/extrudeNormals.frag";
-
-	StarShader vert = StarShader(vertPath, Shader_Stage::vertex);
-	StarShader frag = StarShader(fragPath, Shader_Stage::fragment);
 
 	instanceDescriptorLayout = StarDescriptorSetLayout::Builder(device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
@@ -36,25 +34,65 @@ void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swap
 		pipelineLayoutInfo.pushConstantRangeCount = 0; 
 		extrusionPipelineLayout = device.getDevice().createPipelineLayout(pipelineLayoutInfo); 
 	}
-
-	StarGraphicsPipeline::PipelineConfigSettings settings;
-	StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, extrusionPipelineLayout);
-
 	{
-		std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangle.geom";
-		StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
+		std::string vertPath = mediaPath + "/shaders/extrudeNormals/extrudeNormals.vert";
+		std::string fragPath = mediaPath + "/shaders/extrudeNormals/extrudeNormals.frag";
 
-		StarObject::tri_normalExtrusionPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, vert, frag, geom);
-		StarObject::tri_normalExtrusionPipeline->init(); 
+		StarShader vert = StarShader(vertPath, Shader_Stage::vertex);
+		StarShader frag = StarShader(fragPath, Shader_Stage::fragment);
+
+		StarGraphicsPipeline::PipelineConfigSettings settings;
+		StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, extrusionPipelineLayout);
+		{
+			std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangle.geom";
+			StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
+
+			StarObject::tri_normalExtrusionPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, vert, frag, geom);
+			StarObject::tri_normalExtrusionPipeline->init();
+		}
+		{
+			settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eTriangleListWithAdjacency;
+
+			std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangleAdj.geom";
+			StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
+
+			StarObject::triAdj_normalExtrusionPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, vert, frag, geom);
+			StarObject::triAdj_normalExtrusionPipeline->init();
+		}
 	}
+
+	boundDescriptorLayout = StarDescriptorSetLayout::Builder(device)
+		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+		.build();
+
 	{
-		settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eTriangleListWithAdjacency;
+		std::vector<vk::DescriptorSetLayout> globalLayouts{
+			globalDescriptors.getDescriptorSetLayout(),
+			instanceDescriptorLayout->getDescriptorSetLayout()
+		};
 
-		std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangleAdj.geom";
-		StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+		pipelineLayoutInfo.setLayoutCount = globalLayouts.size();
+		pipelineLayoutInfo.pSetLayouts = globalLayouts.data();
+		pipelineLayoutInfo.pPushConstantRanges = nullptr;
+		pipelineLayoutInfo.pushConstantRangeCount = 0;
+		boundPipelineLayout = device.getDevice().createPipelineLayout(pipelineLayoutInfo);
 
-		StarObject::triAdj_normalExtrusionPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, vert, frag, geom);
-		StarObject::triAdj_normalExtrusionPipeline->init(); 
+		StarGraphicsPipeline::PipelineConfigSettings settings;
+		StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, extrusionPipelineLayout);
+
+		settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eLineList;
+
+		//bounding box vert buffer will be bound to the 1st index 
+
+		std::string boundVertPath = mediaPath + "shaders/boundingBox/bounding.vert"; 
+		std::string boundFragPath = mediaPath + "shaders/boundingBox/bounding.frag"; 
+		StarShader vert = StarShader(boundVertPath, Shader_Stage::vertex);
+		StarShader frag = StarShader(boundFragPath, Shader_Stage::fragment); 
+
+		StarObject::boundBoxPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, vert, frag);
+		boundBoxPipeline->init(); 
 	}
 }
 
@@ -64,6 +102,10 @@ void star::StarObject::cleanupSharedResources(StarDevice& device)
 	device.getDevice().destroyPipelineLayout(extrusionPipelineLayout);
 	StarObject::triAdj_normalExtrusionPipeline.reset(); 
 	StarObject::tri_normalExtrusionPipeline.reset(); 
+
+	boundDescriptorLayout.reset(); 
+	device.getDevice().destroyPipelineLayout(boundPipelineLayout); 
+	StarObject::boundBoxPipeline.reset(); 
 }
 
 void star::StarObject::cleanupRender(StarDevice& device)
@@ -100,17 +142,13 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& 
 	return std::move(newPipeline);
 }
 
-void star::StarObject::initRender(int numFramesInFlight)
-{
-	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight);
-}
-
 void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
 	vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, 
 	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets)
 {
 	//handle pipeline infos
 	this->pipeline = this->buildPipeline(device, swapChainExtent, pipelineLayout, renderPass);
+
 	createInstanceBuffers(device, numSwapChainImages); 
 	prepareMeshes(device); 
 	StarDescriptorPool& pool = ManagerDescriptorPool::getPool(); 
@@ -130,6 +168,9 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 
 void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, 
 	int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start) {
+	RenderResourceSystem::bind(*this->indBuffer, commandBuffer.buffer(swapChainIndexNum));
+	RenderResourceSystem::bind(*this->vertBuffer, commandBuffer.buffer(swapChainIndexNum));
+
 	if (this->pipeline)
 		this->pipeline->bind(commandBuffer.buffer(swapChainIndexNum)); 
 
@@ -141,16 +182,18 @@ void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer
 		rmesh->getMaterial().bind(commandBuffer, pipelineLayout, swapChainIndexNum);
 
 		uint32_t instanceCount = static_cast<uint32_t>(this->instances.size()); 
-		uint32_t vertexCount = CastHelpers::size_t_to_unsigned_int(rmesh->getVertices().size());
-		uint32_t indexCount = CastHelpers::size_t_to_unsigned_int(rmesh->getIndices().size());
+		uint32_t vertexCount = rmesh->getNumVerts();
+		uint32_t indexCount = rmesh->getNumIndices();
 		commandBuffer.buffer(swapChainIndexNum).drawIndexed(indexCount, instanceCount, ibStartIndex, 0, 0);
 
-		vbStartIndex += rmesh->getVertices().size();
-		ibStartIndex += rmesh->getIndices().size();
+		vbStartIndex += rmesh->getNumVerts();
+		ibStartIndex += rmesh->getNumIndices();
 	}
 
 	if (this->drawNormals)
 		recordDrawCommandNormals(commandBuffer, ib_start, swapChainIndexNum); 
+	if (this->drawBoundingBox)
+		recordDrawCommandBoundingBox(commandBuffer, swapChainIndexNum); 
 }
 
 star::StarObjectInstance& star::StarObject::createInstance()
@@ -214,12 +257,14 @@ void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapC
 	auto& groupLayout = fullGroupLayout.at(1);
 	StarDescriptorPool& pool = ManagerDescriptorPool::getPool(); 
 	std::vector<std::unordered_map<int, vk::DescriptorSet>> finalizedSets; 
+	this->boundingDescriptors.resize(numSwapChainImages); 
 
 
 	for (int i = 0; i < numSwapChainImages; i++) {
 		std::unordered_map<int, vk::DescriptorSet> set; 
 		for (int j = 0; j < globalSets.at(i).size(); j++) {
 			set[j] = globalSets.at(i).at(j); 
+			this->boundingDescriptors.at(i).push_back(set[j]); 
 		}
 
 		star::StarDescriptorWriter writer = star::StarDescriptorWriter(device, groupLayout, ManagerDescriptorPool::getPool());
@@ -239,7 +284,9 @@ void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapC
 		set[1] = writer.build();
 
 		finalizedSets.push_back(set); 
+		this->boundingDescriptors.at(i).push_back(set[1]);
 	}
+	
 	
 	for (auto& mesh : this->getMeshes()) {
 		//descriptors
@@ -288,9 +335,118 @@ void star::StarObject::recordDrawCommandNormals(star::StarCommandBuffer& command
 
 	for (auto& rmesh : this->getMeshes()) {
 		uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
-		uint32_t indexCount = CastHelpers::size_t_to_unsigned_int(rmesh->getIndices().size());
+		uint32_t indexCount = rmesh->getNumIndices();
 		commandBuffer.buffer(inFlightIndex).drawIndexed(indexCount, instanceCount, ib, 0, 0);
 
-		ib += rmesh->getIndices().size();
+		ib += rmesh->getNumIndices();
 	}
+}
+
+void star::StarObject::recordDrawCommandBoundingBox(star::StarCommandBuffer& commandBuffer, int inFlightIndex)
+{
+	auto& buffer = commandBuffer.buffer(inFlightIndex); 
+
+	vk::DeviceSize offsets{}; 
+	buffer.bindVertexBuffers(0, this->boundingBoxVertBuffer->getBuffer(), offsets); 
+	buffer.bindIndexBuffer(this->boundingBoxIndBuffer->getBuffer(), 0, vk::IndexType::eUint32); 
+
+	this->boundBoxPipeline->bind(buffer); 
+	buffer.setLineWidth(1.0f);
+
+	buffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0); 
+}
+
+void star::StarObject::initResources(StarDevice& device, const int numFramesInFlight)
+{
+	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight * this->instances.size() * this->instances.front()->getBufferInfoSize().size());
+
+	std::vector<Vertex> bbVerts; 
+	std::vector<uint32_t> bbInds; 
+
+	calculateBoundingBox(bbVerts, bbInds);
+	{
+		vk::DeviceSize size = sizeof(bbVerts.front());
+		vk::DeviceSize bufferSize = size * bbVerts.size(); 
+		uint32_t count = bbVerts.size(); 
+
+		StarBuffer stagingBuffer{
+			device,
+			size,
+			count,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+		}; 
+		stagingBuffer.map(); 
+		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
+
+		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(device,
+			size,
+			count,
+			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxVertBuffer->getBuffer(), bufferSize);
+	}
+
+	{
+		vk::DeviceSize size = sizeof(bbInds.front()); 
+		vk::DeviceSize bufferSize = size * bbInds.size(); 
+		uint32_t count = bbInds.size(); 
+
+
+		StarBuffer stagingBuffer = StarBuffer(device,
+			size,
+			count,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostCoherent);
+		stagingBuffer.map(); 
+		stagingBuffer.writeToBuffer(bbInds.data()); 
+
+		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
+			device,
+			size,
+			count,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal
+		);
+		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxIndBuffer->getBuffer(), bufferSize);
+	}
+}
+
+std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::StarObject::loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer)
+{
+	this->vertBuffer = std::make_unique<BufferHandle>(primaryVertBuffer);
+	this->indBuffer = std::make_unique<BufferHandle>(primaryIndexBuffer);
+
+
+	return this->loadGeometryBuffers(device);
+}
+
+void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
+{
+	assert(this->meshes.size() > 0 && "This function must be called after meshes are loaded");  
+
+	glm::vec3 minBoundCoord{}, maxBoundCoord{};
+	this->meshes.front()->getBoundingBoxCoords(minBoundCoord, maxBoundCoord);
+
+	for (int i = 1; i < this->meshes.size(); i++) {
+		glm::vec3 curMin{}, curMax{};
+		this->meshes.at(i)->getBoundingBoxCoords(curMin, curMax);
+
+		if (glm::all(glm::lessThan(curMin, minBoundCoord)))
+			minBoundCoord = curMin; 
+		
+		if (glm::all(glm::greaterThan(curMax, maxBoundCoord)))
+			maxBoundCoord = curMax; 
+	}
+
+	star::GeometryHelpers::calculateAxisAlignedBoundingBox(minBoundCoord, maxBoundCoord, verts, inds, true);
+
+	this->boundingBoxIndsCount = inds.size(); 
+}
+
+void star::StarObject::destroyResources(StarDevice& device)
+{
+	this->boundingBoxIndBuffer.reset(); 
+	this->boundingBoxVertBuffer.reset(); 
 }

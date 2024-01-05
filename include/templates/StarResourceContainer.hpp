@@ -20,14 +20,14 @@ namespace star {
 
         virtual Handle add(std::unique_ptr<T> resource) {
             Handle newHandle;
-            newHandle.containerIndex = container.size();
+            newHandle.id = container.size();
             this->container.push_back(std::move(resource));
             return newHandle;
         }
 
         virtual T& get(const Handle& handle) {
-            if (handle.containerIndex < container.size()) {
-                return *container[handle.containerIndex];
+            if (handle.id < container.size()) {
+                return *container[handle.id];
             }
             else {
                 throw std::runtime_error("Requested a resource that is outside the range of the container");

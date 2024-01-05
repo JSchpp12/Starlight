@@ -6,12 +6,18 @@
 #include <unordered_map>
 #include <string>
 #include <glm/gtx/hash.hpp>
+#include <array>
 
 namespace star {
 	class GeometryHelpers {
 	public:
 		static void packTriangleAdjacency(std::vector<Vertex>& verts, std::vector<uint32_t>& indices);
 
+		static void calculateAndApplyVertTangents(std::vector<Vertex>& verts, std::vector<uint32_t>& indices);
+
+		static void calculateAxisAlignedBoundingBox(const glm::vec3 lowerBound, const glm::vec3 upperBound,
+			std::vector<Vertex>& vertList, std::vector<uint32_t>& indicesList,
+			bool lineList = false);
 	private:
 		struct EdgeTracker {
 			std::pair<uint32_t, uint32_t> verts; 
@@ -26,7 +32,7 @@ namespace star {
 
 		struct TriangleTracker {
 			EdgeTracker edges[3]; 
-			TriangleTracker* neighbors[3];
+			TriangleTracker* neighbors[3]{ nullptr, nullptr, nullptr };
 
 			TriangleTracker(const EdgeTracker f, const EdgeTracker s, const EdgeTracker t)
 				: edges{ f, s, t } {}; 
@@ -40,5 +46,7 @@ namespace star {
 				this->neighbors[edgeIndex] = &neighbor; 
 			}
 		};
+
+		static void calcTangentSpaceVectors(std::array<Vertex*, 3>& triVerts);
 	};
 }

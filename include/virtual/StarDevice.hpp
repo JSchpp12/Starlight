@@ -8,6 +8,7 @@
 #include <set>
 #include <vector>
 #include <vulkan/vulkan.hpp>
+#include <iostream>
 
 namespace star {
 struct SwapChainSupportDetails {
@@ -110,7 +111,8 @@ public:
 	/// <param name="useTransferPool">Was command buffer submitted to the transfer pool. Assumed graphics pool otherwise.</param>
 	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, bool useTransferPool = false, vk::Semaphore* signalFinishSemaphore = nullptr);
 
-	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
+	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size, const vk::DeviceSize dstOffset=0);
+
 	/// <summary>
 	/// Copy a buffer to an image.
 	/// </summary>
