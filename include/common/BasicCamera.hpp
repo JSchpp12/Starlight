@@ -54,6 +54,10 @@ namespace star {
 
 		void onScroll(double xoffset, double yoffset) override {};
 
+		float getPitch() const { return this->pitch; }
+
+		float getYaw() const { return this->yaw; }
+
 	protected:
 
 	private:

@@ -35,6 +35,7 @@ namespace star {
         Texture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData)
             : rawData(rawData), width(texWidth),
             height(texHeight), channels(4), onDisk(false) {};
+
         /// <summary>
         /// Initalize texture with provided raw data. For use with programatically generated textures. 
         /// </summary>
@@ -106,7 +107,6 @@ namespace star {
                             else
                                 data.at(channels * pixCounter + 3) = rawData.value().at(i).at(j).raw_a();
                         }
-
                         pixCounter++;
                     }
                 }

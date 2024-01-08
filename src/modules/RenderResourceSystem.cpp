@@ -54,12 +54,14 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> result = function(device, vertBufferHandle, indBufferHandle);
 
 		//might want to throw a check in here to verify buffer type
-		totalVertSize += result.first->getBufferSize();
-		totalVertInstanceCount += result.first->getInstanceCount();
-		totalIndSize += result.second->getInstanceSize();
-		totalIndInstanceCount += result.second->getInstanceCount();
-		stagingBuffersVert.push_back(std::move(result.first));
-		stagingBuffersIndex.push_back(std::move(result.second));
+		if (result.first && result.second) {
+			totalVertSize += result.first->getBufferSize();
+			totalVertInstanceCount += result.first->getInstanceCount();
+			totalIndSize += result.second->getInstanceSize();
+			totalIndInstanceCount += result.second->getInstanceCount();
+			stagingBuffersVert.push_back(std::move(result.first));
+			stagingBuffersIndex.push_back(std::move(result.second));
+		}
 
 		loadGeometryCallbacks.pop();
 	}

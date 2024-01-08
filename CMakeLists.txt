@@ -119,6 +119,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/KeyStates.hpp"
     "include/common/materials/BumpMaterial.hpp"
     "include/common/materials/VertColorMaterial.hpp"
+    "include/common/materials/TextureMaterial.hpp"
     "include/common/objects/BasicObject.hpp"
     "include/common/objects/Square.hpp"
     "include/common/objects/StarObjectInstance.hpp"

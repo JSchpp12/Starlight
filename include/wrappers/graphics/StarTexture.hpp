@@ -6,6 +6,7 @@
 #include "StarDescriptors.hpp"
 
 #include <vulkan/vulkan.hpp>
+#include <sstream>
 
 #include <memory>
 

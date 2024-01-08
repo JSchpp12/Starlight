@@ -18,7 +18,7 @@ public:
 	StarCamera() = default; 
 	virtual ~StarCamera() = default;
 
-	virtual void setPosition(glm::vec3 newPosition) {
+	virtual void setPosition(const glm::vec3& newPosition) {
 		this->position = newPosition;
 
 		//compute right vector

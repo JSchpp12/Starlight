@@ -55,36 +55,43 @@ void StarTexture::createTextureImage(StarDevice& device) {
 	}
 
 	//image has data in cpu memory, it must be copied over
-	if (this->data().get()[0] != '\0') {
-		vk::DeviceSize imageSize = width * height * 4;
+	try {
+		if (this->data().get()[0] != '\0') {
+			vk::DeviceSize imageSize = width * height * 4;
 
-		//image will be transfered from cpu memory, make sure proper flags are set
-		this->createSettings->imageUsage = this->createSettings->imageUsage | vk::ImageUsageFlagBits::eTransferDst;
+			//image will be transfered from cpu memory, make sure proper flags are set
+			this->createSettings->imageUsage = this->createSettings->imageUsage | vk::ImageUsageFlagBits::eTransferDst;
 
-		createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
+			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
 
-		auto data = this->data();
-		StarBuffer stagingBuffer(
-			device,
-			imageSize,
-			1,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		stagingBuffer.map();
-		std::unique_ptr<unsigned char> textureData(this->data());
-		stagingBuffer.writeToBuffer(textureData.get(), imageSize);
+			auto data = this->data();
+			StarBuffer stagingBuffer(
+				device,
+				imageSize,
+				1,
+				vk::BufferUsageFlagBits::eTransferSrc,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			stagingBuffer.map();
+			std::unique_ptr<unsigned char> textureData(this->data());
+			stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
-		//copy staging buffer to texture image 
-		transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+			//copy staging buffer to texture image 
+			transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-		device.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+			device.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
-		//prepare final image for texture mapping in shaders 
-		transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
-		this->layout = vk::ImageLayout::eTransferDstOptimal; 
+			//prepare final image for texture mapping in shaders 
+			transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+			this->layout = vk::ImageLayout::eTransferDstOptimal;
+		}
+		else {
+			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
+		}
 	}
-	else {
-		createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
+	catch (const std::exception& e) {
+		std::stringstream errorMessage{};
+		errorMessage << "Failed to stage and write texture to gpu to due the following error: " << e.what();
+		throw std::exception(errorMessage.str().c_str());
 	}
 }
 

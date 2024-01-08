@@ -11,7 +11,7 @@ void star::RuntimeUpdateTexture::updateGPU()
 {
     assert(this->device != nullptr && "Before requesting GPU update, the texture needs to be prepared"); 
 
-    vk::DeviceSize imageSize = width * height * 4;
+    vk::DeviceSize imageSize = width * height *4;
 
     //transfer image to writable layout
     //transitionImageLayout(this->textureImage)
