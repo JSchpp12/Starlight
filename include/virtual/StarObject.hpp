@@ -36,6 +36,7 @@ namespace star {
 	public:
 		bool drawNormals = false;
 		bool drawBoundingBox = false; 
+		bool isVisible = true; 
 
 		static void initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent,
 			vk::RenderPass renderPass, int numSwapChainImages,
@@ -140,7 +141,11 @@ namespace star {
 
 		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight);
 
-		virtual void calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
+		virtual void destroyResources(StarDevice& device) override;
+
+		virtual void initResources(StarDevice& device, const int numFramesInFlight) override;
+
+		virtual void createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 
 	private:
 		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
@@ -157,12 +162,10 @@ namespace star {
 
 		void recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex);
 
-		void recordDrawCommandBoundingBox(star::StarCommandBuffer& commandBuffer, int inFlightIndex);
-
-		void destroyResources(StarDevice& device) override;
-
-		void initResources(StarDevice& device, const int numFramesInFlight) override;
+		void recordDrawCommandBoundingBox(star::StarCommandBuffer& commandBuffer, int inFlightIndex);;
 
 		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer);
+
+		void calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 };
 }

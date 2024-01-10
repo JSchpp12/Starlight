@@ -18,7 +18,8 @@ namespace star {
 		public Interactivity
 	{
 	public:
-		BasicCamera();
+		BasicCamera(const float& width, const float& height);
+
 		~BasicCamera() = default;
 
 		/// <summary>

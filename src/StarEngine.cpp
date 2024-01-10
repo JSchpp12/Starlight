@@ -45,7 +45,8 @@ void StarEngine::Run()
 
 void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
 	//parse light information
-	this->window = BasicWindow::New(1280, 720, app.getApplicationName());
+
+	this->window = BasicWindow::New(app.getCamera().getResolution().x, app.getCamera().getResolution().y, app.getApplicationName());
 
 	this->renderingDevice = StarDevice::New(*window, app.getRequiredDeviceExtensions());
 

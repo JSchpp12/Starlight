@@ -80,11 +80,11 @@ void SwapChainRenderer::updateUniformBuffer(uint32_t currentImage)
 
 	//update global ubo 
 	GlobalUniformBufferObject globalUbo;
-	globalUbo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+	globalUbo.proj = this->camera.getProjectionMatrix();
 	//glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
 	globalUbo.proj[1][1] *= -1;
-	globalUbo.view = this->camera.getDisplayMatrix();
-	globalUbo.inverseView = this->camera.getInverseViewMatrix();
+	globalUbo.view = this->camera.getViewMatrix();
+	globalUbo.inverseView = glm::inverse(this->camera.getViewMatrix());
 	globalUbo.numLights = static_cast<uint32_t>(this->lightList.size());
 	globalUbo.renderOptions = this->renderOptions.getRenderOptions();
 
@@ -648,7 +648,6 @@ void SwapChainRenderer::createRenderingBuffers()
 
 void SwapChainRenderer::createCommandBuffers()
 {
-	/* Graphics Command Buffer */
 	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics); 
 }
 

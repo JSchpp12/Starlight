@@ -1,6 +1,7 @@
 #include "BasicCamera.hpp"
 
-star::BasicCamera::BasicCamera()
+star::BasicCamera::BasicCamera(const float& width, const float& height)
+	: star::StarCamera(width, height)
 {
 	this->registerInteractions();
 }
@@ -57,10 +58,10 @@ void star::BasicCamera::onWorldUpdate() {
 		glm::vec3 cameraLookDir = -this->getLookDirection();
 
 		if (moveLeft) {
-			this->moveRelative(glm::cross(cameraLookDir, this->upVector), moveAmt);
+			this->moveRelative(glm::cross(cameraLookDir, glm::vec3(this->upVector)), moveAmt);
 		}
 		if (moveRight) {
-			this->moveRelative(glm::cross(cameraLookDir, -this->upVector), moveAmt);
+			this->moveRelative(glm::cross(cameraLookDir, -glm::vec3(this->upVector)), moveAmt);
 		}
 		if (moveForward) {
 			this->moveRelative(this->forwardVector, moveAmt);
@@ -93,6 +94,6 @@ void star::BasicCamera::onWorldUpdate() {
 			sin(glm::radians(this->yaw)) * cos(glm::radians(this->pitch))
 		};
 
-		this->forwardVector = glm::normalize(direction);
+		this->forwardVector = glm::vec4(glm::normalize(direction), 0.0);
 	}
 }

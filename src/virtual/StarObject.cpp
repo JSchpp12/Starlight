@@ -184,7 +184,8 @@ void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer
 		uint32_t instanceCount = static_cast<uint32_t>(this->instances.size()); 
 		uint32_t vertexCount = rmesh->getNumVerts();
 		uint32_t indexCount = rmesh->getNumIndices();
-		commandBuffer.buffer(swapChainIndexNum).drawIndexed(indexCount, instanceCount, ibStartIndex, 0, 0);
+		if (this->isVisible)
+			commandBuffer.buffer(swapChainIndexNum).drawIndexed(indexCount, instanceCount, ibStartIndex, 0, 0);
 
 		vbStartIndex += rmesh->getNumVerts();
 		ibStartIndex += rmesh->getNumIndices();
@@ -319,27 +320,84 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 	}
 }
 
-void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
+void star::StarObject::destroyResources(StarDevice& device)
 {
-	assert(this->meshes.size() > 0 && "This function must be called after meshes are loaded");
+	this->boundingBoxIndBuffer.reset();
+	this->boundingBoxVertBuffer.reset();
+}
 
-	glm::vec3 minBoundCoord{}, maxBoundCoord{};
-	this->meshes.front()->getBoundingBoxCoords(minBoundCoord, maxBoundCoord);
+void star::StarObject::initResources(StarDevice& device, const int numFramesInFlight)
+{
+	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight * this->instances.size() * this->instances.front()->getBufferInfoSize().size());
 
-	for (int i = 1; i < this->meshes.size(); i++) {
-		glm::vec3 curMin{}, curMax{};
-		this->meshes.at(i)->getBoundingBoxCoords(curMin, curMax);
+	std::vector<Vertex> bbVerts;
+	std::vector<uint32_t> bbInds;
 
-		if (glm::all(glm::lessThan(curMin, minBoundCoord)))
-			minBoundCoord = curMin;
+	calculateBoundingBox(bbVerts, bbInds);
+	{
+		vk::DeviceSize size = sizeof(bbVerts.front());
+		vk::DeviceSize bufferSize = size * bbVerts.size();
+		uint32_t count = bbVerts.size();
 
-		if (glm::all(glm::greaterThan(curMax, maxBoundCoord)))
-			maxBoundCoord = curMax;
+		StarBuffer stagingBuffer{
+			device,
+			size,
+			count,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+		};
+		stagingBuffer.map();
+		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
+
+		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(device,
+			size,
+			count,
+			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxVertBuffer->getBuffer(), bufferSize);
 	}
 
-	star::GeometryHelpers::calculateAxisAlignedBoundingBox(minBoundCoord, maxBoundCoord, verts, inds, true);
+	{
+		vk::DeviceSize size = sizeof(bbInds.front());
+		vk::DeviceSize bufferSize = size * bbInds.size();
+		uint32_t count = bbInds.size();
 
-	this->boundingBoxIndsCount = inds.size();
+
+		StarBuffer stagingBuffer = StarBuffer(device,
+			size,
+			count,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostCoherent);
+		stagingBuffer.map();
+		stagingBuffer.writeToBuffer(bbInds.data());
+
+		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
+			device,
+			size,
+			count,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal
+		);
+		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxIndBuffer->getBuffer(), bufferSize);
+	}
+}
+
+void star::StarObject::createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
+{
+	std::array<glm::vec3, 2> bbBounds = this->meshes.front()->getBoundingBoxCoords();
+
+	for (int i = 1; i < this->meshes.size(); i++) {
+		std::array<glm::vec3, 2> curbbBounds = this->meshes.at(i)->getBoundingBoxCoords();
+
+		if (glm::all(glm::lessThan(curbbBounds[0], bbBounds[0])))
+			bbBounds[0] = curbbBounds[0];
+
+		if (glm::all(glm::greaterThan(curbbBounds[1], bbBounds[1])))
+			bbBounds[1] = curbbBounds[1];
+	}
+
+	star::GeometryHelpers::calculateAxisAlignedBoundingBox(bbBounds[0], bbBounds[1], verts, inds, true);
 }
 
 void star::StarObject::recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex)
@@ -379,74 +437,20 @@ void star::StarObject::recordDrawCommandBoundingBox(star::StarCommandBuffer& com
 	buffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0); 
 }
 
-void star::StarObject::initResources(StarDevice& device, const int numFramesInFlight)
-{
-	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight * this->instances.size() * this->instances.front()->getBufferInfoSize().size());
-
-	std::vector<Vertex> bbVerts; 
-	std::vector<uint32_t> bbInds; 
-
-	calculateBoundingBox(bbVerts, bbInds);
-	{
-		vk::DeviceSize size = sizeof(bbVerts.front());
-		vk::DeviceSize bufferSize = size * bbVerts.size(); 
-		uint32_t count = bbVerts.size(); 
-
-		StarBuffer stagingBuffer{
-			device,
-			size,
-			count,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-		}; 
-		stagingBuffer.map(); 
-		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
-
-		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(device,
-			size,
-			count,
-			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxVertBuffer->getBuffer(), bufferSize);
-	}
-
-	{
-		vk::DeviceSize size = sizeof(bbInds.front()); 
-		vk::DeviceSize bufferSize = size * bbInds.size(); 
-		uint32_t count = bbInds.size(); 
-
-
-		StarBuffer stagingBuffer = StarBuffer(device,
-			size,
-			count,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostCoherent);
-		stagingBuffer.map(); 
-		stagingBuffer.writeToBuffer(bbInds.data()); 
-
-		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
-			device,
-			size,
-			count,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal
-		);
-		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxIndBuffer->getBuffer(), bufferSize);
-	}
-}
-
 std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::StarObject::loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer)
 {
 	this->vertBuffer = std::make_unique<BufferHandle>(primaryVertBuffer);
 	this->indBuffer = std::make_unique<BufferHandle>(primaryIndexBuffer);
 
-
 	return this->loadGeometryBuffers(device);
 }
 
-void star::StarObject::destroyResources(StarDevice& device)
+void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
 {
-	this->boundingBoxIndBuffer.reset(); 
-	this->boundingBoxVertBuffer.reset(); 
+	assert(this->meshes.size() > 0 && "This function must be called after meshes are loaded");
+
+	//allow children to override this function while not requiring they 
+	this->createBoundingBox(verts, inds);
+	
+	this->boundingBoxIndsCount = inds.size();
 }

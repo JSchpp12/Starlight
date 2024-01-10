@@ -30,7 +30,7 @@ namespace star {
 class SwapChainRenderer : public StarRenderer, private RenderResourceModifier {
 public:
 	//how many frames will be sent through the pipeline
-	const int MAX_FRAMES_IN_FLIGHT = 1;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 
 	SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, RenderOptions& renderOptions, StarDevice& device);

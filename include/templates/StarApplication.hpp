@@ -20,7 +20,7 @@ namespace star {
     class StarApplication : public Interactivity {
     public:
         StarApplication(StarScene& scene)
-            : scene(scene){ 
+            : scene(scene), camera(1280, 720){ 
             this->registerInteractions();
         }
 

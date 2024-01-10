@@ -25,7 +25,7 @@ public:
 		this->setScale(scale);
 	}
 
-	glm::vec3 getPosition() {
+	glm::vec3 getPosition() const{
 		glm::mat4 matrixCopy = getDisplayMatrix();
 		return glm::vec3{ matrixCopy[3][0], matrixCopy[3][1], matrixCopy[3][2] };
 	}
@@ -42,12 +42,14 @@ public:
 	virtual void setScale(glm::vec3 scale) {
 		scaleMat = glm::scale(scaleMat, scale);
 	}
+
 	virtual void setPosition(glm::vec3 newPosition) {
 		positionCoords = newPosition;
 		translationMat = glm::translate(newPosition);
 		updateCoordsTranslation(translationMat);
 	}
-	/// <summary>T
+
+	/// <summary>
 	/// Apply translation to object's current position vector and update accordingly
 	/// </summary>
 	/// <param name="movement"></param>
@@ -109,6 +111,7 @@ public:
 
 		updateCoordsRot(rotationMat);
 	}
+
 	void rotateGlobal(const Type::Axis& axis, const float& amt, bool inDegrees = true) {
 		float radians = 0.0f;
 		glm::vec3 rotationVector = glm::vec3();
@@ -145,14 +148,14 @@ public:
 		auto displayMat = getDisplayMatrix();
 		return glm::normalize(displayMat * upVector);
 	}
-	virtual glm::mat4 getDisplayMatrix() {
+	virtual glm::mat4 getDisplayMatrix() const {
 		return translationMat * rotationMat * scaleMat;
 	}
 
 protected:
-	glm::mat4 rotationMat = glm::mat4(1);
-	glm::mat4 translationMat = glm::mat4(1);
-	glm::mat4 scaleMat = glm::mat4(1);
+	glm::mat4 rotationMat = glm::mat4(glm::identity<glm::mat4>());
+	glm::mat4 translationMat = glm::mat4(glm::identity<glm::mat4>());
+	glm::mat4 scaleMat = glm::mat4(glm::identity<glm::mat4>());
 
 	glm::vec4 upVector = glm::vec4{ 0.0f, 1.0f, 0.0f, 0.0f };		//original up vector of object 
 	glm::vec4 forwardVector = glm::vec4{ 1.0f, 0.0, 0.0f, 0.0f };	//original forward vector of object
