@@ -48,6 +48,7 @@ namespace star{
 				this->aaboundingBoxBounds[1]
 			};
 		};
+
 		uint32_t getNumVerts() const { return this->numVerts; }
 		uint32_t getNumIndices() const { return this->numInds; }
 

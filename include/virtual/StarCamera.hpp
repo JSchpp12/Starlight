@@ -22,18 +22,13 @@ public:
 
 	virtual ~StarCamera() = default;
 
-	void setLookDirection(const glm::vec3& newLookDir) {
-
-		this->forwardVector = glm::vec4(newLookDir, 0.0f); 
-	}
-
 	glm::mat4 getViewMatrix() const{
 		glm::vec3 position = this->getPosition(); 
 
 		return glm::lookAt(
 			this->getPosition(),
-			this->getPosition() + glm::vec3(this->forwardVector),
-			glm::vec3(this->upVector)
+			this->getPosition() + glm::vec3(this->getForwardVector()),
+			glm::vec3(this->getUpVector())
 		);
 	}
 
@@ -43,13 +38,10 @@ public:
 
 	glm::vec2 getResolution() const{ return this->resolution; }
 
-	glm::vec3 getLookDirection() const { return this->getDisplayMatrix() * this->forwardVector; }
-
 protected:
 	glm::vec2 resolution;
 
 	float fieldOfView = 45, nearClippingPlaneDistance=0.0f, farClippingPlaneDistance=10.0f;
 	float pitch = 0.0f, yaw = 0.0f; 
-
 };
 }

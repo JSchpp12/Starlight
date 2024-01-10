@@ -55,19 +55,19 @@ void star::BasicCamera::onWorldUpdate() {
 		float moveAmt = 0.3f * time.timeElapsedLastFrameSeconds();
 
 		glm::vec3 cameraPos = this->getPosition();
-		glm::vec3 cameraLookDir = -this->getLookDirection();
+		glm::vec3 cameraLookDir = this->getForwardVector();
 
 		if (moveLeft) {
-			this->moveRelative(glm::cross(cameraLookDir, glm::vec3(this->upVector)), moveAmt);
+			this->moveRelative(glm::cross(glm::vec3(this->getForwardVector()), -glm::vec3(this->getUpVector())), moveAmt);
 		}
 		if (moveRight) {
-			this->moveRelative(glm::cross(cameraLookDir, -glm::vec3(this->upVector)), moveAmt);
+			this->moveRelative(glm::cross(glm::vec3(this->getForwardVector()), glm::vec3(this->getUpVector())), moveAmt);
 		}
 		if (moveForward) {
-			this->moveRelative(this->forwardVector, moveAmt);
+			this->moveRelative(this->getForwardVector(), moveAmt);
 		}
 		if (moveBack) {
-			this->moveRelative(-this->forwardVector, moveAmt);
+			this->moveRelative(-this->getForwardVector(), moveAmt);
 		}
 
 		time.updateLastFrameTime();
@@ -94,6 +94,6 @@ void star::BasicCamera::onWorldUpdate() {
 			sin(glm::radians(this->yaw)) * cos(glm::radians(this->pitch))
 		};
 
-		this->forwardVector = glm::vec4(glm::normalize(direction), 0.0);
+		this->setForwardVector(glm::vec4(glm::normalize(direction), 0.0));
 	}
 }

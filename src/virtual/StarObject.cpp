@@ -390,11 +390,19 @@ void star::StarObject::createBoundingBox(std::vector<Vertex>& verts, std::vector
 	for (int i = 1; i < this->meshes.size(); i++) {
 		std::array<glm::vec3, 2> curbbBounds = this->meshes.at(i)->getBoundingBoxCoords();
 
-		if (glm::all(glm::lessThan(curbbBounds[0], bbBounds[0])))
-			bbBounds[0] = curbbBounds[0];
+		if (curbbBounds[0].x < bbBounds[0].x)
+			bbBounds[0].x = curbbBounds[0].x;
+		if (curbbBounds[0].y < bbBounds[0].y)
+			bbBounds[0].y = curbbBounds[0].y;
+		if (curbbBounds[0].z < curbbBounds[0].z)
+			bbBounds[0].z = curbbBounds[0].z;
 
-		if (glm::all(glm::greaterThan(curbbBounds[1], bbBounds[1])))
-			bbBounds[1] = curbbBounds[1];
+		if (curbbBounds[1].x > bbBounds[1].x)
+			bbBounds[1].x = curbbBounds[1].x;
+		if (curbbBounds[1].y > bbBounds[1].y)
+			bbBounds[1].y = curbbBounds[1].y;
+		if (curbbBounds[1].z > bbBounds[1].z)
+			bbBounds[1].z = curbbBounds[1].z;
 	}
 
 	star::GeometryHelpers::calculateAxisAlignedBoundingBox(bbBounds[0], bbBounds[1], verts, inds, true);
