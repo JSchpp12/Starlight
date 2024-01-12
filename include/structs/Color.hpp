@@ -9,32 +9,32 @@ namespace star {
 
 		void setR(const float& r){
 			if (r <= 1.0f)
-				this->rr = unsigned char(255 * r);
+				this->rr = r;
 			else
-				this->rr = unsigned char(255); 
+				this->rr = 1.0f;
 		}
 		void setG(const float& g) {
 			if (g <= 1.0f)
-				this->rg = unsigned char(255 * g);
+				this->rg = g;
 			else
-				this->rg = unsigned char(255);
+				this->rg = 1.0;
 		}
 		void setB(const float& b) {
 			if (b <= 1.0f)
-				this->rb = unsigned char(255 * b);
+				this->rb = b;
 			else
-				this->rb = unsigned char(255);
+				this->rb = 1.0;
 		}
 		void setA(const float& a) {
 			if (a <= 1.0f)
-				this->ra = unsigned char(255 * a);
+				this->ra = a;
 			else
-				this->ra = unsigned char(255);
+				this->ra = 1.0;
 		}
-		int r() const { return int(rr * 255); }
-		int g() const { return int(rg * 255); }
-		int b() const { return int(rb * 255); }
-		int a() const { return int(ra * 255); }
+		float r() const { return rr; }
+		float g() const { return rg; }
+		float b() const { return rb; }
+		float a() const { return ra; }
 		unsigned char raw_r() const { return unsigned char(255 * rr); }
 		unsigned char raw_g() const { return unsigned char(255 * rg); }
 		unsigned char raw_b() const { return unsigned char(255 * rb); }

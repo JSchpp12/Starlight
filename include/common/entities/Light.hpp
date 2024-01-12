@@ -22,6 +22,11 @@ public:
 		this->type = type;
 	}
 
+	Light(const Type::Light& type, const glm::vec3& position, const glm::vec3& direction)
+		: type(type), direction(glm::vec4(direction, 1.0)), StarEntity(position)
+	{
+	}
+
 	//create light with no linked object
 	Light(Type::Light type, glm::vec3 position, const glm::vec4& ambient,
 		const glm::vec4& diffuse, const glm::vec4& specular,
