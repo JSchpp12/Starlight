@@ -8,7 +8,7 @@ namespace star {
 		Color(float r, float g, float b, float a) : rr(r), rg(g), rb(b), ra(a) {};
 
 		void setR(const float& r){
-			if (r <= 1.0f)
+			if (r <= 1.0f )
 				this->rr = r;
 			else
 				this->rr = 1.0f;
