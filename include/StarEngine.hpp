@@ -27,7 +27,7 @@ public:
 
 	void Run();
 
-	void init(StarApplication& application, RenderOptions& renderOptions);
+	void init(StarApplication& application);
 
 	StarScene& getScene() { return *this->currentScene; }
 protected:

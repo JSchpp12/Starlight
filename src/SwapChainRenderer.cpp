@@ -6,8 +6,8 @@ namespace star {
 
 SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, 
 	std::vector<std::reference_wrapper<StarObject>> objectList, 
-	StarCamera& camera, RenderOptions& renderOptions, StarDevice& device) :
-	StarRenderer(window, camera, device), lightList(lightList), objectList(objectList), renderOptions(renderOptions){
+	StarCamera& camera, StarDevice& device) 
+	: StarRenderer(window, camera, device), lightList(lightList), objectList(objectList){
 	createSwapChain();
 }
 
@@ -86,7 +86,6 @@ void SwapChainRenderer::updateUniformBuffer(uint32_t currentImage)
 	globalUbo.view = this->camera.getViewMatrix();
 	globalUbo.inverseView = glm::inverse(this->camera.getViewMatrix());
 	globalUbo.numLights = static_cast<uint32_t>(this->lightList.size());
-	globalUbo.renderOptions = this->renderOptions.getRenderOptions();
 
 	this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
 

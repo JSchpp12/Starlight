@@ -43,13 +43,11 @@ void StarEngine::Run()
 	StarObject::cleanupSharedResources(*this->renderingDevice); 
 }
 
-void StarEngine::init(StarApplication& app, RenderOptions& renderOptions) {
-	//parse light information
-
+void StarEngine::init(StarApplication& app) {
 	this->window = BasicWindow::New(app.getCamera().getResolution().x, app.getCamera().getResolution().y, app.getApplicationName());
 
 	this->renderingDevice = StarDevice::New(*window, app.getRequiredDeviceExtensions());
 
-	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window, renderOptions);
+	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window);
 }
 }

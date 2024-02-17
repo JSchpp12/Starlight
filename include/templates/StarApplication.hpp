@@ -40,7 +40,7 @@ namespace star {
 
         virtual void onScroll(double xoffset, double yoffset) override {};
 
-        virtual std::unique_ptr<SwapChainRenderer> getMainRenderer(StarDevice& device, StarWindow& window, RenderOptions& options);
+        virtual std::unique_ptr<SwapChainRenderer> getMainRenderer(StarDevice& device, StarWindow& window);
 
         virtual StarCamera& getCamera() { return camera; }
 
@@ -50,8 +50,5 @@ namespace star {
         BasicCamera camera;
         StarScene& scene; 
         Time time = Time();
-
-    private:
-
     };
 }
