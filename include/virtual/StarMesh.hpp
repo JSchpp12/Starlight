@@ -23,7 +23,7 @@ namespace star{
 			triangular(indices.size() % 3 == 0), numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())), 
 			numInds(CastHelpers::size_t_to_unsigned_int(indices.size())) {
 
-			calcBoundingBox(vertices, this->boundBoxMaxCoord, this->boundBoxMinCoord);
+			calcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
 
 		};
 
@@ -31,8 +31,7 @@ namespace star{
 			std::shared_ptr<StarMaterial> material, const glm::vec3& boundBoxMinCoord,
 			const glm::vec3& boundBoxMaxCoord, bool packAdjacencies = false) :
 			material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), 
-			triangular(indices.size() % 3 == 0), boundBoxMaxCoord(boundBoxMaxCoord), 
-			boundBoxMinCoord(boundBoxMinCoord), 
+			triangular(indices.size() % 3 == 0), aaboundingBoxBounds{ boundBoxMinCoord, boundBoxMaxCoord },
 			numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())),
 			numInds(CastHelpers::size_t_to_unsigned_int(indices.size()))
 		{
@@ -43,17 +42,20 @@ namespace star{
 		StarMaterial& getMaterial() { return *this->material; }
 		bool hasAdjacentVertsPacked() const { return this->hasAdjacenciesPacked; }
 		bool isTriangular() const { return this->triangular; }
-		void getBoundingBoxCoords(glm::vec3& lowerBoundCoord, glm::vec3& upperBoundCoord) const {
-			lowerBoundCoord = glm::vec3(this->boundBoxMinCoord.x, this->boundBoxMinCoord.y, this->boundBoxMinCoord.z);
-			upperBoundCoord = glm::vec3(this->boundBoxMaxCoord.x, this->boundBoxMaxCoord.y, this->boundBoxMaxCoord.z);
+		std::array<glm::vec3, 2> getBoundingBoxCoords() const {
+			return std::array<glm::vec3, 2>{
+				this->aaboundingBoxBounds[0],
+				this->aaboundingBoxBounds[1]
+			};
 		};
+
 		uint32_t getNumVerts() const { return this->numVerts; }
 		uint32_t getNumIndices() const { return this->numInds; }
 
 	protected:
 		bool hasAdjacenciesPacked = false; 
 		bool triangular = false; 
-		glm::vec3 boundBoxMinCoord, boundBoxMaxCoord; 
+		glm::vec3 aaboundingBoxBounds[2];
 		std::shared_ptr<StarMaterial> material; 
 		uint32_t numVerts=0, numInds=0; 
 

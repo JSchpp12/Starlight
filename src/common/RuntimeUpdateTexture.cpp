@@ -14,7 +14,6 @@ void star::RuntimeUpdateTexture::updateGPU()
     vk::DeviceSize imageSize = width * height *4;
 
     //transfer image to writable layout
-    //transitionImageLayout(this->textureImage)
     transitionImageLayout(*this->device, this->textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eTransferDstOptimal);
 
     //create staging buffer
@@ -28,8 +27,8 @@ void star::RuntimeUpdateTexture::updateGPU()
     stagingBuffer.map();
     std::unique_ptr<unsigned char> textureData(this->data());
     stagingBuffer.writeToBuffer(textureData.get(), imageSize);
+    stagingBuffer.unmap();
 
     device->copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
     transitionImageLayout(*this->device, this->textureImage, vk::Format::eR8G8B8A8Srgb, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
-
 }

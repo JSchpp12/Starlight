@@ -7,6 +7,7 @@ StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features>
 	this->requiredDeviceFeatures.samplerAnisotropy = VK_TRUE;
 	this->requiredDeviceFeatures.geometryShader = VK_TRUE;
 	this->requiredDeviceFeatures.fillModeNonSolid = VK_TRUE; 
+	this->requiredDeviceFeatures.logicOp = VK_TRUE; 
 
 
 	if (requiredFeatures.size() > 0)
@@ -58,10 +59,10 @@ void StarDevice::createInstance() {
 	appInfo.sType = vk::StructureType::eApplicationInfo;
 	// appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "Starlight";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.applicationVersion = vk::makeApiVersion(0, 1, 0, 0);
 	appInfo.pEngineName = "Starlight";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.engineVersion = vk::makeApiVersion(0, 1, 0, 0);
+	appInfo.apiVersion = vk::ApiVersion11;
 
 	//enumerate required extensions
 	auto requriedExtensions = this->getRequiredExtensions();

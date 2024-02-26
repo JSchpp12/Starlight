@@ -16,7 +16,6 @@
 #include "ShaderManager.hpp"
 #include "TextureManager.hpp"
 #include "LightManager.hpp"
-#include "RenderOptions.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "RenderResourceModifier.hpp"
 
@@ -30,10 +29,10 @@ namespace star {
 class SwapChainRenderer : public StarRenderer, private RenderResourceModifier {
 public:
 	//how many frames will be sent through the pipeline
-	const int MAX_FRAMES_IN_FLIGHT = 1;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 
 	SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
-		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, RenderOptions& renderOptions, StarDevice& device);
+		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, StarDevice& device);
 
 	virtual ~SwapChainRenderer();
 
@@ -50,16 +49,12 @@ public:
 	StarDescriptorSetLayout& getGlobalDescriptorLayout() { return *this->globalSetLayout; }
 
 protected:
-	struct RenderOptionsObject {
-		bool drawMatAmbient;
-	};
 
 	struct GlobalUniformBufferObject {
 		alignas(16) glm::mat4 proj;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 inverseView;              //used to extrapolate camera position, can be used to convert from camera to world space
 		uint32_t numLights;                             //number of lights in render
-		alignas(4) uint32_t renderOptions;
 	};
 
 	struct LightBufferObject {
@@ -75,7 +70,6 @@ protected:
 		//settings.y = type
 		glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
 	};
-	RenderOptions& renderOptions; 
 
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 

@@ -9,6 +9,7 @@ namespace star {
 	class RuntimeUpdateTexture : public Texture {
 	public:
         RuntimeUpdateTexture(int texWidth, int texHeight) : Texture(texWidth, texHeight) {}; 
+        RuntimeUpdateTexture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData) : Texture(texWidth, texHeight, rawData) {};
 
         virtual void prepRender(StarDevice& device) override; 
 

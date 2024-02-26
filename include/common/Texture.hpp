@@ -25,7 +25,7 @@ namespace star {
             : width(texWidth), height(texHeight), channels(4), onDisk(false) {};
 
         Texture(int texWidth, int texHeight, TextureCreateSettings& settings)
-            : StarTexture(settings), rawData(std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texWidth, std::vector<Color>(texHeight, Color{ 0,0,0,0 })))),
+            : StarTexture(settings), rawData(std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texWidth, std::vector<Color>(texHeight, Color{})))),
             width(texWidth), height(texHeight), channels(4), onDisk(false) {};
 
         Texture(std::vector<std::vector<Color>> rawData)
