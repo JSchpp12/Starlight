@@ -12,11 +12,6 @@ find_package(Vulkan REQUIRED)
 # add all necessary dependencies
 include(GNUInstallDirs)
 
-set(STB_DIRECTORY ${PROJECT_SOURCE_DIR}/extern/stb)
-if (NOT IS_DIRECTORY ${STB_DIRECTORY})
-	message(FATAL_ERROR "Stb is needed for compilation. Pull copy into external directory.")
-endif()
-
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
 
@@ -24,13 +19,11 @@ set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
 
-set(GLM_BUILD_TESTS OFF)
-add_subdirectory("extern/glm")
+# set(GLM_BUILD_TESTS OFF)
+# add_subdirectory("extern/glm")
 
-set(GLFW_STANDALONE OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF)
-set(GLFW_BUILD_TESTS OFF)
-add_subdirectory("extern/glfw")
+find_package("glm" REQUIRED)
+find_package("glfw3" REQUIRED)
 
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
@@ -47,7 +40,7 @@ set(SHADERC_ENABLE_SHARED_CRT OFF CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
-add_subdirectory("extern/tinyobjloader")
+find_package("tinyobjloader" REQUIRED)
 
 add_subdirectory("extern/googletest") 
 
