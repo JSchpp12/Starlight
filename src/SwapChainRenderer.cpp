@@ -316,8 +316,7 @@ void SwapChainRenderer::createSwapChain()
 	createInfo.imageColorSpace = surfaceFormat.colorSpace;
 	createInfo.imageExtent = extent;
 	createInfo.imageArrayLayers = 1; //1 unless using 3D display 
-	//createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
-	createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
+	createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
 
 	QueueFamilyIndicies indicies = this->device.findPhysicalQueueFamilies();
 	std::vector<uint32_t> queueFamilyIndicies;
@@ -379,7 +378,6 @@ void SwapChainRenderer::createImageViews()
 
 	//need to create an imageView for each of the images available
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		//swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, vk::ImageAspectFlagBits::eColor);
 	}
 }

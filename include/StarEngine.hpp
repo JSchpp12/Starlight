@@ -42,5 +42,7 @@ protected:
 	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
 	std::vector<StarRenderGroup> renderGroups;  
 
+private: 
+	static bool triggerScreenshot;
 };
 }

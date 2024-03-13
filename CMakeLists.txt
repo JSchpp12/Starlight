@@ -19,9 +19,6 @@ set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
 
-# set(GLM_BUILD_TESTS OFF)
-# add_subdirectory("extern/glm")
-
 find_package("glm" REQUIRED)
 find_package("glfw3" REQUIRED)
 

@@ -2,6 +2,8 @@
 
 namespace star {
 
+bool StarEngine::triggerScreenshot = false;
+
 StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene())) {
 	ConfigFile::load("./StarEngine.cfg"); 
 }
