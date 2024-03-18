@@ -2,6 +2,7 @@
 
 #include "Enums.hpp"
 #include "StarWindow.hpp"
+#include "Allocator.hpp"
 
 #include <optional>
 #include <unordered_set>
@@ -24,20 +25,20 @@ struct QueueFamilyIndicies {
 	std::optional<uint32_t> computeFamily; 
 
 	//check if queue families are all seperate -- this means more parallel work
-	bool isOptimalSupport(){
+	bool isOptimalSupport() const {
 		if ((graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value())
 			&& (graphicsFamily.value() != transferFamily.value() && graphicsFamily.value() != computeFamily.value())) {
 				return true;
 		}
 		return false; 
 	}
-	bool isFullySupported() {
+	bool isFullySupported() const {
 		if (graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value()) {
 			return true; 
 		}
 		return false; 
 	}
-	bool isSuitable() {
+	bool isSuitable() const {
 		return graphicsFamily.has_value() && presentFamily.has_value();
 	}
 };
@@ -89,6 +90,7 @@ public:
 		else
 			return this->graphicsQueue;
 	}
+	VmaAllocator& getAllocator() { return this->allocator->get(); }
 #pragma endregion
 
 #pragma region helperFunctions
@@ -150,6 +152,7 @@ protected:
 
 	vk::Instance instance;
 	vk::Device vulkanDevice;
+	std::unique_ptr<star::Allocator> allocator;
 	vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	vk::UniqueSurfaceKHR surface;
 	StarWindow& starWindow;
@@ -165,8 +168,15 @@ protected:
 		"VK_LAYER_KHRONOS_validation"
 	};
 
-	std::vector<const char*> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME//image presentation is not built into the vulkan core...need to enable it through an extension
+	std::vector<const char*> requiredDeviceExtensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,		//image presentation is not built into the vulkan core...need to enable it through an extension
+		VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
+		VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
+		//VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
+		//VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
+		VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+		VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+		VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME
 	};
 
 	vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
@@ -200,6 +210,8 @@ protected:
 	/// Create command pools which will contain all predefined draw commands for later use in vulkan main loop
 	/// </summary>
 	void createCommandPool();
+
+	void createAllocator(); 
 
 	/* Helper Functions */
 

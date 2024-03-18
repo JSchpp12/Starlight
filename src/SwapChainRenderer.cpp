@@ -24,8 +24,233 @@ void SwapChainRenderer::prepare()
 	createSemaphores();
 	createFences();
 	createFenceImageTracking();
+	queryDeviceSupport();
 }
 	
+void SwapChainRenderer::takeScreenshot()
+{
+	vk::Image srcImage = this->swapChainImages[this->currentFrame];
+	
+	vk::Image dstImage; 
+	VmaAllocation dstImageMemory; 
+	
+	{
+		vk::ImageCreateInfo imageInfo{};
+		imageInfo.sType = vk::StructureType::eImageCreateInfo;
+		imageInfo.imageType = vk::ImageType::e2D;
+		imageInfo.extent.width = this->swapChainExtent.width;
+		imageInfo.extent.height = this->swapChainExtent.height;
+		imageInfo.extent.depth = 1;
+		imageInfo.mipLevels = 1;
+		imageInfo.arrayLayers = 1;
+		imageInfo.format = vk::Format::eB8G8R8A8Srgb;
+		imageInfo.tiling = vk::ImageTiling::eLinear;
+		imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+		imageInfo.usage = vk::ImageUsageFlagBits::eTransferDst;
+		imageInfo.samples = vk::SampleCountFlagBits::e1;
+		imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+
+		VmaAllocationCreateInfo allocInfo = {};
+		//allocInfo.flags = 
+		allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+		allocInfo.requiredFlags = (VkMemoryPropertyFlags)vk::MemoryPropertyFlagBits::eHostVisible;
+
+		vmaCreateImage(this->device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&dstImage, &dstImageMemory, nullptr);
+	}
+
+	auto commandBuffer = this->device.beginSingleTimeCommands(true);
+
+	//transfer dstImage
+	
+	//create a barrier to prevent pipeline from moving forward until image transition is complete
+	{
+		vk::ImageMemoryBarrier barrier{};
+		barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
+		barrier.oldLayout = vk::ImageLayout::eUndefined;
+		barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+
+		//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+		barrier.image = dstImage;
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+		barrier.subresourceRange.levelCount = 1;                            //image is not an array
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = {};
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, nullptr, barrier);
+	}
+
+	//transfer swapchain image
+	{
+		vk::ImageMemoryBarrier barrier{};
+		barrier.sType = vk::StructureType::eImageMemoryBarrier;
+		barrier.oldLayout = vk::ImageLayout::ePresentSrcKHR;
+		barrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
+		barrier.image = srcImage;
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+		barrier.subresourceRange.levelCount = 1;                            //image is not an array
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+		
+		commandBuffer.pipelineBarrier(
+			vk::PipelineStageFlagBits::eTransfer, 
+			vk::PipelineStageFlagBits::eTransfer,
+			{},
+			{},
+			nullptr, 
+			barrier);
+	}
+
+	if (this->supportsBlit) {
+		//blit image
+		VkOffset3D blitSize; 
+		blitSize.x = swapChainExtent.width;
+		blitSize.y = swapChainExtent.height;
+		blitSize.z = 1;
+
+		vk::ImageBlit blit{};
+		blit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+		blit.srcSubresource.layerCount = 1; 
+		blit.srcOffsets[0] = blitSize;
+
+		blit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+		blit.dstSubresource.layerCount = 1;
+		blit.dstOffsets[1] = blitSize;
+
+		commandBuffer.blitImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, dstImage, 
+			vk::ImageLayout::eTransferDstOptimal, 1, &blit, vk::Filter::eLinear);
+	}
+	else {
+		//copy image
+		vk::ImageCopy copyRegion{};
+		copyRegion.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+		copyRegion.srcSubresource.layerCount = 1;
+		copyRegion.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+		copyRegion.dstSubresource.layerCount = 1;
+		copyRegion.extent.width = swapChainExtent.width;
+		copyRegion.extent.height = swapChainExtent.height;
+		copyRegion.extent.depth = 1;
+
+		commandBuffer.copyImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, dstImage, vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
+	}
+
+	//need to transition images back to general layout for next frame use
+	{
+		//source image
+		vk::ImageMemoryBarrier barrier{};
+		barrier.sType = vk::StructureType::eImageMemoryBarrier;
+		barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+		barrier.newLayout = vk::ImageLayout::eGeneral;
+		barrier.image = dstImage;
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+		barrier.subresourceRange.levelCount = 1;                            //image is not an array
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+
+		commandBuffer.pipelineBarrier(
+			vk::PipelineStageFlagBits::eTransfer,
+			vk::PipelineStageFlagBits::eTransfer,
+			{},
+			{},
+			nullptr,
+			barrier);
+	}
+
+	{
+		//copy image
+		vk::ImageMemoryBarrier barrier{};
+		barrier.sType = vk::StructureType::eImageMemoryBarrier;
+		barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+		barrier.newLayout = vk::ImageLayout::eGeneral;
+		barrier.image = srcImage;
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+		barrier.subresourceRange.levelCount = 1;                            //image is not an array
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+		barrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+
+		commandBuffer.pipelineBarrier(
+			vk::PipelineStageFlagBits::eTransfer,
+			vk::PipelineStageFlagBits::eTransfer,
+			{},
+			{},
+			nullptr,
+			barrier);
+	}
+
+	this->device.endSingleTimeCommands(commandBuffer, true); 
+
+	vk::ImageSubresource subResource{vk::ImageAspectFlagBits::eColor, 0, 0};
+	vk::SubresourceLayout layout{}; 
+	this->device.getDevice().getImageSubresourceLayout(dstImage, &subResource, &layout);
+
+	unsigned char* data = nullptr;
+	vmaMapMemory(this->device.getAllocator(), dstImageMemory, (void**)&data);
+	//data += layout.offset; 
+
+	//std::ofstream file("test.png", std::ios::out | std::ios::binary);
+
+	Texture texture(this->swapChainExtent.width, this->swapChainExtent.height, layout, data);
+	texture.saveToDisk("test.png");
+	//// ppm header
+	//file << "P6\n" << this->swapChainExtent.width << "\n" << this->swapChainExtent.height << "\n" << 255 << "\n";
+
+	//// If source is BGR (destination is always RGB) and we can't use blit (which does automatic conversion), we'll have to manually swizzle color components
+	//bool colorSwizzle = false;
+	//// Check if source is BGR
+	//// Note: Not complete, only contains most common and basic BGR surface formats for demonstration purposes
+	//if (!supportsBlit)
+	//{
+	//	//std::vector<VkFormat> formatsBGR = { VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SNORM };
+	//	std::vector<vk::Format> formatsBGR = { vk::Format::eB8G8R8A8Srgb, vk::Format::eB8G8R8A8Unorm, vk::Format::eB8G8R8A8Snorm};
+	//	colorSwizzle = (std::find(formatsBGR.begin(), formatsBGR.end(), this->swapChainImageFormat) != formatsBGR.end());
+	//}
+
+	//// ppm binary pixel data
+	//for (uint32_t y = 0; y < this->swapChainExtent.height; y++)
+	//{
+	//	unsigned int* row = (unsigned int*)data;
+	//	for (uint32_t x = 0; x < this->swapChainExtent.width; x++)
+	//	{
+	//		if (colorSwizzle)
+	//		{
+	//			file.write((char*)row + 2, 1);
+	//			file.write((char*)row + 1, 1);
+	//			file.write((char*)row, 1);
+	//		}
+	//		else
+	//		{
+	//			file.write((char*)row, 3);
+	//		}
+	//		row++;
+	//	}
+	//	data += layout.rowPitch;
+	//}
+	//file.close();
+
+	vmaUnmapMemory(this->device.getAllocator(), dstImageMemory);
+	vmaDestroyImage(this->device.getAllocator(), dstImage, dstImageMemory);
+}
+
+void SwapChainRenderer::queryDeviceSupport()
+{
+	this->supportsBlit = this->deviceSupports_SwapchainBlit() && this->devieSupports_blitToLinearImage();
+}
+
 void SwapChainRenderer::createRenderingGroups()
 {
 	uint32_t totalNumInd = 0, totalNumVert = 0; 
@@ -211,9 +436,16 @@ void SwapChainRenderer::submit()
 		throw std::runtime_error("failed to present swap chain image");
 	}
 
+	//take screenshot if requested
+	if (this->screenshotPath != nullptr) {
+		takeScreenshot();
+		this->screenshotPath = nullptr;
+	}
+
 	//advance to next frame
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
+
 
 void SwapChainRenderer::cleanup()
 {
@@ -234,8 +466,7 @@ void SwapChainRenderer::cleanup()
 void SwapChainRenderer::cleanupSwapChain()
 {
 	this->device.getDevice().destroyImageView(this->depthImageView);
-	this->device.getDevice().destroyImage(this->depthImage);
-	this->device.getDevice().freeMemory(this->depthImageMemory);
+	vmaDestroyImage(this->device.getAllocator(), this->depthImage, this->depthImageMemory);
 
 	for (auto framebuffer : this->swapChainFramebuffers) {
 		this->device.getDevice().destroyFramebuffer(framebuffer);
@@ -551,7 +782,7 @@ void SwapChainRenderer::createDepthResources()
 	this->depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
 }
 
-void SwapChainRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory)
+void SwapChainRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, VmaAllocation& imageMemory)
 {
 	/* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
@@ -569,25 +800,13 @@ void SwapChainRenderer::createImage(uint32_t width, uint32_t height, vk::Format 
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
 
-	image = this->device.getDevice().createImage(imageInfo);
-	if (!image) {
-		throw std::runtime_error("failed to create image");
-	}
 
-	/* Allocate the memory for the imag*/
-	vk::MemoryRequirements memRequirements = this->device.getDevice().getImageMemoryRequirements(image);
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT; 
+	allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-	vk::MemoryAllocateInfo allocInfo{};
-	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = this->device.findMemoryType(memRequirements.memoryTypeBits, properties);
-
-	imageMemory = this->device.getDevice().allocateMemory(allocInfo);
-	if (!imageMemory) {
-		throw std::runtime_error("failed to allocate image memory!");
-	}
-
-	this->device.getDevice().bindImageMemory(image, imageMemory, 0);
+	vmaCreateImage(this->device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
 }
 
 void SwapChainRenderer::createFramebuffers()
@@ -863,5 +1082,27 @@ void SwapChainRenderer::initResources(StarDevice& device, const int numFramesInF
 }
 void SwapChainRenderer::destroyResources(StarDevice& device)
 {
+}
+bool SwapChainRenderer::deviceSupports_SwapchainBlit()
+{
+	bool supportsBlit = true;
+
+	vk::FormatProperties formatProperties = this->device.getPhysicalDevice().getFormatProperties(swapChainImageFormat);
+	if (!(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitSrc)) {
+		supportsBlit = false;
+	}
+
+	return supportsBlit;
+}
+bool SwapChainRenderer::devieSupports_blitToLinearImage()
+{
+	bool supportsBlit = true; 
+
+	vk::FormatProperties formatProperties = this->device.getPhysicalDevice().getFormatProperties(vk::Format::eR8G8B8A8Snorm);
+	if (!(formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eBlitDst)) {
+		supportsBlit = false;
+	}
+
+	return supportsBlit;
 }
 }

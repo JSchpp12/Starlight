@@ -2,7 +2,7 @@
 
 namespace star {
 
-bool StarEngine::triggerScreenshot = false;
+std::unique_ptr<std::string> StarEngine::screenshotPath = nullptr;
 
 StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene())) {
 	ConfigFile::load("./StarEngine.cfg"); 
@@ -35,9 +35,15 @@ void StarEngine::Run()
 			obj.second->prepDraw(frameToDraw); 
 		}
 
+		if (screenshotPath) {
+			this->mainRenderer->triggerScreenshot(*screenshotPath);
+			screenshotPath = nullptr;
+		}
+
 		mainRenderer->pollEvents();
 		InteractionSystem::callWorldUpdates();
 		mainRenderer->submit();
+
 	}
 
 	this->renderingDevice->getDevice().waitIdle();
@@ -51,5 +57,7 @@ void StarEngine::init(StarApplication& app) {
 	this->renderingDevice = StarDevice::New(*window, app.getRequiredDeviceExtensions());
 
 	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window);
+
+	screenshotPath = std::make_unique<std::string>("test"); 
 }
 }

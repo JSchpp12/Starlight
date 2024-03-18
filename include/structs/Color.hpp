@@ -1,11 +1,20 @@
 #pragma once
 
+#include <cassert>
+
 namespace star {
 	class Color {
 	public:
 		Color() = default; 
-		Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a) : rr(255.0f / r), rg(255.0f / g), rb(255.0f / b), ra(255.0f / a) {};
-		Color(float r, float g, float b, float a) : rr(r), rg(g), rb(b), ra(a) {};
+		Color(unsigned char r, unsigned char g, unsigned char b) 
+			: rr(r / 255.0f), rg(g / 255.0f), rb(b / 255.0f), ra(1.0f) {
+			assert(verify() && "Overflow of color channels!");
+		};
+		Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a) 
+			: rr(r / 255.0f), rg(g / 255.0f), rb(b / 255.0f), ra(a / 255.0f) {};
+		Color(float r, float g, float b, float a) : rr(r), rg(g), rb(b), ra(a) {
+			assert(verify() && "Overflow of color channels!");
+		};
 
 		void setR(const float& r){
 			if (r <= 1.0f )
@@ -42,5 +51,10 @@ namespace star {
 
 	protected:
 		float rr = 0.0f, rg = 0.0f, rb = 0.0f, ra = 0.0f;
+
+	private: 
+		inline bool verify() const{
+			return this->rr <= 1.0f && this->rg <= 1.0f && this->rb <= 1.0f && this->ra <= 1.0f;
+		}
 	};
 }

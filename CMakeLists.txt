@@ -37,7 +37,9 @@ set(SHADERC_ENABLE_SHARED_CRT OFF CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
-find_package("tinyobjloader" REQUIRED)
+add_subdirectory("extern/tinyobjloader")
+
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 
 add_subdirectory("extern/googletest") 
 
@@ -67,6 +69,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/wrappers/graphics/StarRenderPass.cpp"
     "src/wrappers/graphics/StarCommandBuffer.cpp"
     "src/managers/ShaderManager.cpp" 
+    "src/wrappers/Allocator.cpp"
     "src/managers/ManagerBuffer.cpp"
     "src/managers/TextureManager.cpp"
     "src/managers/LightManager.cpp"
@@ -92,11 +95,11 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/objects/StarObjectInstance.cpp"
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
-    "src/common/ComputeTexture.cpp"
+     "src/common/Texture.cpp"
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
- "src/common/helpers/GeometryHelpers.cpp"
- )
+    "src/common/helpers/GeometryHelpers.cpp"
+)
 
 
 set(${PROJECT_NAME}_HEADERS
@@ -114,7 +117,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/objects/StarObjectInstance.hpp"
     "include/common/BasicCamera.hpp"
     "include/common/RuntimeUpdateTexture.hpp"
-    "include/common/ComputeTexture.hpp"
     "include/virtual/ModulePlug/RenderResourceModifier.hpp"
     "include/virtual/ModulePlug/RenderResourceModifierGeometry.hpp"
     "include/virtual/StarManager.hpp"
@@ -133,6 +135,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/wrappers/graphics/StarComputePipeline.hpp"
     "include/wrappers/graphics/StarRenderPass.hpp"
     "include/wrappers/graphics/StarCommandBuffer.hpp"
+    "include/wrappers/Allocator.hpp"
     "include/managers/ShaderManager.hpp"
     "include/managers/TextureManager.hpp"
     "include/managers/LightManager.hpp"
@@ -170,6 +173,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/Time.hpp"
     "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
+
 )
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
@@ -181,6 +185,7 @@ target_link_libraries(${PROJECT_NAME}
         tinyobjloader
         glfw
         spirv-reflect-static
+        GPUOpen::VulkanMemoryAllocator
 )
 
 target_include_directories(${PROJECT_NAME}
