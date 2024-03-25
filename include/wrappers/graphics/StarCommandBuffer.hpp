@@ -51,12 +51,19 @@ namespace star {
 		/// <param name="flags"></param>
 		void waitFor(std::vector<vk::Semaphore> semaphores, vk::PipelineStageFlags whereWait); 
 
+		/// <summary>
+		/// Wait for another buffer to complete
+		/// </summary>
+		/// <param name="otherBuffer"></param>
+		/// <param name="whereWait"></param>
+		void waitFor(StarCommandBuffer& otherBuffer, vk::PipelineStageFlags whereWait);
+
 		void reset(int bufferIndex); 
 
 		/// <summary>
 		/// Returns the semaphores that will be signaled once this buffer is done executing. 
 		/// </summary>
-		const std::vector<vk::Semaphore>& getCompleteSemaphores(); 
+		std::vector<vk::Semaphore>& getCompleteSemaphores(); 
 
 		void transitionImageLayout(int bufferIndex, star::StarTexture& texture, vk::ImageLayout newLayout, 
 			vk::AccessFlags srcFlags, vk::AccessFlags dstFlags,

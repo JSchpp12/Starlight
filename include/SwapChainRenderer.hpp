@@ -78,11 +78,7 @@ protected:
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
 
-	//texture information
-	vk::ImageView textureImageView;
-	vk::Sampler textureSampler;
-	vk::Image textureImage;
-	vk::DeviceMemory textureImageMemory;
+
 
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
@@ -108,28 +104,31 @@ protected:
 	std::vector<vk::Fence> inFlightFences;
 	std::vector<vk::Fence> imagesInFlight;
 
-	//std::unique_ptr<StarDescriptorPool> globalPool{};
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
-
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
 	std::unique_ptr<StarCommandBuffer> graphicsCommandBuffer; 
+	std::unique_ptr<StarCommandBuffer> screenshotCommandBuffer; 
 
 	//depth testing storage 
 	vk::Image depthImage;
 	VmaAllocation depthImageMemory;
 	vk::ImageView depthImageView;
 
+	std::vector<vk::Image> copyDstImages; 
+	std::vector<VmaAllocation> copyDstImageMemories; 
+
 	bool supportsBlit = true; 
 
 	std::unique_ptr<std::string> screenshotPath = nullptr;
 
-	virtual void takeScreenshot();
+	virtual void takeScreenshot(const uint32_t& currentBuffer);
 
 	virtual void queryDeviceSupport();
 
 	//tracker for which frame is being processed of the available permitted frames
 	size_t currentFrame = 0;
+	size_t previousFrame = 0; 
 
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -225,6 +224,8 @@ protected:
 	/// Create tracking information in order to link fences with the swap chain images using 
 	/// </summary>
 	virtual void createFenceImageTracking();
+
+	void recordScreenshotCommandBuffers();
 
 #pragma region helpers
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);

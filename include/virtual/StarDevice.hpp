@@ -95,17 +95,20 @@ public:
 
 #pragma region helperFunctions
 	void createPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits flags, vk::CommandPool& pool);
+	
 	/// <summary>
 	/// Create a buffer with the given arguments
 	/// </summary>
 	void createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags properties,
 		vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
+
 	/// <summary>
 	/// Helper function to execute single time use command buffers
 	/// </summary>
 	/// <param name="useTransferPool">Should command be submitted to the transfer command pool. Will be submitted to the graphics pool otherwise.</param>
 	/// <returns></returns>
 	vk::CommandBuffer beginSingleTimeCommands(bool useTransferPool = false);
+
 	/// <summary>
 	/// Helper function to end execution of single time use command buffer
 	/// </summary>

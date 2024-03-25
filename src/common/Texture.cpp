@@ -15,16 +15,10 @@ star::Texture::Texture(int texWidth, int texHeight, vk::SubresourceLayout texLay
         unsigned int* row = (unsigned int*)raw;
 
 		for (int j = 0; j < texWidth; j++) {
+            unsigned char a = *(unsigned char*)(row + 3);
             unsigned char r = *(unsigned char*)(row+2);
             unsigned char g = *(unsigned char*)(row + 1);
             unsigned char b = *(unsigned char*)(row);
-            //unsigned char ra = raw[this->channels * (j + texLayout.rowPitch * i) + 0];
-            //unsigned char ga = raw[this->channels * (j + texLayout.rowPitch * i) + 1];
-            //unsigned char ba = raw[this->channels * (j + texLayout.rowPitch * i) + 2];
-
-            if (r != 0 || g != 0 || b != 0) {
-                std::cout << "col test" << std::endl;
-            }            
 
 			this->rawData.value().at(i).at(j) = Color(r, g, b);
 

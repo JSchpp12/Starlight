@@ -154,7 +154,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarEntity.hpp"
     "include/virtual/StarShader.hpp"
     "include/enums/Enums.hpp"
-    "include/enums/Key.hpp"
     "include/common/Handle.hpp"
     "include/common/BufferHandle.hpp"
     "include/structs/LightBufferObject.hpp"

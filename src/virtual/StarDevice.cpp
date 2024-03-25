@@ -518,7 +518,6 @@ vk::CommandBuffer StarDevice::beginSingleTimeCommands(bool useTransferPool) {
 	vk::CommandBuffer tmpCommandBuffer = this->vulkanDevice.allocateCommandBuffers(allocInfo).at(0);
 
 	vk::CommandBufferBeginInfo beginInfo{};
-	//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
 	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit; //only planning on using this command buffer once 
 

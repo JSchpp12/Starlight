@@ -1,7 +1,7 @@
 #pragma once 
 
-#include "Key.hpp"
 #include "KeyStates.hpp"
+#include "Enums.hpp"
 
 #include <GLFW/glfw3.h>
 

@@ -43,7 +43,6 @@ void StarEngine::Run()
 		mainRenderer->pollEvents();
 		InteractionSystem::callWorldUpdates();
 		mainRenderer->submit();
-
 	}
 
 	this->renderingDevice->getDevice().waitIdle();
@@ -57,7 +56,5 @@ void StarEngine::init(StarApplication& app) {
 	this->renderingDevice = StarDevice::New(*window, app.getRequiredDeviceExtensions());
 
 	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window);
-
-	screenshotPath = std::make_unique<std::string>("test"); 
 }
 }
