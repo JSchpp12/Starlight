@@ -663,8 +663,11 @@ void SwapChainRenderer::createRenderingBuffers()
 
 void SwapChainRenderer::createCommandBuffers()
 {
-	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics); 
-	this->screenshotCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Ttransfer);
+	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics);
+	if (this->supportsBlit)
+		this->screenshotCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics);
+	else
+		this->screenshotCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Ttransfer);
 	this->screenshotCommandBuffer->waitFor(*this->graphicsCommandBuffer, vk::PipelineStageFlagBits::eTransfer); 
 
 	this->copyDstImageMemories.resize(MAX_FRAMES_IN_FLIGHT);
@@ -880,16 +883,24 @@ void SwapChainRenderer::recordScreenshotCommandBuffers()
 			VkOffset3D blitSize;
 			blitSize.x = swapChainExtent.width;
 			blitSize.y = swapChainExtent.height;
-			blitSize.z = 1;
+			blitSize.z = 0;
+
+			//this is needed due to vulkan spec reqs of vk image 2D
+			VkOffset3D blitSizeSecond; 
+			blitSizeSecond.x = swapChainExtent.width;
+			blitSizeSecond.y = swapChainExtent.height; 
+			blitSizeSecond.z = 1;
 
 			vk::ImageBlit blit{};
 			blit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
 			blit.srcSubresource.layerCount = 1;
 			blit.srcOffsets[0] = blitSize;
+			blit.srcOffsets[1] = blitSizeSecond;
 
 			blit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
 			blit.dstSubresource.layerCount = 1;
-			blit.dstOffsets[1] = blitSize;
+			blit.dstOffsets[0] = blitSize;
+			blit.dstOffsets[1] = blitSizeSecond;
 
 			commandBuffer.blitImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[i],
 				vk::ImageLayout::eTransferDstOptimal, 1, &blit, vk::Filter::eLinear);
