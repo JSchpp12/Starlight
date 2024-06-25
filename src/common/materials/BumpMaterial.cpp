@@ -49,7 +49,7 @@ void star::BumpMaterial::prep(StarDevice& device)
 	bumpMap->prepRender(device);
 }
 
-void star::BumpMaterial::initResources(StarDevice& device, const int numFramesInFlight)
+void star::BumpMaterial::initResources(StarDevice& device, const int& numFramesInFlight)
 {
 	this->TextureMaterial::initResources(device, numFramesInFlight); 
 

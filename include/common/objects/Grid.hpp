@@ -26,8 +26,6 @@ namespace star {
 
 		Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material);
 
-		//std::optional<glm::vec3> getWorldCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head);
-
 		std::optional<glm::vec2> getXYCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head);
 
 		int getSizeX() { return this->vertX; }

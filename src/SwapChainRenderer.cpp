@@ -1048,7 +1048,7 @@ vk::Format SwapChainRenderer::findDepthFormat()
 		vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
-void SwapChainRenderer::initResources(StarDevice& device, const int numFramesInFlight)
+void SwapChainRenderer::initResources(StarDevice& device, const int& numFramesInFlight)
 {
 	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size());
 	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, this->swapChainImages.size());

@@ -5,7 +5,7 @@ void star::TextureMaterial::prep(StarDevice& device)
 	texture->prepRender(device);
 }
 
-void star::TextureMaterial::initResources(StarDevice& device, const int numFramesInFlight)
+void star::TextureMaterial::initResources(StarDevice& device, const int& numFramesInFlight)
 {
 	ManagerDescriptorPool::request(vk::DescriptorType::eCombinedImageSampler, 1); 
 }

@@ -17,6 +17,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/matrix_cross_product.hpp>
 
@@ -143,7 +145,7 @@ namespace star {
 
 		virtual void destroyResources(StarDevice& device) override;
 
-		virtual void initResources(StarDevice& device, const int numFramesInFlight) override;
+		virtual void initResources(StarDevice& device, const int& numFramesInFlight) override;
 
 		virtual void createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 

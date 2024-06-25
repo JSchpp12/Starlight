@@ -326,7 +326,7 @@ void star::StarObject::destroyResources(StarDevice& device)
 	this->boundingBoxVertBuffer.reset();
 }
 
-void star::StarObject::initResources(StarDevice& device, const int numFramesInFlight)
+void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight)
 {
 	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight * this->instances.size() * this->instances.front()->getBufferInfoSize().size());
 

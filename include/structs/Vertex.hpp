@@ -18,6 +18,7 @@ public:
     float matShininess = 1.0f;
 
     Vertex() = default; 
+    Vertex(const glm::vec3& pos) : pos(pos) {};
     Vertex(const glm::vec3& pos, const glm::vec3& normal) : pos(pos), normal(normal) {};
     Vertex(const glm::vec3& pos, const glm::vec3& normal, const glm::vec3& color) : pos(pos), normal(normal), color(color) {};
     Vertex(const glm::vec3& pos, const glm::vec3 normal, const glm::vec3& color, const glm::vec2& texCoord) : pos(pos), normal(normal), color(color), texCoord(texCoord) {};

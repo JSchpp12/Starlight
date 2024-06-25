@@ -242,11 +242,9 @@ protected:
 	vk::Format findDepthFormat();
 #pragma endregion
 private:
-	void initResources(StarDevice& device, const int numFramesInFlight) override;
+	void initResources(StarDevice& device, const int& numFramesInFlight) override;
 
 	void destroyResources(StarDevice& device) override;
-
-
 
 #pragma region MyRegion
 	/// <summary>
