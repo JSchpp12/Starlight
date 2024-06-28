@@ -50,19 +50,10 @@ void SwapChainRenderer::queryDeviceSupport()
 
 void SwapChainRenderer::createRenderingGroups()
 {
-	uint32_t totalNumInd = 0, totalNumVert = 0; 
 	uint32_t currentNumInd = 0, currentNumVert = 0; 
 
-	//count total number of verticies 
-	for (StarObject& object : objectList) {
-		for (auto& mesh : object.getMeshes()) {
-			totalNumInd += mesh->getNumIndices(); 
-			totalNumVert += mesh->getNumVerts();
-		}
-	}
-
-	std::vector<Vertex> vertexList(totalNumVert); 
-	std::vector<uint32_t> indiciesList(totalNumInd);
+	std::vector<Vertex> vertexList; 
+	std::vector<uint32_t> indiciesList;
 	
 	for (StarObject& object : objectList) {
 		//check if the object is compatible with any render groups 
@@ -71,7 +62,8 @@ void SwapChainRenderer::createRenderingGroups()
 		//if it is not, create a new render group
 		for (int i = 0; i < this->renderGroups.size(); i++) {
 			if (this->renderGroups[i]->isObjectCompatible(object)) {
-				match = this->renderGroups[i].get(); 
+				match = this->renderGroups[i].get();
+				break;
 			}
 		}
 
@@ -85,6 +77,10 @@ void SwapChainRenderer::createRenderingGroups()
 		}
 
 		//add object verts to vertex buffer + index buffer
+		for (auto& mesh : object.getMeshes()) {
+			currentNumInd += mesh->getNumIndices();
+			currentNumVert += mesh->getNumVerts();
+		}
 	}
 
 	//init all groups
