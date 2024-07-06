@@ -14,7 +14,7 @@ namespace star {
 			this->registerCallbacks(); 
 		}
 
-		virtual void initResources(StarDevice& device, const int numFramesInFlight) = 0;
+		virtual void initResources(StarDevice& device, const int& numFramesInFlight) = 0;
 
 		virtual void destroyResources(StarDevice& device) = 0; 
 

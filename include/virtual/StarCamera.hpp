@@ -33,7 +33,7 @@ public:
 	}
 
 	glm::mat4 getProjectionMatrix() const{
-		return glm::perspective(glm::radians(45.0f), this->resolution.x / this->resolution.y, 0.1f, 10.0f);
+		return glm::perspective(glm::radians(this->fieldOfView), this->resolution.x / this->resolution.y, this->nearClippingPlaneDistance, this->farClippingPlaneDistance);
 	}
 
 	glm::vec2 getResolution() const{ return this->resolution; }
@@ -41,7 +41,7 @@ public:
 protected:
 	glm::vec2 resolution;
 
-	float fieldOfView = 45, nearClippingPlaneDistance=0.0f, farClippingPlaneDistance=10.0f;
+	float fieldOfView = 45.0f, nearClippingPlaneDistance=0.1f, farClippingPlaneDistance=10.0f;
 	float pitch = 0.0f, yaw = 0.0f; 
 };
 }

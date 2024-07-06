@@ -13,6 +13,7 @@ SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique
 
 void SwapChainRenderer::prepare()
 {
+	queryDeviceSupport();
 	createImageViews();
 	createRenderPass();
 	createRenderingBuffers();
@@ -21,26 +22,38 @@ void SwapChainRenderer::prepare()
 	createFramebuffers();
 	createRenderingGroups();
 	createCommandBuffers();
+	recordScreenshotCommandBuffers();
 	createSemaphores();
 	createFences();
 	createFenceImageTracking();
 }
 	
+void SwapChainRenderer::takeScreenshot(const uint32_t& currentBuffer)
+{
+	this->screenshotCommandBuffer->submit(currentBuffer);
+
+	vk::ImageSubresource subResource{vk::ImageAspectFlagBits::eColor, 0, 0};
+	vk::SubresourceLayout layout{}; 
+	this->device.getDevice().getImageSubresourceLayout(this->copyDstImages[currentBuffer], &subResource, &layout);
+
+	unsigned char* data = nullptr;
+	vmaMapMemory(this->device.getAllocator(), this->copyDstImageMemories[currentBuffer], (void**)&data);
+	Texture texture(this->swapChainExtent.width, this->swapChainExtent.height, layout, data);
+	texture.saveToDisk(*this->screenshotPath);
+	vmaUnmapMemory(this->device.getAllocator(), this->copyDstImageMemories[currentBuffer]);
+}
+
+void SwapChainRenderer::queryDeviceSupport()
+{
+	this->supportsBlit = this->deviceSupports_SwapchainBlit() && this->devieSupports_blitToLinearImage();
+}
+
 void SwapChainRenderer::createRenderingGroups()
 {
-	uint32_t totalNumInd = 0, totalNumVert = 0; 
 	uint32_t currentNumInd = 0, currentNumVert = 0; 
 
-	//count total number of verticies 
-	for (StarObject& object : objectList) {
-		for (auto& mesh : object.getMeshes()) {
-			totalNumInd += mesh->getNumIndices(); 
-			totalNumVert += mesh->getNumVerts();
-		}
-	}
-
-	std::vector<Vertex> vertexList(totalNumVert); 
-	std::vector<uint32_t> indiciesList(totalNumInd);
+	std::vector<Vertex> vertexList; 
+	std::vector<uint32_t> indiciesList;
 	
 	for (StarObject& object : objectList) {
 		//check if the object is compatible with any render groups 
@@ -49,7 +62,8 @@ void SwapChainRenderer::createRenderingGroups()
 		//if it is not, create a new render group
 		for (int i = 0; i < this->renderGroups.size(); i++) {
 			if (this->renderGroups[i]->isObjectCompatible(object)) {
-				match = this->renderGroups[i].get(); 
+				match = this->renderGroups[i].get();
+				break;
 			}
 		}
 
@@ -63,6 +77,10 @@ void SwapChainRenderer::createRenderingGroups()
 		}
 
 		//add object verts to vertex buffer + index buffer
+		for (auto& mesh : object.getMeshes()) {
+			currentNumInd += mesh->getNumIndices();
+			currentNumVert += mesh->getNumVerts();
+		}
 	}
 
 	//init all groups
@@ -139,6 +157,7 @@ void SwapChainRenderer::submit()
 	   //wait for fence to be ready 
 	   // 3. 'VK_TRUE' -> waiting for all fences
 	   // 4. timeout 
+
 	this->device.getDevice().waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	/* Get Image From Swapchain */
@@ -171,8 +190,6 @@ void SwapChainRenderer::submit()
 
 	updateUniformBuffer(currentFrame);
 
-	const vk::Semaphore& doneSemaphore = this->graphicsCommandBuffer->getCompleteSemaphores().at(currentFrame); 
-
 	//set fence to unsignaled state
 	this->device.getDevice().resetFences(1, &inFlightFences[currentFrame]);
 
@@ -181,14 +198,24 @@ void SwapChainRenderer::submit()
 	recordCommandBuffer(currentFrame, imageIndex); 
 	this->graphicsCommandBuffer->submit(currentFrame, inFlightFences[currentFrame], std::pair<vk::Semaphore, vk::PipelineStageFlags>(imageAvailableSemaphores[currentFrame], vk::PipelineStageFlagBits::eColorAttachmentOutput));
 
+	const vk::Semaphore* doneSemaphore = nullptr;
+	if (this->screenshotPath != nullptr) {
+		doneSemaphore = &this->screenshotCommandBuffer->getCompleteSemaphores().at(currentFrame);
+
+		takeScreenshot(currentFrame);
+		this->screenshotPath = nullptr;
+	}
+	else {
+		doneSemaphore = &this->graphicsCommandBuffer->getCompleteSemaphores().at(currentFrame);
+	}
+
 	/* Presentation */
 	vk::PresentInfoKHR presentInfo{};
-	//presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.sType = vk::StructureType::ePresentInfoKHR;
 
 	//what to wait for 
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &doneSemaphore;
+	presentInfo.pWaitSemaphores = doneSemaphore;
 
 	//what swapchains to present images to 
 	vk::SwapchainKHR swapChains[] = { swapChain };
@@ -202,7 +229,6 @@ void SwapChainRenderer::submit()
 	//make call to present image
 	auto presentResult = this->device.getPresentQueue().presentKHR(presentInfo);
 
-	//if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || frameBufferResized) {
 	if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || frameBufferResized) {
 		frameBufferResized = false;
 		recreateSwapChain();
@@ -212,17 +238,14 @@ void SwapChainRenderer::submit()
 	}
 
 	//advance to next frame
+	previousFrame = currentFrame; 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
+
 
 void SwapChainRenderer::cleanup()
 {
 	cleanupSwapChain();
-
-	this->device.getDevice().destroySampler(this->textureSampler);
-	this->device.getDevice().destroyImageView(this->textureImageView);
-	this->device.getDevice().destroyImage(this->textureImage);
-	this->device.getDevice().freeMemory(this->textureImageMemory);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		this->device.getDevice().destroySemaphore(renderFinishedSemaphores[i]);
@@ -234,8 +257,11 @@ void SwapChainRenderer::cleanup()
 void SwapChainRenderer::cleanupSwapChain()
 {
 	this->device.getDevice().destroyImageView(this->depthImageView);
-	this->device.getDevice().destroyImage(this->depthImage);
-	this->device.getDevice().freeMemory(this->depthImageMemory);
+	vmaDestroyImage(this->device.getAllocator(), this->depthImage, this->depthImageMemory);
+
+	for (int i = 0; i < this->copyDstImageMemories.size(); i++) {
+		vmaDestroyImage(this->device.getAllocator(), this->copyDstImages[i], this->copyDstImageMemories[i]);
+	}
 
 	for (auto framebuffer : this->swapChainFramebuffers) {
 		this->device.getDevice().destroyFramebuffer(framebuffer);
@@ -283,7 +309,7 @@ void SwapChainRenderer::recreateSwapChain()
 
 	createDescriptors();
 
-	createCommandBuffers();
+	recordScreenshotCommandBuffers();
 }
 
 void SwapChainRenderer::createSwapChain()
@@ -316,8 +342,7 @@ void SwapChainRenderer::createSwapChain()
 	createInfo.imageColorSpace = surfaceFormat.colorSpace;
 	createInfo.imageExtent = extent;
 	createInfo.imageArrayLayers = 1; //1 unless using 3D display 
-	//createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
-	createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
+	createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
 
 	QueueFamilyIndicies indicies = this->device.findPhysicalQueueFamilies();
 	std::vector<uint32_t> queueFamilyIndicies;
@@ -379,7 +404,6 @@ void SwapChainRenderer::createImageViews()
 
 	//need to create an imageView for each of the images available
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		//swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 		swapChainImageViews[i] = createImageView(swapChainImages[i], swapChainImageFormat, vk::ImageAspectFlagBits::eColor);
 	}
 }
@@ -553,7 +577,7 @@ void SwapChainRenderer::createDepthResources()
 	this->depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
 }
 
-void SwapChainRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory)
+void SwapChainRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, VmaAllocation& imageMemory)
 {
 	/* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
@@ -571,25 +595,13 @@ void SwapChainRenderer::createImage(uint32_t width, uint32_t height, vk::Format 
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
 
-	image = this->device.getDevice().createImage(imageInfo);
-	if (!image) {
-		throw std::runtime_error("failed to create image");
-	}
 
-	/* Allocate the memory for the imag*/
-	vk::MemoryRequirements memRequirements = this->device.getDevice().getImageMemoryRequirements(image);
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT; 
+	allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-	vk::MemoryAllocateInfo allocInfo{};
-	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = this->device.findMemoryType(memRequirements.memoryTypeBits, properties);
-
-	imageMemory = this->device.getDevice().allocateMemory(allocInfo);
-	if (!imageMemory) {
-		throw std::runtime_error("failed to allocate image memory!");
-	}
-
-	this->device.getDevice().bindImageMemory(image, imageMemory, 0);
+	vmaCreateImage(this->device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
 }
 
 void SwapChainRenderer::createFramebuffers()
@@ -647,7 +659,38 @@ void SwapChainRenderer::createRenderingBuffers()
 
 void SwapChainRenderer::createCommandBuffers()
 {
-	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics); 
+	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics);
+	if (this->supportsBlit)
+		this->screenshotCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics);
+	else
+		this->screenshotCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Ttransfer);
+	this->screenshotCommandBuffer->waitFor(*this->graphicsCommandBuffer, vk::PipelineStageFlagBits::eTransfer); 
+
+	this->copyDstImageMemories.resize(MAX_FRAMES_IN_FLIGHT);
+	this->copyDstImages.resize(MAX_FRAMES_IN_FLIGHT);
+	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		vk::ImageCreateInfo imageInfo{};
+		imageInfo.sType = vk::StructureType::eImageCreateInfo;
+		imageInfo.imageType = vk::ImageType::e2D;
+		imageInfo.extent.width = this->swapChainExtent.width;
+		imageInfo.extent.height = this->swapChainExtent.height;
+		imageInfo.extent.depth = 1;
+		imageInfo.mipLevels = 1;
+		imageInfo.arrayLayers = 1;
+		imageInfo.format = vk::Format::eB8G8R8A8Srgb;
+		imageInfo.tiling = vk::ImageTiling::eLinear;
+		imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+		imageInfo.usage = vk::ImageUsageFlagBits::eTransferDst;
+		imageInfo.samples = vk::SampleCountFlagBits::e1;
+		imageInfo.sharingMode = vk::SharingMode::eExclusive;
+
+
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+		allocInfo.requiredFlags = (VkMemoryPropertyFlags)vk::MemoryPropertyFlagBits::eHostVisible;
+
+		vmaCreateImage(this->device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&copyDstImages[i], &copyDstImageMemories[i], nullptr);
+	}
 }
 
 void SwapChainRenderer::recordCommandBuffer(uint32_t bufferIndex, uint32_t imageIndex){
@@ -774,6 +817,149 @@ void SwapChainRenderer::createFences()
 	}
 }
 
+void SwapChainRenderer::recordScreenshotCommandBuffers()
+{
+	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		vk::Image srcImage = this->swapChainImages[i];
+
+		this->screenshotCommandBuffer->begin(i);
+		auto commandBuffer = this->screenshotCommandBuffer->buffer(i);
+
+		//transfer dstImage
+
+		//create a barrier to prevent pipeline from moving forward until image transition is complete
+		{
+			vk::ImageMemoryBarrier barrier{};
+			barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
+			barrier.oldLayout = vk::ImageLayout::eUndefined;
+			barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+
+			//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
+			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+			barrier.image = this->copyDstImages[i];
+			barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+			barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+			barrier.subresourceRange.levelCount = 1;                            //image is not an array
+			barrier.subresourceRange.baseArrayLayer = 0;
+			barrier.subresourceRange.layerCount = 1;
+			barrier.srcAccessMask = {};
+			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, nullptr, barrier);
+		}
+
+		//transfer swapchain image
+		{
+			vk::ImageMemoryBarrier barrier{};
+			barrier.sType = vk::StructureType::eImageMemoryBarrier;
+			barrier.oldLayout = vk::ImageLayout::ePresentSrcKHR;
+			barrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
+			barrier.image = srcImage;
+			barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+			barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+			barrier.subresourceRange.levelCount = 1;                            //image is not an array
+			barrier.subresourceRange.baseArrayLayer = 0;
+			barrier.subresourceRange.layerCount = 1;
+			barrier.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+			barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+
+			commandBuffer.pipelineBarrier(
+				vk::PipelineStageFlagBits::eTransfer,
+				vk::PipelineStageFlagBits::eTransfer,
+				{},
+				{},
+				nullptr,
+				barrier);
+		}
+
+		if (this->supportsBlit) {
+			//blit image
+			VkOffset3D blitSize;
+			blitSize.x = swapChainExtent.width;
+			blitSize.y = swapChainExtent.height;
+			blitSize.z = 1;
+
+			vk::ImageBlit blit{};
+			blit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+			blit.srcSubresource.layerCount = 1;
+			blit.srcOffsets[1] = blitSize;
+
+			blit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+			blit.dstSubresource.layerCount = 1;
+			blit.dstOffsets[1] = blitSize;
+
+			commandBuffer.blitImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[i],
+				vk::ImageLayout::eTransferDstOptimal, 1, &blit, vk::Filter::eLinear);
+		}
+		else {
+			//copy image
+			vk::ImageCopy copyRegion{};
+			copyRegion.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+			copyRegion.srcSubresource.layerCount = 1;
+			copyRegion.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+			copyRegion.dstSubresource.layerCount = 1;
+			copyRegion.extent.width = swapChainExtent.width;
+			copyRegion.extent.height = swapChainExtent.height;
+			copyRegion.extent.depth = 1;
+
+			commandBuffer.copyImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[i], vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
+		}
+
+		//need to transition images back to general layout for next frame use
+		{
+			//destination image
+			vk::ImageMemoryBarrier barrier{};
+			barrier.sType = vk::StructureType::eImageMemoryBarrier;
+			barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+			barrier.newLayout = vk::ImageLayout::eGeneral;
+			barrier.image = this->copyDstImages[i];
+			barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+			barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+			barrier.subresourceRange.levelCount = 1;                            //image is not an array
+			barrier.subresourceRange.baseArrayLayer = 0;
+			barrier.subresourceRange.layerCount = 1;
+			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+			barrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+
+			commandBuffer.pipelineBarrier(
+				vk::PipelineStageFlagBits::eTransfer,
+				vk::PipelineStageFlagBits::eTransfer,
+				{},
+				{},
+				nullptr,
+				barrier);
+		}
+
+		{
+			//source image
+			vk::ImageMemoryBarrier barrier{};
+			barrier.sType = vk::StructureType::eImageMemoryBarrier;
+			barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+			barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+			barrier.image = srcImage;
+			barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+			barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+			barrier.subresourceRange.levelCount = 1;                            //image is not an array
+			barrier.subresourceRange.baseArrayLayer = 0;
+			barrier.subresourceRange.layerCount = 1;
+			barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+			barrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+
+			commandBuffer.pipelineBarrier(
+				vk::PipelineStageFlagBits::eTransfer,
+				vk::PipelineStageFlagBits::eTransfer,
+				{},
+				{},
+				nullptr,
+				barrier);
+		}
+
+		commandBuffer.end();
+	}
+}
+
 void SwapChainRenderer::createFenceImageTracking()
 {
 	//note: just like createFences() this too can be wrapped into semaphore creation. Seperated for understanding.
@@ -858,12 +1044,34 @@ vk::Format SwapChainRenderer::findDepthFormat()
 		vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
-void SwapChainRenderer::initResources(StarDevice& device, const int numFramesInFlight)
+void SwapChainRenderer::initResources(StarDevice& device, const int& numFramesInFlight)
 {
 	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size());
 	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, this->swapChainImages.size());
 }
 void SwapChainRenderer::destroyResources(StarDevice& device)
 {
+}
+bool SwapChainRenderer::deviceSupports_SwapchainBlit()
+{
+	bool supportsBlit = true;
+
+	vk::FormatProperties formatProperties = this->device.getPhysicalDevice().getFormatProperties(swapChainImageFormat);
+	if (!(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitSrc)) {
+		supportsBlit = false;
+	}
+
+	return supportsBlit;
+}
+bool SwapChainRenderer::devieSupports_blitToLinearImage()
+{
+	bool supportsBlit = true; 
+
+	vk::FormatProperties formatProperties = this->device.getPhysicalDevice().getFormatProperties(vk::Format::eR8G8B8A8Snorm);
+	if (!(formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eBlitDst)) {
+		supportsBlit = false;
+	}
+
+	return supportsBlit;
 }
 }

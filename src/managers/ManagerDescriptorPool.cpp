@@ -5,7 +5,7 @@ std::stack<std::pair<vk::DescriptorType, int>> star::ManagerDescriptorPool::requ
 std::unordered_map<vk::DescriptorType, int> star::ManagerDescriptorPool::actives = std::unordered_map<vk::DescriptorType, int>(); 
 star::StarDescriptorPool* star::ManagerDescriptorPool::pool = nullptr; 
 
-void star::ManagerDescriptorPool::request(vk::DescriptorType type, int numDescriptors) {
+void star::ManagerDescriptorPool::request(const vk::DescriptorType& type, const int& numDescriptors) {
 	requests.push(std::pair<vk::DescriptorType, int>(type, numDescriptors));
 }
 

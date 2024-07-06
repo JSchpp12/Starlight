@@ -9,7 +9,6 @@ StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features>
 	this->requiredDeviceFeatures.fillModeNonSolid = VK_TRUE; 
 	this->requiredDeviceFeatures.logicOp = VK_TRUE; 
 
-
 	if (requiredFeatures.size() > 0)
 		prepRequiredFeatures(requiredFeatures); 
 
@@ -20,6 +19,7 @@ StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features>
 	pickPhysicalDevice();
 	createLogicalDevice();
 	createCommandPool();
+	createAllocator(); 
 }
 
 std::unique_ptr<StarDevice> StarDevice::New(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures)
@@ -31,6 +31,7 @@ StarDevice::~StarDevice() {
 	this->vulkanDevice.destroyCommandPool(this->computeCommandPool); 
 	this->vulkanDevice.destroyCommandPool(this->transferCommandPool);
 	this->vulkanDevice.destroyCommandPool(this->graphicsCommandPool);
+	this->allocator.reset();
 	this->vulkanDevice.destroy();
 	this->surface.reset();
 	this->instance.destroy();
@@ -57,12 +58,11 @@ void StarDevice::createInstance() {
 
 	vk::ApplicationInfo appInfo{};
 	appInfo.sType = vk::StructureType::eApplicationInfo;
-	// appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "Starlight";
 	appInfo.applicationVersion = vk::makeApiVersion(0, 1, 0, 0);
 	appInfo.pEngineName = "Starlight";
 	appInfo.engineVersion = vk::makeApiVersion(0, 1, 0, 0);
-	appInfo.apiVersion = vk::ApiVersion11;
+	appInfo.apiVersion = vk::ApiVersion13;
 
 	//enumerate required extensions
 	auto requriedExtensions = this->getRequiredExtensions();
@@ -184,10 +184,10 @@ void StarDevice::createLogicalDevice() {
 		vk::DeviceCreateFlags(),                                                        //device creation flags
 		static_cast<uint32_t>(queueCreateInfos.size()),                                 //queue create info count 
 		queueCreateInfos.data(),                                                        //device queue create info
-		enableValidationLayers ? static_cast<uint32_t>(deviceExtensions.size()) : 0,    //enabled layer count 
-		enableValidationLayers ? deviceExtensions.data() : VK_NULL_HANDLE,              //enables layer names
-		static_cast<uint32_t>(deviceExtensions.size()),                                 //enabled extension coun 
-		deviceExtensions.data(),                                                        //enabled extension names 
+		enableValidationLayers ? static_cast<uint32_t>(requiredDeviceExtensions.size()) : 0,    //enabled layer count 
+		enableValidationLayers ? requiredDeviceExtensions.data() : VK_NULL_HANDLE,              //enables layer names
+		static_cast<uint32_t>(requiredDeviceExtensions.size()),                                 //enabled extension coun 
+		requiredDeviceExtensions.data(),                                                        //enabled extension names 
 		&this->requiredDeviceFeatures                                                                 //enabled features
 	};
 
@@ -217,6 +217,11 @@ void StarDevice::createCommandPool() {
 	if (queueFamilyIndicies.computeFamily.has_value()) {
 		createPool(queueFamilyIndicies.computeFamily.value(), vk::CommandPoolCreateFlagBits::eResetCommandBuffer, computeCommandPool);
 	}
+}
+
+void StarDevice::createAllocator()
+{
+	this->allocator = std::make_unique<star::Allocator>(this->vulkanDevice, this->physicalDevice, this->instance);
 }
 
 bool StarDevice::isDeviceSuitable(vk::PhysicalDevice device) {
@@ -310,12 +315,12 @@ bool StarDevice::checkDeviceExtensionSupport(vk::PhysicalDevice device) {
 	std::vector<vk::ExtensionProperties> availableExtensions(extensionCount);
 	device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
 
-	std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+	std::set<std::string> requiredExtensions(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end());
 
 	//iterate through extensions looking for those that are required
 	for (const auto& extension : availableExtensions) {
 		if (strcmp(extension.extensionName, "VK_KHR_portability_subset") == 0)
-			this->deviceExtensions.push_back("VK_KHR_portability_subset");
+			this->requiredDeviceExtensions.push_back("VK_KHR_portability_subset");
 		requiredExtensions.erase(extension.extensionName);
 	}
 
@@ -513,7 +518,6 @@ vk::CommandBuffer StarDevice::beginSingleTimeCommands(bool useTransferPool) {
 	vk::CommandBuffer tmpCommandBuffer = this->vulkanDevice.allocateCommandBuffers(allocInfo).at(0);
 
 	vk::CommandBufferBeginInfo beginInfo{};
-	//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
 	beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit; //only planning on using this command buffer once 
 

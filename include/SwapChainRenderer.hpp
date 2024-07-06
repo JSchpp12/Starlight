@@ -4,6 +4,7 @@
 #include "StarRenderer.hpp"
 #include "StarWindow.hpp"
 #include "StarDescriptors.hpp"
+
 #include "LightBufferObject.hpp"
 #include "ObjectManager.hpp"
 #include "InteractionSystem.hpp"
@@ -25,11 +26,12 @@
 #include <memory>
 #include <vulkan/vulkan.hpp>
 
+
 namespace star {
 class SwapChainRenderer : public StarRenderer, private RenderResourceModifier {
 public:
 	//how many frames will be sent through the pipeline
-	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const int MAX_FRAMES_IN_FLIGHT = 1;
 
 	SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, StarDevice& device);
@@ -41,6 +43,8 @@ public:
 	virtual void prepare() override;
 
 	virtual void submit() override; 
+
+	void triggerScreenshot(const std::string& path) { screenshotPath = std::make_unique<std::string>(path);  };
 
 	int getFrameToBeDrawn() { return this->currentFrame; }
 
@@ -74,11 +78,7 @@ protected:
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
 
-	//texture information
-	vk::ImageView textureImageView;
-	vk::Sampler textureSampler;
-	vk::Image textureImage;
-	vk::DeviceMemory textureImageMemory;
+
 
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
@@ -104,21 +104,31 @@ protected:
 	std::vector<vk::Fence> inFlightFences;
 	std::vector<vk::Fence> imagesInFlight;
 
-	//std::unique_ptr<StarDescriptorPool> globalPool{};
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
-
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
 	std::unique_ptr<StarCommandBuffer> graphicsCommandBuffer; 
+	std::unique_ptr<StarCommandBuffer> screenshotCommandBuffer; 
 
 	//depth testing storage 
 	vk::Image depthImage;
-	vk::DeviceMemory depthImageMemory;
+	VmaAllocation depthImageMemory;
 	vk::ImageView depthImageView;
 
+	std::vector<vk::Image> copyDstImages; 
+	std::vector<VmaAllocation> copyDstImageMemories; 
+
+	bool supportsBlit = true; 
+
+	std::unique_ptr<std::string> screenshotPath = nullptr;
+
+	virtual void takeScreenshot(const uint32_t& currentBuffer);
+
+	virtual void queryDeviceSupport();
 
 	//tracker for which frame is being processed of the available permitted frames
 	size_t currentFrame = 0;
+	size_t previousFrame = 0; 
 
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -178,7 +188,10 @@ protected:
 	/// <param name="properties"></param>
 	/// <param name="image"></param>
 	/// <param name="imageMemory"></param>
-	virtual void createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory);
+	virtual void createImage(uint32_t width, uint32_t height, 
+		vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, 
+		vk::MemoryPropertyFlags properties, vk::Image& image, 
+		VmaAllocation& imageMemory);
 
 	/// <summary>
 	/// Create framebuffers that will hold representations of the images in the swapchain
@@ -212,6 +225,8 @@ protected:
 	/// </summary>
 	virtual void createFenceImageTracking();
 
+	void recordScreenshotCommandBuffers();
+
 #pragma region helpers
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
 
@@ -227,9 +242,22 @@ protected:
 	vk::Format findDepthFormat();
 #pragma endregion
 private:
-	void initResources(StarDevice& device, const int numFramesInFlight) override;
+	void initResources(StarDevice& device, const int& numFramesInFlight) override;
 
 	void destroyResources(StarDevice& device) override;
 
+#pragma region MyRegion
+	/// <summary>
+	/// Helper function to query if device supports blitting operations from the current swapchain format
+	/// </summary>
+	/// <returns></returns>
+	inline bool deviceSupports_SwapchainBlit();
+
+	/// <summary>
+	/// Helper function to query if device supports blitting operations to a linear image
+	/// </summary>
+	/// <returns></returns>
+	inline bool devieSupports_blitToLinearImage();
+#pragma endregion
 };
 }

@@ -11,7 +11,7 @@
 namespace star {
 	class ManagerDescriptorPool {
 	public:
-		static void request(vk::DescriptorType type, int numDescriptors);
+		static void request(const vk::DescriptorType& type, const int& numDescriptors);
 
 		static StarDescriptorPool& getPool();
 

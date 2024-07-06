@@ -2,6 +2,8 @@
 
 namespace star {
 
+std::unique_ptr<std::string> StarEngine::screenshotPath = nullptr;
+
 StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene())) {
 	ConfigFile::load("./StarEngine.cfg"); 
 }
@@ -31,6 +33,11 @@ void StarEngine::Run()
 		auto& objects = this->currentScene->getObjects();
 		for (auto& obj : objects) {
 			obj.second->prepDraw(frameToDraw); 
+		}
+
+		if (screenshotPath) {
+			this->mainRenderer->triggerScreenshot(*screenshotPath);
+			screenshotPath = nullptr;
 		}
 
 		mainRenderer->pollEvents();

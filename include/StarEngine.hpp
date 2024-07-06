@@ -21,6 +21,10 @@
 namespace star {
 class StarEngine {
 public:
+	static void takeScreenshot(const std::string& path) { 
+		screenshotPath = std::make_unique<std::string>(path); 
+	}
+
 	StarEngine();
 
 	virtual ~StarEngine();
@@ -42,5 +46,7 @@ protected:
 	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
 	std::vector<StarRenderGroup> renderGroups;  
 
+private: 
+	static std::unique_ptr<std::string> screenshotPath;
 };
 }

@@ -1,8 +1,8 @@
 #include "StarCommandBuffer.hpp"
 
 star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToCreate, 
-	star::Command_Buffer_Type type) : device(device),
-	targetQueue(device.getQueue(type))
+	star::Command_Buffer_Type type) 
+	: device(device), targetQueue(device.getQueue(type))
 {
 	this->recordedImageTransitions.resize(numBuffersToCreate); 
 	for (auto& empty : this->recordedImageTransitions) {
@@ -208,10 +208,14 @@ void star::StarCommandBuffer::waitFor(std::vector<vk::Semaphore> semaphores, vk:
 	}
 }
 
+void star::StarCommandBuffer::waitFor(StarCommandBuffer& otherBuffer, vk::PipelineStageFlags whereWait)
+{
+	this->waitFor(otherBuffer.getCompleteSemaphores(), whereWait);
+}
+
 void star::StarCommandBuffer::reset(int bufferIndex)
 {
 	//wait for fence before reset
-	
 	this->device.getDevice().waitForFences(this->readyFence[bufferIndex], VK_TRUE, UINT64_MAX);
 
 	//reset image transitions
@@ -224,7 +228,7 @@ void star::StarCommandBuffer::reset(int bufferIndex)
 	this->recorded = false; 
 }
 
-const std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores()
+std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores()
 {
 	if (this->completeSemaphores.size() == 0) {
 		//need to create semaphores
