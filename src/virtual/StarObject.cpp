@@ -167,15 +167,12 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 }
 
 void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, 
-	int swapChainIndexNum, uint32_t vb_start, uint32_t ib_start) {
+	int swapChainIndexNum) {
 	RenderResourceSystem::bind(*this->indBuffer, commandBuffer.buffer(swapChainIndexNum));
 	RenderResourceSystem::bind(*this->vertBuffer, commandBuffer.buffer(swapChainIndexNum));
 
 	if (this->pipeline)
 		this->pipeline->bind(commandBuffer.buffer(swapChainIndexNum)); 
-
-	uint32_t vbStartIndex = vb_start; 
-	uint32_t ibStartIndex = ib_start; 
 
 	for (auto& rmesh : this->getMeshes()) {
 
@@ -186,13 +183,10 @@ void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer
 		uint32_t indexCount = rmesh->getNumIndices();
 		if (this->isVisible)
 			commandBuffer.buffer(swapChainIndexNum).drawIndexed(this->numIndices, instanceCount, this->indBufferOffset, 0, 0);
-
-		vbStartIndex += rmesh->getNumVerts();
-		ibStartIndex += rmesh->getNumIndices();
 	}
 
 	if (this->drawNormals)
-		recordDrawCommandNormals(commandBuffer, ib_start, swapChainIndexNum); 
+		recordDrawCommandNormals(commandBuffer, this->indBufferOffset, swapChainIndexNum); 
 	if (this->drawBoundingBox)
 		recordDrawCommandBoundingBox(commandBuffer, swapChainIndexNum); 
 }

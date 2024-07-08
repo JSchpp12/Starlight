@@ -101,10 +101,10 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 
 void StarRenderGroup::recordRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
 	for (auto& group : this->groups) {
-		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, swapChainImageIndex, group.baseObject.startVBIndex, group.baseObject.startIBIndex);
+		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, swapChainImageIndex);
 		for (auto& obj : group.objects) {
 			//record commands for each object
-			obj.object.recordRenderPassCommands(mainDrawBuffer, this->pipelineLayout, swapChainImageIndex, obj.startVBIndex, obj.startIBIndex);
+			obj.object.recordRenderPassCommands(mainDrawBuffer, this->pipelineLayout, swapChainImageIndex);
 		}
 	}
 }
