@@ -185,7 +185,7 @@ void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer
 		uint32_t vertexCount = rmesh->getNumVerts();
 		uint32_t indexCount = rmesh->getNumIndices();
 		if (this->isVisible)
-			commandBuffer.buffer(swapChainIndexNum).drawIndexed(indexCount, instanceCount, ibStartIndex, 0, 0);
+			commandBuffer.buffer(swapChainIndexNum).drawIndexed(this->numIndices, instanceCount, this->indBufferOffset, 0, 0);
 
 		vbStartIndex += rmesh->getNumVerts();
 		ibStartIndex += rmesh->getNumIndices();

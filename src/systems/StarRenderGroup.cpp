@@ -100,8 +100,6 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 }
 
 void StarRenderGroup::recordRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
-	int vertexCount = 0;
-
 	for (auto& group : this->groups) {
 		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, swapChainImageIndex, group.baseObject.startVBIndex, group.baseObject.startIBIndex);
 		for (auto& obj : group.objects) {
