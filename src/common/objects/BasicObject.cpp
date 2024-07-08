@@ -211,7 +211,6 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 					vertices->at(vertCounter) = newVertex;
 					fullInd->at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter);
 					vertCounter++;
-
 					totalNumVerts++;
 					totalNumInds++;
 				};

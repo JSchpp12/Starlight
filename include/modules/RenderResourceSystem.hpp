@@ -22,6 +22,8 @@ namespace star {
 
 		static void registerLoadGeomDataCallback(std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)>);
 
+		static void registerSetDrawInfoCallback(std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)> setGeometryDataOffsetCallback);
+
 		static void bind(const Handle& resource, vk::CommandBuffer& commandBuffer);
 
 		static void bind(const BufferHandle& buffer, vk::CommandBuffer& commandBuffer);
@@ -33,6 +35,7 @@ namespace star {
 		static std::stack<std::function<void(StarDevice&, const int)>> initCallbacks;
 		static std::stack<std::function<void(StarDevice&)>> destroyCallbacks;
 		static std::stack<std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)>> loadGeometryCallbacks;
+		static std::stack<std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>> geometryDataOffsetCallbacks;
 		static std::vector<std::unique_ptr<StarBuffer>> buffers; 
 
 		static void preparePrimaryGeometry(StarDevice& device);

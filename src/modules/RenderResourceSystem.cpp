@@ -3,6 +3,7 @@
 std::stack<std::function<void(star::StarDevice&, const int)>> star::RenderResourceSystem::initCallbacks = std::stack<std::function<void(StarDevice&, int)>>();
 std::stack<std::function<void(star::StarDevice&)>> star::RenderResourceSystem::destroyCallbacks = std::stack<std::function<void(star::StarDevice&)>>();
 std::stack<std::function<std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>>(star::StarDevice&, star::BufferHandle, star::BufferHandle)>> star::RenderResourceSystem::loadGeometryCallbacks = std::stack<std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)>>();
+std::stack<std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>> star::RenderResourceSystem::geometryDataOffsetCallbacks = std::stack<std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>>();
 std::vector<std::unique_ptr<star::StarBuffer>> star::RenderResourceSystem::buffers = std::vector<std::unique_ptr<star::StarBuffer>>(); 
 
 void star::RenderResourceSystem::registerCallbacks(std::function<void(star::StarDevice&, const int)> initCallback, std::function<void(star::StarDevice&)> destroyCallback)
@@ -14,6 +15,11 @@ void star::RenderResourceSystem::registerCallbacks(std::function<void(star::Star
 void star::RenderResourceSystem::registerLoadGeomDataCallback(std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)> loadGeometryCallback)
 {
 	loadGeometryCallbacks.push(loadGeometryCallback); 
+}
+
+void star::RenderResourceSystem::registerSetDrawInfoCallback(std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)> setGeometryDataOffsetCallback)
+{
+	geometryDataOffsetCallbacks.push(setGeometryDataOffsetCallback);
 }
 
 void star::RenderResourceSystem::bind(const Handle& resource, vk::CommandBuffer& commandBuffer)
@@ -51,10 +57,17 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 		BufferHandle indBufferHandle = BufferHandle{ 1 };
 
 		std::function<std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>>(star::StarDevice&, star::BufferHandle, star::BufferHandle)>& function = loadGeometryCallbacks.top();
+		std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>& offsetFunction = geometryDataOffsetCallbacks.top();
 		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> result = function(device, vertBufferHandle, indBufferHandle);
 
 		//might want to throw a check in here to verify buffer type
-		if (result.first && result.second) {
+		if (!result.first || !result.second)
+			throw std::runtime_error("Geometry data loading callback returned invalid buffers");
+
+		{
+			uint32_t numIndices = result.second->getInstanceCount();
+			offsetFunction(totalVertInstanceCount, totalIndInstanceCount, numIndices);
+
 			totalVertSize += result.first->getBufferSize();
 			totalVertInstanceCount += result.first->getInstanceCount();
 			totalIndSize += result.second->getInstanceSize();
@@ -63,7 +76,9 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 			stagingBuffersIndex.push_back(std::move(result.second));
 		}
 
+
 		loadGeometryCallbacks.pop();
+		geometryDataOffsetCallbacks.pop();
 	}
 
 	vk::DeviceSize vertexSize = sizeof(star::Vertex);

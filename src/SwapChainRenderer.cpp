@@ -49,12 +49,7 @@ void SwapChainRenderer::queryDeviceSupport()
 }
 
 void SwapChainRenderer::createRenderingGroups()
-{
-	uint32_t currentNumInd = 0, currentNumVert = 0; 
-
-	std::vector<Vertex> vertexList; 
-	std::vector<uint32_t> indiciesList;
-	
+{	
 	for (StarObject& object : objectList) {
 		//check if the object is compatible with any render groups 
 		StarRenderGroup* match = nullptr; 
@@ -68,18 +63,12 @@ void SwapChainRenderer::createRenderingGroups()
 		}
 
 		if (match != nullptr) {
-			match->addObject(object, currentNumInd, currentNumVert); 
+			match->addObject(object); 
 		}
 		else {
 			//create a new one and add object
 			this->renderGroups.push_back(std::unique_ptr<StarRenderGroup>(new StarRenderGroup(device, MAX_FRAMES_IN_FLIGHT, 
-				swapChainExtent, object, currentNumInd, currentNumVert)));
-		}
-
-		//add object verts to vertex buffer + index buffer
-		for (auto& mesh : object.getMeshes()) {
-			currentNumInd += mesh->getNumIndices();
-			currentNumVert += mesh->getNumVerts();
+				swapChainExtent, object)));
 		}
 	}
 

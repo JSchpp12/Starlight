@@ -31,8 +31,7 @@ namespace star {
 	public:
 
 		StarRenderGroup(StarDevice& device, size_t numSwapChainImages,
-			vk::Extent2D swapChainExtent, StarObject& baseObject, 
-			uint32_t baseObj_VBStart, uint32_t baseObj_IBStart); 
+			vk::Extent2D swapChainExtent, StarObject& baseObject); 
 
 		StarRenderGroup(const StarRenderGroup& baseObject) = default;
 
@@ -52,7 +51,7 @@ namespace star {
 		/// <summary>
 		/// Register a light color and location for rendering light effects on objects
 		/// </summary>
-		virtual void addObject(StarObject& newRenderObject, uint32_t indexStartOffset, uint32_t vertexStartOffset);
+		virtual void addObject(StarObject& newRenderObject);
 
 		virtual void addLight(Light* newLight) { this->lights.push_back(newLight); }
 
@@ -72,8 +71,8 @@ namespace star {
 			StarObject& object;
 			uint32_t startVBIndex, startIBIndex; 
 
-			RenderObjectInfo(StarObject& object,uint32_t startVBIndex, uint32_t startIBIndex)
-				: object(object), startVBIndex(startVBIndex), startIBIndex(startIBIndex) {};
+			RenderObjectInfo(StarObject& object)
+				: object(object){};
 		};
 
 		/// <summary>
