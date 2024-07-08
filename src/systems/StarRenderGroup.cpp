@@ -2,11 +2,10 @@
 
 namespace star {
 StarRenderGroup::StarRenderGroup(StarDevice& device, size_t numSwapChainImages, 
-	vk::Extent2D swapChainExtent, StarObject& baseObject, 
-	uint32_t baseObj_VBStart, uint32_t baseObj_IBStart)
+	vk::Extent2D swapChainExtent, StarObject& baseObject)
 	: device(device),numSwapChainImages(numSwapChainImages), swapChainExtent(swapChainExtent)
 {
-	auto objInfo = RenderObjectInfo(baseObject, baseObj_VBStart, baseObj_IBStart);
+	auto objInfo = RenderObjectInfo(baseObject);
 	this->groups.push_back(Group(objInfo));
 
 	auto layoutBuilder = StarDescriptorSetLayout::Builder(device); 
@@ -29,7 +28,7 @@ StarRenderGroup::~StarRenderGroup() {
 	this->device.getDevice().destroyPipelineLayout(this->pipelineLayout);
 }
 
-void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset, uint32_t vertexStartOffset) {
+void StarRenderGroup::addObject(StarObject& newObject) {
 	//check if any other object can share the same Pipeline 
 	Group* targetGroup = nullptr; 
 
@@ -62,11 +61,11 @@ void StarRenderGroup::addObject(StarObject& newObject, uint32_t indexStartOffset
 
 	if (targetGroup == nullptr) {
 		//requires new pipeline -- and group
-		auto objInfo = RenderObjectInfo(newObject, vertexStartOffset, indexStartOffset);
+		auto objInfo = RenderObjectInfo(newObject);
 		this->groups.push_back(Group(objInfo));
 	}
 	else {
-		auto objInfo = RenderObjectInfo(newObject, vertexStartOffset, indexStartOffset);
+		auto objInfo = RenderObjectInfo(newObject);
 		targetGroup->objects.push_back(objInfo);
 	}
 
