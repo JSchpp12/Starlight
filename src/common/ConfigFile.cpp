@@ -3,26 +3,39 @@
 std::map<star::Config_Settings, std::string> star::ConfigFile::settings = std::map<star::Config_Settings, std::string>(); 
 
 std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings = {
-            std::pair<std::string, star::Config_Settings>("mediadirectory", star::Config_Settings::mediadirectory)
+            std::pair<std::string, star::Config_Settings>("media_directory", star::Config_Settings::mediadirectory),
+            std::pair<std::string, star::Config_Settings>("texture_filtering", star::Config_Settings::texture_filtering),
+            std::pair<std::string, star::Config_Settings>("texture_anisotropy", star::Config_Settings::texture_anisotropy),
 };
 
 void star::ConfigFile::load(const std::string& configFilePath) {
-    auto contents = FileHelpers::ReadFile(configFilePath, false);
-    std::istringstream stream(contents);
+    assert(FileHelpers::FileExists(configFilePath));
 
-    std::string line;
-    while (std::getline(stream, line)) {
-        std::istringstream lineStream(line);
-        std::string key;
-        if (std::getline(lineStream, key, '=')) {
-            std::string value;
-            if (std::getline(lineStream, value)) {
-                auto settingsMatch = availableSettings.find(key);
-                if (settingsMatch != availableSettings.end()) {
-                    ConfigFile::settings.insert(std::pair<Config_Settings, std::string>(settingsMatch->second, value));
-                }
-            }
-        }
+    json configJson;
+
+    try{
+        std::fstream configStream(configFilePath);
+        configStream >> configJson;
+    }catch(std::exception& e){
+		std::cerr << "Error reading config file: " << e.what() << std::endl;
+	}
+
+    for (auto& setting : availableSettings) {
+        if (configJson.contains(setting.first)) {
+			settings[setting.second] = configJson[setting.first].get<std::string>();
+		} else {
+            //get default value for this setting
+            switch(setting.second){
+				case Config_Settings::texture_filtering:
+					settings[setting.second] = "linear";
+					break;
+                case Config_Settings::texture_anisotropy:
+                    settings[setting.second] = "0";
+					break;
+				default:
+					throw std::runtime_error("Setting not found and has no available default: " + setting.first);
+			}
+		}
     }
 }
 

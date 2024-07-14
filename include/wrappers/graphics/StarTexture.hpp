@@ -4,11 +4,13 @@
 #include "StarDevice.hpp"
 #include "StarBuffer.hpp"
 #include "StarDescriptors.hpp"
+#include "ConfigFile.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <sstream>
 
 #include <memory>
+#include <string>
 
 namespace star {
 class StarTexture {
@@ -34,7 +36,7 @@ public:
 	StarTexture(TextureCreateSettings& settings)
 		: createSettings(std::make_unique<TextureCreateSettings>(settings)) {}; 
 
-	virtual ~StarTexture();
+	virtual ~StarTexture() = default;
 
 	virtual void prepRender(StarDevice& device);
 
