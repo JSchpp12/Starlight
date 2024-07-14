@@ -248,23 +248,29 @@ void StarTexture::createImageSampler(StarDevice& device) {
 	samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
 
 	//anisotropy level
-	float anisotropyLevel = 1.0;
 	{
-		auto anisotropySetting = ConfigFile::getSetting(Config_Settings::texture_anisotropy);
-		if (anisotropySetting == "max") {
-			anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
-		}
-		else {
-			try {
-				anisotropyLevel = std::stof(anisotropySetting);
-				if (anisotropyLevel < 1.0f) {
-					throw std::runtime_error("Anisotropy level must be greater than 1.0");
+		float anisotropyLevel = 1.0;
+		{
+			auto anisotropySetting = ConfigFile::getSetting(Config_Settings::texture_anisotropy);
+			if (anisotropySetting == "max") {
+				anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
+			}
+			else {
+				try {
+					anisotropyLevel = std::stof(anisotropySetting);
+					if (anisotropyLevel < 1.0f) {
+						throw std::runtime_error("Anisotropy level must be greater than 1.0");
+					}
+				}
+				catch (std::exception) {
+					throw std::runtime_error("Anisotropy setting must be a float or 'max'");
 				}
 			}
-			catch (std::exception& e) {
-				throw std::runtime_error("Anisotropy setting must be a float or 'max'");
-			}
 		}
+		//should anisotropic filtering be used? Really only matters if performance is a concern
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		//specifies the limit on the number of texel samples that can be used (lower = better performance)
+		samplerInfo.maxAnisotropy = anisotropyLevel;
 	}
 
 	//texture filtering
@@ -295,10 +301,6 @@ void StarTexture::createImageSampler(StarDevice& device) {
 	samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
 	samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
 
-	//should anisotropic filtering be used? Really only matters if performance is a concern
-	samplerInfo.anisotropyEnable = VK_TRUE; 
-	//specifies the limit on the number of texel samples that can be used (lower = better performance)
-	samplerInfo.maxAnisotropy = anisotropyLevel;
 	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	//specifies coordinate system to use in addressing texels. 
 		//VK_TRUE - use coordinates [0, texWidth) and [0, texHeight]
