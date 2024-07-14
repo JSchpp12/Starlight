@@ -8,6 +8,12 @@
 #include <sstream>
 #include <map> 
 #include <memory> 
+#include <assert.h>
+#include <fstream>
+
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 namespace star {
     class ConfigFile {

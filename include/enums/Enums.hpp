@@ -39,7 +39,9 @@ namespace star {
     };
 
     enum Config_Settings {
-        mediadirectory
+        mediadirectory,
+        texture_filtering,
+        texture_anisotropy
     };
 
     enum Handle_Type {

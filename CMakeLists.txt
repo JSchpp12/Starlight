@@ -38,10 +38,10 @@ set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
 add_subdirectory("extern/tinyobjloader")
+add_subdirectory("extern/googletest") 
 
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-
-add_subdirectory("extern/googletest") 
+find_package(nlohmann_json CONFIG REQUIRED)
 
 set(${PROJECT_NAME}_SOURCE 
     "src/virtual/StarObject.cpp"
@@ -95,7 +95,8 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/objects/StarObjectInstance.cpp"
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
-     "src/common/Texture.cpp"
+    "src/common/Texture.cpp"
+    
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
@@ -185,6 +186,7 @@ target_link_libraries(${PROJECT_NAME}
         glfw
         spirv-reflect-static
         GPUOpen::VulkanMemoryAllocator
+        nlohmann_json::nlohmann_json
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -213,7 +215,6 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/include/Systems
         ${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
-        #${CMAKE_CURRENT_SOURCE_DIR}/external/tinyobjectloader
         "extern/tinyobjloader"
         ${glm_SOURCE_DIR}
         ${STB_DIRECTORY}

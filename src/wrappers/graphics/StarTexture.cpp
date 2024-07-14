@@ -1,10 +1,6 @@
 #include "StarTexture.hpp"
 
 namespace star {
-StarTexture::~StarTexture() {
-
-}
-
 void StarTexture::prepRender(StarDevice& device) {
 	assert(!this->isRenderReady && "Each texture should only be prepared once"); 
 
@@ -250,18 +246,59 @@ void StarTexture::createImageSampler(StarDevice& device) {
 
 	vk::SamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
-	samplerInfo.magFilter = vk::Filter::eLinear;                       //how to sample textures that are magnified 
-	samplerInfo.minFilter = vk::Filter::eLinear;                       //how to sample textures that are minified
-	
+
+	//anisotropy level
+	float anisotropyLevel = 1.0;
+	{
+		auto anisotropySetting = ConfigFile::getSetting(Config_Settings::texture_anisotropy);
+		if (anisotropySetting == "max") {
+			anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
+		}
+		else {
+			try {
+				anisotropyLevel = std::stof(anisotropySetting);
+				if (anisotropyLevel < 1.0f) {
+					throw std::runtime_error("Anisotropy level must be greater than 1.0");
+				}
+			}
+			catch (std::exception& e) {
+				throw std::runtime_error("Anisotropy setting must be a float or 'max'");
+			}
+		}
+	}
+
+	//texture filtering
+	{
+		vk::Filter filterType = vk::Filter::eNearest;
+		{
+
+			auto textureFilteringSetting = ConfigFile::getSetting(Config_Settings::texture_filtering);
+			if (textureFilteringSetting == "nearest") {
+				filterType = vk::Filter::eNearest;
+			}
+			else if (textureFilteringSetting == "linear") {
+				filterType = vk::Filter::eLinear;
+			}
+			else {
+				throw std::runtime_error("Texture filtering setting must be 'nearest' or 'linear'");
+			}
+		}
+
+		//how to sample textures that are magnified 
+		samplerInfo.magFilter = filterType;
+		//how to sample textures that are minified
+		samplerInfo.minFilter = filterType;
+	}
+
 	//repeat mode - repeat the texture when going beyond the image dimensions
 	samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
 	samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
 	samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
 
 	//should anisotropic filtering be used? Really only matters if performance is a concern
-	samplerInfo.anisotropyEnable = VK_TRUE;
+	samplerInfo.anisotropyEnable = VK_TRUE; 
 	//specifies the limit on the number of texel samples that can be used (lower = better performance)
-	samplerInfo.maxAnisotropy = deviceProperties.limits.maxSamplerAnisotropy;;
+	samplerInfo.maxAnisotropy = anisotropyLevel;
 	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	//specifies coordinate system to use in addressing texels. 
 		//VK_TRUE - use coordinates [0, texWidth) and [0, texHeight]
@@ -277,7 +314,6 @@ void StarTexture::createImageSampler(StarDevice& device) {
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
-	samplerInfo.anisotropyEnable = VK_FALSE;
 
 	this->textureSampler = device.getDevice().createSampler(samplerInfo);
 	if (!this->textureSampler) {

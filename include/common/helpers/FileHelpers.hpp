@@ -9,6 +9,11 @@
 
 namespace star {
 struct FileHelpers {
+    static bool FileExists(const std::string& pathToFile) {
+        struct stat buffer; 
+        return (stat(pathToFile.c_str(), &buffer) == 0);
+    }
+
     static std::string ReadFile(std::string pathToFile, bool includeCarriageReturns = true) {
         std::string line, text;
         std::ifstream fileReader(pathToFile);
