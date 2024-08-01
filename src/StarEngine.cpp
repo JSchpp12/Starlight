@@ -15,10 +15,9 @@ StarEngine::~StarEngine()
 
 void StarEngine::Run()
 {
-	RenderResourceSystem::preparePrimaryGeometry(*this->renderingDevice);
-	RenderResourceSystem::runInits(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
-
-	this->descriptorManager.build(*this->renderingDevice);
+	RenderResourceSystem::init(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
+	ManagerDescriptorPool descriptorManager(*this->renderingDevice);
+	ManagerCommandBuffer commandBufferManager(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
 
 	//objects will be prepared for render during the initialization of the main renderer
 	mainRenderer->prepare();
@@ -42,7 +41,9 @@ void StarEngine::Run()
 
 		mainRenderer->pollEvents();
 		InteractionSystem::callWorldUpdates();
-		mainRenderer->submit();
+		const uint32_t frameIndex = mainRenderer->getFrameToBeDrawn();
+		commandBufferManager.update(frameIndex);
+		mainRenderer->submitPresentation(frameIndex, commandBufferManager.getMainGraphicsDoneSemaphore(frameIndex));
 	}
 
 	this->renderingDevice->getDevice().waitIdle();

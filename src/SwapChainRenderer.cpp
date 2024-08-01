@@ -13,7 +13,6 @@ SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique
 
 void SwapChainRenderer::prepare()
 {
-	queryDeviceSupport();
 	createImageViews();
 	createRenderPass();
 	createRenderingBuffers();
@@ -22,30 +21,9 @@ void SwapChainRenderer::prepare()
 	createFramebuffers();
 	createRenderingGroups();
 	createCommandBuffers();
-	recordScreenshotCommandBuffers();
 	createSemaphores();
 	createFences();
 	createFenceImageTracking();
-}
-	
-void SwapChainRenderer::takeScreenshot(const uint32_t& currentBuffer)
-{
-	this->screenshotCommandBuffer->submit(currentBuffer);
-
-	vk::ImageSubresource subResource{vk::ImageAspectFlagBits::eColor, 0, 0};
-	vk::SubresourceLayout layout{}; 
-	this->device.getDevice().getImageSubresourceLayout(this->copyDstImages[currentBuffer], &subResource, &layout);
-
-	unsigned char* data = nullptr;
-	vmaMapMemory(this->device.getAllocator(), this->copyDstImageMemories[currentBuffer], (void**)&data);
-	Texture texture(this->swapChainExtent.width, this->swapChainExtent.height, layout, data);
-	texture.saveToDisk(*this->screenshotPath);
-	vmaUnmapMemory(this->device.getAllocator(), this->copyDstImageMemories[currentBuffer]);
-}
-
-void SwapChainRenderer::queryDeviceSupport()
-{
-	this->supportsBlit = this->deviceSupports_SwapchainBlit() && this->devieSupports_blitToLinearImage();
 }
 
 void SwapChainRenderer::createRenderingGroups()
@@ -127,90 +105,21 @@ void SwapChainRenderer::pollEvents()
 	glfwPollEvents();
 }
 
-void SwapChainRenderer::submit()
+void SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn, const vk::Semaphore* mainGraphicsDoneSemaphore)
 {
-	/* Goals of each call to drawFrame:
-	   *   get an image from the swap chain
-	   *   execute command buffer with that image as attachment in the framebuffer
-	   *   return the image to swapchain for presentation
-	   * by default each of these steps would be executed asynchronously so need method of synchronizing calls with rendering
-	   * two ways of doing this:
-	   *   1. fences
-	   *       accessed through calls to vkWaitForFences
-	   *       designed to synchronize application itself with rendering ops
-	   *   2. semaphores
-	   *       designed to synchronize opertaions within or across command queues
-	   * need to sync queue operations of draw and presentation commmands -> using semaphores
-	   */
-
-	   //wait for fence to be ready 
-	   // 3. 'VK_TRUE' -> waiting for all fences
-	   // 4. timeout 
-
-	this->device.getDevice().waitForFences(inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-
-	/* Get Image From Swapchain */
-
-	//as is extension we must use vk*KHR naming convention
-	//UINT64_MAX -> 3rd argument: used to specify timeout in nanoseconds for image to become available
-	/* Suboptimal SwapChain notes */
-		//vulkan can return two different flags 
-		// 1. VK_ERROR_OUT_OF_DATE_KHR: swap chain has become incompatible with the surface and cant be used for rendering. (Window resize)
-		// 2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no longer match
-	auto result = this->device.getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame]);
-
-	if (result.result == vk::Result::eErrorOutOfDateKHR) {
-		//the swapchain is no longer optimal according to vulkan. Must recreate a more efficient swap chain
-		recreateSwapChain();
-		return;
-	}
-	else if (result.result != vk::Result::eSuccess && result.result != vk::Result::eSuboptimalKHR) {
-		//for VK_SUBOPTIMAL_KHR can also recreate swap chain. However, chose to continue to presentation stage
-		throw std::runtime_error("failed to acquire swap chain image");
-	}
-	uint32_t imageIndex = result.value;
-
-	//check if a previous frame is using the current image
-	if (imagesInFlight[imageIndex]) {
-		this->device.getDevice().waitForFences(1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-	}
-	//mark image as now being in use by this frame by assigning the fence to it 
-	imagesInFlight[imageIndex] = inFlightFences[currentFrame];
-
-	updateUniformBuffer(currentFrame);
-
-	//set fence to unsignaled state
-	this->device.getDevice().resetFences(1, &inFlightFences[currentFrame]);
-
-	//re-record command buffer
-	this->graphicsCommandBuffer->buffer(currentFrame).reset(); 
-	recordCommandBuffer(currentFrame, imageIndex); 
-	this->graphicsCommandBuffer->submit(currentFrame, inFlightFences[currentFrame], std::pair<vk::Semaphore, vk::PipelineStageFlags>(imageAvailableSemaphores[currentFrame], vk::PipelineStageFlagBits::eColorAttachmentOutput));
-
-	const vk::Semaphore* doneSemaphore = nullptr;
-	if (this->screenshotPath != nullptr) {
-		doneSemaphore = &this->screenshotCommandBuffer->getCompleteSemaphores().at(currentFrame);
-
-		takeScreenshot(currentFrame);
-		this->screenshotPath = nullptr;
-	}
-	else {
-		doneSemaphore = &this->graphicsCommandBuffer->getCompleteSemaphores().at(currentFrame);
-	}
-
 	/* Presentation */
 	vk::PresentInfoKHR presentInfo{};
 	presentInfo.sType = vk::StructureType::ePresentInfoKHR;
 
 	//what to wait for 
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = doneSemaphore;
+	presentInfo.pWaitSemaphores = mainGraphicsDoneSemaphore;
 
 	//what swapchains to present images to 
 	vk::SwapchainKHR swapChains[] = { swapChain };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
-	presentInfo.pImageIndices = &imageIndex;
+	presentInfo.pImageIndices = &this->currentSwapChainImageIndex;
 
 	//can use this to get results from swap chain to check if presentation was successful
 	presentInfo.pResults = nullptr; // Optional
@@ -225,10 +134,6 @@ void SwapChainRenderer::submit()
 	else if (presentResult != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to present swap chain image");
 	}
-
-	//advance to next frame
-	previousFrame = currentFrame; 
-	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 
@@ -247,10 +152,6 @@ void SwapChainRenderer::cleanupSwapChain()
 {
 	this->device.getDevice().destroyImageView(this->depthImageView);
 	vmaDestroyImage(this->device.getAllocator(), this->depthImage, this->depthImageMemory);
-
-	for (int i = 0; i < this->copyDstImageMemories.size(); i++) {
-		vmaDestroyImage(this->device.getAllocator(), this->copyDstImages[i], this->copyDstImageMemories[i]);
-	}
 
 	for (auto framebuffer : this->swapChainFramebuffers) {
 		this->device.getDevice().destroyFramebuffer(framebuffer);
@@ -297,8 +198,6 @@ void SwapChainRenderer::recreateSwapChain()
 	createRenderingBuffers();
 
 	createDescriptors();
-
-	recordScreenshotCommandBuffers();
 }
 
 void SwapChainRenderer::createSwapChain()
@@ -648,124 +547,8 @@ void SwapChainRenderer::createRenderingBuffers()
 
 void SwapChainRenderer::createCommandBuffers()
 {
-	this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics);
-	if (this->supportsBlit)
-		this->screenshotCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics);
-	else
-		this->screenshotCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Ttransfer);
-	this->screenshotCommandBuffer->waitFor(*this->graphicsCommandBuffer, vk::PipelineStageFlagBits::eTransfer); 
-
-	this->copyDstImageMemories.resize(MAX_FRAMES_IN_FLIGHT);
-	this->copyDstImages.resize(MAX_FRAMES_IN_FLIGHT);
-	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vk::ImageCreateInfo imageInfo{};
-		imageInfo.sType = vk::StructureType::eImageCreateInfo;
-		imageInfo.imageType = vk::ImageType::e2D;
-		imageInfo.extent.width = this->swapChainExtent.width;
-		imageInfo.extent.height = this->swapChainExtent.height;
-		imageInfo.extent.depth = 1;
-		imageInfo.mipLevels = 1;
-		imageInfo.arrayLayers = 1;
-		imageInfo.format = vk::Format::eB8G8R8A8Srgb;
-		imageInfo.tiling = vk::ImageTiling::eLinear;
-		imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-		imageInfo.usage = vk::ImageUsageFlagBits::eTransferDst;
-		imageInfo.samples = vk::SampleCountFlagBits::e1;
-		imageInfo.sharingMode = vk::SharingMode::eExclusive;
-
-
-		VmaAllocationCreateInfo allocInfo = {};
-		allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
-		allocInfo.requiredFlags = (VkMemoryPropertyFlags)vk::MemoryPropertyFlagBits::eHostVisible;
-
-		vmaCreateImage(this->device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&copyDstImages[i], &copyDstImageMemories[i], nullptr);
-	}
-}
-
-void SwapChainRenderer::recordCommandBuffer(uint32_t bufferIndex, uint32_t imageIndex){
-		this->graphicsCommandBuffer->begin(bufferIndex); 
-
-		vk::Viewport viewport{};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)this->swapChainExtent.width;
-		viewport.height = (float)this->swapChainExtent.height;
-		//Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		this->graphicsCommandBuffer->buffer(bufferIndex).setViewport(0, viewport);
-
-		for (auto& group : this->renderGroups) {
-			group->recordPreRenderPassCommands(*this->graphicsCommandBuffer, bufferIndex);
-		}
-
-		/* Begin render pass */
-		//drawing starts by beginning a render pass 
-		vk::RenderPassBeginInfo renderPassInfo{};
-		//renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.sType = vk::StructureType::eRenderPassBeginInfo;
-
-		//define the render pass we want
-		renderPassInfo.renderPass = renderPass;
-
-		//what attachments do we need to bind
-		//previously created swapChainbuffers to hold this information 
-		renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-
-		//define size of render area -- should match size of attachments for best performance
-		renderPassInfo.renderArea.offset = vk::Offset2D{ 0, 0 };
-		renderPassInfo.renderArea.extent = swapChainExtent;
-
-		//size of clearValues and order, should match the order of attachments
-		std::array<vk::ClearValue, 2> clearValues{};
-		clearValues[0].color = std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f }; //clear color for background color will be used with VK_ATTACHMENT_LOAD_OP_CLEAR
-		//depth values: 
-			//0.0 - closest viewing plane 
-			//1.0 - furthest possible depth
-		clearValues[1].depthStencil = vk::ClearDepthStencilValue{ 1.0, 0 };
-
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
-		/* vkCmdBeginRenderPass */
-		//Args: 
-			//1. command buffer to set recording to 
-			//2. details of the render pass
-			//3. how drawing commands within the render pass will be provided
-				//OPTIONS: 
-					//VK_SUBPASS_CONTENTS_INLINE: render pass commands will be embedded in the primary command buffer. No secondary command buffers executed 
-					//VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: render pass commands will be executed from the secondary command buffers
-		this->graphicsCommandBuffer->buffer(bufferIndex).beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-
-		/* Drawing Commands */
-		//Args: 
-			//2. compute or graphics pipeline
-			//3. pipeline object
-
-		/* vkCmdBindDescriptorSets:
-		*   1.
-		*   2. Descriptor sets are not unique to graphics pipelines, must specify to use in graphics or compute pipelines.
-		*   3. layout that the descriptors are based on
-		*   4. index of first descriptor set
-		*   5. number of sets to bind
-		*   6. array of sets to bind
-		*   7 - 8. array of offsets used for dynamic descriptors (not used here)
-		*/
-		//bind the right descriptor set for each swap chain image to the descripts in the shader
-		//bind global descriptor
-		vk::DeviceSize offsets{};
-		//this->graphicsCommandBuffer->buffer(bufferIndex).bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
-		//this->graphicsCommandBuffer->buffer(bufferIndex).bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
-
-		for (auto& group : this->renderGroups) {
-			group->recordRenderPassCommands(*this->graphicsCommandBuffer, bufferIndex);
-		}
-
-		this->graphicsCommandBuffer->buffer(bufferIndex).endRenderPass();
-
-		//record command buffer
-		this->graphicsCommandBuffer->buffer(bufferIndex).end();
+	//this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics);
+	//this->screenshotCommandBuffer = std::make_unique<ScreenshotBuffer>(device, this->swapChainImages, this->swapChainExtent, this->swapChainImageFormat);
 }
 
 void SwapChainRenderer::createSemaphores()
@@ -803,149 +586,6 @@ void SwapChainRenderer::createFences()
 		if (!this->inFlightFences[i]) {
 			throw std::runtime_error("failed to create fence object for a frame");
 		}
-	}
-}
-
-void SwapChainRenderer::recordScreenshotCommandBuffers()
-{
-	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vk::Image srcImage = this->swapChainImages[i];
-
-		this->screenshotCommandBuffer->begin(i);
-		auto commandBuffer = this->screenshotCommandBuffer->buffer(i);
-
-		//transfer dstImage
-
-		//create a barrier to prevent pipeline from moving forward until image transition is complete
-		{
-			vk::ImageMemoryBarrier barrier{};
-			barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
-			barrier.oldLayout = vk::ImageLayout::eUndefined;
-			barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
-
-			//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-			barrier.image = this->copyDstImages[i];
-			barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-			barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-			barrier.subresourceRange.levelCount = 1;                            //image is not an array
-			barrier.subresourceRange.baseArrayLayer = 0;
-			barrier.subresourceRange.layerCount = 1;
-			barrier.srcAccessMask = {};
-			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-
-			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, nullptr, barrier);
-		}
-
-		//transfer swapchain image
-		{
-			vk::ImageMemoryBarrier barrier{};
-			barrier.sType = vk::StructureType::eImageMemoryBarrier;
-			barrier.oldLayout = vk::ImageLayout::ePresentSrcKHR;
-			barrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
-			barrier.image = srcImage;
-			barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-			barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-			barrier.subresourceRange.levelCount = 1;                            //image is not an array
-			barrier.subresourceRange.baseArrayLayer = 0;
-			barrier.subresourceRange.layerCount = 1;
-			barrier.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
-			barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
-
-			commandBuffer.pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer,
-				vk::PipelineStageFlagBits::eTransfer,
-				{},
-				{},
-				nullptr,
-				barrier);
-		}
-
-		if (this->supportsBlit) {
-			//blit image
-			VkOffset3D blitSize;
-			blitSize.x = swapChainExtent.width;
-			blitSize.y = swapChainExtent.height;
-			blitSize.z = 1;
-
-			vk::ImageBlit blit{};
-			blit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-			blit.srcSubresource.layerCount = 1;
-			blit.srcOffsets[1] = blitSize;
-
-			blit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-			blit.dstSubresource.layerCount = 1;
-			blit.dstOffsets[1] = blitSize;
-
-			commandBuffer.blitImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[i],
-				vk::ImageLayout::eTransferDstOptimal, 1, &blit, vk::Filter::eLinear);
-		}
-		else {
-			//copy image
-			vk::ImageCopy copyRegion{};
-			copyRegion.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-			copyRegion.srcSubresource.layerCount = 1;
-			copyRegion.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-			copyRegion.dstSubresource.layerCount = 1;
-			copyRegion.extent.width = swapChainExtent.width;
-			copyRegion.extent.height = swapChainExtent.height;
-			copyRegion.extent.depth = 1;
-
-			commandBuffer.copyImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[i], vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
-		}
-
-		//need to transition images back to general layout for next frame use
-		{
-			//destination image
-			vk::ImageMemoryBarrier barrier{};
-			barrier.sType = vk::StructureType::eImageMemoryBarrier;
-			barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
-			barrier.newLayout = vk::ImageLayout::eGeneral;
-			barrier.image = this->copyDstImages[i];
-			barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-			barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-			barrier.subresourceRange.levelCount = 1;                            //image is not an array
-			barrier.subresourceRange.baseArrayLayer = 0;
-			barrier.subresourceRange.layerCount = 1;
-			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-			barrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
-
-			commandBuffer.pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer,
-				vk::PipelineStageFlagBits::eTransfer,
-				{},
-				{},
-				nullptr,
-				barrier);
-		}
-
-		{
-			//source image
-			vk::ImageMemoryBarrier barrier{};
-			barrier.sType = vk::StructureType::eImageMemoryBarrier;
-			barrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
-			barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
-			barrier.image = srcImage;
-			barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-			barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-			barrier.subresourceRange.levelCount = 1;                            //image is not an array
-			barrier.subresourceRange.baseArrayLayer = 0;
-			barrier.subresourceRange.layerCount = 1;
-			barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
-			barrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
-
-			commandBuffer.pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer,
-				vk::PipelineStageFlagBits::eTransfer,
-				{},
-				{},
-				nullptr,
-				barrier);
-		}
-
-		commandBuffer.end();
 	}
 }
 
@@ -1040,27 +680,197 @@ void SwapChainRenderer::initResources(StarDevice& device, const int& numFramesIn
 }
 void SwapChainRenderer::destroyResources(StarDevice& device)
 {
-}
-bool SwapChainRenderer::deviceSupports_SwapchainBlit()
-{
-	bool supportsBlit = true;
 
-	vk::FormatProperties formatProperties = this->device.getPhysicalDevice().getFormatProperties(swapChainImageFormat);
-	if (!(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitSrc)) {
-		supportsBlit = false;
+}
+
+void SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
+{
+	vk::Viewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)this->swapChainExtent.width;
+	viewport.height = (float)this->swapChainExtent.height;
+	//Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	commandBuffer.setViewport(0, viewport);
+
+	for (auto& group : this->renderGroups) {
+		group->recordPreRenderPassCommands(commandBuffer, frameInFlightIndex);
 	}
 
-	return supportsBlit;
-}
-bool SwapChainRenderer::devieSupports_blitToLinearImage()
-{
-	bool supportsBlit = true; 
+	/* Begin render pass */
+	//drawing starts by beginning a render pass 
+	vk::RenderPassBeginInfo renderPassInfo{};
+	//renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.sType = vk::StructureType::eRenderPassBeginInfo;
 
-	vk::FormatProperties formatProperties = this->device.getPhysicalDevice().getFormatProperties(vk::Format::eR8G8B8A8Snorm);
-	if (!(formatProperties.linearTilingFeatures & vk::FormatFeatureFlagBits::eBlitDst)) {
-		supportsBlit = false;
+	//define the render pass we want
+	renderPassInfo.renderPass = renderPass;
+
+	//what attachments do we need to bind
+	//previously created swapChainbuffers to hold this information 
+	renderPassInfo.framebuffer = swapChainFramebuffers[this->currentSwapChainImageIndex];
+
+	//define size of render area -- should match size of attachments for best performance
+	renderPassInfo.renderArea.offset = vk::Offset2D{ 0, 0 };
+	renderPassInfo.renderArea.extent = swapChainExtent;
+
+	//size of clearValues and order, should match the order of attachments
+	std::array<vk::ClearValue, 2> clearValues{};
+	clearValues[0].color = std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f }; //clear color for background color will be used with VK_ATTACHMENT_LOAD_OP_CLEAR
+	//depth values: 
+		//0.0 - closest viewing plane 
+		//1.0 - furthest possible depth
+	clearValues[1].depthStencil = vk::ClearDepthStencilValue{ 1.0, 0 };
+
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
+
+	/* vkCmdBeginRenderPass */
+	//Args: 
+		//1. command buffer to set recording to 
+		//2. details of the render pass
+		//3. how drawing commands within the render pass will be provided
+			//OPTIONS: 
+				//VK_SUBPASS_CONTENTS_INLINE: render pass commands will be embedded in the primary command buffer. No secondary command buffers executed 
+				//VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: render pass commands will be executed from the secondary command buffers
+	commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+
+	/* Drawing Commands */
+	//Args: 
+		//2. compute or graphics pipeline
+		//3. pipeline object
+
+	/* vkCmdBindDescriptorSets:
+	*   1.
+	*   2. Descriptor sets are not unique to graphics pipelines, must specify to use in graphics or compute pipelines.
+	*   3. layout that the descriptors are based on
+	*   4. index of first descriptor set
+	*   5. number of sets to bind
+	*   6. array of sets to bind
+	*   7 - 8. array of offsets used for dynamic descriptors (not used here)
+	*/
+	//bind the right descriptor set for each swap chain image to the descripts in the shader
+	//bind global descriptor
+	vk::DeviceSize offsets{};
+	//this->graphicsCommandBuffer->buffer(bufferIndex).bindVertexBuffers(0, this->vertexBuffer->getBuffer(), offsets);
+	//this->graphicsCommandBuffer->buffer(bufferIndex).bindIndexBuffer(this->indexBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+
+	for (auto& group : this->renderGroups) {
+		group->recordRenderPassCommands(commandBuffer, frameInFlightIndex);
 	}
 
-	return supportsBlit;
+	commandBuffer.endRenderPass();
 }
+
+CommandBufferOrder SwapChainRenderer::getCommandBufferOrder()
+{
+	return CommandBufferOrder::MAIN_RENDER_PASS; 
+}
+
+Command_Buffer_Type SwapChainRenderer::getCommandBufferType()
+{
+	return Command_Buffer_Type::Tgraphics;
+}
+
+vk::PipelineStageFlags SwapChainRenderer::getWaitStages()
+{
+	return vk::PipelineStageFlagBits::eVertexShader;
+}
+
+bool SwapChainRenderer::getWillBeSubmittedEachFrame()
+{
+	return true; 
+}
+
+bool SwapChainRenderer::getWillBeRecordedOnce()
+{
+	return false; 
+}
+
+void SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)
+{
+	/* Goals of each call to drawFrame:
+   *   get an image from the swap chain
+   *   execute command buffer with that image as attachment in the framebuffer
+   *   return the image to swapchain for presentation
+   * by default each of these steps would be executed asynchronously so need method of synchronizing calls with rendering
+   * two ways of doing this:
+   *   1. fences
+   *       accessed through calls to vkWaitForFences
+   *       designed to synchronize application itself with rendering ops
+   *   2. semaphores
+   *       designed to synchronize opertaions within or across command queues
+   * need to sync queue operations of draw and presentation commmands -> using semaphores
+   */
+
+   //wait for fence to be ready 
+   // 3. 'VK_TRUE' -> waiting for all fences
+   // 4. timeout 
+
+	this->device.getDevice().waitForFences(inFlightFences[frameIndexToBeDrawn], VK_TRUE, UINT64_MAX);
+
+	/* Get Image From Swapchain */
+
+	//as is extension we must use vk*KHR naming convention
+	//UINT64_MAX -> 3rd argument: used to specify timeout in nanoseconds for image to become available
+	/* Suboptimal SwapChain notes */
+		//vulkan can return two different flags 
+		// 1. VK_ERROR_OUT_OF_DATE_KHR: swap chain has become incompatible with the surface and cant be used for rendering. (Window resize)
+		// 2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no longer match
+	auto result = this->device.getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[frameIndexToBeDrawn]);
+
+	if (result.result == vk::Result::eErrorOutOfDateKHR) {
+		//the swapchain is no longer optimal according to vulkan. Must recreate a more efficient swap chain
+		recreateSwapChain();
+		return;
+	}
+	else if (result.result != vk::Result::eSuccess && result.result != vk::Result::eSuboptimalKHR) {
+		//for VK_SUBOPTIMAL_KHR can also recreate swap chain. However, chose to continue to presentation stage
+		throw std::runtime_error("failed to acquire swap chain image");
+	}
+	this->currentSwapChainImageIndex = result.value;
+
+	//check if a previous frame is using the current image
+	if (imagesInFlight[this->currentSwapChainImageIndex]) {
+		this->device.getDevice().waitForFences(1, &imagesInFlight[this->currentSwapChainImageIndex], VK_TRUE, UINT64_MAX);
+	}
+	//mark image as now being in use by this frame by assigning the fence to it 
+	imagesInFlight[this->currentSwapChainImageIndex] = inFlightFences[frameIndexToBeDrawn];
+
+	updateUniformBuffer(frameIndexToBeDrawn);
+
+	//set fence to unsignaled state
+	this->device.getDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
+}
+
+void SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn)
+{
+	buffer.submit(frameIndexToBeDrawn, inFlightFences[frameIndexToBeDrawn], std::pair<vk::Semaphore, vk::PipelineStageFlags>(imageAvailableSemaphores[currentFrame], vk::PipelineStageFlagBits::eColorAttachmentOutput));
+}
+
+void SwapChainRenderer::submissionDone(const int& frameIndexToBeDrawn)
+{
+	//advance to next frame
+	previousFrame = currentFrame;
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+std::optional<std::function<void(const int&)>> SwapChainRenderer::getAfterBufferSubmissionCallback()
+{
+	return std::optional<std::function<void(const int&)>>(std::function<void(const int&)>(std::bind(&SwapChainRenderer::submissionDone, this, std::placeholders::_1)));
+}
+
+std::optional<std::function<void(const int&)>> SwapChainRenderer::getBeforeBufferSubmissionCallback()
+{
+	return std::optional<std::function<void(const int&)>>(std::function<void(const int&)>(std::bind(&SwapChainRenderer::prepareForSubmission, this, std::placeholders::_1)));
+}
+
+std::optional<std::function<void(StarCommandBuffer&, const int&)>> SwapChainRenderer::getOverrideBufferSubmissionCallback()
+{
+	return std::optional<std::function<void(StarCommandBuffer&, const int&)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2));
+}
+
 }

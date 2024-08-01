@@ -28,6 +28,8 @@ namespace star {
 
 		static void bind(const BufferHandle& buffer, vk::CommandBuffer& commandBuffer);
 
+		static void init(StarDevice& device, const int& numFramesInFlight);
+
 		static void cleanup(StarDevice& device);
 
 		friend class StarEngine;

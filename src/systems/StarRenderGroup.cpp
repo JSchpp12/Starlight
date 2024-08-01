@@ -98,7 +98,7 @@ void StarRenderGroup::addObject(StarObject& newObject) {
 	this->numMeshes += newObject.getMeshes().size();
 }
 
-void StarRenderGroup::recordRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
+void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
 	for (auto& group : this->groups) {
 		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, swapChainImageIndex);
 		for (auto& obj : group.objects) {
@@ -108,7 +108,7 @@ void StarRenderGroup::recordRenderPassCommands(StarCommandBuffer& mainDrawBuffer
 	}
 }
 
-void StarRenderGroup::recordPreRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex)
+void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex)
 {
 	for (auto& group : this->groups) {
 		group.baseObject.object.recordPreRenderPassCommands(mainDrawBuffer, swapChainImageIndex); 

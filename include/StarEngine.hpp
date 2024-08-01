@@ -11,7 +11,7 @@
 #include "StarCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "StarRenderGroup.hpp"
-#include "RenderResourceSystem.hpp"
+#include "ManagerCommandBuffer.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -40,8 +40,6 @@ protected:
 	std::unique_ptr<StarDevice> renderingDevice; 
 	std::unique_ptr<SwapChainRenderer> mainRenderer; 
 	std::vector<Handle> lightList; 
-
-	ManagerDescriptorPool descriptorManager;
 
 	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
 	std::vector<StarRenderGroup> renderGroups;  

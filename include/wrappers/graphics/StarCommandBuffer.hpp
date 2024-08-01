@@ -13,7 +13,7 @@ namespace star {
 	/// </summary>
 	class StarCommandBuffer {
 	public:
-		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Command_Buffer_Type type);
+		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Command_Buffer_Type type, bool initSemaphores = false);
 		~StarCommandBuffer(); 
 
 		/// <summary>
@@ -73,6 +73,8 @@ namespace star {
 	protected:
 		StarDevice& device; 
 		vk::Queue& targetQueue; 
+		StarCommandBuffer* mustWaitFor = nullptr; 
+
 		std::vector<vk::CommandBuffer> commandBuffers; 
 		std::vector<vk::Semaphore> completeSemaphores; 
 		std::vector<vk::Fence> readyFence; 
@@ -83,5 +85,7 @@ namespace star {
 		void wait(int bufferIndex);
 
 		void checkForImageTransitions(int bufferIndex); 
+
+		void createSemaphores(); 
 	};
 }
