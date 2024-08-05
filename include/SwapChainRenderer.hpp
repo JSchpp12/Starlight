@@ -82,7 +82,6 @@ protected:
 
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
-	std::vector<vk::Semaphore> renderFinishedSemaphores;
 
 	//storage for multiple buffers for each swap chain image  
 	std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
@@ -107,9 +106,7 @@ protected:
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
-	//std::unique_ptr<StarCommandBuffer> graphicsCommandBuffer;
-	//std::unique_ptr<StarCommandBuffer> screenshotCommandBuffer; 
-	//std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer;
+	std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer; 
 
 	//depth testing storage 
 	vk::Image depthImage;

@@ -136,13 +136,11 @@ void SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn, const
 	}
 }
 
-
 void SwapChainRenderer::cleanup()
 {
 	cleanupSwapChain();
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		this->device.getDevice().destroySemaphore(renderFinishedSemaphores[i]);
 		this->device.getDevice().destroySemaphore(imageAvailableSemaphores[i]);
 		this->device.getDevice().destroyFence(inFlightFences[i]);
 	}
@@ -220,8 +218,7 @@ void SwapChainRenderer::createSwapChain()
 	}
 
 	vk::SwapchainCreateInfoKHR createInfo{};
-	createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;
-	//createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;     
+	createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;    
 	createInfo.surface = this->device.getSurface();
 
 	//specify image information for the surface 
@@ -328,7 +325,7 @@ void SwapChainRenderer::createDescriptors()
 	this->globalDescriptorSets.resize(this->swapChainImages.size());
 
 	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
-	for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		//global
 		bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
 
@@ -547,21 +544,18 @@ void SwapChainRenderer::createRenderingBuffers()
 
 void SwapChainRenderer::createCommandBuffers()
 {
-	//this->graphicsCommandBuffer = std::make_unique<StarCommandBuffer>(device, MAX_FRAMES_IN_FLIGHT, Command_Buffer_Type::Tgraphics);
-	//this->screenshotCommandBuffer = std::make_unique<ScreenshotBuffer>(device, this->swapChainImages, this->swapChainExtent, this->swapChainImageFormat);
+	this->screenshotCommandBuffer = std::make_unique<ScreenshotBuffer>(device, this->swapChainImages, this->swapChainExtent, this->swapChainImageFormat);
 }
 
 void SwapChainRenderer::createSemaphores()
 {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 
 	vk::SemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		this->imageAvailableSemaphores[i] = this->device.getDevice().createSemaphore(semaphoreInfo);
-		this->renderFinishedSemaphores[i] = this->device.getDevice().createSemaphore(semaphoreInfo);
 
 		if (!this->imageAvailableSemaphores[i]) {
 			throw std::runtime_error("failed to create semaphores for a frame");
@@ -600,7 +594,6 @@ void SwapChainRenderer::createFenceImageTracking()
 	//initially, no frame is using any image so this is going to be created without an explicit link
 }
 
-
 vk::SurfaceFormatKHR SwapChainRenderer::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
 {
 	for (const auto& availableFormat : availableFormats) {
@@ -637,6 +630,7 @@ vk::PresentModeKHR SwapChainRenderer::chooseSwapPresentMode(const std::vector<vk
 	//only VK_PRESENT_MODE_FIFO_KHR is guaranteed to be available
 	return vk::PresentModeKHR::eFifo;
 }
+
 vk::Extent2D SwapChainRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities)
 {
 	/*
@@ -665,6 +659,7 @@ vk::Extent2D SwapChainRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKH
 		return actualExtent;
 	}
 }
+
 vk::Format SwapChainRenderer::findDepthFormat()
 {
 	//utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
@@ -673,11 +668,13 @@ vk::Format SwapChainRenderer::findDepthFormat()
 		vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
+
 void SwapChainRenderer::initResources(StarDevice& device, const int& numFramesInFlight)
 {
 	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, this->swapChainImages.size());
 	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, this->swapChainImages.size());
 }
+
 void SwapChainRenderer::destroyResources(StarDevice& device)
 {
 
