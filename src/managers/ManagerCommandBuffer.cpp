@@ -23,8 +23,6 @@ void star::ManagerCommandBuffer::update(const int& frameIndexToBeDrawn)
 {
 	handleNewRequests();
 
-	recordBuffers(frameIndexToBeDrawn);
-
 	submitCommandBuffers(frameIndexToBeDrawn);
 }
 
@@ -36,14 +34,16 @@ void star::ManagerCommandBuffer::handleNewRequests()
 
 		Handle newBufferHandle = Handle((uint32_t)this->allBuffers.size(), Handle_Type::buffer); 
 		
-		this->allBuffers.push_back(CompleteRequest(request.recordBufferCallback, 
+		this->allBuffers.push_back(CompleteRequest(
+			request.recordBufferCallback, 
 			std::make_unique<StarCommandBuffer>(this->device, this->numFramesInFlight, request.type, true), 
 			request.type, 
 			request.recordOnce, 
+			request.order,
 			request.beforeBufferSubmissionCallback, 
 			request.afterBufferSubmissionCallback, 
 			request.overrideBufferSubmissionCallback));
-
+			
 		if (request.type == Command_Buffer_Type::Tgraphics)
 			this->mainGraphicsBuffer = &this->allBuffers.at(newBufferHandle.id);
 
@@ -68,41 +68,58 @@ void star::ManagerCommandBuffer::handleNewRequests()
 void star::ManagerCommandBuffer::submitCommandBuffers(const int& swapChainIndex)
 {
 	//determine the order of buffers to execute
+	assert(this->mainGraphicsBuffer != nullptr && "No main graphics buffer set -- cannot happen");
 
-	std::vector<CompleteRequest> buffers; 
+	std::vector<CompleteRequest*> buffersBeforeGraphics;
+	std::vector<CompleteRequest*> buffersAfterGraphics; 
 	{
-		CompleteRequest* graphicsBuffer = nullptr; 
+		CompleteRequest* finalBuffer = nullptr; 
 
 		//only do the graphics buffer right now
 		for (auto& buffer : this->allBuffers) {
-			if (buffer.type == Command_Buffer_Type::Tgraphics)
-				graphicsBuffer = &buffer;
+			if (buffer.type != Command_Buffer_Type::Tgraphics) {
+				switch (buffer.order) {
+				case(CommandBufferOrder::BEOFRE_RENDER_PASS):
+					buffersBeforeGraphics.push_back(&buffer);
+					break;
+				case(CommandBufferOrder::AFTER_RENDER_PASS):
+					buffersAfterGraphics.push_back(&buffer);
+					break;
+				case(CommandBufferOrder::END_OF_FRAME):
+					assert(finalBuffer == nullptr && "Multiple buffers assigned to end of frame -- cannot happen");
+					finalBuffer = &buffer;
+					break;
+				default:
+					throw std::runtime_error("Unknown buffer order");
+				}
+			}
 		}
 
-		assert(graphicsBuffer != nullptr && "No main graphics buffer found?");
-		if (graphicsBuffer->beforeBufferSubmissionCallback.has_value())
-			graphicsBuffer->beforeBufferSubmissionCallback.value()(swapChainIndex);
+		//need to submit each group of buffers depending on the queue family they are in
+		//std::array<std::vector<StarBuffer>, 3> buffers = { buffersBeforeGraphics, {this->mainthis->mainGraphicsBuffer}, buffersAfterGraphics };
 
-		if (!graphicsBuffer->recordOnce) {
-			graphicsBuffer->commandBuffer->begin(swapChainIndex);
-			graphicsBuffer->recordBufferCallback(graphicsBuffer->commandBuffer->buffer(swapChainIndex), swapChainIndex);
-			graphicsBuffer->commandBuffer->buffer(swapChainIndex).end();
+		if (this->mainGraphicsBuffer->beforeBufferSubmissionCallback.has_value())
+			this->mainGraphicsBuffer->beforeBufferSubmissionCallback.value()(swapChainIndex);
+
+		if (!this->mainGraphicsBuffer->recordOnce) {
+			this->mainGraphicsBuffer->commandBuffer->begin(swapChainIndex);
+			this->mainGraphicsBuffer->recordBufferCallback(this->mainGraphicsBuffer->commandBuffer->buffer(swapChainIndex), swapChainIndex);
+			this->mainGraphicsBuffer->commandBuffer->buffer(swapChainIndex).end();
 		}
 
-		if (graphicsBuffer->overrideBufferSubmissionCallback.has_value())
-			graphicsBuffer->overrideBufferSubmissionCallback.value()(*graphicsBuffer->commandBuffer, swapChainIndex);
+		if (this->mainGraphicsBuffer->overrideBufferSubmissionCallback.has_value())
+			this->mainGraphicsBuffer->overrideBufferSubmissionCallback.value()(*this->mainGraphicsBuffer->commandBuffer, swapChainIndex);
 		else
-			graphicsBuffer->commandBuffer->submit(swapChainIndex);
+			this->mainGraphicsBuffer->commandBuffer->submit(swapChainIndex);
 
-		if (graphicsBuffer->afterBufferSubmissionCallback.has_value())
-			graphicsBuffer->afterBufferSubmissionCallback.value()(swapChainIndex);
+		if (this->mainGraphicsBuffer->afterBufferSubmissionCallback.has_value())
+			this->mainGraphicsBuffer->afterBufferSubmissionCallback.value()(swapChainIndex);
 	}
+
+	//submit the buffers required before the graphics buffer
+
+	//submit the main graphics buffer
+
+	//submit the buffers required after the graphics buffer
 	
-}
-
-void star::ManagerCommandBuffer::recordBuffers(const int& swapChainIndex)
-{
-	for (const auto& buffer : this->allBuffers) {
-
-	}
 }

@@ -25,6 +25,17 @@ namespace star {
 	protected: 
 		std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
 
+		// Inherited via RenderResourceModifier
+		void initResources(StarDevice& device, const int& numFramesInFlight) override;
+		void destroyResources(StarDevice& device) override;
+
+		// Inherited via CommandBufferModifier
+		CommandBufferOrder getCommandBufferOrder() override;
+		Command_Buffer_Type getCommandBufferType() override;
+		vk::PipelineStageFlags getWaitStages() override;
+		bool getWillBeSubmittedEachFrame() override;
+		bool getWillBeRecordedOnce() override;
+
 	private:
 		StarDevice& device; 
 		std::vector<vk::Image>& swapChainImages; 
@@ -41,16 +52,5 @@ namespace star {
 		bool deviceSupportsBlitToLinearImage(); 
 
 		void saveScreenshotToDisk(const int& bufferIndexJustRun);
-
-		// Inherited via RenderResourceModifier
-		void initResources(StarDevice& device, const int& numFramesInFlight) override;
-		void destroyResources(StarDevice& device) override;
-
-		// Inherited via CommandBufferModifier
-		CommandBufferOrder getCommandBufferOrder() override;
-		Command_Buffer_Type getCommandBufferType() override;
-		vk::PipelineStageFlags getWaitStages() override;
-		bool getWillBeSubmittedEachFrame() override;
-		bool getWillBeRecordedOnce() override;
 	};
 }

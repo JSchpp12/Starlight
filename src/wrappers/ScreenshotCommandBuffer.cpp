@@ -1,7 +1,7 @@
 #include "ScreenshotCommandBuffer.hpp"
 
 star::ScreenshotBuffer::ScreenshotBuffer(StarDevice& device, std::vector<vk::Image>& swapChainImages, const vk::Extent2D& swapChainExtent, const vk::Format& swapChainImageFormat)
-	: device(device), swapChainImages(swapChainImages), swapChainExtent(swapChainExtent)
+	: device(device), swapChainImages(swapChainImages), swapChainExtent(swapChainExtent), RenderResourceModifier()
 {
 	this->supportsBlit = deviceSupportsSwapchainBlit(swapChainImageFormat) && deviceSupportsBlitToLinearImage();
 }
@@ -152,7 +152,7 @@ void star::ScreenshotBuffer::takeScreenshot(const std::string& path)
 
 std::optional<std::function<void(const int&)>> star::ScreenshotBuffer::getAfterBufferSubmissionCallback()
 {
-	return std::optional<std::function<void(const int&)>>(std::function<void(const int&)>(std::bind(&ScreenshotBuffer::saveScreenshotToDisk, this, std::placeholders::_1)));
+	return std::optional<std::function<void(const int&)>>(std::bind(&ScreenshotBuffer::saveScreenshotToDisk, this, std::placeholders::_1));
 }
 
 bool star::ScreenshotBuffer::deviceSupportsSwapchainBlit(const vk::Format& swapChainImageFormat)

@@ -28,6 +28,9 @@ void StarEngine::Run()
 		this->mainRenderer->getGlobalDescriptorLayout());
 
 	while (!window->shouldClose()) {
+		//check if any new objects have been added
+		RenderResourceSystem::runInits(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
+
 		int frameToDraw = this->mainRenderer->getFrameToBeDrawn(); 
 		auto& objects = this->currentScene->getObjects();
 		for (auto& obj : objects) {

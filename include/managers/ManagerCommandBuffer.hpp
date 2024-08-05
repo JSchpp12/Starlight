@@ -64,6 +64,7 @@ namespace star {
 			std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback;
 			std::unique_ptr<StarCommandBuffer> commandBuffer;
 			Command_Buffer_Type type; 
+			CommandBufferOrder order; 
 			bool recordOnce; 
 
 			std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback; 
@@ -71,12 +72,13 @@ namespace star {
 			std::optional<std::function<void(StarCommandBuffer&, const int&)>> overrideBufferSubmissionCallback;
 
 			CompleteRequest(std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback, std::unique_ptr<StarCommandBuffer> commandBuffer, 
-				const Command_Buffer_Type& type, bool recordOnce,
+				const Command_Buffer_Type& type, bool recordOnce, 
+				CommandBufferOrder order,  
 				std::optional<std::function<void(const int&)>> beforeSubmissionCallback = std::optional<std::function<void(const int&)>>(),
 				std::optional<std::function<void(const int&)>> afterSubmissionCallback = std::optional<std::function<void(const int&)>>(),
 				std::optional<std::function<void(StarCommandBuffer&, const int&)>> overrideBufferSubmissionCallback = std::optional<std::function<void(StarCommandBuffer&, const int&)>>())
 				: recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)),
-				beforeBufferSubmissionCallback(beforeSubmissionCallback), 
+				order(order), beforeBufferSubmissionCallback(beforeSubmissionCallback), 
 				afterBufferSubmissionCallback(afterSubmissionCallback), 
 				overrideBufferSubmissionCallback(overrideBufferSubmissionCallback),
 				type(type), recordOnce(recordOnce) {};
