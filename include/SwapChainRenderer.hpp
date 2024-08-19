@@ -44,7 +44,9 @@ public:
 
 	virtual void prepare() override;
 
-	void triggerScreenshot(const std::string& path) { screenshotPath = std::make_unique<std::string>(path);  };
+	void triggerScreenshot(const std::string& path) { 
+		this->screenshotCommandBuffer->takeScreenshot(path);
+	};
 
 	int getFrameToBeDrawn() { return this->currentFrame; }
 
@@ -233,7 +235,7 @@ private:
 	void recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex) override;
 
 	// Inherited via CommandBufferModifier
-	CommandBufferOrder getCommandBufferOrder() override;
+	Command_Buffer_Order getCommandBufferOrder() override;
 	Command_Buffer_Type getCommandBufferType() override;
 	vk::PipelineStageFlags getWaitStages() override;
 	bool getWillBeSubmittedEachFrame() override;

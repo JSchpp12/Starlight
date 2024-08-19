@@ -762,9 +762,9 @@ void SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, co
 	commandBuffer.endRenderPass();
 }
 
-CommandBufferOrder SwapChainRenderer::getCommandBufferOrder()
+Command_Buffer_Order SwapChainRenderer::getCommandBufferOrder()
 {
-	return CommandBufferOrder::MAIN_RENDER_PASS; 
+	return Command_Buffer_Order::main_render_pass;
 }
 
 Command_Buffer_Type SwapChainRenderer::getCommandBufferType()

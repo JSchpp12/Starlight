@@ -70,9 +70,12 @@ namespace star {
 			vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage); 
 
 		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
+
+		void wait(int bufferIndex);
+
+		vk::Queue& targetQueue;
 	protected:
 		StarDevice& device; 
-		vk::Queue& targetQueue; 
 		StarCommandBuffer* mustWaitFor = nullptr; 
 
 		std::vector<vk::CommandBuffer> commandBuffers; 
@@ -82,7 +85,6 @@ namespace star {
 		std::vector<std::unique_ptr<std::unordered_map<StarTexture*, std::pair<vk::ImageLayout, vk::ImageLayout>>>> recordedImageTransitions; 
 		bool recorded = false; 
 
-		void wait(int bufferIndex);
 
 		void checkForImageTransitions(int bufferIndex); 
 

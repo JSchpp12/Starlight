@@ -30,7 +30,7 @@ namespace star {
 		void destroyResources(StarDevice& device) override;
 
 		// Inherited via CommandBufferModifier
-		CommandBufferOrder getCommandBufferOrder() override;
+		Command_Buffer_Order getCommandBufferOrder() override;
 		Command_Buffer_Type getCommandBufferType() override;
 		vk::PipelineStageFlags getWaitStages() override;
 		bool getWillBeSubmittedEachFrame() override;

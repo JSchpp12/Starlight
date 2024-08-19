@@ -4,6 +4,15 @@ std::stack<std::function<star::ManagerCommandBuffer::CommandBufferRequest(void)>
 
 std::stack<star::Handle> star::ManagerCommandBuffer::dynamicBuffersToSubmit = std::stack<star::Handle>();
 
+star::ManagerCommandBuffer::ManagerCommandBuffer(StarDevice& device, const int& numFramesInFlight)
+	: device(device), numFramesInFlight(numFramesInFlight), buffers(device, numFramesInFlight)
+{
+}
+
+star::ManagerCommandBuffer::~ManagerCommandBuffer()
+{
+}
+
 void star::ManagerCommandBuffer::request(std::function<CommandBufferRequest(void)> request)
 {
 	ManagerCommandBuffer::newCommandBufferRequests.push(request);
@@ -14,16 +23,13 @@ void star::ManagerCommandBuffer::submitDynamicBuffer(Handle bufferHandle)
 	ManagerCommandBuffer::dynamicBuffersToSubmit.push(bufferHandle);
 }
 
-vk::Semaphore* star::ManagerCommandBuffer::getMainGraphicsDoneSemaphore(const int& frameIndexToBeDrawn)
-{
-	return &this->mainGraphicsBuffer->commandBuffer->getCompleteSemaphores().at(frameIndexToBeDrawn);
-}
-
-void star::ManagerCommandBuffer::update(const int& frameIndexToBeDrawn)
+vk::Semaphore star::ManagerCommandBuffer::update(const int& frameIndexToBeDrawn)
 {
 	handleNewRequests();
 
-	submitCommandBuffers(frameIndexToBeDrawn);
+	handleDynamicBufferRequests(); 
+
+	return submitCommandBuffers(frameIndexToBeDrawn);
 }
 
 void star::ManagerCommandBuffer::handleNewRequests()
@@ -32,32 +38,27 @@ void star::ManagerCommandBuffer::handleNewRequests()
 		std::function<CommandBufferRequest(void)> requestFunction = ManagerCommandBuffer::newCommandBufferRequests.top();
 		auto request = requestFunction(); 
 
-		Handle newBufferHandle = Handle((uint32_t)this->allBuffers.size(), Handle_Type::buffer); 
-		
-		this->allBuffers.push_back(CompleteRequest(
+		star::Handle newHandle = this->buffers.add(std::make_unique<CompleteRequest>(
 			request.recordBufferCallback, 
 			std::make_unique<StarCommandBuffer>(this->device, this->numFramesInFlight, request.type, true), 
 			request.type, 
-			request.recordOnce, 
+			request.recordOnce,
+			request.waitStage,
 			request.order,
 			request.beforeBufferSubmissionCallback, 
 			request.afterBufferSubmissionCallback, 
-			request.overrideBufferSubmissionCallback));
-			
-		if (request.type == Command_Buffer_Type::Tgraphics)
-			this->mainGraphicsBuffer = &this->allBuffers.at(newBufferHandle.id);
+			request.overrideBufferSubmissionCallback), 
+			request.willBeSubmittedEachFrame, request.type, request.order);
 
-		if (request.willBeSubmittedEachFrame) {
-			this->standardBuffers.push_back(newBufferHandle); 
-		}
-		else {
-			this->dynamicBuffers.push_back(newBufferHandle); 
-		}
+		request.promiseBufferHandleCallback(newHandle);
+
+		if (request.type == Command_Buffer_Type::Tgraphics)
+			this->mainGraphicsBufferHandle = std::make_unique<Handle>(newHandle);
 
 		if (request.recordOnce) {
 			for (int i = 0; i < this->numFramesInFlight; i++) {
-				this->allBuffers.at(newBufferHandle.id).commandBuffer->begin(i);
-				request.recordBufferCallback(this->allBuffers.at(newBufferHandle.id).commandBuffer->buffer(i), i);
+				this->buffers.getBuffer(newHandle).commandBuffer->begin(i);
+				request.recordBufferCallback(this->buffers.getBuffer(newHandle).commandBuffer->buffer(i), i);
 			}
 		}
 
@@ -65,61 +66,56 @@ void star::ManagerCommandBuffer::handleNewRequests()
 	}
 }
 
-void star::ManagerCommandBuffer::submitCommandBuffers(const int& swapChainIndex)
+vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapChainIndex)
 {
 	//determine the order of buffers to execute
-	assert(this->mainGraphicsBuffer != nullptr && "No main graphics buffer set -- cannot happen");
+	assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- cannot happen");
 
-	std::vector<CompleteRequest*> buffersBeforeGraphics;
-	std::vector<CompleteRequest*> buffersAfterGraphics; 
-	{
-		CompleteRequest* finalBuffer = nullptr; 
+	std::unordered_map<star::Command_Buffer_Type, std::vector<CompleteRequest*>> sortedBuffersBeforeGraphics;
+	std::unordered_map<star::Command_Buffer_Type, std::vector<CompleteRequest*>> sortedBuffersAfterGraphics;
+	CompleteRequest* finalBuffer = nullptr;
 
-		//only do the graphics buffer right now
-		for (auto& buffer : this->allBuffers) {
-			if (buffer.type != Command_Buffer_Type::Tgraphics) {
-				switch (buffer.order) {
-				case(CommandBufferOrder::BEOFRE_RENDER_PASS):
-					buffersBeforeGraphics.push_back(&buffer);
-					break;
-				case(CommandBufferOrder::AFTER_RENDER_PASS):
-					buffersAfterGraphics.push_back(&buffer);
-					break;
-				case(CommandBufferOrder::END_OF_FRAME):
-					assert(finalBuffer == nullptr && "Multiple buffers assigned to end of frame -- cannot happen");
-					finalBuffer = &buffer;
-					break;
-				default:
-					throw std::runtime_error("Unknown buffer order");
-				}
-			}
-		}
+	//need to submit each group of buffers depending on the queue family they are in
+	//std::array<std::vector<StarBuffer>, 3> buffers = { buffersBeforeGraphics, {this->mainthis->mainGraphicsBuffer., buffersAfterGraphics };
+	CompleteRequest& mainGraphicsBuffer = this->buffers.getBuffer(*this->mainGraphicsBufferHandle); 
 
-		//need to submit each group of buffers depending on the queue family they are in
-		//std::array<std::vector<StarBuffer>, 3> buffers = { buffersBeforeGraphics, {this->mainthis->mainGraphicsBuffer}, buffersAfterGraphics };
+	if (mainGraphicsBuffer.beforeBufferSubmissionCallback.has_value())
+		mainGraphicsBuffer.beforeBufferSubmissionCallback.value()(swapChainIndex);
 
-		if (this->mainGraphicsBuffer->beforeBufferSubmissionCallback.has_value())
-			this->mainGraphicsBuffer->beforeBufferSubmissionCallback.value()(swapChainIndex);
-
-		if (!this->mainGraphicsBuffer->recordOnce) {
-			this->mainGraphicsBuffer->commandBuffer->begin(swapChainIndex);
-			this->mainGraphicsBuffer->recordBufferCallback(this->mainGraphicsBuffer->commandBuffer->buffer(swapChainIndex), swapChainIndex);
-			this->mainGraphicsBuffer->commandBuffer->buffer(swapChainIndex).end();
-		}
-
-		if (this->mainGraphicsBuffer->overrideBufferSubmissionCallback.has_value())
-			this->mainGraphicsBuffer->overrideBufferSubmissionCallback.value()(*this->mainGraphicsBuffer->commandBuffer, swapChainIndex);
-		else
-			this->mainGraphicsBuffer->commandBuffer->submit(swapChainIndex);
-
-		if (this->mainGraphicsBuffer->afterBufferSubmissionCallback.has_value())
-			this->mainGraphicsBuffer->afterBufferSubmissionCallback.value()(swapChainIndex);
+	if (!mainGraphicsBuffer.recordOnce) {
+		mainGraphicsBuffer.commandBuffer->begin(swapChainIndex);
+		mainGraphicsBuffer.recordBufferCallback(mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex), swapChainIndex);
+		mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex).end();
 	}
 
-	//submit the buffers required before the graphics buffer
+	if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value())
+		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex);
+	else
+		mainGraphicsBuffer.commandBuffer->submit(swapChainIndex);
 
-	//submit the main graphics buffer
+	if (mainGraphicsBuffer.afterBufferSubmissionCallback.has_value())
+		mainGraphicsBuffer.afterBufferSubmissionCallback.value()(swapChainIndex);
 
-	//submit the buffers required after the graphics buffer
+	vk::Semaphore* mainGraphicsSemaphore = &mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
 	
+	std::vector<vk::Semaphore> waitSemaphores = { *mainGraphicsSemaphore };
+	std::vector<vk::PipelineStageFlags> waitStages = { vk::PipelineStageFlagBits::eBottomOfPipe };
+
+	std::vector<vk::Semaphore> finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(Command_Buffer_Order::end_of_frame, swapChainIndex, &waitSemaphores, &waitStages);
+
+	if (finalSubmissionSemaphores.empty())
+		return mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
+	else
+		return finalSubmissionSemaphores[0];
+}
+
+void star::ManagerCommandBuffer::handleDynamicBufferRequests()
+{
+	while (!ManagerCommandBuffer::dynamicBuffersToSubmit.empty()) {
+		Handle dynamicBufferRequest = ManagerCommandBuffer::dynamicBuffersToSubmit.top();
+
+		this->buffers.setToSubmitThisBuffer(dynamicBufferRequest.id); 
+
+		ManagerCommandBuffer::dynamicBuffersToSubmit.pop();
+	}
 }

@@ -3,7 +3,8 @@
 star::ScreenshotBuffer::ScreenshotBuffer(StarDevice& device, std::vector<vk::Image>& swapChainImages, const vk::Extent2D& swapChainExtent, const vk::Format& swapChainImageFormat)
 	: device(device), swapChainImages(swapChainImages), swapChainExtent(swapChainExtent), RenderResourceModifier()
 {
-	this->supportsBlit = deviceSupportsSwapchainBlit(swapChainImageFormat) && deviceSupportsBlitToLinearImage();
+	//this->supportsBlit = deviceSupportsSwapchainBlit(swapChainImageFormat) && deviceSupportsBlitToLinearImage();
+	this->supportsBlit = false;
 }
 
 void star::ScreenshotBuffer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
@@ -228,9 +229,9 @@ void star::ScreenshotBuffer::destroyResources(StarDevice& device)
 	}
 }
 
-star::CommandBufferOrder star::ScreenshotBuffer::getCommandBufferOrder()
+star::Command_Buffer_Order star::ScreenshotBuffer::getCommandBufferOrder()
 {
-	return star::CommandBufferOrder::END_OF_FRAME; 
+	return star::Command_Buffer_Order::end_of_frame;
 }
 
 star::Command_Buffer_Type star::ScreenshotBuffer::getCommandBufferType()

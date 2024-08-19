@@ -12,7 +12,6 @@ star::CommandBufferModifier::CommandBufferModifier()
 
 void star::CommandBufferModifier::submitMyBuffer()
 {
-	//assert(this->isDynamic && "This buffer is not dynamic and cannot be submitted manually"); 
 	assert(this->bufferHandle.has_value() && "This buffer has not been assigned a handle");
 
 	ManagerCommandBuffer::submitDynamicBuffer(this->bufferHandle.value());
@@ -38,8 +37,8 @@ star::ManagerCommandBuffer::CommandBufferRequest star::CommandBufferModifier::ge
 	return ManagerCommandBuffer::CommandBufferRequest(
 		std::function<void(vk::CommandBuffer&, const int&)>(std::bind(&CommandBufferModifier::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2)),
 		std::function<void(Handle)>(std::bind(&CommandBufferModifier::setBufferHandle, this, std::placeholders::_1)),
-		this->getCommandBufferOrder(), this->getCommandBufferType(), 
-		this->getWillBeSubmittedEachFrame(), this->getWillBeRecordedOnce(),
-		this->getBeforeBufferSubmissionCallback(), this->getAfterBufferSubmissionCallback(), 
-		this->getOverrideBufferSubmissionCallback());
+		this->getCommandBufferOrder(), this->getCommandBufferType(), this->getWaitStages(),
+		this->getWillBeSubmittedEachFrame(), this->getWillBeRecordedOnce(), 
+		this->getBeforeBufferSubmissionCallback(), 
+		this->getAfterBufferSubmissionCallback(), this->getOverrideBufferSubmissionCallback());
 }

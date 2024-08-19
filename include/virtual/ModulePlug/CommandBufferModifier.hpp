@@ -22,7 +22,7 @@ namespace star {
 	protected: 
 		void submitMyBuffer();
 
-		virtual CommandBufferOrder getCommandBufferOrder() = 0; 
+		virtual Command_Buffer_Order getCommandBufferOrder() = 0;
 
 		virtual Command_Buffer_Type getCommandBufferType() = 0;
 

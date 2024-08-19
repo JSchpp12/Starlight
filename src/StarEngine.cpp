@@ -45,8 +45,8 @@ void StarEngine::Run()
 		mainRenderer->pollEvents();
 		InteractionSystem::callWorldUpdates();
 		const uint32_t frameIndex = mainRenderer->getFrameToBeDrawn();
-		commandBufferManager.update(frameIndex);
-		mainRenderer->submitPresentation(frameIndex, commandBufferManager.getMainGraphicsDoneSemaphore(frameIndex));
+		vk::Semaphore allBuffersSubmitted = commandBufferManager.update(frameIndex);
+		mainRenderer->submitPresentation(frameIndex, &allBuffersSubmitted);
 	}
 
 	this->renderingDevice->getDevice().waitIdle();
