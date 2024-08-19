@@ -1,5 +1,9 @@
 #include "StarEngine.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION   
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image.h"
+
 namespace star {
 
 std::unique_ptr<std::string> StarEngine::screenshotPath = nullptr;

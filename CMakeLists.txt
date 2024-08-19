@@ -8,6 +8,7 @@ set(CMAKE_MACOSX_RPATH 1)
 project("starlight")
 
 find_package(Vulkan REQUIRED)
+find_package(Stb REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -218,7 +219,7 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         "extern/tinyobjloader"
         ${glm_SOURCE_DIR}
-        ${STB_DIRECTORY}
+        ${Stb_INCLUDE_DIR}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")
