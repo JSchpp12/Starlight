@@ -8,6 +8,10 @@ set(CMAKE_MACOSX_RPATH 1)
 project("starlight")
 
 find_package(Vulkan REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -18,10 +22,6 @@ add_subdirectory("extern/spirv_headers")
 set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
-
-find_package("glm" REQUIRED)
-find_package("glfw3" REQUIRED)
-
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
@@ -37,11 +37,8 @@ set(SHADERC_ENABLE_SHARED_CRT OFF CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
-add_subdirectory("extern/tinyobjloader")
 add_subdirectory("extern/googletest") 
-
-find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
+add_subdirectory("extern/tinyobjloader")
 
 set(${PROJECT_NAME}_SOURCE 
     "src/virtual/StarObject.cpp"
