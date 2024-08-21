@@ -38,6 +38,12 @@ void star::RenderResourceSystem::bind(const BufferHandle& buffer, vk::CommandBuf
 	bindBuffer(buffer.id, commandBuffer, buffer.targetBufferOffset); 
 }
 
+void star::RenderResourceSystem::init(StarDevice& device, const int& numFramesInFlight)
+{
+	RenderResourceSystem::preparePrimaryGeometry(device);
+	RenderResourceSystem::runInits(device, numFramesInFlight);
+}
+
 void star::RenderResourceSystem::cleanup(StarDevice& device)
 {
 	runDestroys(device);

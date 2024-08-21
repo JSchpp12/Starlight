@@ -21,7 +21,7 @@ star::ManagerDescriptorPool::~ManagerDescriptorPool()
 	currentPool.reset();
 }
 
-void star::ManagerDescriptorPool::build(star::StarDevice& device)
+void star::ManagerDescriptorPool::init()
 {
 	while (!requests.empty()) {
 		std::pair<vk::DescriptorType, int>& request = requests.top();

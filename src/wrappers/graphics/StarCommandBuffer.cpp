@@ -1,7 +1,7 @@
 #include "StarCommandBuffer.hpp"
 
 star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToCreate, 
-	star::Command_Buffer_Type type) 
+	star::Command_Buffer_Type type, bool initSemaphores)
 	: device(device), targetQueue(device.getQueue(type))
 {
 	this->recordedImageTransitions.resize(numBuffersToCreate); 
@@ -30,6 +30,9 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 	for (int i = 0; i < numBuffersToCreate; i++) {
 		this->readyFence[i] = this->device.getDevice().createFence(fenceInfo); 
 	}
+
+	if (initSemaphores)
+		createSemaphores();
 }
 
 star::StarCommandBuffer::~StarCommandBuffer()
@@ -231,15 +234,7 @@ void star::StarCommandBuffer::reset(int bufferIndex)
 std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores()
 {
 	if (this->completeSemaphores.size() == 0) {
-		//need to create semaphores
-		this->completeSemaphores.resize(this->commandBuffers.size());
-
-		vk::SemaphoreCreateInfo semaphoreInfo{};
-		semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
-
-		for (int i = 0; i < this->commandBuffers.size(); i++) {
-			this->completeSemaphores.at(i) = this->device.getDevice().createSemaphore(semaphoreInfo);
-		}
+		createSemaphores();
 	}
 
 	return this->completeSemaphores;
@@ -275,5 +270,17 @@ void star::StarCommandBuffer::checkForImageTransitions(int bufferIndex)
 			std::cout << "Warning: iamge not in expected format. This might cause undefined behavior from renderer" << std::endl;
 
 		transitions.first->overrideImageLayout(transitions.second.second); 
+	}
+}
+
+void star::StarCommandBuffer::createSemaphores()
+{
+	this->completeSemaphores.resize(this->commandBuffers.size());
+
+	vk::SemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
+
+	for (int i = 0; i < this->commandBuffers.size(); i++) {
+		this->completeSemaphores.at(i) = this->device.getDevice().createSemaphore(semaphoreInfo);
 	}
 }

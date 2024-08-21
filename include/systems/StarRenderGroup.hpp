@@ -58,9 +58,9 @@ namespace star {
 		/// <summary>
 		/// Render the object
 		/// </summary>
-		virtual void recordRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex);
+		virtual void recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex);
 
-		virtual void recordPreRenderPassCommands(StarCommandBuffer& mainDrawBuffer, int swapChainImageIndex); 
+		virtual void recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex); 
 
 		//TODO: remove
 		virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }

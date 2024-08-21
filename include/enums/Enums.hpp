@@ -3,6 +3,13 @@
 #include <GLFW/glfw3.h>
 
 namespace star {
+    enum Command_Buffer_Order {
+        before_render_pass = 0,
+        main_render_pass = 1,  //special only usable by main render pass
+        after_render_pass = 2,
+        end_of_frame = 3
+    };
+
     enum Rendering_Features {
         geometry_shader
     };
@@ -15,15 +22,9 @@ namespace star {
     };
 
     enum Command_Buffer_Type {
-        Tgraphics, 
-        Ttransfer, 
-        Tcompute
-    };
-
-    enum Command_Execution_Order {
-        before_main_graphics, 
-        after_main_graphics,
-        dont_care
+        Tgraphics = 0, 
+        Ttransfer = 1, 
+        Tcompute = 2
     };
 
     enum Shader_File_Type {

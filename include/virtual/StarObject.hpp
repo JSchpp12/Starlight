@@ -82,7 +82,7 @@ namespace star {
 			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout,
 			std::vector<std::vector<vk::DescriptorSet>> globalSets, StarPipeline& sharedPipeline);
 
-		virtual void recordPreRenderPassCommands(StarCommandBuffer& commandBuffer, int swapChainIndexNum) {};
+		virtual void recordPreRenderPassCommands(vk::CommandBuffer& commandBuffer, int swapChainIndexNum) {};
 
 		/// <summary>
 		/// Create render call
@@ -90,7 +90,7 @@ namespace star {
 		/// <param name="commandBuffer"></param>
 		/// <param name="pipelineLayout"></param>
 		/// <param name="swapChainIndexNum"></param>
-		virtual void recordRenderPassCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum);
+		virtual void recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum);
 
 		/// @brief Create an instance of this object.
 		/// @return A reference to the created instance. The object will own the instance. 
@@ -162,9 +162,9 @@ namespace star {
 		std::unique_ptr<BufferHandle> vertBuffer, indBuffer; 
 		uint32_t boundingBoxIndsCount = 0; 
 
-		void recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex);
+		void recordDrawCommandNormals(vk::CommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex);
 
-		void recordDrawCommandBoundingBox(star::StarCommandBuffer& commandBuffer, int inFlightIndex);;
+		void recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex);;
 
 		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer);
 

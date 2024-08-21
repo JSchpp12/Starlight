@@ -423,7 +423,6 @@ vk::Format StarDevice::findSupportedFormat(const std::vector<vk::Format>& candid
 
 vk::CommandPool& StarDevice::getCommandPool(star::Command_Buffer_Type type)
 {
-	// TODO: insert return statement here
 	if (type == Command_Buffer_Type::Tgraphics) {
 		return this->graphicsCommandPool; 
 	}

@@ -58,7 +58,7 @@ namespace star {
 			StarDescriptorPool& groupPool, std::vector<std::unordered_map<int, vk::DescriptorSet>> globalSets,
 			int numSwapChainImages);
 
-		virtual void bind(StarCommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
+		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
 	protected:
 

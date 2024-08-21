@@ -15,9 +15,11 @@ namespace star {
 
 		static StarDescriptorPool& getPool();
 
+		ManagerDescriptorPool(StarDevice& device) : device(device) { init(); };
+
 		~ManagerDescriptorPool();
 
-		void build(StarDevice& device);
+		void init();
 
 	private:
 		//are the pools ready for use?
@@ -26,6 +28,7 @@ namespace star {
 
 		static StarDescriptorPool* pool; 
 
+		StarDevice& device; 
 		std::unique_ptr<StarDescriptorPool> currentPool; 
 
 		static std::unordered_map<vk::DescriptorType, int> actives; 

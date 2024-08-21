@@ -23,12 +23,11 @@ namespace star {
 
         Texture(int texWidth, int texHeight);
 
-        Texture(int texWidth, int texHeight, TextureCreateSettings& settings)
+        Texture(const int& texWidth, const int& texHeight, const int& channels, TextureCreateSettings& settings)
             : StarTexture(settings), rawData(std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texWidth, std::vector<Color>(texHeight, Color{})))),
-            width(texWidth), height(texHeight), channels(4), onDisk(false) {};
+            width(texWidth), height(texHeight), channels(channels), onDisk(false) {};
 
-        //Assuming raw data is in the form of a 1D array of RGB values
-        Texture(int texWidth, int texHeight, vk::SubresourceLayout texLayout, unsigned char* raw);
+        Texture(const int& texWidth, const int& texHeight, const int& channels, vk::SubresourceLayout texLayout, unsigned char* raw, bool swizzle = false);
 
         Texture(std::vector<std::vector<Color>> rawData);
 

@@ -13,9 +13,9 @@ namespace star {
         }
         Handle() = default;
         Handle(const Handle& handle) = default;
-        Handle(const uint32_t id, const Handle_Type type) : id(id), type(type) {};
+        Handle(const size_t id, const Handle_Type type) : id(id), type(type) {};
 
-        uint32_t id = 0;
+        size_t id = 0;
         size_t containerIndex = 0;
         Handle_Type type = Handle_Type::null;
         bool isOnDisk = false;

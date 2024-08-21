@@ -8,6 +8,10 @@ set(CMAKE_MACOSX_RPATH 1)
 project("starlight")
 
 find_package(Vulkan REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -18,10 +22,6 @@ add_subdirectory("extern/spirv_headers")
 set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
-
-find_package("glm" REQUIRED)
-find_package("glfw3" REQUIRED)
-
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
@@ -37,11 +37,8 @@ set(SHADERC_ENABLE_SHARED_CRT OFF CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
-add_subdirectory("extern/tinyobjloader")
 add_subdirectory("extern/googletest") 
-
-find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
+add_subdirectory("extern/tinyobjloader")
 
 set(${PROJECT_NAME}_SOURCE 
     "src/virtual/StarObject.cpp"
@@ -52,8 +49,9 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
     "src/common/RuntimeUpdateTexture.cpp"
-    "src/virtual/ModulePlug/RenderResourceModifier.cpp"
-    "src/virtual/ModulePlug/RenderResourceModifierGeometry.cpp"
+    "src/virtual/modulePlug/RenderResourceModifier.cpp"
+    "src/virtual/modulePlug/RenderResourceModifierGeometry.cpp"
+    "src/virtual/modulePlug/CommandBufferModifier.cpp"
     "src/virtual/StarMesh.cpp"
     "src/virtual/StarRenderer.cpp" 
     "src/StarEngine.cpp" 
@@ -68,18 +66,18 @@ set(${PROJECT_NAME}_SOURCE
     "src/wrappers/graphics/StarTexture.cpp"  
     "src/wrappers/graphics/StarRenderPass.cpp"
     "src/wrappers/graphics/StarCommandBuffer.cpp"
-    "src/managers/ShaderManager.cpp" 
     "src/wrappers/Allocator.cpp"
+    "src/wrappers/ScreenshotCommandBuffer.cpp"
+    "src/managers/ShaderManager.cpp" 
     "src/managers/ManagerBuffer.cpp"
     "src/managers/TextureManager.cpp"
     "src/managers/LightManager.cpp"
-    "src/managers/ObjectManager.cpp"
     "src/managers/MapManager.cpp" 
     "src/managers/ManagerDescriptorPool.cpp"
+    "src/managers/ManagerCommandBuffer.cpp"
     "src/templates/StarApplication.cpp"
     "src/modules/InteractionSystem.cpp"
     "src/modules/RenderResourceSystem.cpp"
-    "src/modules/RenderMemorySystem.cpp"
     "src/systems/StarRenderGroup.cpp" 
     "src/systems/StarSystemRenderPointLight.cpp" 
     "src/virtual/StarShader.cpp" 
@@ -96,7 +94,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
     "src/common/Texture.cpp"
-    
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
@@ -118,8 +115,9 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/objects/StarObjectInstance.hpp"
     "include/common/BasicCamera.hpp"
     "include/common/RuntimeUpdateTexture.hpp"
-    "include/virtual/ModulePlug/RenderResourceModifier.hpp"
-    "include/virtual/ModulePlug/RenderResourceModifierGeometry.hpp"
+    "include/virtual/modulePlug/RenderResourceModifier.hpp"
+    "include/virtual/modulePlug/RenderResourceModifierGeometry.hpp"
+    "include/virtual/modulePlug/CommandBufferModifier.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
@@ -136,16 +134,16 @@ set(${PROJECT_NAME}_HEADERS
     "include/wrappers/graphics/StarComputePipeline.hpp"
     "include/wrappers/graphics/StarRenderPass.hpp"
     "include/wrappers/graphics/StarCommandBuffer.hpp"
+    "include/wrappers/ScreenshotCommandBuffer.hpp"
     "include/wrappers/Allocator.hpp"
     "include/managers/ShaderManager.hpp"
     "include/managers/TextureManager.hpp"
     "include/managers/LightManager.hpp"
-    "include/managers/ObjectManager.hpp"
     "include/managers/MapManager.hpp"
     "include/managers/ManagerDescriptorPool.hpp"
+    "include/managers/ManagerCommandBuffer.hpp"
     "include/modules/InteractionSystem.hpp"
     "include/modules/RenderResourceSystem.hpp"
-    "include/modules/RenderMemorySystem.hpp"
     "include/systems/StarRenderGroup.hpp"
     "include/virtual/StarMaterial.hpp"
     "include/virtual/StarSystemPipeline.hpp"
@@ -217,7 +215,7 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         "extern/tinyobjloader"
         ${glm_SOURCE_DIR}
-        ${STB_DIRECTORY}
+        "extern/stb"
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")

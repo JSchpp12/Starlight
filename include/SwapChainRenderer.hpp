@@ -6,7 +6,6 @@
 #include "StarDescriptors.hpp"
 
 #include "LightBufferObject.hpp"
-#include "ObjectManager.hpp"
 #include "InteractionSystem.hpp"
 #include "StarObject.hpp"
 #include "StarCommandBuffer.hpp"
@@ -18,7 +17,10 @@
 #include "TextureManager.hpp"
 #include "LightManager.hpp"
 #include "ManagerDescriptorPool.hpp"
+#include "ManagerCommandBuffer.hpp"
 #include "RenderResourceModifier.hpp"
+#include "ScreenshotCommandBuffer.hpp"
+#include "CommandBufferModifier.hpp"
 
 #include "Light.hpp"
 
@@ -28,10 +30,10 @@
 
 
 namespace star {
-class SwapChainRenderer : public StarRenderer, private RenderResourceModifier {
+class SwapChainRenderer : public StarRenderer, private RenderResourceModifier, private CommandBufferModifier{
 public:
 	//how many frames will be sent through the pipeline
-	const int MAX_FRAMES_IN_FLIGHT = 1;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 
 	SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, StarDevice& device);
@@ -42,11 +44,13 @@ public:
 
 	virtual void prepare() override;
 
-	virtual void submit() override; 
-
-	void triggerScreenshot(const std::string& path) { screenshotPath = std::make_unique<std::string>(path);  };
+	void triggerScreenshot(const std::string& path) { 
+		this->screenshotCommandBuffer->takeScreenshot(path);
+	};
 
 	int getFrameToBeDrawn() { return this->currentFrame; }
+
+	void submitPresentation(const int& frameIndexToBeDrawn, const vk::Semaphore* mainGraphicsDoneSemaphore);
 
 	vk::RenderPass getMainRenderPass() { return this->renderPass; };
 	vk::Extent2D getMainExtent() { return this->swapChainExtent; }
@@ -78,11 +82,8 @@ protected:
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
 
-
-
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
-	std::vector<vk::Semaphore> renderFinishedSemaphores;
 
 	//storage for multiple buffers for each swap chain image  
 	std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
@@ -107,28 +108,20 @@ protected:
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
-	std::unique_ptr<StarCommandBuffer> graphicsCommandBuffer; 
-	std::unique_ptr<StarCommandBuffer> screenshotCommandBuffer; 
+	std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer; 
 
 	//depth testing storage 
 	vk::Image depthImage;
 	VmaAllocation depthImageMemory;
 	vk::ImageView depthImageView;
 
-	std::vector<vk::Image> copyDstImages; 
-	std::vector<VmaAllocation> copyDstImageMemories; 
-
-	bool supportsBlit = true; 
-
 	std::unique_ptr<std::string> screenshotPath = nullptr;
-
-	virtual void takeScreenshot(const uint32_t& currentBuffer);
-
-	virtual void queryDeviceSupport();
 
 	//tracker for which frame is being processed of the available permitted frames
 	size_t currentFrame = 0;
 	size_t previousFrame = 0; 
+
+	uint32_t currentSwapChainImageIndex = 0; 
 
 	bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
@@ -208,8 +201,6 @@ protected:
 	/// </summary>
 	virtual void createCommandBuffers();
 
-	virtual void recordCommandBuffer(uint32_t bufferIndex, uint32_t imageIndex); 
-
 	/// <summary>
 	/// Create semaphores that are going to be used to sync rendering and presentation queues
 	/// </summary>
@@ -225,8 +216,6 @@ protected:
 	/// </summary>
 	virtual void createFenceImageTracking();
 
-	void recordScreenshotCommandBuffers();
-
 #pragma region helpers
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
 
@@ -235,10 +224,6 @@ protected:
 
 	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
 
-	/// <summary>
-	/// Helper function -- TODO 
-	/// </summary>
-	/// <returns></returns>
 	vk::Format findDepthFormat();
 #pragma endregion
 private:
@@ -246,18 +231,26 @@ private:
 
 	void destroyResources(StarDevice& device) override;
 
-#pragma region MyRegion
-	/// <summary>
-	/// Helper function to query if device supports blitting operations from the current swapchain format
-	/// </summary>
-	/// <returns></returns>
-	inline bool deviceSupports_SwapchainBlit();
+	// Inherited via CommandBufferModifier
+	void recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex) override;
 
-	/// <summary>
-	/// Helper function to query if device supports blitting operations to a linear image
-	/// </summary>
-	/// <returns></returns>
-	inline bool devieSupports_blitToLinearImage();
-#pragma endregion
+	// Inherited via CommandBufferModifier
+	Command_Buffer_Order getCommandBufferOrder() override;
+	Command_Buffer_Type getCommandBufferType() override;
+	vk::PipelineStageFlags getWaitStages() override;
+	bool getWillBeSubmittedEachFrame() override;
+	bool getWillBeRecordedOnce() override;
+
+	void prepareForSubmission(const int& frameIndexToBeDrawn);
+
+	void submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn);
+
+	void submissionDone(const int& frameIndexToBeDrawn);
+
+	std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
+
+	std::optional<std::function<void(const int&)>> getBeforeBufferSubmissionCallback() override;
+
+	std::optional<std::function<void(StarCommandBuffer&, const int&)>> getOverrideBufferSubmissionCallback() override;
 };
 }

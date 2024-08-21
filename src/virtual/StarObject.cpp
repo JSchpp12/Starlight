@@ -166,13 +166,13 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 	prepareDescriptors(device, numSwapChainImages, groupLayout, globalSets);
 }
 
-void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, 
+void star::StarObject::recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout,
 	int swapChainIndexNum) {
-	RenderResourceSystem::bind(*this->indBuffer, commandBuffer.buffer(swapChainIndexNum));
-	RenderResourceSystem::bind(*this->vertBuffer, commandBuffer.buffer(swapChainIndexNum));
+	RenderResourceSystem::bind(*this->indBuffer, commandBuffer);
+	RenderResourceSystem::bind(*this->vertBuffer, commandBuffer);
 
 	if (this->pipeline)
-		this->pipeline->bind(commandBuffer.buffer(swapChainIndexNum)); 
+		this->pipeline->bind(commandBuffer); 
 
 	for (auto& rmesh : this->getMeshes()) {
 
@@ -182,7 +182,7 @@ void star::StarObject::recordRenderPassCommands(StarCommandBuffer& commandBuffer
 		uint32_t vertexCount = rmesh->getNumVerts();
 		uint32_t indexCount = rmesh->getNumIndices();
 		if (this->isVisible)
-			commandBuffer.buffer(swapChainIndexNum).drawIndexed(this->numIndices, instanceCount, this->indBufferOffset, 0, 0);
+			commandBuffer.drawIndexed(this->numIndices, instanceCount, this->indBufferOffset, 0, 0);
 	}
 
 	if (this->drawNormals)
@@ -402,7 +402,7 @@ void star::StarObject::createBoundingBox(std::vector<Vertex>& verts, std::vector
 	star::GeometryHelpers::calculateAxisAlignedBoundingBox(bbBounds[0], bbBounds[1], verts, inds, true);
 }
 
-void star::StarObject::recordDrawCommandNormals(star::StarCommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex)
+void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex)
 {
 	uint32_t ib = ib_start;
 
@@ -410,33 +410,31 @@ void star::StarObject::recordDrawCommandNormals(star::StarCommandBuffer& command
 	bool useAdjPipe = this->getMeshes().front()->hasAdjacentVertsPacked();
 
 	if (useAdjPipe)
-		StarObject::triAdj_normalExtrusionPipeline->bind(commandBuffer.buffer(inFlightIndex));
+		StarObject::triAdj_normalExtrusionPipeline->bind(commandBuffer);
 	else
-		StarObject::tri_normalExtrusionPipeline->bind(commandBuffer.buffer(inFlightIndex)); 
+		StarObject::tri_normalExtrusionPipeline->bind(commandBuffer); 
 
-	commandBuffer.buffer(inFlightIndex).setLineWidth(1.0f); 
+	commandBuffer.setLineWidth(1.0f); 
 
 	for (auto& rmesh : this->getMeshes()) {
 		uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
 		uint32_t indexCount = rmesh->getNumIndices();
-		commandBuffer.buffer(inFlightIndex).drawIndexed(indexCount, instanceCount, ib, 0, 0);
+		commandBuffer.drawIndexed(indexCount, instanceCount, ib, 0, 0);
 
 		ib += rmesh->getNumIndices();
 	}
 }
 
-void star::StarObject::recordDrawCommandBoundingBox(star::StarCommandBuffer& commandBuffer, int inFlightIndex)
+void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex)
 {
-	auto& buffer = commandBuffer.buffer(inFlightIndex); 
-
 	vk::DeviceSize offsets{}; 
-	buffer.bindVertexBuffers(0, this->boundingBoxVertBuffer->getBuffer(), offsets); 
-	buffer.bindIndexBuffer(this->boundingBoxIndBuffer->getBuffer(), 0, vk::IndexType::eUint32); 
+	commandBuffer.bindVertexBuffers(0, this->boundingBoxVertBuffer->getBuffer(), offsets); 
+	commandBuffer.bindIndexBuffer(this->boundingBoxIndBuffer->getBuffer(), 0, vk::IndexType::eUint32);
 
-	this->boundBoxPipeline->bind(buffer); 
-	buffer.setLineWidth(1.0f);
+	this->boundBoxPipeline->bind(commandBuffer); 
+	commandBuffer.setLineWidth(1.0f);
 
-	buffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0); 
+	commandBuffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0);
 }
 
 std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::StarObject::loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer)

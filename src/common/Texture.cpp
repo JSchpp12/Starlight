@@ -1,26 +1,40 @@
 #include "Texture.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION   
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
 star::Texture::Texture(int texWidth, int texHeight)
 	: width(texWidth), height(texHeight), channels(4), onDisk(false) {}
 
-star::Texture::Texture(int texWidth, int texHeight, vk::SubresourceLayout texLayout, unsigned char* raw)
-	: width(texWidth), height(texHeight), channels(3), onDisk(false) {
+star::Texture::Texture(const int& texWidth, const int& texHeight, const int& channels, vk::SubresourceLayout texLayout, unsigned char* raw, bool swizzle)
+	: width(texWidth), height(texHeight), channels(channels), onDisk(false) {
 	this->rawData = std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texHeight, std::vector<Color>(texWidth, Color{})));
     for (int i = 0; i < texHeight; i++) {
         unsigned int* row = (unsigned int*)raw;
 
 		for (int j = 0; j < texWidth; j++) {
-            unsigned char a = *(unsigned char*)(row + 3);
-            unsigned char r = *(unsigned char*)(row+2);
-            unsigned char g = *(unsigned char*)(row + 1);
-            unsigned char b = *(unsigned char*)(row);
+            unsigned char *r, *g, *b, *a = nullptr; 
+            if (swizzle) {
+                a = (unsigned char*)row + 3;
+                r = (unsigned char*)row + 2;
+                g = (unsigned char*)row + 1;
+                b = (unsigned char*)row;
+            }
+            else {
+                r = (unsigned char*)row; 
+                g = (unsigned char*)row + 1;
+                b = (unsigned char*)row + 2;
+                a = (unsigned char*)row + 3;
+            }
 
-			this->rawData.value().at(i).at(j) = Color(r, g, b);
+            {
+                unsigned char fr = r != nullptr ? *r : 0;
+                unsigned char fg = g != nullptr ? *g : 0;
+                unsigned char fb = b != nullptr ? *b : 0;
+                this->rawData.value().at(i).at(j) = Color(fr, fg, fb);
+            }
 
             row++;
 		}
@@ -74,9 +88,6 @@ std::unique_ptr<unsigned char> star::Texture::data()
         return std::move(pixelData);
     }
     else if (rawData.has_value()) {
-
-        //std::copy(rawData->begin(), rawData->end(), data.get());
-        //return std::move(data);
         int numPix = this->height * this->width * this->channels;
         int pixCounter = 0;
 
@@ -84,9 +95,9 @@ std::unique_ptr<unsigned char> star::Texture::data()
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
                 if (this->channels == 3) {
-                    data.at(channels * pixCounter + 0) = rawData.value().at(i).at(j).raw_r();
-                    data.at(channels * pixCounter + 1) = rawData.value().at(i).at(j).raw_g();
-                    data.at(channels * pixCounter + 2) = rawData.value().at(i).at(j).raw_b();
+                    data.at(pixCounter * this->channels + 0) = rawData.value().at(i).at(j).raw_r();
+                    data.at(pixCounter * this->channels + 1) = rawData.value().at(i).at(j).raw_g();
+                    data.at(pixCounter * this->channels + 2) = rawData.value().at(i).at(j).raw_b();
                 }
                 else if (this->channels == 4) {
                     data.at(channels * pixCounter + 0) = rawData.value().at(i).at(j).raw_r();

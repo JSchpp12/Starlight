@@ -23,8 +23,6 @@ public:
 
     virtual void prepare() = 0;
 
-    virtual void submit() = 0; 
-
 protected:
     StarCamera& camera; 
     StarWindow& window;
@@ -34,17 +32,5 @@ protected:
 
 	StarRenderer(StarWindow& window, StarCamera& inCamera, StarDevice& device) 
         : window(window), camera(inCamera), device(device){};
-
-	/// <summary>
-	/// A renderer may request additional device extensions. Default is none.
-	/// </summary>
-	/// <returns></returns>
-	std::vector<const char*> getRequiredDeviceExtensions() {
-		return std::vector<const char*>();
-	}
-
-private:
-	//Flag which is stored to track if this renderer has been initialized and created on the gpu
-	bool isCreated = false; 
 };
 }
