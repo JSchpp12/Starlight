@@ -21,7 +21,7 @@ public:
 	StarRenderer(const StarRenderer&) = delete; 
 	StarRenderer& operator=(const StarRenderer&) = delete; 
 
-    virtual void prepare() = 0;
+    //virtual void prepare() = 0;
 
 protected:
     StarCamera& camera; 

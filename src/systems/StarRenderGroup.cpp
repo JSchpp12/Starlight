@@ -118,11 +118,11 @@ void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuf
 	}
 }
 
-void StarRenderGroup::init(StarDescriptorSetLayout& engineSetLayout, vk::RenderPass engineRenderPass, 
-	std::vector<vk::DescriptorSet> enginePerImageDescriptors)
+void StarRenderGroup::init(StarDescriptorSetLayout& engineSetLayout, 
+	std::vector<vk::DescriptorSet> enginePerImageDescriptors, RenderingTargetInfo renderingInfo)
 {
 	createPipelineLayout(engineSetLayout);
-	prepareObjects(engineSetLayout, engineRenderPass, enginePerImageDescriptors);
+	prepareObjects(engineSetLayout, enginePerImageDescriptors, renderingInfo);
 }
 
 bool StarRenderGroup::isObjectCompatible(StarObject& object)
@@ -148,7 +148,7 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 	return true;
 }
 
-void StarRenderGroup::prepareObjects(StarDescriptorSetLayout& engineLayout, vk::RenderPass engineRenderPass, std::vector<vk::DescriptorSet> enginePerImageDescriptors) {
+void StarRenderGroup::prepareObjects(StarDescriptorSetLayout& engineLayout, std::vector<vk::DescriptorSet> enginePerImageDescriptors, RenderingTargetInfo renderingInfo) {
 	//get descriptor sets from objects and place into render structs
 	int objCounter = 0;
 
@@ -162,7 +162,7 @@ void StarRenderGroup::prepareObjects(StarDescriptorSetLayout& engineLayout, vk::
 	for (auto& group : this->groups) {
 		//prepare base object
 		auto globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
-		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, engineRenderPass, numSwapChainImages, finalizedGroupLayouts, globalObjDesc);
+		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, renderingInfo, numSwapChainImages, finalizedGroupLayouts, globalObjDesc);
 		objCounter++; 
 
 		for (auto& renderObject : group.objects) {

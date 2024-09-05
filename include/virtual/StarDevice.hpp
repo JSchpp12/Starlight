@@ -179,7 +179,8 @@ protected:
 		//VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
 		VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
 		VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-		VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME
+		VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
+		VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 	};
 
 	vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
@@ -251,6 +252,7 @@ protected:
 	SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device);
 
 private: 
+	bool checkDynamicRenderingSupport(); 
 
 };
 }

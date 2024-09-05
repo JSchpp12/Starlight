@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.27)
 find_package(Git)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -44,6 +44,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarObject.cpp"
     "src/Renderer.cpp"
     "src/BasicWindow.cpp" 
+    "src/SceneRenderer.cpp"
     "src/SwapChainRenderer.cpp"
     "src/common/Compiler.cpp"
     "src/common/Interactivity.cpp" 
@@ -103,6 +104,7 @@ set(${PROJECT_NAME}_SOURCE
 set(${PROJECT_NAME}_HEADERS
     "include/StarEngine.hpp"
     "include/BasicWindow.hpp" 
+    "include/SceneRenderer.hpp"
     "include/SwapChainRenderer.hpp"
     "include/common/Compiler.hpp"
     "include/common/Interactivity.hpp"
@@ -159,6 +161,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/structs/Vertex.hpp"
     "include/structs/Color.hpp"
     "include/structs/Ray.hpp"
+    "include/structs/RenderingTargetInfo.hpp"
     "include/templates/StarMemoryManager.hpp"
     "include/templates/StarApplication.hpp"
     "include/templates/StarResourceContainer.hpp"
@@ -178,7 +181,7 @@ add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ${Vulkan_LIBRARIES}
+        Vulkan::Vulkan
         shaderc
         tinyobjloader
         glfw
@@ -208,7 +211,7 @@ target_include_directories(${PROJECT_NAME}
         "include/modules/"
         "include/systems/"
         "include/renderers/"
-        ${Vulkan_INCLUDE_DIRS}
+        ${Vulkan_LIBRARIES}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/include/Systems
         ${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include

@@ -22,10 +22,9 @@ void StarGraphicsPipeline::bind(vk::CommandBuffer& commandBuffer) {
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, this->pipeline);
 }
 
-void StarGraphicsPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent, vk::RenderPass renderPass, vk::PipelineLayout pipelineLayout) {
+void StarGraphicsPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo) {
 	configSettings.swapChainExtent = swapChainExtent; 
 	configSettings.pipelineLayout = pipelineLayout; 
-	configSettings.renderPass = renderPass; 
 
 	vk::Rect2D scissor{};
 	scissor.offset = vk::Offset2D{ 0, 0 };
@@ -142,6 +141,7 @@ void StarGraphicsPipeline::defaultPipelineConfigInfo(PipelineConfigSettings& con
 
 	configSettings.rasterizationInfo = rasterizer;
 	configSettings.viewportInfo = viewportState;
+	configSettings.renderingInfo = renderingInfo; 
 }
 
 vk::Pipeline StarGraphicsPipeline::buildPipeline()
@@ -186,6 +186,16 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 	
 
+	vk::PipelineRenderingCreateInfoKHR renderingCreateInfo{};
+	renderingCreateInfo.pNext = VK_NULL_HANDLE; 
+	renderingCreateInfo.sType = vk::StructureType::ePipelineRenderingCreateInfoKHR;
+	renderingCreateInfo.colorAttachmentCount = configSettings.renderingInfo.colorAttachmentFormats.size();
+	renderingCreateInfo.pColorAttachmentFormats = configSettings.renderingInfo.colorAttachmentFormats.data(); 
+	if (configSettings.renderingInfo.depthAttachmentFormat.has_value())
+		renderingCreateInfo.depthAttachmentFormat = configSettings.renderingInfo.depthAttachmentFormat.value();
+	if (configSettings.renderingInfo.stencilAttachmentFormat.has_value())
+		renderingCreateInfo.stencilAttachmentFormat = configSettings.renderingInfo.stencilAttachmentFormat.value(); 
+
 	/* Dynamic State */
 	//some parts of the pipeline can be changed without recreating the entire pipeline
 	//if this is defined, the data for the dynamic structures will have to be provided at draw time
@@ -215,11 +225,13 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 	pipelineInfo.pDynamicState = &dynamicStateInfo;
 	pipelineInfo.layout = configSettings.pipelineLayout;
 	//render pass info - ensure renderpass is compatible with pipeline --check khronos docs
-	pipelineInfo.renderPass = configSettings.renderPass;
+	pipelineInfo.renderPass = VK_NULL_HANDLE;
 	pipelineInfo.subpass = 0; //index where the graphics pipeline will be used 
 	//allow switching to new pipeline (inheritance) 
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional -- handle to existing pipeline that is being switched to
 	pipelineInfo.basePipelineIndex = -1; // Optional
+	pipelineInfo.pNext = &renderingCreateInfo;
+
 
 	//finally creating the pipeline -- this call has the capability of creating multiple pipelines in one call
 	//2nd arg is set to null -> normally for graphics pipeline cache (can be used to store and reuse data relevant to pipeline creation across multiple calls to vkCreateGraphicsPipeline)

@@ -13,6 +13,7 @@
 #include "StarCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "RenderResourceModifierGeometry.hpp"
+#include "RenderingTargetInfo.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -42,7 +43,7 @@ namespace star {
 
 		static void initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent,
 			vk::RenderPass renderPass, int numSwapChainImages,
-			StarDescriptorSetLayout& globalDescriptors);
+			StarDescriptorSetLayout& globalDescriptors, RenderingTargetInfo renderingInfo);
 
 		static void cleanupSharedResources(StarDevice& device);
 
@@ -58,14 +59,14 @@ namespace star {
 
 		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
 			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, 
-			vk::RenderPass renderPass);
+			RenderingTargetInfo renderInfo);
 
 		/// <summary>
 		/// Prepare needed objects for rendering operations.
 		/// </summary>
 		/// <param name="device"></param>
 		virtual void prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
-			vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, 
+			vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo, int numSwapChainImages, 
 			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, 
 			std::vector<std::vector<vk::DescriptorSet>> globalSets);
 

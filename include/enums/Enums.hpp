@@ -5,9 +5,10 @@
 namespace star {
     enum Command_Buffer_Order {
         before_render_pass = 0,
-        main_render_pass = 1,  //special only usable by main render pass
+        main_render_pass = 1,   //special only usable by main render pass
         after_render_pass = 2,
-        end_of_frame = 3
+        end_of_frame = 3, 
+        presentation = 4        //special only usable by presentation
     };
 
     enum Rendering_Features {

@@ -10,3 +10,8 @@ The following packages are required:
 1. GLM
 2. GLFW
 3. Vulkan Memory Allocator
+
+## Other Requirenments
+
+1. CMAKE 3.27.9
+2. Vulkan SDK 1.3.290
