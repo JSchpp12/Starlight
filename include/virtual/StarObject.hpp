@@ -42,8 +42,8 @@ namespace star {
 		bool isVisible = true; 
 
 		static void initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent,
-			vk::RenderPass renderPass, int numSwapChainImages,
-			StarDescriptorSetLayout& globalDescriptors, RenderingTargetInfo renderingInfo);
+			int numSwapChainImages, StarDescriptorSetLayout& globalDescriptors, 
+			RenderingTargetInfo renderingInfo);
 
 		static void cleanupSharedResources(StarDevice& device);
 

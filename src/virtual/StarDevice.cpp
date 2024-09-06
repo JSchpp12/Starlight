@@ -491,7 +491,6 @@ void StarDevice::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFla
 	assert(size <= memRequirenments.size);
 
 	vk::MemoryAllocateInfo allocInfo{};
-	//allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
 	allocInfo.allocationSize = memRequirenments.size;
 	allocInfo.memoryTypeIndex = findMemoryType(memRequirenments.memoryTypeBits, properties);

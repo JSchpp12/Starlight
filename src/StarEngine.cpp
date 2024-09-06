@@ -24,7 +24,7 @@ void StarEngine::Run()
 
 	//prepare any shared resources
 	StarObject::initSharedResources(*this->renderingDevice, this->mainRenderer->getMainExtent(), 
-		this->mainRenderer->getMainRenderPass(), this->mainRenderer->MAX_FRAMES_IN_FLIGHT, 
+		this->mainRenderer->MAX_FRAMES_IN_FLIGHT, 
 		this->mainRenderer->getGlobalDescriptorLayout(), this->mainRenderer->getRenderingInfo());
 
 	while (!window->shouldClose()) {

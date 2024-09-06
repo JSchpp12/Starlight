@@ -28,8 +28,6 @@ namespace star {
 
 		vk::Extent2D getMainExtent() const { return this->swapChainExtent; }
 		int getFrameToBeDrawn() const { return this->currentFrame; }
-		vk::RenderPass getMainRenderPass() { return this->renderPass; };
-
 	protected:
 		//tracker for which frame is being processed of the available permitted frames
 		int currentFrame = 0;
@@ -48,13 +46,12 @@ namespace star {
 		virtual std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
 
 		std::optional<std::function<void(StarCommandBuffer&, const int&)>> getOverrideBufferSubmissionCallback() override;
-
-		/// <summary>
-		/// Create framebuffers that will hold representations of the images in the swapchain
-		/// </summary>
-		virtual void createFramebuffers(const int& numFramesInFlight) override;
 		
 		virtual std::vector<vk::Image> createRenderToImages() override;
+
+		virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) override;
+
+		virtual void recordCommandBuffer(vk::CommandBuffer& buffer, const int& frameIndexToBeDrawn) override;
 	private:
 		//more swapchain info 
 		vk::SwapchainKHR swapChain;
@@ -70,7 +67,7 @@ namespace star {
 		/// </summary>
 		virtual void recreateSwapChain();
 
-		void cleanupSwapchain();
+		void cleanupSwapChain();
 
 		/// <summary>
 		/// Create semaphores that are going to be used to sync rendering and presentation queues

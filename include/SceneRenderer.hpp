@@ -26,8 +26,8 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <vulkan/vulkan.hpp>
-
 
 namespace star {
 class SceneRenderer : public StarRenderer, public CommandBufferModifier, private RenderResourceModifier{
@@ -45,9 +45,9 @@ public:
 	};
 
 	StarDescriptorSetLayout& getGlobalDescriptorLayout() { return *this->globalSetLayout; }
-	RenderingTargetInfo getRenderingInfo() { return RenderingTargetInfo(); }
-protected:
 
+	virtual RenderingTargetInfo getRenderingInfo() { return *this->renderToTargetInfo; }
+protected:
 	struct GlobalUniformBufferObject {
 		alignas(16) glm::mat4 proj;
 		alignas(16) glm::mat4 view;
@@ -68,15 +68,18 @@ protected:
 		//settings.y = type
 		glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
 	};
+	std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
+	
+	std::unique_ptr<RenderingTargetInfo> renderToTargetInfo = std::unique_ptr<RenderingTargetInfo>(); 
 
 	std::vector<vk::Image> renderToImages;
 	std::vector<vk::ImageView> renderToImageViews;
 	std::vector<vk::Framebuffer> renderToFramebuffers;
 
 	//depth testing storage 
-	vk::Image depthImage;
-	VmaAllocation depthImageMemory;
-	vk::ImageView depthImageView;
+	vk::Image depthImage = vk::Image(); 
+	VmaAllocation depthImageMemory = VmaAllocation();
+	vk::ImageView depthImageView = vk::ImageView();
 
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
@@ -90,9 +93,6 @@ protected:
 	std::vector<std::unique_ptr<StarBuffer>> lightBuffers;
 	std::vector<vk::DescriptorSet> lightDescriptorSets;
 
-	//pipeline and dependency storage
-	vk::RenderPass renderPass;
-
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
@@ -100,15 +100,13 @@ protected:
 
 	std::unique_ptr<std::string> screenshotPath = nullptr;
 
-	virtual void createFramebuffers(const int& numFramesInFlight); 
-
 	virtual std::vector<vk::Image> createRenderToImages();
 
 	/// <summary>
 	/// Create an image view object for use in the rendering pipeline
 	/// 'Image View': describes how to access an image and what part of an image to access
 	/// </summary>
-	virtual void createImageViews(const int& numFramesInFlight, const vk::Format& renderToImageFormat);
+	virtual void createImageViews(const int& numImages, const vk::Format& imageFormat);
 
 	/// <summary>
 	/// Create vertex buffer + index buffers + any rendering groups for operations
@@ -117,18 +115,12 @@ protected:
 
 	virtual void updateUniformBuffer(uint32_t currentImage);
 
-	vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
+	vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 	
 	/// <summary>
 	/// Create descriptor pools for the descriptors used by the main rendering engine.
 	/// </summary>
 	virtual void createDescriptors(const int& numFramesInFlight);
-
-	/// <summary>
-	/// Create a rendering pass object which will tell vulkan information about framebuffer attachments:
-	/// number of color and depth buffers, how many samples to use for each, how to handle contents
-	/// </summary>
-	void createRenderPass(const vk::Extent2D& swapChainExtent, const vk::Format& swapChainFormat);
 
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 
@@ -152,14 +144,9 @@ protected:
 	virtual void createRenderingBuffers(const int& numFramesInFlight);
 
 	/// <summary>
-	/// Allocate and record the commands for each swapchain image
-	/// </summary>
-	virtual void createCommandBuffers();
-
-	/// <summary>
 	/// Create the depth images that will be used by vulkan to run depth tests on fragments. 
 	/// </summary>
-	void createDepthResources(const vk::Extent2D& swapChainExtent);
+	vk::Format createDepthResources(const vk::Extent2D& swapChainExtent);
 
 #pragma region helpers
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
@@ -171,13 +158,23 @@ protected:
 
 	vk::Format findDepthFormat();
 
+	vk::Viewport prepareRenderingViewport();
+
+	virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex);
+
+	virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const int& frameInFlightIndex);
+
+	void recordPreRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex);
+
+	void recordRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex);
+
 	// Inherited via CommandBufferModifier
 	Command_Buffer_Order getCommandBufferOrder() override;
 	Command_Buffer_Type getCommandBufferType() override;
 	vk::PipelineStageFlags getWaitStages() override;
 	bool getWillBeSubmittedEachFrame() override;
 	bool getWillBeRecordedOnce() override;
-	void recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex) override;
+	virtual void recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex) override;
 
 	virtual void prepareForSubmission(const int& frameIndexToBeDrawn);
 
@@ -185,12 +182,8 @@ protected:
 
 #pragma endregion
 private:
-	std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>(); 
-
 	void initResources(StarDevice& device, const int& numFramesInFlight) override;
 
 	void destroyResources(StarDevice& device) override;
-
-
 };
 }

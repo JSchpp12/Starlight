@@ -8,8 +8,7 @@ std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::boundDescriptor
 vk::PipelineLayout star::StarObject::boundPipelineLayout = vk::PipelineLayout{}; 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::boundBoxPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
 
-void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent, 
-	vk::RenderPass renderPass, int numSwapChainImages, 
+void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent, int numSwapChainImages, 
 	StarDescriptorSetLayout& globalDescriptors, RenderingTargetInfo renderingInfo)
 {
 	std::string mediaPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory);

@@ -9,7 +9,7 @@ star::SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::
 
 star::SwapChainRenderer::~SwapChainRenderer()
 {
-	//cleanupSwapChain();
+	cleanupSwapChain();
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		this->device.getDevice().destroySemaphore(imageAvailableSemaphores[i]);
@@ -19,9 +19,12 @@ star::SwapChainRenderer::~SwapChainRenderer()
 
 void star::SwapChainRenderer::prepare()
 {
-	//createFramebuffers(); 
-	//this->SceneRenderer::prepare(); 
-	this->SceneRenderer::prepare(this->swapChainExtent, MAX_FRAMES_IN_FLIGHT, this->swapChainImageFormat); 
+	auto numSwapChainImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain).size(); 
+	this->SceneRenderer::prepare(this->swapChainExtent, numSwapChainImages, this->swapChainImageFormat);
+
+	this->createSemaphores(); 
+	this->createFences();
+	this->createFenceImageTracking(); 
 }
 
 void star::SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn, const vk::Semaphore* mainGraphicsDoneSemaphore)
@@ -137,39 +140,49 @@ std::optional<std::function<void(star::StarCommandBuffer&, const int&)>> star::S
 	return std::optional<std::function<void(StarCommandBuffer&, const int&)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2));
 }
 
-void star::SwapChainRenderer::createFramebuffers(const int& numFramesInFlight)
-{
-	//swapChainFramebuffers.resize(swapChainImageViews.size());
-
-	//iterate through each image and create a buffer for it 
-	//for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-	//	std::array<vk::ImageView, 2> attachments = {
-	//		swapChainImageViews[i],
-	//		depthImageView //same depth image is going to be used for all swap chain images 
-	//	};
-
-	//	vk::FramebufferCreateInfo framebufferInfo{};
-	//	framebufferInfo.sType = vk::StructureType::eFramebufferCreateInfo;
-	//	//make sure that framebuffer is compatible with renderPass (same # and type of attachments)
-	//	framebufferInfo.renderPass = renderPass;
-	//	//specify which vkImageView objects to bind to the attachment descriptions in the render pass pAttachment array
-	//	framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	//	framebufferInfo.pAttachments = attachments.data();
-	//	framebufferInfo.width = swapChainExtent.width;
-	//	framebufferInfo.height = swapChainExtent.height;
-	//	framebufferInfo.layers = 1; //# of layers in image arrays
-
-	//	swapChainFramebuffers[i] = this->device.getDevice().createFramebuffer(framebufferInfo);
-	//	if (!swapChainFramebuffers[i]) {
-	//		throw std::runtime_error("failed to create framebuffer");
-	//	}
-	//}
-}
-
 std::vector<vk::Image> star::SwapChainRenderer::createRenderToImages()
 {
 	//get images in the newly created swapchain 
 	return this->device.getDevice().getSwapchainImagesKHR(this->swapChain);
+}
+
+vk::RenderingAttachmentInfo star::SwapChainRenderer::prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex)
+{
+	vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
+	colorAttachmentInfo.imageView = this->renderToImageViews[this->currentSwapChainImageIndex];
+	colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+	colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
+	colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
+	colorAttachmentInfo.clearValue = vk::ClearValue{ vk::ClearValue{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}} };
+
+	return colorAttachmentInfo;
+}
+
+void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
+{
+	//transition image layout
+
+	//for presentation will need to change layout of the image to presentation
+ 	vk::ImageMemoryBarrier presentBarrier{};
+	presentBarrier.sType = vk::StructureType::eImageMemoryBarrier;
+	presentBarrier.oldLayout = vk::ImageLayout::eUndefined;
+	presentBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+	presentBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+	presentBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+	presentBarrier.image = this->renderToImages[this->currentSwapChainImageIndex];
+	presentBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	presentBarrier.subresourceRange.baseMipLevel = 0;
+	presentBarrier.subresourceRange.levelCount = 1;
+	presentBarrier.subresourceRange.baseArrayLayer = 0;
+	presentBarrier.subresourceRange.layerCount = 1;
+
+	commandBuffer.pipelineBarrier(
+		vk::PipelineStageFlagBits::eFragmentShader,
+		vk::PipelineStageFlagBits::eColorAttachmentOutput,
+		{}, {}, nullptr, presentBarrier
+	);
+
+	this->SceneRenderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
 }
 
 void star::SwapChainRenderer::createSemaphores()
@@ -313,7 +326,7 @@ void star::SwapChainRenderer::recreateSwapChain()
 	//wait for device to finish any current actions
 	vkDeviceWaitIdle(this->device.getDevice());
 
-	cleanupSwapchain();
+	cleanupSwapChain();
 
 	//create swap chain itself 
 	createSwapChain();
@@ -332,7 +345,7 @@ void star::SwapChainRenderer::recreateSwapChain()
 	//createDescriptors();
 }
 
-void star::SwapChainRenderer::cleanupSwapchain()
+void star::SwapChainRenderer::cleanupSwapChain()
 {
 	this->device.getDevice().destroyImageView(this->depthImageView);
 	vmaDestroyImage(this->device.getAllocator(), this->depthImage, this->depthImageMemory);

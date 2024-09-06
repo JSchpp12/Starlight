@@ -7,7 +7,9 @@ namespace star {
 SceneRenderer::SceneRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, 
 	std::vector<std::reference_wrapper<StarObject>> objectList, 
 	StarCamera& camera, StarDevice& device)
-	: StarRenderer(window, camera, device), lightList(lightList), objectList(objectList){
+	: StarRenderer(window, camera, device), lightList(lightList), objectList(objectList)
+{
+
 }
 
 void SceneRenderer::prepare(const vk::Extent2D& swapChainExtent, const int& numFramesInFlight, const vk::Format& resultingRenderImageFormat)
@@ -16,44 +18,17 @@ void SceneRenderer::prepare(const vk::Extent2D& swapChainExtent, const int& numF
 
 	createRenderingBuffers(numFramesInFlight);
 	createDescriptors(numFramesInFlight);
-	createDepthResources(swapChainExtent);
+	vk::Format depthFormat = createDepthResources(swapChainExtent);
+
+	this->renderToTargetInfo = std::make_unique<RenderingTargetInfo>(
+		std::vector<vk::Format>{ resultingRenderImageFormat },
+		depthFormat);
 
 	this->renderToImages = createRenderToImages(); 
 	assert(this->renderToImages.size() != 0 && "The function or overriden function must create the renderToImages variable"); 
 	
 	createImageViews(numFramesInFlight, resultingRenderImageFormat); 
-	//createRenderPass(swapChainExtent, resultingRenderImageFormat);
-	//createFramebuffers(numFramesInFlight); 
 	createRenderingGroups(swapChainExtent, numFramesInFlight);
-	createCommandBuffers();
-}
-
-void SceneRenderer::createFramebuffers(const int& numFramesInFlight)
-{
-	/*this->renderToFramebuffers.resize(numFramesInFlight);
-
-	for (int i = 0; i < numFramesInFlight; i++) {
-		std::vector<vk::ImageView> attachments = {
-			this->renderToImageViews[i],
-			depthImageView
-		};
-
-		vk::FramebufferCreateInfo framebufferInfo{};
-		framebufferInfo.sType = vk::StructureType::eFramebufferCreateInfo;
-		framebufferInfo.renderPass = renderPass;
-		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = swapChainExtent.width;
-		framebufferInfo.height = swapChainExtent.height;
-		framebufferInfo.layers = 1;
-
-		this->renderToFramebuffers[i] = this->device.getDevice().createFramebuffer(framebufferInfo);
-		if (!this->renderToFramebuffers[i]) {
-			throw std::runtime_error("failed to create framebuffer!");
-		}
-	}*/
-
-	
 }
 
 std::vector<vk::Image> SceneRenderer::createRenderToImages()
@@ -61,13 +36,13 @@ std::vector<vk::Image> SceneRenderer::createRenderToImages()
 	return std::vector<vk::Image>();
 }
 
-void SceneRenderer::createImageViews(const int& numFramesInFlight, const vk::Format& renderToImageFormat)
+void SceneRenderer::createImageViews(const int& numImages, const vk::Format& imageFormat)
 {
-	this->renderToImageViews.resize(numFramesInFlight);
+	this->renderToImageViews.resize(numImages); 
 
 	//need to create an imageView for each of the images available
-	for (int i = 0; i < numFramesInFlight; i++) {
-		this->renderToImageViews[i] = createImageView(this->renderToImages[i], renderToImageFormat, vk::ImageAspectFlagBits::eColor);
+	for (int i = 0; i < numImages; i++) {
+		this->renderToImageViews[i] = createImageView(this->renderToImages[i], imageFormat, vk::ImageAspectFlagBits::eColor);
 	}
 }
 
@@ -140,7 +115,7 @@ void SceneRenderer::updateUniformBuffer(uint32_t currentImage)
 	this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
 }
 
-vk::ImageView SceneRenderer::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags)
+vk::ImageView SceneRenderer::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags)
 {
 	vk::ImageViewCreateInfo viewInfo{};
 	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
@@ -194,100 +169,6 @@ void SceneRenderer::createDescriptors(const int& numFramesInFlight)
 	}
 }
 
-void SceneRenderer::createRenderPass(const vk::Extent2D& swapChainExtent, const vk::Format& swapChainFormat)
-{
-	/*  Single render pass consists of many small subpasses
-		each subpasses are subsequent rendering operations that depend on the contents of framebuffers in the previous pass.
-		It is best to group these into one rendering pass, then vulkan can optimize for this in order to save memory bandwidth.
-		For this program, we are going to stick with one subpass
-	*/
-	/* Depth attachment */
-	vk::AttachmentDescription depthAttachment{};
-	depthAttachment.format = findDepthFormat();
-	depthAttachment.samples = vk::SampleCountFlagBits::e1;
-	depthAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-	depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;     //wont be used after draw 
-	depthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	depthAttachment.initialLayout = vk::ImageLayout::eUndefined;    //dont care about previous depth contents 
-	depthAttachment.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-
-	vk::AttachmentReference depthAttachmentRef{};
-	depthAttachmentRef.attachment = 1;
-	depthAttachmentRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-
-	/* Color attachment */
-	vk::AttachmentDescription colorAttachment{};
-	//format of color attachment needs to match the swapChain image format
-	colorAttachment.format = swapChainFormat;
-	//no multisampling needed so leave at 1 samples
-	colorAttachment.samples = vk::SampleCountFlagBits::e1;
-	colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-	colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
-
-	/* Choices for loadOp:
-		1. VK_ATTACHMENT_LOAD_OP_LOAD: preserve the existing contents of the attachment
-		2. VK_ATTACHMENT_LOAD_OP_CLEAR: clear the values to a constant at the start
-		3. VK_ATTACHMENT_LOAD_OP_DONT_CARE: existing contents are undefined
-	*/
-	//what do to with data before rendering
-	colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-	/* Choices for storeOp:
-		1. VK_ATTACHMENT_STORE_OP_STORE: rendered contents will be stored for later use
-		2. VK_ATTACHMENT_STORE_OP_DONT_CARE: contents of the frame buffer will be undefined after the rendering operation
-	*/
-	//what to do with data after rendering
-	colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;    //since we want to see the rendered triangle, we are going to store 
-
-	/*Image layouts can change depending on what operation is being performed
-	* Possible layouts are:
-	* 1. VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: image is used as a color attachment
-	* 2. VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: images to be presented in the swap chain
-	* 3. VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: images to be used as destination for memory copy operation
-	*/
-	//dont care what format image is in before render - contents of image are not guaranteed to be preserved 
-	colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
-	//want image to be ready for display 
-	colorAttachment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
-
-	/* Color attachment references */
-	vk::AttachmentReference colorAttachmentRef{};
-	colorAttachmentRef.attachment = 0;
-	colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal;    //will give best performance
-
-	/* Subpass */
-	vk::SubpassDescription subpass{};
-	subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentRef;
-	subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-	/* Subpass Dependencies */
-	vk::SubpassDependency dependency{};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
-	dependency.srcAccessMask = vk::AccessFlagBits::eNone;
-	dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
-	dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite; //allow for write 
-
-	/* Render Pass */
-	std::array<vk::AttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
-	vk::RenderPassCreateInfo renderPassInfo{};
-	renderPassInfo.sType = vk::StructureType::eRenderPassCreateInfo;
-	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	renderPassInfo.pAttachments = attachments.data();
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;
-	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;
-
-	this->renderPass = this->device.getDevice().createRenderPass(renderPassInfo);
-	if (!renderPass) {
-		throw std::runtime_error("failed to create render pass");
-	}
-}
-
 void SceneRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, VmaAllocation& imageMemory)
 {
 	/* Create vulkan image */
@@ -338,12 +219,7 @@ void SceneRenderer::createRenderingBuffers(const int& numFramesInFlight)
 	}
 }
 
-void SceneRenderer::createCommandBuffers()
-{
-	//this->screenshotCommandBuffer = std::make_unique<ScreenshotBuffer>(device, this->swapChainImages, this->swapChainExtent, this->swapChainImageFormat);
-}
-
-void SceneRenderer::createDepthResources(const vk::Extent2D& swapChainExtent)
+vk::Format SceneRenderer::createDepthResources(const vk::Extent2D& swapChainExtent)
 {
 	//depth image should have:
 	//  same resolution as the color attachment (in swap chain extent)
@@ -359,8 +235,9 @@ void SceneRenderer::createDepthResources(const vk::Extent2D& swapChainExtent)
 	createImage(swapChainExtent.width, swapChainExtent.height, depthFormat,
 		vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
 		vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
-
 	this->depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
+
+	return depthFormat; 
 }
 
 vk::SurfaceFormatKHR SceneRenderer::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
@@ -451,96 +328,78 @@ void SceneRenderer::destroyResources(StarDevice& device)
 
 void SceneRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
 {
-	//vk::Viewport viewport{};
-	//viewport.x = 0.0f;
-	//viewport.y = 0.0f;
-	//viewport.width = (float)this->swapChainExtent.width;
-	//viewport.height = (float)this->swapChainExtent.height;
-	////Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
-	//viewport.minDepth = 0.0f;
-	//viewport.maxDepth = 1.0f;
+	vk::Viewport viewport = this->prepareRenderingViewport();
+	commandBuffer.setViewport(0, viewport);
 
-	//commandBuffer.setViewport(0, viewport);
+	this->recordPreRenderingCalls(commandBuffer, frameInFlightIndex);
 
-	//for (auto& group : this->renderGroups) {
-	//	group->recordPreRenderPassCommands(commandBuffer, frameInFlightIndex);
-	//}
+	{
+		//dynamic rendering used...so dont need all that extra stuff
+		vk::RenderingAttachmentInfo colorAttachmentInfo = prepareDynamicRenderingInfoColorAttachment(frameInFlightIndex);
+		vk::RenderingAttachmentInfo depthAttachmentInfo = prepareDynamicRenderingInfoDepthAttachment(frameInFlightIndex);
 
-	///* Begin render pass */
-	////drawing starts by beginning a render pass 
-	//vk::RenderPassBeginInfo renderPassInfo{};
-	//renderPassInfo.sType = vk::StructureType::eRenderPassBeginInfo;
+		auto renderArea = vk::Rect2D{ vk::Offset2D{}, *this->swapChainExtent };
+		vk::RenderingInfoKHR renderInfo{};
+		renderInfo.renderArea = renderArea;
+		renderInfo.layerCount = 1;
+		renderInfo.pDepthAttachment = &depthAttachmentInfo;
+		renderInfo.pColorAttachments = &colorAttachmentInfo;
+		renderInfo.colorAttachmentCount = 1;
+		commandBuffer.beginRendering(renderInfo);
+	}
 
-	////define the render pass we want
-	//renderPassInfo.renderPass = renderPass;
+	this->recordRenderingCalls(commandBuffer, frameInFlightIndex);
 
-	////what attachments do we need to bind
-	////previously created swapChainbuffers to hold this information 
-	//renderPassInfo.framebuffer = swapChainFramebuffers[this->currentSwapChainImageIndex];
+	commandBuffer.endRendering();
+}
 
-	////define size of render area -- should match size of attachments for best performance
-	//renderPassInfo.renderArea.offset = vk::Offset2D{ 0, 0 };
-	//renderPassInfo.renderArea.extent = swapChainExtent;
-
-	////size of clearValues and order, should match the order of attachments
-	//std::array<vk::ClearValue, 2> clearValues{};
-	//clearValues[0].color = std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f }; //clear color for background color will be used with VK_ATTACHMENT_LOAD_OP_CLEAR
-	////depth values: 
-	//	//0.0 - closest viewing plane 
-	//	//1.0 - furthest possible depth
-	//clearValues[1].depthStencil = vk::ClearDepthStencilValue{ 1.0, 0 };
-
-	//renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-	//renderPassInfo.pClearValues = clearValues.data();
-
-	///* vkCmdBeginRenderPass */
-	////Args: 
-	//	//1. command buffer to set recording to 
-	//	//2. details of the render pass
-	//	//3. how drawing commands within the render pass will be provided
-	//		//OPTIONS: 
-	//			//VK_SUBPASS_CONTENTS_INLINE: render pass commands will be embedded in the primary command buffer. No secondary command buffers executed 
-	//			//VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS: render pass commands will be executed from the secondary command buffers
-	//commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-
-	/* Drawing Commands */
-	//Args: 
-		//2. compute or graphics pipeline
-		//3. pipeline object
-
-	/* vkCmdBindDescriptorSets:
-	*   1.
-	*   2. Descriptor sets are not unique to graphics pipelines, must specify to use in graphics or compute pipelines.
-	*   3. layout that the descriptors are based on
-	*   4. index of first descriptor set
-	*   5. number of sets to bind
-	*   6. array of sets to bind
-	*   7 - 8. array of offsets used for dynamic descriptors (not used here)
-	*/
-	//bind the right descriptor set for each swap chain image to the descripts in the shader
-	//bind global descriptor
-
+vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) {
 	vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
 	colorAttachmentInfo.imageView = this->renderToImageViews[frameInFlightIndex];
+	colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+	colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
+	colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
+	colorAttachmentInfo.clearValue = vk::ClearValue{ vk::ClearValue{std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}} };
 
-	vk::RenderingAttachmentInfoKHR depthAttachmentInfo{}; 
-	depthAttachmentInfo.imageView = this->depthImageView; 
+	return colorAttachmentInfo;
+}
 
-	auto renderArea = vk::Rect2D{ vk::Offset2D{}, *this->swapChainExtent }; 
-	vk::RenderingInfoKHR renderInfo{}; 
-	renderInfo.layerCount = 1; 
-	renderInfo.pStencilAttachment = &depthAttachmentInfo;
-	renderInfo.pDepthAttachment = &depthAttachmentInfo; 
-	renderInfo.pColorAttachments = &colorAttachmentInfo; 
-	renderInfo.colorAttachmentCount = 1;
+vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoDepthAttachment(const int& frameInFlightIndex) {
+	vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};
+	depthAttachmentInfo.imageView = this->depthImageView;
+	depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
+	depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
+	depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
+	depthAttachmentInfo.clearValue = vk::ClearValue{ vk::ClearDepthStencilValue{1.0f} };
 
-	commandBuffer.beginRendering(renderInfo); 
+	return depthAttachmentInfo;
+}
 
+vk::Viewport SceneRenderer::prepareRenderingViewport()
+{
+	vk::Viewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)this->swapChainExtent->width;
+	viewport.height = (float)this->swapChainExtent->height;
+	//Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	return viewport;
+}
+
+void SceneRenderer::recordPreRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
+{
+	for (auto& group : this->renderGroups) {
+		group->recordPreRenderPassCommands(commandBuffer, frameInFlightIndex);
+	}
+}
+
+void SceneRenderer::recordRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
+{
 	for (auto& group : this->renderGroups) {
 		group->recordRenderPassCommands(commandBuffer, frameInFlightIndex);
 	}
-
-	commandBuffer.endRenderPass();
 }
 
 Command_Buffer_Order SceneRenderer::getCommandBufferOrder()
