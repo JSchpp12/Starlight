@@ -36,7 +36,7 @@ public:
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera,
 		StarDevice& device);
 
-	virtual ~SceneRenderer() = default;
+	virtual ~SceneRenderer();
 
 	virtual void prepare(const vk::Extent2D& swapChainExtent, const int& numFramesInFlight, const vk::Format& resultingRenderImageFormat);
 
@@ -99,6 +99,8 @@ protected:
 	std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer; 
 
 	std::unique_ptr<std::string> screenshotPath = nullptr;
+
+	virtual void cleanup(); 
 
 	virtual std::vector<vk::Image> createRenderToImages();
 

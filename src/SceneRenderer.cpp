@@ -1,4 +1,6 @@
 #include "SceneRenderer.hpp"
+#include "SceneRenderer.hpp"
+#include "SceneRenderer.hpp"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -10,6 +12,11 @@ SceneRenderer::SceneRenderer(StarWindow& window, std::vector<std::unique_ptr<Lig
 	: StarRenderer(window, camera, device), lightList(lightList), objectList(objectList)
 {
 
+}
+
+SceneRenderer::~SceneRenderer()
+{
+	cleanup(); 
 }
 
 void SceneRenderer::prepare(const vk::Extent2D& swapChainExtent, const int& numFramesInFlight, const vk::Format& resultingRenderImageFormat)
@@ -29,6 +36,13 @@ void SceneRenderer::prepare(const vk::Extent2D& swapChainExtent, const int& numF
 	
 	createImageViews(numFramesInFlight, resultingRenderImageFormat); 
 	createRenderingGroups(swapChainExtent, numFramesInFlight);
+}
+
+void SceneRenderer::cleanup()
+{
+	for (auto& imageView : this->renderToImageViews) {
+		this->device.getDevice().destroyImageView(imageView); 
+	}
 }
 
 std::vector<vk::Image> SceneRenderer::createRenderToImages()
