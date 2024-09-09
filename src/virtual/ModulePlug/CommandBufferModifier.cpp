@@ -17,6 +17,11 @@ void star::CommandBufferModifier::submitMyBuffer()
 	ManagerCommandBuffer::submitDynamicBuffer(this->bufferHandle.value());
 }
 
+star::Command_Buffer_Order_Index star::CommandBufferModifier::getCommandBufferOrderIndex()
+{
+	return star::Command_Buffer_Order_Index::dont_care; 
+}
+
 std::optional<std::function<void(const int&)>> star::CommandBufferModifier::getAfterBufferSubmissionCallback()
 {
 	return std::optional<std::function<void(const int&)>>();
@@ -37,7 +42,8 @@ star::ManagerCommandBuffer::CommandBufferRequest star::CommandBufferModifier::ge
 	return ManagerCommandBuffer::CommandBufferRequest(
 		std::function<void(vk::CommandBuffer&, const int&)>(std::bind(&CommandBufferModifier::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2)),
 		std::function<void(Handle)>(std::bind(&CommandBufferModifier::setBufferHandle, this, std::placeholders::_1)),
-		this->getCommandBufferOrder(), this->getCommandBufferType(), this->getWaitStages(),
+		this->getCommandBufferOrder(), this->getCommandBufferOrderIndex(), 
+		this->getCommandBufferType(), this->getWaitStages(),
 		this->getWillBeSubmittedEachFrame(), this->getWillBeRecordedOnce(), 
 		this->getBeforeBufferSubmissionCallback(), 
 		this->getAfterBufferSubmissionCallback(), this->getOverrideBufferSubmissionCallback());

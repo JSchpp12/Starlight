@@ -8,6 +8,7 @@
 #include <stack>
 #include <memory>
 #include <functional>
+#include <optional>
 
 namespace star {
 	class CommandBufferModifier {
@@ -23,6 +24,8 @@ namespace star {
 		void submitMyBuffer();
 
 		virtual Command_Buffer_Order getCommandBufferOrder() = 0;
+
+		virtual star::Command_Buffer_Order_Index getCommandBufferOrderIndex();;
 
 		virtual Command_Buffer_Type getCommandBufferType() = 0;
 

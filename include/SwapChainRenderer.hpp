@@ -29,6 +29,8 @@ namespace star {
 		vk::Extent2D getMainExtent() const { return this->swapChainExtent; }
 		int getFrameToBeDrawn() const { return this->currentFrame; }
 	protected:
+		StarWindow& window;
+
 		//tracker for which frame is being processed of the available permitted frames
 		int currentFrame = 0;
 		int previousFrame = 0;
@@ -37,6 +39,13 @@ namespace star {
 
 		bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
+		vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
+
+		//Look through givent present modes and pick the "best" one
+		vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
+
+		vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
+		
 		virtual void prepareForSubmission(const int& frameIndexToBeDrawn) override;
 
 		virtual void submissionDone();

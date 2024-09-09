@@ -32,7 +32,7 @@
 namespace star {
 class SceneRenderer : public StarRenderer, public CommandBufferModifier, private RenderResourceModifier{
 public:
-	SceneRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
+	SceneRenderer(std::vector<std::unique_ptr<Light>>& lightList,
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera,
 		StarDevice& device);
 
@@ -151,13 +151,6 @@ protected:
 	vk::Format createDepthResources(const vk::Extent2D& swapChainExtent);
 
 #pragma region helpers
-	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
-
-	//Look through givent present modes and pick the "best" one
-	vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
-
-	vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
-
 	vk::Format findDepthFormat();
 
 	vk::Viewport prepareRenderingViewport();

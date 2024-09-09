@@ -25,12 +25,11 @@ public:
 
 protected:
     StarCamera& camera; 
-    StarWindow& window;
     StarDevice& device;
 
 	std::optional<std::reference_wrapper<StarRenderer>> waitFor; 
 
-	StarRenderer(StarWindow& window, StarCamera& inCamera, StarDevice& device) 
-        : window(window), camera(inCamera), device(device){};
+	StarRenderer(StarCamera& inCamera, StarDevice& device) 
+        : camera(inCamera), device(device){};
 };
 }
