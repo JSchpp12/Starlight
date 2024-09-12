@@ -2,6 +2,10 @@
 #include "SwapChainRenderer.hpp"
 #include "SwapChainRenderer.hpp"
 #include "SwapChainRenderer.hpp"
+#include "SwapChainRenderer.hpp"
+#include "SwapChainRenderer.hpp"
+#include "SwapChainRenderer.hpp"
+#include "SwapChainRenderer.hpp"
 
 star::SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, StarDevice& device)
 	: window(window), SceneRenderer(lightList, objectList, camera, device)
@@ -380,6 +384,26 @@ void star::SwapChainRenderer::createSwapChain()
 	//save swapChain information for later use
 	swapChainImageFormat = surfaceFormat.format;
 	swapChainExtent = extent;
+}
+
+star::Command_Buffer_Order star::SwapChainRenderer::getCommandBufferOrder()
+{
+	return Command_Buffer_Order::main_render_pass; 
+}
+
+vk::PipelineStageFlags star::SwapChainRenderer::getWaitStages()
+{
+	return vk::PipelineStageFlagBits::eVertexShader;
+}
+
+bool star::SwapChainRenderer::getWillBeSubmittedEachFrame()
+{
+	return true;
+}
+
+bool star::SwapChainRenderer::getWillBeRecordedOnce()
+{
+	return false;
 }
 
 void star::SwapChainRenderer::recreateSwapChain()

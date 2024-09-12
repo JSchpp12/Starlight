@@ -97,5 +97,11 @@ namespace star {
 		/// Create a swap chain that will be used in rendering images
 		/// </summary>
 		virtual void createSwapChain();
+
+		// Inherited via SceneRenderer
+		Command_Buffer_Order getCommandBufferOrder() override;
+		vk::PipelineStageFlags getWaitStages() override;
+		bool getWillBeSubmittedEachFrame() override;
+		bool getWillBeRecordedOnce() override;
 	};
 }

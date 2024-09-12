@@ -21,6 +21,7 @@ namespace star {
 			std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback;
 			std::function<void(star::Handle)> promiseBufferHandleCallback;
 			Command_Buffer_Order order;
+			int orderIndex; 
 			star::Command_Buffer_Type type;
 			vk::PipelineStageFlags waitStage; 
 			bool willBeSubmittedEachFrame; 
@@ -32,13 +33,14 @@ namespace star {
 			CommandBufferRequest(std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback, 
 				std::function<void(star::Handle)> promiseBufferHandleCallback, 
 				const Command_Buffer_Order& order,
+				const int orderIndex,
 				const star::Command_Buffer_Type& type, const vk::PipelineStageFlags& waitStage,
 				const bool& willBeSubmittedEachFrame, 
 				const bool& recordOnce, std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback, 
 				std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback, 
 				std::optional<std::function<void(StarCommandBuffer&, const int&)>> overrideBufferSubmissionCallback)
 				: recordBufferCallback(recordBufferCallback), promiseBufferHandleCallback(promiseBufferHandleCallback),
-				order(order), 
+				order(order), orderIndex(orderIndex),
 				type(type), waitStage(waitStage),
 				willBeSubmittedEachFrame(willBeSubmittedEachFrame), recordOnce(recordOnce),
 				beforeBufferSubmissionCallback(beforeBufferSubmissionCallback), 
@@ -277,7 +279,11 @@ namespace star {
 			std::vector<unsigned char> bufferSubmissionStatus;
 
 			void waitUntilOrderGroupReady(const int& frameIndex, const star::Command_Buffer_Order& order, const star::Command_Buffer_Type& type) {
-				this->device.getDevice().waitForFences(this->bufferGroups[order]->fences[type].at(frameIndex), VK_TRUE, UINT64_MAX);
+				auto waitResult = this->device.getDevice().waitForFences(this->bufferGroups[order]->fences[type].at(frameIndex), VK_TRUE, UINT64_MAX);
+				if (waitResult != vk::Result::eSuccess) {
+					throw std::runtime_error("Failed to wait for fence"); 
+				}
+
 				this->device.getDevice().resetFences(this->bufferGroups[order]->fences[type].at(frameIndex));
 			}
 

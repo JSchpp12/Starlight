@@ -21,6 +21,7 @@
 #include "RenderResourceModifier.hpp"
 #include "ScreenshotCommandBuffer.hpp"
 #include "CommandBufferModifier.hpp"
+#include "DescriptorModifier.hpp"
 
 #include "Light.hpp"
 
@@ -30,7 +31,7 @@
 #include <vulkan/vulkan.hpp>
 
 namespace star {
-class SceneRenderer : public StarRenderer, public CommandBufferModifier, private RenderResourceModifier{
+class SceneRenderer : public StarRenderer, public CommandBufferModifier, private RenderResourceModifier, private DescriptorModifier {
 public:
 	SceneRenderer(std::vector<std::unique_ptr<Light>>& lightList,
 		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera,
@@ -164,11 +165,11 @@ protected:
 	void recordRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex);
 
 	// Inherited via CommandBufferModifier
-	Command_Buffer_Order getCommandBufferOrder() override;
 	Command_Buffer_Type getCommandBufferType() override;
-	vk::PipelineStageFlags getWaitStages() override;
-	bool getWillBeSubmittedEachFrame() override;
-	bool getWillBeRecordedOnce() override;
+	virtual Command_Buffer_Order getCommandBufferOrder() = 0;
+	virtual vk::PipelineStageFlags getWaitStages() = 0;
+	virtual bool getWillBeSubmittedEachFrame() = 0;
+	virtual bool getWillBeRecordedOnce() = 0;
 	virtual void recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex) override;
 
 	virtual void prepareForSubmission(const int& frameIndexToBeDrawn);
@@ -177,8 +178,12 @@ protected:
 
 #pragma endregion
 private:
+	// Inherited via RenderResourceModifier
 	void initResources(StarDevice& device, const int& numFramesInFlight) override;
 
 	void destroyResources(StarDevice& device) override;
+
+	// Inherited via DescriptorModifier
+	std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 };
 }

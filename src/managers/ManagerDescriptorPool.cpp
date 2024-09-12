@@ -1,12 +1,13 @@
 #include "ManagerDescriptorPool.hpp"
 
 bool star::ManagerDescriptorPool::ready = false; 
-std::stack<std::pair<vk::DescriptorType, int>> star::ManagerDescriptorPool::requests = std::stack<std::pair<vk::DescriptorType, int>>(); 
+std::stack<std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>> star::ManagerDescriptorPool::requestCallbacks = std::stack < std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>>();
 std::unordered_map<vk::DescriptorType, int> star::ManagerDescriptorPool::actives = std::unordered_map<vk::DescriptorType, int>(); 
 star::StarDescriptorPool* star::ManagerDescriptorPool::pool = nullptr; 
 
-void star::ManagerDescriptorPool::request(const vk::DescriptorType& type, const int& numDescriptors) {
-	requests.push(std::pair<vk::DescriptorType, int>(type, numDescriptors));
+void star::ManagerDescriptorPool::request(std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)> newRequest)
+{
+	requestCallbacks.push(newRequest);
 }
 
 star::StarDescriptorPool& star::ManagerDescriptorPool::getPool()
@@ -16,28 +17,38 @@ star::StarDescriptorPool& star::ManagerDescriptorPool::getPool()
 	return *pool; 
 }
 
+star::ManagerDescriptorPool::ManagerDescriptorPool(StarDevice& device, const int& numFramesInFligth)
+: device(device) 
+{
+	init(numFramesInFligth);
+}
+
 star::ManagerDescriptorPool::~ManagerDescriptorPool()
 {
 	currentPool.reset();
 }
 
-void star::ManagerDescriptorPool::init()
+void star::ManagerDescriptorPool::init(const int& numFramesInFlight)
 {
-	while (!requests.empty()) {
-		std::pair<vk::DescriptorType, int>& request = requests.top();
+	while (!requestCallbacks.empty()) {
+		std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)> callback = requestCallbacks.top();
 		
-		//check if type is already in active pool
-		if (actives.count(request.first) != 0) {
-			auto num = this->actives.at(request.first);
-			num += request.second;
+		auto requests = callback(numFramesInFlight);
 
-			this->actives.at(request.first) = num;
-		}
-		else {
-			this->actives.insert(std::pair<vk::DescriptorType, int>(request));
-		}
+		for (auto& request : requests) {
+			//check if type is already in active pool
+			if (actives.count(request.first) != 0) {
+				auto num = this->actives.at(request.first);
+				num += request.second;
 
-		requests.pop();
+				this->actives.at(request.first) = num;
+			}
+			else {
+				this->actives.insert(std::pair<vk::DescriptorType, int>(request));
+			}
+		}
+		
+		requestCallbacks.pop();
 	}
 
 	//build from actives 

@@ -10,10 +10,10 @@
 #include <functional>
 
 namespace star {
-	class RenderResourceModifierGeometry : public RenderResourceModifier{
+	class RenderResourceModifierGeometry : public RenderResourceModifier {
 	public:
 		RenderResourceModifierGeometry() {
-			registerCallbacks(); 
+			registerRenderResourceCallbacks(); 
 		}
 
 		/// @brief Function to create staging buffers for geometry data
@@ -33,6 +33,6 @@ namespace star {
 		uint32_t vertBufferOffset=0, indBufferOffset=0, numIndices=0;
 
 	private:
-		void registerCallbacks(); 
+		void registerRenderResourceCallbacks();
 	};
 }

@@ -11,6 +11,15 @@ namespace star {
         presentation = 4        //special only usable by presentation
     };
 
+    enum Command_Buffer_Order_Index {
+        dont_care = 0, 
+        first = 1, 
+        second = 2, 
+		third = 3,
+        fourth = 4, 
+		fifth = 5
+    };
+
     enum Rendering_Features {
         geometry_shader
     };

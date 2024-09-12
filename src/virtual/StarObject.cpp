@@ -1,4 +1,5 @@
 #include "StarObject.hpp"
+#include "StarObject.hpp"
 
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout = std::unique_ptr<star::StarDescriptorSetLayout>(); 
 vk::PipelineLayout star::StarObject::extrusionPipelineLayout = vk::PipelineLayout{}; 
@@ -321,8 +322,6 @@ void star::StarObject::destroyResources(StarDevice& device)
 
 void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight)
 {
-	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight * this->instances.size() * this->instances.front()->getBufferInfoSize().size());
-
 	std::vector<Vertex> bbVerts;
 	std::vector<uint32_t> bbInds;
 

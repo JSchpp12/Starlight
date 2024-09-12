@@ -6,6 +6,7 @@
 #include "StarTexture.hpp"
 #include "StarCommandBuffer.hpp"
 #include "RenderResourceModifier.hpp"
+#include "DescriptorModifier.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -16,7 +17,7 @@
 #include <unordered_map>
 
 namespace star {
-	class StarMaterial : private RenderResourceModifier{
+	class StarMaterial : private RenderResourceModifier, private DescriptorModifier{
 	public:
 		glm::vec4 surfaceColor{ 0.5f, 0.5f, 0.5f, 1.0f };
 		glm::vec4 highlightColor{ 0.5f, 0.5f, 0.5f, 1.0f };
@@ -83,7 +84,6 @@ namespace star {
 		virtual vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
 			StarDescriptorPool& groupPool) = 0;
 
-
 		/// <summary>
 		/// Cleanup any vulkan objects created by this material
 		/// </summary>
@@ -92,11 +92,13 @@ namespace star {
 
 		virtual void initResources(StarDevice& device, const int& numFramesInFlight) override {};
 
+		virtual void destroyResources(StarDevice& device) override {};
+
+		// Inherited via DescriptorModifier
+		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
+
 	private:
 		//flag to determine if the material has been prepped for rendering operations
 		bool isPrepared = false;
-
-		// Inherited via RenderResourceModifier
-		void destroyResources(StarDevice& device) override;
 	};
 }

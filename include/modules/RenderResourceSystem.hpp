@@ -18,7 +18,8 @@
 namespace star {
 	class RenderResourceSystem {
 	public:
-		static void registerCallbacks(std::function<void(StarDevice&, const int)> initCallback, std::function<void(StarDevice&)> destroyCallback);
+		static void registerCallbacks(std::function<void(StarDevice&, const int)> initCallback, 
+			std::function<void(StarDevice&)> destroyCallback);
 
 		static void registerLoadGeomDataCallback(std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)>);
 

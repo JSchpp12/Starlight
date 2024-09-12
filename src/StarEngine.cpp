@@ -15,8 +15,8 @@ StarEngine::~StarEngine()
 
 void StarEngine::Run()
 {
+	ManagerDescriptorPool descriptorManager(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
 	RenderResourceSystem::init(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
-	ManagerDescriptorPool descriptorManager(*this->renderingDevice);
 	ManagerCommandBuffer commandBufferManager(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
 
 	//objects will be prepared for render during the initialization of the main renderer

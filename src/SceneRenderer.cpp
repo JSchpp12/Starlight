@@ -1,4 +1,7 @@
 #include "SceneRenderer.hpp"
+#include "SceneRenderer.hpp"
+#include "SceneRenderer.hpp"
+#include "SceneRenderer.hpp"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -263,13 +266,20 @@ vk::Format SceneRenderer::findDepthFormat()
 
 void SceneRenderer::initResources(StarDevice& device, const int& numFramesInFlight)
 {
-	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight);
-	ManagerDescriptorPool::request(vk::DescriptorType::eStorageBuffer, numFramesInFlight);
+
 }
 
 void SceneRenderer::destroyResources(StarDevice& device)
 {
 
+}
+
+std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescriptorRequests(const int& numFramesInFlight)
+{
+	return std::vector<std::pair<vk::DescriptorType, const int>>{
+		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eUniformBuffer, numFramesInFlight),
+		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)
+	};
 }
 
 void SceneRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
@@ -348,29 +358,9 @@ void SceneRenderer::recordRenderingCalls(vk::CommandBuffer& commandBuffer, const
 	}
 }
 
-Command_Buffer_Order SceneRenderer::getCommandBufferOrder()
-{
-	return Command_Buffer_Order::main_render_pass;
-}
-
 Command_Buffer_Type SceneRenderer::getCommandBufferType()
 {
 	return Command_Buffer_Type::Tgraphics;
-}
-
-vk::PipelineStageFlags SceneRenderer::getWaitStages()
-{
-	return vk::PipelineStageFlagBits::eVertexShader;
-}
-
-bool SceneRenderer::getWillBeSubmittedEachFrame()
-{
-	return true; 
-}
-
-bool SceneRenderer::getWillBeRecordedOnce()
-{
-	return false; 
 }
 
 void SceneRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)

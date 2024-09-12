@@ -115,7 +115,6 @@ namespace star {
 		/// @return 
 		virtual std::vector<std::unique_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(StarDevice& device);
 
-
 		virtual std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) = 0;
 
 #pragma region getters

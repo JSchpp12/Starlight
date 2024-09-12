@@ -25,7 +25,7 @@ namespace star {
 
 		virtual Command_Buffer_Order getCommandBufferOrder() = 0;
 
-		virtual star::Command_Buffer_Order_Index getCommandBufferOrderIndex();;
+		virtual star::Command_Buffer_Order_Index getCommandBufferOrderIndex();
 
 		virtual Command_Buffer_Type getCommandBufferType() = 0;
 
