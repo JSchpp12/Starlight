@@ -24,7 +24,7 @@ namespace star {
 
 		void prep(StarDevice& device) override;
 
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight) override;
+		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
 
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 

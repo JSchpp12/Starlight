@@ -1,16 +1,9 @@
 #include "SwapChainRenderer.hpp"
-#include "SwapChainRenderer.hpp"
-#include "SwapChainRenderer.hpp"
-#include "SwapChainRenderer.hpp"
-#include "SwapChainRenderer.hpp"
-#include "SwapChainRenderer.hpp"
-#include "SwapChainRenderer.hpp"
-#include "SwapChainRenderer.hpp"
 
 star::SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, StarDevice& device)
-	: window(window), SceneRenderer(lightList, objectList, camera, device)
+	: device(device), window(window), SceneRenderer(lightList, objectList, camera)
 {
-	createSwapChain(); 
+	createSwapChain();
 }
 
 star::SwapChainRenderer::~SwapChainRenderer()
@@ -23,10 +16,10 @@ star::SwapChainRenderer::~SwapChainRenderer()
 	}
 }
 
-void star::SwapChainRenderer::prepare()
+void star::SwapChainRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
 {
 	auto numSwapChainImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain).size(); 
-	this->SceneRenderer::prepare(this->swapChainExtent, numSwapChainImages, this->swapChainImageFormat);
+	this->SceneRenderer::prepare(this->device, *this->swapChainExtent, numSwapChainImages);
 
 	this->createSemaphores(); 
 	this->createFences();
@@ -213,7 +206,7 @@ std::optional<std::function<void(star::StarCommandBuffer&, const int&)>> star::S
 	return std::optional<std::function<void(StarCommandBuffer&, const int&)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2));
 }
 
-std::vector<vk::Image> star::SwapChainRenderer::createRenderToImages()
+std::vector<vk::Image> star::SwapChainRenderer::createRenderToImages(const int& numFramesInFlight)
 {
 	//get images in the newly created swapchain 
 	return this->device.getDevice().getSwapchainImagesKHR(this->swapChain);
@@ -283,7 +276,6 @@ void star::SwapChainRenderer::createFences()
 	fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
 
 	//create the fence in a signaled state 
-	//fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -382,8 +374,8 @@ void star::SwapChainRenderer::createSwapChain()
 	this->swapChain = this->device.getDevice().createSwapchainKHR(createInfo);
 
 	//save swapChain information for later use
-	swapChainImageFormat = surfaceFormat.format;
-	swapChainExtent = extent;
+	swapChainImageFormat = std::make_unique<vk::Format>(surfaceFormat.format);
+	swapChainExtent = std::make_unique<vk::Extent2D>(extent);
 }
 
 star::Command_Buffer_Order star::SwapChainRenderer::getCommandBufferOrder()
@@ -404,6 +396,11 @@ bool star::SwapChainRenderer::getWillBeSubmittedEachFrame()
 bool star::SwapChainRenderer::getWillBeRecordedOnce()
 {
 	return false;
+}
+
+vk::Format star::SwapChainRenderer::getCurrentRenderToImageFormat()
+{
+	return *this->swapChainImageFormat; 
 }
 
 void star::SwapChainRenderer::recreateSwapChain()

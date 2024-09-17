@@ -90,7 +90,7 @@ namespace star {
 		/// <param name="device"></param>
 		virtual void cleanup(StarDevice& device)=0;
 
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight) override {};
+		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override {};
 
 		virtual void destroyResources(StarDevice& device) override {};
 

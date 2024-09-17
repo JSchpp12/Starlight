@@ -1,12 +1,12 @@
 #include "RenderResourceSystem.hpp"
 
-std::stack<std::function<void(star::StarDevice&, const int)>> star::RenderResourceSystem::initCallbacks = std::stack<std::function<void(StarDevice&, int)>>();
+std::stack<std::function<void(star::StarDevice&, const int&, const vk::Extent2D&)>> star::RenderResourceSystem::initCallbacks = std::stack<std::function<void(StarDevice&, const int&, const vk::Extent2D&)>>();
 std::stack<std::function<void(star::StarDevice&)>> star::RenderResourceSystem::destroyCallbacks = std::stack<std::function<void(star::StarDevice&)>>();
 std::stack<std::function<std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>>(star::StarDevice&, star::BufferHandle, star::BufferHandle)>> star::RenderResourceSystem::loadGeometryCallbacks = std::stack<std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)>>();
 std::stack<std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>> star::RenderResourceSystem::geometryDataOffsetCallbacks = std::stack<std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>>();
 std::vector<std::unique_ptr<star::StarBuffer>> star::RenderResourceSystem::buffers = std::vector<std::unique_ptr<star::StarBuffer>>(); 
 
-void star::RenderResourceSystem::registerCallbacks(std::function<void(star::StarDevice&, const int)> initCallback, std::function<void(star::StarDevice&)> destroyCallback)
+void star::RenderResourceSystem::registerCallbacks(std::function<void(star::StarDevice&, const int&, const vk::Extent2D&)> initCallback, std::function<void(star::StarDevice&)> destroyCallback)
 {
 	initCallbacks.push(initCallback); 
 	destroyCallbacks.push(destroyCallback);
@@ -38,10 +38,10 @@ void star::RenderResourceSystem::bind(const BufferHandle& buffer, vk::CommandBuf
 	bindBuffer(buffer.id, commandBuffer, buffer.targetBufferOffset); 
 }
 
-void star::RenderResourceSystem::init(StarDevice& device, const int& numFramesInFlight)
+void star::RenderResourceSystem::init(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
 	RenderResourceSystem::preparePrimaryGeometry(device);
-	RenderResourceSystem::runInits(device, numFramesInFlight);
+	RenderResourceSystem::runInits(device, numFramesInFlight, screensize);
 }
 
 void star::RenderResourceSystem::cleanup(StarDevice& device)
@@ -125,11 +125,11 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 	buffers.push_back(std::move(indBuffer));
 }
 
-void star::RenderResourceSystem::runInits(StarDevice& device, const int numFramesInFlight)
+void star::RenderResourceSystem::runInits(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
 	while (!initCallbacks.empty()) {
-		std::function<void(StarDevice&, const int)>& function = initCallbacks.top();
-		function(device, numFramesInFlight); 
+		std::function<void(StarDevice&, const int&, const vk::Extent2D&)>& function = initCallbacks.top();
+		function(device, numFramesInFlight, screensize); 
 		initCallbacks.pop(); 
 	}
 }

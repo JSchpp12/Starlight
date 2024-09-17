@@ -16,11 +16,8 @@ StarEngine::~StarEngine()
 void StarEngine::Run()
 {
 	ManagerDescriptorPool descriptorManager(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
-	RenderResourceSystem::init(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
+	RenderResourceSystem::init(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT, mainRenderer->getMainExtent());
 	ManagerCommandBuffer commandBufferManager(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
-
-	//objects will be prepared for render during the initialization of the main renderer
-	mainRenderer->prepare();
 
 	//prepare any shared resources
 	StarObject::initSharedResources(*this->renderingDevice, this->mainRenderer->getMainExtent(), 
@@ -29,12 +26,11 @@ void StarEngine::Run()
 
 	while (!window->shouldClose()) {
 		//check if any new objects have been added
-		RenderResourceSystem::runInits(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
+		RenderResourceSystem::runInits(*this->renderingDevice, this->mainRenderer->MAX_FRAMES_IN_FLIGHT, this->mainRenderer->getMainExtent());
 
 		int frameToDraw = this->mainRenderer->getFrameToBeDrawn(); 
-		auto& objects = this->currentScene->getObjects();
-		for (auto& obj : objects) {
-			obj.second->prepDraw(frameToDraw); 
+		for (StarObject& obj : this->currentScene->getObjects()) {
+			obj.prepDraw(frameToDraw);
 		}
 
 		if (screenshotPath) {

@@ -19,7 +19,6 @@
 #include "ManagerDescriptorPool.hpp"
 #include "ManagerCommandBuffer.hpp"
 #include "RenderResourceModifier.hpp"
-#include "ScreenshotCommandBuffer.hpp"
 #include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
 
@@ -34,16 +33,12 @@ namespace star {
 class SceneRenderer : public StarRenderer, public CommandBufferModifier, private RenderResourceModifier, private DescriptorModifier {
 public:
 	SceneRenderer(std::vector<std::unique_ptr<Light>>& lightList,
-		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera,
-		StarDevice& device);
+		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera);
 
-	virtual ~SceneRenderer();
+	virtual ~SceneRenderer() = default;
 
-	virtual void prepare(const vk::Extent2D& swapChainExtent, const int& numFramesInFlight, const vk::Format& resultingRenderImageFormat);
-
-	void triggerScreenshot(const std::string& path) { 
-		this->screenshotCommandBuffer->takeScreenshot(path);
-	};
+	virtual void prepare(StarDevice& device, const vk::Extent2D& swapChainExtent, 
+		const int& numFramesInFlight);
 
 	StarDescriptorSetLayout& getGlobalDescriptorLayout() { return *this->globalSetLayout; }
 
@@ -97,33 +92,29 @@ protected:
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
-	std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer; 
+	virtual vk::Format getCurrentRenderToImageFormat() = 0; 
 
-	std::unique_ptr<std::string> screenshotPath = nullptr;
-
-	virtual void cleanup(); 
-
-	virtual std::vector<vk::Image> createRenderToImages();
+	virtual std::vector<vk::Image> createRenderToImages(const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create an image view object for use in the rendering pipeline
 	/// 'Image View': describes how to access an image and what part of an image to access
 	/// </summary>
-	virtual void createImageViews(const int& numImages, const vk::Format& imageFormat);
+	virtual void createImageViews(StarDevice& device, const int& numImages, const vk::Format& imageFormat);
 
 	/// <summary>
 	/// Create vertex buffer + index buffers + any rendering groups for operations
 	/// </summary>
-	virtual void createRenderingGroups(const vk::Extent2D& swapChainExtent, const int& numFramesInFlight);
+	virtual void createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight);
 
 	virtual void updateUniformBuffer(uint32_t currentImage);
 
-	vk::ImageView createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
+	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 	
 	/// <summary>
 	/// Create descriptor pools for the descriptors used by the main rendering engine.
 	/// </summary>
-	virtual void createDescriptors(const int& numFramesInFlight);
+	virtual void createDescriptors(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 
@@ -136,7 +127,7 @@ protected:
 	/// <param name="properties"></param>
 	/// <param name="image"></param>
 	/// <param name="imageMemory"></param>
-	virtual void createImage(uint32_t width, uint32_t height, 
+	virtual void createImage(StarDevice& device, uint32_t width, uint32_t height, 
 		vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, 
 		vk::MemoryPropertyFlags properties, vk::Image& image, 
 		VmaAllocation& imageMemory);
@@ -144,25 +135,12 @@ protected:
 	/// <summary>
 	/// Create a buffer to hold the UBO data for each shader. Create a buffer for each swap chain image
 	/// </summary>
-	virtual void createRenderingBuffers(const int& numFramesInFlight);
+	virtual void createRenderingBuffers(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create the depth images that will be used by vulkan to run depth tests on fragments. 
 	/// </summary>
-	vk::Format createDepthResources(const vk::Extent2D& swapChainExtent);
-
-#pragma region helpers
-	vk::Format findDepthFormat();
-
-	vk::Viewport prepareRenderingViewport();
-
-	virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex);
-
-	virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const int& frameInFlightIndex);
-
-	void recordPreRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex);
-
-	void recordRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex);
+	vk::Format createDepthResources(StarDevice& device, const vk::Extent2D& swapChainExtent);
 
 	// Inherited via CommandBufferModifier
 	Command_Buffer_Type getCommandBufferType() override;
@@ -176,13 +154,25 @@ protected:
 
 	virtual std::optional<std::function<void(const int&)>> getBeforeBufferSubmissionCallback() override;
 
+	// Inherited via RenderResourceModifier
+	void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
+
+	virtual void destroyResources(StarDevice& device) override;
+
+#pragma region helpers
+	vk::Format findDepthFormat(StarDevice& device);
+
+	vk::Viewport prepareRenderingViewport();
+
+	virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex);
+
+	virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const int& frameInFlightIndex);
+
+	void recordPreRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex);
+
+	void recordRenderingCalls(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex);
 #pragma endregion
 private:
-	// Inherited via RenderResourceModifier
-	void initResources(StarDevice& device, const int& numFramesInFlight) override;
-
-	void destroyResources(StarDevice& device) override;
-
 	// Inherited via DescriptorModifier
 	std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 };

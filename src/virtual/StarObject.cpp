@@ -1,5 +1,4 @@
 #include "StarObject.hpp"
-#include "StarObject.hpp"
 
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout = std::unique_ptr<star::StarDescriptorSetLayout>(); 
 vk::PipelineLayout star::StarObject::extrusionPipelineLayout = vk::PipelineLayout{}; 
@@ -320,7 +319,7 @@ void star::StarObject::destroyResources(StarDevice& device)
 	this->boundingBoxVertBuffer.reset();
 }
 
-void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight)
+void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
 	std::vector<Vertex> bbVerts;
 	std::vector<uint32_t> bbInds;

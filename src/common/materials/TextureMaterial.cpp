@@ -1,12 +1,11 @@
 #include "TextureMaterial.hpp"
-#include "TextureMaterial.hpp"
 
 void star::TextureMaterial::prep(StarDevice& device)
 {
 	texture->prepRender(device);
 }
 
-void star::TextureMaterial::initResources(StarDevice& device, const int& numFramesInFlight)
+void star::TextureMaterial::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
 
 }

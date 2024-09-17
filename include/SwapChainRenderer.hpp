@@ -3,33 +3,42 @@
 #include "SceneRenderer.hpp"
 #include "CommandBufferModifier.hpp"
 #include "RenderingTargetInfo.hpp"
+#include "ScreenshotCommandBuffer.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
+#include <memory>
 
 namespace star {
 	class SwapChainRenderer : public SceneRenderer{
 	public:
+		SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
+			std::vector<std::reference_wrapper<StarObject>> objectList,
+			StarCamera& camera,
+			StarDevice& device);
+
 		//how many frames will be sent through the pipeline
 		const int MAX_FRAMES_IN_FLIGHT = 2;
 
-		SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, 
-			std::vector<std::reference_wrapper<StarObject>> objectList, 
-			StarCamera& camera, 
-			StarDevice& device); 
-
 		virtual ~SwapChainRenderer();
 
-		virtual void prepare(); 
+		virtual void prepare(StarDevice& device, const vk::Extent2D& swapChainExtent,
+			const int& numFramesInFlight) override;
 
 		void submitPresentation(const int& frameIndexToBeDrawn, const vk::Semaphore* mainGraphicsDoneSemaphore); 
 
 		void pollEvents();
 
-		vk::Extent2D getMainExtent() const { return this->swapChainExtent; }
+		void triggerScreenshot(const std::string& path) {
+			this->screenshotCommandBuffer->takeScreenshot(path);
+		};
+
+		vk::Extent2D getMainExtent() const { return *this->swapChainExtent; }
 		int getFrameToBeDrawn() const { return this->currentFrame; }
+
 	protected:
 		StarWindow& window;
+		StarDevice& device; 
 
 		//tracker for which frame is being processed of the available permitted frames
 		int currentFrame = 0;
@@ -56,7 +65,7 @@ namespace star {
 
 		std::optional<std::function<void(StarCommandBuffer&, const int&)>> getOverrideBufferSubmissionCallback() override;
 		
-		virtual std::vector<vk::Image> createRenderToImages() override;
+		virtual std::vector<vk::Image> createRenderToImages(const int& numFramesInFlight) override;
 
 		virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) override;
 
@@ -65,11 +74,15 @@ namespace star {
 		//more swapchain info 
 		vk::SwapchainKHR swapChain;
 
-		vk::Format swapChainImageFormat;
-		vk::Extent2D swapChainExtent;
+		std::unique_ptr<vk::Format> swapChainImageFormat = std::unique_ptr<vk::Format>();
+		std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>(); 
 
 		std::vector<vk::Fence> inFlightFences;
 		std::vector<vk::Fence> imagesInFlight;
+
+		std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer;
+
+		std::unique_ptr<std::string> screenshotPath = nullptr;
 
 		/// <summary>
 		/// If the swapchain is no longer compatible, it must be recreated.
@@ -103,5 +116,8 @@ namespace star {
 		vk::PipelineStageFlags getWaitStages() override;
 		bool getWillBeSubmittedEachFrame() override;
 		bool getWillBeRecordedOnce() override;
-	};
+
+		// Inherited via SceneRenderer
+		vk::Format getCurrentRenderToImageFormat() override;
+};
 }

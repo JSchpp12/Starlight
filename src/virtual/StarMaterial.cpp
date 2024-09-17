@@ -1,7 +1,4 @@
 #include "StarMaterial.hpp"
-#include "StarMaterial.hpp"
-#include "StarMaterial.hpp"
-#include "StarMaterial.hpp"
 
 void star::StarMaterial::cleanupRender(StarDevice& device)
 {

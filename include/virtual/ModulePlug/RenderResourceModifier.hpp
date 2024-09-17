@@ -16,7 +16,7 @@ namespace star {
 			this->registerRenderResourceCallbacks(); 
 		}
 
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight) = 0;
+		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screenSize) = 0;
 
 		virtual void destroyResources(StarDevice& device) = 0; 
 

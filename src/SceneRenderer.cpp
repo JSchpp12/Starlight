@@ -1,7 +1,4 @@
 #include "SceneRenderer.hpp"
-#include "SceneRenderer.hpp"
-#include "SceneRenderer.hpp"
-#include "SceneRenderer.hpp"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -9,59 +6,49 @@ namespace star {
 
 SceneRenderer::SceneRenderer(std::vector<std::unique_ptr<Light>>& lightList, 
 	std::vector<std::reference_wrapper<StarObject>> objectList, 
-	StarCamera& camera, StarDevice& device)
-	: StarRenderer(camera, device), lightList(lightList), objectList(objectList)
+	StarCamera& camera)
+	: StarRenderer(camera), lightList(lightList), objectList(objectList)
 {
-
 }
 
-SceneRenderer::~SceneRenderer()
-{
-	cleanup(); 
-}
-
-void SceneRenderer::prepare(const vk::Extent2D& swapChainExtent, const int& numFramesInFlight, const vk::Format& resultingRenderImageFormat)
+void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
 {
 	this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
-	createRenderingBuffers(numFramesInFlight);
-	createDescriptors(numFramesInFlight);
-	vk::Format depthFormat = createDepthResources(swapChainExtent);
+	createRenderingBuffers(device, numFramesInFlight);
+	createDescriptors(device, numFramesInFlight);
+	vk::Format depthFormat = createDepthResources(device, swapChainExtent);
 
 	this->renderToTargetInfo = std::make_unique<RenderingTargetInfo>(
-		std::vector<vk::Format>{ resultingRenderImageFormat },
+		std::vector<vk::Format>{ this->getCurrentRenderToImageFormat()},
 		depthFormat);
 
-	this->renderToImages = createRenderToImages(); 
-	assert(this->renderToImages.size() != 0 && "The function or overriden function must create the renderToImages variable"); 
+
+	this->renderToImages = createRenderToImages(numFramesInFlight); 
+	assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering"); 
 	
-	createImageViews(numFramesInFlight, resultingRenderImageFormat); 
-	createRenderingGroups(swapChainExtent, numFramesInFlight);
+	createImageViews(device, numFramesInFlight, this->getCurrentRenderToImageFormat()); 
+	createRenderingGroups(device, swapChainExtent, numFramesInFlight);
 }
 
-void SceneRenderer::cleanup()
+std::vector<vk::Image> SceneRenderer::createRenderToImages(const int& numFramesInFlight)
 {
-	for (auto& imageView : this->renderToImageViews) {
-		this->device.getDevice().destroyImageView(imageView); 
-	}
-}
+	this->renderToImages.resize(numFramesInFlight); 
 
-std::vector<vk::Image> SceneRenderer::createRenderToImages()
-{
 	return std::vector<vk::Image>();
 }
 
-void SceneRenderer::createImageViews(const int& numImages, const vk::Format& imageFormat)
+void SceneRenderer::createImageViews(star::StarDevice& device, const int& numImages, const vk::Format& imageFormat)
 {
 	this->renderToImageViews.resize(numImages); 
 
 	//need to create an imageView for each of the images available
 	for (int i = 0; i < numImages; i++) {
-		this->renderToImageViews[i] = createImageView(this->renderToImages[i], imageFormat, vk::ImageAspectFlagBits::eColor);
+		this->renderToImageViews[i] = createImageView(device, this->renderToImages[i], imageFormat, vk::ImageAspectFlagBits::eColor);
 	}
 }
 
-void SceneRenderer::createRenderingGroups(const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
+void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
 {	
 	for (StarObject& object : objectList) {
 		//check if the object is compatible with any render groups 
@@ -130,7 +117,7 @@ void SceneRenderer::updateUniformBuffer(uint32_t currentImage)
 	this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
 }
 
-vk::ImageView SceneRenderer::createImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags)
+vk::ImageView SceneRenderer::createImageView(star::StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags)
 {
 	vk::ImageViewCreateInfo viewInfo{};
 	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
@@ -143,7 +130,7 @@ vk::ImageView SceneRenderer::createImageView(vk::Image image, vk::Format format,
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
-	vk::ImageView imageView = this->device.getDevice().createImageView(viewInfo);
+	vk::ImageView imageView = device.getDevice().createImageView(viewInfo);
 
 	if (!imageView) {
 		throw std::runtime_error("failed to create texture image view!");
@@ -152,9 +139,9 @@ vk::ImageView SceneRenderer::createImageView(vk::Image image, vk::Format format,
 	return imageView;
 }
 
-void SceneRenderer::createDescriptors(const int& numFramesInFlight)
+void SceneRenderer::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
 {
-	this->globalSetLayout = StarDescriptorSetLayout::Builder(this->device)
+	this->globalSetLayout = StarDescriptorSetLayout::Builder(device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
 		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
 		.build();
@@ -177,14 +164,14 @@ void SceneRenderer::createDescriptors(const int& numFramesInFlight)
 			0,
 			sizeof(LightBufferObject) * this->lightList.size() };
 
-		this->globalDescriptorSets.at(i) = StarDescriptorWriter(this->device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
+		this->globalDescriptorSets.at(i) = StarDescriptorWriter(device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
 			.writeBuffer(0, globalBufferInfo)
 			.writeBuffer(1, lightBufferInfo)
 			.build();
 	}
 }
 
-void SceneRenderer::createImage(uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, VmaAllocation& imageMemory)
+void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, VmaAllocation& imageMemory)
 {
 	/* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
@@ -207,10 +194,10 @@ void SceneRenderer::createImage(uint32_t width, uint32_t height, vk::Format form
 	allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 	allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-	vmaCreateImage(this->device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
+	vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
 }
 
-void SceneRenderer::createRenderingBuffers(const int& numFramesInFlight)
+void SceneRenderer::createRenderingBuffers(star::StarDevice& device, const int& numFramesInFlight)
 {
 	vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * this->objectList.size();
 
@@ -221,20 +208,20 @@ void SceneRenderer::createRenderingBuffers(const int& numFramesInFlight)
 
 	for (size_t i = 0; i < numFramesInFlight; i++) {
 		auto numOfObjects = this->objectList.size(); 
-		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(this->device, this->objectList.size(), sizeof(GlobalUniformBufferObject),
+		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(device, this->objectList.size(), sizeof(GlobalUniformBufferObject),
 			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		this->globalUniformBuffers[i]->map();
 
 		//create light buffers 
 		if (this->lightList.size() > 0) {
-			this->lightBuffers[i] = std::make_unique<StarBuffer>(this->device, this->lightList.size(), sizeof(LightBufferObject) * this->lightList.size(),
+			this->lightBuffers[i] = std::make_unique<StarBuffer>(device, this->lightList.size(), sizeof(LightBufferObject) * this->lightList.size(),
 				vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 			this->lightBuffers[i]->map();
 		}
 	}
 }
 
-vk::Format SceneRenderer::createDepthResources(const vk::Extent2D& swapChainExtent)
+vk::Format SceneRenderer::createDepthResources(star::StarDevice& device, const vk::Extent2D& swapChainExtent)
 {
 	//depth image should have:
 	//  same resolution as the color attachment (in swap chain extent)
@@ -245,33 +232,35 @@ vk::Format SceneRenderer::createDepthResources(const vk::Extent2D& swapChainExte
 	//  VK_FORMAT_D32_SFLOAT_S8_UINT: 32-bit signed float for depth and 8 bit stencil component
 	//  VK_FORMAT_D24_UNFORM_S8_UINT: 24-bit float for depth and 8 bit stencil component
 
-	vk::Format depthFormat = findDepthFormat();
+	vk::Format depthFormat = findDepthFormat(device);
 
-	createImage(swapChainExtent.width, swapChainExtent.height, depthFormat,
+	createImage(device, swapChainExtent.width, swapChainExtent.height, depthFormat,
 		vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
 		vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
-	this->depthImageView = createImageView(depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
+	this->depthImageView = createImageView(device, depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
 
 	return depthFormat; 
 }
 
-vk::Format SceneRenderer::findDepthFormat()
+vk::Format SceneRenderer::findDepthFormat(star::StarDevice& device)
 {
 	//utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
-	return this->device.findSupportedFormat(
+	return device.findSupportedFormat(
 		{ vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint },
 		vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 }
 
-void SceneRenderer::initResources(StarDevice& device, const int& numFramesInFlight)
+void SceneRenderer::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
-
+	this->prepare(device, screensize, numFramesInFlight);  
 }
 
 void SceneRenderer::destroyResources(StarDevice& device)
 {
-
+	for (auto& imageView : this->renderToImageViews) {
+		device.getDevice().destroyImageView(imageView);
+	}
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescriptorRequests(const int& numFramesInFlight)

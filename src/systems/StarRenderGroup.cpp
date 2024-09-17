@@ -129,7 +129,6 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 {
 	bool descriptorSetsCompatible = false; 
 	//check if descriptor layouts are compatible
-	auto layoutBuilder = StarDescriptorSetLayout::Builder(device); 
 	auto compLayouts = object.getDescriptorSetLayouts(device);
 
 	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* largerSet = &this->largestDescriptorSet; 

@@ -145,7 +145,7 @@ namespace star {
 
 		virtual void destroyResources(StarDevice& device) override;
 
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight) override;
+		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
 
 		virtual void createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 
