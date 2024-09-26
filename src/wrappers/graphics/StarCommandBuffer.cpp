@@ -1,7 +1,7 @@
 #include "StarCommandBuffer.hpp"
 
 star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToCreate, 
-	star::Command_Buffer_Type type, bool initSemaphores)
+	star::Command_Buffer_Type type, bool initTracking)
 	: device(device), targetQueue(device.getQueue(type))
 {
 	this->recordedImageTransitions.resize(numBuffersToCreate); 
@@ -17,22 +17,23 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 	allocateInfo.sType = vk::StructureType::eCommandBufferAllocateInfo; 
 	allocateInfo.commandPool = pool; 
 	allocateInfo.level = vk::CommandBufferLevel::ePrimary; 
-	allocateInfo.commandBufferCount =(uint32_t)numBuffersToCreate; 
+	allocateInfo.commandBufferCount = (uint32_t)numBuffersToCreate; 
 	
 	this->commandBuffers = this->device.getDevice().allocateCommandBuffers(allocateInfo); 
 
-	this->readyFence.resize(numBuffersToCreate); 
+	if (initTracking) {
+		this->readyFence.resize(numBuffersToCreate);
 
-	vk::FenceCreateInfo fenceInfo{}; 
-	fenceInfo.sType = vk::StructureType::eFenceCreateInfo; 
-	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled; 
+		vk::FenceCreateInfo fenceInfo{};
+		fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
+		fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
-	for (int i = 0; i < numBuffersToCreate; i++) {
-		this->readyFence[i] = this->device.getDevice().createFence(fenceInfo); 
-	}
+		for (int i = 0; i < numBuffersToCreate; i++) {
+			this->readyFence[i] = this->device.getDevice().createFence(fenceInfo);
+		}
 
-	if (initSemaphores)
 		createSemaphores();
+	}
 }
 
 star::StarCommandBuffer::~StarCommandBuffer()

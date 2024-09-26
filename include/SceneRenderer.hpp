@@ -68,6 +68,7 @@ protected:
 	
 	std::unique_ptr<RenderingTargetInfo> renderToTargetInfo = std::unique_ptr<RenderingTargetInfo>(); 
 
+	std::vector<VmaAllocation> renderToImageAllocations;
 	std::vector<vk::Image> renderToImages;
 	std::vector<vk::ImageView> renderToImageViews;
 	std::vector<vk::Framebuffer> renderToFramebuffers;
@@ -94,7 +95,7 @@ protected:
 
 	virtual vk::Format getCurrentRenderToImageFormat() = 0; 
 
-	virtual std::vector<vk::Image> createRenderToImages(const int& numFramesInFlight);
+	virtual void createRenderToImages(StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations);
 
 	/// <summary>
 	/// Create an image view object for use in the rendering pipeline

@@ -29,9 +29,9 @@ void StarEngine::Run()
 		RenderResourceSystem::runInits(*this->renderingDevice, this->mainRenderer->MAX_FRAMES_IN_FLIGHT, this->mainRenderer->getMainExtent());
 
 		int frameToDraw = this->mainRenderer->getFrameToBeDrawn(); 
-		for (StarObject& obj : this->currentScene->getObjects()) {
-			obj.prepDraw(frameToDraw);
-		}
+		//for (StarObject& obj : this->currentScene->getObjects()) {
+		//	obj.prepDraw(frameToDraw);
+		//}
 
 		if (screenshotPath) {
 			this->mainRenderer->triggerScreenshot(*screenshotPath);

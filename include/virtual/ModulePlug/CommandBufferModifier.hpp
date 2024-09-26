@@ -41,7 +41,7 @@ namespace star {
 
 		virtual std::optional<std::function<void(const int&)>> getBeforeBufferSubmissionCallback();
 
-		virtual std::optional<std::function<void(StarCommandBuffer&, const int&)>> getOverrideBufferSubmissionCallback();
+		virtual std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> getOverrideBufferSubmissionCallback();
 
 		ManagerCommandBuffer::CommandBufferRequest getCommandBufferRequest(); 
 	private:

@@ -40,7 +40,7 @@ void star::ManagerCommandBuffer::handleNewRequests()
 
 		star::Handle newHandle = this->buffers.add(std::make_unique<CompleteRequest>(
 			request.recordBufferCallback, 
-			std::make_unique<StarCommandBuffer>(this->device, this->numFramesInFlight, request.type, true), 
+			std::make_unique<StarCommandBuffer>(this->device, this->numFramesInFlight, request.type, false), 
 			request.type, 
 			request.recordOnce,
 			request.waitStage,
@@ -52,7 +52,7 @@ void star::ManagerCommandBuffer::handleNewRequests()
 
 		request.promiseBufferHandleCallback(newHandle);
 
-		if (request.type == Command_Buffer_Type::Tgraphics)
+		if (request.type == Command_Buffer_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
 			this->mainGraphicsBufferHandle = std::make_unique<Handle>(newHandle);
 
 		if (request.recordOnce) {
@@ -71,9 +71,8 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 	//determine the order of buffers to execute
 	assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- cannot happen");
 
-	std::unordered_map<star::Command_Buffer_Type, std::vector<CompleteRequest*>> sortedBuffersBeforeGraphics;
-	std::unordered_map<star::Command_Buffer_Type, std::vector<CompleteRequest*>> sortedBuffersAfterGraphics;
-	CompleteRequest* finalBuffer = nullptr;
+	//submit before 
+	std::vector<vk::Semaphore> beforeSemaphores = this->buffers.submitGroupWhenReady(Command_Buffer_Order::before_render_pass, swapChainIndex); 
 
 	//need to submit each group of buffers depending on the queue family they are in
 	//std::array<std::vector<StarBuffer>, 3> buffers = { buffersBeforeGraphics, {this->mainthis->mainGraphicsBuffer., buffersAfterGraphics };
@@ -88,10 +87,22 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 		mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex).end();
 	}
 
-	if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value())
-		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex);
-	else
-		mainGraphicsBuffer.commandBuffer->submit(swapChainIndex);
+	if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value()) {
+		assert(beforeSemaphores.size() >= 1 && "More than one semaphore is not yet supported!");
+		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, &beforeSemaphores[0]);
+
+	} else {
+		vk::SubmitInfo submitInfo{}; 
+		if (beforeSemaphores.size() > 0) {
+			submitInfo.pWaitSemaphores = beforeSemaphores.data(); 
+			submitInfo.waitSemaphoreCount = beforeSemaphores.size(); 
+			submitInfo.pWaitDstStageMask = &mainGraphicsBuffer.waitStage; 
+		}
+		submitInfo.pCommandBuffers = &mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex);
+		submitInfo.commandBufferCount = 1;
+
+		auto submitResult = std::make_unique<vk::Result>(this->device.getGraphicsQueue().submit(1, &submitInfo, mainGraphicsBuffer.commandBuffer->getFence(swapChainIndex)));
+	}
 
 	if (mainGraphicsBuffer.afterBufferSubmissionCallback.has_value())
 		mainGraphicsBuffer.afterBufferSubmissionCallback.value()(swapChainIndex);
@@ -99,9 +110,8 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 	vk::Semaphore* mainGraphicsSemaphore = &mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
 	
 	std::vector<vk::Semaphore> waitSemaphores = { *mainGraphicsSemaphore };
-	std::vector<vk::PipelineStageFlags> waitStages = { vk::PipelineStageFlagBits::eBottomOfPipe };
 
-	std::vector<vk::Semaphore> finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(Command_Buffer_Order::end_of_frame, swapChainIndex, &waitSemaphores, &waitStages);
+	std::vector<vk::Semaphore> finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(Command_Buffer_Order::end_of_frame, swapChainIndex, &waitSemaphores);
 
 	if (finalSubmissionSemaphores.empty())
 		return mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);

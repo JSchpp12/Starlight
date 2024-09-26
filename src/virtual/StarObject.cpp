@@ -84,7 +84,6 @@ void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swap
 		settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eLineList;
 
 		//bounding box vert buffer will be bound to the 1st index 
-
 		std::string boundVertPath = mediaPath + "shaders/boundingBox/bounding.vert"; 
 		std::string boundFragPath = mediaPath + "shaders/boundingBox/bounding.frag"; 
 		StarShader vert = StarShader(boundVertPath, Shader_Stage::vertex);
@@ -133,6 +132,7 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& 
 {
 	StarGraphicsPipeline::PipelineConfigSettings settings;
 	StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, pipelineLayout, renderInfo);
+	settings.depthStencilInfo.depthTestEnable = VK_FALSE; 
 	auto graphicsShaders = this->getShaders();
 
 	auto newPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, graphicsShaders.at(Shader_Stage::vertex), graphicsShaders.at(Shader_Stage::fragment));

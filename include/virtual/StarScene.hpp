@@ -37,8 +37,8 @@ namespace star {
 		int objCounter = 0; 
 		int rObjCounter = 0; 
 		//std::vector<std::unique_ptr<StarObject>> objectList;
-		std::unordered_map<int, std::unique_ptr<StarObject>> objects; 
-		std::vector<std::unique_ptr<Light>> lightList;
+		std::unordered_map<int, std::unique_ptr<StarObject>> objects = std::unordered_map<int, std::unique_ptr<StarObject>>(); 
+		std::vector<std::unique_ptr<Light>> lightList = std::vector<std::unique_ptr<Light>>();
 		
 
 	};

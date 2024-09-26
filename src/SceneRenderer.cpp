@@ -1,7 +1,5 @@
 #include "SceneRenderer.hpp"
 
-typedef std::chrono::high_resolution_clock Clock;
-
 namespace star {
 
 SceneRenderer::SceneRenderer(std::vector<std::unique_ptr<Light>>& lightList, 
@@ -23,19 +21,23 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 		std::vector<vk::Format>{ this->getCurrentRenderToImageFormat()},
 		depthFormat);
 
-
-	this->renderToImages = createRenderToImages(numFramesInFlight); 
+	createRenderToImages(device, numFramesInFlight, this->renderToImages, this->renderToImageAllocations); 
 	assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering"); 
 	
 	createImageViews(device, numFramesInFlight, this->getCurrentRenderToImageFormat()); 
 	createRenderingGroups(device, swapChainExtent, numFramesInFlight);
 }
 
-std::vector<vk::Image> SceneRenderer::createRenderToImages(const int& numFramesInFlight)
+void SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations)
 {
-	this->renderToImages.resize(numFramesInFlight); 
+	newRenderToImages.resize(numFramesInFlight);
+	newRenderToImageAllocations.resize(numFramesInFlight);
 
-	return std::vector<vk::Image>();
+	for (int i = 0; i < numFramesInFlight; i++) {
+		createImage(device, this->swapChainExtent->width, this->swapChainExtent->height, this->getCurrentRenderToImageFormat(),
+			vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+			vk::MemoryPropertyFlagBits::eDeviceLocal, newRenderToImages[i], newRenderToImageAllocations[i]);
+	}
 }
 
 void SceneRenderer::createImageViews(star::StarDevice& device, const int& numImages, const vk::Format& imageFormat)
@@ -80,11 +82,6 @@ void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D
 
 void SceneRenderer::updateUniformBuffer(uint32_t currentImage)
 {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
 	//update global ubo 
 	GlobalUniformBufferObject globalUbo;
 	globalUbo.proj = this->camera.getProjectionMatrix();
@@ -261,6 +258,12 @@ void SceneRenderer::destroyResources(StarDevice& device)
 	for (auto& imageView : this->renderToImageViews) {
 		device.getDevice().destroyImageView(imageView);
 	}
+	for (auto& image : this->renderToImages) {
+		device.getDevice().destroyImage(image);
+	}
+	for (auto& imageAllocation : this->renderToImageAllocations) {
+		vmaFreeMemory(device.getAllocator(), imageAllocation);
+	}
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescriptorRequests(const int& numFramesInFlight)
@@ -354,6 +357,10 @@ Command_Buffer_Type SceneRenderer::getCommandBufferType()
 
 void SceneRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)
 {
+	for (StarObject& obj : this->objectList) {
+		obj.prepDraw(frameIndexToBeDrawn); 
+	}
+
 	updateUniformBuffer(frameIndexToBeDrawn);
 }
 

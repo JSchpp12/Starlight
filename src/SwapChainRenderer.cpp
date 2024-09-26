@@ -191,9 +191,26 @@ void star::SwapChainRenderer::submissionDone()
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn)
+void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, vk::Semaphore* mustWaitFor)
 {
-	buffer.submit(frameIndexToBeDrawn, inFlightFences[frameIndexToBeDrawn], std::pair<vk::Semaphore, vk::PipelineStageFlags>(imageAvailableSemaphores[currentFrame], vk::PipelineStageFlagBits::eColorAttachmentOutput));
+	vk::SubmitInfo submitInfo{}; 
+	vk::Semaphore waitSemaphores[] = { *mustWaitFor, imageAvailableSemaphores[currentFrame] };
+	vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput };
+
+	submitInfo.commandBufferCount = 1; 
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.waitSemaphoreCount = 2; 
+	submitInfo.signalSemaphoreCount = 1; 
+	submitInfo.pSignalSemaphores = &buffer.getCompleteSemaphores()[frameIndexToBeDrawn]; 
+	submitInfo.pWaitDstStageMask = waitStages; 
+	submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
+	submitInfo.commandBufferCount = 1; 
+
+	auto commandResult = std::make_unique<vk::Result>(this->device.getGraphicsQueue().submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
+
+	if (*commandResult != vk::Result::eSuccess) {
+		throw std::runtime_error("Failed to submit command buffer");
+	}
 }
 
 std::optional<std::function<void(const int&)>> star::SwapChainRenderer::getAfterBufferSubmissionCallback()
@@ -201,15 +218,15 @@ std::optional<std::function<void(const int&)>> star::SwapChainRenderer::getAfter
 	return std::optional<std::function<void(const int&)>>(std::bind(&SwapChainRenderer::submissionDone, this));
 }
 
-std::optional<std::function<void(star::StarCommandBuffer&, const int&)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
+std::optional<std::function<void(star::StarCommandBuffer&, const int&, vk::Semaphore*)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
 {
-	return std::optional<std::function<void(StarCommandBuffer&, const int&)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2));
+	return std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-std::vector<vk::Image> star::SwapChainRenderer::createRenderToImages(const int& numFramesInFlight)
+void star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations)
 {
 	//get images in the newly created swapchain 
-	return this->device.getDevice().getSwapchainImagesKHR(this->swapChain);
+	newRenderToImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain);
 }
 
 vk::RenderingAttachmentInfo star::SwapChainRenderer::prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex)
@@ -420,19 +437,6 @@ void star::SwapChainRenderer::recreateSwapChain()
 
 	//create swap chain itself 
 	createSwapChain();
-
-	//image views depend directly on swap chain images so these need to be recreated
-	//createImageViews();
-
-	//render pass depends on the format of swap chain images
-	//createRenderPass();
-
-	//createFramebuffers();
-
-	////uniform buffers are dependent on the number of swap chain images, will need to recreate since they are destroyed in cleanupSwapchain()
-	//createRenderingBuffers();
-
-	//createDescriptors();
 }
 
 void star::SwapChainRenderer::cleanupSwapChain()
