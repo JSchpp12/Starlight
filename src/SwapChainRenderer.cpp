@@ -194,15 +194,19 @@ void star::SwapChainRenderer::submissionDone()
 void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, vk::Semaphore* mustWaitFor)
 {
 	vk::SubmitInfo submitInfo{}; 
-	vk::Semaphore waitSemaphores[] = { *mustWaitFor, imageAvailableSemaphores[currentFrame] };
-	vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput };
+	std::vector<vk::Semaphore> waitSemaphores = { imageAvailableSemaphores[this->currentFrame] }; 
+	std::vector<vk::PipelineStageFlags> waitStages = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+	if (mustWaitFor != nullptr) {
+		waitSemaphores.push_back(*mustWaitFor);
+		waitStages.push_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+	}
 
 	submitInfo.commandBufferCount = 1; 
-	submitInfo.pWaitSemaphores = waitSemaphores;
-	submitInfo.waitSemaphoreCount = 2; 
+	submitInfo.pWaitSemaphores = waitSemaphores.data();
+	submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()); 
 	submitInfo.signalSemaphoreCount = 1; 
 	submitInfo.pSignalSemaphores = &buffer.getCompleteSemaphores()[frameIndexToBeDrawn]; 
-	submitInfo.pWaitDstStageMask = waitStages; 
+	submitInfo.pWaitDstStageMask = waitStages.data(); 
 	submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
 	submitInfo.commandBufferCount = 1; 
 
@@ -266,6 +270,10 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuff
 	);
 
 	this->SceneRenderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
+}
+
+void star::SwapChainRenderer::destroyResources(StarDevice& device)
+{
 }
 
 void star::SwapChainRenderer::createSemaphores()
@@ -441,18 +449,16 @@ void star::SwapChainRenderer::recreateSwapChain()
 
 void star::SwapChainRenderer::cleanupSwapChain()
 {
-	this->device.getDevice().destroyImageView(this->depthImageView);
-	vmaDestroyImage(this->device.getAllocator(), this->depthImage, this->depthImageMemory);
+	for (vk::ImageView& imageView : this->renderToDepthImageViews) {
+		this->device.getDevice().destroyImageView(imageView);
+	}
+	for (int i = 0; i < this->renderToDepthImages.size(); i++) {
+		vmaDestroyImage(this->device.getAllocator(), this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
+	}
 
-	//for (auto framebuffer : this->swapChainFramebuffers) {
-	//	this->device.getDevice().destroyFramebuffer(framebuffer);
-	//}
-
-	//this->device.getDevice().destroyRenderPass(this->renderPass);
-
-	//for (auto imageView : this->swapChainImageViews) {
-	//	this->device.getDevice().destroyImageView(imageView);
-	//}
+	for (vk::ImageView& imageView : this->renderToImageViews) {
+		this->device.getDevice().destroyImageView(imageView);
+	}
 
 	this->device.getDevice().destroySwapchainKHR(this->swapChain);
 }

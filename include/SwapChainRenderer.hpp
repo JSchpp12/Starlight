@@ -70,6 +70,8 @@ namespace star {
 		virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) override;
 
 		virtual void recordCommandBuffer(vk::CommandBuffer& buffer, const int& frameIndexToBeDrawn) override;
+
+		virtual void destroyResources(StarDevice& device) override;
 	private:
 		//more swapchain info 
 		vk::SwapchainKHR swapChain;

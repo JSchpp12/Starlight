@@ -15,7 +15,7 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 
 	createRenderingBuffers(device, numFramesInFlight);
 	createDescriptors(device, numFramesInFlight);
-	vk::Format depthFormat = createDepthResources(device, swapChainExtent);
+	vk::Format depthFormat = createDepthResources(device, swapChainExtent, numFramesInFlight);
 
 	this->renderToTargetInfo = std::make_unique<RenderingTargetInfo>(
 		std::vector<vk::Format>{ this->getCurrentRenderToImageFormat()},
@@ -218,7 +218,7 @@ void SceneRenderer::createRenderingBuffers(star::StarDevice& device, const int& 
 	}
 }
 
-vk::Format SceneRenderer::createDepthResources(star::StarDevice& device, const vk::Extent2D& swapChainExtent)
+vk::Format SceneRenderer::createDepthResources(star::StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
 {
 	//depth image should have:
 	//  same resolution as the color attachment (in swap chain extent)
@@ -231,10 +231,18 @@ vk::Format SceneRenderer::createDepthResources(star::StarDevice& device, const v
 
 	vk::Format depthFormat = findDepthFormat(device);
 
-	createImage(device, swapChainExtent.width, swapChainExtent.height, depthFormat,
-		vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
-		vk::MemoryPropertyFlagBits::eDeviceLocal, depthImage, depthImageMemory);
-	this->depthImageView = createImageView(device, depthImage, depthFormat, vk::ImageAspectFlagBits::eDepth);
+	this->renderToDepthImages.resize(numFramesInFlight); 
+	this->renderToDepthImageMemory.resize(numFramesInFlight); 
+	this->renderToDepthImageViews.resize(numFramesInFlight); 
+
+	for (int i = 0; i < numFramesInFlight; i++) {
+		createImage(device, swapChainExtent.width, swapChainExtent.height, depthFormat,
+			vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
+			vk::MemoryPropertyFlagBits::eDeviceLocal, this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
+
+		this->renderToDepthImageViews[i] = createImageView(device, this->renderToDepthImages[i], depthFormat, vk::ImageAspectFlagBits::eDepth);
+	}
+
 
 	return depthFormat; 
 }
@@ -255,14 +263,17 @@ void SceneRenderer::initResources(StarDevice& device, const int& numFramesInFlig
 
 void SceneRenderer::destroyResources(StarDevice& device)
 {
-	for (auto& imageView : this->renderToImageViews) {
+	for (vk::ImageView& imageView : this->renderToImageViews) {
+		device.getDevice().destroyImageView(imageView); 
+	}
+	for (vk::ImageView& imageView : this->renderToDepthImageViews) {
 		device.getDevice().destroyImageView(imageView);
 	}
-	for (auto& image : this->renderToImages) {
-		device.getDevice().destroyImage(image);
+	for (int i = 0; i < this->renderToDepthImages.size(); i++) {
+		vmaDestroyImage(device.getAllocator(), this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
 	}
-	for (auto& imageAllocation : this->renderToImageAllocations) {
-		vmaFreeMemory(device.getAllocator(), imageAllocation);
+	for (int i = 0; i < this->renderToImages.size(); i++) {
+		vmaDestroyImage(device.getAllocator(), this->renderToImages[i], this->renderToImageAllocations[i]);
 	}
 }
 
@@ -314,7 +325,7 @@ vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColo
 
 vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoDepthAttachment(const int& frameInFlightIndex) {
 	vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};
-	depthAttachmentInfo.imageView = this->depthImageView;
+	depthAttachmentInfo.imageView = this->renderToDepthImageViews[frameInFlightIndex];
 	depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
 	depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 	depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;

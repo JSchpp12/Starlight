@@ -74,9 +74,9 @@ protected:
 	std::vector<vk::Framebuffer> renderToFramebuffers;
 
 	//depth testing storage 
-	vk::Image depthImage = vk::Image(); 
-	VmaAllocation depthImageMemory = VmaAllocation();
-	vk::ImageView depthImageView = vk::ImageView();
+	std::vector<vk::Image> renderToDepthImages = std::vector<vk::Image>(); 
+	std::vector<VmaAllocation> renderToDepthImageMemory = std::vector<VmaAllocation>();
+	std::vector<vk::ImageView> renderToDepthImageViews = std::vector<vk::ImageView>(); 
 
 	std::vector<std::unique_ptr<Light>>& lightList;
 	std::vector<std::reference_wrapper<StarObject>> objectList; 
@@ -141,7 +141,7 @@ protected:
 	/// <summary>
 	/// Create the depth images that will be used by vulkan to run depth tests on fragments. 
 	/// </summary>
-	vk::Format createDepthResources(StarDevice& device, const vk::Extent2D& swapChainExtent);
+	vk::Format createDepthResources(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight);
 
 	// Inherited via CommandBufferModifier
 	Command_Buffer_Type getCommandBufferType() override;
@@ -156,7 +156,7 @@ protected:
 	virtual std::optional<std::function<void(const int&)>> getBeforeBufferSubmissionCallback() override;
 
 	// Inherited via RenderResourceModifier
-	void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
+	virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
 
 	virtual void destroyResources(StarDevice& device) override;
 

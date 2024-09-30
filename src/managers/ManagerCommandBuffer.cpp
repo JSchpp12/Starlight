@@ -88,9 +88,9 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 	}
 
 	if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value()) {
-		assert(beforeSemaphores.size() >= 1 && "More than one semaphore is not yet supported!");
-		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, &beforeSemaphores[0]);
-
+		assert(beforeSemaphores.size() == 0 || beforeSemaphores.size() >= 1 && "More than one semaphore is not yet supported!");
+		vk::Semaphore* selectedBeforeSemaphore = beforeSemaphores.size() != 0 ? &beforeSemaphores[0] : nullptr; 
+		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, selectedBeforeSemaphore);
 	} else {
 		vk::SubmitInfo submitInfo{}; 
 		if (beforeSemaphores.size() > 0) {
