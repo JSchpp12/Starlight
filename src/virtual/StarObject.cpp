@@ -8,12 +8,11 @@ std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::boundDescriptor
 vk::PipelineLayout star::StarObject::boundPipelineLayout = vk::PipelineLayout{}; 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::boundBoxPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
 
-void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent, 
-	vk::RenderPass renderPass, int numSwapChainImages, 
-	StarDescriptorSetLayout& globalDescriptors)
+void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent, int numSwapChainImages, 
+	StarDescriptorSetLayout& globalDescriptors, RenderingTargetInfo renderingInfo)
 {
 	std::string mediaPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory);
-
+		
 	instanceDescriptorLayout = StarDescriptorSetLayout::Builder(device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 		.addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
@@ -42,7 +41,7 @@ void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swap
 		StarShader frag = StarShader(fragPath, Shader_Stage::fragment);
 
 		StarGraphicsPipeline::PipelineConfigSettings settings;
-		StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, extrusionPipelineLayout);
+		StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, extrusionPipelineLayout, renderingInfo);
 		{
 			std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangle.geom";
 			StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
@@ -80,12 +79,11 @@ void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swap
 		boundPipelineLayout = device.getDevice().createPipelineLayout(pipelineLayoutInfo);
 
 		StarGraphicsPipeline::PipelineConfigSettings settings;
-		StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, extrusionPipelineLayout);
+		StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, extrusionPipelineLayout, renderingInfo);
 
 		settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eLineList;
 
 		//bounding box vert buffer will be bound to the 1st index 
-
 		std::string boundVertPath = mediaPath + "shaders/boundingBox/bounding.vert"; 
 		std::string boundFragPath = mediaPath + "shaders/boundingBox/bounding.frag"; 
 		StarShader vert = StarShader(boundVertPath, Shader_Stage::vertex);
@@ -130,10 +128,11 @@ void star::StarObject::cleanupRender(StarDevice& device)
 }
 
 std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& device, vk::Extent2D swapChainExtent, 
-	vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass)
+	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo)
 {
 	StarGraphicsPipeline::PipelineConfigSettings settings;
-	StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, renderPass, pipelineLayout);
+	StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, pipelineLayout, renderInfo);
+	settings.depthStencilInfo.depthTestEnable = VK_FALSE; 
 	auto graphicsShaders = this->getShaders();
 
 	auto newPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, graphicsShaders.at(Shader_Stage::vertex), graphicsShaders.at(Shader_Stage::fragment));
@@ -143,11 +142,11 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& 
 }
 
 void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
-	vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, 
+	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo, int numSwapChainImages, 
 	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets)
 {
 	//handle pipeline infos
-	this->pipeline = this->buildPipeline(device, swapChainExtent, pipelineLayout, renderPass);
+	this->pipeline = this->buildPipeline(device, swapChainExtent, pipelineLayout, renderInfo);
 
 	createInstanceBuffers(device, numSwapChainImages); 
 	prepareMeshes(device); 
@@ -320,10 +319,8 @@ void star::StarObject::destroyResources(StarDevice& device)
 	this->boundingBoxVertBuffer.reset();
 }
 
-void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight)
+void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
-	ManagerDescriptorPool::request(vk::DescriptorType::eUniformBuffer, numFramesInFlight * this->instances.size() * this->instances.front()->getBufferInfoSize().size());
-
 	std::vector<Vertex> bbVerts;
 	std::vector<uint32_t> bbInds;
 
@@ -449,8 +446,6 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vec
 {
 	assert(this->meshes.size() > 0 && "This function must be called after meshes are loaded");
 
-	//allow children to override this function while not requiring they 
-	this->createBoundingBox(verts, inds);
-	
+	this->createBoundingBox(verts, inds);	
 	this->boundingBoxIndsCount = inds.size();
 }

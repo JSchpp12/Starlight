@@ -59,6 +59,8 @@ void star::StarMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayo
 	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(), descriptors.data(), 0, nullptr);
 }
 
-void star::StarMaterial::destroyResources(StarDevice& device)
+std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(const int& numFramesInFlight)
 {
+	return std::vector<std::pair<vk::DescriptorType, const int>>();
 }
+

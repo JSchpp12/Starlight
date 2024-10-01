@@ -21,24 +21,26 @@ namespace star {
 			std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback;
 			std::function<void(star::Handle)> promiseBufferHandleCallback;
 			Command_Buffer_Order order;
+			int orderIndex; 
 			star::Command_Buffer_Type type;
 			vk::PipelineStageFlags waitStage; 
 			bool willBeSubmittedEachFrame; 
 			bool recordOnce; 
 			std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback;
 			std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback;
-			std::optional<std::function<void(StarCommandBuffer&, const int&)>> overrideBufferSubmissionCallback;
+			std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> overrideBufferSubmissionCallback;
 
 			CommandBufferRequest(std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback, 
 				std::function<void(star::Handle)> promiseBufferHandleCallback, 
 				const Command_Buffer_Order& order,
+				const int orderIndex,
 				const star::Command_Buffer_Type& type, const vk::PipelineStageFlags& waitStage,
 				const bool& willBeSubmittedEachFrame, 
 				const bool& recordOnce, std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback, 
 				std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback, 
-				std::optional<std::function<void(StarCommandBuffer&, const int&)>> overrideBufferSubmissionCallback)
+				std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> overrideBufferSubmissionCallback)
 				: recordBufferCallback(recordBufferCallback), promiseBufferHandleCallback(promiseBufferHandleCallback),
-				order(order), 
+				order(order), orderIndex(orderIndex),
 				type(type), waitStage(waitStage),
 				willBeSubmittedEachFrame(willBeSubmittedEachFrame), recordOnce(recordOnce),
 				beforeBufferSubmissionCallback(beforeBufferSubmissionCallback), 
@@ -70,14 +72,14 @@ namespace star {
 
 			std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback; 
 			std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback;
-			std::optional<std::function<void(StarCommandBuffer&, const int&)>> overrideBufferSubmissionCallback;
+			std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> overrideBufferSubmissionCallback;
 
 			CompleteRequest(std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback, std::unique_ptr<StarCommandBuffer> commandBuffer, 
 				const Command_Buffer_Type& type, const bool& recordOnce, const vk::PipelineStageFlags& waitStage, 
 				const Command_Buffer_Order& order,
 				std::optional<std::function<void(const int&)>> beforeSubmissionCallback = std::optional<std::function<void(const int&)>>(),
 				std::optional<std::function<void(const int&)>> afterSubmissionCallback = std::optional<std::function<void(const int&)>>(),
-				std::optional<std::function<void(StarCommandBuffer&, const int&)>> overrideBufferSubmissionCallback = std::optional<std::function<void(StarCommandBuffer&, const int&)>>())
+				std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> overrideBufferSubmissionCallback = std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>>())
 				: recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)),
 				order(order), waitStage(waitStage), 
 				beforeBufferSubmissionCallback(beforeSubmissionCallback), 
@@ -100,17 +102,20 @@ namespace star {
 
 			~BufferContainer() = default; 
 
-			std::vector<vk::Semaphore> submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& swapChainIndex, std::vector<vk::Semaphore>* waitSemaphores = nullptr, std::vector<vk::PipelineStageFlags>* waitPoints = nullptr) {
+			std::vector<vk::Semaphore> submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& swapChainIndex, std::vector<vk::Semaphore>* waitSemaphores = nullptr) {
 				std::vector<vk::Semaphore> semaphores;
 				std::vector<std::pair<CompleteRequest&, vk::Fence>> buffersToSubmitWithFences = std::vector<std::pair<CompleteRequest&, vk::Fence>>();
 
 				for (int type = star::Command_Buffer_Type::Tgraphics; type != star::Command_Buffer_Type::Tcompute; type++) {
-					std::vector<std::reference_wrapper<CompleteRequest>> buffersToSubmit = this->getAllBuffersOfTypeAndOrderReadyToSubmit(Command_Buffer_Order::end_of_frame, static_cast<star::Command_Buffer_Type>(type), true);
+					std::vector<std::reference_wrapper<CompleteRequest>> buffersToSubmit = this->getAllBuffersOfTypeAndOrderReadyToSubmit(order, static_cast<star::Command_Buffer_Type>(type), true);
 
 					if (!buffersToSubmit.empty()) {
 						waitUntilOrderGroupReady(swapChainIndex, order, static_cast<Command_Buffer_Type>(type));
 
-						semaphores.push_back(this->bufferGroups[order]->semaphores[static_cast<Command_Buffer_Type>(type)].at(swapChainIndex));
+						auto waitPoints = std::vector<vk::PipelineStageFlags>(); 
+						for (auto& buffer : buffersToSubmit) {
+							waitPoints.push_back(buffer.get().waitStage);
+						}
 
 						//before submission
 						for (CompleteRequest& buffer : buffersToSubmit) {
@@ -133,10 +138,10 @@ namespace star {
 
 							vk::SubmitInfo submitInfo{};
 
-							if (waitSemaphores != nullptr && waitPoints != nullptr) {
+							if (waitSemaphores != nullptr) {
 								submitInfo.waitSemaphoreCount = waitSemaphores->size();
 								submitInfo.pWaitSemaphores = waitSemaphores->data();
-								submitInfo.pWaitDstStageMask = waitPoints->data();
+								submitInfo.pWaitDstStageMask = waitPoints.data();
 							}
 
 							submitInfo.signalSemaphoreCount = 1;
@@ -179,10 +184,10 @@ namespace star {
 
 				//after submit
 				for (auto& bufferAndFence : buffersToSubmitWithFences) {
-					if (bufferAndFence.first.afterBufferSubmissionCallback.has_value()) {
-						this->device.getDevice().waitForFences(bufferAndFence.second, VK_TRUE, UINT64_MAX);
+					if (bufferAndFence.first.afterBufferSubmissionCallback.has_value())
 						bufferAndFence.first.afterBufferSubmissionCallback.value()(swapChainIndex);
-					}
+
+					this->device.getDevice().waitForFences(bufferAndFence.second, VK_TRUE, UINT64_MAX);
 				}
 
 				return semaphores; 
@@ -277,7 +282,11 @@ namespace star {
 			std::vector<unsigned char> bufferSubmissionStatus;
 
 			void waitUntilOrderGroupReady(const int& frameIndex, const star::Command_Buffer_Order& order, const star::Command_Buffer_Type& type) {
-				this->device.getDevice().waitForFences(this->bufferGroups[order]->fences[type].at(frameIndex), VK_TRUE, UINT64_MAX);
+				auto waitResult = this->device.getDevice().waitForFences(this->bufferGroups[order]->fences[type].at(frameIndex), VK_TRUE, UINT64_MAX);
+				if (waitResult != vk::Result::eSuccess) {
+					throw std::runtime_error("Failed to wait for fence"); 
+				}
+
 				this->device.getDevice().resetFences(this->bufferGroups[order]->fences[type].at(frameIndex));
 			}
 

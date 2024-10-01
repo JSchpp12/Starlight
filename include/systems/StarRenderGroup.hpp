@@ -37,8 +37,8 @@ namespace star {
 
 		virtual ~StarRenderGroup();
 
-		virtual void init(StarDescriptorSetLayout& engineSetLayout, vk::RenderPass engineRenderPass,
-			 std::vector<vk::DescriptorSet> enginePerImageDescriptors);
+		virtual void init(StarDescriptorSetLayout& engineSetLayout,
+			 std::vector<vk::DescriptorSet> enginePerImageDescriptors, RenderingTargetInfo renderingInfo);
 
 		virtual bool isObjectCompatible(StarObject& object); 
 
@@ -102,8 +102,8 @@ namespace star {
 		/// <summary>
 		/// Create descriptors for binding render buffers to shaders.
 		/// </summary>
-		virtual void prepareObjects(StarDescriptorSetLayout& engineLayout, vk::RenderPass engineRenderPass,
-			std::vector<vk::DescriptorSet> enginePerImageDescriptors);
+		virtual void prepareObjects(StarDescriptorSetLayout& engineLayout,
+			std::vector<vk::DescriptorSet> enginePerImageDescriptors, RenderingTargetInfo renderingInfo);
 
 		std::vector<std::vector<vk::DescriptorSet>> generateObjectExternalDescriptors(int objectOffset,
 			std::vector<vk::DescriptorSet> enginePerObjectDescriptors);

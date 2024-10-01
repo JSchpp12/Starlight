@@ -26,7 +26,8 @@ namespace star {
 		std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
 
 		// Inherited via RenderResourceModifier
-		void initResources(StarDevice& device, const int& numFramesInFlight) override;
+		void initResources(StarDevice& device, const int& numFramesInFlight, 
+			const vk::Extent2D& screensize) override;
 		void destroyResources(StarDevice& device) override;
 
 		// Inherited via CommandBufferModifier

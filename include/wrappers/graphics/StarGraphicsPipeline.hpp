@@ -5,6 +5,7 @@
 #include "VulkanVertex.hpp"
 #include "Compiler.hpp"
 #include "StarPipeline.hpp"
+#include "RenderingTargetInfo.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -30,10 +31,10 @@ public:
 		std::vector<VkDynamicState> dynamicStateEnables;
 		vk::PipelineDynamicStateCreateInfo dynamicStateInfo;
 		vk::PipelineLayout pipelineLayout = nullptr;
-		vk::RenderPass renderPass = nullptr;
 		vk::Extent2D swapChainExtent; 
 		std::vector<vk::VertexInputBindingDescription> vertInputBindingDescription = std::vector<vk::VertexInputBindingDescription>{ VulkanVertex::getBindingDescription() };
 		uint32_t subpass = 0;
+		RenderingTargetInfo renderingInfo;
 	};
 
 	StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, 
@@ -51,7 +52,7 @@ public:
 
 	virtual void bind(vk::CommandBuffer& commandBuffer) override;
 
-	static void defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent, vk::RenderPass renderPass, vk::PipelineLayout pipelineLayout);
+	static void defaultPipelineConfigInfo(PipelineConfigSettings& configSettings, vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo);
 
 protected:
 	StarShader vertShader, fragShader; 

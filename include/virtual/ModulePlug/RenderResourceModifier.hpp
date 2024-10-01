@@ -6,20 +6,22 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
+#include <vulkan/vulkan.hpp>
 
 namespace star {
 	class RenderResourceModifier {
 	public:
 		RenderResourceModifier() {
-			this->registerCallbacks(); 
+			this->registerRenderResourceCallbacks(); 
 		}
 
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight) = 0;
+		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screenSize) = 0;
 
 		virtual void destroyResources(StarDevice& device) = 0; 
 
 	private:
-		void registerCallbacks(); 
+		void registerRenderResourceCallbacks();
 
 	};
 }

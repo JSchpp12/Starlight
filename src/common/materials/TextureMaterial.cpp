@@ -5,9 +5,9 @@ void star::TextureMaterial::prep(StarDevice& device)
 	texture->prepRender(device);
 }
 
-void star::TextureMaterial::initResources(StarDevice& device, const int& numFramesInFlight)
+void star::TextureMaterial::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
-	ManagerDescriptorPool::request(vk::DescriptorType::eCombinedImageSampler, 1); 
+
 }
 
 void star::TextureMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder)
@@ -37,4 +37,11 @@ vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, 
 	vk::DescriptorSet newSet = writer.build();
 
 	return newSet;
+}
+
+std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::getDescriptorRequests(const int& numFramesInFlight)
+{
+	return std::vector<std::pair<vk::DescriptorType, const int>>{
+		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1)
+	};
 }

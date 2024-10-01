@@ -8,6 +8,7 @@
 #include <stack>
 #include <memory>
 #include <functional>
+#include <optional>
 
 namespace star {
 	class CommandBufferModifier {
@@ -24,6 +25,8 @@ namespace star {
 
 		virtual Command_Buffer_Order getCommandBufferOrder() = 0;
 
+		virtual star::Command_Buffer_Order_Index getCommandBufferOrderIndex();
+
 		virtual Command_Buffer_Type getCommandBufferType() = 0;
 
 		virtual vk::PipelineStageFlags getWaitStages() = 0; 
@@ -38,7 +41,7 @@ namespace star {
 
 		virtual std::optional<std::function<void(const int&)>> getBeforeBufferSubmissionCallback();
 
-		virtual std::optional<std::function<void(StarCommandBuffer&, const int&)>> getOverrideBufferSubmissionCallback();
+		virtual std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> getOverrideBufferSubmissionCallback();
 
 		ManagerCommandBuffer::CommandBufferRequest getCommandBufferRequest(); 
 	private:

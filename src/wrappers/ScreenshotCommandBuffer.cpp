@@ -192,7 +192,7 @@ void star::ScreenshotBuffer::saveScreenshotToDisk(const int& bufferIndexJustRun)
 	vmaUnmapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun]);
 }
 
-void star::ScreenshotBuffer::initResources(StarDevice& device, const int& numFramesInFlight)
+void star::ScreenshotBuffer::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
 	this->copyDstImages.resize(numFramesInFlight);
 	this->copyDstImageMemories.resize(numFramesInFlight);

@@ -33,10 +33,8 @@ namespace star {
 		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
 			StarDescriptorPool& groupPool) override;
 
-
 		void prep(StarDevice& device) override;
 
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight) override; 
-
+		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 	};
 }

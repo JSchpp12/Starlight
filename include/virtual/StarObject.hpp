@@ -13,6 +13,7 @@
 #include "StarCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "RenderResourceModifierGeometry.hpp"
+#include "RenderingTargetInfo.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -41,8 +42,8 @@ namespace star {
 		bool isVisible = true; 
 
 		static void initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent,
-			vk::RenderPass renderPass, int numSwapChainImages,
-			StarDescriptorSetLayout& globalDescriptors);
+			int numSwapChainImages, StarDescriptorSetLayout& globalDescriptors, 
+			RenderingTargetInfo renderingInfo);
 
 		static void cleanupSharedResources(StarDevice& device);
 
@@ -58,14 +59,14 @@ namespace star {
 
 		virtual std::unique_ptr<StarPipeline> buildPipeline(StarDevice& device,
 			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, 
-			vk::RenderPass renderPass);
+			RenderingTargetInfo renderInfo);
 
 		/// <summary>
 		/// Prepare needed objects for rendering operations.
 		/// </summary>
 		/// <param name="device"></param>
 		virtual void prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
-			vk::PipelineLayout pipelineLayout, vk::RenderPass renderPass, int numSwapChainImages, 
+			vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo, int numSwapChainImages, 
 			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, 
 			std::vector<std::vector<vk::DescriptorSet>> globalSets);
 
@@ -114,7 +115,6 @@ namespace star {
 		/// @return 
 		virtual std::vector<std::unique_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(StarDevice& device);
 
-
 		virtual std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) = 0;
 
 #pragma region getters
@@ -145,7 +145,7 @@ namespace star {
 
 		virtual void destroyResources(StarDevice& device) override;
 
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight) override;
+		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
 
 		virtual void createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 

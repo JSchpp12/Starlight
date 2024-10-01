@@ -1,4 +1,5 @@
 #include "StarDevice.hpp"
+#include "StarDevice.hpp"
 
 namespace star {
 StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures) :
@@ -179,6 +180,9 @@ void StarDevice::createLogicalDevice() {
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
 
+	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{}; 
+	dynamicRenderingFeatures.dynamicRendering = VK_TRUE; 
+
 	//Create actual logical device
 	const vk::DeviceCreateInfo createInfo{
 		vk::DeviceCreateFlags(),                                                        //device creation flags
@@ -188,7 +192,8 @@ void StarDevice::createLogicalDevice() {
 		enableValidationLayers ? requiredDeviceExtensions.data() : VK_NULL_HANDLE,              //enables layer names
 		static_cast<uint32_t>(requiredDeviceExtensions.size()),                                 //enabled extension coun 
 		requiredDeviceExtensions.data(),                                                        //enabled extension names 
-		&this->requiredDeviceFeatures                                                                 //enabled features
+		&this->requiredDeviceFeatures,                                                                 //enabled features
+		&dynamicRenderingFeatures
 	};
 
 	//call to create the logical device 
@@ -486,7 +491,6 @@ void StarDevice::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFla
 	assert(size <= memRequirenments.size);
 
 	vk::MemoryAllocateInfo allocInfo{};
-	//allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
 	allocInfo.allocationSize = memRequirenments.size;
 	allocInfo.memoryTypeIndex = findMemoryType(memRequirenments.memoryTypeBits, properties);
@@ -652,5 +656,10 @@ SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice dev
 	}
 
 	return details;
+}
+bool star::StarDevice::checkDynamicRenderingSupport()
+{
+
+	return false;
 }
 }

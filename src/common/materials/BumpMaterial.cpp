@@ -1,4 +1,6 @@
 #include "BumpMaterial.hpp"
+#include "BumpMaterial.hpp"
+#include "BumpMaterial.hpp"
 
 void star::BumpMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder)
 {
@@ -49,9 +51,9 @@ void star::BumpMaterial::prep(StarDevice& device)
 	bumpMap->prepRender(device);
 }
 
-void star::BumpMaterial::initResources(StarDevice& device, const int& numFramesInFlight)
+std::vector<std::pair<vk::DescriptorType, const int>> star::BumpMaterial::getDescriptorRequests(const int& numFramesInFlight)
 {
-	this->TextureMaterial::initResources(device, numFramesInFlight); 
-
-	ManagerDescriptorPool::request(vk::DescriptorType::eCombinedImageSampler, 1); 
+	return std::vector<std::pair<vk::DescriptorType, const int>>{
+		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1)
+	};
 }
