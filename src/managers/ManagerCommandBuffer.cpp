@@ -38,7 +38,7 @@ void star::ManagerCommandBuffer::handleNewRequests()
 		std::function<CommandBufferRequest(void)> requestFunction = ManagerCommandBuffer::newCommandBufferRequests.top();
 		auto request = requestFunction(); 
 
-		star::Handle newHandle = this->buffers.add(std::make_unique<CompleteRequest>(
+		star::Handle newHandle = this->buffers.add(std::make_unique<CommandBufferContainer::CompleteRequest>(
 			request.recordBufferCallback, 
 			std::make_unique<StarCommandBuffer>(this->device, this->numFramesInFlight, request.type, false), 
 			request.type, 
@@ -76,7 +76,7 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 
 	//need to submit each group of buffers depending on the queue family they are in
 	//std::array<std::vector<StarBuffer>, 3> buffers = { buffersBeforeGraphics, {this->mainthis->mainGraphicsBuffer., buffersAfterGraphics };
-	CompleteRequest& mainGraphicsBuffer = this->buffers.getBuffer(*this->mainGraphicsBufferHandle); 
+	CommandBufferContainer::CompleteRequest& mainGraphicsBuffer = this->buffers.getBuffer(*this->mainGraphicsBufferHandle); 
 
 	if (mainGraphicsBuffer.beforeBufferSubmissionCallback.has_value())
 		mainGraphicsBuffer.beforeBufferSubmissionCallback.value()(swapChainIndex);
