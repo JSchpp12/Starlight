@@ -52,7 +52,9 @@ void StarTexture::createTextureImage(StarDevice& device) {
 
 	//image has data in cpu memory, it must be copied over
 	try {
-		if (this->data().get()[0] != '\0') {
+		auto possibleData = this->data(); 
+		if (possibleData.has_value()) {
+			std::unique_ptr<unsigned char>& textureData = possibleData.value(); 
 			vk::DeviceSize imageSize = width * height * 4;
 
 			//image will be transfered from cpu memory, make sure proper flags are set
@@ -68,7 +70,7 @@ void StarTexture::createTextureImage(StarDevice& device) {
 				vk::BufferUsageFlagBits::eTransferSrc,
 				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 			stagingBuffer.map();
-			std::unique_ptr<unsigned char> textureData(this->data());
+
 			stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
 			//copy staging buffer to texture image 
@@ -79,6 +81,8 @@ void StarTexture::createTextureImage(StarDevice& device) {
 			//prepare final image for texture mapping in shaders 
 			transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 			this->layout = vk::ImageLayout::eTransferDstOptimal;
+
+			stagingBuffer.unmap(); 
 		}
 		else {
 			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
@@ -115,7 +119,7 @@ void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t heigh
 		imageInfo.flags = vk::ImageCreateFlagBits::eMutableFormat; 
 
 	device.verifyImageCreate(imageInfo);
-
+	
 	image = device.getDevice().createImage(imageInfo);
 	if (!image) {
 		throw std::runtime_error("failed to create image");

@@ -41,14 +41,14 @@ void star::ManagerCommandBuffer::handleNewRequests()
 		star::Handle newHandle = this->buffers.add(std::make_unique<CommandBufferContainer::CompleteRequest>(
 			request.recordBufferCallback, 
 			std::make_unique<StarCommandBuffer>(this->device, this->numFramesInFlight, request.type, false), 
-			request.type, 
-			request.recordOnce,
-			request.waitStage,
-			request.order,
-			request.beforeBufferSubmissionCallback, 
-			request.afterBufferSubmissionCallback, 
-			request.overrideBufferSubmissionCallback), 
-			request.willBeSubmittedEachFrame, request.type, request.order);
+				request.type, 
+				request.recordOnce,
+				request.waitStage,
+				request.order,
+				request.beforeBufferSubmissionCallback, 
+				request.afterBufferSubmissionCallback, 
+				request.overrideBufferSubmissionCallback), 
+			request.willBeSubmittedEachFrame, request.type, request.order, static_cast<Command_Buffer_Order_Index>(request.orderIndex));
 
 		request.promiseBufferHandleCallback(newHandle);
 

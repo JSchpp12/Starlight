@@ -1,10 +1,55 @@
 #include "internals/CommandBufferContainer.hpp"
 
+star::CommandBufferContainer::CommandBufferContainer(StarDevice& device, const int& numImagesInFlight)
+	: device(device)
+{
+	for (int i = Command_Buffer_Order::before_render_pass; i <= Command_Buffer_Order::end_of_frame; i++) {
+		for (int j = Command_Buffer_Type::Tgraphics; j <= Command_Buffer_Order::end_of_frame; j++) {
+			this->bufferGroupsWithNoSubOrder[static_cast<star::Command_Buffer_Order>(i)] = std::make_unique<GenericBufferGroupInfo>(device, numImagesInFlight);
+			this->bufferGroupsWithSubOrders[static_cast<star::Command_Buffer_Order>(i)] = std::vector<CompleteRequest*>();
+			for (int k = Command_Buffer_Order_Index::first; k != Command_Buffer_Order_Index::fifth; k++) {
+				this->bufferGroupsWithSubOrders[static_cast<star::Command_Buffer_Order>(i)].push_back(nullptr); 
+			}
+		}
+	}
+}
+
 std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& swapChainIndex, std::vector<vk::Semaphore>* waitSemaphores)
 {
-	std::vector<vk::Semaphore> semaphores;
-	std::vector<std::pair<CompleteRequest&, vk::Fence>> buffersToSubmitWithFences = std::vector<std::pair<CompleteRequest&, vk::Fence>>();
+	//submit buffers which have a suborder first
+	for (int i = star::Command_Buffer_Order_Index::first; i != star::Command_Buffer_Order_Index::fifth; i++) {
+		if (this->bufferGroupsWithSubOrders[order][i] == nullptr)
+			break;
 
+		CompleteRequest* buffer = this->bufferGroupsWithSubOrders[order][i];
+
+		this->device.getDevice().waitForFences(buffer->commandBuffer->getFence(swapChainIndex), VK_TRUE, UINT64_MAX);
+
+		if (buffer->beforeBufferSubmissionCallback.has_value())
+			buffer->beforeBufferSubmissionCallback.value()(swapChainIndex);
+
+		if (!buffer->recordOnce) {
+			buffer->commandBuffer->begin(swapChainIndex); 
+			buffer->recordBufferCallback(buffer->commandBuffer->buffer(swapChainIndex), swapChainIndex);
+			buffer->commandBuffer->buffer(swapChainIndex).end();
+		}
+
+		//set the next buffer to be executed to wait on the current buffer
+		if (i < this->bufferGroupsWithSubOrders[order].size()-1) {
+			CompleteRequest* nextBuffer = this->bufferGroupsWithSubOrders[order][i + (int)1];
+			if (nextBuffer != nullptr)
+				nextBuffer->commandBuffer->waitFor(*buffer->commandBuffer, nextBuffer->waitStage);
+		}
+
+		buffer->commandBuffer->submit(swapChainIndex);
+
+		if (buffer->afterBufferSubmissionCallback.has_value())
+			buffer->afterBufferSubmissionCallback.value()(swapChainIndex);
+	}
+
+	std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>();
+	std::vector<std::pair<CompleteRequest&, vk::Fence>> buffersToSubmitWithFences = std::vector<std::pair<CompleteRequest&, vk::Fence>>();
+	//submit all other buffers second
 	for (int type = star::Command_Buffer_Type::Tgraphics; type != star::Command_Buffer_Type::Tcompute; type++) {
 		std::vector<std::reference_wrapper<CompleteRequest>> buffersToSubmit = this->getAllBuffersOfTypeAndOrderReadyToSubmit(order, static_cast<star::Command_Buffer_Type>(type), true);
 
@@ -44,16 +89,16 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 				}
 
 				submitInfo.signalSemaphoreCount = 1;
-				submitInfo.pSignalSemaphores = &this->bufferGroups[order]->semaphores[static_cast<Command_Buffer_Type>(type)].at(swapChainIndex);
+				submitInfo.pSignalSemaphores = &this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Command_Buffer_Type>(type)].at(swapChainIndex);
 
 				//record for later
-				semaphores.push_back(this->bufferGroups[order]->semaphores[static_cast<Command_Buffer_Type>(type)].at(swapChainIndex));
+				semaphores.push_back(this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Command_Buffer_Type>(type)].at(swapChainIndex));
 
 				submitInfo.pCommandBuffers = buffers.data();
 				submitInfo.commandBufferCount = buffers.size();
 
 				std::unique_ptr<vk::Result> commandResult = std::unique_ptr<vk::Result>();
-				vk::Fence workingFence = this->bufferGroups[order]->fences[static_cast<Command_Buffer_Type>(type)].at(swapChainIndex);
+				vk::Fence workingFence = this->bufferGroupsWithNoSubOrder[order]->fences[static_cast<Command_Buffer_Type>(type)].at(swapChainIndex);
 				switch (type) {
 				case(Command_Buffer_Type::Tgraphics):
 					commandResult = std::make_unique<vk::Result>(this->device.getGraphicsQueue().submit(1, &submitInfo, workingFence));
@@ -83,23 +128,28 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 
 	//after submit
 	for (auto& bufferAndFence : buffersToSubmitWithFences) {
+		this->device.getDevice().waitForFences(bufferAndFence.second, VK_TRUE, UINT64_MAX);
+
 		if (bufferAndFence.first.afterBufferSubmissionCallback.has_value())
 			bufferAndFence.first.afterBufferSubmissionCallback.value()(swapChainIndex);
-
-		this->device.getDevice().waitForFences(bufferAndFence.second, VK_TRUE, UINT64_MAX);
 	}
 
 	return semaphores;
 }
 
-star::Handle star::CommandBufferContainer::add(std::unique_ptr<star::CommandBufferContainer::CompleteRequest> newRequest, const bool& willBeSubmittedEachFrame, const star::Command_Buffer_Type& type, const star::Command_Buffer_Order& order) {
+star::Handle star::CommandBufferContainer::add(std::unique_ptr<star::CommandBufferContainer::CompleteRequest> newRequest, const bool& willBeSubmittedEachFrame, const star::Command_Buffer_Type& type, const star::Command_Buffer_Order& order, const star::Command_Buffer_Order_Index& subOrder) {
 	star::Handle newHandle = star::Handle(this->allBuffers.size(), star::Handle_Type::buffer);
 	const int bufferIndex = this->allBuffers.size();
 
 	this->allBuffers.push_back(std::move(newRequest));
 	this->bufferSubmissionStatus.push_back(willBeSubmittedEachFrame ? 2 : 0);
 
-	this->bufferGroups[order]->bufferOrderGroupsIndices[type].push_back(bufferIndex);
+	if (subOrder != Command_Buffer_Order_Index::dont_care) {
+		this->bufferGroupsWithSubOrders[order][subOrder] = this->allBuffers[bufferIndex].get();
+	}
+	else {
+		this->bufferGroupsWithNoSubOrder[order]->bufferOrderGroupsIndices[type].push_back(bufferIndex);
+	}
 
 	return newHandle;
 }
@@ -135,19 +185,19 @@ star::CommandBufferContainer::CompleteRequest& star::CommandBufferContainer::get
 
 void star::CommandBufferContainer::waitUntilOrderGroupReady(const int& frameIndex, const star::Command_Buffer_Order& order, const star::Command_Buffer_Type& type)
 {
-	auto waitResult = this->device.getDevice().waitForFences(this->bufferGroups[order]->fences[type].at(frameIndex), VK_TRUE, UINT64_MAX);
+	auto waitResult = this->device.getDevice().waitForFences(this->bufferGroupsWithNoSubOrder[order]->fences[type].at(frameIndex), VK_TRUE, UINT64_MAX);
 	if (waitResult != vk::Result::eSuccess) {
 		throw std::runtime_error("Failed to wait for fence");
 	}
 
-	this->device.getDevice().resetFences(this->bufferGroups[order]->fences[type].at(frameIndex));
+	this->device.getDevice().resetFences(this->bufferGroupsWithNoSubOrder[order]->fences[type].at(frameIndex));
 }
 
 std::vector<std::reference_wrapper<star::CommandBufferContainer::CompleteRequest>> star::CommandBufferContainer::getAllBuffersOfTypeAndOrderReadyToSubmit(const star::Command_Buffer_Order& order, const star::Command_Buffer_Type& type, bool triggerReset)
 {
 	std::vector<std::reference_wrapper<CompleteRequest>> buffers;
 
-	for (const auto& index : this->bufferGroups[order]->bufferOrderGroupsIndices[type]) {
+	for (const auto& index : this->bufferGroupsWithNoSubOrder[order]->bufferOrderGroupsIndices[type]) {
 		if (this->allBuffers[index]->type == type && (this->bufferSubmissionStatus[index] == 1 || this->bufferSubmissionStatus[index] == 2)) {
 			if (triggerReset)
 				this->resetThisBufferStatus(index);

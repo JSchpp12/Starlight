@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <string>
+#include <optional>
 
 namespace star {
 class StarTexture {
@@ -46,7 +47,7 @@ public:
 	/// Read the image from disk into memory or provide the image which is in memory
 	/// </summary>
 	/// <returns></returns>
-	virtual std::unique_ptr<unsigned char> data() = 0;
+	virtual std::optional<std::unique_ptr<unsigned char>> data() = 0;
 
 	vk::ImageView getImageView(vk::Format* requestedFormat = nullptr);
 	vk::Sampler getSampler() { return this->textureSampler; }

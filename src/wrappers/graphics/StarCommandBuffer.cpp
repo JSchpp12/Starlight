@@ -22,17 +22,7 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 	this->commandBuffers = this->device.getDevice().allocateCommandBuffers(allocateInfo); 
 
 	if (initTracking) {
-		this->readyFence.resize(numBuffersToCreate);
-
-		vk::FenceCreateInfo fenceInfo{};
-		fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
-		fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
-
-		for (int i = 0; i < numBuffersToCreate; i++) {
-			this->readyFence[i] = this->device.getDevice().createFence(fenceInfo);
-		}
-
-		createSemaphores();
+		this->createTracking(numBuffersToCreate);
 	}
 }
 
@@ -284,4 +274,19 @@ void star::StarCommandBuffer::createSemaphores()
 	for (int i = 0; i < this->commandBuffers.size(); i++) {
 		this->completeSemaphores.at(i) = this->device.getDevice().createSemaphore(semaphoreInfo);
 	}
+}
+
+void star::StarCommandBuffer::createTracking(const int& numBuffersToCreate)
+{
+	this->readyFence.resize(numBuffersToCreate);
+
+	vk::FenceCreateInfo fenceInfo{};
+	fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
+	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+
+	for (int i = 0; i < numBuffersToCreate; i++) {
+		this->readyFence[i] = this->device.getDevice().createFence(fenceInfo);
+	}
+
+	createSemaphores();
 }

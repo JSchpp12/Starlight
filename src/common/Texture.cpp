@@ -65,7 +65,7 @@ void star::Texture::loadFromDisk()
 	stbi_image_free(pixelData);
 }
 
-std::unique_ptr<unsigned char> star::Texture::data()
+std::optional<std::unique_ptr<unsigned char>> star::Texture::data()
 {
     //load from disk
     if (onDisk) {
@@ -118,15 +118,15 @@ std::unique_ptr<unsigned char> star::Texture::data()
         return std::move(prepData);
 
     }
-    else {
-        return std::unique_ptr<unsigned char>();
-    }
+
+	return std::optional<std::unique_ptr<unsigned char>>();
 }
 
 void star::Texture::saveToDisk(const std::string& path)
 {
-    if (this->rawData) {
-        std::unique_ptr<unsigned char> data = this->data(); 
+    auto possibleData = this->data(); 
+    if (this->rawData && possibleData.has_value()) {
+        std::unique_ptr<unsigned char>& data = possibleData.value(); 
 
         stbi_write_png(path.c_str(), this->width, this->height, this->channels, data.get(), this->width * this->channels);
     }

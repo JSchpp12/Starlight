@@ -1,6 +1,4 @@
 #include "BumpMaterial.hpp"
-#include "BumpMaterial.hpp"
-#include "BumpMaterial.hpp"
 
 void star::BumpMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder)
 {

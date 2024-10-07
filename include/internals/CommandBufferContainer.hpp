@@ -4,6 +4,11 @@
 #include "StarCommandBuffer.hpp"
 #include "Handle.hpp"
 
+#include <unordered_map>
+#include <memory>
+#include <vector>
+#include <functional>
+
 namespace star {
 	class CommandBufferContainer {
 	public:
@@ -33,21 +38,15 @@ namespace star {
 				type(type), recordOnce(recordOnce) {};
 		};
 		#
-		CommandBufferContainer(StarDevice& device, const int& numImagesInFlight)
-			: device(device)
-		{
-			for (int i = Command_Buffer_Order::before_render_pass; i <= Command_Buffer_Order::end_of_frame; i++) {
-				for (int j = Command_Buffer_Type::Tgraphics; j <= Command_Buffer_Order::end_of_frame; j++) {
-					this->bufferGroups[static_cast<star::Command_Buffer_Order>(i)] = std::make_unique<GenericBufferGroupInfo>(device, numImagesInFlight);
-				}
-			}
-		};
+		CommandBufferContainer(StarDevice& device, const int& numImagesInFlight);
 
 		~CommandBufferContainer() = default;
 
 		std::vector<vk::Semaphore> submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& swapChainIndex, std::vector<vk::Semaphore>* waitSemaphores = nullptr);
 
-		star::Handle add(std::unique_ptr<CompleteRequest> newRequest, const bool& willBeSubmittedEachFrame, const star::Command_Buffer_Type& type, const star::Command_Buffer_Order& order);
+		star::Handle add(std::unique_ptr<CompleteRequest> newRequest, const bool& willBeSubmittedEachFrame, 
+			const star::Command_Buffer_Type& type, const star::Command_Buffer_Order& order, 
+			const star::Command_Buffer_Order_Index& subOrder);
 
 		bool shouldSubmitThisBuffer(const size_t& bufferIndex);
 
@@ -100,8 +99,9 @@ namespace star {
 		};
 
 		StarDevice& device;
-		std::vector<std::unique_ptr<CompleteRequest>> allBuffers = std::vector<std::unique_ptr<CompleteRequest>>();
-		std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>> bufferGroups = std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>>();
+		std::vector<std::unique_ptr<CompleteRequest>> allBuffers																		= std::vector<std::unique_ptr<CompleteRequest>>();
+		std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>> bufferGroupsWithNoSubOrder				= std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>>();
+		std::unordered_map<star::Command_Buffer_Order, std::vector<CompleteRequest*>> bufferGroupsWithSubOrders	= std::unordered_map<star::Command_Buffer_Order, std::vector<CompleteRequest*>>();
 
 		//0 - no
 		//1 - dynamic submit

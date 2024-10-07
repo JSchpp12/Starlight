@@ -71,7 +71,12 @@ namespace star {
 
 		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
 
-		vk::Fence& getFence(const int& bufferIndex) { return this->readyFence.at(bufferIndex); }
+		vk::Fence& getFence(const int& bufferIndex) { 
+			if (this->readyFence.size() == 0)
+				createTracking(static_cast<int>(this->commandBuffers.size()));
+
+			return this->readyFence.at(bufferIndex); 
+		}
 
 		void wait(int bufferIndex);
 
@@ -91,5 +96,7 @@ namespace star {
 		void checkForImageTransitions(int bufferIndex); 
 
 		void createSemaphores(); 
+
+		void createTracking(const int& numBuffersToCreate); 
 	};
 }

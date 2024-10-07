@@ -25,7 +25,7 @@ void star::RuntimeUpdateTexture::updateGPU()
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
     );
     stagingBuffer.map();
-    std::unique_ptr<unsigned char> textureData(this->data());
+    std::unique_ptr<unsigned char> textureData(this->data().value());
     stagingBuffer.writeToBuffer(textureData.get(), imageSize);
     stagingBuffer.unmap();
 
