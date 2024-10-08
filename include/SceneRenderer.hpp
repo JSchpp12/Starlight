@@ -21,6 +21,7 @@
 #include "RenderResourceModifier.hpp"
 #include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
+#include "Texture.hpp"
 
 #include "Light.hpp"
 
@@ -43,6 +44,9 @@ public:
 	StarDescriptorSetLayout& getGlobalDescriptorLayout() { return *this->globalSetLayout; }
 
 	virtual RenderingTargetInfo getRenderingInfo() { return *this->renderToTargetInfo; }
+
+	star::Texture& getRenderToColorImage(const int& imageIndex) { return *this->renderToImages[imageIndex]; }
+	std::vector<vk::Image>* getRenderToDepthImages() { return &this->renderToDepthImages; }	
 protected:
 	struct GlobalUniformBufferObject {
 		alignas(16) glm::mat4 proj;
@@ -68,10 +72,8 @@ protected:
 	
 	std::unique_ptr<RenderingTargetInfo> renderToTargetInfo = std::unique_ptr<RenderingTargetInfo>(); 
 
-	std::vector<VmaAllocation> renderToImageAllocations;
-	std::vector<vk::Image> renderToImages;
-	std::vector<vk::ImageView> renderToImageViews;
-	std::vector<vk::Framebuffer> renderToFramebuffers;
+	std::vector<std::unique_ptr<star::Texture>> renderToImages = std::vector<std::unique_ptr<star::Texture>>(); 
+	std::vector<vk::Framebuffer> renderToFramebuffers = std::vector<vk::Framebuffer>();
 
 	//depth testing storage 
 	std::vector<vk::Image> renderToDepthImages = std::vector<vk::Image>(); 
@@ -95,7 +97,7 @@ protected:
 
 	virtual vk::Format getCurrentRenderToImageFormat() = 0; 
 
-	virtual void createRenderToImages(StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations);
+	virtual std::vector<std::unique_ptr<Texture>> createRenderToImages(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create an image view object for use in the rendering pipeline

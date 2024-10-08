@@ -21,33 +21,44 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 		std::vector<vk::Format>{ this->getCurrentRenderToImageFormat()},
 		depthFormat);
 
-	createRenderToImages(device, numFramesInFlight, this->renderToImages, this->renderToImageAllocations); 
+	this->renderToImages = createRenderToImages(device, numFramesInFlight);
 	assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering"); 
+	for (std::unique_ptr<Texture>& texture : this->renderToImages) {
+		texture->prepRender(device); 
+	}
 	
-	createImageViews(device, numFramesInFlight, this->getCurrentRenderToImageFormat()); 
 	createRenderingGroups(device, swapChainExtent, numFramesInFlight);
 }
 
-void SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations)
+std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	newRenderToImages.resize(numFramesInFlight);
-	newRenderToImageAllocations.resize(numFramesInFlight);
+	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>(); 
+
+	auto imageCreateSettings = star::StarTexture::TextureCreateSettings::createDefault(false); 
+	imageCreateSettings.imageFormat = this->getCurrentRenderToImageFormat();
+	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+	imageCreateSettings.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
+	imageCreateSettings.memoryUsage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	imageCreateSettings.imageFormat = this->getCurrentRenderToImageFormat();
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		createImage(device, this->swapChainExtent->width, this->swapChainExtent->height, this->getCurrentRenderToImageFormat(),
-			vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-			vk::MemoryPropertyFlagBits::eDeviceLocal, newRenderToImages[i], newRenderToImageAllocations[i]);
+		newRenderToImages.push_back(std::make_unique<star::Texture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
+		//createImage(device, this->swapChainExtent->width, this->swapChainExtent->height, this->getCurrentRenderToImageFormat(),
+		//	vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+		//	vk::MemoryPropertyFlagBits::eDeviceLocal, newRenderToImages[i], newRenderToImageAllocations[i]);
 	}
+
+	return newRenderToImages; 
 }
 
 void SceneRenderer::createImageViews(star::StarDevice& device, const int& numImages, const vk::Format& imageFormat)
 {
-	this->renderToImageViews.resize(numImages); 
+	//this->renderToImageViews.resize(numImages); 
 
-	//need to create an imageView for each of the images available
-	for (int i = 0; i < numImages; i++) {
-		this->renderToImageViews[i] = createImageView(device, this->renderToImages[i], imageFormat, vk::ImageAspectFlagBits::eColor);
-	}
+	////need to create an imageView for each of the images available
+	//for (int i = 0; i < numImages; i++) {
+	//	this->renderToImageViews[i] = createImageView(device, this->renderToImages[i], imageFormat, vk::ImageAspectFlagBits::eColor);
+	//}
 }
 
 void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
@@ -236,6 +247,7 @@ vk::Format SceneRenderer::createDepthResources(star::StarDevice& device, const v
 	this->renderToDepthImageViews.resize(numFramesInFlight); 
 
 	for (int i = 0; i < numFramesInFlight; i++) {
+
 		createImage(device, swapChainExtent.width, swapChainExtent.height, depthFormat,
 			vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
 			vk::MemoryPropertyFlagBits::eDeviceLocal, this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
@@ -263,17 +275,14 @@ void SceneRenderer::initResources(StarDevice& device, const int& numFramesInFlig
 
 void SceneRenderer::destroyResources(StarDevice& device)
 {
-	for (vk::ImageView& imageView : this->renderToImageViews) {
-		device.getDevice().destroyImageView(imageView); 
+	for (auto& image : this->renderToImages) {
+		image->cleanupRender(device);
 	}
 	for (vk::ImageView& imageView : this->renderToDepthImageViews) {
 		device.getDevice().destroyImageView(imageView);
 	}
 	for (int i = 0; i < this->renderToDepthImages.size(); i++) {
 		vmaDestroyImage(device.getAllocator(), this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
-	}
-	for (int i = 0; i < this->renderToImages.size(); i++) {
-		vmaDestroyImage(device.getAllocator(), this->renderToImages[i], this->renderToImageAllocations[i]);
 	}
 }
 
@@ -314,7 +323,8 @@ void SceneRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const 
 
 vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) {
 	vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-	colorAttachmentInfo.imageView = this->renderToImageViews[frameInFlightIndex];
+	//colorAttachmentInfo.imageView = this->renderToImageViews[frameInFlightIndex];
+	colorAttachmentInfo.imageView = this->renderToImages[frameInFlightIndex]->getImageView();
 	colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 	colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;

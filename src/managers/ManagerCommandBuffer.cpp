@@ -95,7 +95,7 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 		vk::SubmitInfo submitInfo{}; 
 		if (beforeSemaphores.size() > 0) {
 			submitInfo.pWaitSemaphores = beforeSemaphores.data(); 
-			submitInfo.waitSemaphoreCount = beforeSemaphores.size(); 
+			submitInfo.waitSemaphoreCount = static_cast<uint32_t>(beforeSemaphores.size()); 
 			submitInfo.pWaitDstStageMask = &mainGraphicsBuffer.waitStage; 
 		}
 		submitInfo.pCommandBuffers = &mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex);

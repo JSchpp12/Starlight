@@ -106,7 +106,7 @@ namespace star {
 		//0 - no
 		//1 - dynamic submit
 		//2 - standard always submit
-		std::vector<unsigned char> bufferSubmissionStatus;
+		std::vector<unsigned char> bufferSubmissionStatus = std::vector<unsigned char>();
 
 		void waitUntilOrderGroupReady(const int& frameIndex, const star::Command_Buffer_Order& order, const star::Command_Buffer_Type& type);
 

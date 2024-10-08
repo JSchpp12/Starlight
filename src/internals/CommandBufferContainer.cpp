@@ -83,7 +83,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 				vk::SubmitInfo submitInfo{};
 
 				if (waitSemaphores != nullptr) {
-					submitInfo.waitSemaphoreCount = waitSemaphores->size();
+					submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores->size());
 					submitInfo.pWaitSemaphores = waitSemaphores->data();
 					submitInfo.pWaitDstStageMask = waitPoints.data();
 				}

@@ -227,16 +227,22 @@ std::optional<std::function<void(star::StarCommandBuffer&, const int&, vk::Semap
 	return std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-void star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations)
+std::vector<std::unique_ptr<star::Texture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
+	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>(); 
+
 	//get images in the newly created swapchain 
-	newRenderToImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain);
+	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
+		newRenderToImages.push_back(std::make_unique<Texture>(image, vk::ImageLayout::eColorAttachmentOptimal, *this->swapChainImageFormat));
+	}
+
+	return newRenderToImages; 
 }
 
 vk::RenderingAttachmentInfo star::SwapChainRenderer::prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex)
 {
 	vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-	colorAttachmentInfo.imageView = this->renderToImageViews[this->currentSwapChainImageIndex];
+	colorAttachmentInfo.imageView = this->renderToImages[this->currentSwapChainImageIndex]->getImageView();
 	colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 	colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
@@ -256,7 +262,7 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuff
 	presentBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
 	presentBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
 	presentBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-	presentBarrier.image = this->renderToImages[this->currentSwapChainImageIndex];
+	presentBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getImage();
 	presentBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 	presentBarrier.subresourceRange.baseMipLevel = 0;
 	presentBarrier.subresourceRange.levelCount = 1;
@@ -449,15 +455,14 @@ void star::SwapChainRenderer::recreateSwapChain()
 
 void star::SwapChainRenderer::cleanupSwapChain()
 {
+	for (auto& image : this->renderToImages) {
+		image->cleanupRender(this->device);
+	}
 	for (vk::ImageView& imageView : this->renderToDepthImageViews) {
 		this->device.getDevice().destroyImageView(imageView);
 	}
 	for (int i = 0; i < this->renderToDepthImages.size(); i++) {
 		vmaDestroyImage(this->device.getAllocator(), this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
-	}
-
-	for (vk::ImageView& imageView : this->renderToImageViews) {
-		this->device.getDevice().destroyImageView(imageView);
 	}
 
 	this->device.getDevice().destroySwapchainKHR(this->swapChain);

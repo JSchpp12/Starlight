@@ -4,8 +4,7 @@
 
 #include "StarTexture.hpp"
 
-
-
+#include <vulkan/vulkan.hpp>
 #include <memory> 
 #include <vector> 
 #include <string> 
@@ -20,6 +19,8 @@ namespace star {
     public:
         std::string pathToFile = "";
         bool onDisk = false;
+
+        Texture(const vk::Image& image, const vk::ImageLayout& layout, const vk::Format& format); 
 
         Texture(int texWidth, int texHeight);
 

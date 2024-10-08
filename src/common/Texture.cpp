@@ -5,6 +5,10 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+star::Texture::Texture(const vk::Image& image, const vk::ImageLayout& layout, const vk::Format& format) : StarTexture(image, layout, format)
+{
+}
+
 star::Texture::Texture(int texWidth, int texHeight)
 	: width(texWidth), height(texHeight), channels(4), onDisk(false) {}
 

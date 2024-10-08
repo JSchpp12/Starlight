@@ -2,11 +2,14 @@
 
 namespace star {
 void StarTexture::prepRender(StarDevice& device) {
-	assert(!this->isRenderReady && "Each texture should only be prepared once"); 
+	if (this->isRenderReady)
+		return; 
 
-	createTextureImage(device);
-	createTextureImageView(device);
-	createImageSampler(device);
+	if (!this->textureImage)
+		createTextureImage(device);
+	createTextureImageView(device, this->createSettings->imageFormat);
+	if (this->createSettings->createSampler)
+		createImageSampler(device);
 
 	this->createSettings.release(); 
 	this->isRenderReady = true; 
@@ -16,13 +19,16 @@ void StarTexture::cleanupRender(StarDevice& device)
 {
 	assert(this->isRenderReady && "Only textures which are ready for rendering operations need to be cleaned up"); 
 
-	device.getDevice().destroySampler(this->textureSampler);
+	if (this->textureSampler)
+		device.getDevice().destroySampler(*this->textureSampler);
+
 	for (auto& item : this->imageViews) {
 		device.getDevice().destroyImageView(item.second);
 	}
 
-	device.getDevice().destroyImage(this->textureImage);
-	device.getDevice().freeMemory(this->imageMemory);
+	//only destroy if the image memory was allocated with the creation of this instance
+	if (this->textureImage && this->imageAllocation)
+		vmaDestroyImage(device.getAllocator(), this->textureImage, *this->imageAllocation);
 
 	this->isRenderReady = false; 
 }
@@ -44,14 +50,12 @@ void StarTexture::createTextureImage(StarDevice& device) {
 	int height = this->getHeight(); 
 	int width = this->getWidth(); 
 	int channels = this->getChannels(); 
-	bool isMutable = false; 
-
-	if (this->createSettings->viewFormats.size() > 1) {
-		isMutable = true; 
-	}
+	bool isMutable = this->createSettings->isMutable; 
 
 	//image has data in cpu memory, it must be copied over
 	try {
+		this->imageAllocation = std::make_unique<VmaAllocation>();
+
 		auto possibleData = this->data(); 
 		if (possibleData.has_value()) {
 			std::unique_ptr<unsigned char>& textureData = possibleData.value(); 
@@ -59,8 +63,9 @@ void StarTexture::createTextureImage(StarDevice& device) {
 
 			//image will be transfered from cpu memory, make sure proper flags are set
 			this->createSettings->imageUsage = this->createSettings->imageUsage | vk::ImageUsageFlagBits::eTransferDst;
+			this->createSettings->allocationCreateFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
+			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
 
 			auto data = this->data();
 			StarBuffer stagingBuffer(
@@ -85,7 +90,7 @@ void StarTexture::createTextureImage(StarDevice& device) {
 			stagingBuffer.unmap(); 
 		}
 		else {
-			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, vk::MemoryPropertyFlagBits::eDeviceLocal, textureImage, imageMemory, isMutable);
+			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
 		}
 	}
 	catch (const std::exception& e) {
@@ -96,8 +101,11 @@ void StarTexture::createTextureImage(StarDevice& device) {
 }
 
 void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t height, vk::Format format,
-	vk::ImageTiling tiling, vk::ImageUsageFlags usage,
-	vk::MemoryPropertyFlagBits properties, vk::Image& image, vk::DeviceMemory& imageMemory, bool isMutable) {
+	vk::ImageTiling tiling, vk::ImageUsageFlags usage, const VmaMemoryUsage& memoryUsage, 
+	const VmaAllocationCreateFlags& allocationCreateFlags, vk::Image& image, 
+	VmaAllocation& imageMemory, bool isMutable, 
+	vk::MemoryPropertyFlags* optional_setRequiredMemoryPropertyFlags) 
+{
 
 	/* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
@@ -119,26 +127,18 @@ void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t heigh
 		imageInfo.flags = vk::ImageCreateFlagBits::eMutableFormat; 
 
 	device.verifyImageCreate(imageInfo);
-	
-	image = device.getDevice().createImage(imageInfo);
-	if (!image) {
-		throw std::runtime_error("failed to create image");
+
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.flags = allocationCreateFlags;
+	allocInfo.usage = memoryUsage;
+	if (optional_setRequiredMemoryPropertyFlags != nullptr)
+		allocInfo.requiredFlags = (VkMemoryPropertyFlags)optional_setRequiredMemoryPropertyFlags;
+
+	auto result = vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
+
+	if (result != VK_SUCCESS) {
+		throw std::exception("Failed to create image: " + result); 
 	}
-
-	/* Allocate the memory for the imag*/
-	vk::MemoryRequirements memRequirements = device.getDevice().getImageMemoryRequirements(image);
-
-	vk::MemoryAllocateInfo allocInfo{};
-	allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = device.findMemoryType(memRequirements.memoryTypeBits, properties);
-
-	imageMemory = device.getDevice().allocateMemory(allocInfo);
-	if (!imageMemory) {
-		throw std::runtime_error("failed to allocate image memory!");
-	}
-
-	device.getDevice().bindImageMemory(image, imageMemory, 0);
 }
 
 void StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, 
@@ -321,17 +321,16 @@ void StarTexture::createImageSampler(StarDevice& device) {
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
 
-	this->textureSampler = device.getDevice().createSampler(samplerInfo);
+	this->textureSampler = std::make_unique<vk::Sampler>(device.getDevice().createSampler(samplerInfo));
 	if (!this->textureSampler) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
 }
 
-void StarTexture::createTextureImageView(StarDevice& device) {
-	for (auto& format : this->createSettings->viewFormats) {
-		auto imageView = createImageView(device, textureImage, this->createSettings->imageFormat, vk::ImageAspectFlagBits::eColor);
-		this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(format, imageView)); 
-	}
+void StarTexture::createTextureImageView(StarDevice& device, const vk::Format& viewFormat) {
+	vk::ImageView imageView = createImageView(device, textureImage, this->createSettings->imageFormat, vk::ImageAspectFlagBits::eColor);
+	this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
+	
 }
 
 vk::ImageView StarTexture::createImageView(StarDevice& device, vk::Image image, 
