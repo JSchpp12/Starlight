@@ -328,9 +328,8 @@ void StarTexture::createImageSampler(StarDevice& device) {
 }
 
 void StarTexture::createTextureImageView(StarDevice& device, const vk::Format& viewFormat) {
-	vk::ImageView imageView = createImageView(device, textureImage, this->createSettings->imageFormat, vk::ImageAspectFlagBits::eColor);
+	vk::ImageView imageView = createImageView(device, textureImage, viewFormat, vk::ImageAspectFlagBits::eColor);
 	this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
-	
 }
 
 vk::ImageView StarTexture::createImageView(StarDevice& device, vk::Image image, 
