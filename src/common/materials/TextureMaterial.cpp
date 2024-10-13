@@ -45,3 +45,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::get
 		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1)
 	};
 }
+
+void star::TextureMaterial::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+{
+}

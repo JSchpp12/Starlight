@@ -11,7 +11,8 @@
 namespace star {
 	class ManagerDescriptorPool {
 	public:
-		static void request(std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)> newRequest);
+		static void request(std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)> newRequest, 
+			std::function<void(StarDevice&, const int&)> createCall);
 
 		static StarDescriptorPool& getPool();
 
@@ -21,11 +22,14 @@ namespace star {
 
 		void init(const int& numFramesInFlight);
 
+		void update(const int& numFramesInFlight); 
+
 	private:
 		//are the pools ready for use?
 		static bool ready; 
 		//static std::stack<std::pair<vk::DescriptorType, int>> requests;
 		static std::stack<std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>> requestCallbacks;
+		static std::stack<std::function<void(StarDevice&, const int&)>> creationCallbacks; 
 
 		static StarDescriptorPool* pool; 
 

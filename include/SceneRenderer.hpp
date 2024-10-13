@@ -44,8 +44,8 @@ public:
 	StarDescriptorSetLayout& getGlobalDescriptorLayout() { return *this->globalSetLayout; }
 
 	virtual RenderingTargetInfo getRenderingInfo() { return *this->renderToTargetInfo; }
-
-	star::Texture& getRenderToColorImage(const int& imageIndex) { return *this->renderToImages[imageIndex]; }
+	
+	std::vector<std::unique_ptr<star::Texture>>* getRenderToColorImages() { return &this->renderToImages; }
 	std::vector<vk::Image>* getRenderToDepthImages() { return &this->renderToDepthImages; }	
 protected:
 	struct GlobalUniformBufferObject {
@@ -114,10 +114,7 @@ protected:
 
 	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 	
-	/// <summary>
-	/// Create descriptor pools for the descriptors used by the main rendering engine.
-	/// </summary>
-	virtual void createDescriptors(StarDevice& device, const int& numFramesInFlight);
+	virtual void manualCreateDescriptors(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 
@@ -178,5 +175,6 @@ protected:
 private:
 	// Inherited via DescriptorModifier
 	std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
+	void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
 };
 }

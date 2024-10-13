@@ -1,6 +1,5 @@
 #include "StarDescriptors.hpp"
 
-
 namespace star {
 StarDescriptorSetLayout::Builder& StarDescriptorSetLayout::Builder::addBinding(uint32_t binding,
 	vk::DescriptorType descriptorType,

@@ -18,3 +18,7 @@ void star::VertColorMaterial::prep(StarDevice& device)
 {
 
 }
+
+void star::VertColorMaterial::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+{
+}

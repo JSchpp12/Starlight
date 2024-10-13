@@ -1,7 +1,7 @@
 #include "StarCommandBuffer.hpp"
 
 star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToCreate, 
-	star::Command_Buffer_Type type, bool initTracking)
+	star::Command_Buffer_Type type, bool initFences, bool initSemaphores)
 	: device(device), targetQueue(device.getQueue(type))
 {
 	this->recordedImageTransitions.resize(numBuffersToCreate); 
@@ -19,11 +19,13 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 	allocateInfo.level = vk::CommandBufferLevel::ePrimary; 
 	allocateInfo.commandBufferCount = (uint32_t)numBuffersToCreate; 
 	
-	this->commandBuffers = this->device.getDevice().allocateCommandBuffers(allocateInfo); 
+	this->commandBuffers = this->device.getDevice().allocateCommandBuffers(allocateInfo);  
 
-	if (initTracking) {
-		this->createTracking(numBuffersToCreate);
-	}
+	if (initFences) 
+		createFences(); 
+	
+	if (initSemaphores)
+		createSemaphores(); 
 }
 
 star::StarCommandBuffer::~StarCommandBuffer()
@@ -40,6 +42,9 @@ star::StarCommandBuffer::~StarCommandBuffer()
 
 void star::StarCommandBuffer::begin(int buffIndex)
 {
+	if (this->readyFence.size() > 0)
+		wait(buffIndex);
+
 	vk::CommandBufferBeginInfo beginInfo{};
 	//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
@@ -76,8 +81,6 @@ void star::StarCommandBuffer::begin(int buffIndex, vk::CommandBufferBeginInfo be
 
 void star::StarCommandBuffer::submit(int bufferIndex){
 	assert(this->recorded && "Buffer should be recorded before submission");
-
-	wait(bufferIndex); 
 
 	vk::SubmitInfo submitInfo{}; 
 
@@ -276,17 +279,20 @@ void star::StarCommandBuffer::createSemaphores()
 	}
 }
 
-void star::StarCommandBuffer::createTracking(const int& numBuffersToCreate)
+void star::StarCommandBuffer::createTracking()
 {
-	this->readyFence.resize(numBuffersToCreate);
+	createFences(); 
+	createSemaphores();
+}
+
+void star::StarCommandBuffer::createFences() {
+	this->readyFence.resize(this->commandBuffers.size());
 
 	vk::FenceCreateInfo fenceInfo{};
 	fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
 	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
-	for (int i = 0; i < numBuffersToCreate; i++) {
+	for (int i = 0; i < this->readyFence.size(); i++) {
 		this->readyFence[i] = this->device.getDevice().createFence(fenceInfo);
 	}
-
-	createSemaphores();
 }

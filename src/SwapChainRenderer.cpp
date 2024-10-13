@@ -233,7 +233,11 @@ std::vector<std::unique_ptr<star::Texture>> star::SwapChainRenderer::createRende
 
 	//get images in the newly created swapchain 
 	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
-		newRenderToImages.push_back(std::make_unique<Texture>(image, vk::ImageLayout::eColorAttachmentOptimal, *this->swapChainImageFormat));
+		newRenderToImages.push_back(std::make_unique<Texture>(image, vk::ImageLayout::eUndefined, *this->swapChainImageFormat));
+
+		auto buffer = device.beginSingleTimeCommands(); 
+		newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput); 
+		device.endSingleTimeCommands(buffer); 
 	}
 
 	return newRenderToImages; 
@@ -254,11 +258,31 @@ vk::RenderingAttachmentInfo star::SwapChainRenderer::prepareDynamicRenderingInfo
 void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
 {
 	//transition image layout
+	vk::ImageMemoryBarrier setupBarrier{}; 
+	setupBarrier.sType = vk::StructureType::eImageMemoryBarrier; 
+	setupBarrier.oldLayout = vk::ImageLayout::ePresentSrcKHR; 
+	setupBarrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal; 
+	setupBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor; 
+	setupBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored; 
+	setupBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored; 
+	setupBarrier.srcAccessMask = vk::AccessFlagBits::eNone; 
+	setupBarrier.dstAccessMask = vk::AccessFlagBits::eShaderWrite;
+	setupBarrier.subresourceRange.baseMipLevel = 0; 
+	setupBarrier.subresourceRange.levelCount = 1;
+	setupBarrier.subresourceRange.baseArrayLayer = 0;
+	setupBarrier.subresourceRange.layerCount = 1;
+	setupBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getImage(); 
 
-	//for presentation will need to change layout of the image to presentation
+	commandBuffer.pipelineBarrier(
+		vk::PipelineStageFlagBits::eTopOfPipe,
+		vk::PipelineStageFlagBits::eVertexShader,
+		{}, {}, nullptr, setupBarrier
+	);
+
+	////for presentation will need to change layout of the image to presentation
  	vk::ImageMemoryBarrier presentBarrier{};
 	presentBarrier.sType = vk::StructureType::eImageMemoryBarrier;
-	presentBarrier.oldLayout = vk::ImageLayout::eUndefined;
+	presentBarrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	presentBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
 	presentBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
 	presentBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;

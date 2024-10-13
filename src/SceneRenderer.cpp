@@ -14,7 +14,7 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 	this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
 	createRenderingBuffers(device, numFramesInFlight);
-	createDescriptors(device, numFramesInFlight);
+	manualCreateDescriptors(device, numFramesInFlight);
 	vk::Format depthFormat = createDepthResources(device, swapChainExtent, numFramesInFlight);
 
 	this->renderToTargetInfo = std::make_unique<RenderingTargetInfo>(
@@ -46,6 +46,11 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 		//createImage(device, this->swapChainExtent->width, this->swapChainExtent->height, this->getCurrentRenderToImageFormat(),
 		//	vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
 		//	vk::MemoryPropertyFlagBits::eDeviceLocal, newRenderToImages[i], newRenderToImageAllocations[i]);
+		newRenderToImages.back()->prepRender(device); 
+
+		auto oneTimeSetup = device.beginSingleTimeCommands(); 
+		newRenderToImages.back()->transitionLayout(oneTimeSetup, vk::ImageLayout::eColorAttachmentOptimal, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput);
+		device.endSingleTimeCommands(oneTimeSetup); 
 	}
 
 	return newRenderToImages; 
@@ -147,7 +152,7 @@ vk::ImageView SceneRenderer::createImageView(star::StarDevice& device, vk::Image
 	return imageView;
 }
 
-void SceneRenderer::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+void SceneRenderer::manualCreateDescriptors(star::StarDevice& device, const int& numFramesInFlight)
 {
 	this->globalSetLayout = StarDescriptorSetLayout::Builder(device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
@@ -292,6 +297,10 @@ std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescript
 		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eUniformBuffer, numFramesInFlight),
 		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)
 	};
+}
+
+void SceneRenderer::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+{
 }
 
 void SceneRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)

@@ -1,29 +1,31 @@
 #include "internals/CommandBufferContainer.hpp"
 
 star::CommandBufferContainer::CommandBufferContainer(StarDevice& device, const int& numImagesInFlight)
-	: device(device)
+	: device(device), bufferGroupsWithSubOrders({
+		std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<CompleteRequest*>(5)),
+		std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<CompleteRequest*>(5)),
+		std::make_pair(star::Command_Buffer_Order::after_render_pass, std::vector<CompleteRequest*>(5)), 
+		std::make_pair(star::Command_Buffer_Order::end_of_frame, std::vector<CompleteRequest*>(5))
+	})
 {
-	for (int i = Command_Buffer_Order::before_render_pass; i <= Command_Buffer_Order::end_of_frame; i++) {
-		for (int j = Command_Buffer_Type::Tgraphics; j <= Command_Buffer_Order::end_of_frame; j++) {
-			this->bufferGroupsWithNoSubOrder[static_cast<star::Command_Buffer_Order>(i)] = std::make_unique<GenericBufferGroupInfo>(device, numImagesInFlight);
-			this->bufferGroupsWithSubOrders[static_cast<star::Command_Buffer_Order>(i)] = std::vector<CompleteRequest*>();
-			for (int k = Command_Buffer_Order_Index::first; k != Command_Buffer_Order_Index::fifth; k++) {
-				this->bufferGroupsWithSubOrders[static_cast<star::Command_Buffer_Order>(i)].push_back(nullptr); 
-			}
-		}
+
+	for (int i = Command_Buffer_Order::before_render_pass; i != Command_Buffer_Order::presentation; i++) {
+		this->bufferGroupsWithNoSubOrder[static_cast<star::Command_Buffer_Order>(i)] = std::make_unique<GenericBufferGroupInfo>(device, numImagesInFlight);
 	}
 }
 
 std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& swapChainIndex, std::vector<vk::Semaphore>* waitSemaphores)
 {
+	if (!this->subOrderSemaphoresUpToDate) {
+		this->updateSemaphores(); 
+		this->subOrderSemaphoresUpToDate = true;
+	}
 	//submit buffers which have a suborder first
 	for (int i = star::Command_Buffer_Order_Index::first; i != star::Command_Buffer_Order_Index::fifth; i++) {
-		if (this->bufferGroupsWithSubOrders[order][i] == nullptr)
+		if (this->bufferGroupsWithSubOrders[order][i-1] == nullptr)
 			break;
 
-		CompleteRequest* buffer = this->bufferGroupsWithSubOrders[order][i];
-
-		this->device.getDevice().waitForFences(buffer->commandBuffer->getFence(swapChainIndex), VK_TRUE, UINT64_MAX);
+			CompleteRequest* buffer = this->bufferGroupsWithSubOrders[order][i-1];
 
 		if (buffer->beforeBufferSubmissionCallback.has_value())
 			buffer->beforeBufferSubmissionCallback.value()(swapChainIndex);
@@ -32,13 +34,6 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 			buffer->commandBuffer->begin(swapChainIndex); 
 			buffer->recordBufferCallback(buffer->commandBuffer->buffer(swapChainIndex), swapChainIndex);
 			buffer->commandBuffer->buffer(swapChainIndex).end();
-		}
-
-		//set the next buffer to be executed to wait on the current buffer
-		if (i < this->bufferGroupsWithSubOrders[order].size()-1) {
-			CompleteRequest* nextBuffer = this->bufferGroupsWithSubOrders[order][i + (int)1];
-			if (nextBuffer != nullptr)
-				nextBuffer->commandBuffer->waitFor(*buffer->commandBuffer, nextBuffer->waitStage);
 		}
 
 		buffer->commandBuffer->submit(swapChainIndex);
@@ -145,7 +140,9 @@ star::Handle star::CommandBufferContainer::add(std::unique_ptr<star::CommandBuff
 	this->bufferSubmissionStatus.push_back(willBeSubmittedEachFrame ? 2 : 0);
 
 	if (subOrder != Command_Buffer_Order_Index::dont_care) {
-		this->bufferGroupsWithSubOrders[order][subOrder] = this->allBuffers[bufferIndex].get();
+		assert(subOrder != 0 && "This should never happen"); 
+		this->subOrderSemaphoresUpToDate = false; 
+		this->bufferGroupsWithSubOrders[order][static_cast<int>(subOrder)-1] = this->allBuffers[bufferIndex].get();
 	}
 	else {
 		this->bufferGroupsWithNoSubOrder[order]->bufferOrderGroupsIndices[type].push_back(bufferIndex);
@@ -209,3 +206,17 @@ std::vector<std::reference_wrapper<star::CommandBufferContainer::CompleteRequest
 	return buffers;
 }
 
+void star::CommandBufferContainer::updateSemaphores() {
+	for (int i = star::Command_Buffer_Order::before_render_pass; i != Command_Buffer_Order::presentation; i++) {
+		if (this->bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][0] != nullptr) {
+			for (int j = Command_Buffer_Order_Index::second; j < Command_Buffer_Order_Index::fifth; j++) {
+				auto* currentBuffer = this->bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][j - 1];
+				auto* nextBuffer = this->bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][j]; 
+
+				if (nextBuffer != nullptr) {
+					nextBuffer->commandBuffer->waitFor(currentBuffer->commandBuffer->getCompleteSemaphores(), nextBuffer->waitStage); 
+				}
+			}
+		}
+	}
+}

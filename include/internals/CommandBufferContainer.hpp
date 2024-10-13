@@ -108,8 +108,13 @@ namespace star {
 		//2 - standard always submit
 		std::vector<unsigned char> bufferSubmissionStatus = std::vector<unsigned char>();
 
+		//Indicates if all semaphores are updated with the proper order of execution
+		bool subOrderSemaphoresUpToDate = false; 
+
 		void waitUntilOrderGroupReady(const int& frameIndex, const star::Command_Buffer_Order& order, const star::Command_Buffer_Type& type);
 
 		std::vector<std::reference_wrapper<CompleteRequest>> getAllBuffersOfTypeAndOrderReadyToSubmit(const star::Command_Buffer_Order& order, const star::Command_Buffer_Type& type, bool triggerReset = false);
+
+		void updateSemaphores(); 
 	};
 }

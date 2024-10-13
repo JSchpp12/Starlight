@@ -28,5 +28,8 @@ namespace star {
 
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 
+		// Inherited via StarMaterial
+		void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
+
 	};
 }
