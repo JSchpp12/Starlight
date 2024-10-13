@@ -100,12 +100,6 @@ protected:
 	virtual std::vector<std::unique_ptr<Texture>> createRenderToImages(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
-	/// Create an image view object for use in the rendering pipeline
-	/// 'Image View': describes how to access an image and what part of an image to access
-	/// </summary>
-	virtual void createImageViews(StarDevice& device, const int& numImages, const vk::Format& imageFormat);
-
-	/// <summary>
 	/// Create vertex buffer + index buffers + any rendering groups for operations
 	/// </summary>
 	virtual void createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight);

@@ -43,9 +43,6 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 
 	for (int i = 0; i < numFramesInFlight; i++) {
 		newRenderToImages.push_back(std::make_unique<star::Texture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
-		//createImage(device, this->swapChainExtent->width, this->swapChainExtent->height, this->getCurrentRenderToImageFormat(),
-		//	vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-		//	vk::MemoryPropertyFlagBits::eDeviceLocal, newRenderToImages[i], newRenderToImageAllocations[i]);
 		newRenderToImages.back()->prepRender(device); 
 
 		auto oneTimeSetup = device.beginSingleTimeCommands(); 
@@ -54,16 +51,6 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 	}
 
 	return newRenderToImages; 
-}
-
-void SceneRenderer::createImageViews(star::StarDevice& device, const int& numImages, const vk::Format& imageFormat)
-{
-	//this->renderToImageViews.resize(numImages); 
-
-	////need to create an imageView for each of the images available
-	//for (int i = 0; i < numImages; i++) {
-	//	this->renderToImageViews[i] = createImageView(device, this->renderToImages[i], imageFormat, vk::ImageAspectFlagBits::eColor);
-	//}
 }
 
 void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
