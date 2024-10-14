@@ -30,7 +30,7 @@ namespace star {
 			bool recordOnce; 
 			std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback;
 			std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback;
-			std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> overrideBufferSubmissionCallback;
+			std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback;
 
 			CommandBufferRequest(std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback, 
 				std::function<void(star::Handle)> promiseBufferHandleCallback, 
@@ -40,7 +40,7 @@ namespace star {
 				const bool& willBeSubmittedEachFrame, 
 				const bool& recordOnce, std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback, 
 				std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback, 
-				std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> overrideBufferSubmissionCallback)
+				std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback)
 				: recordBufferCallback(recordBufferCallback), promiseBufferHandleCallback(promiseBufferHandleCallback),
 				order(order), orderIndex(orderIndex),
 				type(type), waitStage(waitStage),

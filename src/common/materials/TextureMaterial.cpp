@@ -21,7 +21,7 @@ void star::TextureMaterial::cleanup(StarDevice& device)
 		texture->cleanupRender(device); 
 }
 
-vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
+vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& imageInFlightIndex)
 {
 	auto sets = std::vector<vk::DescriptorSet>(); 
 	auto layoutBuilder = star::StarDescriptorSetLayout::Builder(device); 

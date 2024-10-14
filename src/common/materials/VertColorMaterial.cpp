@@ -4,7 +4,7 @@ void star::VertColorMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetL
 {
 }
 
-vk::DescriptorSet star::VertColorMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
+vk::DescriptorSet star::VertColorMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& imageInFlightIndex)
 {
 	return vk::DescriptorSet();
 }

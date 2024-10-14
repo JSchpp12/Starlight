@@ -59,6 +59,7 @@ void star::ManagerCommandBuffer::handleNewRequests()
 			for (int i = 0; i < this->numFramesInFlight; i++) {
 				this->buffers.getBuffer(newHandle).commandBuffer->begin(i);
 				request.recordBufferCallback(this->buffers.getBuffer(newHandle).commandBuffer->buffer(i), i);
+				this->buffers.getBuffer(newHandle).commandBuffer->buffer(i).end(); 
 			}
 		}
 
@@ -88,9 +89,7 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 	}
 
 	if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value()) {
-		assert(beforeSemaphores.size() == 0 || beforeSemaphores.size() >= 1 && "More than one semaphore is not yet supported!");
-		vk::Semaphore* selectedBeforeSemaphore = beforeSemaphores.size() != 0 ? &beforeSemaphores[0] : nullptr; 
-		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, selectedBeforeSemaphore);
+		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, beforeSemaphores);
 	} else {
 		mainGraphicsBuffer.commandBuffer->submit(swapChainIndex);
 	}

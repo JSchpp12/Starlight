@@ -20,7 +20,7 @@ void star::BumpMaterial::cleanup(StarDevice& device)
 }
 
 vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
-	StarDescriptorPool& groupPool)
+	StarDescriptorPool& groupPool, const int& imageInFlightIndex)
 
 {
 	auto sets = std::vector<vk::DescriptorSet>(); 

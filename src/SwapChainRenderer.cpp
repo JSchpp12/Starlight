@@ -191,13 +191,14 @@ void star::SwapChainRenderer::submissionDone()
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, vk::Semaphore* mustWaitFor)
+void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor)
 {
 	vk::SubmitInfo submitInfo{}; 
 	std::vector<vk::Semaphore> waitSemaphores = { imageAvailableSemaphores[this->currentFrame] }; 
 	std::vector<vk::PipelineStageFlags> waitStages = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
-	if (mustWaitFor != nullptr) {
-		waitSemaphores.push_back(*mustWaitFor);
+
+	for (auto& semaphore : mustWaitFor) {
+		waitSemaphores.push_back(semaphore);
 		waitStages.push_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	}
 
@@ -222,9 +223,9 @@ std::optional<std::function<void(const int&)>> star::SwapChainRenderer::getAfter
 	return std::optional<std::function<void(const int&)>>(std::bind(&SwapChainRenderer::submissionDone, this));
 }
 
-std::optional<std::function<void(star::StarCommandBuffer&, const int&, vk::Semaphore*)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
+std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
 {
-	return std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 std::vector<std::unique_ptr<star::Texture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)

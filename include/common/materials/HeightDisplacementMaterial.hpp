@@ -28,6 +28,6 @@ namespace star {
 		// Inherited via StarMaterial
 		void cleanup(StarDevice& device) override;
 
-		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool) override;
+		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& frameInFlightIndex) override;
 	};
 }

@@ -28,7 +28,7 @@ void star::StarMaterial::finalizeDescriptors(StarDevice& device, std::vector<std
 
 			if (groupLayouts.size() >= 3) {
 				auto& groupLayout = groupLayouts.at(2); 
-				vk::DescriptorSet newDescriptor = this->buildDescriptorSet(device, groupLayout, groupPool);
+				vk::DescriptorSet newDescriptor = this->buildDescriptorSet(device, groupLayout, groupPool, i);
 				//another sign I need a better wrapper for descriptor set creation
 				if (newDescriptor)
 				{
@@ -62,5 +62,9 @@ void star::StarMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayo
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(const int& numFramesInFlight)
 {
 	return std::vector<std::pair<vk::DescriptorType, const int>>();
+}
+
+void star::StarMaterial::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+{
 }
 
