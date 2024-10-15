@@ -68,12 +68,16 @@ void StarTexture::createTextureImage(StarDevice& device) {
 			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
 
 			auto data = this->data();
+
 			StarBuffer stagingBuffer(
 				device,
 				imageSize,
-				1,
+				uint32_t(1),
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+				VMA_MEMORY_USAGE_AUTO,
 				vk::BufferUsageFlagBits::eTransferSrc,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+				vk::SharingMode::eConcurrent
+			);
 			stagingBuffer.map();
 
 			stagingBuffer.writeToBuffer(textureData.get(), imageSize);

@@ -311,7 +311,17 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 			vk::DeviceSize minAlignmentOfUBOElements = StarBuffer::getAlignment(perInstanceSize, minProp);
 			vk::DeviceSize size = minAlignmentOfUBOElements * instanceCount;
 
-			this->instanceUniformBuffers.at(i).emplace_back(std::make_unique<StarBuffer>(device, size, instanceCount, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible, minProp));
+			this->instanceUniformBuffers.at(i).emplace_back(
+				std::make_unique<StarBuffer>(
+					device,
+					size,
+					uint32_t(instanceCount),
+					VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+					VMA_MEMORY_USAGE_AUTO,
+					vk::BufferUsageFlagBits::eUniformBuffer,
+					vk::SharingMode::eConcurrent,
+					minProp
+				));
 		}
 	}
 }
@@ -337,17 +347,24 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 			device,
 			size,
 			count,
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+			vk::SharingMode::eConcurrent
 		};
+
 		stagingBuffer.map();
 		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
 
-		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(device,
+		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(
+			device,
 			size,
-			count,
+			uint32_t(count),
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+			vk::SharingMode::eConcurrent
+		);
 
 		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxVertBuffer->getBuffer(), bufferSize);
 	}
@@ -357,21 +374,27 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 		vk::DeviceSize bufferSize = size * bbInds.size();
 		uint32_t count = bbInds.size();
 
-
-		StarBuffer stagingBuffer = StarBuffer(device,
+		StarBuffer stagingBuffer{
+			device,
 			size,
 			count,
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostCoherent);
+			vk::SharingMode::eConcurrent
+
+		};
 		stagingBuffer.map();
 		stagingBuffer.writeToBuffer(bbInds.data());
 
 		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
 			device,
 			size,
-			count,
+			uint32_t(count),
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal
+			vk::SharingMode::eConcurrent
 		);
 		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxIndBuffer->getBuffer(), bufferSize);
 	}

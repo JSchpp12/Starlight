@@ -208,14 +208,28 @@ void SceneRenderer::createRenderingBuffers(star::StarDevice& device, const int& 
 
 	for (size_t i = 0; i < numFramesInFlight; i++) {
 		auto numOfObjects = this->objectList.size(); 
-		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(device, this->objectList.size(), sizeof(GlobalUniformBufferObject),
-			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(
+			device,
+			sizeof(GlobalUniformBufferObject),
+			this->objectList.size(),
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
+			vk::BufferUsageFlagBits::eUniformBuffer,
+			vk::SharingMode::eConcurrent
+		);
 		this->globalUniformBuffers[i]->map();
 
 		//create light buffers 
 		if (this->lightList.size() > 0) {
-			this->lightBuffers[i] = std::make_unique<StarBuffer>(device, this->lightList.size(), sizeof(LightBufferObject) * this->lightList.size(),
-				vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			this->lightBuffers[i] = std::make_unique<StarBuffer>(
+				device,
+				this->lightList.size(),
+				(uint32_t)sizeof(LightBufferObject) * (uint32_t)this->lightList.size(),
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+				VMA_MEMORY_USAGE_AUTO,
+				vk::BufferUsageFlagBits::eStorageBuffer,
+				vk::SharingMode::eConcurrent
+			);
 			this->lightBuffers[i]->map();
 		}
 	}
@@ -319,7 +333,6 @@ void SceneRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const 
 
 vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) {
 	vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-	//colorAttachmentInfo.imageView = this->renderToImageViews[frameInFlightIndex];
 	colorAttachmentInfo.imageView = this->renderToImages[frameInFlightIndex]->getImageView();
 	colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;

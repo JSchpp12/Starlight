@@ -12,6 +12,7 @@
 #include "ManagerDescriptorPool.hpp"
 #include "StarRenderGroup.hpp"
 #include "ManagerCommandBuffer.hpp"
+#include "ManagerBuffer.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -46,5 +47,6 @@ protected:
 
 private: 
 	static std::unique_ptr<std::string> screenshotPath;
+	//static ManagerBuffer bufferManager; 
 };
 }

@@ -89,12 +89,14 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 
 	vk::DeviceSize vertexSize = sizeof(star::Vertex);
 	std::unique_ptr<StarBuffer> vertBuffer = std::make_unique<StarBuffer>(
-		device, 
-		vertexSize, 
-		totalVertInstanceCount,
-		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, 
-		vk::MemoryPropertyFlagBits::eDeviceLocal
-	); 
+		device,
+		vertexSize,
+		uint32_t(totalVertInstanceCount),
+		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+		VMA_MEMORY_USAGE_AUTO,
+		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+		vk::SharingMode::eConcurrent
+	);
 	{
 		vk::DeviceSize currentOffset = 0;
 		for (auto& vertStage : stagingBuffersVert) {
@@ -107,10 +109,13 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 	std::unique_ptr<StarBuffer> indBuffer = std::make_unique<StarBuffer>(
 		device,
 		indSize,
-		totalIndInstanceCount,
+		uint32_t(totalIndInstanceCount),
+		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+		VMA_MEMORY_USAGE_AUTO,
 		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-		vk::MemoryPropertyFlagBits::eDeviceLocal
+		vk::SharingMode::eConcurrent
 	);
+
 	{
 		vk::DeviceSize currentOffset = 0; 
 
