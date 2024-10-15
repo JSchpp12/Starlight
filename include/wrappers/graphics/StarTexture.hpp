@@ -7,10 +7,12 @@
 #include "ConfigFile.hpp"
 
 #include <vulkan/vulkan.hpp>
+#include <vma/vk_mem_alloc.h>
 #include <sstream>
 
 #include <memory>
 #include <string>
+#include <optional>
 
 namespace star {
 class StarTexture {
@@ -20,19 +22,41 @@ public:
 	/// </summary>
 	/// <returns></returns>
 	struct TextureCreateSettings {
-		TextureCreateSettings() = default; 
+		static TextureCreateSettings createDefault(const bool externalAllocation = false) { 
+			if (externalAllocation) {
+				auto settings = TextureCreateSettings(); 
+				settings.memoryUsage = {}; 
+				settings.allocationCreateFlags = {};
+			}
+			else {
+				return TextureCreateSettings();
+			}
+		}
 
-		TextureCreateSettings(vk::ImageUsageFlags imageUsage, vk::Format imageFormat) : imageUsage(imageUsage),
-			imageFormat(imageFormat) {}
+		TextureCreateSettings(const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat, 
+			const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& allocationCreateFlags, const bool& isMutable, 
+			const bool& createSampler) 
+			: imageUsage(imageUsage), imageFormat(imageFormat), allocationCreateFlags(allocationCreateFlags),
+			memoryUsage(memoryUsage), isMutable(isMutable), createSampler(createSampler) {}
 
 		~TextureCreateSettings() = default; 
 
+		bool createSampler = true; 
+		bool isMutable = false;
 		vk::ImageUsageFlags imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
 		vk::Format imageFormat = vk::Format::eR8G8B8A8Srgb;
-		std::vector<vk::Format> viewFormats = std::vector<vk::Format>{ vk::Format::eR8G8B8A8Srgb };
+		VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
+		VmaAllocationCreateFlags allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
+
+	private:
+		TextureCreateSettings() = default; 
 	}; 
 
-	StarTexture() : createSettings(std::make_unique<TextureCreateSettings>()) {}; 
+	StarTexture() : createSettings(std::make_unique<TextureCreateSettings>(TextureCreateSettings::createDefault())) {}; 
+	StarTexture(const vk::Image& image, const vk::ImageLayout& imageLayout, const vk::Format& format) : textureImage(image), layout(imageLayout), 
+		createSettings(std::make_unique<TextureCreateSettings>(TextureCreateSettings::createDefault(true))) {
+		this->createSettings->imageFormat = format; 
+	}; 
 	StarTexture(TextureCreateSettings& settings)
 		: createSettings(std::make_unique<TextureCreateSettings>(settings)) {}; 
 
@@ -42,32 +66,23 @@ public:
 
 	void cleanupRender(StarDevice& device); 
 
+	void createTextureImageView(StarDevice& device, const vk::Format& viewFormat);
+
 	/// <summary>
 	/// Read the image from disk into memory or provide the image which is in memory
 	/// </summary>
 	/// <returns></returns>
-	virtual std::unique_ptr<unsigned char> data() = 0;
+	virtual std::optional<std::unique_ptr<unsigned char>> data() = 0;
 
 	vk::ImageView getImageView(vk::Format* requestedFormat = nullptr);
-	vk::Sampler getSampler() { return this->textureSampler; }
-	vk::Image getImage() { return this->textureImage; }
-	vk::ImageLayout getCurrentLayout() { return this->layout; }
+	vk::Sampler getSampler() { return *this->textureSampler; }
+	vk::Image getImage() const { return this->textureImage; }
+	vk::ImageLayout getCurrentLayout() const { return this->layout; }
 	void overrideImageLayout(vk::ImageLayout newLayout) { this->layout = newLayout; }
 
-	/// <summary>
-	/// Create Vulkan Image object with properties provided in function arguments. 
-	/// </summary>
-	/// <param name="width">Width of the image being created</param>
-	/// <param name="height">Height of the image being created</param>
-	/// <param name="format"></param>
-	/// <param name="tiling"></param>
-	/// <param name="usage"></param>
-	/// <param name="properties"></param>
-	/// <param name="image"></param>
-	/// <param name="imageMemory"></param>
 	static void createImage(StarDevice& device, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
-		vk::ImageUsageFlags usage, vk::MemoryPropertyFlagBits properties,
-		vk::Image& image, vk::DeviceMemory& imageMemory, bool isMutable);
+		vk::ImageUsageFlags usage, const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& allocationCreateFlags, 
+		vk::Image& image, VmaAllocation& imageMemory, bool isMutable, vk::MemoryPropertyFlags* optional_setRequiredMemoryPropertyFlags = nullptr);
 
 	void transitionLayout(vk::CommandBuffer& commandBuffer, vk::ImageLayout newLayout, vk::AccessFlags srcFlags, 
 		vk::AccessFlags dstFlags, vk::PipelineStageFlags sourceStage,
@@ -76,14 +91,13 @@ public:
 protected:
 	std::unique_ptr<TextureCreateSettings> createSettings = nullptr; 
 
-	bool isRenderReady = false; 
-	vk::Image textureImage;
-	std::unordered_map<vk::Format, vk::ImageView> imageViews;				//image view: describe to vulkan how to access an image
-	vk::Sampler textureSampler;					//using sampler to apply filtering or other improvements over raw texel access
-	vk::DeviceMemory imageMemory;				//device memory where image will be stored
-	vk::DescriptorSet descriptorSet;
-	vk::ImageLayout layout = vk::ImageLayout::eUndefined; 
+	bool isRenderReady											= false; 
+	vk::ImageLayout layout = vk::ImageLayout::eUndefined;
+	vk::Image textureImage = vk::Image();
 
+	std::unique_ptr<VmaAllocation> imageAllocation = std::unique_ptr<VmaAllocation>(); 
+	std::unordered_map<vk::Format, vk::ImageView> imageViews	= std::unordered_map<vk::Format, vk::ImageView>();				//image view: describe to vulkan how to access an image
+	std::unique_ptr<vk::Sampler> textureSampler									= std::unique_ptr<vk::Sampler>();					//using sampler to apply filtering or other improvements over raw texel access
 
 	virtual int getWidth() = 0;
 	virtual int getHeight() = 0;
@@ -95,8 +109,6 @@ protected:
 		vk::ImageLayout newLayout);
 
 	void createImageSampler(StarDevice& device);
-
-	void createTextureImageView(StarDevice& device);
 
 	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
 };

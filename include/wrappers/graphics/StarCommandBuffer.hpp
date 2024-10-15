@@ -13,7 +13,7 @@ namespace star {
 	/// </summary>
 	class StarCommandBuffer {
 	public:
-		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Command_Buffer_Type type, bool initTracking = false);
+		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Command_Buffer_Type type, bool initFences, bool initSemaphores);
 		~StarCommandBuffer(); 
 
 		/// <summary>
@@ -71,7 +71,9 @@ namespace star {
 
 		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
 
-		vk::Fence& getFence(const int& bufferIndex) { return this->readyFence.at(bufferIndex); }
+		vk::Fence& getFence(const int& bufferIndex) { 
+			return this->readyFence.at(bufferIndex); 
+		}
 
 		void wait(int bufferIndex);
 
@@ -91,5 +93,9 @@ namespace star {
 		void checkForImageTransitions(int bufferIndex); 
 
 		void createSemaphores(); 
+
+		void createTracking(); 
+
+		void createFences(); 
 	};
 }

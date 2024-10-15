@@ -534,6 +534,11 @@ void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTr
 	if (!this->hasDedicatedTransferQueue)
 		useTransferPool = false;
 
+	vk::FenceCreateInfo fenceInfo{};
+	fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
+
+	vk::Fence oneTimeFence = this->vulkanDevice.createFence(fenceInfo);
+
 	//submit the buffer for execution
 	vk::SubmitInfo submitInfo{};
 	submitInfo.sType = vk::StructureType::eSubmitInfo;
@@ -545,16 +550,20 @@ void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, bool useTr
 		submitInfo.signalSemaphoreCount = 1; 
 	}
 	if (useTransferPool) {
-		this->transferQueue.value().submit(submitInfo);
+		this->transferQueue.value().submit(submitInfo, oneTimeFence);
+		this->vulkanDevice.waitForFences(oneTimeFence, VK_TRUE, UINT64_MAX);
 		this->transferQueue.value().waitIdle();
 		this->vulkanDevice.freeCommandBuffers(this->transferCommandPool, 1, &commandBuff);
 	}
 	else {
 		//use graphics pool
-		this->graphicsQueue.submit(submitInfo);
+		this->graphicsQueue.submit(submitInfo, oneTimeFence);
+		this->vulkanDevice.waitForFences(oneTimeFence, VK_TRUE, UINT64_MAX);
 		this->graphicsQueue.waitIdle();
 		this->vulkanDevice.freeCommandBuffers(this->graphicsCommandPool, 1, &commandBuff);
 	}
+
+	this->vulkanDevice.destroyFence(oneTimeFence);
 }
 
 void StarDevice::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size, const vk::DeviceSize dstOffset) {

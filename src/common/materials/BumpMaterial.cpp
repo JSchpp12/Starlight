@@ -1,6 +1,4 @@
 #include "BumpMaterial.hpp"
-#include "BumpMaterial.hpp"
-#include "BumpMaterial.hpp"
 
 void star::BumpMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder)
 {
@@ -22,7 +20,7 @@ void star::BumpMaterial::cleanup(StarDevice& device)
 }
 
 vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
-	StarDescriptorPool& groupPool)
+	StarDescriptorPool& groupPool, const int& imageInFlightIndex)
 
 {
 	auto sets = std::vector<vk::DescriptorSet>(); 

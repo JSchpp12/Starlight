@@ -59,13 +59,13 @@ namespace star {
 
 		virtual void submissionDone();
 
-		void submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, vk::Semaphore* mustWaitFor);
+		void submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor);
 
 		virtual std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
 
-		std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>> getOverrideBufferSubmissionCallback() override;
+		std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> getOverrideBufferSubmissionCallback() override;
 		
-		virtual void createRenderToImages(star::StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations) override;
+		virtual std::vector<std::unique_ptr<Texture>> createRenderToImages(star::StarDevice& device, const int& numFramesInFlight) override;
 
 		virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) override;
 

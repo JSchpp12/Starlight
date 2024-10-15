@@ -21,7 +21,7 @@ void star::TextureMaterial::cleanup(StarDevice& device)
 		texture->cleanupRender(device); 
 }
 
-vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
+vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& imageInFlightIndex)
 {
 	auto sets = std::vector<vk::DescriptorSet>(); 
 	auto layoutBuilder = star::StarDescriptorSetLayout::Builder(device); 
@@ -44,4 +44,8 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::get
 	return std::vector<std::pair<vk::DescriptorType, const int>>{
 		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1)
 	};
+}
+
+void star::TextureMaterial::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+{
 }

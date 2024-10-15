@@ -14,6 +14,7 @@
 #include "StarObject.hpp"
 #include "StarSystemPipeline.hpp"
 #include "StarCommandBuffer.hpp"
+#include "DescriptorModifier.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -27,7 +28,7 @@ namespace star {
 	/// which are compatible with one another. Implies that they can all share 
 	/// same pipeline layout but NOT the same pipeline.
 	/// </summary>
-	class StarRenderGroup  {
+	class StarRenderGroup : private DescriptorModifier {
 	public:
 
 		StarRenderGroup(StarDevice& device, size_t numSwapChainImages,
@@ -109,5 +110,9 @@ namespace star {
 			std::vector<vk::DescriptorSet> enginePerObjectDescriptors);
 
 		virtual void createPipelineLayout(StarDescriptorSetLayout& engineSetLayout);
+
+		// Inherited via DescriptorModifier
+		std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
+		void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
 	};
 }

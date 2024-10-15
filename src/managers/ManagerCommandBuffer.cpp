@@ -38,17 +38,17 @@ void star::ManagerCommandBuffer::handleNewRequests()
 		std::function<CommandBufferRequest(void)> requestFunction = ManagerCommandBuffer::newCommandBufferRequests.top();
 		auto request = requestFunction(); 
 
-		star::Handle newHandle = this->buffers.add(std::make_unique<CompleteRequest>(
+		star::Handle newHandle = this->buffers.add(std::make_unique<CommandBufferContainer::CompleteRequest>(
 			request.recordBufferCallback, 
-			std::make_unique<StarCommandBuffer>(this->device, this->numFramesInFlight, request.type, false), 
-			request.type, 
-			request.recordOnce,
-			request.waitStage,
-			request.order,
-			request.beforeBufferSubmissionCallback, 
-			request.afterBufferSubmissionCallback, 
-			request.overrideBufferSubmissionCallback), 
-			request.willBeSubmittedEachFrame, request.type, request.order);
+			std::make_unique<StarCommandBuffer>(this->device, this->numFramesInFlight, request.type, !request.overrideBufferSubmissionCallback.has_value(), false),
+				request.type, 
+				request.recordOnce,
+				request.waitStage,
+				request.order,
+				request.beforeBufferSubmissionCallback, 
+				request.afterBufferSubmissionCallback, 
+				request.overrideBufferSubmissionCallback), 
+			request.willBeSubmittedEachFrame, request.type, request.order, static_cast<Command_Buffer_Order_Index>(request.orderIndex));
 
 		request.promiseBufferHandleCallback(newHandle);
 
@@ -59,6 +59,7 @@ void star::ManagerCommandBuffer::handleNewRequests()
 			for (int i = 0; i < this->numFramesInFlight; i++) {
 				this->buffers.getBuffer(newHandle).commandBuffer->begin(i);
 				request.recordBufferCallback(this->buffers.getBuffer(newHandle).commandBuffer->buffer(i), i);
+				this->buffers.getBuffer(newHandle).commandBuffer->buffer(i).end(); 
 			}
 		}
 
@@ -76,7 +77,7 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 
 	//need to submit each group of buffers depending on the queue family they are in
 	//std::array<std::vector<StarBuffer>, 3> buffers = { buffersBeforeGraphics, {this->mainthis->mainGraphicsBuffer., buffersAfterGraphics };
-	CompleteRequest& mainGraphicsBuffer = this->buffers.getBuffer(*this->mainGraphicsBufferHandle); 
+	CommandBufferContainer::CompleteRequest& mainGraphicsBuffer = this->buffers.getBuffer(*this->mainGraphicsBufferHandle); 
 
 	if (mainGraphicsBuffer.beforeBufferSubmissionCallback.has_value())
 		mainGraphicsBuffer.beforeBufferSubmissionCallback.value()(swapChainIndex);
@@ -88,20 +89,9 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 	}
 
 	if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value()) {
-		assert(beforeSemaphores.size() == 0 || beforeSemaphores.size() >= 1 && "More than one semaphore is not yet supported!");
-		vk::Semaphore* selectedBeforeSemaphore = beforeSemaphores.size() != 0 ? &beforeSemaphores[0] : nullptr; 
-		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, selectedBeforeSemaphore);
+		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, beforeSemaphores);
 	} else {
-		vk::SubmitInfo submitInfo{}; 
-		if (beforeSemaphores.size() > 0) {
-			submitInfo.pWaitSemaphores = beforeSemaphores.data(); 
-			submitInfo.waitSemaphoreCount = beforeSemaphores.size(); 
-			submitInfo.pWaitDstStageMask = &mainGraphicsBuffer.waitStage; 
-		}
-		submitInfo.pCommandBuffers = &mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex);
-		submitInfo.commandBufferCount = 1;
-
-		auto submitResult = std::make_unique<vk::Result>(this->device.getGraphicsQueue().submit(1, &submitInfo, mainGraphicsBuffer.commandBuffer->getFence(swapChainIndex)));
+		mainGraphicsBuffer.commandBuffer->submit(swapChainIndex);
 	}
 
 	if (mainGraphicsBuffer.afterBufferSubmissionCallback.has_value())

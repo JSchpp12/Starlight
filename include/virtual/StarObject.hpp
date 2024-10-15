@@ -14,6 +14,7 @@
 #include "ManagerDescriptorPool.hpp"
 #include "RenderResourceModifierGeometry.hpp"
 #include "RenderingTargetInfo.hpp"
+#include "DescriptorModifier.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -35,7 +36,7 @@ namespace star {
 	/// <summary>
 	/// Base class for renderable objects.
 	/// </summary>
-	class StarObject : private RenderResourceModifierGeometry {
+	class StarObject : private RenderResourceModifierGeometry, private DescriptorModifier {
 	public:
 		bool drawNormals = false;
 		bool drawBoundingBox = false; 
@@ -117,6 +118,10 @@ namespace star {
 
 		virtual std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) = 0;
 
+		virtual void prepareDescriptors(star::StarDevice& device, int numSwapChainImages,
+			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout,
+			std::vector<std::vector<vk::DescriptorSet>> globalSets);
+
 #pragma region getters
 		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
 		virtual StarPipeline& getPipline() {
@@ -137,10 +142,6 @@ namespace star {
 		
 		void prepareMeshes(star::StarDevice& device); 
 
-		virtual void prepareDescriptors(star::StarDevice& device, int numSwapChainImages, 
-			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, 
-			std::vector<std::vector<vk::DescriptorSet>> globalSets);
-
 		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight);
 
 		virtual void destroyResources(StarDevice& device) override;
@@ -149,6 +150,10 @@ namespace star {
 
 		virtual void createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 
+		// Inherited via DescriptorModifier
+		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
+		virtual void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
+
 	private:
 		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
 		static vk::PipelineLayout extrusionPipelineLayout;
@@ -156,6 +161,9 @@ namespace star {
 		static std::unique_ptr<StarDescriptorSetLayout> boundDescriptorLayout;
 		static vk::PipelineLayout boundPipelineLayout;
 		static std::unique_ptr<StarGraphicsPipeline> boundBoxPipeline;
+
+		std::unique_ptr<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>> groupLayout;
+		std::unique_ptr<std::vector<std::vector<vk::DescriptorSet>>> globalSets;
 
 		std::unique_ptr<StarBuffer> boundingBoxVertBuffer, boundingBoxIndBuffer; 
 		std::vector<std::vector<vk::DescriptorSet>> boundingDescriptors; 

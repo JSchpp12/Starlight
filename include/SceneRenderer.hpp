@@ -21,6 +21,7 @@
 #include "RenderResourceModifier.hpp"
 #include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
+#include "Texture.hpp"
 
 #include "Light.hpp"
 
@@ -43,6 +44,9 @@ public:
 	StarDescriptorSetLayout& getGlobalDescriptorLayout() { return *this->globalSetLayout; }
 
 	virtual RenderingTargetInfo getRenderingInfo() { return *this->renderToTargetInfo; }
+	
+	std::vector<std::unique_ptr<star::Texture>>* getRenderToColorImages() { return &this->renderToImages; }
+	std::vector<vk::Image>* getRenderToDepthImages() { return &this->renderToDepthImages; }	
 protected:
 	struct GlobalUniformBufferObject {
 		alignas(16) glm::mat4 proj;
@@ -68,10 +72,8 @@ protected:
 	
 	std::unique_ptr<RenderingTargetInfo> renderToTargetInfo = std::unique_ptr<RenderingTargetInfo>(); 
 
-	std::vector<VmaAllocation> renderToImageAllocations;
-	std::vector<vk::Image> renderToImages;
-	std::vector<vk::ImageView> renderToImageViews;
-	std::vector<vk::Framebuffer> renderToFramebuffers;
+	std::vector<std::unique_ptr<star::Texture>> renderToImages = std::vector<std::unique_ptr<star::Texture>>(); 
+	std::vector<vk::Framebuffer> renderToFramebuffers = std::vector<vk::Framebuffer>();
 
 	//depth testing storage 
 	std::vector<vk::Image> renderToDepthImages = std::vector<vk::Image>(); 
@@ -95,13 +97,7 @@ protected:
 
 	virtual vk::Format getCurrentRenderToImageFormat() = 0; 
 
-	virtual void createRenderToImages(StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations);
-
-	/// <summary>
-	/// Create an image view object for use in the rendering pipeline
-	/// 'Image View': describes how to access an image and what part of an image to access
-	/// </summary>
-	virtual void createImageViews(StarDevice& device, const int& numImages, const vk::Format& imageFormat);
+	virtual std::vector<std::unique_ptr<Texture>> createRenderToImages(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create vertex buffer + index buffers + any rendering groups for operations
@@ -112,10 +108,7 @@ protected:
 
 	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 	
-	/// <summary>
-	/// Create descriptor pools for the descriptors used by the main rendering engine.
-	/// </summary>
-	virtual void createDescriptors(StarDevice& device, const int& numFramesInFlight);
+	virtual void manualCreateDescriptors(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 
@@ -176,5 +169,6 @@ protected:
 private:
 	// Inherited via DescriptorModifier
 	std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
+	void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
 };
 }

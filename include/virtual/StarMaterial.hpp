@@ -17,7 +17,7 @@
 #include <unordered_map>
 
 namespace star {
-	class StarMaterial : private RenderResourceModifier, private DescriptorModifier{
+	class StarMaterial : private RenderResourceModifier, private star::DescriptorModifier{
 	public:
 		glm::vec4 surfaceColor{ 0.5f, 0.5f, 0.5f, 1.0f };
 		glm::vec4 highlightColor{ 0.5f, 0.5f, 0.5f, 1.0f };
@@ -62,6 +62,9 @@ namespace star {
 		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
 	protected:
+		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight);
+
+		virtual void createDescriptors(star::StarDevice& device, const int& numFramesInFlight);
 
 		/// <summary>
 		/// Function which should contain processes to create all needed functionalities
@@ -82,7 +85,7 @@ namespace star {
 		/// <param name=""></param>
 		/// <returns></returns>
 		virtual vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
-			StarDescriptorPool& groupPool) = 0;
+			StarDescriptorPool& groupPool, const int& imageInFlightIndex) = 0;
 
 		/// <summary>
 		/// Cleanup any vulkan objects created by this material
@@ -93,10 +96,6 @@ namespace star {
 		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override {};
 
 		virtual void destroyResources(StarDevice& device) override {};
-
-		// Inherited via DescriptorModifier
-		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
-
 	private:
 		//flag to determine if the material has been prepped for rendering operations
 		bool isPrepared = false;

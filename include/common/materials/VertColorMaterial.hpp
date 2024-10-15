@@ -16,10 +16,13 @@ namespace star {
 			: StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny) {};
 
 		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
-		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool) override;
+		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& imageInFlightIndex) override;
 
 	protected:
 		void cleanup(StarDevice& device) override;
 		void prep(StarDevice& device);
+
+		// Inherited via StarMaterial
+		void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
 	};
 }

@@ -31,7 +31,7 @@ namespace star {
 		std::unique_ptr<Texture> bumpMap; 
 
 		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
-			StarDescriptorPool& groupPool) override;
+			StarDescriptorPool& groupPool, const int& imageInFlightIndex) override;
 
 		void prep(StarDevice& device) override;
 

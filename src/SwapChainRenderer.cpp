@@ -191,13 +191,14 @@ void star::SwapChainRenderer::submissionDone()
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, vk::Semaphore* mustWaitFor)
+void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor)
 {
 	vk::SubmitInfo submitInfo{}; 
 	std::vector<vk::Semaphore> waitSemaphores = { imageAvailableSemaphores[this->currentFrame] }; 
 	std::vector<vk::PipelineStageFlags> waitStages = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
-	if (mustWaitFor != nullptr) {
-		waitSemaphores.push_back(*mustWaitFor);
+
+	for (auto& semaphore : mustWaitFor) {
+		waitSemaphores.push_back(semaphore);
 		waitStages.push_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	}
 
@@ -222,21 +223,31 @@ std::optional<std::function<void(const int&)>> star::SwapChainRenderer::getAfter
 	return std::optional<std::function<void(const int&)>>(std::bind(&SwapChainRenderer::submissionDone, this));
 }
 
-std::optional<std::function<void(star::StarCommandBuffer&, const int&, vk::Semaphore*)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
+std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
 {
-	return std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-void star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight, std::vector<vk::Image>& newRenderToImages, std::vector<VmaAllocation>& newRenderToImageAllocations)
+std::vector<std::unique_ptr<star::Texture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
+	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>(); 
+
 	//get images in the newly created swapchain 
-	newRenderToImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain);
+	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
+		newRenderToImages.push_back(std::make_unique<Texture>(image, vk::ImageLayout::eUndefined, *this->swapChainImageFormat));
+
+		auto buffer = device.beginSingleTimeCommands(); 
+		newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput); 
+		device.endSingleTimeCommands(buffer); 
+	}
+
+	return newRenderToImages; 
 }
 
 vk::RenderingAttachmentInfo star::SwapChainRenderer::prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex)
 {
 	vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-	colorAttachmentInfo.imageView = this->renderToImageViews[this->currentSwapChainImageIndex];
+	colorAttachmentInfo.imageView = this->renderToImages[this->currentSwapChainImageIndex]->getImageView();
 	colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 	colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
@@ -248,15 +259,35 @@ vk::RenderingAttachmentInfo star::SwapChainRenderer::prepareDynamicRenderingInfo
 void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const int& frameInFlightIndex)
 {
 	//transition image layout
+	vk::ImageMemoryBarrier setupBarrier{}; 
+	setupBarrier.sType = vk::StructureType::eImageMemoryBarrier; 
+	setupBarrier.oldLayout = vk::ImageLayout::ePresentSrcKHR; 
+	setupBarrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal; 
+	setupBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor; 
+	setupBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored; 
+	setupBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored; 
+	setupBarrier.srcAccessMask = vk::AccessFlagBits::eNone; 
+	setupBarrier.dstAccessMask = vk::AccessFlagBits::eShaderWrite;
+	setupBarrier.subresourceRange.baseMipLevel = 0; 
+	setupBarrier.subresourceRange.levelCount = 1;
+	setupBarrier.subresourceRange.baseArrayLayer = 0;
+	setupBarrier.subresourceRange.layerCount = 1;
+	setupBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getImage(); 
 
-	//for presentation will need to change layout of the image to presentation
+	commandBuffer.pipelineBarrier(
+		vk::PipelineStageFlagBits::eTopOfPipe,
+		vk::PipelineStageFlagBits::eVertexShader,
+		{}, {}, nullptr, setupBarrier
+	);
+
+	////for presentation will need to change layout of the image to presentation
  	vk::ImageMemoryBarrier presentBarrier{};
 	presentBarrier.sType = vk::StructureType::eImageMemoryBarrier;
-	presentBarrier.oldLayout = vk::ImageLayout::eUndefined;
+	presentBarrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	presentBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
 	presentBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
 	presentBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-	presentBarrier.image = this->renderToImages[this->currentSwapChainImageIndex];
+	presentBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getImage();
 	presentBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 	presentBarrier.subresourceRange.baseMipLevel = 0;
 	presentBarrier.subresourceRange.levelCount = 1;
@@ -449,15 +480,14 @@ void star::SwapChainRenderer::recreateSwapChain()
 
 void star::SwapChainRenderer::cleanupSwapChain()
 {
+	for (auto& image : this->renderToImages) {
+		image->cleanupRender(this->device);
+	}
 	for (vk::ImageView& imageView : this->renderToDepthImageViews) {
 		this->device.getDevice().destroyImageView(imageView);
 	}
 	for (int i = 0; i < this->renderToDepthImages.size(); i++) {
 		vmaDestroyImage(this->device.getAllocator(), this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
-	}
-
-	for (vk::ImageView& imageView : this->renderToImageViews) {
-		this->device.getDevice().destroyImageView(imageView);
 	}
 
 	this->device.getDevice().destroySwapchainKHR(this->swapChain);

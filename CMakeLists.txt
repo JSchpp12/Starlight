@@ -99,6 +99,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
+    "src/internals/CommandBufferContainer.cpp"
 )
 
 
@@ -176,7 +177,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/Time.hpp"
     "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
-
+    "include/internals/CommandBufferContainer.hpp"
 )
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")

@@ -15,7 +15,7 @@ void star::HeightDisplacementMaterial::cleanup(StarDevice& device)
 	this->texture.reset();
 }
 
-vk::DescriptorSet star::HeightDisplacementMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool)
+vk::DescriptorSet star::HeightDisplacementMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& frameInFlightIndex)
 {
 	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
 

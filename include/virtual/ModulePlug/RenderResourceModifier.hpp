@@ -3,7 +3,6 @@
 #include "RenderResourceSystem.hpp"
 #include "StarDevice.hpp"
 #include "StarBuffer.hpp"
-
 #include <functional>
 #include <memory>
 #include <vector>

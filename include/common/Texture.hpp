@@ -4,8 +4,7 @@
 
 #include "StarTexture.hpp"
 
-
-
+#include <vulkan/vulkan.hpp>
 #include <memory> 
 #include <vector> 
 #include <string> 
@@ -21,7 +20,14 @@ namespace star {
         std::string pathToFile = "";
         bool onDisk = false;
 
+        Texture(const vk::Image& image, const vk::ImageLayout& layout, const vk::Format& format); 
+
         Texture(int texWidth, int texHeight);
+
+		Texture(const int& texWidth, const int& texHeight, StarTexture::TextureCreateSettings& settings)
+			: StarTexture(settings), width(texWidth), 
+            height(texHeight), channels(4), 
+            onDisk(false) {};
 
         Texture(const int& texWidth, const int& texHeight, const int& channels, TextureCreateSettings& settings)
             : StarTexture(settings), rawData(std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texWidth, std::vector<Color>(texHeight, Color{})))),
@@ -49,7 +55,7 @@ namespace star {
         void loadFromDisk();
 
 
-        virtual std::unique_ptr<unsigned char> data() override;
+        virtual std::optional<std::unique_ptr<unsigned char>> data() override;
 
         /// <summary>
         /// Get a pointer to the raw storage data of an in-memory texture

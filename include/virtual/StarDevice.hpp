@@ -74,7 +74,7 @@ public:
 	SwapChainSupportDetails getSwapChainSupportDetails() { return querySwapChainSupport(this->physicalDevice); }
 	vk::CommandPool getGraphicsCommandPool() { return this->graphicsCommandPool; }
 	vk::PhysicalDevice getPhysicalDevice() { return this->physicalDevice; }
-	vk::Device getDevice() { return this->vulkanDevice; }
+	inline vk::Device getDevice() { return this->vulkanDevice; }
 	vk::SurfaceKHR getSurface() { return this->surface.get(); }
 	vk::Queue getGraphicsQueue() { return this->graphicsQueue; }
 	vk::Queue getPresentQueue() { return this->presentQueue; }

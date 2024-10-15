@@ -145,24 +145,28 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo, int numSwapChainImages, 
 	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets)
 {
+	this->groupLayout = std::make_unique<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>>(groupLayout);
+	this->globalSets = std::make_unique<std::vector<std::vector<vk::DescriptorSet>>>(globalSets);
+
 	//handle pipeline infos
 	this->pipeline = this->buildPipeline(device, swapChainExtent, pipelineLayout, renderInfo);
 
 	createInstanceBuffers(device, numSwapChainImages); 
 	prepareMeshes(device); 
 	StarDescriptorPool& pool = ManagerDescriptorPool::getPool(); 
-	prepareDescriptors(device, numSwapChainImages, groupLayout, globalSets);
 }
 
 void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImages, 
 	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout,
 	std::vector<std::vector<vk::DescriptorSet>> globalSets, StarPipeline& sharedPipeline)
 {
+	this->groupLayout = std::make_unique<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>>(groupLayout);
+	this->globalSets = std::make_unique<std::vector<std::vector<vk::DescriptorSet>>>(globalSets);
+
 	this->sharedPipeline = &sharedPipeline;
 
 	createInstanceBuffers(device, numSwapChainImages);
 	prepareMeshes(device); 
-	prepareDescriptors(device, numSwapChainImages, groupLayout, globalSets);
 }
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout,
@@ -448,4 +452,14 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vec
 
 	this->createBoundingBox(verts, inds);	
 	this->boundingBoxIndsCount = inds.size();
+}
+
+std::vector<std::pair<vk::DescriptorType, const int>> star::StarObject::getDescriptorRequests(const int& numFramesInFlight)
+{
+	return std::vector<std::pair<vk::DescriptorType, const int>>();
+}
+
+void star::StarObject::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+{
+	this->prepareDescriptors(device, numFramesInFlight, *this->groupLayout, *this->globalSets);
 }

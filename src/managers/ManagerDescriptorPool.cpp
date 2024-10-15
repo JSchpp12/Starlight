@@ -1,13 +1,17 @@
 #include "ManagerDescriptorPool.hpp"
+#include "ManagerDescriptorPool.hpp"
 
 bool star::ManagerDescriptorPool::ready = false; 
 std::stack<std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>> star::ManagerDescriptorPool::requestCallbacks = std::stack < std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>>();
+std::stack<std::function<void(star::StarDevice&, const int&)>> star::ManagerDescriptorPool::creationCallbacks = std::stack<std::function<void(star::StarDevice&, const int&)>>(); 
 std::unordered_map<vk::DescriptorType, int> star::ManagerDescriptorPool::actives = std::unordered_map<vk::DescriptorType, int>(); 
 star::StarDescriptorPool* star::ManagerDescriptorPool::pool = nullptr; 
 
-void star::ManagerDescriptorPool::request(std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)> newRequest)
+void star::ManagerDescriptorPool::request(std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)> newRequest, 
+	std::function<void(star::StarDevice&, const int&)> createCall)
 {
 	requestCallbacks.push(newRequest);
+	creationCallbacks.push(createCall);
 }
 
 star::StarDescriptorPool& star::ManagerDescriptorPool::getPool()
@@ -61,4 +65,13 @@ void star::ManagerDescriptorPool::init(const int& numFramesInFlight)
 
 	this->currentPool = builder.build();
 	pool = this->currentPool.get(); 
+}
+
+void star::ManagerDescriptorPool::update(const int& numFramesInFlight)
+{
+	while (!creationCallbacks.empty()) {
+		std::function<void(star::StarDevice&, const int&)> callback = creationCallbacks.top();
+		callback(this->device, numFramesInFlight);
+		creationCallbacks.pop();
+	}
 }

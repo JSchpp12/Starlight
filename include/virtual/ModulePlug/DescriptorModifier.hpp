@@ -17,6 +17,8 @@ namespace star {
 	protected:
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) = 0; 
 
+		virtual void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) = 0; 
+
 	private:
 		void submitToManager(); 
 

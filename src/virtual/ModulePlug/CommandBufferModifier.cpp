@@ -32,9 +32,9 @@ std::optional<std::function<void(const int&)>> star::CommandBufferModifier::getB
 	return std::optional<std::function<void(const int&)>>();
 }
 
-std::optional<std::function<void(star::StarCommandBuffer&, const int&, vk::Semaphore*)>> star::CommandBufferModifier::getOverrideBufferSubmissionCallback()
+std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> star::CommandBufferModifier::getOverrideBufferSubmissionCallback()
 {
-	return std::optional<std::function<void(StarCommandBuffer&, const int&, vk::Semaphore*)>>();
+	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>();
 }
 
 star::ManagerCommandBuffer::CommandBufferRequest star::CommandBufferModifier::getCommandBufferRequest()
