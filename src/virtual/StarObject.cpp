@@ -132,7 +132,6 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& 
 {
 	StarGraphicsPipeline::PipelineConfigSettings settings;
 	StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, pipelineLayout, renderInfo);
-	settings.depthStencilInfo.depthTestEnable = VK_FALSE; 
 	auto graphicsShaders = this->getShaders();
 
 	auto newPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, graphicsShaders.at(Shader_Stage::vertex), graphicsShaders.at(Shader_Stage::fragment));
