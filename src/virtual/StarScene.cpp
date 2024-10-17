@@ -5,6 +5,11 @@ int star::StarScene::add(std::unique_ptr<star::Light> newLight) {
 
 	int lightIndex = this->lightList.size();
 	this->lightList.emplace_back(std::move(newLight));
+
+	//re-create light buffers
+	for (int i = 0; i < this->lightInfoBuffers.size(); i++) {
+		this->lightInfoBuffers[i] = std::make_shared<LightInfo>(i, this->lightList);
+	}
 	return lightIndex;
 }
 

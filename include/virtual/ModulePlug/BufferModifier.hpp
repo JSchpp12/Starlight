@@ -5,8 +5,9 @@
 #include "StarDevice.hpp"
 #include "Handle.hpp"
 
-#include <memory>
 #include <vulkan/vulkan.hpp>
+
+#include <memory>
 
 namespace star {
 	class BufferModifier {

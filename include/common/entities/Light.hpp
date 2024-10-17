@@ -128,13 +128,13 @@ public:
 		else
 			return false;
 	}
-	bool getEnabled() { return enabled; }
-	Type::Light getType() { return type; }
-	glm::vec4 getAmbient() { return ambient; }
-	glm::vec4 getDiffuse() { return diffuse; }
-	glm::vec4 getSpecular() { return specular; }
-	float getInnerDiameter() { return innerDiameter; }
-	float getOuterDiameter() { return outerDiameter; }
+	bool getEnabled() const { return enabled; }
+	Type::Light getType() const { return type; }
+	glm::vec4 getAmbient() const { return ambient; }
+	glm::vec4 getDiffuse() const { return diffuse; }
+	glm::vec4 getSpecular() const { return specular; }
+	float getInnerDiameter() const { return innerDiameter; }
+	float getOuterDiameter() const { return outerDiameter; }
 private:
 	//handle to the object that will be rendered along with the light (positional object such as billboard)
 	std::optional<Handle> linkedObjectHandle; 

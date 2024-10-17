@@ -11,7 +11,6 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 {
 	this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
-	createRenderingBuffers(device, numFramesInFlight);
 	manualCreateDescriptors(device, numFramesInFlight);
 	vk::Format depthFormat = createDepthResources(device, swapChainExtent, numFramesInFlight);
 
@@ -81,29 +80,6 @@ void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D
 	}
 }
 
-void SceneRenderer::updateUniformBuffer(uint32_t currentImage)
-{
-	//update buffer for light positions
-	std::vector<LightBufferObject> lightInformation(this->scene.getLights().size());
-	LightBufferObject newBufferObject{};
-
-	//write buffer information
-	for (size_t i = 0; i < this->scene.getLights().size(); i++) {
-		Light& currLight = *this->scene.getLights().at(i);
-		newBufferObject.position = glm::vec4{ currLight.getPosition(), 1.0f };
-		newBufferObject.direction = currLight.direction;
-		newBufferObject.ambient = currLight.getAmbient();
-		newBufferObject.diffuse = currLight.getDiffuse();
-		newBufferObject.specular = currLight.getSpecular();
-		newBufferObject.settings.x = currLight.getEnabled() ? 1 : 0;
-		newBufferObject.settings.y = currLight.getType();
-		newBufferObject.controls.x = glm::cos(glm::radians(currLight.getInnerDiameter()));		//represent the diameter of light as the cos of the light (increase shader performance when doing comparison)
-		newBufferObject.controls.y = glm::cos(glm::radians(currLight.getOuterDiameter()));
-		lightInformation[i] = newBufferObject;
-	}
-	this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
-}
-
 vk::ImageView SceneRenderer::createImageView(star::StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags)
 {
 	vk::ImageViewCreateInfo viewInfo{};
@@ -148,9 +124,9 @@ void SceneRenderer::manualCreateDescriptors(star::StarDevice& device, const int&
 
 		//buffer descriptors for point light locations 
 		auto lightBufferInfo = vk::DescriptorBufferInfo{
-			this->lightBuffers[i]->getBuffer(),
+			ManagerBuffer::getBuffer(this->scene.getLightInfoBuffer(i)->getHandle()).getBuffer(),
 			0,
-			sizeof(LightBufferObject) * this->scene.getLights().size()};
+			ManagerBuffer::getBuffer(this->scene.getLightInfoBuffer(i)->getHandle()).getBufferSize() };
 
 		this->globalDescriptorSets.at(i) = StarDescriptorWriter(device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
 			.writeBuffer(0, globalBufferInfo)
@@ -183,43 +159,6 @@ void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32
 	allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
 	vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
-}
-
-void SceneRenderer::createRenderingBuffers(star::StarDevice& device, const int& numFramesInFlight)
-{
-	//vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * this->objectList.size();
-
-	if (this->scene.getLights().size() > 0) {
-		this->lightBuffers.resize(numFramesInFlight);
-	}
-
-	for (size_t i = 0; i < numFramesInFlight; i++) {
-		//auto numOfObjects = this->objectList.size(); 
-		//this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(
-		//	device,
-		//	sizeof(GlobalUniformBufferObject),
-		//	this->objectList.size(),
-		//	VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-		//	VMA_MEMORY_USAGE_AUTO,
-		//	vk::BufferUsageFlagBits::eUniformBuffer,
-		//	vk::SharingMode::eConcurrent
-		//);
-		//this->globalUniformBuffers[i]->map();
-
-		//create light buffers 
-		if (this->scene.getLights().size() > 0) {
-			this->lightBuffers[i] = std::make_unique<StarBuffer>(
-				device,
-				this->scene.getLights().size(),
-				(uint32_t)sizeof(LightBufferObject) * (uint32_t)this->scene.getLights().size(),
-				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-				VMA_MEMORY_USAGE_AUTO,
-				vk::BufferUsageFlagBits::eStorageBuffer,
-				vk::SharingMode::eConcurrent
-			);
-			this->lightBuffers[i]->map();
-		}
-	}
 }
 
 vk::Format SceneRenderer::createDepthResources(star::StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
@@ -378,7 +317,6 @@ void SceneRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)
 		obj.prepDraw(frameIndexToBeDrawn); 
 	}
 
-	updateUniformBuffer(frameIndexToBeDrawn);
 }
 
 std::optional<std::function<void(const int&)>> SceneRenderer::getBeforeBufferSubmissionCallback()

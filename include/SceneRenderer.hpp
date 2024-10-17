@@ -49,19 +49,6 @@ public:
 	std::vector<std::unique_ptr<star::Texture>>* getRenderToColorImages() { return &this->renderToImages; }
 	std::vector<vk::Image>* getRenderToDepthImages() { return &this->renderToDepthImages; }	
 protected:
-	struct LightBufferObject {
-		glm::vec4 position = glm::vec4(1.0f);
-		glm::vec4 direction = glm::vec4(1.0f);     //direction in which the light is pointing
-		glm::vec4 ambient = glm::vec4(1.0f);
-		glm::vec4 diffuse = glm::vec4(1.0f);
-		glm::vec4 specular = glm::vec4(1.0f);
-		//controls.x = inner cutoff diameter 
-		//controls.y = outer cutoff diameter
-		glm::vec4 controls = glm::vec4(0.0f);       //container for single float values
-		//settings.x = enabled
-		//settings.y = type
-		glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
-	};
 	StarScene& scene; 
 
 	std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
@@ -81,7 +68,6 @@ protected:
 
 	//storage for multiple buffers for each swap chain image  
 	std::vector<vk::DescriptorSet> globalDescriptorSets;
-	std::vector<std::unique_ptr<StarBuffer>> lightBuffers;
 	std::vector<vk::DescriptorSet> lightDescriptorSets;
 
 	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
@@ -95,8 +81,6 @@ protected:
 	/// Create vertex buffer + index buffers + any rendering groups for operations
 	/// </summary>
 	virtual void createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight);
-
-	virtual void updateUniformBuffer(uint32_t currentImage);
 
 	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 	
@@ -117,11 +101,6 @@ protected:
 		vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, 
 		vk::MemoryPropertyFlags properties, vk::Image& image, 
 		VmaAllocation& imageMemory);
-
-	/// <summary>
-	/// Create a buffer to hold the UBO data for each shader. Create a buffer for each swap chain image
-	/// </summary>
-	virtual void createRenderingBuffers(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create the depth images that will be used by vulkan to run depth tests on fragments. 
