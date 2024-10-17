@@ -15,10 +15,7 @@ namespace star {
 			vk::BufferUsageFlagBits::eStorageBuffer,
 			sizeof(LightBufferObject),
 			lights.size(),
-			vk::SharingMode::eConcurrent,
-			frameInFlightIndexToUpdateOn,
-			false,
-			1) { };
+			vk::SharingMode::eConcurrent, 1, frameInFlightIndexToUpdateOn) { };
 
 	private:
 		struct LightBufferObject {

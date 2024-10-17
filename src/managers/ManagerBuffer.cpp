@@ -1,9 +1,12 @@
 #include "ManagerBuffer.hpp"
 
-std::vector<std::unique_ptr<star::ManagerBuffer::CompleteRequest>> star::ManagerBuffer::allBuffers = std::vector<std::unique_ptr<star::ManagerBuffer::CompleteRequest>>(); 
+std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash> star::ManagerBuffer::updateableBuffers = std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash>();
+std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash> star::ManagerBuffer::staticBuffers = std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash>();
+
 star::StarDevice* star::ManagerBuffer::device = nullptr; 
 int star::ManagerBuffer::numFramesInFlight = 0; 
 int star::ManagerBuffer::currentFrameInFlight = 0; 
+int star::ManagerBuffer::bufferCounter = 0; 
 
 void star::ManagerBuffer::init(StarDevice& device, const int& totalNumFramesInFlight)
 {
@@ -12,24 +15,56 @@ void star::ManagerBuffer::init(StarDevice& device, const int& totalNumFramesInFl
 }
 
 star::Handle star::ManagerBuffer::addRequest(const star::ManagerBuffer::Request& newRequest) {
-	int bufferID = static_cast<int>(allBuffers.size()); 
-	
-	allBuffers.emplace_back(std::make_unique<CompleteRequest>(
-		std::make_unique<StarBuffer>(
-			*ManagerBuffer::device,
-			newRequest.bufferSize,
-			newRequest.instanceCount,
-			newRequest.creationFlags,
-			newRequest.memoryUsageFlags,
-			newRequest.useFlags,
-			newRequest.sharingMode,
-			newRequest.minOffsetAlignment
-		),
-		newRequest.updateBufferData, 
-		newRequest.frameInFlightIndexToUpdateOn
-	));
+	int bufferID = static_cast<int>(bufferCounter); 
+	bufferCounter++; 
 
-	return Handle(bufferID, star::Handle_Type::buffer);
+	Handle newBufferHandle; 
+	if (newRequest.frameInFlightIndexToUpdateOn == -1) {
+		
+		if (bufferID % 2 != 0) {
+			bufferID++; 
+		}
+
+		newBufferHandle = Handle(static_cast<int>(bufferID), star::Handle_Type::buffer);
+		staticBuffers.emplace(std::make_pair(newBufferHandle, CompleteRequest(
+			std::make_unique<StarBuffer>(
+				*ManagerBuffer::device,
+				newRequest.bufferSize,
+				newRequest.instanceCount,
+				newRequest.creationFlags,
+				newRequest.memoryUsageFlags,
+				newRequest.useFlags,
+				newRequest.sharingMode,
+				newRequest.minOffsetAlignment
+			),
+			newRequest.updateBufferData, 
+			0
+		)));
+	}
+	else {
+
+		if (bufferID % 2 == 0) {
+			bufferID++; 
+		}
+
+		newBufferHandle = Handle(static_cast<int>(bufferID), star::Handle_Type::buffer); 
+		updateableBuffers.emplace(std::make_pair(newBufferHandle, CompleteRequest(
+			std::make_unique<StarBuffer>(
+				*ManagerBuffer::device,
+				newRequest.bufferSize,
+				newRequest.instanceCount,
+				newRequest.creationFlags,
+				newRequest.memoryUsageFlags,
+				newRequest.useFlags,
+				newRequest.sharingMode,
+				newRequest.minOffsetAlignment
+				),
+			newRequest.updateBufferData,
+			newRequest.frameInFlightIndexToUpdateOn
+			)));
+	}
+	
+	return newBufferHandle; 
 }
 
 void star::ManagerBuffer::update(const int& frameInFlightIndex) {
@@ -37,9 +72,10 @@ void star::ManagerBuffer::update(const int& frameInFlightIndex) {
 
 	ManagerBuffer::currentFrameInFlight = frameInFlightIndex;
 
-	for (std::unique_ptr<CompleteRequest>& buffer : ManagerBuffer::allBuffers) {
-		if (buffer && buffer->frameInFlightIndexToUpdateOn == static_cast<uint16_t>(frameInFlightIndex))
-			buffer->updateBufferData(*buffer->buffer); 
+	for (auto& buffer : ManagerBuffer::updateableBuffers) {
+		if (buffer.second.frameInFlightIndexToUpdateOn == static_cast<uint16_t>(frameInFlightIndex)) {
+			buffer.second.updateBufferData(*buffer.second.buffer);
+		}
 	}
 }
 
@@ -47,16 +83,32 @@ star::StarBuffer& star::ManagerBuffer::getBuffer(const star::Handle& handle)
 {
 	assert(handle.type == star::Handle_Type::buffer && "Handle provided is not a buffer handle");
 
-	return *ManagerBuffer::allBuffers.at(handle.id)->buffer;
+	if (handle.id % 2 == 0)
+		return *ManagerBuffer::staticBuffers.at(handle).buffer;
+
+	return *ManagerBuffer::updateableBuffers.at(handle).buffer;
 }
 
 void star::ManagerBuffer::cleanup(StarDevice& device)
 {
-	for (std::unique_ptr<CompleteRequest>& request : ManagerBuffer::allBuffers) {
-		request.reset(); 
+	for (auto& request : ManagerBuffer::updateableBuffers) {
+		updateableBuffers.erase(request.first);
+	}
+
+	for (auto& request : staticBuffers) {
+		staticBuffers.erase(request.first);
 	}
 }
 
 void star::ManagerBuffer::destroy(const star::Handle& handle) {
-	ManagerBuffer::allBuffers.at(handle.id).reset();
+	std::unordered_map<Handle, CompleteRequest, HandleHash>* map = getMapForBuffer(handle);
+	map->erase(handle); 
+}
+
+std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash>* star::ManagerBuffer::getMapForBuffer(const star::Handle& handle)
+{
+	if (handle.id % 2 == 0)
+		return &staticBuffers;
+
+	return &updateableBuffers;
 }

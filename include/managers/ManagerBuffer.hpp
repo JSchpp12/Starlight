@@ -9,7 +9,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
-#include <vector>
+#include <map>
 #include <array>
 #include <queue>
 #include <functional>
@@ -22,25 +22,36 @@ namespace star {
 	public:
 		struct Request {
 			std::function<void(StarBuffer&)> updateBufferData = std::function<void(StarBuffer&)>(); 
-			bool writeOnce; 
 			vk::DeviceSize bufferSize; 
 			uint32_t instanceCount;
 			VmaAllocationCreateFlags creationFlags;
 			VmaMemoryUsage memoryUsageFlags;
 			vk::BufferUsageFlags useFlags;
 			vk::SharingMode sharingMode;
-			uint16_t frameInFlightIndexToUpdateOn; 
+			int frameInFlightIndexToUpdateOn = -1; 
 			vk::DeviceSize minOffsetAlignment = 1;
 
-			Request( const std::function<void(StarBuffer&)>& updateBufferData, const bool& writeOnce, const vk::DeviceSize& bufferSize,
+			Request( const std::function<void(StarBuffer&)>& updateBufferData, const vk::DeviceSize& bufferSize,
 				const uint32_t& instanceCount, const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
 				const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, 
-				const uint16_t& frameInFlightIndexToUpdateOn, const vk::DeviceSize& minOffsetAlignment)
-				: updateBufferData(updateBufferData), writeOnce(writeOnce),
+				const vk::DeviceSize& minOffsetAlignment, const int& frameInFlightIndexToUpdateOn)
+				: updateBufferData(updateBufferData),
 				bufferSize(bufferSize), instanceCount(instanceCount),
 				creationFlags(creationFlags), memoryUsageFlags(memoryUsageFlags), 
 				useFlags(useFlags), sharingMode(sharingMode), 
-				frameInFlightIndexToUpdateOn(frameInFlightIndexToUpdateOn), minOffsetAlignment(minOffsetAlignment) {};
+				frameInFlightIndexToUpdateOn(frameInFlightIndexToUpdateOn), 
+				minOffsetAlignment(minOffsetAlignment) {};
+
+			Request(const std::function<void(StarBuffer&)>& updateBufferData, const vk::DeviceSize& bufferSize,
+				const uint32_t& instanceCount, const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
+				const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
+				const vk::DeviceSize& minOffsetAlignment)
+				: updateBufferData(updateBufferData),
+				bufferSize(bufferSize), instanceCount(instanceCount),
+				creationFlags(creationFlags), memoryUsageFlags(memoryUsageFlags),
+				useFlags(useFlags), sharingMode(sharingMode),
+				minOffsetAlignment(minOffsetAlignment) {};
+
 		};
 
 		ManagerBuffer() = default;
@@ -61,8 +72,9 @@ namespace star {
 		struct CompleteRequest {
 			std::unique_ptr<StarBuffer> buffer;
 			std::function<void(StarBuffer&)> updateBufferData = std::function<void(StarBuffer&)>();
-			bool writeOnce = false; 
-			bool hasBeenUpdatedThisFrame = false;
+
+			//1 - first frame
+			//99 - done never again
 			uint16_t frameInFlightIndexToUpdateOn; 
 
 			CompleteRequest(std::unique_ptr<StarBuffer> buffer, 
@@ -75,7 +87,14 @@ namespace star {
 		static StarDevice* device;
 		static int numFramesInFlight; 
 		static int currentFrameInFlight; 
+		static int bufferCounter; 
 
-		static std::vector<std::unique_ptr<CompleteRequest>> allBuffers;
+		//odd handles
+		static std::unordered_map<Handle, CompleteRequest, HandleHash> updateableBuffers;
+		//even handles
+		static std::unordered_map<Handle, CompleteRequest, HandleHash> staticBuffers; 
+
+
+		static std::unordered_map<Handle, CompleteRequest, HandleHash>* getMapForBuffer(const Handle& handle); 
 	};
 }

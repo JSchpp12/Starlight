@@ -14,8 +14,13 @@ namespace star {
 	public:
 		BufferModifier(const VmaAllocationCreateFlags& createFlags, const VmaMemoryUsage& memoryUsage,
 			const vk::BufferUsageFlagBits& bufferUsageFlags, const vk::DeviceSize& bufferSize,
-			const int& instanceCount, const vk::SharingMode& bufferSharingMode, const uint16_t& frameInFlightIndexToUpdateOn,
-			const bool& willBeWrittenToOnce, const int& minOffsetAlignment); 
+			const int& instanceCount, const vk::SharingMode& bufferSharingMode,
+			const int& minOffsetAlignment, const uint16_t& frameInFlightIndexToUpdateOn);
+
+		BufferModifier(const VmaAllocationCreateFlags& createFlags, const VmaMemoryUsage& memoryUsage,
+			const vk::BufferUsageFlagBits& bufferUsageFlags, const vk::DeviceSize& bufferSize,
+			const int& instanceCount, const vk::SharingMode& bufferSharingMode,
+			const int& minOffsetAlignment);
 
 		Handle& getHandle() const {
 			return *this->bufferHandle;

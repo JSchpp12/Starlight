@@ -97,6 +97,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
     "src/common/Texture.cpp"
+    "src/common/Handle.cpp"
     "src/common/buffers/GlobalInfo.cpp"
     "src/common/buffers/LightInfo.cpp"
     "src/virtual/StarSystemPipeline.cpp"
