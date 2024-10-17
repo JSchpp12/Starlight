@@ -1,5 +1,6 @@
 #include "ManagerBuffer.hpp"
 
+std::stack<star::ManagerBuffer::CompleteRequest*> star::ManagerBuffer::oneTimeWriteBuffersNeedWritten = std::stack<star::ManagerBuffer::CompleteRequest*>();
 std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash> star::ManagerBuffer::updateableBuffers = std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash>();
 std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash> star::ManagerBuffer::staticBuffers = std::unordered_map<star::Handle, star::ManagerBuffer::CompleteRequest, star::HandleHash>();
 
@@ -40,6 +41,8 @@ star::Handle star::ManagerBuffer::addRequest(const star::ManagerBuffer::Request&
 			newRequest.updateBufferData, 
 			0
 		)));
+
+		oneTimeWriteBuffersNeedWritten.push(&staticBuffers.at(newBufferHandle)); 
 	}
 	else {
 
@@ -61,7 +64,7 @@ star::Handle star::ManagerBuffer::addRequest(const star::ManagerBuffer::Request&
 				),
 			newRequest.updateBufferData,
 			newRequest.frameInFlightIndexToUpdateOn
-			)));
+		)));
 	}
 	
 	return newBufferHandle; 
@@ -71,6 +74,12 @@ void star::ManagerBuffer::update(const int& frameInFlightIndex) {
 	assert(ManagerBuffer::device != nullptr && "Buffer Manager MUST be initialized first!"); 
 
 	ManagerBuffer::currentFrameInFlight = frameInFlightIndex;
+
+	while (!oneTimeWriteBuffersNeedWritten.empty()) {
+		CompleteRequest* request = oneTimeWriteBuffersNeedWritten.top(); 
+		request->updateBufferData(*request->buffer); 
+		oneTimeWriteBuffersNeedWritten.pop(); 
+	}
 
 	for (auto& buffer : ManagerBuffer::updateableBuffers) {
 		if (buffer.second.frameInFlightIndexToUpdateOn == static_cast<uint16_t>(frameInFlightIndex)) {

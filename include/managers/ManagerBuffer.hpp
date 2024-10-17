@@ -89,11 +89,12 @@ namespace star {
 		static int currentFrameInFlight; 
 		static int bufferCounter; 
 
+		static std::stack<CompleteRequest*> oneTimeWriteBuffersNeedWritten; 
+
 		//odd handles
 		static std::unordered_map<Handle, CompleteRequest, HandleHash> updateableBuffers;
 		//even handles
 		static std::unordered_map<Handle, CompleteRequest, HandleHash> staticBuffers; 
-
 
 		static std::unordered_map<Handle, CompleteRequest, HandleHash>* getMapForBuffer(const Handle& handle); 
 	};
