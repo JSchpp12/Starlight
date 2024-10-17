@@ -4,7 +4,7 @@
 #include "Light.hpp"
 #include "StarWindow.hpp"
 #include "StarRenderObject.hpp"
-#include "CameraInfo.hpp"
+#include "GlobalInfo.hpp"
 #include "BasicCamera.hpp"
 
 #include <map>

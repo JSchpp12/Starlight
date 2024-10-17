@@ -9,7 +9,7 @@
 #include "InteractionSystem.hpp"
 #include "StarObject.hpp"
 #include "StarCommandBuffer.hpp"
-#include "CameraInfo.hpp"
+#include "GlobalInfo.hpp"
 
 #include "MapManager.hpp"
 #include "StarSystemRenderPointLight.hpp"

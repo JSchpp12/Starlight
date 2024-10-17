@@ -1,4 +1,4 @@
-#include "CameraInfo.hpp"
+#include "GlobalInfo.hpp"
 
 void star::GlobalInfo::writeBufferData(StarBuffer& buffer)
 {
