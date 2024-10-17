@@ -2,13 +2,14 @@
 
 #include "StarCamera.hpp"
 #include "StarRenderer.hpp"
+#include "StarScene.hpp"
 #include "StarWindow.hpp"
 #include "StarDescriptors.hpp"
-
 #include "LightBufferObject.hpp"
 #include "InteractionSystem.hpp"
 #include "StarObject.hpp"
 #include "StarCommandBuffer.hpp"
+#include "CameraInfo.hpp"
 
 #include "MapManager.hpp"
 #include "StarSystemRenderPointLight.hpp"
@@ -21,6 +22,7 @@
 #include "RenderResourceModifier.hpp"
 #include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
+#include "ManagerBuffer.hpp"
 #include "Texture.hpp"
 
 #include "Light.hpp"
@@ -33,8 +35,7 @@
 namespace star {
 class SceneRenderer : public StarRenderer, public CommandBufferModifier, private RenderResourceModifier, private DescriptorModifier {
 public:
-	SceneRenderer(std::vector<std::unique_ptr<Light>>& lightList,
-		std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera);
+	SceneRenderer(StarScene& scene);
 
 	virtual ~SceneRenderer() = default;
 
@@ -48,13 +49,6 @@ public:
 	std::vector<std::unique_ptr<star::Texture>>* getRenderToColorImages() { return &this->renderToImages; }
 	std::vector<vk::Image>* getRenderToDepthImages() { return &this->renderToDepthImages; }	
 protected:
-	struct GlobalUniformBufferObject {
-		alignas(16) glm::mat4 proj;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 inverseView;              //used to extrapolate camera position, can be used to convert from camera to world space
-		uint32_t numLights;                             //number of lights in render
-	};
-
 	struct LightBufferObject {
 		glm::vec4 position = glm::vec4(1.0f);
 		glm::vec4 direction = glm::vec4(1.0f);     //direction in which the light is pointing
@@ -68,6 +62,8 @@ protected:
 		//settings.y = type
 		glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
 	};
+	StarScene& scene; 
+
 	std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
 	
 	std::unique_ptr<RenderingTargetInfo> renderToTargetInfo = std::unique_ptr<RenderingTargetInfo>(); 
@@ -80,14 +76,10 @@ protected:
 	std::vector<VmaAllocation> renderToDepthImageMemory = std::vector<VmaAllocation>();
 	std::vector<vk::ImageView> renderToDepthImageViews = std::vector<vk::ImageView>(); 
 
-	std::vector<std::unique_ptr<Light>>& lightList;
-	std::vector<std::reference_wrapper<StarObject>> objectList; 
-
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
 
 	//storage for multiple buffers for each swap chain image  
-	std::vector<std::unique_ptr<StarBuffer>> globalUniformBuffers;
 	std::vector<vk::DescriptorSet> globalDescriptorSets;
 	std::vector<std::unique_ptr<StarBuffer>> lightBuffers;
 	std::vector<vk::DescriptorSet> lightDescriptorSets;

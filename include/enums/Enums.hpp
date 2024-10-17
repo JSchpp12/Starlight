@@ -50,9 +50,14 @@ namespace star {
     };
 
     enum Config_Settings {
+        app_name,
         mediadirectory,
         texture_filtering,
-        texture_anisotropy
+        texture_anisotropy,
+        frames_in_flight, 
+        required_device_feature_geometry_shader,
+        resolution_x, 
+        resolution_y
     };
 
     enum Handle_Type {

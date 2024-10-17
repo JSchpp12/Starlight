@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ManagerBuffer.hpp"
 #include "SwapChainRenderer.hpp"
 #include "BasicWindow.hpp"
 #include "Color.hpp"
@@ -12,7 +13,6 @@
 #include "ManagerDescriptorPool.hpp"
 #include "StarRenderGroup.hpp"
 #include "ManagerCommandBuffer.hpp"
-#include "ManagerBuffer.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -36,9 +36,9 @@ public:
 
 	StarScene& getScene() { return *this->currentScene; }
 protected:
-	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<StarWindow> window;
-	std::unique_ptr<StarDevice> renderingDevice; 
+	std::unique_ptr<StarDevice> renderingDevice;
+	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<SwapChainRenderer> mainRenderer; 
 	std::vector<Handle> lightList; 
 
@@ -47,6 +47,5 @@ protected:
 
 private: 
 	static std::unique_ptr<std::string> screenshotPath;
-	//static ManagerBuffer bufferManager; 
 };
 }

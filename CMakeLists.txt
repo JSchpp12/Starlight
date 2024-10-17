@@ -54,6 +54,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/modulePlug/RenderResourceModifierGeometry.cpp"
     "src/virtual/modulePlug/CommandBufferModifier.cpp"
     "src/virtual/modulePlug/DescriptorModifier.cpp"
+    "src/virtual/modulePlug/BufferModifier.cpp"
     "src/virtual/StarMesh.cpp"
     "src/virtual/StarRenderer.cpp" 
     "src/StarEngine.cpp" 
@@ -96,6 +97,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
     "src/common/Texture.cpp"
+    "src/common/buffers/CameraInfo.cpp"
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
@@ -119,10 +121,12 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/objects/StarObjectInstance.hpp"
     "include/common/BasicCamera.hpp"
     "include/common/RuntimeUpdateTexture.hpp"
+    "include/common/buffers/CameraInfo.hpp"
     "include/virtual/modulePlug/RenderResourceModifier.hpp"
     "include/virtual/modulePlug/RenderResourceModifierGeometry.hpp"
     "include/virtual/modulePlug/CommandBufferModifier.hpp"
     "include/virtual/modulePlug/DescriptorModifier.hpp"
+    "include/virtual/modulePlug/BufferModifier.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
@@ -153,6 +157,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarMaterial.hpp"
     "include/virtual/StarSystemPipeline.hpp"
     "include/virtual/StarPipeline.hpp"
+    "include/internals/CommandBufferContainer.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarEntity.hpp"
@@ -177,7 +182,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/Time.hpp"
     "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
-    "include/internals/CommandBufferContainer.hpp"
+
 )
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
@@ -209,6 +214,7 @@ target_include_directories(${PROJECT_NAME}
         "include/common/materials/"
         "include/common/helpers/"
         "include/common/objects/"
+        "include/common/buffers/"
         "include/builders/"
         "include/controllers/"
         "include/modules/"

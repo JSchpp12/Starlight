@@ -1,6 +1,8 @@
 #include "StarScene.hpp"
 
 int star::StarScene::add(std::unique_ptr<star::Light> newLight) {
+	this->lightCounter++; 
+
 	int lightIndex = this->lightList.size();
 	this->lightList.emplace_back(std::move(newLight));
 	return lightIndex;

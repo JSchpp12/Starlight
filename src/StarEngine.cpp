@@ -4,8 +4,20 @@ namespace star {
 
 std::unique_ptr<std::string> StarEngine::screenshotPath = nullptr;
 
-StarEngine::StarEngine() : currentScene(std::unique_ptr<StarScene>(new StarScene())) {
+StarEngine::StarEngine() {
 	ConfigFile::load("./StarEngine.cfg"); 
+
+	this->window = BasicWindow::New(std::stoi(ConfigFile::getSetting(star::Config_Settings::resolution_x)), 
+		std::stoi(ConfigFile::getSetting(star::Config_Settings::resolution_y)),
+		ConfigFile::getSetting(star::Config_Settings::app_name));
+
+	std::vector<star::Rendering_Features> features;
+	this->renderingDevice = StarDevice::New(*window, features);
+
+	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
+	ManagerBuffer::init(*this->renderingDevice, framesInFlight);
+
+	this->currentScene = std::unique_ptr<StarScene>(new StarScene(framesInFlight));
 }
 
 StarEngine::~StarEngine()
@@ -15,21 +27,22 @@ StarEngine::~StarEngine()
 
 void StarEngine::Run()
 {
-	ManagerDescriptorPool descriptorManager(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
-	RenderResourceSystem::init(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT, mainRenderer->getMainExtent());
-	ManagerCommandBuffer commandBufferManager(*this->renderingDevice, mainRenderer->MAX_FRAMES_IN_FLIGHT);
+	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
+
+	ManagerDescriptorPool descriptorManager(*this->renderingDevice, framesInFlight);
+	RenderResourceSystem::init(*this->renderingDevice, framesInFlight, mainRenderer->getMainExtent());
+	ManagerCommandBuffer commandBufferManager(*this->renderingDevice, framesInFlight);
 
 	//prepare any shared resources
 	StarObject::initSharedResources(*this->renderingDevice, this->mainRenderer->getMainExtent(), 
-		this->mainRenderer->MAX_FRAMES_IN_FLIGHT, 
+		framesInFlight, 
 		this->mainRenderer->getGlobalDescriptorLayout(), this->mainRenderer->getRenderingInfo());
 
 	while (!window->shouldClose()) {
 		//check if any new objects have been added
-		RenderResourceSystem::runInits(*this->renderingDevice, this->mainRenderer->MAX_FRAMES_IN_FLIGHT, this->mainRenderer->getMainExtent());
-		descriptorManager.update(this->mainRenderer->MAX_FRAMES_IN_FLIGHT); 
-
-		int frameToDraw = this->mainRenderer->getFrameToBeDrawn(); 
+		RenderResourceSystem::runInits(*this->renderingDevice, framesInFlight, this->mainRenderer->getMainExtent());
+		descriptorManager.update(framesInFlight); 
+		ManagerBuffer::update(this->mainRenderer->getFrameToBeDrawn()); 
 
 		if (screenshotPath) {
 			this->mainRenderer->triggerScreenshot(*screenshotPath);
@@ -49,10 +62,6 @@ void StarEngine::Run()
 }
 
 void StarEngine::init(StarApplication& app) {
-	this->window = BasicWindow::New(app.getCamera().getResolution().x, app.getCamera().getResolution().y, app.getApplicationName());
-
-	this->renderingDevice = StarDevice::New(*window, app.getRequiredDeviceExtensions());
-
 	this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window);
 }
 }

@@ -2,10 +2,8 @@
 
 namespace star {
 
-SceneRenderer::SceneRenderer(std::vector<std::unique_ptr<Light>>& lightList, 
-	std::vector<std::reference_wrapper<StarObject>> objectList, 
-	StarCamera& camera)
-	: StarRenderer(camera), lightList(lightList), objectList(objectList)
+SceneRenderer::SceneRenderer(star::StarScene& scene)
+	: StarRenderer(*scene.getCamera()), scene(scene)
 {
 }
 
@@ -55,7 +53,7 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 
 void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
 {	
-	for (StarObject& object : objectList) {
+	for (StarObject& object : this->scene.getObjects()) {
 		//check if the object is compatible with any render groups 
 		StarRenderGroup* match = nullptr; 
 
@@ -85,24 +83,13 @@ void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D
 
 void SceneRenderer::updateUniformBuffer(uint32_t currentImage)
 {
-	//update global ubo 
-	GlobalUniformBufferObject globalUbo;
-	globalUbo.proj = this->camera.getProjectionMatrix();
-	//glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
-	globalUbo.proj[1][1] *= -1;
-	globalUbo.view = this->camera.getViewMatrix();
-	globalUbo.inverseView = glm::inverse(this->camera.getViewMatrix());
-	globalUbo.numLights = static_cast<uint32_t>(this->lightList.size());
-
-	this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
-
 	//update buffer for light positions
-	std::vector<LightBufferObject> lightInformation(this->lightList.size());
+	std::vector<LightBufferObject> lightInformation(this->scene.getLights().size());
 	LightBufferObject newBufferObject{};
 
 	//write buffer information
-	for (size_t i = 0; i < this->lightList.size(); i++) {
-		Light& currLight = *this->lightList.at(i);
+	for (size_t i = 0; i < this->scene.getLights().size(); i++) {
+		Light& currLight = *this->scene.getLights().at(i);
 		newBufferObject.position = glm::vec4{ currLight.getPosition(), 1.0f };
 		newBufferObject.direction = currLight.direction;
 		newBufferObject.ambient = currLight.getAmbient();
@@ -152,17 +139,18 @@ void SceneRenderer::manualCreateDescriptors(star::StarDevice& device, const int&
 	for (size_t i = 0; i < numFramesInFlight; i++) {
 		//global
 		bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
+		
 
 		auto globalBufferInfo = vk::DescriptorBufferInfo{
-			this->globalUniformBuffers[i]->getBuffer(),
+			ManagerBuffer::getBuffer(this->scene.getGlobalInfoBuffer(i)->getHandle()).getBuffer(),
 			0,
-			sizeof(GlobalUniformBufferObject) };
+			ManagerBuffer::getBuffer(this->scene.getGlobalInfoBuffer(i)->getHandle()).getBufferSize()};
 
 		//buffer descriptors for point light locations 
 		auto lightBufferInfo = vk::DescriptorBufferInfo{
 			this->lightBuffers[i]->getBuffer(),
 			0,
-			sizeof(LightBufferObject) * this->lightList.size() };
+			sizeof(LightBufferObject) * this->scene.getLights().size()};
 
 		this->globalDescriptorSets.at(i) = StarDescriptorWriter(device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
 			.writeBuffer(0, globalBufferInfo)
@@ -199,32 +187,31 @@ void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32
 
 void SceneRenderer::createRenderingBuffers(star::StarDevice& device, const int& numFramesInFlight)
 {
-	vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * this->objectList.size();
+	//vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * this->objectList.size();
 
-	this->globalUniformBuffers.resize(numFramesInFlight);
-	if (this->lightList.size() > 0) {
+	if (this->scene.getLights().size() > 0) {
 		this->lightBuffers.resize(numFramesInFlight);
 	}
 
 	for (size_t i = 0; i < numFramesInFlight; i++) {
-		auto numOfObjects = this->objectList.size(); 
-		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(
-			device,
-			sizeof(GlobalUniformBufferObject),
-			this->objectList.size(),
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eUniformBuffer,
-			vk::SharingMode::eConcurrent
-		);
-		this->globalUniformBuffers[i]->map();
+		//auto numOfObjects = this->objectList.size(); 
+		//this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(
+		//	device,
+		//	sizeof(GlobalUniformBufferObject),
+		//	this->objectList.size(),
+		//	VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+		//	VMA_MEMORY_USAGE_AUTO,
+		//	vk::BufferUsageFlagBits::eUniformBuffer,
+		//	vk::SharingMode::eConcurrent
+		//);
+		//this->globalUniformBuffers[i]->map();
 
 		//create light buffers 
-		if (this->lightList.size() > 0) {
+		if (this->scene.getLights().size() > 0) {
 			this->lightBuffers[i] = std::make_unique<StarBuffer>(
 				device,
-				this->lightList.size(),
-				(uint32_t)sizeof(LightBufferObject) * (uint32_t)this->lightList.size(),
+				this->scene.getLights().size(),
+				(uint32_t)sizeof(LightBufferObject) * (uint32_t)this->scene.getLights().size(),
 				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 				VMA_MEMORY_USAGE_AUTO,
 				vk::BufferUsageFlagBits::eStorageBuffer,
@@ -387,7 +374,7 @@ Command_Buffer_Type SceneRenderer::getCommandBufferType()
 
 void SceneRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)
 {
-	for (StarObject& obj : this->objectList) {
+	for (StarObject& obj : this->scene.getObjects()) {
 		obj.prepDraw(frameIndexToBeDrawn); 
 	}
 
