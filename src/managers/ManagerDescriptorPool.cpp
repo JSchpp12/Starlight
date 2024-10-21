@@ -1,5 +1,4 @@
 #include "ManagerDescriptorPool.hpp"
-#include "ManagerDescriptorPool.hpp"
 
 bool star::ManagerDescriptorPool::ready = false; 
 std::stack<std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>> star::ManagerDescriptorPool::requestCallbacks = std::stack < std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>>();

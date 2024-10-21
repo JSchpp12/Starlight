@@ -46,4 +46,9 @@ namespace star {
 			return result;
 		}
 	};
+
+    inline bool operator<(const Handle& lhs, const Handle& rhs)
+    {
+        return lhs.global_id < rhs.global_id;
+    }
 }

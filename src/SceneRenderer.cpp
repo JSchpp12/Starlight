@@ -11,7 +11,7 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 {
 	this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
-	manualCreateDescriptors(device, numFramesInFlight);
+	auto globalBuilder = manualCreateDescriptors(device, numFramesInFlight);
 	vk::Format depthFormat = createDepthResources(device, swapChainExtent, numFramesInFlight);
 
 	this->renderToTargetInfo = std::make_unique<RenderingTargetInfo>(
@@ -24,7 +24,7 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 		texture->prepRender(device); 
 	}
 	
-	createRenderingGroups(device, swapChainExtent, numFramesInFlight);
+	createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
 std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
@@ -50,7 +50,7 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 	return newRenderToImages; 
 }
 
-void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
+void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight, star::StarShaderInfo::Builder builder)
 {	
 	for (StarObject& object : this->scene.getObjects()) {
 		//check if the object is compatible with any render groups 
@@ -76,7 +76,7 @@ void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D
 
 	//init all groups
 	for (auto& group : this->renderGroups) {
-		group->init(*globalSetLayout, this->globalDescriptorSets, this->getRenderingInfo());
+		group->init(builder, this->getRenderingInfo());
 	}
 }
 
@@ -102,37 +102,25 @@ vk::ImageView SceneRenderer::createImageView(star::StarDevice& device, vk::Image
 	return imageView;
 }
 
-void SceneRenderer::manualCreateDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarDevice& device, const int& numFramesInFlight)
 {
+	auto globalBuilder = StarShaderInfo::Builder(device, numFramesInFlight);
+	
 	this->globalSetLayout = StarDescriptorSetLayout::Builder(device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
 		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
 		.build();
+	globalBuilder.addSetLayout(this->globalSetLayout); 
 
-	this->globalDescriptorSets.resize(numFramesInFlight);
-
-	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
 	for (size_t i = 0; i < numFramesInFlight; i++) {
-		//global
-		bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
-		
-
-		auto globalBufferInfo = vk::DescriptorBufferInfo{
-			ManagerBuffer::getBuffer(this->scene.getGlobalInfoBuffer(i)->getHandle()).getBuffer(),
-			0,
-			ManagerBuffer::getBuffer(this->scene.getGlobalInfoBuffer(i)->getHandle()).getBufferSize()};
-
-		//buffer descriptors for point light locations 
-		auto lightBufferInfo = vk::DescriptorBufferInfo{
-			ManagerBuffer::getBuffer(this->scene.getLightInfoBuffer(i)->getHandle()).getBuffer(),
-			0,
-			ManagerBuffer::getBuffer(this->scene.getLightInfoBuffer(i)->getHandle()).getBufferSize() };
-
-		this->globalDescriptorSets.at(i) = StarDescriptorWriter(device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
-			.writeBuffer(0, globalBufferInfo)
-			.writeBuffer(1, lightBufferInfo)
-			.build();
+		globalBuilder
+			.startOnFrameIndex(i)
+			.startSet()
+			.add(*this->scene.getGlobalInfoBuffer(i))
+			.add(*this->scene.getLightInfoBuffer(i));
 	}
+
+	return globalBuilder; 
 }
 
 void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, VmaAllocation& imageMemory)

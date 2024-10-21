@@ -17,7 +17,7 @@ namespace star {
 
 		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
 		void cleanup(StarDevice& device) override;
-		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& imageInFlightIndex) override;
+		void buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
 
 	protected:
 		std::shared_ptr<Texture> texture;

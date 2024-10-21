@@ -36,7 +36,7 @@ void StarEngine::Run()
 	//prepare any shared resources
 	StarObject::initSharedResources(*this->renderingDevice, this->mainRenderer->getMainExtent(), 
 		framesInFlight, 
-		this->mainRenderer->getGlobalDescriptorLayout(), this->mainRenderer->getRenderingInfo());
+		this->mainRenderer->getGlobalShaderInfo(), this->mainRenderer->getRenderingInfo());
 
 	while (!window->shouldClose()) {
 		//check if any new objects have been added

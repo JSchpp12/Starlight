@@ -3,7 +3,7 @@
 
 #include "StarDevice.hpp"
 #include "StarBuffer.hpp"
-#include "StarDescriptors.hpp"
+#include "StarDescriptorBuilders.hpp"
 #include "ConfigFile.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -74,8 +74,8 @@ public:
 	/// <returns></returns>
 	virtual std::optional<std::unique_ptr<unsigned char>> data() = 0;
 
-	vk::ImageView getImageView(vk::Format* requestedFormat = nullptr);
-	vk::Sampler getSampler() { return *this->textureSampler; }
+	vk::ImageView getImageView(vk::Format* requestedFormat = nullptr) const;
+	vk::Sampler getSampler() const { return *this->textureSampler; }
 	vk::Image getImage() const { return this->textureImage; }
 	vk::ImageLayout getCurrentLayout() const { return this->layout; }
 	void overrideImageLayout(vk::ImageLayout newLayout) { this->layout = newLayout; }

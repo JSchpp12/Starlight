@@ -25,3 +25,23 @@ void star::LightInfo::writeBufferData(StarBuffer& buffer)
 
 	buffer.unmap(); 
 }
+
+bool star::LightInfo::checkIfShouldUpdateThisFrame()
+{
+	if (this->lastWriteNumLights != this->lights.size()) {
+		this->lastWriteNumLights = this->lights.size();
+
+		this->init(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
+			vk::BufferUsageFlagBits::eStorageBuffer,
+			sizeof(LightBufferObject),
+			lights.size(),
+			vk::SharingMode::eConcurrent, 1); 
+
+		this->lastWriteNumLights = static_cast<uint16_t>(this->lights.size());
+
+		return true;
+	}
+
+	return false;
+}

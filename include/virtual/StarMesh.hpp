@@ -4,7 +4,7 @@
 #include "CastHelpers.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDevice.hpp"
-#include "StarDescriptors.hpp"
+#include "StarDescriptorBuilders.hpp"
 #include "StarMaterialMesh.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"

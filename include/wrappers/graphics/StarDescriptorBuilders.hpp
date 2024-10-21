@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <unordered_map>
+
 namespace star {
 class StarDescriptorSetLayout {
 public:
@@ -107,10 +108,37 @@ public:
 	void overwrite(vk::DescriptorSet& set);
 
 private:
+	struct FullDescriptorInfo {
+		std::optional<vk::DescriptorBufferInfo> bufferInfo = std::optional<vk::DescriptorBufferInfo>(); 
+		std::optional<vk::DescriptorImageInfo> imageInfo = std::optional<vk::DescriptorImageInfo>();
+		vk::DescriptorType type; 
+		uint32_t binding; 
+
+		FullDescriptorInfo(vk::DescriptorBufferInfo& bufferInfo, vk::DescriptorType type, uint32_t binding) : bufferInfo(bufferInfo), type(type), binding(binding) {
+		}; 
+
+		FullDescriptorInfo(vk::DescriptorImageInfo& imageInfo, vk::DescriptorType type, uint32_t binding) : imageInfo(imageInfo), type(type), binding(binding) {
+		};
+
+		vk::WriteDescriptorSet getSetInfo() {
+			auto fullSet = vk::WriteDescriptorSet{}; 
+			fullSet.sType = vk::StructureType::eWriteDescriptorSet;
+			fullSet.descriptorType = this->type; 
+			fullSet.dstBinding = this->binding;
+			if (this->bufferInfo.has_value())
+				fullSet.pBufferInfo = &this->bufferInfo.value();
+			else if (this->imageInfo.has_value())
+				fullSet.pImageInfo = &this->imageInfo.value();
+			fullSet.descriptorCount = 1;
+
+			return fullSet; 
+		}
+	};
+
 	StarDevice& starDevice;
 	StarDescriptorSetLayout& setLayout;
 	StarDescriptorPool& pool;
-	std::vector<vk::WriteDescriptorSet> writeSets;
+	std::vector<FullDescriptorInfo> writeSets;
 
 };
 }

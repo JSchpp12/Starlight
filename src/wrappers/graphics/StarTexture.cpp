@@ -33,7 +33,7 @@ void StarTexture::cleanupRender(StarDevice& device)
 	this->isRenderReady = false; 
 }
 
-vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat){
+vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat) const{
 	if (requestedFormat != nullptr) {
 		//make sure the image view actually exists for the requested format
 		assert(this->imageViews.find(*requestedFormat) != this->imageViews.end() && "The image must be created with the proper image view before being requested");

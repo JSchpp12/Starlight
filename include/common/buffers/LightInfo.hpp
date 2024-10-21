@@ -18,6 +18,8 @@ namespace star {
 			vk::SharingMode::eConcurrent, 1, frameInFlightIndexToUpdateOn) { };
 
 	private:
+		uint16_t lastWriteNumLights = 0; 
+
 		struct LightBufferObject {
 			glm::vec4 position = glm::vec4(1.0f);
 			glm::vec4 direction = glm::vec4(1.0f);     //direction in which the light is pointing
@@ -35,6 +37,8 @@ namespace star {
 		const std::vector<std::unique_ptr<Light>>& lights;
 
 		void writeBufferData(StarBuffer& buffer) override;
+
+		bool checkIfShouldUpdateThisFrame() override;
 
 	};
 }

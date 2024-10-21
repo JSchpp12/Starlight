@@ -4,12 +4,13 @@
 #include "StarRenderer.hpp"
 #include "StarScene.hpp"
 #include "StarWindow.hpp"
-#include "StarDescriptors.hpp"
+#include "StarDescriptorBuilders.hpp"
 #include "LightBufferObject.hpp"
 #include "InteractionSystem.hpp"
 #include "StarObject.hpp"
 #include "StarCommandBuffer.hpp"
 #include "GlobalInfo.hpp"
+#include "StarShaderInfo.hpp"
 
 #include "MapManager.hpp"
 #include "StarSystemRenderPointLight.hpp"
@@ -42,7 +43,7 @@ public:
 	virtual void prepare(StarDevice& device, const vk::Extent2D& swapChainExtent, 
 		const int& numFramesInFlight);
 
-	StarDescriptorSetLayout& getGlobalDescriptorLayout() { return *this->globalSetLayout; }
+	StarDescriptorSetLayout& getGlobalShaderInfo() { return *this->globalSetLayout; }
 
 	virtual RenderingTargetInfo getRenderingInfo() { return *this->renderToTargetInfo; }
 	
@@ -67,10 +68,11 @@ protected:
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
 
 	//storage for multiple buffers for each swap chain image  
-	std::vector<vk::DescriptorSet> globalDescriptorSets;
+	//std::vector<vk::DescriptorSet> globalDescriptorSets;
+	std::unique_ptr<StarShaderInfo> globalShaderInfo; 
 	std::vector<vk::DescriptorSet> lightDescriptorSets;
 
-	std::unique_ptr<StarDescriptorSetLayout> globalSetLayout{};
+	std::shared_ptr<StarDescriptorSetLayout> globalSetLayout{};
 	std::vector<std::unique_ptr<StarRenderGroup>> renderGroups; 
 
 	virtual vk::Format getCurrentRenderToImageFormat() = 0; 
@@ -80,11 +82,11 @@ protected:
 	/// <summary>
 	/// Create vertex buffer + index buffers + any rendering groups for operations
 	/// </summary>
-	virtual void createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight);
+	virtual void createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight, StarShaderInfo::Builder builder);
 
 	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags);
 	
-	virtual void manualCreateDescriptors(StarDevice& device, const int& numFramesInFlight);
+	virtual StarShaderInfo::Builder manualCreateDescriptors(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create Vulkan Image object with properties provided in function arguments. 

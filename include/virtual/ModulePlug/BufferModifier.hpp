@@ -15,22 +15,49 @@ namespace star {
 		BufferModifier(const VmaAllocationCreateFlags& createFlags, const VmaMemoryUsage& memoryUsage,
 			const vk::BufferUsageFlagBits& bufferUsageFlags, const vk::DeviceSize& bufferSize,
 			const int& instanceCount, const vk::SharingMode& bufferSharingMode,
-			const int& minOffsetAlignment, const uint16_t& frameInFlightIndexToUpdateOn);
+			const int& minOffsetAlignment, const uint16_t& frameInFlightIndexToUpdateOn) {
+			init(createFlags, memoryUsage, bufferUsageFlags, bufferSize, instanceCount, bufferSharingMode, minOffsetAlignment, frameInFlightIndexToUpdateOn);
+		}
 
 		BufferModifier(const VmaAllocationCreateFlags& createFlags, const VmaMemoryUsage& memoryUsage,
 			const vk::BufferUsageFlagBits& bufferUsageFlags, const vk::DeviceSize& bufferSize,
 			const int& instanceCount, const vk::SharingMode& bufferSharingMode,
-			const int& minOffsetAlignment);
+			const int& minOffsetAlignment) {
+			init(createFlags, memoryUsage, bufferUsageFlags, bufferSize, instanceCount, bufferSharingMode, minOffsetAlignment);
+		}
 
 		Handle& getHandle() const {
 			return *this->bufferHandle;
 		};
 
+		bool getBufferHasChanged() const {
+			return this->bufferHasChanged;
+		};
+
 		~BufferModifier(); 
 	protected:
+		void init(const VmaAllocationCreateFlags& createFlags, const VmaMemoryUsage& memoryUsage,
+			const vk::BufferUsageFlagBits& bufferUsageFlags, const vk::DeviceSize& bufferSize,
+			const int& instanceCount, const vk::SharingMode& bufferSharingMode,
+			const int& minOffsetAlignment, const uint16_t& frameInFlightIndexToUpdateOn);
+
+		void init(const VmaAllocationCreateFlags& createFlags, const VmaMemoryUsage& memoryUsage,
+			const vk::BufferUsageFlagBits& bufferUsageFlags, const vk::DeviceSize& bufferSize,
+			const int& instanceCount, const vk::SharingMode& bufferSharingMode,
+			const int& minOffsetAlignment); 
+
 		virtual void writeBufferData(StarBuffer& buffer) = 0; 
+
+		virtual bool checkIfShouldUpdateThisFrame() {
+			return true; 
+		}
 
 	private:
 		std::unique_ptr<Handle> bufferHandle = nullptr; 
+		bool bufferHasChanged = false; 
+
+		void setBufferHasChanged() {
+			this->bufferHasChanged = true;
+		}
 	};
 }
