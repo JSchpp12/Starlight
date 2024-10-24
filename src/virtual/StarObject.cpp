@@ -67,7 +67,7 @@ void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swap
 	{
 		std::vector<vk::DescriptorSetLayout> globalLayouts{
 			globalDescriptors.getDescriptorSetLayout(),
-			instanceDescriptorLayout->getDescriptorSetLayout()
+			boundDescriptorLayout->getDescriptorSetLayout()
 		};
 
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -112,11 +112,6 @@ void star::StarObject::cleanupRender(StarDevice& device)
 
 	this->setLayout.reset(); 
 
-	for (auto& iBuffer : this->instanceUniformBuffers) {
-		for (auto& buf : iBuffer)
-			buf.reset(); 
-	}
-
 	//cleanup any materials
 	for (auto& mesh : this->getMeshes()) {
 		mesh->getMaterial().cleanupRender(device); 
@@ -132,7 +127,6 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& 
 {
 	StarGraphicsPipeline::PipelineConfigSettings settings;
 	StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, pipelineLayout, renderInfo);
-	settings.depthStencilInfo.depthTestEnable = VK_FALSE; 
 	auto graphicsShaders = this->getShaders();
 
 	auto newPipeline = std::make_unique<StarGraphicsPipeline>(device, settings, graphicsShaders.at(Shader_Stage::vertex), graphicsShaders.at(Shader_Stage::fragment));
@@ -143,10 +137,9 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(StarDevice& 
 
 void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
 	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo, int numSwapChainImages, 
-	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, std::vector<std::vector<vk::DescriptorSet>> globalSets)
+	star::StarShaderInfo::Builder fullEngineBuilder)
 {
-	this->groupLayout = std::make_unique<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>>(groupLayout);
-	this->globalSets = std::make_unique<std::vector<std::vector<vk::DescriptorSet>>>(globalSets);
+	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
 	//handle pipeline infos
 	this->pipeline = this->buildPipeline(device, swapChainExtent, pipelineLayout, renderInfo);
@@ -156,12 +149,9 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 	StarDescriptorPool& pool = ManagerDescriptorPool::getPool(); 
 }
 
-void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImages, 
-	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout,
-	std::vector<std::vector<vk::DescriptorSet>> globalSets, StarPipeline& sharedPipeline)
+void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImages, StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
 {
-	this->groupLayout = std::make_unique<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>>(groupLayout);
-	this->globalSets = std::make_unique<std::vector<std::vector<vk::DescriptorSet>>>(globalSets);
+	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder); 
 
 	this->sharedPipeline = &sharedPipeline;
 
@@ -204,26 +194,12 @@ star::StarObjectInstance& star::StarObject::createInstance()
 
 void star::StarObject::prepDraw(int swapChainTarget)
 {
-	//map needed buffers before write
-	for (auto& buff : this->instanceUniformBuffers[swapChainTarget]) {
-		buff->map(); 
-	}
 
-	for (int i = 0; i < this->instanceUniformBuffers[swapChainTarget].size(); i++) {
-		for (auto& instance : this->instances) {
-			instance->updateBufferData(*this->instanceUniformBuffers[swapChainTarget][i], i);
-		}
-	}
-	
-	//unmap when done
-	for (auto& buff : this->instanceUniformBuffers[swapChainTarget]) {
-		buff->unmap();
-	}
 }
 
-std::vector<std::unique_ptr<star::StarDescriptorSetLayout>> star::StarObject::getDescriptorSetLayouts(StarDevice& device)
+std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::getDescriptorSetLayouts(StarDevice& device)
 {
-	auto allSets = std::vector<std::unique_ptr<star::StarDescriptorSetLayout>>(); 
+	auto allSets = std::vector<std::shared_ptr<star::StarDescriptorSetLayout>>(); 
 	auto staticSetBuilder = StarDescriptorSetLayout::Builder(device);
 
 	this->getMeshes().front()->getMaterial().applyDescriptorSetLayouts(staticSetBuilder); 
@@ -249,46 +225,18 @@ void star::StarObject::prepareMeshes(star::StarDevice& device)
 }
 
 void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapChainImages,
-	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> fullGroupLayout, 
-	std::vector<std::vector<vk::DescriptorSet>> globalSets)
+	star::StarShaderInfo::Builder frameBuilder)
 {
-	auto& groupLayout = fullGroupLayout.at(1);
-	StarDescriptorPool& pool = ManagerDescriptorPool::getPool(); 
-	std::vector<std::unordered_map<int, vk::DescriptorSet>> finalizedSets; 
-	this->boundingDescriptors.resize(numSwapChainImages); 
-
-
 	for (int i = 0; i < numSwapChainImages; i++) {
-		std::unordered_map<int, vk::DescriptorSet> set; 
-		for (int j = 0; j < globalSets.at(i).size(); j++) {
-			set[j] = globalSets.at(i).at(j); 
-			this->boundingDescriptors.at(i).push_back(set[j]); 
-		}
-
-		star::StarDescriptorWriter writer = star::StarDescriptorWriter(device, groupLayout, ManagerDescriptorPool::getPool());
-
-		std::vector<vk::DescriptorBufferInfo> bufferInfos = std::vector<vk::DescriptorBufferInfo>(this->instances.front()->getBufferInfoSize().size());
-
-		for (int j = 0; j < this->instances.front()->getBufferInfoSize().size(); j++) {
-			vk::DeviceSize bufferSize = this->instances.front()->getBufferInfoSize().at(j) * this->instances.size();
-
-			//add descriptor for uniform buffer object
-			bufferInfos.at(j) = vk::DescriptorBufferInfo{
-				this->instanceUniformBuffers[i][j]->getBuffer(),
-				0,
-				bufferSize };
-			writer.writeBuffer(j, bufferInfos.at(j));
-		}
-		set[1] = writer.build();
-
-		finalizedSets.push_back(set); 
-		this->boundingDescriptors.at(i).push_back(set[1]);
+		frameBuilder.startOnFrameIndex(i);
+		frameBuilder.startSet(); 
+		frameBuilder.add(*this->instanceModelInfos[i]);
+		frameBuilder.add(*this->instanceNormalInfos[i]); 
 	}
-	
 	
 	for (auto& mesh : this->getMeshes()) {
 		//descriptors
-		mesh->getMaterial().finalizeDescriptors(device, fullGroupLayout, pool, finalizedSets, numSwapChainImages);
+		mesh->getMaterial().finalizeDescriptors(device, frameBuilder, numSwapChainImages);
 	}
 }
 
@@ -296,24 +244,16 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 {
 	assert(this->instances.size() > 0 && "Call to create instance buffers made but this object does not have any instances");
 	assert(this->instances.size() < 1024 && "Max number of supported instances is 1024"); 
-	
-	this->instanceUniformBuffers.resize(numImagesInFlight);
 
 	//each instance must provide the number of buffers that it will need
 	//this is a bit limiting and might need some rework
 	auto minProp = device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
 	uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
-	auto requestedBufferPerInstanceSize = this->instances.front()->getBufferInfoSize(); 
 
 	//create a buffer for each image
 	for (int i = 0; i < numImagesInFlight; i++) {
-		for (int j = 0; j < requestedBufferPerInstanceSize.size(); j++) {
-			auto perInstanceSize = requestedBufferPerInstanceSize.at(j);
-			vk::DeviceSize minAlignmentOfUBOElements = StarBuffer::getAlignment(perInstanceSize, minProp);
-			vk::DeviceSize size = minAlignmentOfUBOElements * instanceCount;
-
-			this->instanceUniformBuffers.at(i).emplace_back(std::make_unique<StarBuffer>(device, size, instanceCount, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible, minProp));
-		}
+		this->instanceModelInfos.emplace_back(std::make_unique<InstanceModelInfo>(this->instances, minProp, i));
+		this->instanceNormalInfos.emplace_back(std::make_unique<InstanceNormalInfo>(this->instances, minProp, i)); 
 	}
 }
 
@@ -338,17 +278,24 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 			device,
 			size,
 			count,
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+			vk::SharingMode::eConcurrent
 		};
+
 		stagingBuffer.map();
 		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
 
-		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(device,
+		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(
+			device,
 			size,
-			count,
+			uint32_t(count),
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+			vk::SharingMode::eConcurrent
+		);
 
 		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxVertBuffer->getBuffer(), bufferSize);
 	}
@@ -358,21 +305,27 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 		vk::DeviceSize bufferSize = size * bbInds.size();
 		uint32_t count = bbInds.size();
 
-
-		StarBuffer stagingBuffer = StarBuffer(device,
+		StarBuffer stagingBuffer{
+			device,
 			size,
 			count,
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostCoherent);
+			vk::SharingMode::eConcurrent
+
+		};
 		stagingBuffer.map();
 		stagingBuffer.writeToBuffer(bbInds.data());
 
 		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
 			device,
 			size,
-			count,
+			uint32_t(count),
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal
+			vk::SharingMode::eConcurrent
 		);
 		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxIndBuffer->getBuffer(), bufferSize);
 	}
@@ -461,5 +414,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::StarObject::getDescr
 
 void star::StarObject::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
 {
-	this->prepareDescriptors(device, numFramesInFlight, *this->groupLayout, *this->globalSets);
+	this->prepareDescriptors(device, numFramesInFlight, *this->engineBuilder);
+
+	this->engineBuilder.reset(); 
 }

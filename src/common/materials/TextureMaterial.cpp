@@ -21,22 +21,10 @@ void star::TextureMaterial::cleanup(StarDevice& device)
 		texture->cleanupRender(device); 
 }
 
-vk::DescriptorSet star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& imageInFlightIndex)
+void star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 {
-	auto sets = std::vector<vk::DescriptorSet>(); 
-	auto layoutBuilder = star::StarDescriptorSetLayout::Builder(device); 
-	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
-
-	auto format = vk::Format::eR8G8B8A8Srgb;	
-	auto texInfo = vk::DescriptorImageInfo{
-		texture->getSampler(),
-		texture->getImageView(),
-		vk::ImageLayout::eShaderReadOnlyOptimal };
-	writer.writeImage(0, texInfo);
-
-	vk::DescriptorSet newSet = writer.build();
-
-	return newSet;
+	builder.startSet();
+	builder.add(*texture, vk::ImageLayout::eShaderReadOnlyOptimal); 
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::getDescriptorRequests(const int& numFramesInFlight)

@@ -4,21 +4,19 @@
 #include "CommandBufferModifier.hpp"
 #include "RenderingTargetInfo.hpp"
 #include "ScreenshotCommandBuffer.hpp"
+#include "StarObject.hpp"
+#include "ConfigFile.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
+
 #include <memory>
 
 namespace star {
 	class SwapChainRenderer : public SceneRenderer{
 	public:
-		SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList,
-			std::vector<std::reference_wrapper<StarObject>> objectList,
-			StarCamera& camera,
-			StarDevice& device);
-
-		//how many frames will be sent through the pipeline
-		const int MAX_FRAMES_IN_FLIGHT = 2;
+		SwapChainRenderer(StarWindow& window, StarScene& scene,
+			StarDevice& device, const int& numFramesInFlight);
 
 		virtual ~SwapChainRenderer();
 
@@ -43,6 +41,7 @@ namespace star {
 		//tracker for which frame is being processed of the available permitted frames
 		int currentFrame = 0;
 		int previousFrame = 0;
+		int numFramesInFlight; 
 
 		uint32_t currentSwapChainImageIndex = 0;
 

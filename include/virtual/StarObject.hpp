@@ -3,14 +3,16 @@
 #include "ConfigFile.hpp"
 #include "StarDevice.hpp"
 #include "StarEntity.hpp"
-#include "StarDescriptors.hpp"
 #include "StarMaterial.hpp"
 #include "StarShader.hpp"
 #include "StarPipeline.hpp"
 #include "StarMesh.hpp"
 #include "StarObjectInstance.hpp"
+#include "StarShaderInfo.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "StarCommandBuffer.hpp"
+#include "InstanceNormalInfo.hpp"
+#include "InstanceModelInfo.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "RenderResourceModifierGeometry.hpp"
 #include "RenderingTargetInfo.hpp"
@@ -68,8 +70,7 @@ namespace star {
 		/// <param name="device"></param>
 		virtual void prepRender(star::StarDevice& device, vk::Extent2D swapChainExtent,
 			vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo, int numSwapChainImages, 
-			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout, 
-			std::vector<std::vector<vk::DescriptorSet>> globalSets);
+			StarShaderInfo::Builder fullEngineBuilder);
 
 		/// <summary>
 		/// Initalize this object. This object wil not have its own pipeline. It will expect to share one.
@@ -80,9 +81,8 @@ namespace star {
 		/// <param name="groupPool"></param>
 		/// <param name="globalSets"></param>
 		/// <param name="sharedPipeline"></param>
-		virtual void prepRender(star::StarDevice& device, int numSwapChainImages,
-			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout,
-			std::vector<std::vector<vk::DescriptorSet>> globalSets, StarPipeline& sharedPipeline);
+		virtual void prepRender(star::StarDevice& device, int numSwapChainImages, StarPipeline& sharedPipeline,
+		star::StarShaderInfo::Builder fullEngineBuilder);
 
 		virtual void recordPreRenderPassCommands(vk::CommandBuffer& commandBuffer, int swapChainIndexNum) {};
 
@@ -114,13 +114,12 @@ namespace star {
 		/// @brief Create descriptor set layouts for this object. 
 		/// @param device 
 		/// @return 
-		virtual std::vector<std::unique_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(StarDevice& device);
+		virtual std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(StarDevice& device);
 
 		virtual std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) = 0;
 
 		virtual void prepareDescriptors(star::StarDevice& device, int numSwapChainImages,
-			std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayout,
-			std::vector<std::vector<vk::DescriptorSet>> globalSets);
+			StarShaderInfo::Builder engineInfoBuilder);
 
 #pragma region getters
 		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
@@ -136,9 +135,12 @@ namespace star {
 		std::unique_ptr<StarPipeline> pipeline; 
 		std::unique_ptr<StarPipeline> normalExtrusionPipeline; 
 		std::unique_ptr<StarDescriptorSetLayout> setLayout; 
-		std::vector<std::vector<std::unique_ptr<StarBuffer>>> instanceUniformBuffers; 
+		std::vector<std::unique_ptr<InstanceNormalInfo>> instanceNormalInfos; 
+		std::vector<std::unique_ptr<InstanceModelInfo>> instanceModelInfos;
 		std::vector<std::unique_ptr<StarMesh>> meshes;
 		std::vector<std::unique_ptr<StarObjectInstance>> instances; 
+
+		std::unique_ptr<StarShaderInfo::Builder> engineBuilder;
 		
 		void prepareMeshes(star::StarDevice& device); 
 
@@ -164,6 +166,7 @@ namespace star {
 
 		std::unique_ptr<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>> groupLayout;
 		std::unique_ptr<std::vector<std::vector<vk::DescriptorSet>>> globalSets;
+
 
 		std::unique_ptr<StarBuffer> boundingBoxVertBuffer, boundingBoxIndBuffer; 
 		std::vector<std::vector<vk::DescriptorSet>> boundingDescriptors; 

@@ -1,4 +1,4 @@
-#include "StarDescriptors.hpp"
+#include "StarDescriptorBuilders.hpp"
 
 namespace star {
 StarDescriptorSetLayout::Builder& StarDescriptorSetLayout::Builder::addBinding(uint32_t binding,
@@ -168,16 +168,10 @@ StarDescriptorWriter::StarDescriptorWriter(StarDevice& device, StarDescriptorSet
 StarDescriptorWriter& StarDescriptorWriter::writeBuffer(uint32_t binding, vk::DescriptorBufferInfo& bufferInfos) {
 	assert(this->setLayout.bindings.count(binding) == 1 && "Layout does not contain binding specified");
 
-	auto& bindingDescription = this->setLayout.bindings[binding];
-	vk::WriteDescriptorSet writeSet{};
-	writeSet.sType = vk::StructureType::eWriteDescriptorSet;
-	writeSet.descriptorType = bindingDescription.descriptorType;
-	writeSet.dstBinding = binding;
-	writeSet.pBufferInfo = &bufferInfos;
-	//writeSet.descriptorCount = static_cast<uint32_t>(bufferInfos->size());
-	writeSet.descriptorCount = 1;
+	auto& bindingDescription = setLayout.bindings[binding];
+	assert(bindingDescription.descriptorCount == 1 && "Binding single descriptor info, but binding expects multiple");
 
-	this->writeSets.push_back(writeSet);
+	this->writeSets.push_back(FullDescriptorInfo(bufferInfos, bindingDescription.descriptorType, binding));
 	return *this;
 }
 
@@ -187,14 +181,8 @@ StarDescriptorWriter& StarDescriptorWriter::writeImage(uint32_t binding, vk::Des
 	auto& bindingDescription = setLayout.bindings[binding];
 	assert(bindingDescription.descriptorCount == 1 && "Binding single descriptor info, but binding expects multiple");
 
-	vk::WriteDescriptorSet writeSet{};
-	writeSet.sType = vk::StructureType::eWriteDescriptorSet;
-	writeSet.descriptorType = bindingDescription.descriptorType;
-	writeSet.dstBinding = binding;
-	writeSet.pImageInfo = &imageInfo;
-	writeSet.descriptorCount = 1;
+	this->writeSets.push_back(FullDescriptorInfo(imageInfo, bindingDescription.descriptorType, binding));
 
-	this->writeSets.push_back(writeSet);
 	return *this;
 }
 
@@ -210,9 +198,15 @@ vk::DescriptorSet StarDescriptorWriter::build() {
 }
 
 void StarDescriptorWriter::overwrite(vk::DescriptorSet& set) {
+
+	std::vector<vk::WriteDescriptorSet> nSet; 
+
 	for (auto& write : this->writeSets) {
-		write.dstSet = set;
+		auto newSet = write.getSetInfo();
+		newSet.dstSet = set; 
+		nSet.push_back(newSet);
 	}
-	this->starDevice.getDevice().updateDescriptorSets(this->writeSets, nullptr);
+
+	this->starDevice.getDevice().updateDescriptorSets(nSet, nullptr);
 }
 }

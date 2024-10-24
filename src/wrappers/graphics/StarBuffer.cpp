@@ -1,9 +1,8 @@
+#include "StarBuffer.hpp"
 /*
 * Initially based off Ive_buffer by Brendan Galea -
 *https://github.com/SaschaWillems/Vulkan/blob/master/base/VulkanBuffer.h
 */
-
-#include "StarBuffer.hpp"
 
 namespace star {
 	vk::DeviceSize StarBuffer::getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment) {
@@ -14,32 +13,40 @@ namespace star {
 }
 
 StarBuffer::StarBuffer(StarDevice& device, vk::DeviceSize instanceSize, uint32_t instanceCount,
-	vk::BufferUsageFlags flags, vk::MemoryPropertyFlags memoryPropertyFlags,
+	const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
+	const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
 	vk::DeviceSize minOffsetAlignment) :
 	starDevice(device),
+	usageFlags{useFlags},
 	instanceSize{ instanceSize },
 	instanceCount{ instanceCount },
-	usageFlags{ flags },
 	memoryPropertyFlags{ memoryPropertyFlags } {
 	this->alignmentSize = getAlignment(this->instanceSize, minOffsetAlignment);
 	this->bufferSize = this->alignmentSize * instanceCount;
-	this->starDevice.createBuffer(this->bufferSize, this->usageFlags, this->memoryPropertyFlags, this->buffer, this->memory);
+
+	VmaAllocationInfo allocationInfo{}; 
+	createBuffer(device, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, this->buffer, this->memory, allocationInfo);
+
+	this->allocationInfo = std::make_unique<VmaAllocationInfo>(allocationInfo);
+	//this->starDevice.createBuffer(this->bufferSize, this->usageFlags, this->memoryPropertyFlags, this->buffer, this->memory);
 }
 
 StarBuffer::~StarBuffer() {
-	unmap();
-	this->starDevice.getDevice().destroyBuffer(this->buffer);
-	this->starDevice.getDevice().freeMemory(this->memory);
+	if (mapped)
+		vmaUnmapMemory(this->starDevice.getAllocator(), this->memory);
+
+	vmaDestroyBuffer(this->starDevice.getAllocator(), this->buffer, this->memory);
 }
 
 void StarBuffer::map(vk::DeviceSize size, vk::DeviceSize offset) {
 	assert(this->buffer && this->memory && "Called map on buffer before creation");
-	this->mapped = this->starDevice.getDevice().mapMemory(this->memory, offset, size, {});
+
+	vmaMapMemory(this->starDevice.getAllocator(), this->memory, &this->mapped);
 }
 
 void StarBuffer::unmap() {
 	if (mapped) {
-		this->starDevice.getDevice().unmapMemory(this->memory);
+		vmaUnmapMemory(this->starDevice.getAllocator(), this->memory);
 		this->mapped = nullptr;
 	}
 }
@@ -58,21 +65,8 @@ void StarBuffer::writeToBuffer(void* data, vk::DeviceSize size, vk::DeviceSize o
 }
 
 vk::Result StarBuffer::flush(vk::DeviceSize size, vk::DeviceSize offset) {
-	vk::MappedMemoryRange mappedRange{};
-	mappedRange.sType = vk::StructureType::eMappedMemoryRange;
-	mappedRange.memory = this->memory;
-	mappedRange.offset = offset;
-	mappedRange.size = size;
-	return this->starDevice.getDevice().flushMappedMemoryRanges(1, &mappedRange);
-}
-
-vk::Result StarBuffer::invalidate(vk::DeviceSize size, vk::DeviceSize offset) {
-	vk::MappedMemoryRange mappedRange{};
-	mappedRange.sType = vk::StructureType::eMappedMemoryRange;
-	mappedRange.memory = this->memory;
-	mappedRange.offset = offset;
-	mappedRange.size = size;
-	return this->starDevice.getDevice().invalidateMappedMemoryRanges(1, &mappedRange);
+	auto result = vmaFlushAllocation(this->starDevice.getAllocator(), this->memory, offset, size);
+	return vk::Result(result);
 }
 
 vk::DescriptorBufferInfo StarBuffer::descriptorInfo(vk::DeviceSize size, vk::DeviceSize offset) {
@@ -95,8 +89,18 @@ vk::DescriptorBufferInfo StarBuffer::descriptorInfoForIndex(int index) {
 	return descriptorInfo(this->alignmentSize, index * alignmentSize);
 }
 
-vk::Result StarBuffer::invalidateIndex(int index) {
-	return invalidate(this->alignmentSize, index * this->alignmentSize);
+void StarBuffer::createBuffer(StarDevice& device, vk::DeviceSize size, vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo)
+{
+	vk::BufferCreateInfo bufferInfo{};
+	bufferInfo.size = size;
+	bufferInfo.usage = usage;
+	bufferInfo.sharingMode = vk::SharingMode::eExclusive;
+
+	VmaAllocationCreateInfo allocInfo{};
+	allocInfo.usage = memoryUsage;
+	allocInfo.flags = flags;
+
+	vmaCreateBuffer(device.getAllocator(), (VkBufferCreateInfo*)&bufferInfo, &allocInfo, (VkBuffer*)&buffer, &memory, &allocationInfo);
 }
 
 }

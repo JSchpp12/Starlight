@@ -7,6 +7,7 @@
 #include "StarCommandBuffer.hpp"
 #include "RenderResourceModifier.hpp"
 #include "DescriptorModifier.hpp"
+#include "StarShaderInfo.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -55,13 +56,13 @@ namespace star {
 		/// @param groupPool 
 		/// @param globalSets 
 		/// @param numSwapChainImages 
-		virtual void finalizeDescriptors(StarDevice& device, std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayouts,
-			StarDescriptorPool& groupPool, std::vector<std::unordered_map<int, vk::DescriptorSet>> globalSets,
+		virtual void finalizeDescriptors(StarDevice& device, StarShaderInfo::Builder builder, 
 			int numSwapChainImages);
 
 		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
 	protected:
+		std::unique_ptr<StarShaderInfo> shaderInfo; 
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight);
 
 		virtual void createDescriptors(star::StarDevice& device, const int& numFramesInFlight);
@@ -74,18 +75,7 @@ namespace star {
 		/// <param name="device">Device that is being used in rendering operations</param>
 		virtual void prep(StarDevice& device) = 0;
 
-		//Map of swap chain image index to each descriptor set 
-		std::unordered_map<int, std::vector<vk::DescriptorSet>> descriptorSets;
-
-		/// <summary>
-		/// Each material should build a descriptor set for each swap chain image. This 
-		/// function should provide a single descriptor set for use. 
-		/// </summary>
-		/// <param name="device"></param>
-		/// <param name=""></param>
-		/// <returns></returns>
-		virtual vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
-			StarDescriptorPool& groupPool, const int& imageInFlightIndex) = 0;
+		virtual void buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) = 0;
 
 		/// <summary>
 		/// Cleanup any vulkan objects created by this material

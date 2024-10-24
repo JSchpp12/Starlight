@@ -33,7 +33,7 @@ void StarTexture::cleanupRender(StarDevice& device)
 	this->isRenderReady = false; 
 }
 
-vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat){
+vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat) const{
 	if (requestedFormat != nullptr) {
 		//make sure the image view actually exists for the requested format
 		assert(this->imageViews.find(*requestedFormat) != this->imageViews.end() && "The image must be created with the proper image view before being requested");
@@ -68,12 +68,16 @@ void StarTexture::createTextureImage(StarDevice& device) {
 			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
 
 			auto data = this->data();
+
 			StarBuffer stagingBuffer(
 				device,
 				imageSize,
-				1,
+				uint32_t(1),
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+				VMA_MEMORY_USAGE_AUTO,
 				vk::BufferUsageFlagBits::eTransferSrc,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+				vk::SharingMode::eConcurrent
+			);
 			stagingBuffer.map();
 
 			stagingBuffer.writeToBuffer(textureData.get(), imageSize);

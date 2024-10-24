@@ -8,6 +8,7 @@
 #include "StarScene.hpp"
 #include "StarShader.hpp"
 #include "SwapChainRenderer.hpp"
+#include "ConfigFile.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -20,11 +21,9 @@ namespace star {
     class StarApplication : public Interactivity {
     public:
         StarApplication(StarScene& scene)
-            : scene(scene), camera(1280, 720){ 
+            : scene(scene) { 
             this->registerInteractions();
         }
-
-        virtual std::string getApplicationName() = 0; 
 
         virtual ~StarApplication() {};
 
@@ -42,12 +41,7 @@ namespace star {
 
         virtual std::unique_ptr<SwapChainRenderer> getMainRenderer(StarDevice& device, StarWindow& window);
 
-        virtual StarCamera& getCamera() { return camera; }
-
-        virtual std::vector<star::Rendering_Features> getRequiredDeviceExtensions() { return std::vector<star::Rendering_Features>(); };
-
     protected:
-        BasicCamera camera;
         StarScene& scene; 
         Time time = Time();
     };

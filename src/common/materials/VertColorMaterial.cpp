@@ -4,9 +4,9 @@ void star::VertColorMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetL
 {
 }
 
-vk::DescriptorSet star::VertColorMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& imageInFlightIndex)
+void star::VertColorMaterial::buildDescriptorSet(StarDevice& device, star::StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 {
-	return vk::DescriptorSet();
+
 }
 
 void star::VertColorMaterial::cleanup(StarDevice& device)

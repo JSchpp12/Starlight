@@ -2,10 +2,8 @@
 
 namespace star {
 
-SceneRenderer::SceneRenderer(std::vector<std::unique_ptr<Light>>& lightList, 
-	std::vector<std::reference_wrapper<StarObject>> objectList, 
-	StarCamera& camera)
-	: StarRenderer(camera), lightList(lightList), objectList(objectList)
+SceneRenderer::SceneRenderer(star::StarScene& scene)
+	: StarRenderer(*scene.getCamera()), scene(scene)
 {
 }
 
@@ -13,8 +11,7 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 {
 	this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
-	createRenderingBuffers(device, numFramesInFlight);
-	manualCreateDescriptors(device, numFramesInFlight);
+	auto globalBuilder = manualCreateDescriptors(device, numFramesInFlight);
 	vk::Format depthFormat = createDepthResources(device, swapChainExtent, numFramesInFlight);
 
 	this->renderToTargetInfo = std::make_unique<RenderingTargetInfo>(
@@ -27,7 +24,7 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 		texture->prepRender(device); 
 	}
 	
-	createRenderingGroups(device, swapChainExtent, numFramesInFlight);
+	createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
 std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
@@ -53,9 +50,9 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 	return newRenderToImages; 
 }
 
-void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
+void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight, star::StarShaderInfo::Builder builder)
 {	
-	for (StarObject& object : objectList) {
+	for (StarObject& object : this->scene.getObjects()) {
 		//check if the object is compatible with any render groups 
 		StarRenderGroup* match = nullptr; 
 
@@ -79,42 +76,8 @@ void SceneRenderer::createRenderingGroups(StarDevice& device, const vk::Extent2D
 
 	//init all groups
 	for (auto& group : this->renderGroups) {
-		group->init(*globalSetLayout, this->globalDescriptorSets, this->getRenderingInfo());
+		group->init(builder, this->getRenderingInfo());
 	}
-}
-
-void SceneRenderer::updateUniformBuffer(uint32_t currentImage)
-{
-	//update global ubo 
-	GlobalUniformBufferObject globalUbo;
-	globalUbo.proj = this->camera.getProjectionMatrix();
-	//glm designed for openGL where the Y coordinate of the flip coordinates is inverted. Fix this by flipping the sign on the scaling factor of the Y axis in the projection matrix.
-	globalUbo.proj[1][1] *= -1;
-	globalUbo.view = this->camera.getViewMatrix();
-	globalUbo.inverseView = glm::inverse(this->camera.getViewMatrix());
-	globalUbo.numLights = static_cast<uint32_t>(this->lightList.size());
-
-	this->globalUniformBuffers[currentImage]->writeToBuffer(&globalUbo, sizeof(globalUbo));
-
-	//update buffer for light positions
-	std::vector<LightBufferObject> lightInformation(this->lightList.size());
-	LightBufferObject newBufferObject{};
-
-	//write buffer information
-	for (size_t i = 0; i < this->lightList.size(); i++) {
-		Light& currLight = *this->lightList.at(i);
-		newBufferObject.position = glm::vec4{ currLight.getPosition(), 1.0f };
-		newBufferObject.direction = currLight.direction;
-		newBufferObject.ambient = currLight.getAmbient();
-		newBufferObject.diffuse = currLight.getDiffuse();
-		newBufferObject.specular = currLight.getSpecular();
-		newBufferObject.settings.x = currLight.getEnabled() ? 1 : 0;
-		newBufferObject.settings.y = currLight.getType();
-		newBufferObject.controls.x = glm::cos(glm::radians(currLight.getInnerDiameter()));		//represent the diameter of light as the cos of the light (increase shader performance when doing comparison)
-		newBufferObject.controls.y = glm::cos(glm::radians(currLight.getOuterDiameter()));
-		lightInformation[i] = newBufferObject;
-	}
-	this->lightBuffers[currentImage]->writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
 }
 
 vk::ImageView SceneRenderer::createImageView(star::StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags)
@@ -139,36 +102,25 @@ vk::ImageView SceneRenderer::createImageView(star::StarDevice& device, vk::Image
 	return imageView;
 }
 
-void SceneRenderer::manualCreateDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarDevice& device, const int& numFramesInFlight)
 {
+	auto globalBuilder = StarShaderInfo::Builder(device, numFramesInFlight);
+	
 	this->globalSetLayout = StarDescriptorSetLayout::Builder(device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
 		.addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
 		.build();
+	globalBuilder.addSetLayout(this->globalSetLayout); 
 
-	this->globalDescriptorSets.resize(numFramesInFlight);
-
-	std::unique_ptr<std::vector<vk::DescriptorBufferInfo>> bufferInfos{};
 	for (size_t i = 0; i < numFramesInFlight; i++) {
-		//global
-		bufferInfos = std::make_unique<std::vector<vk::DescriptorBufferInfo>>();
-
-		auto globalBufferInfo = vk::DescriptorBufferInfo{
-			this->globalUniformBuffers[i]->getBuffer(),
-			0,
-			sizeof(GlobalUniformBufferObject) };
-
-		//buffer descriptors for point light locations 
-		auto lightBufferInfo = vk::DescriptorBufferInfo{
-			this->lightBuffers[i]->getBuffer(),
-			0,
-			sizeof(LightBufferObject) * this->lightList.size() };
-
-		this->globalDescriptorSets.at(i) = StarDescriptorWriter(device, *this->globalSetLayout, ManagerDescriptorPool::getPool())
-			.writeBuffer(0, globalBufferInfo)
-			.writeBuffer(1, lightBufferInfo)
-			.build();
+		globalBuilder
+			.startOnFrameIndex(i)
+			.startSet()
+			.add(*this->scene.getGlobalInfoBuffer(i))
+			.add(*this->scene.getLightInfoBuffer(i));
 	}
+
+	return globalBuilder; 
 }
 
 void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, VmaAllocation& imageMemory)
@@ -195,30 +147,6 @@ void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32
 	allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
 	vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
-}
-
-void SceneRenderer::createRenderingBuffers(star::StarDevice& device, const int& numFramesInFlight)
-{
-	vk::DeviceSize globalBufferSize = sizeof(GlobalUniformBufferObject) * this->objectList.size();
-
-	this->globalUniformBuffers.resize(numFramesInFlight);
-	if (this->lightList.size() > 0) {
-		this->lightBuffers.resize(numFramesInFlight);
-	}
-
-	for (size_t i = 0; i < numFramesInFlight; i++) {
-		auto numOfObjects = this->objectList.size(); 
-		this->globalUniformBuffers[i] = std::make_unique<StarBuffer>(device, this->objectList.size(), sizeof(GlobalUniformBufferObject),
-			vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		this->globalUniformBuffers[i]->map();
-
-		//create light buffers 
-		if (this->lightList.size() > 0) {
-			this->lightBuffers[i] = std::make_unique<StarBuffer>(device, this->lightList.size(), sizeof(LightBufferObject) * this->lightList.size(),
-				vk::BufferUsageFlagBits::eStorageBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			this->lightBuffers[i]->map();
-		}
-	}
 }
 
 vk::Format SceneRenderer::createDepthResources(star::StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
@@ -319,7 +247,6 @@ void SceneRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuffer, const 
 
 vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) {
 	vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-	//colorAttachmentInfo.imageView = this->renderToImageViews[frameInFlightIndex];
 	colorAttachmentInfo.imageView = this->renderToImages[frameInFlightIndex]->getImageView();
 	colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
@@ -374,11 +301,10 @@ Command_Buffer_Type SceneRenderer::getCommandBufferType()
 
 void SceneRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)
 {
-	for (StarObject& obj : this->objectList) {
+	for (StarObject& obj : this->scene.getObjects()) {
 		obj.prepDraw(frameIndexToBeDrawn); 
 	}
 
-	updateUniformBuffer(frameIndexToBeDrawn);
 }
 
 std::optional<std::function<void(const int&)>> SceneRenderer::getBeforeBufferSubmissionCallback()

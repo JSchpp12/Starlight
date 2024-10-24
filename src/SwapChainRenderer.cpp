@@ -1,7 +1,7 @@
 #include "SwapChainRenderer.hpp"
 
-star::SwapChainRenderer::SwapChainRenderer(StarWindow& window, std::vector<std::unique_ptr<Light>>& lightList, std::vector<std::reference_wrapper<StarObject>> objectList, StarCamera& camera, StarDevice& device)
-	: device(device), window(window), SceneRenderer(lightList, objectList, camera)
+star::SwapChainRenderer::SwapChainRenderer(StarWindow& window, StarScene& scene, StarDevice& device, const int& numFramesInFlight)
+	: device(device), window(window), SceneRenderer(scene), numFramesInFlight(numFramesInFlight)
 {
 	createSwapChain();
 }
@@ -10,7 +10,7 @@ star::SwapChainRenderer::~SwapChainRenderer()
 {
 	cleanupSwapChain();
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+	for (size_t i = 0; i < this->numFramesInFlight; i++) {
 		this->device.getDevice().destroySemaphore(imageAvailableSemaphores[i]);
 		this->device.getDevice().destroyFence(inFlightFences[i]);
 	}
@@ -19,7 +19,7 @@ star::SwapChainRenderer::~SwapChainRenderer()
 void star::SwapChainRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
 {
 	auto numSwapChainImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain).size(); 
-	this->SceneRenderer::prepare(this->device, *this->swapChainExtent, numSwapChainImages);
+	this->SceneRenderer::prepare(this->device, *this->swapChainExtent, numFramesInFlight);
 
 	this->createSemaphores(); 
 	this->createFences();
@@ -188,7 +188,7 @@ void star::SwapChainRenderer::submissionDone()
 {
 	//advance to next frame
 	previousFrame = currentFrame;
-	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	currentFrame = (currentFrame + 1) % this->numFramesInFlight;
 }
 
 void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor)
@@ -309,12 +309,12 @@ void star::SwapChainRenderer::destroyResources(StarDevice& device)
 
 void star::SwapChainRenderer::createSemaphores()
 {
-	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	imageAvailableSemaphores.resize(this->numFramesInFlight);
 
 	vk::SemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+	for (size_t i = 0; i < this->numFramesInFlight; i++) {
 		this->imageAvailableSemaphores[i] = this->device.getDevice().createSemaphore(semaphoreInfo);
 
 		if (!this->imageAvailableSemaphores[i]) {
@@ -326,7 +326,7 @@ void star::SwapChainRenderer::createSemaphores()
 void star::SwapChainRenderer::createFences()
 {
 	//note: fence creation can be rolled into semaphore creation. Seperated for understanding
-	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+	inFlightFences.resize(this->numFramesInFlight);
 
 	vk::FenceCreateInfo fenceInfo{};
 	fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
@@ -334,7 +334,7 @@ void star::SwapChainRenderer::createFences()
 	//create the fence in a signaled state 
 	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+	for (size_t i = 0; i < this->numFramesInFlight; i++) {
 		this->inFlightFences[i] = this->device.getDevice().createFence(fenceInfo);
 		if (!this->inFlightFences[i]) {
 			throw std::runtime_error("failed to create fence object for a frame");

@@ -18,44 +18,22 @@ void star::StarMaterial::prepRender(StarDevice& device)
 	}
 }
 
-void star::StarMaterial::finalizeDescriptors(StarDevice& device, std::vector<std::reference_wrapper<StarDescriptorSetLayout>> groupLayouts, StarDescriptorPool& groupPool,
-	std::vector<std::unordered_map<int, vk::DescriptorSet>> globalSets, int numSwapChainImages)
+void star::StarMaterial::finalizeDescriptors(StarDevice& device, star::StarShaderInfo::Builder builder, int numSwapChainImages)
 {
 	//only build descriptor sets if this object hasnt already been initialized
-	if (this->descriptorSets.size() == 0) {
-		for (int i = 0; i < numSwapChainImages; i++) {
-			auto allDescriptors = std::vector<vk::DescriptorSet>();
-
-			if (groupLayouts.size() >= 3) {
-				auto& groupLayout = groupLayouts.at(2); 
-				vk::DescriptorSet newDescriptor = this->buildDescriptorSet(device, groupLayout, groupPool, i);
-				//another sign I need a better wrapper for descriptor set creation
-				if (newDescriptor)
-				{
-					allDescriptors.resize(1 + globalSets.at(i).size());
-					allDescriptors.at(2) = newDescriptor;
-				}
-				else {
-					allDescriptors.resize(globalSets.at(i).size()); 
-				}
-			}else
-				allDescriptors.resize(globalSets.at(i).size());
-
-			//ignoring set number for now, should rework this system in future
-			for (auto& it : globalSets.at(i)) {
-				allDescriptors.at(it.first) = it.second;
-			}
-
-			this->descriptorSets.insert(std::pair<int, std::vector<vk::DescriptorSet>>(i, allDescriptors));
-		}
+	for (int i = 0; i < numSwapChainImages; i++) {
+		builder.startOnFrameIndex(i); 
+		this->buildDescriptorSet(device, builder, i); 
 	}
+
+	this->shaderInfo = builder.build(); 
+
 }
 
 void star::StarMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
 {
 	//bind the descriptor sets for the given image index
-	auto& descriptors = this->descriptorSets.at(swapChainImageIndex); 
-
+	auto descriptors = this->shaderInfo->getDescriptors(swapChainImageIndex); 
 	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(), descriptors.data(), 0, nullptr);
 }
 

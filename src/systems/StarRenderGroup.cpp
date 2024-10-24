@@ -72,15 +72,14 @@ void StarRenderGroup::addObject(StarObject& newObject) {
 	//check if this new object has a larger descriptor set layout than the current one
 	auto newLayouts = newObject.getDescriptorSetLayouts(device); 
 
-	std::vector<std::unique_ptr<StarDescriptorSetLayout>> combinedSet = std::vector<std::unique_ptr<StarDescriptorSetLayout>>(); 
-	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* largerSet = newLayouts.size() > this->largestDescriptorSet.size() ? &newLayouts : &this->largestDescriptorSet;
-	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* smallerSet = newLayouts.size() > this->largestDescriptorSet.size() ? &this->largestDescriptorSet : &newLayouts; 
+	std::vector<std::shared_ptr<StarDescriptorSetLayout>> combinedSet = std::vector<std::shared_ptr<StarDescriptorSetLayout>>();
+	std::vector<std::shared_ptr<StarDescriptorSetLayout>>* largerSet = newLayouts.size() > this->largestDescriptorSet.size() ? &newLayouts : &this->largestDescriptorSet;
+	std::vector<std::shared_ptr<StarDescriptorSetLayout>>* smallerSet = newLayouts.size() > this->largestDescriptorSet.size() ? &this->largestDescriptorSet : &newLayouts;
 
 	//already assuming these are already compatible
 	for (int i = 0; i < largerSet->size(); i++) {
 		if (i < smallerSet->size()) {
 			if (largerSet->at(i)->getBindings().size() > smallerSet->at(i)->getBindings().size()) {
-				//this->largestDescriptorSet.at(i) = std::move(newLayouts.at(i));
 				//the new set is larger than the current one, replace
 				combinedSet.push_back(std::move(largerSet->at(i))); 
 			}
@@ -92,7 +91,7 @@ void StarRenderGroup::addObject(StarObject& newObject) {
 			combinedSet.push_back(std::move(largerSet->at(i))); 
 		}
 	}
-	this->largestDescriptorSet = std::move(combinedSet); 
+	this->largestDescriptorSet = combinedSet; 
 
 	this->numObjects++;
 	this->numMeshes += newObject.getMeshes().size();
@@ -118,11 +117,17 @@ void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuf
 	}
 }
 
-void StarRenderGroup::init(StarDescriptorSetLayout& engineSetLayout, 
-	std::vector<vk::DescriptorSet> enginePerImageDescriptors, RenderingTargetInfo renderingInfo)
+void StarRenderGroup::init(StarShaderInfo::Builder initEngineBuilder, RenderingTargetInfo renderingInfo)
 {
-	createPipelineLayout(engineSetLayout);
-	prepareObjects(engineSetLayout, enginePerImageDescriptors, renderingInfo);
+	auto fullSetLayout = initEngineBuilder.getCurrentSetLayouts(); 
+	for (auto& set : this->largestDescriptorSet) {
+		fullSetLayout.emplace_back(set); 
+
+		initEngineBuilder.addSetLayout(set); 
+	}
+
+	createPipelineLayout(fullSetLayout);
+	prepareObjects(initEngineBuilder, renderingInfo);
 }
 
 bool StarRenderGroup::isObjectCompatible(StarObject& object)
@@ -131,8 +136,8 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 	//check if descriptor layouts are compatible
 	auto compLayouts = object.getDescriptorSetLayouts(device);
 
-	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* largerSet = &this->largestDescriptorSet; 
-	std::vector<std::unique_ptr<StarDescriptorSetLayout>>* smallerSet = &compLayouts; 
+	std::vector<std::shared_ptr<StarDescriptorSetLayout>>* largerSet = &this->largestDescriptorSet; 
+	std::vector<std::shared_ptr<StarDescriptorSetLayout>>* smallerSet = &compLayouts; 
 
 	if (this->largestDescriptorSet.size() < compLayouts.size()) {
 		largerSet = &compLayouts;
@@ -147,65 +152,36 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 	return true;
 }
 
-void StarRenderGroup::prepareObjects(StarDescriptorSetLayout& engineLayout, std::vector<vk::DescriptorSet> enginePerImageDescriptors, RenderingTargetInfo renderingInfo) {
+void StarRenderGroup::prepareObjects(StarShaderInfo::Builder& groupBuilder, RenderingTargetInfo renderingInfo) {
 	//get descriptor sets from objects and place into render structs
 	int objCounter = 0;
 
-	std::vector<std::reference_wrapper<StarDescriptorSetLayout>> finalizedGroupLayouts{
-		engineLayout
-	}; 
-	for (auto& layout : this->largestDescriptorSet) {
-		finalizedGroupLayouts.push_back(*layout); 
-	}
-
 	for (auto& group : this->groups) {
 		//prepare base object
-		auto globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
-		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, renderingInfo, numSwapChainImages, finalizedGroupLayouts, globalObjDesc);
+		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, renderingInfo, numSwapChainImages, groupBuilder);
 		objCounter++; 
 
 		for (auto& renderObject : group.objects) {
-			globalObjDesc = generateObjectExternalDescriptors(objCounter, enginePerImageDescriptors);
-			renderObject.object.prepRender(device, numSwapChainImages, finalizedGroupLayouts, globalObjDesc, group.baseObject.object.getPipline());
+			renderObject.object.prepRender(device, numSwapChainImages, group.baseObject.object.getPipline(), groupBuilder);
 
 			objCounter++;
 		}
 	}
 }
 
-std::vector<std::vector<vk::DescriptorSet>> star::StarRenderGroup::generateObjectExternalDescriptors(int objectOffset,
-	std::vector<vk::DescriptorSet> enginePerImageDescriptors)
-{
-	vk::DescriptorBufferInfo bufferInfo{};
-	auto set = std::vector<std::vector<vk::DescriptorSet>>();
+void StarRenderGroup::createPipelineLayout(std::vector<std::shared_ptr<StarDescriptorSetLayout>>& fullSetLayout) {
 
-	for (int i = 0; i < this->numSwapChainImages; i++) {
-		auto descriptors = std::vector<vk::DescriptorSet>();
-
-		//add descriptors from engine
-		descriptors.push_back(enginePerImageDescriptors.at(i));
-
-		set.push_back(descriptors);
-	}
-
-	return set;
-}
-
-void StarRenderGroup::createPipelineLayout(StarDescriptorSetLayout& engineSetLayout) {
-	std::vector<vk::DescriptorSetLayout> layouts{
-		engineSetLayout.getDescriptorSetLayout()
-	};
-
-	for (auto& set : this->largestDescriptorSet) {
-		layouts.push_back(set->getDescriptorSetLayout()); 
+	auto sets = std::vector<vk::DescriptorSetLayout>();
+	for (auto& set : fullSetLayout) {
+		sets.emplace_back(set->getDescriptorSetLayout()); 
 	}
 
 	/* Pipeline Layout */
 	//uniform values in shaders need to be defined here 
 	vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
-	pipelineLayoutInfo.pSetLayouts = layouts.data();
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(sets.size());
+	pipelineLayoutInfo.pSetLayouts = sets.data();
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 

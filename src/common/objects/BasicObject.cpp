@@ -237,8 +237,10 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 			device,
 			vertSize,
 			totalNumVerts,
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+			vk::SharingMode::eConcurrent
 		);
 		vertStagingBuffer->map();
 		vk::DeviceSize offset = 0;
@@ -258,8 +260,10 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 			device,
 			indSize,
 			totalNumInds,
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible
+			vk::SharingMode::eConcurrent
 		);
 		indStagingBuffer->map();
 

@@ -4,6 +4,7 @@
 #include "Enums.hpp"
 
 #include <vulkan/vulkan.hpp>
+#include <vma/vk_mem_alloc.h>
 
 namespace star {
 
@@ -12,7 +13,8 @@ public:
 	static vk::DeviceSize getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
 
 	StarBuffer(StarDevice& device, vk::DeviceSize instanceSize, uint32_t instanceCount,
-		vk::BufferUsageFlags flags, vk::MemoryPropertyFlags memoryPropertyFlags,
+		const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
+		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
 		vk::DeviceSize minOffsetAlignment = 1);
 	~StarBuffer();
 
@@ -30,12 +32,9 @@ public:
 
 	vk::DescriptorBufferInfo descriptorInfo(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 
-	vk::Result invalidate(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
-
 	void writeToIndex(void* data, int index);
 	vk::Result flushIndex(int index);
 	vk::DescriptorBufferInfo descriptorInfoForIndex(int index);
-	vk::Result invalidateIndex(int index);
 
 	vk::Buffer getBuffer() const { return buffer; }
 	void* getMappepMemory() const { return mapped; }
@@ -49,13 +48,21 @@ public:
 private:
 	StarDevice& starDevice;
 	void* mapped = nullptr;
+	VmaAllocation memory = VmaAllocation();
+
 	vk::Buffer buffer = VK_NULL_HANDLE;
-	vk::DeviceMemory memory = VK_NULL_HANDLE;
 
 	vk::DeviceSize bufferSize;
 	uint32_t instanceCount;
 	vk::DeviceSize instanceSize, alignmentSize;
 	vk::BufferUsageFlags usageFlags;
 	vk::MemoryPropertyFlags memoryPropertyFlags;
+
+	std::unique_ptr<VmaAllocationInfo> allocationInfo = nullptr;
+
+
+	static void createBuffer(StarDevice& device, vk::DeviceSize size, 
+		vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, 
+		vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo);
 };
 }

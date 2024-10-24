@@ -19,28 +19,11 @@ void star::BumpMaterial::cleanup(StarDevice& device)
 	}
 }
 
-vk::DescriptorSet star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout,
-	StarDescriptorPool& groupPool, const int& imageInFlightIndex)
+void star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 
 {
-	auto sets = std::vector<vk::DescriptorSet>(); 
-	auto writer = StarDescriptorWriter(device, groupLayout, groupPool);
-
-	auto texInfo = vk::DescriptorImageInfo{
-		texture->getSampler(),
-		texture->getImageView(),
-		vk::ImageLayout::eShaderReadOnlyOptimal };
-	writer.writeImage(0, texInfo);
-
-	auto bumpInfo = vk::DescriptorImageInfo{
-		bumpMap->getSampler(),
-		bumpMap->getImageView(),
-		vk::ImageLayout::eShaderReadOnlyOptimal };
-	writer.writeImage(1, bumpInfo);
-
-	vk::DescriptorSet newSet = writer.build();
-
-	return newSet; 
+	builder.add(*texture, vk::ImageLayout::eShaderReadOnlyOptimal);
+	builder.add(*bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
 void star::BumpMaterial::prep(StarDevice& device)

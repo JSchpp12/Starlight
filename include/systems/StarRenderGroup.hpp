@@ -7,12 +7,13 @@
 #include "StarShader.hpp"
 #include "Light.hpp"
 #include "VulkanVertex.hpp"
-#include "StarDescriptors.hpp"
+#include "StarDescriptorBuilders.hpp"
 #include "StarDevice.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "StarBuffer.hpp"
 #include "StarObject.hpp"
 #include "StarSystemPipeline.hpp"
+#include "StarShaderInfo.hpp"
 #include "StarCommandBuffer.hpp"
 #include "DescriptorModifier.hpp"
 
@@ -38,8 +39,7 @@ namespace star {
 
 		virtual ~StarRenderGroup();
 
-		virtual void init(StarDescriptorSetLayout& engineSetLayout,
-			 std::vector<vk::DescriptorSet> enginePerImageDescriptors, RenderingTargetInfo renderingInfo);
+		virtual void init(StarShaderInfo::Builder initEngineBuilder, RenderingTargetInfo renderingInfo);
 
 		virtual bool isObjectCompatible(StarObject& object); 
 
@@ -94,7 +94,7 @@ namespace star {
 
 		std::unique_ptr<StarPipeline> starPipeline; 
 		vk::PipelineLayout pipelineLayout;
-		std::vector<std::unique_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
+		std::vector<std::shared_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
 
 		std::vector<Light*> lights;
 
@@ -103,13 +103,9 @@ namespace star {
 		/// <summary>
 		/// Create descriptors for binding render buffers to shaders.
 		/// </summary>
-		virtual void prepareObjects(StarDescriptorSetLayout& engineLayout,
-			std::vector<vk::DescriptorSet> enginePerImageDescriptors, RenderingTargetInfo renderingInfo);
+		virtual void prepareObjects(StarShaderInfo::Builder& groupBuilder, RenderingTargetInfo renderingInfo);
 
-		std::vector<std::vector<vk::DescriptorSet>> generateObjectExternalDescriptors(int objectOffset,
-			std::vector<vk::DescriptorSet> enginePerObjectDescriptors);
-
-		virtual void createPipelineLayout(StarDescriptorSetLayout& engineSetLayout);
+		virtual void createPipelineLayout(std::vector<std::shared_ptr<StarDescriptorSetLayout>>& fullSetLayout);
 
 		// Inherited via DescriptorModifier
 		std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;

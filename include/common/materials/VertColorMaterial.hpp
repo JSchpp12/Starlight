@@ -2,7 +2,7 @@
 
 #include "StarMaterial.hpp"
 #include "StarDevice.hpp"
-#include "StarDescriptors.hpp"
+#include "StarDescriptorBuilders.hpp"
 
 
 namespace star {
@@ -16,7 +16,7 @@ namespace star {
 			: StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny) {};
 
 		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
-		vk::DescriptorSet buildDescriptorSet(StarDevice& device, StarDescriptorSetLayout& groupLayout, StarDescriptorPool& groupPool, const int& imageInFlightIndex) override;
+		void buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
 
 	protected:
 		void cleanup(StarDevice& device) override;
