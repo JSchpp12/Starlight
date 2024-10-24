@@ -22,8 +22,8 @@ void star::BumpMaterial::cleanup(StarDevice& device)
 void star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 
 {
-	builder.add(*texture);
-	builder.add(*bumpMap);
+	builder.add(*texture, vk::ImageLayout::eShaderReadOnlyOptimal);
+	builder.add(*bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
 void star::BumpMaterial::prep(StarDevice& device)

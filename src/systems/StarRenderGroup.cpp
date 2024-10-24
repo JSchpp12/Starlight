@@ -156,10 +156,6 @@ void StarRenderGroup::prepareObjects(StarShaderInfo::Builder& groupBuilder, Rend
 	//get descriptor sets from objects and place into render structs
 	int objCounter = 0;
 
-	for (auto& layout : this->largestDescriptorSet) {
-		groupBuilder.addSetLayout(layout); 
-	}
-
 	for (auto& group : this->groups) {
 		//prepare base object
 		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, renderingInfo, numSwapChainImages, groupBuilder);

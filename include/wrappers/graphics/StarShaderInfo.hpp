@@ -17,13 +17,14 @@ namespace star {
 			ShaderInfo(const BufferModifier& bufferModifier) 
 				: bufferModifier(bufferModifier) {};
 
-			ShaderInfo(const StarTexture& textureInfo) 
-				: textureInfo(textureInfo){};
+			ShaderInfo(const StarTexture& textureInfo, const vk::ImageLayout& expectedLayout) 
+				: textureInfo(textureInfo), expectedLayout(expectedLayout) {};
 
 			~ShaderInfo() = default;
 
 			std::optional<std::reference_wrapper<const BufferModifier>> bufferModifier = std::optional<std::reference_wrapper<const BufferModifier>>();
 			std::optional<std::reference_wrapper<const StarTexture>> textureInfo = std::optional<std::reference_wrapper<const StarTexture>>();
+			std::optional<vk::ImageLayout> expectedLayout = std::optional<vk::ImageLayout>();
 		};
 
 		struct ShaderInfoSet {
@@ -35,7 +36,7 @@ namespace star {
 				this->shaderInfos.push_back(shaderInfo);
 			};
 
-			void buildIndex(const int& index, StarDescriptorSetLayout& setLayout) {
+			void buildIndex(const int& index) {
 				assert(this->descriptorWriter && "Dependencies must have been built first");
 				this->setNeedsRebuild = true; 
 
@@ -54,17 +55,18 @@ namespace star {
 					auto textureInfo = vk::DescriptorImageInfo{
 						shaderInfos[index].textureInfo.value().get().getSampler(),
 						shaderInfos[index].textureInfo.value().get().getImageView(),
-						vk::ImageLayout::eGeneral
+						shaderInfos[index].expectedLayout.value()
 					};
+
 					this->descriptorWriter->writeImage(index, textureInfo);
 				}
 			}
 
-			void build(StarDescriptorSetLayout& setLayout) {
+			void build() {
 				{
-					this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, setLayout, ManagerDescriptorPool::getPool());
+					this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->layout, ManagerDescriptorPool::getPool());
 					for (int i = 0; i < this->shaderInfos.size(); i++) {
-						buildIndex(i, setLayout); 
+						buildIndex(i); 
 					}
 				}
 			};
@@ -100,7 +102,7 @@ namespace star {
 			: device(device), layouts(layouts), shaderInfoSets(shaderInfoSets) {
 			for (auto& set : this->shaderInfoSets){
 				for (int i = 0; i < set.size(); i++) {
-					set[i]->build(*this->layouts[i]);
+					set[i]->build();
 				}
 			}
 		};
@@ -119,7 +121,7 @@ namespace star {
 					if (set->shaderInfos.at(i).bufferModifier.has_value()) {
 						//check if buffer has changed
 						if (set->shaderInfos.at(i).bufferModifier.value().get().getBufferHasChanged()) {
-							set->buildIndex(i, *this->layouts[i]);
+							set->buildIndex(i);
 						}
 					}
 				}
@@ -165,8 +167,8 @@ namespace star {
 				return *this;
 			};
 
-			Builder& add(const StarTexture& texture) {
-				this->activeSet->back()->add(ShaderInfo(texture)); 
+			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout) {
+				this->activeSet->back()->add(ShaderInfo(texture, desiredLayout));
 				return *this; 
 			};
 

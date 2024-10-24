@@ -17,5 +17,5 @@ void star::HeightDisplacementMaterial::cleanup(StarDevice& device)
 
 void star::HeightDisplacementMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& frameInFlightIndex)
 {
-	builder.add(*texture); 
+	builder.add(*texture, vk::ImageLayout::eShaderReadOnlyOptimal); 
 }
