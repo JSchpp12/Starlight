@@ -45,7 +45,7 @@ struct QueueFamilyIndicies {
 
 class StarDevice {
 public:
-	static std::unique_ptr<StarDevice> New(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures); 
+	static std::unique_ptr<StarDevice> New(StarWindow& window, std::set<star::Rendering_Features> requiredFeatures); 
 
 	virtual ~StarDevice();
 
@@ -143,7 +143,7 @@ public:
 #pragma endregion
 
 protected: 
-	StarDevice(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures);
+	StarDevice(StarWindow& window, std::set<star::Rendering_Features> requiredFeatures);
 
 #ifdef NDEBUG 
 	const bool enableValidationLayers = false;
@@ -175,8 +175,6 @@ protected:
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,		//image presentation is not built into the vulkan core...need to enable it through an extension
 		VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
 		VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
-		//VK_KHR_MAINTENANCE_4_EXTENSION_NAME,
-		//VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
 		VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
 		VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
 		VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
@@ -200,8 +198,6 @@ protected:
 	bool isMac = false;
 	std::vector<const char*> platformInstanceRequiredExtensions = { };
 #endif
-
-	void prepRequiredFeatures(const std::vector<star::Rendering_Features>& features); 
 
 	//Create the vulkan instance machine 
 	void createInstance();

@@ -11,7 +11,16 @@ StarEngine::StarEngine() {
 		std::stoi(ConfigFile::getSetting(star::Config_Settings::resolution_y)),
 		ConfigFile::getSetting(star::Config_Settings::app_name));
 
-	std::vector<star::Rendering_Features> features;
+	std::set<star::Rendering_Features> features;
+	{
+		bool setting = false;
+		std::istringstream(ConfigFile::getSetting(star::Config_Settings::required_device_feature_shader_float64)) >> std::boolalpha >> setting;
+
+		if (setting) {
+			features.insert(star::Rendering_Features::shader_float64);
+		}
+	}
+
 	this->renderingDevice = StarDevice::New(*window, features);
 
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
