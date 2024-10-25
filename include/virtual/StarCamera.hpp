@@ -38,6 +38,7 @@ public:
 
 	glm::vec2 getResolution() const{ return this->resolution; }
 
+	float getFieldOfView() const { return this->fieldOfView; }
 protected:
 	glm::vec2 resolution;
 

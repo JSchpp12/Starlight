@@ -8,7 +8,7 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
             std::pair<std::string, star::Config_Settings>("texture_filtering", star::Config_Settings::texture_filtering),
             std::pair<std::string, star::Config_Settings>("texture_anisotropy", star::Config_Settings::texture_anisotropy),
             std::pair<std::string, star::Config_Settings>("frames_in_flight", star::Config_Settings::frames_in_flight),
-            std::pair<std::string, star::Config_Settings>("required_device_feature_geometry_shader", star::Config_Settings::required_device_feature_geometry_shader),
+            std::pair<std::string, star::Config_Settings>("required_device_feature_shader_float64", star::Config_Settings::required_device_feature_shader_float64),
             std::make_pair("resolution_x", star::Config_Settings::resolution_x), 
             std::make_pair("resolution_y", star::Config_Settings::resolution_y)
 };

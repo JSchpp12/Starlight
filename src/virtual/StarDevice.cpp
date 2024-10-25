@@ -1,17 +1,16 @@
 #include "StarDevice.hpp"
-#include "StarDevice.hpp"
 
 namespace star {
-StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures) :
+StarDevice::StarDevice(StarWindow& window, std::set<star::Rendering_Features> requiredFeatures) :
 	starWindow(window)
 {
-	this->requiredDeviceFeatures.samplerAnisotropy = VK_TRUE;
+	if (requiredFeatures.find(star::Rendering_Features::shader_float64) != requiredFeatures.end())
+		this->requiredDeviceFeatures.shaderFloat64 = VK_TRUE;
+
 	this->requiredDeviceFeatures.geometryShader = VK_TRUE;
+	this->requiredDeviceFeatures.samplerAnisotropy = VK_TRUE;
 	this->requiredDeviceFeatures.fillModeNonSolid = VK_TRUE; 
 	this->requiredDeviceFeatures.logicOp = VK_TRUE; 
-
-	if (requiredFeatures.size() > 0)
-		prepRequiredFeatures(requiredFeatures); 
 
 	createInstance();
 
@@ -23,7 +22,7 @@ StarDevice::StarDevice(StarWindow& window, std::vector<star::Rendering_Features>
 	createAllocator(); 
 }
 
-std::unique_ptr<StarDevice> StarDevice::New(StarWindow& window, std::vector<star::Rendering_Features> requiredFeatures)
+std::unique_ptr<StarDevice> StarDevice::New(StarWindow& window, std::set<star::Rendering_Features> requiredFeatures)
 {
 	return std::unique_ptr<StarDevice>(new StarDevice(window, requiredFeatures)); 
 }
@@ -36,16 +35,6 @@ StarDevice::~StarDevice() {
 	this->vulkanDevice.destroy();
 	this->surface.reset();
 	this->instance.destroy();
-}
-
-void StarDevice::prepRequiredFeatures(const std::vector<star::Rendering_Features>& features)
-{
-	for (auto& feature : features) {
-		switch (feature) {
-		default:
-			throw std::runtime_error("Unknown rendering feature requested"); 
-		}
-	}
 }
 
 void StarDevice::createInstance() {

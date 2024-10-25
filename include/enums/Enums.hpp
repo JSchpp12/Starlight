@@ -21,7 +21,7 @@ namespace star {
     };
 
     enum Rendering_Features {
-        geometry_shader
+		shader_float64
     };
 
     enum Buffer_Type {
@@ -55,7 +55,7 @@ namespace star {
         texture_filtering,
         texture_anisotropy,
         frames_in_flight, 
-        required_device_feature_geometry_shader,
+		required_device_feature_shader_float64,
         resolution_x, 
         resolution_y
     };
