@@ -35,9 +35,14 @@ public:
 
 		TextureCreateSettings(const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat, 
 			const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& allocationCreateFlags, const bool& isMutable, 
-			const bool& createSampler) 
-			: imageUsage(imageUsage), imageFormat(imageFormat), allocationCreateFlags(allocationCreateFlags),
-			memoryUsage(memoryUsage), isMutable(isMutable), createSampler(createSampler) {}
+			const bool& createSampler, const bool& isDepth = false) 
+			: imageUsage(imageUsage), imageFormat(imageFormat), 
+			allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
+			isMutable(isMutable), createSampler(createSampler) {
+			if (isDepth) {
+				this->aspectFlags = vk::ImageAspectFlagBits::eDepth; 
+			}
+		}
 
 		~TextureCreateSettings() = default; 
 
@@ -47,7 +52,7 @@ public:
 		vk::Format imageFormat = vk::Format::eR8G8B8A8Srgb;
 		VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 		VmaAllocationCreateFlags allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
-
+		vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
 	private:
 		TextureCreateSettings() = default; 
 	}; 
@@ -66,7 +71,7 @@ public:
 
 	void cleanupRender(StarDevice& device); 
 
-	void createTextureImageView(StarDevice& device, const vk::Format& viewFormat);
+	void createTextureImageView(StarDevice& device, const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags);
 
 	/// <summary>
 	/// Read the image from disk into memory or provide the image which is in memory
@@ -110,6 +115,6 @@ protected:
 
 	void createImageSampler(StarDevice& device);
 
-	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, vk::ImageAspectFlagBits aspectFlags);
+	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags);
 };
 }

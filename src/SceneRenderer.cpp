@@ -12,14 +12,16 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 	this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
 	auto globalBuilder = manualCreateDescriptors(device, numFramesInFlight);
-	vk::Format depthFormat = createDepthResources(device, swapChainExtent, numFramesInFlight);
 
 	this->renderToTargetInfo = std::make_unique<RenderingTargetInfo>(
 		std::vector<vk::Format>{ this->getCurrentRenderToImageFormat()},
-		depthFormat);
+		this->findDepthFormat(device));
 
 	this->renderToImages = createRenderToImages(device, numFramesInFlight);
-	assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering"); 
+	assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering");
+	this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
+	assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
+
 	for (std::unique_ptr<Texture>& texture : this->renderToImages) {
 		texture->prepRender(device); 
 	}
@@ -36,7 +38,6 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
 	imageCreateSettings.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
 	imageCreateSettings.memoryUsage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-	imageCreateSettings.imageFormat = this->getCurrentRenderToImageFormat();
 
 	for (int i = 0; i < numFramesInFlight; i++) {
 		newRenderToImages.push_back(std::make_unique<star::Texture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
@@ -45,6 +46,55 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 		auto oneTimeSetup = device.beginSingleTimeCommands(); 
 		newRenderToImages.back()->transitionLayout(oneTimeSetup, vk::ImageLayout::eColorAttachmentOptimal, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 		device.endSingleTimeCommands(oneTimeSetup); 
+	}
+
+	return newRenderToImages; 
+}
+
+std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
+{
+	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>();
+
+	auto imageCreateSettings = star::StarTexture::TextureCreateSettings::createDefault(false);
+	imageCreateSettings.imageFormat = this->findDepthFormat(device); 
+	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+	imageCreateSettings.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
+	imageCreateSettings.memoryUsage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	imageCreateSettings.aspectFlags = vk::ImageAspectFlagBits::eDepth; 
+
+	for (int i = 0; i < numFramesInFlight; i++) {
+		newRenderToImages.push_back(std::make_unique<star::Texture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
+		newRenderToImages.back()->prepRender(device);
+
+		auto oneTimeSetup = device.beginSingleTimeCommands();
+
+		vk::ImageMemoryBarrier barrier{};
+		barrier.sType = vk::StructureType::eImageMemoryBarrier;
+		barrier.oldLayout = vk::ImageLayout::eUndefined;
+		barrier.newLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+		barrier.image = newRenderToImages.back()->getImage();
+		barrier.srcAccessMask = vk::AccessFlagBits::eNone;
+		barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+		barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+		barrier.subresourceRange.levelCount = 1;                            //image is not an array
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+
+		oneTimeSetup.pipelineBarrier(
+			vk::PipelineStageFlagBits::eTopOfPipe,                        //which pipeline stages should occurr before barrier 
+			vk::PipelineStageFlagBits::eLateFragmentTests,                   //pipeline stage in which operations will wait on the barrier 
+			{},
+			{},
+			nullptr,
+			barrier
+		);
+
+		device.endSingleTimeCommands(oneTimeSetup);
 	}
 
 	return newRenderToImages; 
@@ -149,36 +199,6 @@ void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32
 	vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
 }
 
-vk::Format SceneRenderer::createDepthResources(star::StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
-{
-	//depth image should have:
-	//  same resolution as the color attachment (in swap chain extent)
-	//  optimal tiling and device local memory 
-	//Need to decide format - need to decide format for the accuracy since no direct access to the depth image from CPU side 
-	//Formats for color image: 
-	//  VK_FORMAT_D32_SFLOAT: 32-bit-float
-	//  VK_FORMAT_D32_SFLOAT_S8_UINT: 32-bit signed float for depth and 8 bit stencil component
-	//  VK_FORMAT_D24_UNFORM_S8_UINT: 24-bit float for depth and 8 bit stencil component
-
-	vk::Format depthFormat = findDepthFormat(device);
-
-	this->renderToDepthImages.resize(numFramesInFlight); 
-	this->renderToDepthImageMemory.resize(numFramesInFlight); 
-	this->renderToDepthImageViews.resize(numFramesInFlight); 
-
-	for (int i = 0; i < numFramesInFlight; i++) {
-
-		createImage(device, swapChainExtent.width, swapChainExtent.height, depthFormat,
-			vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eDepthStencilAttachment,
-			vk::MemoryPropertyFlagBits::eDeviceLocal, this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
-
-		this->renderToDepthImageViews[i] = createImageView(device, this->renderToDepthImages[i], depthFormat, vk::ImageAspectFlagBits::eDepth);
-	}
-
-
-	return depthFormat; 
-}
-
 vk::Format SceneRenderer::findDepthFormat(star::StarDevice& device)
 {
 	//utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
@@ -198,11 +218,9 @@ void SceneRenderer::destroyResources(StarDevice& device)
 	for (auto& image : this->renderToImages) {
 		image->cleanupRender(device);
 	}
-	for (vk::ImageView& imageView : this->renderToDepthImageViews) {
-		device.getDevice().destroyImageView(imageView);
-	}
-	for (int i = 0; i < this->renderToDepthImages.size(); i++) {
-		vmaDestroyImage(device.getAllocator(), this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
+
+	for (auto& image : this->renderToDepthImages) {
+		image->cleanupRender(device);
 	}
 }
 
@@ -258,7 +276,7 @@ vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColo
 
 vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoDepthAttachment(const int& frameInFlightIndex) {
 	vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};
-	depthAttachmentInfo.imageView = this->renderToDepthImageViews[frameInFlightIndex];
+	depthAttachmentInfo.imageView = this->renderToDepthImages[frameInFlightIndex]->getImageView();
 	depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
 	depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
 	depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;

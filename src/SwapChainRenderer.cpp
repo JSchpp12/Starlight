@@ -483,11 +483,8 @@ void star::SwapChainRenderer::cleanupSwapChain()
 	for (auto& image : this->renderToImages) {
 		image->cleanupRender(this->device);
 	}
-	for (vk::ImageView& imageView : this->renderToDepthImageViews) {
-		this->device.getDevice().destroyImageView(imageView);
-	}
-	for (int i = 0; i < this->renderToDepthImages.size(); i++) {
-		vmaDestroyImage(this->device.getAllocator(), this->renderToDepthImages[i], this->renderToDepthImageMemory[i]);
+	for (auto& image : this->renderToDepthImages) {
+		image->cleanupRender(this->device);
 	}
 
 	this->device.getDevice().destroySwapchainKHR(this->swapChain);
