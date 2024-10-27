@@ -48,7 +48,7 @@ public:
 	virtual RenderingTargetInfo getRenderingInfo() { return *this->renderToTargetInfo; }
 	
 	std::vector<std::unique_ptr<star::Texture>>* getRenderToColorImages() { return &this->renderToImages; }
-	std::vector<vk::Image>* getRenderToDepthImages() { return &this->renderToDepthImages; }	
+	std::vector<std::unique_ptr<star::Texture>>* getRenderToDepthImages() { return &this->renderToDepthImages; }	
 protected:
 	StarScene& scene; 
 
@@ -60,9 +60,7 @@ protected:
 	std::vector<vk::Framebuffer> renderToFramebuffers = std::vector<vk::Framebuffer>();
 
 	//depth testing storage 
-	std::vector<vk::Image> renderToDepthImages = std::vector<vk::Image>(); 
-	std::vector<VmaAllocation> renderToDepthImageMemory = std::vector<VmaAllocation>();
-	std::vector<vk::ImageView> renderToDepthImageViews = std::vector<vk::ImageView>(); 
+	std::vector<std::unique_ptr<star::Texture>> renderToDepthImages = std::vector<std::unique_ptr<star::Texture>>();
 
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
@@ -78,6 +76,8 @@ protected:
 	virtual vk::Format getCurrentRenderToImageFormat() = 0; 
 
 	virtual std::vector<std::unique_ptr<Texture>> createRenderToImages(StarDevice& device, const int& numFramesInFlight);
+
+	virtual std::vector<std::unique_ptr<Texture>> createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create vertex buffer + index buffers + any rendering groups for operations
@@ -103,11 +103,6 @@ protected:
 		vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, 
 		vk::MemoryPropertyFlags properties, vk::Image& image, 
 		VmaAllocation& imageMemory);
-
-	/// <summary>
-	/// Create the depth images that will be used by vulkan to run depth tests on fragments. 
-	/// </summary>
-	vk::Format createDepthResources(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight);
 
 	// Inherited via CommandBufferModifier
 	Command_Buffer_Type getCommandBufferType() override;

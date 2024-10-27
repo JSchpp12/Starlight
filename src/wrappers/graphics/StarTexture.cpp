@@ -7,7 +7,7 @@ void StarTexture::prepRender(StarDevice& device) {
 
 	if (!this->textureImage)
 		createTextureImage(device);
-	createTextureImageView(device, this->createSettings->imageFormat);
+	createTextureImageView(device, this->createSettings->imageFormat, this->createSettings->aspectFlags);
 	if (this->createSettings->createSampler)
 		createImageSampler(device);
 
@@ -331,13 +331,13 @@ void StarTexture::createImageSampler(StarDevice& device) {
 	}
 }
 
-void StarTexture::createTextureImageView(StarDevice& device, const vk::Format& viewFormat) {
-	vk::ImageView imageView = createImageView(device, textureImage, viewFormat, vk::ImageAspectFlagBits::eColor);
+void StarTexture::createTextureImageView(StarDevice& device, const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
+	vk::ImageView imageView = createImageView(device, textureImage, viewFormat, aspectFlags);
 	this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
 }
 
 vk::ImageView StarTexture::createImageView(StarDevice& device, vk::Image image, 
-	vk::Format format, vk::ImageAspectFlagBits aspectFlags) {
+	vk::Format format, const vk::ImageAspectFlags& aspectFlags) {
 	vk::ImageViewCreateInfo viewInfo{};
 	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
 	viewInfo.image = image;
