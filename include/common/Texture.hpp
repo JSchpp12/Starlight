@@ -50,7 +50,7 @@ namespace star {
 
         int getHeight() override {return this->height; }
         int getWidth() override { return this->width; }
-        int getChannels() override { return this->channels; }
+        int getChannels() override { return 4; }
 
         void loadFromDisk();
 

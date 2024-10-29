@@ -6,7 +6,7 @@ void StarTexture::prepRender(StarDevice& device) {
 		return; 
 
 	if (!this->textureImage)
-		createTextureImage(device);
+		createTextureImage(device, *this->createSettings);
 	createTextureImageView(device, this->createSettings->imageFormat, this->createSettings->aspectFlags);
 	if (this->createSettings->createSampler)
 		createImageSampler(device);
@@ -46,7 +46,7 @@ vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat) const{
 	}
 }
 
-void StarTexture::createTextureImage(StarDevice& device) {
+void StarTexture::createTextureImage(StarDevice& device, const star::StarTexture::TextureCreateSettings& settings) {
 	int height = this->getHeight(); 
 	int width = this->getWidth(); 
 	int channels = this->getChannels(); 
@@ -59,7 +59,7 @@ void StarTexture::createTextureImage(StarDevice& device) {
 		auto possibleData = this->data(); 
 		if (possibleData.has_value()) {
 			std::unique_ptr<unsigned char>& textureData = possibleData.value(); 
-			vk::DeviceSize imageSize = width * height * 4;
+			vk::DeviceSize imageSize = width * height * channels * settings.imageDepth;
 
 			//image will be transfered from cpu memory, make sure proper flags are set
 			this->createSettings->imageUsage = this->createSettings->imageUsage | vk::ImageUsageFlagBits::eTransferDst;

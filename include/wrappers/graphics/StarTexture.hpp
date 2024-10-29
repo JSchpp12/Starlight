@@ -44,12 +44,24 @@ public:
 			}
 		}
 
+		TextureCreateSettings(const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat,
+			const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& allocationCreateFlags, const bool& isMutable,
+			const bool& createSampler, const uint32_t& imageDepth, const bool& isDepth = false)
+			: imageUsage(imageUsage), imageFormat(imageFormat),
+			allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage),
+			isMutable(isMutable), imageDepth(imageDepth), createSampler(createSampler) {
+			if (isDepth) {
+				this->aspectFlags = vk::ImageAspectFlagBits::eDepth;
+			}
+		}
+
 		~TextureCreateSettings() = default; 
 
 		bool createSampler = true; 
 		bool isMutable = false;
 		vk::ImageUsageFlags imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
 		vk::Format imageFormat = vk::Format::eR8G8B8A8Srgb;
+		uint32_t imageDepth = 1; 
 		VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 		VmaAllocationCreateFlags allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
 		vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
@@ -108,7 +120,7 @@ protected:
 	virtual int getHeight() = 0;
 	virtual int getChannels() = 0;
 
-	void createTextureImage(StarDevice& device);
+	virtual void createTextureImage(StarDevice& device, const star::StarTexture::TextureCreateSettings& settings);
 
 	void transitionImageLayout(StarDevice& device, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
 		vk::ImageLayout newLayout);
