@@ -46,10 +46,10 @@ public:
 
 		TextureCreateSettings(const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat,
 			const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& allocationCreateFlags, const bool& isMutable,
-			const bool& createSampler, const uint32_t& imageDepth, const bool& isDepth = false)
+			const bool& createSampler, const vk::ImageLayout& initialLayout, const bool& isDepth = false)
 			: imageUsage(imageUsage), imageFormat(imageFormat),
 			allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage),
-			isMutable(isMutable), imageDepth(imageDepth), createSampler(createSampler) {
+			isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout) {
 			if (isDepth) {
 				this->aspectFlags = vk::ImageAspectFlagBits::eDepth;
 			}
@@ -61,10 +61,10 @@ public:
 		bool isMutable = false;
 		vk::ImageUsageFlags imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
 		vk::Format imageFormat = vk::Format::eR8G8B8A8Srgb;
-		uint32_t imageDepth = 1; 
 		VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
 		VmaAllocationCreateFlags allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
 		vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
+		vk::ImageLayout initialLayout = vk::ImageLayout::eShaderReadOnlyOptimal; 
 	private:
 		TextureCreateSettings() = default; 
 	}; 
@@ -74,7 +74,7 @@ public:
 		createSettings(std::make_unique<TextureCreateSettings>(TextureCreateSettings::createDefault(true))) {
 		this->createSettings->imageFormat = format; 
 	}; 
-	StarTexture(TextureCreateSettings& settings)
+	StarTexture(TextureCreateSettings settings)
 		: createSettings(std::make_unique<TextureCreateSettings>(settings)) {}; 
 
 	virtual ~StarTexture() = default;
@@ -92,12 +92,12 @@ public:
 	virtual std::optional<std::unique_ptr<unsigned char>> data() = 0;
 
 	vk::ImageView getImageView(vk::Format* requestedFormat = nullptr) const;
-	vk::Sampler getSampler() const { return *this->textureSampler; }
+	vk::Sampler getSampler() const { return this->textureSampler ? *this->textureSampler : VK_NULL_HANDLE; }
 	vk::Image getImage() const { return this->textureImage; }
 	vk::ImageLayout getCurrentLayout() const { return this->layout; }
 	void overrideImageLayout(vk::ImageLayout newLayout) { this->layout = newLayout; }
 
-	static void createImage(StarDevice& device, uint32_t width, uint32_t height, vk::Format format, vk::ImageTiling tiling,
+	static void createImage(StarDevice& device, uint32_t width, uint32_t height, uint32_t depth, vk::Format format, vk::ImageTiling tiling,
 		vk::ImageUsageFlags usage, const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& allocationCreateFlags, 
 		vk::Image& image, VmaAllocation& imageMemory, bool isMutable, vk::MemoryPropertyFlags* optional_setRequiredMemoryPropertyFlags = nullptr);
 
@@ -119,6 +119,7 @@ protected:
 	virtual int getWidth() = 0;
 	virtual int getHeight() = 0;
 	virtual int getChannels() = 0;
+	virtual int getDepth() = 0; 
 
 	virtual void createTextureImage(StarDevice& device, const star::StarTexture::TextureCreateSettings& settings);
 

@@ -50,6 +50,7 @@ void StarTexture::createTextureImage(StarDevice& device, const star::StarTexture
 	int height = this->getHeight(); 
 	int width = this->getWidth(); 
 	int channels = this->getChannels(); 
+	int depth = this->getDepth(); 
 	bool isMutable = this->createSettings->isMutable; 
 
 	//image has data in cpu memory, it must be copied over
@@ -59,15 +60,13 @@ void StarTexture::createTextureImage(StarDevice& device, const star::StarTexture
 		auto possibleData = this->data(); 
 		if (possibleData.has_value()) {
 			std::unique_ptr<unsigned char>& textureData = possibleData.value(); 
-			vk::DeviceSize imageSize = width * height * channels * settings.imageDepth;
+			vk::DeviceSize imageSize = width * height * channels * depth;
 
 			//image will be transfered from cpu memory, make sure proper flags are set
 			this->createSettings->imageUsage = this->createSettings->imageUsage | vk::ImageUsageFlagBits::eTransferDst;
 			this->createSettings->allocationCreateFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
-
-			auto data = this->data();
+			createImage(device, width, height, depth, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
 
 			StarBuffer stagingBuffer(
 				device,
@@ -88,13 +87,13 @@ void StarTexture::createTextureImage(StarDevice& device, const star::StarTexture
 			device.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
 			//prepare final image for texture mapping in shaders 
-			transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+			transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eTransferDstOptimal, this->createSettings->initialLayout);
 			this->layout = vk::ImageLayout::eTransferDstOptimal;
 
 			stagingBuffer.unmap(); 
 		}
 		else {
-			createImage(device, width, height, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
+			createImage(device, width, height, depth, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
 		}
 	}
 	catch (const std::exception& e) {
@@ -104,7 +103,7 @@ void StarTexture::createTextureImage(StarDevice& device, const star::StarTexture
 	}
 }
 
-void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t height, vk::Format format,
+void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t height, uint32_t depth, vk::Format format,
 	vk::ImageTiling tiling, vk::ImageUsageFlags usage, const VmaMemoryUsage& memoryUsage, 
 	const VmaAllocationCreateFlags& allocationCreateFlags, vk::Image& image, 
 	VmaAllocation& imageMemory, bool isMutable, 
@@ -114,10 +113,17 @@ void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t heigh
 	/* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
 	imageInfo.sType = vk::StructureType::eImageCreateInfo;
-	imageInfo.imageType = vk::ImageType::e2D;
+
+	if (depth > 1) {
+		imageInfo.imageType = vk::ImageType::e3D;
+		imageInfo.flags = vk::ImageCreateFlagBits::e2DArrayCompatible;
+	}
+	else
+		imageInfo.imageType = vk::ImageType::e2D;
+
 	imageInfo.extent.width = width;
 	imageInfo.extent.height = height;
-	imageInfo.extent.depth = 1;
+	imageInfo.extent.depth = depth;
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
 	imageInfo.format = format;
@@ -128,7 +134,7 @@ void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t heigh
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
 
 	if (isMutable)
-		imageInfo.flags = vk::ImageCreateFlagBits::eMutableFormat; 
+		imageInfo.flags = imageInfo.flags | vk::ImageCreateFlagBits::eMutableFormat; 
 
 	device.verifyImageCreate(imageInfo);
 
@@ -214,7 +220,7 @@ void StarTexture::transitionImageLayout(StarDevice& device, vk::Image image, vk:
 		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
 		destinationStage = vk::PipelineStageFlagBits::eTransfer;
 	}
-	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal) {
+	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal || newLayout == vk::ImageLayout::eGeneral)) {
 		//transfer destination shader reading, will need to wait for completion. Especially in the frag shader where reads will happen
 		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
 		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
@@ -341,7 +347,11 @@ vk::ImageView StarTexture::createImageView(StarDevice& device, vk::Image image,
 	vk::ImageViewCreateInfo viewInfo{};
 	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
 	viewInfo.image = image;
-	viewInfo.viewType = vk::ImageViewType::e2D;
+	if (this->getDepth() > 1)
+		viewInfo.viewType = vk::ImageViewType::e3D;
+	else {
+		viewInfo.viewType = vk::ImageViewType::e2D;
+	}
 	viewInfo.format = format;
 
 	viewInfo.subresourceRange.aspectMask = aspectFlags;

@@ -12,24 +12,27 @@ find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(glslang CONFIG REQUIRED)
+find_package(spirvreflect CONFIG REQUIRED)
+find_package(spirvtools CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
 
-set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
-add_subdirectory("extern/spirv_headers")
+# set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
+# add_subdirectory("extern/spirv_headers")
 
-set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
-set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
-add_subdirectory("extern/spirv_tools")
-set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
-set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
-add_subdirectory("extern/glslang")
+# set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
+# set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
+# add_subdirectory("extern/spirv_tools")
+# set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
+# set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
+# add_subdirectory("extern/glslang")
 
-set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
-set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
-add_subdirectory("extern/spirv_reflect")
+# set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
+# set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
+# set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
+# add_subdirectory("extern/spirv_reflect")
 
 set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_TESTS ON CACHE BOOL "" FORCE)
@@ -232,7 +235,7 @@ target_include_directories(${PROJECT_NAME}
         ${Vulkan_LIBRARIES}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/include/Systems
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
+        # ${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         "extern/tinyobjloader"
         ${glm_SOURCE_DIR}
