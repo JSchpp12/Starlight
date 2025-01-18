@@ -1,38 +1,45 @@
 cmake_minimum_required (VERSION 3.27)
 find_package(Git)
 
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MACOSX_RPATH 1)
 
 project("starlight")
+enable_language(C CXX)
+
+if (WIN32)
+    set(CMAKE_FIND_LIBRARY_PREFIXES "")
+endif()
 
 find_package(Vulkan REQUIRED)
+
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
-find_package(spirvreflect CONFIG REQUIRED)
-find_package(spirvtools CONFIG REQUIRED)
+find_package(tinyobjloader CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
 
-# set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
-# add_subdirectory("extern/spirv_headers")
+set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
+add_subdirectory("extern/spirv_headers")
 
-# set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
-# set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
-# add_subdirectory("extern/spirv_tools")
-# set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
-# set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
-# add_subdirectory("extern/glslang")
+set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
+set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
+add_subdirectory("extern/spirv_tools")
+set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
+set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
+add_subdirectory("extern/glslang")
 
-# set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
-# set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
-# set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
-# add_subdirectory("extern/spirv_reflect")
+set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
+set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
+add_subdirectory("extern/spirv_reflect")
 
 set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_TESTS ON CACHE BOOL "" FORCE)
@@ -41,7 +48,7 @@ set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
 add_subdirectory("extern/googletest") 
-add_subdirectory("extern/tinyobjloader")
+#add_subdirectory("extern/tinyobjloader")
 
 set(${PROJECT_NAME}_SOURCE 
     "src/virtual/StarObject.cpp"
@@ -203,7 +210,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Vulkan::Vulkan
         shaderc
-        tinyobjloader
+        tinyobjloader::tinyobjloader
         glfw
         spirv-reflect-static
         GPUOpen::VulkanMemoryAllocator
@@ -237,7 +244,6 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/include/Systems
         # ${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
-        "extern/tinyobjloader"
         ${glm_SOURCE_DIR}
         "extern/stb"
 )
