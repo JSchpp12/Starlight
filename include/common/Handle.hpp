@@ -6,16 +6,6 @@
 
 #include <boost/functional/hash/hash.hpp>
 
-//template<>
-//struct std::hash<star::Handle> {
-//    size_t operator()(const star::Handle& handle) const {
-//        size_t result = 0;
-//        boost::hash_combine(result, handle.id);
-//        boost::hash_combine(result, handle.type);
-//        return result;
-//    }
-//};
-
 namespace star {
     struct Handle {
         static Handle getDefault() {

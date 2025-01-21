@@ -22,16 +22,16 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 	this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
 	assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
 
-	for (std::unique_ptr<Texture>& texture : this->renderToImages) {
+	for (std::unique_ptr<FileTexture>& texture : this->renderToImages) {
 		texture->prepRender(device); 
 	}
 	
 	createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<FileTexture>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>(); 
+	std::vector<std::unique_ptr<FileTexture>> newRenderToImages = std::vector<std::unique_ptr<FileTexture>>();
 
 	auto imageCreateSettings = star::StarTexture::TextureCreateSettings::createDefault(false); 
 	imageCreateSettings.imageFormat = this->getCurrentRenderToImageFormat();
@@ -40,7 +40,7 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 	imageCreateSettings.memoryUsage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<star::Texture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
+		newRenderToImages.push_back(std::make_unique<star::FileTexture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
 		newRenderToImages.back()->prepRender(device); 
 
 		auto oneTimeSetup = device.beginSingleTimeCommands(); 
@@ -51,9 +51,9 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 	return newRenderToImages; 
 }
 
-std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<FileTexture>> SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>();
+	std::vector<std::unique_ptr<FileTexture>> newRenderToImages = std::vector<std::unique_ptr<FileTexture>>();
 
 	auto imageCreateSettings = star::StarTexture::TextureCreateSettings::createDefault(false);
 	imageCreateSettings.imageFormat = this->findDepthFormat(device); 
@@ -63,7 +63,7 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToDepthImages(S
 	imageCreateSettings.aspectFlags = vk::ImageAspectFlagBits::eDepth; 
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<star::Texture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
+		newRenderToImages.push_back(std::make_unique<star::FileTexture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
 		newRenderToImages.back()->prepRender(device);
 
 		auto oneTimeSetup = device.beginSingleTimeCommands();

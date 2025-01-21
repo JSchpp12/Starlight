@@ -228,13 +228,13 @@ std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vect
 	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-std::vector<std::unique_ptr<star::Texture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<star::FileTexture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>(); 
+	std::vector<std::unique_ptr<FileTexture>> newRenderToImages = std::vector<std::unique_ptr<FileTexture>>();
 
 	//get images in the newly created swapchain 
 	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
-		newRenderToImages.push_back(std::make_unique<Texture>(image, vk::ImageLayout::eUndefined, *this->swapChainImageFormat));
+		newRenderToImages.push_back(std::make_unique<FileTexture>(image, vk::ImageLayout::eUndefined, *this->swapChainImageFormat));
 
 		auto buffer = device.beginSingleTimeCommands(); 
 		newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput); 

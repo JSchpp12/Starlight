@@ -64,7 +64,7 @@ namespace star {
 
 		std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> getOverrideBufferSubmissionCallback() override;
 		
-		virtual std::vector<std::unique_ptr<Texture>> createRenderToImages(star::StarDevice& device, const int& numFramesInFlight) override;
+		virtual std::vector<std::unique_ptr<FileTexture>> createRenderToImages(star::StarDevice& device, const int& numFramesInFlight) override;
 
 		virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) override;
 

@@ -48,30 +48,31 @@ set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
 add_subdirectory("extern/googletest") 
-#add_subdirectory("extern/tinyobjloader")
 
 set(${PROJECT_NAME}_SOURCE 
-    "src/virtual/StarObject.cpp"
+    "src/StarEngine.cpp" 
     "src/Renderer.cpp"
     "src/BasicWindow.cpp" 
     "src/SceneRenderer.cpp"
     "src/SwapChainRenderer.cpp"
-    "src/common/Compiler.cpp"
-    "src/common/Interactivity.cpp" 
-    "src/common/KeyStates.cpp"
-    "src/common/RuntimeUpdateTexture.cpp"
+    "src/virtual/StarObject.cpp"
     "src/virtual/modulePlug/RenderResourceModifier.cpp"
     "src/virtual/modulePlug/RenderResourceModifierGeometry.cpp"
     "src/virtual/modulePlug/CommandBufferModifier.cpp"
     "src/virtual/modulePlug/DescriptorModifier.cpp"
     "src/virtual/modulePlug/BufferModifier.cpp"
+    "src/virtual/modulePlug/TextureModifier.cpp"
+    "src/virtual/modulePlug/ManagerPlug.cpp"
     "src/virtual/StarMesh.cpp"
     "src/virtual/StarRenderer.cpp" 
-    "src/StarEngine.cpp" 
     "src/virtual/StarManager.cpp"
     "src/virtual/StarWindow.cpp" 
     "src/virtual/StarDevice.cpp"
     "src/virtual/StarScene.cpp"
+    "src/virtual/StarShader.cpp" 
+    "src/virtual/StarMaterial.cpp" 
+    "src/virtual/StarCamera.cpp"
+    "src/virtual/StarPipeline.cpp"
     "src/wrappers/graphics/StarDescriptorBuilders.cpp"  
     "src/wrappers/graphics/StarBuffer.cpp"  
     "src/wrappers/graphics/StarGraphicsPipeline.cpp"  
@@ -93,11 +94,11 @@ set(${PROJECT_NAME}_SOURCE
     "src/modules/InteractionSystem.cpp"
     "src/modules/RenderResourceSystem.cpp"
     "src/systems/StarRenderGroup.cpp" 
-    "src/systems/StarSystemRenderPointLight.cpp" 
-    "src/virtual/StarShader.cpp" 
-    "src/virtual/StarMaterial.cpp" 
-    "src/virtual/StarCamera.cpp"
-    "src/virtual/StarPipeline.cpp"
+    "src/common/GeneratedTexture.cpp"
+    "src/common/Compiler.cpp"
+    "src/common/Interactivity.cpp" 
+    "src/common/KeyStates.cpp"
+    "src/common/RuntimeUpdateTexture.cpp"
     "src/common/materials/BumpMaterial.cpp"
     "src/common/materials/VertColorMaterial.cpp"
     "src/common/materials/HeightDisplacementMaterial.cpp"
@@ -107,7 +108,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/objects/StarObjectInstance.cpp"
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
-    "src/common/Texture.cpp"
+    "src/common/FileTexture.cpp"
     "src/common/Handle.cpp"
     "src/common/buffers/GlobalInfo.cpp"
     "src/common/buffers/LightInfo.cpp"
@@ -119,15 +120,16 @@ set(${PROJECT_NAME}_SOURCE
     "src/internals/CommandBufferContainer.cpp"
 )
 
-
 set(${PROJECT_NAME}_HEADERS
     "include/StarEngine.hpp"
     "include/BasicWindow.hpp" 
     "include/SceneRenderer.hpp"
     "include/SwapChainRenderer.hpp"
+    "include/common/GeneratedTexture.hpp"
     "include/common/Compiler.hpp"
     "include/common/Interactivity.hpp"
     "include/common/KeyStates.hpp"
+    "include/common/FileTexture.hpp"
     "include/common/materials/BumpMaterial.hpp"
     "include/common/materials/VertColorMaterial.hpp"
     "include/common/materials/TextureMaterial.hpp"
@@ -145,6 +147,8 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/modulePlug/CommandBufferModifier.hpp"
     "include/virtual/modulePlug/DescriptorModifier.hpp"
     "include/virtual/modulePlug/BufferModifier.hpp"
+    "include/virtual/modulePlug/TextureModifier.hpp"
+    "include/virtual/modulePlug/ManagerPlug.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
@@ -153,6 +157,9 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarScene.hpp"
     "include/virtual/StarMesh.hpp"
     "include/virtual/StarCamera.hpp"
+    "include/virtual/StarMaterial.hpp"
+    "include/virtual/StarSystemPipeline.hpp"
+    "include/virtual/StarPipeline.hpp"
     "include/common/StarMaterialMesh.hpp"
     "include/wrappers/graphics/StarDescriptorBuilders.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
@@ -173,9 +180,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/modules/InteractionSystem.hpp"
     "include/modules/RenderResourceSystem.hpp"
     "include/systems/StarRenderGroup.hpp"
-    "include/virtual/StarMaterial.hpp"
-    "include/virtual/StarSystemPipeline.hpp"
-    "include/virtual/StarPipeline.hpp"
     "include/internals/CommandBufferContainer.hpp"
     #header only
     "include/common/entities/Light.hpp"
@@ -195,13 +199,11 @@ set(${PROJECT_NAME}_HEADERS
     "include/templates/FileResourceManager.hpp"
     "include/templates/FileResourceContainer.hpp"
     "include/common/ConfigFile.hpp"
-    "include/common/Texture.hpp"
     "include/common/helpers/DebugHelpers.hpp"
     "include/common/helpers/FileHelpers.hpp"
     "include/common/helpers/Time.hpp"
     "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
-
 )
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
@@ -240,9 +242,6 @@ target_include_directories(${PROJECT_NAME}
         "include/systems/"
         "include/renderers/"
         ${Vulkan_LIBRARIES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/Systems
-        # ${CMAKE_CURRENT_SOURCE_DIR}/external/shaderc/libshaderc/include
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
         "extern/stb"

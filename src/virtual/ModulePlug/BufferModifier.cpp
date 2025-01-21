@@ -2,7 +2,7 @@
 
 star::BufferModifier::~BufferModifier()
 {
-	ManagerBuffer::destroy(*this->bufferHandle);
+	ManagerBuffer::destroy(*this->handle);
 }
 
 void star::BufferModifier::init(const VmaAllocationCreateFlags& createFlags, const VmaMemoryUsage& memoryUsage,
@@ -10,10 +10,10 @@ void star::BufferModifier::init(const VmaAllocationCreateFlags& createFlags, con
 	const int& instanceCount, const vk::SharingMode& bufferSharingMode,
 	const int& minOffsetAlignment, const uint16_t& frameInFlightIndexToUpdateOn) {
 
-	if (this->bufferHandle)
-		ManagerBuffer::destroy(*this->bufferHandle);
+	if (this->handle)
+		ManagerBuffer::destroy(*this->handle);
 
-	this->bufferHandle = std::make_unique<Handle>(
+	this->handle = std::make_unique<Handle>(
 		ManagerBuffer::addRequest(ManagerBuffer::Request(
 			std::function<void(StarBuffer&)>(std::bind(&BufferModifier::writeBufferData, this, std::placeholders::_1)),
 			std::function<void(void)>(std::bind(&BufferModifier::setBufferHasChanged, this)),
@@ -28,7 +28,7 @@ void star::BufferModifier::init(const VmaAllocationCreateFlags& createFlags, con
 			},
 			frameInFlightIndexToUpdateOn, 
 			std::function<bool(void)>((std::bind(&BufferModifier::checkIfShouldUpdateThisFrame, this)))
-		)));
+	)));
 }
 
 void star::BufferModifier::init(const VmaAllocationCreateFlags& createFlags, const VmaMemoryUsage& memoryUsage,
@@ -36,10 +36,10 @@ void star::BufferModifier::init(const VmaAllocationCreateFlags& createFlags, con
 	const int& instanceCount, const vk::SharingMode& bufferSharingMode,
 	const int& minOffsetAlignment)
 {
-	if (this->bufferHandle)
-		ManagerBuffer::destroy(*this->bufferHandle); 
+	if (this->handle)
+		ManagerBuffer::destroy(*this->handle); 
 
-	this->bufferHandle = std::make_unique<Handle>(
+	this->handle = std::make_unique<Handle>(
 		ManagerBuffer::addRequest(ManagerBuffer::Request(
 			std::function<void(StarBuffer&)>(std::bind(&BufferModifier::writeBufferData, this, std::placeholders::_1)),
 			std::function<void(void)>(std::bind(&BufferModifier::setBufferHasChanged, this)),
@@ -52,5 +52,5 @@ void star::BufferModifier::init(const VmaAllocationCreateFlags& createFlags, con
 				bufferSharingMode,
 				vk::DeviceSize(minOffsetAlignment)
 			}
-		)));
+	)));
 }

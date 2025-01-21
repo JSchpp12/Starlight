@@ -1,18 +1,18 @@
-#include "Texture.hpp"
+#include "FileTexture.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-star::Texture::Texture(const vk::Image& image, const vk::ImageLayout& layout, const vk::Format& format) : StarTexture(image, layout, format)
+star::FileTexture::FileTexture(const vk::Image& image, const vk::ImageLayout& layout, const vk::Format& format) : StarTexture(image, layout, format)
 {
 }
 
-star::Texture::Texture(int texWidth, int texHeight)
+star::FileTexture::FileTexture(int texWidth, int texHeight)
 	: width(texWidth), height(texHeight), channels(4), onDisk(false) {}
 
-star::Texture::Texture(const int& texWidth, const int& texHeight, const int& channels, vk::SubresourceLayout texLayout, unsigned char* raw, bool swizzle)
+star::FileTexture::FileTexture(const int& texWidth, const int& texHeight, const int& channels, vk::SubresourceLayout texLayout, unsigned char* raw, bool swizzle)
 	: width(texWidth), height(texHeight), channels(channels), onDisk(false) {
 	this->rawData = std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texHeight, std::vector<Color>(texWidth, Color{})));
     for (int i = 0; i < texHeight; i++) {
@@ -45,21 +45,21 @@ star::Texture::Texture(const int& texWidth, const int& texHeight, const int& cha
         raw += texLayout.rowPitch;
 	}
 }
-star::Texture::Texture(std::vector<std::vector<Color>> rawData) 
+star::FileTexture::FileTexture(std::vector<std::vector<Color>> rawData)
 	: rawData(rawData), width(rawData.size()), 
 	height(rawData.front().size()), channels(4) {}
 
-star::Texture::Texture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData) 
+star::FileTexture::FileTexture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData)
 	: rawData(rawData), width(texWidth),
 	height(texHeight), channels(4), onDisk(false) {}
 
-star::Texture::Texture(const std::string& pathToImage)
+star::FileTexture::FileTexture(const std::string& pathToImage)
 	: pathToFile(pathToImage) {
 	onDisk = true;
 	loadFromDisk();
 }
 
-void star::Texture::loadFromDisk()
+void star::FileTexture::loadFromDisk()
 {
 	//load from disk to get properties of image
 	auto pixelData = stbi_load(pathToFile.c_str(), &width, &height, &channels, STBI_rgb_alpha);
@@ -69,7 +69,7 @@ void star::Texture::loadFromDisk()
 	stbi_image_free(pixelData);
 }
 
-std::optional<std::unique_ptr<unsigned char>> star::Texture::data()
+std::optional<std::unique_ptr<unsigned char>> star::FileTexture::data()
 {
     //load from disk
     if (onDisk) {
@@ -126,7 +126,7 @@ std::optional<std::unique_ptr<unsigned char>> star::Texture::data()
 	return std::optional<std::unique_ptr<unsigned char>>();
 }
 
-void star::Texture::saveToDisk(const std::string& path)
+void star::FileTexture::saveToDisk(const std::string& path)
 {
     auto possibleData = this->data(); 
     if (this->rawData && possibleData.has_value()) {

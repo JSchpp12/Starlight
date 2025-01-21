@@ -11,33 +11,32 @@
 #include <stdexcept>
 #include <optional>
 #include <iostream>
-#include <optional>
 
 namespace star {
 
-    class Texture : public StarTexture {
+    class FileTexture : public StarTexture {
     public:
         std::string pathToFile = "";
         bool onDisk = false;
 
-        Texture(const vk::Image& image, const vk::ImageLayout& layout, const vk::Format& format); 
+        FileTexture(const vk::Image& image, const vk::ImageLayout& layout, const vk::Format& format); 
 
-        Texture(int texWidth, int texHeight);
+        FileTexture(int texWidth, int texHeight);
 
-		Texture(const int& texWidth, const int& texHeight, StarTexture::TextureCreateSettings& settings)
+		FileTexture(const int& texWidth, const int& texHeight, StarTexture::TextureCreateSettings& settings)
 			: StarTexture(settings), width(texWidth), 
             height(texHeight), channels(4), 
             onDisk(false) {};
 
-        Texture(const int& texWidth, const int& texHeight, const int& channels, TextureCreateSettings& settings)
+        FileTexture(const int& texWidth, const int& texHeight, const int& channels, TextureCreateSettings& settings)
             : StarTexture(settings), rawData(std::make_optional<std::vector<std::vector<Color>>>(std::vector<std::vector<Color>>(texWidth, std::vector<Color>(texHeight, Color{})))),
             width(texWidth), height(texHeight), channels(channels), onDisk(false) {};
 
-        Texture(const int& texWidth, const int& texHeight, const int& channels, vk::SubresourceLayout texLayout, unsigned char* raw, bool swizzle = false);
+        FileTexture(const int& texWidth, const int& texHeight, const int& channels, vk::SubresourceLayout texLayout, unsigned char* raw, bool swizzle = false);
 
-        Texture(std::vector<std::vector<Color>> rawData);
+        FileTexture(std::vector<std::vector<Color>> rawData);
 
-        Texture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData);
+        FileTexture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData);
 
         /// <summary>
         /// Initalize texture with provided raw data. For use with programatically generated textures. 
@@ -46,7 +45,7 @@ namespace star {
         /// <param name="texWidth"></param>
         /// <param name="texHeight"></param>
         /// <param name="texChannels"></param>
-        Texture(const std::string& pathToImage);
+        FileTexture(const std::string& pathToImage);
 
         int getHeight() override {return this->height; }
         int getWidth() override { return this->width; }

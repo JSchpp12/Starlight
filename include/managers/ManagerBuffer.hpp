@@ -3,7 +3,7 @@
 #include "Enums.hpp"
 #include "StarBuffer.hpp"
 #include "StarDevice.hpp"
-#include "StarBuffer.hpp"
+#include "StarManager.hpp"
 #include "Handle.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -19,7 +19,7 @@
 #include <vma/vk_mem_alloc.h>
 
 namespace star {
-	class ManagerBuffer {
+	class ManagerBuffer : public StarManager{
 	public:
 		struct BufferCreationArgs {
 			vk::DeviceSize bufferSize;
@@ -59,7 +59,7 @@ namespace star {
 				bufferCreateArgs(bufferCreateArgs) {};
 		};
 
-		ManagerBuffer() = default;
+		ManagerBuffer(StarDevice& device);
 
 		static void init(StarDevice& device, const int& totalNumFramesInFlight); 
 

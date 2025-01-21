@@ -2,7 +2,7 @@
 
 #include "Color.hpp"
 #include "StarMaterial.hpp"
-#include "Texture.hpp"
+#include "FileTexture.hpp"
 
 #include <memory>
 #include <vector>
@@ -12,17 +12,17 @@ namespace star {
 	public:
 		HeightDisplacementMaterial(int size_x, int size_y)
 			: size_x(size_x), size_y(size_y),
-			texture(std::make_unique<Texture>(size_x, size_y)) {};
+			texture(std::make_unique<FileTexture>(size_x, size_y)) {};
 
 		// Inherited via StarMaterial
 		void prep(StarDevice& device) override;
 
 		void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
 
-		Texture& getTexture() { return *this->texture; }
+		FileTexture& getTexture() { return *this->texture; }
 
 	protected:
-		std::unique_ptr<Texture> texture;
+		std::unique_ptr<FileTexture> texture;
 		int size_x = 0, size_y = 0;
 
 		// Inherited via StarMaterial

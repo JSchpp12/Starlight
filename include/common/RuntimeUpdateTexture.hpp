@@ -1,15 +1,15 @@
 #pragma once
 
-#include "Texture.hpp"
+#include "FileTexture.hpp"
 #include "StarDevice.hpp"
 
 #include <vulkan/vulkan.hpp>
 
 namespace star {
-	class RuntimeUpdateTexture : public Texture {
+	class RuntimeUpdateTexture : public FileTexture {
 	public:
-        RuntimeUpdateTexture(int texWidth, int texHeight) : Texture(texWidth, texHeight) {}; 
-        RuntimeUpdateTexture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData) : Texture(texWidth, texHeight, rawData) {};
+        RuntimeUpdateTexture(int texWidth, int texHeight) : FileTexture(texWidth, texHeight) {}; 
+        RuntimeUpdateTexture(int texWidth, int texHeight, std::vector<std::vector<Color>> rawData) : FileTexture(texWidth, texHeight, rawData) {};
 
         virtual void prepRender(StarDevice& device) override; 
 

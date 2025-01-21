@@ -187,7 +187,7 @@ void star::ScreenshotBuffer::saveScreenshotToDisk(const int& bufferIndexJustRun)
 
 	unsigned char* data = nullptr;
 	vmaMapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun], (void**)&data);
-	Texture texture(this->swapChainExtent.width, this->swapChainExtent.height, 4, layout, data, true);
+	FileTexture texture(this->swapChainExtent.width, this->swapChainExtent.height, 4, layout, data, true);
 	texture.saveToDisk(this->screenshotSavePath);
 	vmaUnmapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun]);
 }
