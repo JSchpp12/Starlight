@@ -181,7 +181,9 @@ void star::SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDraw
 	this->SceneRenderer::prepareForSubmission(frameIndexToBeDrawn); 
 
 	//set fence to unsignaled state
-	this->device.getDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
+	vk::Result resetResult = this->device.getDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
+	if (resetResult != vk::Result::eSuccess)
+		throw std::runtime_error("Failed to reset fences"); 
 }
 
 void star::SwapChainRenderer::submissionDone()
@@ -228,13 +230,29 @@ std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vect
 	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-std::vector<std::unique_ptr<star::FileTexture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<FileTexture>> newRenderToImages = std::vector<std::unique_ptr<FileTexture>>();
+	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
+
+	auto settings = StarTexture::TextureCreateSettings(
+		this->swapChainExtent->width,
+		this->swapChainExtent->height,
+		4,
+		1,
+		1,
+		vk::ImageUsageFlagBits::eColorAttachment,
+		*this->swapChainImageFormat,
+		vk::ImageAspectFlagBits::eColor,
+		VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
+		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+		vk::ImageLayout::eUndefined,
+		false, true
+	);
 
 	//get images in the newly created swapchain 
 	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
-		newRenderToImages.push_back(std::make_unique<FileTexture>(image, vk::ImageLayout::eUndefined, *this->swapChainImageFormat));
+		newRenderToImages.push_back(std::make_unique<StarTexture>(settings, image));
+		newRenderToImages.back()->prepRender(device);
 
 		auto buffer = device.beginSingleTimeCommands(); 
 		newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput); 

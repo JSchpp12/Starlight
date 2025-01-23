@@ -3,7 +3,7 @@
 #include "CommandBufferModifier.hpp"
 #include "RenderResourceModifier.hpp"
 #include "StarDevice.hpp"
-#include "FileTexture.hpp"
+#include "StarTexture.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <vector>

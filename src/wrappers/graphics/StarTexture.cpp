@@ -1,24 +1,17 @@
 #include "StarTexture.hpp"
 
 namespace star {
+
 void StarTexture::prepRender(StarDevice& device) {
-	if (this->isRenderReady)
-		return; 
-
 	if (!this->textureImage)
-		createTextureImage(device, *this->createSettings);
-	createTextureImageView(device, this->createSettings->imageFormat, this->createSettings->aspectFlags);
-	if (this->createSettings->createSampler)
+		createImage(device);
+	createTextureImageView(device, this->creationSettings.imageFormat, this->creationSettings.aspectFlags);
+	if (this->creationSettings.createSampler)
 		createImageSampler(device);
-
-	this->createSettings.release(); 
-	this->isRenderReady = true; 
 }
 
 void StarTexture::cleanupRender(StarDevice& device)
 {
-	assert(this->isRenderReady && "Only textures which are ready for rendering operations need to be cleaned up"); 
-
 	if (this->textureSampler)
 		device.getDevice().destroySampler(*this->textureSampler);
 
@@ -29,8 +22,6 @@ void StarTexture::cleanupRender(StarDevice& device)
 	//only destroy if the image memory was allocated with the creation of this instance
 	if (this->textureImage && this->imageAllocation)
 		vmaDestroyImage(device.getAllocator(), this->textureImage, *this->imageAllocation);
-
-	this->isRenderReady = false; 
 }
 
 vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat) const{
@@ -46,64 +37,51 @@ vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat) const{
 	}
 }
 
-void StarTexture::createTextureImage(StarDevice& device, const star::StarTexture::TextureCreateSettings& settings) {
-	int height = this->getHeight(); 
-	int width = this->getWidth(); 
-	int channels = this->getChannels(); 
-	int depth = this->getDepth(); 
-	bool isMutable = this->createSettings->isMutable; 
+void StarTexture::createImage(StarDevice& device) { 
 
 	//image has data in cpu memory, it must be copied over
-	try {
-		this->imageAllocation = std::make_unique<VmaAllocation>();
+	this->imageAllocation = std::make_unique<VmaAllocation>();
 
-		auto possibleData = this->data(); 
-		if (possibleData.has_value()) {
-			std::unique_ptr<unsigned char>& textureData = possibleData.value(); 
-			vk::DeviceSize imageSize = width * height * channels * depth;
+	auto possibleData = this->data(); 
+	if (possibleData.has_value()) {
+		std::unique_ptr<unsigned char>& textureData = possibleData.value(); 
+		vk::DeviceSize imageSize = (this->creationSettings.width * this->creationSettings.height * this->creationSettings.channels * this->creationSettings.depth) * this->creationSettings.byteDepth;
 
-			//image will be transfered from cpu memory, make sure proper flags are set
-			this->createSettings->imageUsage = this->createSettings->imageUsage | vk::ImageUsageFlagBits::eTransferDst;
-			this->createSettings->allocationCreateFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		//image will be transfered from cpu memory, make sure proper flags are set
+		//this->creationSettings.imageUsage = this->creationSettings.imageUsage | vk::ImageUsageFlagBits::eTransferDst;
+		//this->creationSettings.allocationCreateFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
-			createImage(device, width, height, depth, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
+		createImage(device, this->creationSettings.width, this->creationSettings.height, this->creationSettings.depth, this->creationSettings.imageFormat, vk::ImageTiling::eOptimal, this->creationSettings.imageUsage, this->creationSettings.memoryUsage, this->creationSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->creationSettings.isMutable);
 
-			StarBuffer stagingBuffer(
-				device,
-				imageSize,
-				uint32_t(1),
-				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-				VMA_MEMORY_USAGE_AUTO,
-				vk::BufferUsageFlagBits::eTransferSrc,
-				vk::SharingMode::eConcurrent
-			);
-			stagingBuffer.map();
+		StarBuffer stagingBuffer(
+			device,
+			imageSize,
+			uint32_t(1),
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			VMA_MEMORY_USAGE_AUTO,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::SharingMode::eConcurrent
+		);
+		stagingBuffer.map();
 
-			stagingBuffer.writeToBuffer(textureData.get(), imageSize);
+		stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
-			//copy staging buffer to texture image 
-			transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+		//copy staging buffer to texture image 
+		transitionImageLayout(device, textureImage, this->creationSettings.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-			device.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+		device.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(this->creationSettings.width), static_cast<uint32_t>(this->creationSettings.height));
 
-			//prepare final image for texture mapping in shaders 
-			transitionImageLayout(device, textureImage, this->createSettings->imageFormat, vk::ImageLayout::eTransferDstOptimal, this->createSettings->initialLayout);
-			this->layout = vk::ImageLayout::eTransferDstOptimal;
+		//prepare final image for texture mapping in shaders 
+		transitionImageLayout(device, textureImage, this->creationSettings.imageFormat, vk::ImageLayout::eTransferDstOptimal, this->creationSettings.initialLayout);
 
-			stagingBuffer.unmap(); 
-		}
-		else {
-			createImage(device, width, height, depth, this->createSettings->imageFormat, vk::ImageTiling::eOptimal, this->createSettings->imageUsage, this->createSettings->memoryUsage, this->createSettings->allocationCreateFlags, textureImage, *this->imageAllocation, isMutable);
-		}
+		stagingBuffer.unmap(); 
 	}
-	catch (const std::exception& e) {
-		std::stringstream errorMessage{};
-		errorMessage << "Failed to stage and write texture to gpu to due the following error: " << e.what();
-		throw std::exception(errorMessage.str().c_str());
+	else {
+		createImage(device, this->creationSettings.width, this->creationSettings.height, this->creationSettings.depth, this->creationSettings.imageFormat, vk::ImageTiling::eOptimal, this->creationSettings.imageUsage, this->creationSettings.memoryUsage, this->creationSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->creationSettings.isMutable);
 	}
 }
 
-void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t height, uint32_t depth, vk::Format format,
+void StarTexture::createImage(StarDevice& device, int width, int height, int depth, vk::Format format,
 	vk::ImageTiling tiling, vk::ImageUsageFlags usage, const VmaMemoryUsage& memoryUsage, 
 	const VmaAllocationCreateFlags& allocationCreateFlags, vk::Image& image, 
 	VmaAllocation& imageMemory, bool isMutable, 
@@ -142,7 +120,7 @@ void StarTexture::createImage(StarDevice& device, uint32_t width, uint32_t heigh
 	allocInfo.flags = allocationCreateFlags;
 	allocInfo.usage = memoryUsage;
 	if (optional_setRequiredMemoryPropertyFlags != nullptr)
-		allocInfo.requiredFlags = (VkMemoryPropertyFlags)optional_setRequiredMemoryPropertyFlags;
+		allocInfo.requiredFlags = static_cast<VkMemoryPropertyFlags>(*optional_setRequiredMemoryPropertyFlags);
 
 	auto result = vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
 
