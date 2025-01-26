@@ -42,39 +42,17 @@ void StarTexture::createImage(StarDevice& device) {
 	//image has data in cpu memory, it must be copied over
 	this->imageAllocation = std::make_unique<VmaAllocation>();
 
-	auto possibleData = this->data(); 
-	if (possibleData.has_value()) {
-		std::unique_ptr<unsigned char>& textureData = possibleData.value(); 
-		vk::DeviceSize imageSize = (this->creationSettings.width * this->creationSettings.height * this->creationSettings.channels * this->creationSettings.depth) * this->creationSettings.byteDepth;
-
-		//image will be transfered from cpu memory, make sure proper flags are set
-		//this->creationSettings.imageUsage = this->creationSettings.imageUsage | vk::ImageUsageFlagBits::eTransferDst;
-		//this->creationSettings.allocationCreateFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
+	auto loadedData = this->loadImageData(device); 
+	if (loadedData) {
 		createImage(device, this->creationSettings.width, this->creationSettings.height, this->creationSettings.depth, this->creationSettings.imageFormat, vk::ImageTiling::eOptimal, this->creationSettings.imageUsage, this->creationSettings.memoryUsage, this->creationSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->creationSettings.isMutable);
-
-		StarBuffer stagingBuffer(
-			device,
-			imageSize,
-			uint32_t(1),
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
-		);
-		stagingBuffer.map();
-
-		stagingBuffer.writeToBuffer(textureData.get(), imageSize);
 
 		//copy staging buffer to texture image 
 		transitionImageLayout(device, textureImage, this->creationSettings.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-		device.copyBufferToImage(stagingBuffer.getBuffer(), textureImage, static_cast<uint32_t>(this->creationSettings.width), static_cast<uint32_t>(this->creationSettings.height));
+		device.copyBufferToImage(loadedData->getBuffer(), textureImage, static_cast<uint32_t>(this->creationSettings.width), static_cast<uint32_t>(this->creationSettings.height));
 
 		//prepare final image for texture mapping in shaders 
 		transitionImageLayout(device, textureImage, this->creationSettings.imageFormat, vk::ImageLayout::eTransferDstOptimal, this->creationSettings.initialLayout);
-
-		stagingBuffer.unmap(); 
 	}
 	else {
 		createImage(device, this->creationSettings.width, this->creationSettings.height, this->creationSettings.depth, this->creationSettings.imageFormat, vk::ImageTiling::eOptimal, this->creationSettings.imageUsage, this->creationSettings.memoryUsage, this->creationSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->creationSettings.isMutable);

@@ -69,12 +69,6 @@ public:
 
 	void createTextureImageView(StarDevice& device, const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags);
 
-	/// <summary>
-	/// Read the image from disk into memory or provide the image which is in memory
-	/// </summary>
-	/// <returns></returns>
-	virtual std::optional<std::unique_ptr<unsigned char>> data() { return std::optional<std::unique_ptr<unsigned char>>(); }
-
 	vk::ImageView getImageView(vk::Format* requestedFormat = nullptr) const;
 	vk::Sampler getSampler() const { return this->textureSampler ? *this->textureSampler : VK_NULL_HANDLE; }
 	vk::Image getImage() const { return this->textureImage; }
@@ -110,6 +104,10 @@ protected:
 	std::unique_ptr<vk::Sampler> textureSampler									= std::unique_ptr<vk::Sampler>();					//using sampler to apply filtering or other improvements over raw texel access
 
 	
+	virtual std::unique_ptr<StarBuffer> loadImageData(StarDevice& device) {
+		return nullptr; 
+	};
+
 	virtual void createImage(StarDevice& device);
 
 	void transitionImageLayout(StarDevice& device, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
