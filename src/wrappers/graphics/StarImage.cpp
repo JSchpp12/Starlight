@@ -1,4 +1,4 @@
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 namespace star {
 

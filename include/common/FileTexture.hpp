@@ -2,7 +2,7 @@
 
 #include "Color.hpp"
 
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <memory> 

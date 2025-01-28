@@ -23,7 +23,7 @@
 #include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
 #include "ManagerBuffer.hpp"
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 #include "Light.hpp"
 

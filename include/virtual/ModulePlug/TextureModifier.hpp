@@ -2,7 +2,7 @@
 
 #include "ManagerPlug.hpp"
 #include "ManagerTexture.hpp"
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 #include <functional>
 #include <memory>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 #include <memory>
 #include <vector>

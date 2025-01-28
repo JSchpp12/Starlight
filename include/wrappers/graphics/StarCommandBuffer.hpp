@@ -1,7 +1,7 @@
 #pragma once 
 
 #include "StarDevice.hpp"
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 #include "vulkan/vulkan.hpp"
 

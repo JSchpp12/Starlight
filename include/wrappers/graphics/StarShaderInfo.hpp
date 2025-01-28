@@ -3,7 +3,7 @@
 #include "StarDescriptorBuilders.hpp"
 #include "BufferModifier.hpp"
 #include "StarDevice.hpp"
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 #include "ManagerDescriptorPool.hpp"
 
 #include <memory>

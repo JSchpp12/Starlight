@@ -3,7 +3,7 @@
 #include "StarMaterialMesh.hpp"
 #include "StarShader.hpp"
 #include "StarDevice.hpp"
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 #include "StarCommandBuffer.hpp"
 #include "RenderResourceModifier.hpp"
 #include "DescriptorModifier.hpp"

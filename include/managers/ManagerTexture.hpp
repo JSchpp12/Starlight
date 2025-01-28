@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 #include "Handle.hpp"
 
 #include <unordered_map>

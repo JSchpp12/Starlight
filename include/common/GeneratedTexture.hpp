@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 #include <vector>
 
