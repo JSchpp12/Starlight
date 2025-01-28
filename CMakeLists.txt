@@ -77,7 +77,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/wrappers/graphics/StarBuffer.cpp"  
     "src/wrappers/graphics/StarGraphicsPipeline.cpp"  
     "src/wrappers/graphics/StarComputePipeline.cpp"
-    "src/wrappers/graphics/StarTexture.cpp"  
+    "src/wrappers/graphics/StarImage.cpp"  
     "src/wrappers/graphics/StarRenderPass.cpp"
     "src/wrappers/graphics/StarCommandBuffer.cpp"
     "src/wrappers/graphics/StarShaderInfo.cpp"
@@ -163,7 +163,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/StarMaterialMesh.hpp"
     "include/wrappers/graphics/StarDescriptorBuilders.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
-    "include/wrappers/graphics/StarTexture.hpp"
+    "include/wrappers/graphics/StarImage.hpp"
     "include/wrappers/graphics/StarGraphicsPipeline.hpp"
     "include/wrappers/graphics/StarComputePipeline.hpp"
     "include/wrappers/graphics/StarRenderPass.hpp"
@@ -240,6 +240,7 @@ target_include_directories(${PROJECT_NAME}
         "include/controllers/"
         "include/modules/"
         "include/systems/"
+        "include/structs/"
         "include/renderers/"
         ${Vulkan_LIBRARIES}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect

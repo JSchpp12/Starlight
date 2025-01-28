@@ -2,7 +2,7 @@
 
 namespace star {
 
-void StarTexture::prepRender(StarDevice& device) {
+void StarImage::prepRender(StarDevice& device) {
 	if (!this->textureImage)
 		createImage(device);
 	createTextureImageView(device, this->creationSettings.imageFormat, this->creationSettings.aspectFlags);
@@ -10,7 +10,7 @@ void StarTexture::prepRender(StarDevice& device) {
 		createImageSampler(device);
 }
 
-void StarTexture::cleanupRender(StarDevice& device)
+void StarImage::cleanupRender(StarDevice& device)
 {
 	if (this->textureSampler)
 		device.getDevice().destroySampler(*this->textureSampler);
@@ -24,20 +24,20 @@ void StarTexture::cleanupRender(StarDevice& device)
 		vmaDestroyImage(device.getAllocator(), this->textureImage, *this->imageAllocation);
 }
 
-vk::ImageView StarTexture::getImageView(vk::Format* requestedFormat) const{
+vk::ImageView StarImage::getImageView(vk::Format* requestedFormat) const{
 	if (requestedFormat != nullptr) {
 		//make sure the image view actually exists for the requested format
 		assert(this->imageViews.find(*requestedFormat) != this->imageViews.end() && "The image must be created with the proper image view before being requested");
 		return this->imageViews.at(*requestedFormat);
-	}else {
-		//just grab the first one
-		for (auto& view : this->imageViews) {
-			return view.second; 
-		}
+	}
+
+	//just grab the first one
+	for (auto& view : this->imageViews) {
+		return view.second; 
 	}
 }
 
-void StarTexture::createImage(StarDevice& device) { 
+void StarImage::createImage(StarDevice& device) { 
 
 	//image has data in cpu memory, it must be copied over
 	this->imageAllocation = std::make_unique<VmaAllocation>();
@@ -59,7 +59,7 @@ void StarTexture::createImage(StarDevice& device) {
 	}
 }
 
-void StarTexture::createImage(StarDevice& device, int width, int height, int depth, vk::Format format,
+void StarImage::createImage(StarDevice& device, int width, int height, int depth, vk::Format format,
 	vk::ImageTiling tiling, vk::ImageUsageFlags usage, const VmaMemoryUsage& memoryUsage, 
 	const VmaAllocationCreateFlags& allocationCreateFlags, vk::Image& image, 
 	VmaAllocation& imageMemory, bool isMutable, 
@@ -107,7 +107,7 @@ void StarTexture::createImage(StarDevice& device, int width, int height, int dep
 	}
 }
 
-void StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, 
+void StarImage::transitionLayout(vk::CommandBuffer& commandBuffer, 
 	vk::ImageLayout newLayout, vk::AccessFlags srcFlags, vk::AccessFlags dstFlags, 
 	vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage)
 {
@@ -140,7 +140,7 @@ void StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer,
 	this->layout = newLayout; 
 }
 
-void StarTexture::transitionImageLayout(StarDevice& device, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
+void StarImage::transitionImageLayout(StarDevice& device, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
 	vk::ImageLayout newLayout) {
 	vk::CommandBuffer commandBuffer = device.beginSingleTimeCommands();
 
@@ -210,7 +210,7 @@ void StarTexture::transitionImageLayout(StarDevice& device, vk::Image image, vk:
 	device.endSingleTimeCommands(commandBuffer);
 }
 
-void StarTexture::createImageSampler(StarDevice& device) {
+void StarImage::createImageSampler(StarDevice& device) {
 	//get device properties for amount of anisotropy permitted
 	vk::PhysicalDeviceProperties deviceProperties = device.getPhysicalDevice().getProperties();
 
@@ -293,12 +293,12 @@ void StarTexture::createImageSampler(StarDevice& device) {
 	}
 }
 
-void StarTexture::createTextureImageView(StarDevice& device, const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
+void StarImage::createTextureImageView(StarDevice& device, const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
 	vk::ImageView imageView = createImageView(device, textureImage, viewFormat, aspectFlags);
 	this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
 }
 
-vk::ImageView StarTexture::createImageView(StarDevice& device, vk::Image image, 
+vk::ImageView StarImage::createImageView(StarDevice& device, vk::Image image, 
 	vk::Format format, const vk::ImageAspectFlags& aspectFlags) {
 	vk::ImageViewCreateInfo viewInfo{};
 	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;

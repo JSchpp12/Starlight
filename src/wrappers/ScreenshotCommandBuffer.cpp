@@ -187,7 +187,22 @@ void star::ScreenshotBuffer::saveScreenshotToDisk(const int& bufferIndexJustRun)
 
 	unsigned char* data = nullptr;
 	vmaMapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun], (void**)&data);
+
+	//{
+	//	auto settings = StarImage::TextureCreateSettings(
+	//		this->swapChainExtent.width, 
+	//		this->swapChainExtent.height,
+	//		4, 
+	//		1,
+	//		1,
+	//		vk::ImageUsageFlagBits::eTransferDst,
+	//		
+	//	); 
+
+	//}
 	//FileTexture texture(this->swapChainExtent.width, this->swapChainExtent.height, 4, layout, data, true);
+	// 
+	
 	//texture.saveToDisk(this->screenshotSavePath);
 	vmaUnmapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun]);
 }

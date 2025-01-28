@@ -8,7 +8,7 @@
 
 star::FileTexture::FileTexture(const std::string& pathToImage)
     : pathToFile(pathToImage), 
-    StarTexture(TextureCreateSettings{
+    StarImage(TextureCreateSettings{
         getTextureWidth(pathToImage),
         getTextureHeight(pathToImage),
         4,

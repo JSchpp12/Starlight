@@ -230,11 +230,11 @@ std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vect
 	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<star::StarImage>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
+	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
 
-	auto settings = StarTexture::TextureCreateSettings(
+	auto settings = StarImage::TextureCreateSettings(
 		this->swapChainExtent->width,
 		this->swapChainExtent->height,
 		4,
@@ -251,7 +251,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
 
 	//get images in the newly created swapchain 
 	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
-		newRenderToImages.push_back(std::make_unique<StarTexture>(settings, image));
+		newRenderToImages.push_back(std::make_unique<StarImage>(settings, image));
 		newRenderToImages.back()->prepRender(device);
 
 		auto buffer = device.beginSingleTimeCommands(); 

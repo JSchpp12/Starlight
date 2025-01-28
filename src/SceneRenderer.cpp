@@ -29,11 +29,11 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 	createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<StarTexture>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<StarImage>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
+	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
 
-	auto imageCreateSettings = star::StarTexture::TextureCreateSettings{
+	auto imageCreateSettings = star::StarImage::TextureCreateSettings{
 		static_cast<int>(this->swapChainExtent->width),
 		static_cast<int>(this->swapChainExtent->height),
 		4,
@@ -51,7 +51,7 @@ std::vector<std::unique_ptr<StarTexture>> SceneRenderer::createRenderToImages(st
 	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled; 
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<star::StarTexture>(imageCreateSettings));
+		newRenderToImages.push_back(std::make_unique<star::StarImage>(imageCreateSettings));
 
 		newRenderToImages.back()->prepRender(device);
 
@@ -63,11 +63,11 @@ std::vector<std::unique_ptr<StarTexture>> SceneRenderer::createRenderToImages(st
 	return newRenderToImages; 
 }
 
-std::vector<std::unique_ptr<StarTexture>> SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<StarImage>> SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
+	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
 
-	auto imageCreateSettings = star::StarTexture::TextureCreateSettings{
+	auto imageCreateSettings = star::StarImage::TextureCreateSettings{
 		static_cast<int>(this->swapChainExtent->width),
 		static_cast<int>(this->swapChainExtent->height),
 		1,
@@ -84,7 +84,7 @@ std::vector<std::unique_ptr<StarTexture>> SceneRenderer::createRenderToDepthImag
 	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<star::StarTexture>(imageCreateSettings));
+		newRenderToImages.push_back(std::make_unique<star::StarImage>(imageCreateSettings));
 
 		newRenderToImages.back()->prepRender(device); 
 

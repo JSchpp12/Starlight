@@ -15,7 +15,7 @@
 #include <optional>
 
 namespace star {
-class StarTexture {
+class StarImage {
 public:
 	/// <summary>
 	/// Options to be used when creating a new texture
@@ -36,7 +36,9 @@ public:
 
 		~TextureCreateSettings() = default; 
 
-		bool createSampler = true; 
+		TextureCreateSettings() = default;
+
+		bool createSampler = false; 
 		bool isMutable = false;
 		int height, width, channels, depth, byteDepth = 0; 
 		vk::ImageUsageFlags imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
@@ -45,25 +47,22 @@ public:
 		VmaAllocationCreateFlags allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
 		vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
 		vk::ImageLayout initialLayout = vk::ImageLayout::eShaderReadOnlyOptimal; 
-
-	private:
-		TextureCreateSettings() = default;
 	}; 
 
-	StarTexture(TextureCreateSettings settings,
+	StarImage(TextureCreateSettings settings,
 		const vk::Image& image) 
 		: creationSettings(settings), textureImage(image), layout(settings.initialLayout)
 	{
 	}; 
 
-	StarTexture(TextureCreateSettings settings)
+	StarImage(TextureCreateSettings settings)
 		: creationSettings(settings)
 	{
 	};
 
 	virtual void prepRender(StarDevice& device);
 
-	virtual ~StarTexture() = default;
+	virtual ~StarImage() = default;
 
 	void cleanupRender(StarDevice& device); 
 

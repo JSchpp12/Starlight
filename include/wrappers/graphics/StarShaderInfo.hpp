@@ -17,13 +17,13 @@ namespace star {
 			ShaderInfo(const BufferModifier& bufferModifier) 
 				: bufferModifier(bufferModifier) {};
 
-			ShaderInfo(const StarTexture& textureInfo, const vk::ImageLayout& expectedLayout) 
+			ShaderInfo(const StarImage& textureInfo, const vk::ImageLayout& expectedLayout) 
 				: textureInfo(textureInfo), expectedLayout(expectedLayout) {};
 
 			~ShaderInfo() = default;
 
 			std::optional<std::reference_wrapper<const BufferModifier>> bufferModifier = std::optional<std::reference_wrapper<const BufferModifier>>();
-			std::optional<std::reference_wrapper<const StarTexture>> textureInfo = std::optional<std::reference_wrapper<const StarTexture>>();
+			std::optional<std::reference_wrapper<const StarImage>> textureInfo = std::optional<std::reference_wrapper<const StarImage>>();
 			std::optional<vk::ImageLayout> expectedLayout = std::optional<vk::ImageLayout>();
 		};
 
@@ -167,7 +167,7 @@ namespace star {
 				return *this;
 			};
 
-			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout) {
+			Builder& add(const StarImage& texture, const vk::ImageLayout& desiredLayout) {
 				this->activeSet->back()->add(ShaderInfo(texture, desiredLayout));
 				return *this; 
 			};

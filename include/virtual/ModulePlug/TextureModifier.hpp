@@ -10,9 +10,9 @@
 namespace star {
 class TextureModifier : public ManagerPlug {
 public:
-	TextureModifier(std::unique_ptr<StarTexture> texture);
+	TextureModifier(std::unique_ptr<StarImage> texture);
 
-	TextureModifier(StarTexture::TextureCreateSettings settings); 
+	TextureModifier(StarImage::TextureCreateSettings settings); 
 
 protected:
 	void init(); 

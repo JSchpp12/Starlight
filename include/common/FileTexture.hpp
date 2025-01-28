@@ -14,7 +14,7 @@
 
 namespace star {
 
-    class FileTexture : public StarTexture {
+    class FileTexture : public StarImage {
     public:
         std::string pathToFile = "";
         bool onDisk = false;

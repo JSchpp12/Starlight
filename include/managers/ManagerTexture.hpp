@@ -12,11 +12,11 @@ namespace star {
 class ManagerTexture {
 public:
 	struct Request {
-		std::optional<StarTexture::TextureCreateSettings> textureSettings;
-		std::optional<std::unique_ptr<StarTexture>> createdTexture; 
+		std::optional<StarImage::TextureCreateSettings> textureSettings;
+		std::optional<std::unique_ptr<StarImage>> createdTexture; 
 
-		Request(StarTexture::TextureCreateSettings textureSettings) : textureSettings(textureSettings) {}
-		Request(std::unique_ptr<StarTexture> createdTexture) : createdTexture(std::make_optional(std::move(createdTexture))) {}
+		Request(StarImage::TextureCreateSettings textureSettings) : textureSettings(textureSettings) {}
+		Request(std::unique_ptr<StarImage> createdTexture) : createdTexture(std::make_optional(std::move(createdTexture))) {}
 	};
 
 	static Handle submitRequest(std::unique_ptr<Request> newRequest); 
@@ -27,6 +27,6 @@ private:
 	static size_t counter; 
 	static std::stack<std::unique_ptr<Request>> newRequests; 
 
-	std::vector<std::unique_ptr<StarTexture>> textures = std::vector<std::unique_ptr<StarTexture>>(50);
+	std::vector<std::unique_ptr<StarImage>> textures = std::vector<std::unique_ptr<StarImage>>(50);
 };
 }
