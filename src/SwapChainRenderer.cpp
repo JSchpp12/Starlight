@@ -148,7 +148,11 @@ void star::SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDraw
    // 3. 'VK_TRUE' -> waiting for all fences
    // 4. timeout 
 
-	this->device.getDevice().waitForFences(inFlightFences[frameIndexToBeDrawn], VK_TRUE, UINT64_MAX);
+	{
+		auto result = this->device.getDevice().waitForFences(inFlightFences[frameIndexToBeDrawn], VK_TRUE, UINT64_MAX);
+		if (result != vk::Result::eSuccess)
+			throw std::runtime_error("Failed to wait for fences");
+	}
 
 	/* Get Image From Swapchain */
 
@@ -158,18 +162,21 @@ void star::SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDraw
 		//vulkan can return two different flags 
 		// 1. VK_ERROR_OUT_OF_DATE_KHR: swap chain has become incompatible with the surface and cant be used for rendering. (Window resize)
 		// 2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no longer match
-	auto result = this->device.getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[frameIndexToBeDrawn]);
+	{
+		auto result = this->device.getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[frameIndexToBeDrawn]);
 
-	if (result.result == vk::Result::eErrorOutOfDateKHR) {
-		//the swapchain is no longer optimal according to vulkan. Must recreate a more efficient swap chain
-		recreateSwapChain();
-		return;
+		if (result.result == vk::Result::eErrorOutOfDateKHR) {
+			//the swapchain is no longer optimal according to vulkan. Must recreate a more efficient swap chain
+			recreateSwapChain();
+			return;
+		}
+		else if (result.result != vk::Result::eSuccess && result.result != vk::Result::eSuboptimalKHR) {
+			//for VK_SUBOPTIMAL_KHR can also recreate swap chain. However, chose to continue to presentation stage
+			throw std::runtime_error("failed to acquire swap chain image");
+		}
+
+		this->currentSwapChainImageIndex = result.value;
 	}
-	else if (result.result != vk::Result::eSuccess && result.result != vk::Result::eSuboptimalKHR) {
-		//for VK_SUBOPTIMAL_KHR can also recreate swap chain. However, chose to continue to presentation stage
-		throw std::runtime_error("failed to acquire swap chain image");
-	}
-	this->currentSwapChainImageIndex = result.value;
 
 	//check if a previous frame is using the current image
 	if (imagesInFlight[this->currentSwapChainImageIndex]) {

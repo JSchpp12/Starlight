@@ -7,6 +7,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include <vector>
+#include <thread>
 
 namespace star {
 	class ScreenshotBuffer : public CommandBufferModifier, private RenderResourceModifier {
@@ -36,14 +37,19 @@ namespace star {
 		bool getWillBeSubmittedEachFrame() override;
 		bool getWillBeRecordedOnce() override;
 
+		static void saveImageToDisk(); 
+
+		static std::unique_ptr<StarImage> createNewCopyToImage(StarDevice& device, const vk::Extent2D& screensize); 
+
 	private:
 		StarDevice& device; 
 		std::vector<vk::Image>& swapChainImages; 
 		vk::Extent2D swapChainExtent;
 		std::string screenshotSavePath; 
 
-		std::vector<vk::Image> copyDstImages;
-		std::vector<VmaAllocation> copyDstImageMemories; 
+		std::vector<std::unique_ptr<StarImage>> copyDstImages; 
+		//std::vector<vk::Image> copyDstImages;
+		//std::vector<VmaAllocation> copyDstImageMemories; 
 
 		bool supportsBlit = false; 
 

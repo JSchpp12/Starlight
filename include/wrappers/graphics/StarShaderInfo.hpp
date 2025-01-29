@@ -81,7 +81,7 @@ namespace star {
 		private:
 			StarDevice& device;
 			StarDescriptorSetLayout& layout; 
-			bool setNeedsRebuild;
+			bool setNeedsRebuild = true;
 			std::shared_ptr<vk::DescriptorSet> descriptorSet = std::shared_ptr<vk::DescriptorSet>();
 			std::shared_ptr<StarDescriptorWriter> descriptorWriter = std::shared_ptr<StarDescriptorWriter>();
 
