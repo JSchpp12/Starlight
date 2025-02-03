@@ -2,19 +2,20 @@ cmake_minimum_required (VERSION 3.27)
 find_package(Git)
 
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_MACOSX_RPATH 1)
-
-project("starlight")
-enable_language(C CXX)
-
 if (WIN32)
     set(CMAKE_FIND_LIBRARY_PREFIXES "")
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+elseif(APPLE)
+    set(CMAKE_MACOSX_RPATH 1)
 endif()
 
+project("starlight")
+
+enable_language(C CXX)
+
 find_package(Vulkan REQUIRED)
+find_package(Stb REQUIRED)
 
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
@@ -43,7 +44,7 @@ add_subdirectory("extern/spirv_reflect")
 
 set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_TESTS ON CACHE BOOL "" FORCE)
-set(SHADERC_ENABLE_SHARED_CRT OFF CACHE BOOL "" FORCE)
+set(SHADERC_ENABLE_SHARED_CRT ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
@@ -56,13 +57,13 @@ set(${PROJECT_NAME}_SOURCE
     "src/SceneRenderer.cpp"
     "src/SwapChainRenderer.cpp"
     "src/virtual/StarObject.cpp"
-    "src/virtual/modulePlug/RenderResourceModifier.cpp"
-    "src/virtual/modulePlug/RenderResourceModifierGeometry.cpp"
-    "src/virtual/modulePlug/CommandBufferModifier.cpp"
-    "src/virtual/modulePlug/DescriptorModifier.cpp"
-    "src/virtual/modulePlug/BufferModifier.cpp"
-    "src/virtual/modulePlug/TextureModifier.cpp"
-    "src/virtual/modulePlug/ManagerPlug.cpp"
+    "src/virtual/ModulePlug/RenderResourceModifier.cpp"
+    "src/virtual/ModulePlug/RenderResourceModifierGeometry.cpp"
+    "src/virtual/ModulePlug/CommandBufferModifier.cpp"
+    "src/virtual/ModulePlug/DescriptorModifier.cpp"
+    "src/virtual/ModulePlug/BufferModifier.cpp"
+    "src/virtual/ModulePlug/TextureModifier.cpp"
+    "src/virtual/ModulePlug/ManagerPlug.cpp"
     "src/virtual/StarMesh.cpp"
     "src/virtual/StarRenderer.cpp" 
     "src/virtual/StarManager.cpp"
@@ -142,13 +143,13 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/buffers/LightInfo.hpp"
     "include/common/buffers/InstanceModelInfo.hpp"
     "include/common/buffers/InstanceNormalInfo.hpp"
-    "include/virtual/modulePlug/RenderResourceModifier.hpp"
-    "include/virtual/modulePlug/RenderResourceModifierGeometry.hpp"
-    "include/virtual/modulePlug/CommandBufferModifier.hpp"
-    "include/virtual/modulePlug/DescriptorModifier.hpp"
-    "include/virtual/modulePlug/BufferModifier.hpp"
-    "include/virtual/modulePlug/TextureModifier.hpp"
-    "include/virtual/modulePlug/ManagerPlug.hpp"
+    "include/virtual/ModulePlug/RenderResourceModifier.hpp"
+    "include/virtual/ModulePlug/RenderResourceModifierGeometry.hpp"
+    "include/virtual/ModulePlug/CommandBufferModifier.hpp"
+    "include/virtual/ModulePlug/DescriptorModifier.hpp"
+    "include/virtual/ModulePlug/BufferModifier.hpp"
+    "include/virtual/ModulePlug/TextureModifier.hpp"
+    "include/virtual/ModulePlug/ManagerPlug.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
@@ -223,7 +224,7 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC
         "include/"
         "include/virtual/"
-        "include/virtual/ModulePlug"
+        "include/virtual/ModulePlug/"
         "include/wrappers/"
         "include/wrappers/graphics/"
         "include/structs/"
@@ -242,10 +243,14 @@ target_include_directories(${PROJECT_NAME}
         "include/systems/"
         "include/structs/"
         "include/renderers/"
-        ${Vulkan_LIBRARIES}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
-        "extern/stb"
+        ${Stb_INCLUDE_DIR}
 )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")
+if (UNIX)
+    set_target_properties(${PROJECT_NAME} PROPERTIES 
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON
+    )
+endif()
