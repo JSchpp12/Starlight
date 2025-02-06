@@ -6,7 +6,7 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 {
 	this->recordedImageTransitions.resize(numBuffersToCreate); 
 	for (auto& empty : this->recordedImageTransitions) {
-		empty = std::make_unique<std::unordered_map<StarTexture*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
+		empty = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
 	}
 	this->waitSemaphores.resize(numBuffersToCreate); 
 
@@ -217,7 +217,7 @@ void star::StarCommandBuffer::reset(int bufferIndex)
 
 	//reset image transitions
 	this->recordedImageTransitions.at(bufferIndex).reset();
-	this->recordedImageTransitions.at(bufferIndex) = std::make_unique<std::unordered_map<StarTexture*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
+	this->recordedImageTransitions.at(bufferIndex) = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
 
 	//reset vulkan buffers
 	this->commandBuffers.at(bufferIndex).reset();
@@ -234,7 +234,7 @@ std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores()
 	return this->completeSemaphores;
 }
 
-void star::StarCommandBuffer::transitionImageLayout(int bufferIndex, star::StarTexture& texture,
+void star::StarCommandBuffer::transitionImageLayout(int bufferIndex, star::StarImage& texture,
 	vk::ImageLayout newLayout, vk::AccessFlags srcFlags, vk::AccessFlags dstFlags, 
 	vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage)
 {
@@ -242,7 +242,7 @@ void star::StarCommandBuffer::transitionImageLayout(int bufferIndex, star::StarT
 	texture.transitionLayout(this->commandBuffers[bufferIndex], newLayout, srcFlags, dstFlags, sourceStage, dstStage); 
 
 	//record transition information here
-	auto newPair = std::pair<star::StarTexture*, std::pair<vk::ImageLayout, vk::ImageLayout>>(&texture, std::pair<vk::ImageLayout, vk::ImageLayout>(texture.getCurrentLayout(), newLayout)); 
+	auto newPair = std::pair<star::StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>(&texture, std::pair<vk::ImageLayout, vk::ImageLayout>(texture.getCurrentLayout(), newLayout)); 
 	this->recordedImageTransitions[bufferIndex]->insert(newPair); 
 }
 

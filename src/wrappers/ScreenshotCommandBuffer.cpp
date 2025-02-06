@@ -23,7 +23,7 @@ void star::ScreenshotBuffer::recordCommandBuffer(vk::CommandBuffer& commandBuffe
 		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-		barrier.image = this->copyDstImages[frameInFlightIndex];
+		barrier.image = this->copyDstImages[frameInFlightIndex]->getImage();
 		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 		barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
 		barrier.subresourceRange.levelCount = 1;                            //image is not an array
@@ -61,7 +61,7 @@ void star::ScreenshotBuffer::recordCommandBuffer(vk::CommandBuffer& commandBuffe
 
 	if (this->supportsBlit) {
 		//blit image
-		VkOffset3D blitSize;
+		vk::Offset3D blitSize = vk::Offset3D();
 		blitSize.x = swapChainExtent.width;
 		blitSize.y = swapChainExtent.height;
 		blitSize.z = 1;
@@ -75,7 +75,7 @@ void star::ScreenshotBuffer::recordCommandBuffer(vk::CommandBuffer& commandBuffe
 		blit.dstSubresource.layerCount = 1;
 		blit.dstOffsets[1] = blitSize;
 
-		commandBuffer.blitImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[frameInFlightIndex],
+		commandBuffer.blitImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[frameInFlightIndex]->getImage(),
 			vk::ImageLayout::eTransferDstOptimal, 1, &blit, vk::Filter::eLinear);
 	}
 	else {
@@ -89,7 +89,7 @@ void star::ScreenshotBuffer::recordCommandBuffer(vk::CommandBuffer& commandBuffe
 		copyRegion.extent.height = swapChainExtent.height;
 		copyRegion.extent.depth = 1;
 
-		commandBuffer.copyImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[frameInFlightIndex], vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
+		commandBuffer.copyImage(srcImage, vk::ImageLayout::eTransferSrcOptimal, this->copyDstImages[frameInFlightIndex]->getImage(), vk::ImageLayout::eTransferDstOptimal, 1, &copyRegion);
 	}
 
 	//need to transition images back to general layout for next frame use
@@ -99,7 +99,7 @@ void star::ScreenshotBuffer::recordCommandBuffer(vk::CommandBuffer& commandBuffe
 		barrier.sType = vk::StructureType::eImageMemoryBarrier;
 		barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
 		barrier.newLayout = vk::ImageLayout::eGeneral;
-		barrier.image = this->copyDstImages[frameInFlightIndex];
+		barrier.image = this->copyDstImages[frameInFlightIndex]->getImage();
 		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 		barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
 		barrier.subresourceRange.levelCount = 1;                            //image is not an array
@@ -183,48 +183,49 @@ void star::ScreenshotBuffer::saveScreenshotToDisk(const int& bufferIndexJustRun)
 {
 	vk::ImageSubresource subResource{ vk::ImageAspectFlagBits::eColor, 0, 0 };
 	vk::SubresourceLayout layout{};
-	this->device.getDevice().getImageSubresourceLayout(this->copyDstImages[bufferIndexJustRun], &subResource, &layout);
+	this->device.getDevice().getImageSubresourceLayout(this->copyDstImages[bufferIndexJustRun]->getImage(), &subResource, &layout);
 
-	unsigned char* data = nullptr;
-	vmaMapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun], (void**)&data);
-	Texture texture(this->swapChainExtent.width, this->swapChainExtent.height, 4, layout, data, true);
-	texture.saveToDisk(this->screenshotSavePath);
-	vmaUnmapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun]);
+	//give image to new thread for saving
+
+	//create new image in slot
+
+
+	//unsigned char* data = nullptr;
+	//vmaMapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun], (void**)&data);
+
+	//{
+	//	auto settings = StarImage::TextureCreateSettings(
+	//		this->swapChainExtent.width, 
+	//		this->swapChainExtent.height,
+	//		4, 
+	//		1,
+	//		1,
+	//		vk::ImageUsageFlagBits::eTransferDst,
+	//		
+	//	); 
+
+	//}
+	//FileTexture texture(this->swapChainExtent.width, this->swapChainExtent.height, 4, layout, data, true);
+	// 
+	
+	//texture.saveToDisk(this->screenshotSavePath);
+	//vmaUnmapMemory(this->device.getAllocator(), this->copyDstImageMemories[bufferIndexJustRun]);
 }
 
 void star::ScreenshotBuffer::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
 	this->copyDstImages.resize(numFramesInFlight);
-	this->copyDstImageMemories.resize(numFramesInFlight);
+
 	for (int i = 0; i < numFramesInFlight; i++) {
-		vk::ImageCreateInfo imageInfo{};
-		imageInfo.sType = vk::StructureType::eImageCreateInfo;
-		imageInfo.imageType = vk::ImageType::e2D;
-		imageInfo.extent.width = this->swapChainExtent.width;
-		imageInfo.extent.height = this->swapChainExtent.height;
-		imageInfo.extent.depth = 1;
-		imageInfo.mipLevels = 1;
-		imageInfo.arrayLayers = 1;
-		imageInfo.format = vk::Format::eB8G8R8A8Srgb;
-		imageInfo.tiling = vk::ImageTiling::eLinear;
-		imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-		imageInfo.usage = vk::ImageUsageFlagBits::eTransferDst;
-		imageInfo.samples = vk::SampleCountFlagBits::e1;
-		imageInfo.sharingMode = vk::SharingMode::eExclusive;
-
-
-		VmaAllocationCreateInfo allocInfo = {};
-		allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
-		allocInfo.requiredFlags = (VkMemoryPropertyFlags)vk::MemoryPropertyFlagBits::eHostVisible;
-
-		vmaCreateImage(this->device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&copyDstImages[i], &copyDstImageMemories[i], nullptr);
+		this->copyDstImages[i] = createNewCopyToImage(device, this->swapChainExtent); 
+		this->copyDstImages[i]->prepRender(device); 
 	}
 }
 
 void star::ScreenshotBuffer::destroyResources(StarDevice& device)
 {
-	for (int i = 0; i < this->copyDstImageMemories.size(); i++) {
-		vmaDestroyImage(this->device.getAllocator(), this->copyDstImages[i], this->copyDstImageMemories[i]);
+	for (auto& image : this->copyDstImages) {
+		image->cleanupRender(device); 
 	}
 }
 
@@ -254,4 +255,23 @@ bool star::ScreenshotBuffer::getWillBeSubmittedEachFrame()
 bool star::ScreenshotBuffer::getWillBeRecordedOnce()
 {
 	return true;
+}
+
+std::unique_ptr<star::StarImage> star::ScreenshotBuffer::createNewCopyToImage(star::StarDevice& device, const vk::Extent2D& screensize)
+{
+	return std::make_unique<StarImage>(StarImage::TextureCreateSettings{
+		static_cast<int>(screensize.width),
+		static_cast<int>(screensize.height),
+		4,
+		1,
+		1,
+		vk::ImageUsageFlagBits::eTransferDst,
+		vk::Format::eB8G8R8A8Srgb,
+		vk::ImageAspectFlagBits::eColor,
+		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_TO_CPU,
+		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT,
+		vk::ImageLayout::eTransferDstOptimal,
+		false,
+		false
+	});
 }

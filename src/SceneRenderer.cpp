@@ -22,26 +22,38 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 	this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
 	assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
 
-	for (std::unique_ptr<Texture>& texture : this->renderToImages) {
-		texture->prepRender(device); 
-	}
+	//for (std::unique_ptr<StarTexture>& texture : this->renderToImages) {
+	//	texture->prepRender(device); 
+	//}
 	
 	createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<StarImage>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>(); 
+	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
 
-	auto imageCreateSettings = star::StarTexture::TextureCreateSettings::createDefault(false); 
-	imageCreateSettings.imageFormat = this->getCurrentRenderToImageFormat();
-	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-	imageCreateSettings.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
-	imageCreateSettings.memoryUsage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	auto imageCreateSettings = star::StarImage::TextureCreateSettings{
+		static_cast<int>(this->swapChainExtent->width),
+		static_cast<int>(this->swapChainExtent->height),
+		4,
+		1,
+		1,
+		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+		this->getCurrentRenderToImageFormat(),
+		vk::ImageAspectFlagBits::eColor | vk::ImageAspectFlagBits::eDepth,
+		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY,
+		VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, 
+		vk::ImageLayout::eColorAttachmentOptimal,
+		false, false 
+	};
+
+	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled; 
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<star::Texture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
-		newRenderToImages.back()->prepRender(device); 
+		newRenderToImages.push_back(std::make_unique<star::StarImage>(imageCreateSettings));
+
+		newRenderToImages.back()->prepRender(device);
 
 		auto oneTimeSetup = device.beginSingleTimeCommands(); 
 		newRenderToImages.back()->transitionLayout(oneTimeSetup, vk::ImageLayout::eColorAttachmentOptimal, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput);
@@ -51,20 +63,30 @@ std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToImages(star::
 	return newRenderToImages; 
 }
 
-std::vector<std::unique_ptr<Texture>> SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<StarImage>> SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<Texture>> newRenderToImages = std::vector<std::unique_ptr<Texture>>();
+	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
 
-	auto imageCreateSettings = star::StarTexture::TextureCreateSettings::createDefault(false);
-	imageCreateSettings.imageFormat = this->findDepthFormat(device); 
+	auto imageCreateSettings = star::StarImage::TextureCreateSettings{
+		static_cast<int>(this->swapChainExtent->width),
+		static_cast<int>(this->swapChainExtent->height),
+		1,
+		1,
+		1,
+		vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		this->findDepthFormat(device),
+		vk::ImageAspectFlagBits::eDepth,
+		VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+		VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+		vk::ImageLayout::eDepthAttachmentOptimal,
+		false, false
+	};
 	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	imageCreateSettings.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
-	imageCreateSettings.memoryUsage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-	imageCreateSettings.aspectFlags = vk::ImageAspectFlagBits::eDepth; 
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<star::Texture>(this->swapChainExtent->width, this->swapChainExtent->height, imageCreateSettings));
-		newRenderToImages.back()->prepRender(device);
+		newRenderToImages.push_back(std::make_unique<star::StarImage>(imageCreateSettings));
+
+		newRenderToImages.back()->prepRender(device); 
 
 		auto oneTimeSetup = device.beginSingleTimeCommands();
 

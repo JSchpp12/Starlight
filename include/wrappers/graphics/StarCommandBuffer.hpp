@@ -1,7 +1,7 @@
 #pragma once 
 
 #include "StarDevice.hpp"
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 #include "vulkan/vulkan.hpp"
 
@@ -65,7 +65,7 @@ namespace star {
 		/// </summary>
 		std::vector<vk::Semaphore>& getCompleteSemaphores(); 
 
-		void transitionImageLayout(int bufferIndex, star::StarTexture& texture, vk::ImageLayout newLayout, 
+		void transitionImageLayout(int bufferIndex, star::StarImage& texture, vk::ImageLayout newLayout, 
 			vk::AccessFlags srcFlags, vk::AccessFlags dstFlags,
 			vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage); 
 
@@ -86,7 +86,7 @@ namespace star {
 		std::vector<vk::Semaphore> completeSemaphores; 
 		std::vector<vk::Fence> readyFence; 
 		std::vector<std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>> waitSemaphores; 
-		std::vector<std::unique_ptr<std::unordered_map<StarTexture*, std::pair<vk::ImageLayout, vk::ImageLayout>>>> recordedImageTransitions; 
+		std::vector<std::unique_ptr<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>> recordedImageTransitions; 
 		bool recorded = false; 
 
 

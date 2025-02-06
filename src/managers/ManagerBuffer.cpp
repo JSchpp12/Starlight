@@ -86,7 +86,6 @@ void star::ManagerBuffer::update(const int& frameInFlightIndex) {
 	}
 	oneTimeWriteBuffersNeedWritten.clear(); 
 
-	//when adding new things to a unordered_map things can change order and location in memory...so this neeeds fixed
 	for (auto& requestInfo : ManagerBuffer::updateableBuffers) {
 		if (requestInfo.second != nullptr && requestInfo.second->get()->frameInFlightIndexToUpdateOn == static_cast<uint16_t>(frameInFlightIndex) && requestInfo.second->get()->checkIfNeedsUpdate.value()) {
 			requestInfo.second->get()->updateBufferData(*requestInfo.second->get()->buffer);
@@ -120,7 +119,6 @@ void star::ManagerBuffer::recreate(const star::Handle& handle, const star::Manag
 	);
 }
 
-
 void star::ManagerBuffer::cleanup(StarDevice& device)
 {
 	for (auto& buffer : allBuffers)
@@ -141,7 +139,6 @@ void star::ManagerBuffer::destroy(const star::Handle& handle) {
 		updateableBuffers.at(handle)->reset(); 
 		updateableBuffers.erase(handle);
 	}
-
 }
 
 bool star::ManagerBuffer::isBufferStatic(const star::Handle& handle)

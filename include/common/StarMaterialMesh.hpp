@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarTexture.hpp"
+#include "StarImage.hpp"
 
 #include <memory>
 #include <vector>
@@ -10,9 +10,9 @@ namespace star {
 	/// Contains material info provided per mesh.
 	/// </summary>
 	struct StarMaterialMesh {
-		std::vector<std::unique_ptr<StarTexture>> textures; 
+		std::vector<std::unique_ptr<StarImage>> textures; 
 
-		StarMaterialMesh(std::vector<std::unique_ptr<StarTexture>> textures)
+		StarMaterialMesh(std::vector<std::unique_ptr<StarImage>> textures)
 			: textures(std::move(textures)) {}; 
 	};
 }

@@ -13,7 +13,6 @@
 #include "StarShaderInfo.hpp"
 
 #include "MapManager.hpp"
-#include "StarSystemRenderPointLight.hpp"
 #include "StarRenderGroup.hpp"
 #include "ShaderManager.hpp"
 #include "TextureManager.hpp"
@@ -24,7 +23,7 @@
 #include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
 #include "ManagerBuffer.hpp"
-#include "Texture.hpp"
+#include "StarImage.hpp"
 
 #include "Light.hpp"
 
@@ -47,8 +46,8 @@ public:
 
 	virtual RenderingTargetInfo getRenderingInfo() { return *this->renderToTargetInfo; }
 	
-	std::vector<std::unique_ptr<star::Texture>>* getRenderToColorImages() { return &this->renderToImages; }
-	std::vector<std::unique_ptr<star::Texture>>* getRenderToDepthImages() { return &this->renderToDepthImages; }	
+	std::vector<std::unique_ptr<star::StarImage>>* getRenderToColorImages() { return &this->renderToImages; }
+	std::vector<std::unique_ptr<star::StarImage>>* getRenderToDepthImages() { return &this->renderToDepthImages; }
 protected:
 	StarScene& scene; 
 
@@ -56,11 +55,11 @@ protected:
 	
 	std::unique_ptr<RenderingTargetInfo> renderToTargetInfo = std::unique_ptr<RenderingTargetInfo>(); 
 
-	std::vector<std::unique_ptr<star::Texture>> renderToImages = std::vector<std::unique_ptr<star::Texture>>(); 
+	std::vector<std::unique_ptr<star::StarImage>> renderToImages = std::vector<std::unique_ptr<star::StarImage>>();
 	std::vector<vk::Framebuffer> renderToFramebuffers = std::vector<vk::Framebuffer>();
 
 	//depth testing storage 
-	std::vector<std::unique_ptr<star::Texture>> renderToDepthImages = std::vector<std::unique_ptr<star::Texture>>();
+	std::vector<std::unique_ptr<star::StarImage>> renderToDepthImages = std::vector<std::unique_ptr<star::StarImage>>();
 
 	//Sync obj storage 
 	std::vector<vk::Semaphore> imageAvailableSemaphores;
@@ -75,9 +74,9 @@ protected:
 
 	virtual vk::Format getCurrentRenderToImageFormat() = 0; 
 
-	virtual std::vector<std::unique_ptr<Texture>> createRenderToImages(StarDevice& device, const int& numFramesInFlight);
+	virtual std::vector<std::unique_ptr<StarImage>> createRenderToImages(StarDevice& device, const int& numFramesInFlight);
 
-	virtual std::vector<std::unique_ptr<Texture>> createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight);
+	virtual std::vector<std::unique_ptr<StarImage>> createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight);
 
 	/// <summary>
 	/// Create vertex buffer + index buffers + any rendering groups for operations

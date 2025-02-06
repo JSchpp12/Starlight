@@ -88,16 +88,16 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 		//create needed materials
 		for (size_t i = 0; i < materials.size(); i++) {
 			currMaterial = &materials.at(i);
-			std::unique_ptr<Texture> texture;
-			std::unique_ptr<Texture> bumpMap;
+			std::unique_ptr<FileTexture> texture;
+			std::unique_ptr<FileTexture> bumpMap;
 
 			if (currMaterial->diffuse_texname != "") {
-				texture = std::unique_ptr<Texture>(new Texture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
+				texture = std::unique_ptr<FileTexture>(new FileTexture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
 			}
 
 			//apply maps 
 			if (currMaterial->bump_texname != "") {
-				bumpMap = std::unique_ptr<Texture>(new Texture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
+				bumpMap = std::unique_ptr<FileTexture>(new FileTexture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
 			}
 
 			//check if any material values are 0 - ambient is important

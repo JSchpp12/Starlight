@@ -1,17 +1,17 @@
 #pragma once
 
 #include "StarMaterial.hpp"
-#include "Texture.hpp"
+#include "FileTexture.hpp"
 #include "ManagerDescriptorPool.hpp"
 
 namespace star {
 	class TextureMaterial : public StarMaterial {
 	public:
-		TextureMaterial(std::shared_ptr<Texture> texture) : texture(texture) {};
+		TextureMaterial(std::shared_ptr<FileTexture> texture) : texture(texture) {};
 
 		TextureMaterial(const glm::vec4& surfaceColor, const glm::vec4& highlightColor,
 			const glm::vec4& ambient, const glm::vec4& diffuse, const glm::vec4& specular,
-			const int& shiny, std::shared_ptr<Texture> texture) 
+			const int& shiny, std::shared_ptr<FileTexture> texture) 
 			: StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
 			texture(texture) {};
 
@@ -20,7 +20,7 @@ namespace star {
 		void buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
 
 	protected:
-		std::shared_ptr<Texture> texture;
+		std::shared_ptr<FileTexture> texture;
 
 		void prep(StarDevice& device) override;
 
