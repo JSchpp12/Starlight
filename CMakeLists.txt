@@ -23,6 +23,7 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
+find_package(boost_thread CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -100,6 +101,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
     "src/common/RuntimeUpdateTexture.cpp"
+    "src/common/MeshVertexInfo.cpp"
     "src/common/materials/BumpMaterial.cpp"
     "src/common/materials/VertColorMaterial.cpp"
     "src/common/materials/HeightDisplacementMaterial.cpp"
@@ -119,6 +121,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
     "src/internals/CommandBufferContainer.cpp"
+    "src/internals/TransferWorker.cpp"
 )
 
 set(${PROJECT_NAME}_HEADERS
@@ -143,6 +146,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/buffers/LightInfo.hpp"
     "include/common/buffers/InstanceModelInfo.hpp"
     "include/common/buffers/InstanceNormalInfo.hpp"
+    "include/common/MeshVertexInfo.hpp"
     "include/virtual/ModulePlug/RenderResourceModifier.hpp"
     "include/virtual/ModulePlug/RenderResourceModifierGeometry.hpp"
     "include/virtual/ModulePlug/CommandBufferModifier.hpp"
@@ -182,6 +186,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/modules/RenderResourceSystem.hpp"
     "include/systems/StarRenderGroup.hpp"
     "include/internals/CommandBufferContainer.hpp"
+    "include/internals/TransferWorker.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarEntity.hpp"
@@ -218,12 +223,14 @@ target_link_libraries(${PROJECT_NAME}
         spirv-reflect-static
         GPUOpen::VulkanMemoryAllocator
         nlohmann_json::nlohmann_json
+        Boost::thread
 )
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         "include/"
         "include/virtual/"
+        "include/internals"
         "include/virtual/ModulePlug/"
         "include/wrappers/"
         "include/wrappers/graphics/"

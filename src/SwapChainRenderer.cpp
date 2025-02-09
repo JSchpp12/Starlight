@@ -412,11 +412,11 @@ void star::SwapChainRenderer::createSwapChain()
 	QueueFamilyIndicies indicies = this->device.findPhysicalQueueFamilies();
 	std::vector<uint32_t> queueFamilyIndicies;
 	if (indicies.transferFamily.has_value())
-		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value(), indicies.transferFamily.value(), indicies.presentFamily.value() };
+		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value().familyIndex, indicies.transferFamily.value().familyIndex, indicies.presentFamily.value().familyIndex };
 	else
-		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value() };
+		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value().familyIndex, indicies.presentFamily.value().familyIndex };
 
-	if (indicies.graphicsFamily != indicies.presentFamily && indicies.presentFamily != indicies.transferFamily) {
+	if (indicies.graphicsFamily.value().familyIndex != indicies.presentFamily.value().familyIndex) {
 		/*need to handle how images will be transferred between different queues
 		* so we need to draw images on the graphics queue and then submitting them to the presentation queue
 		* Two ways of handling this:
@@ -424,13 +424,12 @@ void star::SwapChainRenderer::createSwapChain()
 		* 2. VK_SHARING_MODE_CONCURRENT: images can be used across queue families without explicit ownership
 		*/
 		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-		createInfo.queueFamilyIndexCount = 3;
+		createInfo.queueFamilyIndexCount = queueFamilyIndicies.size();
 		createInfo.pQueueFamilyIndices = queueFamilyIndicies.data();
 	}
-	else if (indicies.graphicsFamily != indicies.presentFamily && indicies.presentFamily == indicies.transferFamily) {
-		uint32_t explicitQueueFamilyInd[] = { indicies.graphicsFamily.value(), indicies.presentFamily.value() };
+	else if (indicies.graphicsFamily.value().familyIndex != indicies.presentFamily.value().familyIndex && indicies.presentFamily.value().familyIndex == indicies.transferFamily.value().familyIndex) {
 		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-		createInfo.queueFamilyIndexCount = 2;
+		createInfo.queueFamilyIndexCount = queueFamilyIndicies.size();
 		createInfo.pQueueFamilyIndices = queueFamilyIndicies.data();
 	}
 	else {
@@ -446,7 +445,7 @@ void star::SwapChainRenderer::createSwapChain()
 
 	//what present mode is going to be used
 	createInfo.presentMode = presentMode;
-	//if clipped is set to true, we dont care about color of pixes that arent in sight -- best performance to enable this
+	//if clipped is set to true, we dont care about color of pixels that arent in sight -- best performance to enable this
 	createInfo.clipped = VK_TRUE;
 
 	//for now, only assume we are making one swapchain
@@ -455,8 +454,8 @@ void star::SwapChainRenderer::createSwapChain()
 	this->swapChain = this->device.getDevice().createSwapchainKHR(createInfo);
 
 	//save swapChain information for later use
-	swapChainImageFormat = std::make_unique<vk::Format>(surfaceFormat.format);
-	swapChainExtent = std::make_unique<vk::Extent2D>(extent);
+	this->swapChainImageFormat = std::make_unique<vk::Format>(surfaceFormat.format);
+	this->swapChainExtent = std::make_unique<vk::Extent2D>(extent);
 }
 
 star::Command_Buffer_Order star::SwapChainRenderer::getCommandBufferOrder()

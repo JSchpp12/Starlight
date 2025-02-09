@@ -8,13 +8,13 @@
 #include "StarMaterialMesh.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
-#include "CastHelpers.hpp"
+#include "BufferModifier.hpp"
 
 #include <vulkan/vulkan.hpp>
 
 #include <array>
 
-namespace star{
+namespace star {
 	class StarMesh {
 	public:
 		StarMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, 

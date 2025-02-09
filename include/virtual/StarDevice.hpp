@@ -19,15 +19,20 @@ struct SwapChainSupportDetails {
 };
 
 struct QueueFamilyIndicies {
-	std::optional<uint32_t> graphicsFamily;
-	std::optional<uint32_t> presentFamily;
-	std::optional<uint32_t> transferFamily;
-	std::optional<uint32_t> computeFamily; 
+	struct FamilyInfo{
+		uint32_t familyIndex, queueCount;
+		FamilyInfo(const uint32_t& familyIndex, const uint32_t& queueCount) : familyIndex(familyIndex), queueCount(queueCount){}
+	};
+
+	std::optional<FamilyInfo> graphicsFamily 	= std::optional<FamilyInfo>();
+	std::optional<FamilyInfo> presentFamily 	= std::optional<FamilyInfo>();
+	std::optional<FamilyInfo> transferFamily	= std::optional<FamilyInfo>();
+	std::optional<FamilyInfo> computeFamily		= std::optional<FamilyInfo>(); 
 
 	//check if queue families are all seperate -- this means more parallel work
 	bool isOptimalSupport() const {
 		if ((graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value())
-			&& (graphicsFamily.value() != transferFamily.value() && graphicsFamily.value() != computeFamily.value())) {
+			&& (graphicsFamily.value().familyIndex != transferFamily.value().familyIndex && graphicsFamily.value().familyIndex != computeFamily.value().familyIndex)) {
 				return true;
 		}
 		return false; 
@@ -76,14 +81,19 @@ public:
 	vk::PhysicalDevice getPhysicalDevice() { return this->physicalDevice; }
 	inline vk::Device getDevice() { return this->vulkanDevice; }
 	vk::SurfaceKHR getSurface() { return this->surface.get(); }
+	bool getHasDedicatedTransferQueue(){return this->hasDedicatedTransferQueue;}
+	std::unique_ptr<uint32_t> giveMeDedicatedTranferQueue(){
+		if (!this->dedicatedTransferQueueFamilyIndex.has_value())
+			throw std::runtime_error("Transfer queue has been given away already.");
+
+		uint32_t transferQueueIndex = this->dedicatedTransferQueueFamilyIndex.value();
+		this->dedicatedTransferQueueFamilyIndex.reset();
+
+		return std::make_unique<uint32_t>(transferQueueIndex);
+	}
 	vk::Queue getGraphicsQueue() { return this->graphicsQueue; }
 	vk::Queue getPresentQueue() { return this->presentQueue; }
-	vk::Queue getTransferQueue() { 
-		if (this->transferQueue.has_value())
-			return this->transferQueue.value();
-		else
-			return this->graphicsQueue; 
-		};
+	vk::Queue getTransferQueue() { return this->graphicsQueue; }
 	vk::Queue getComputeQueue() {
 		if (this->computeQueue.has_value())
 			return this->computeQueue.value();
@@ -107,14 +117,14 @@ public:
 	/// </summary>
 	/// <param name="useTransferPool">Should command be submitted to the transfer command pool. Will be submitted to the graphics pool otherwise.</param>
 	/// <returns></returns>
-	vk::CommandBuffer beginSingleTimeCommands(bool useTransferPool = false);
+	vk::CommandBuffer beginSingleTimeCommands();
 
 	/// <summary>
 	/// Helper function to end execution of single time use command buffer
 	/// </summary>
 	/// <param name="commandBuffer"></param>
 	/// <param name="useTransferPool">Was command buffer submitted to the transfer pool. Assumed graphics pool otherwise.</param>
-	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, bool useTransferPool = false, vk::Semaphore* signalFinishSemaphore = nullptr);
+	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, vk::Semaphore* signalFinishSemaphore = nullptr);
 
 	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size, const vk::DeviceSize dstOffset=0);
 
@@ -152,6 +162,7 @@ protected:
 #endif    
 
 	bool hasDedicatedTransferQueue = false;
+	std::optional<uint32_t> dedicatedTransferQueueFamilyIndex = std::optional<uint32_t>();
 
 	vk::Instance instance;
 	vk::Device vulkanDevice;
@@ -185,7 +196,7 @@ protected:
 
 	//queue family information
 	vk::Queue graphicsQueue, presentQueue; 
-	std::optional<vk::Queue> transferQueue, computeQueue;
+	std::optional<vk::Queue> computeQueue;
 
 #if __APPLE__
 	bool isMac = true;
@@ -249,6 +260,8 @@ protected:
 
 private: 
 	bool checkDynamicRenderingSupport(); 
+
+	static uint32_t numQueuesInFamily(const uint32_t& familyIndex); 
 
 };
 }

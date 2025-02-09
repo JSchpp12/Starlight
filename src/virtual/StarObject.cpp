@@ -409,7 +409,7 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vec
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarObject::getDescriptorRequests(const int& numFramesInFlight)
 {
-	return std::vector<std::pair<vk::DescriptorType, const int>>();
+	return std::vector<std::pair<vk::DescriptorType, const int>>{std::make_pair(vk::DescriptorType::eUniformBuffer, 2)};
 }
 
 void star::StarObject::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
