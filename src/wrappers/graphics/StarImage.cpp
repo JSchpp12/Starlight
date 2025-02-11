@@ -49,7 +49,7 @@ void StarImage::createImage(StarDevice& device) {
 		//copy staging buffer to texture image 
 		transitionImageLayout(device, textureImage, this->creationSettings.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-		device.copyBufferToImage(loadedData->getBuffer(), textureImage, static_cast<uint32_t>(this->creationSettings.width), static_cast<uint32_t>(this->creationSettings.height));
+		device.copyBufferToImage(loadedData->getVulkanBuffer(), textureImage, static_cast<uint32_t>(this->creationSettings.width), static_cast<uint32_t>(this->creationSettings.height));
 
 		//prepare final image for texture mapping in shaders 
 		transitionImageLayout(device, textureImage, this->creationSettings.imageFormat, vk::ImageLayout::eTransferDstOptimal, this->creationSettings.initialLayout);

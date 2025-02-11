@@ -102,7 +102,6 @@ protected:
 	std::unordered_map<vk::Format, vk::ImageView> imageViews	= std::unordered_map<vk::Format, vk::ImageView>();				//image view: describe to vulkan how to access an image
 	std::unique_ptr<vk::Sampler> textureSampler									= std::unique_ptr<vk::Sampler>();					//using sampler to apply filtering or other improvements over raw texel access
 
-	
 	virtual std::unique_ptr<StarBuffer> loadImageData(StarDevice& device) {
 		return nullptr; 
 	};

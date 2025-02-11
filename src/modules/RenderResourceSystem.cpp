@@ -100,7 +100,7 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 	{
 		vk::DeviceSize currentOffset = 0;
 		for (auto& vertStage : stagingBuffersVert) {
-			device.copyBuffer(vertStage->getBuffer(), vertBuffer->getBuffer(), vertStage->getBufferSize(), currentOffset);
+			device.copyBuffer(vertStage->getVulkanBuffer(), vertBuffer->getVulkanBuffer(), vertStage->getBufferSize(), currentOffset);
 			currentOffset += vertStage->getBufferSize();
 		}
 	}
@@ -120,7 +120,7 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 		vk::DeviceSize currentOffset = 0; 
 
 		for (auto& indStage : stagingBuffersIndex) {
-			device.copyBuffer(indStage->getBuffer(), indBuffer->getBuffer(), indStage->getBufferSize(), currentOffset);
+			device.copyBuffer(indStage->getVulkanBuffer(), indBuffer->getVulkanBuffer(), indStage->getBufferSize(), currentOffset);
 
 			currentOffset += indStage->getBufferSize(); 
 		}
@@ -156,10 +156,10 @@ void star::RenderResourceSystem::bindBuffer(const uint32_t& bufferId, vk::Comman
 	vk::DeviceSize vOffset{ offset };
 
 	if (buffer.getUsageFlags() & vk::BufferUsageFlagBits::eVertexBuffer) {
-		commandBuffer.bindVertexBuffers(0, buffer.getBuffer(), vOffset);
+		commandBuffer.bindVertexBuffers(0, buffer.getVulkanBuffer(), vOffset);
 	}
 	else if (buffer.getUsageFlags() & vk::BufferUsageFlagBits::eIndexBuffer)
-		commandBuffer.bindIndexBuffer(buffer.getBuffer(), vOffset, vk::IndexType::eUint32);
+		commandBuffer.bindIndexBuffer(buffer.getVulkanBuffer(), vOffset, vk::IndexType::eUint32);
 	else
 		throw std::runtime_error("Unsupported buffer type requested for bind operation from Resource System");
 }

@@ -36,7 +36,7 @@ public:
 	vk::Result flushIndex(int index);
 	vk::DescriptorBufferInfo descriptorInfoForIndex(int index);
 
-	vk::Buffer getBuffer() const { return buffer; }
+	vk::Buffer getVulkanBuffer() const { return buffer; }
 	void* getMappepMemory() const { return mapped; }
 	uint32_t getInstanceCount() const { return instanceCount; }
 	vk::DeviceSize getInstanceSize() const { return instanceSize; }

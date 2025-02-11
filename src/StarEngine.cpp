@@ -40,11 +40,11 @@ void StarEngine::Run()
 
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
-	if (this->renderingDevice->getHasDedicatedTransferQueue()){
-		transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->renderingDevice->giveMeDedicatedTranferQueue());
-	}else{
-		throw std::runtime_error("Single threaded mode not implemented yet.");
-	}
+	// if (this->renderingDevice->getHasDedicatedTransferQueue()){
+	// 	transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->renderingDevice->giveMeDedicatedTranferQueue(), &ManagerBuffer::asyncTransferRequests);
+	// }else{
+	// 	throw std::runtime_error("Single threaded mode not implemented yet.");
+	// }
 
 	ManagerDescriptorPool descriptorManager(*this->renderingDevice, framesInFlight);
 	RenderResourceSystem::init(*this->renderingDevice, framesInFlight, mainRenderer->getMainExtent());

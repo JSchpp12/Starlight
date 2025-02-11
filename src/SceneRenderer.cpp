@@ -188,8 +188,8 @@ star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarD
 		globalBuilder
 			.startOnFrameIndex(i)
 			.startSet()
-			.add(*this->scene.getGlobalInfoBuffer(i))
-			.add(*this->scene.getLightInfoBuffer(i));
+			.add(this->scene.getGlobalInfoBuffer(i)->getHandle())
+			.add(this->scene.getLightInfoBuffer(i)->getHandle());
 	}
 
 	return globalBuilder; 

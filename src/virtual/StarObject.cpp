@@ -230,8 +230,8 @@ void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapC
 	for (int i = 0; i < numSwapChainImages; i++) {
 		frameBuilder.startOnFrameIndex(i);
 		frameBuilder.startSet(); 
-		frameBuilder.add(*this->instanceModelInfos[i]);
-		frameBuilder.add(*this->instanceNormalInfos[i]); 
+		frameBuilder.add(this->instanceModelInfos[i]->getHandle());
+		frameBuilder.add(this->instanceNormalInfos[i]->getHandle()); 
 	}
 	
 	for (auto& mesh : this->getMeshes()) {
@@ -297,7 +297,7 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 			vk::SharingMode::eConcurrent
 		);
 
-		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxVertBuffer->getBuffer(), bufferSize);
+		device.copyBuffer(stagingBuffer.getVulkanBuffer(), this->boundingBoxVertBuffer->getVulkanBuffer(), bufferSize);
 	}
 
 	{
@@ -327,7 +327,7 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 			vk::SharingMode::eConcurrent
 		);
-		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxIndBuffer->getBuffer(), bufferSize);
+		device.copyBuffer(stagingBuffer.getVulkanBuffer(), this->boundingBoxIndBuffer->getVulkanBuffer(), bufferSize);
 	}
 }
 
@@ -382,8 +382,8 @@ void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer
 void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex)
 {
 	vk::DeviceSize offsets{}; 
-	commandBuffer.bindVertexBuffers(0, this->boundingBoxVertBuffer->getBuffer(), offsets); 
-	commandBuffer.bindIndexBuffer(this->boundingBoxIndBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+	commandBuffer.bindVertexBuffers(0, this->boundingBoxVertBuffer->getVulkanBuffer(), offsets); 
+	commandBuffer.bindIndexBuffer(this->boundingBoxIndBuffer->getVulkanBuffer(), 0, vk::IndexType::eUint32);
 
 	this->boundBoxPipeline->bind(commandBuffer); 
 	commandBuffer.setLineWidth(1.0f);

@@ -5,6 +5,8 @@
 #include "StarDevice.hpp"
 #include "StarImage.hpp"
 #include "ManagerDescriptorPool.hpp"
+#include "Handle.hpp"
+#include "ManagerBuffer.hpp"
 
 #include <memory>
 #include <vector>
@@ -13,18 +15,26 @@ namespace star {
 	class StarShaderInfo {
 	private:
 		struct ShaderInfo {
+			struct BufferInfo{
+				BufferInfo(const Handle& handle, const vk::Buffer& currentBuffer)
+				: handle(handle), currentBuffer(currentBuffer){}
 
-			ShaderInfo(const BufferModifier& bufferModifier) 
-				: bufferModifier(bufferModifier) {};
+				Handle handle;
+				vk::Buffer currentBuffer;
+			};
+
+			ShaderInfo(const BufferInfo& bufferInfo) 
+				: bufferInfo(bufferInfo) {}
 
 			ShaderInfo(const StarImage& textureInfo, const vk::ImageLayout& expectedLayout) 
 				: textureInfo(textureInfo), expectedLayout(expectedLayout) {};
 
 			~ShaderInfo() = default;
 
-			std::optional<std::reference_wrapper<const BufferModifier>> bufferModifier = std::optional<std::reference_wrapper<const BufferModifier>>();
-			std::optional<std::reference_wrapper<const StarImage>> textureInfo = std::optional<std::reference_wrapper<const StarImage>>();
-			std::optional<vk::ImageLayout> expectedLayout = std::optional<vk::ImageLayout>();
+			std::optional<BufferInfo> bufferInfo 									= std::nullopt;
+			std::optional<std::reference_wrapper<const StarImage>> textureInfo 	= std::nullopt;
+			std::optional<vk::ImageLayout> expectedLayout 						= std::nullopt;
+			
 		};
 
 		struct ShaderInfoSet {
@@ -40,12 +50,12 @@ namespace star {
 				assert(this->descriptorWriter && "Dependencies must have been built first");
 				this->setNeedsRebuild = true; 
 
-				if (shaderInfos[index].bufferModifier.has_value()) {
-					auto& handle = shaderInfos[index].bufferModifier.value().get().getHandle();
-					auto& buffer = star::ManagerBuffer::getBuffer(handle);
+				if (shaderInfos[index].bufferInfo.has_value()) {
+					auto& info = shaderInfos[index].bufferInfo.value();
+					auto& buffer = star::ManagerBuffer::getBuffer(info.handle);
 
 					auto bufferInfo = vk::DescriptorBufferInfo{
-						buffer.getBuffer(),
+						buffer.getVulkanBuffer(),
 						0,
 						buffer.getBufferSize()
 					};
@@ -118,11 +128,15 @@ namespace star {
 		std::vector<vk::DescriptorSet> getDescriptors(const int& frameInFlight) {
 			for (auto& set : this->shaderInfoSets[frameInFlight]) {
 				for (int i = 0; i < set->shaderInfos.size(); i++) {
-					if (set->shaderInfos.at(i).bufferModifier.has_value()) {
+					if (set->shaderInfos.at(i).bufferInfo.has_value()) {
 						//check if buffer has changed
-						if (set->shaderInfos.at(i).bufferModifier.value().get().getBufferHasChanged()) {
+						auto& info = set->shaderInfos.at(i).bufferInfo.value();
+						const auto& buffer = ManagerBuffer::getBuffer(info.handle).getVulkanBuffer();
+						if (info.currentBuffer != buffer){
+							info.currentBuffer = buffer;
 							set->buildIndex(i);
 						}
+
 					}
 				}
 			}
@@ -162,8 +176,8 @@ namespace star {
 				return *this;
 			};
 
-			Builder& add(const BufferModifier& bufferModifier) {
-				this->activeSet->back()->add(ShaderInfo(bufferModifier));
+			Builder& add(const Handle& bufferHandle) {
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle, ManagerBuffer::getBuffer(bufferHandle).getVulkanBuffer()}));
 				return *this;
 			};
 

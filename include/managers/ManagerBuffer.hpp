@@ -63,6 +63,8 @@ namespace star {
 
 		static void init(StarDevice& device, const int& totalNumFramesInFlight); 
 
+		static bool hasBufferChanged(const Handle& handle);
+
 		static Handle addRequest(const Request& newRequest);
 
 		static void update(const int& frameInFlightIndex); 
@@ -119,6 +121,7 @@ namespace star {
 		//even handles
 		static std::unordered_map<Handle, std::unique_ptr<CompleteRequest>*, HandleHash> staticBuffers; 
 
+		// static std::unordered_set<Handle> changedBuffers;
 		static bool isBufferStatic(const Handle& handle); 
 	};
 }
