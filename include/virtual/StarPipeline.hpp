@@ -16,6 +16,8 @@ namespace star {
 
 		virtual void bind(vk::CommandBuffer& commandBuffer)=0;
 
+		bool areResourcesReady(); 
+
 	protected:
 		StarDevice& device; 
 		vk::Pipeline pipeline;

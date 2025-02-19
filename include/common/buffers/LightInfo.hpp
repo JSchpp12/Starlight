@@ -1,21 +1,33 @@
-#pragma once
+#ifndef STAR_LIGHT_INFO_HPP
+#define STAR_LIGHT_INFO_HPP
 
-#include "BufferModifier.hpp"
+
+#include "BufferManagerRequest.hpp"
 #include "Light.hpp"
 
 #include <glm/glm.hpp>
 
 #include <vector>
 namespace star {
-	class LightInfo : public BufferModifier {
+	class LightInfo : public BufferManagerRequest {
 	public:
-		LightInfo(const uint16_t& frameInFlightIndexToUpdateOn, const std::vector<std::unique_ptr<Light>>& lights) : lights(lights), BufferModifier(
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eStorageBuffer,
-			sizeof(LightBufferObject),
-			lights.size(),
-			vk::SharingMode::eConcurrent, 1, frameInFlightIndexToUpdateOn) { };
+		LightInfo(const uint16_t& frameInFlightIndexToUpdateOn, const std::vector<std::unique_ptr<Light>>& lights) 
+		: lights(lights), 
+		BufferManagerRequest(
+			BufferManagerRequest::BufferCreationArgs{
+				sizeof(LightBufferObject),
+				static_cast<uint32_t>(lights.size()),
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+				VMA_MEMORY_USAGE_AUTO,
+				vk::BufferUsageFlagBits::eStorageBuffer,
+				vk::SharingMode::eConcurrent},
+			static_cast<uint8_t>(frameInFlightIndexToUpdateOn)) { };
+
+	protected:
+	
+		void write(StarBuffer& buffer) override;
+
+		bool isValid(const uint8_t& currentFrameInFlightIndex) const override;
 
 	private:
 		uint16_t lastWriteNumLights = 0; 
@@ -35,10 +47,7 @@ namespace star {
 		};
 
 		const std::vector<std::unique_ptr<Light>>& lights;
-
-		void writeBufferData(StarBuffer& buffer) override;
-
-		bool checkIfShouldUpdateThisFrame() override;
-
 	};
 }
+
+#endif

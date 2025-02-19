@@ -24,6 +24,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 find_package(boost_thread CONFIG REQUIRED)
+find_package(TBB CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -75,6 +76,8 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarMaterial.cpp" 
     "src/virtual/StarCamera.cpp"
     "src/virtual/StarPipeline.cpp"
+    "src/virtual/MemoryTransferRequest.cpp"
+    "src/virtual/BufferManagerRequest.cpp"
     "src/wrappers/graphics/StarDescriptorBuilders.cpp"  
     "src/wrappers/graphics/StarBuffer.cpp"  
     "src/wrappers/graphics/StarGraphicsPipeline.cpp"  
@@ -165,6 +168,8 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarMaterial.hpp"
     "include/virtual/StarSystemPipeline.hpp"
     "include/virtual/StarPipeline.hpp"
+    "include/virtual/MemoryTransferRequest.hpp"
+    "include/virtual/BufferManagerRequest.hpp"
     "include/common/StarMaterialMesh.hpp"
     "include/wrappers/graphics/StarDescriptorBuilders.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
@@ -224,6 +229,7 @@ target_link_libraries(${PROJECT_NAME}
         GPUOpen::VulkanMemoryAllocator
         nlohmann_json::nlohmann_json
         Boost::thread
+        TBB::tbb
 )
 
 target_include_directories(${PROJECT_NAME}

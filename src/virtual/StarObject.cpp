@@ -230,8 +230,8 @@ void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapC
 	for (int i = 0; i < numSwapChainImages; i++) {
 		frameBuilder.startOnFrameIndex(i);
 		frameBuilder.startSet(); 
-		frameBuilder.add(this->instanceModelInfos[i]->getHandle());
-		frameBuilder.add(this->instanceNormalInfos[i]->getHandle()); 
+		frameBuilder.add(this->instanceModelInfos[i]);
+		frameBuilder.add(this->instanceNormalInfos[i]); 
 	}
 	
 	for (auto& mesh : this->getMeshes()) {
@@ -247,13 +247,17 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 
 	//each instance must provide the number of buffers that it will need
 	//this is a bit limiting and might need some rework
-	auto minProp = device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+
 	uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
 
 	//create a buffer for each image
 	for (int i = 0; i < numImagesInFlight; i++) {
-		this->instanceModelInfos.emplace_back(std::make_unique<InstanceModelInfo>(this->instances, minProp, i));
-		this->instanceNormalInfos.emplace_back(std::make_unique<InstanceNormalInfo>(this->instances, minProp, i)); 
+		this->instanceModelInfos.emplace_back(
+			ManagerBuffer::addRequest(std::make_unique<InstanceModelInfo>(this->instances, i))
+		);
+		this->instanceNormalInfos.emplace_back(
+			ManagerBuffer::addRequest(std::make_unique<InstanceNormalInfo>(this->instances, i))
+		); 
 	}
 }
 
@@ -275,26 +279,28 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 		uint32_t count = bbVerts.size();
 
 		StarBuffer stagingBuffer{
-			device,
+			device.getAllocator(),
 			size,
 			count,
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
+			vk::SharingMode::eConcurrent,
+			1
 		};
 
 		stagingBuffer.map();
 		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
 
 		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(
-			device,
+			device.getAllocator(),
 			size,
 			uint32_t(count),
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::SharingMode::eConcurrent
+			vk::SharingMode::eConcurrent,
+			1
 		);
 
 		device.copyBuffer(stagingBuffer.getVulkanBuffer(), this->boundingBoxVertBuffer->getVulkanBuffer(), bufferSize);
@@ -306,23 +312,22 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 		uint32_t count = bbInds.size();
 
 		StarBuffer stagingBuffer{
-			device,
+			device.getAllocator(),
 			size,
 			count,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT),
 			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferSrc,
 			vk::SharingMode::eConcurrent
-
 		};
 		stagingBuffer.map();
 		stagingBuffer.writeToBuffer(bbInds.data());
 
 		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
-			device,
+			device.getAllocator(),
 			size,
 			uint32_t(count),
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT),
 			VMA_MEMORY_USAGE_AUTO,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 			vk::SharingMode::eConcurrent

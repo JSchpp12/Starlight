@@ -188,8 +188,8 @@ star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarD
 		globalBuilder
 			.startOnFrameIndex(i)
 			.startSet()
-			.add(this->scene.getGlobalInfoBuffer(i)->getHandle())
-			.add(this->scene.getLightInfoBuffer(i)->getHandle());
+			.add(this->scene.getGlobalInfoBuffer(i))
+			.add(this->scene.getLightInfoBuffer(i));
 	}
 
 	return globalBuilder; 
@@ -218,7 +218,7 @@ void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32
 	allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 	allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-	vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
+	vmaCreateImage(device.getAllocator().get(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
 }
 
 vk::Format SceneRenderer::findDepthFormat(star::StarDevice& device)

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef STAR_BASIC_OBJECT_HPP
+#define STAR_BASIC_OBJECT_HPP
+
 
 #include "BumpMaterial.hpp"
 #include "CastHelpers.hpp"
@@ -43,3 +45,5 @@ namespace star {
 		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) override;
 	};
 }
+
+#endif

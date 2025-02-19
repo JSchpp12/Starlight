@@ -37,7 +37,7 @@ namespace star {
 				overrideBufferSubmissionCallback(overrideBufferSubmissionCallback),
 				type(type), recordOnce(recordOnce) {};
 		};
-		#
+		
 		CommandBufferContainer(StarDevice& device, const int& numImagesInFlight);
 
 		~CommandBufferContainer() = default;

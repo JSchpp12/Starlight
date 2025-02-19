@@ -39,7 +39,7 @@ std::unique_ptr<star::StarBuffer> star::FileTexture::loadImageData(StarDevice& d
 {
     vk::DeviceSize imageSize = (this->creationSettings.width * this->creationSettings.height * this->creationSettings.channels * this->creationSettings.depth) * this->creationSettings.byteDepth;
     std::unique_ptr<star::StarBuffer> stagingBuffer = std::make_unique<star::StarBuffer>(
-        device,
+        device.getAllocator(),
         imageSize,
         uint32_t(1),
         VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT,

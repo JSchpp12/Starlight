@@ -1,6 +1,6 @@
 #pragma once 
 
-#include "StarDevice.hpp"
+#include "Allocator.hpp"
 #include "Enums.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -12,7 +12,7 @@ class StarBuffer {
 public:
 	static vk::DeviceSize getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
 
-	StarBuffer(StarDevice& device, vk::DeviceSize instanceSize, uint32_t instanceCount,
+	StarBuffer(Allocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 		const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
 		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
 		vk::DeviceSize minOffsetAlignment = 1);
@@ -46,7 +46,7 @@ public:
 	vk::DeviceSize getBufferSize() const { return bufferSize; }
 
 private:
-	StarDevice& starDevice;
+	Allocator& allocator;
 	void* mapped = nullptr;
 	VmaAllocation memory = VmaAllocation();
 
@@ -61,7 +61,7 @@ private:
 	std::unique_ptr<VmaAllocationInfo> allocationInfo = nullptr;
 
 
-	static void createBuffer(StarDevice& device, vk::DeviceSize size, 
+	static void createBuffer(Allocator& allocator, vk::DeviceSize size, 
 		vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, 
 		vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo);
 };

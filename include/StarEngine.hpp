@@ -1,4 +1,5 @@
-#pragma once
+#ifndef STAR_ENGINE_HPP
+#define STAR_ENGINE_HPP
 
 #include "ManagerBuffer.hpp"
 #include "SwapChainRenderer.hpp"
@@ -16,7 +17,6 @@
 #include "TransferWorker.hpp"
 
 #include <vulkan/vulkan.hpp>
-
 
 #include <memory>
 #include <vector>
@@ -42,6 +42,8 @@ protected:
 	std::unique_ptr<StarDevice> renderingDevice;
 	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<SwapChainRenderer> mainRenderer; 
+	std::unique_ptr<TransferWorker> transferWorker;
+
 	
 	std::vector<Handle> lightList; 
 
@@ -50,5 +52,9 @@ protected:
 
 private: 
 	static std::unique_ptr<std::string> screenshotPath;
+
+	const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = true;
 };
 }
+
+#endif

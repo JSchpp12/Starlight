@@ -21,7 +21,7 @@ void StarImage::cleanupRender(StarDevice& device)
 
 	//only destroy if the image memory was allocated with the creation of this instance
 	if (this->textureImage && this->imageAllocation)
-		vmaDestroyImage(device.getAllocator(), this->textureImage, *this->imageAllocation);
+		vmaDestroyImage(device.getAllocator().get(), this->textureImage, *this->imageAllocation);
 }
 
 vk::ImageView StarImage::getImageView(vk::Format* requestedFormat) const{
@@ -100,7 +100,7 @@ void StarImage::createImage(StarDevice& device, int width, int height, int depth
 	if (optional_setRequiredMemoryPropertyFlags != nullptr)
 		allocInfo.requiredFlags = static_cast<VkMemoryPropertyFlags>(*optional_setRequiredMemoryPropertyFlags);
 
-	auto result = vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
+	auto result = vmaCreateImage(device.getAllocator().get(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
 
 	if (result != VK_SUCCESS) {
 		throw std::exception("Failed to create image: " + result); 

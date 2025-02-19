@@ -24,18 +24,18 @@ void star::RenderResourceSystem::registerSetDrawInfoCallback(std::function<void(
 
 void star::RenderResourceSystem::bind(const Handle& resource, vk::CommandBuffer& commandBuffer)
 {
-	switch (resource.type) {
+	switch (resource.getType()) {
 	case(Handle_Type::buffer):
-		bindBuffer(resource.id, commandBuffer);
+		bindBuffer(resource.getID(), commandBuffer);
 		break;
 	default:
-		throw std::runtime_error("Unsupported resource type requested for bind operation " + resource.type);
+		throw std::runtime_error("Unsupported resource type requested for bind operation " + resource.getType());
 	}
 }
 
 void star::RenderResourceSystem::bind(const BufferHandle& buffer, vk::CommandBuffer& commandBuffer)
 {
-	bindBuffer(buffer.id, commandBuffer, buffer.targetBufferOffset); 
+	bindBuffer(buffer.getID(), commandBuffer, buffer.targetBufferOffset); 
 }
 
 void star::RenderResourceSystem::init(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
@@ -89,7 +89,7 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 
 	vk::DeviceSize vertexSize = sizeof(star::Vertex);
 	std::unique_ptr<StarBuffer> vertBuffer = std::make_unique<StarBuffer>(
-		device,
+		device.getAllocator(),
 		vertexSize,
 		uint32_t(totalVertInstanceCount),
 		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
@@ -107,13 +107,14 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 
 	vk::DeviceSize indSize = sizeof(uint32_t);
 	std::unique_ptr<StarBuffer> indBuffer = std::make_unique<StarBuffer>(
-		device,
+		device.getAllocator(),
 		indSize,
 		uint32_t(totalIndInstanceCount),
 		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 		VMA_MEMORY_USAGE_AUTO,
 		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-		vk::SharingMode::eConcurrent
+		vk::SharingMode::eConcurrent,
+		1
 	);
 
 	{

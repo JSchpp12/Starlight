@@ -185,9 +185,9 @@ void star::CommandBufferContainer::setToSubmitThisBuffer(const size_t& bufferInd
 
 star::CommandBufferContainer::CompleteRequest& star::CommandBufferContainer::getBuffer(const star::Handle& bufferHandle)
 {
-	assert(bufferHandle.id < this->allBuffers.size() && "Requested index does not exist");
+	assert(bufferHandle.getID() < this->allBuffers.size() && "Requested index does not exist");
 
-	return *this->allBuffers[bufferHandle.id];
+	return *this->allBuffers[bufferHandle.getID()];
 }
 
 void star::CommandBufferContainer::waitUntilOrderGroupReady(const int& frameIndex, const star::Command_Buffer_Order& order, const star::Command_Buffer_Type& type)

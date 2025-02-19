@@ -1,12 +1,10 @@
 #include "InstanceModelInfo.hpp"
 
-void star::InstanceModelInfo::writeBufferData(StarBuffer& buffer)
+void star::InstanceModelInfo::write(StarBuffer& buffer)
 {
 	buffer.map(); 
 
-	for (int i = 0; i < this->objectInstances.size(); i++) {
-		this->objectInstances[i]->updateBufferData(buffer, 0); 
-	}
+	buffer.writeToBuffer(this->displayMatrixInfo.data()); 
 
 	buffer.unmap(); 
 }

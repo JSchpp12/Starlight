@@ -135,8 +135,8 @@ namespace star {
 		std::unique_ptr<StarPipeline> pipeline; 
 		std::unique_ptr<StarPipeline> normalExtrusionPipeline; 
 		std::unique_ptr<StarDescriptorSetLayout> setLayout; 
-		std::vector<std::unique_ptr<InstanceNormalInfo>> instanceNormalInfos; 
-		std::vector<std::unique_ptr<InstanceModelInfo>> instanceModelInfos;
+		std::vector<Handle> instanceNormalInfos; 
+		std::vector<Handle> instanceModelInfos;
 		std::vector<std::unique_ptr<StarMesh>> meshes;
 		std::vector<std::unique_ptr<StarObjectInstance>> instances; 
 

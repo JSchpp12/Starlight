@@ -4,11 +4,12 @@
 #include "StarWindow.hpp"
 #include "Allocator.hpp"
 
+#include <vulkan/vulkan.hpp>
+
 #include <optional>
 #include <unordered_set>
 #include <set>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 #include <iostream>
 
 namespace star {
@@ -77,30 +78,40 @@ public:
 
 #pragma region getters
 	SwapChainSupportDetails getSwapChainSupportDetails() { return querySwapChainSupport(this->physicalDevice); }
-	vk::CommandPool getGraphicsCommandPool() { return this->graphicsCommandPool; }
 	vk::PhysicalDevice getPhysicalDevice() { return this->physicalDevice; }
-	inline vk::Device getDevice() { return this->vulkanDevice; }
+	inline vk::Device& getDevice() { return this->vulkanDevice; }
 	vk::SurfaceKHR getSurface() { return this->surface.get(); }
 	bool getHasDedicatedTransferQueue(){return this->hasDedicatedTransferQueue;}
-	std::unique_ptr<uint32_t> giveMeDedicatedTranferQueue(){
+	void giveMeDedicateTransferPoolInfo(vk::CommandPool& commandPool, uint32_t& transferFamilyIndex, vk::Queue& queue){
 		if (!this->dedicatedTransferQueueFamilyIndex.has_value())
 			throw std::runtime_error("Transfer queue has been given away already.");
 
-		uint32_t transferQueueIndex = this->dedicatedTransferQueueFamilyIndex.value();
+		commandPool = this->transferCommandPool;
+		
 		this->dedicatedTransferQueueFamilyIndex.reset();
-
-		return std::make_unique<uint32_t>(transferQueueIndex);
+		transferFamilyIndex = this->dedicatedTransferQueueFamilyIndex.value();
+		this->dedicatedTransferQueueFamilyIndex.reset();
+		queue = this->transferQueue.value();
+		this->transferQueue.reset();
 	}
 	vk::Queue getGraphicsQueue() { return this->graphicsQueue; }
 	vk::Queue getPresentQueue() { return this->presentQueue; }
-	vk::Queue getTransferQueue() { return this->graphicsQueue; }
+	vk::Queue getTransferQueue() { 
+		if (this->transferQueue.has_value())
+			return *this->transferQueue; 
+		return this->graphicsQueue;
+	}
 	vk::Queue getComputeQueue() {
 		if (this->computeQueue.has_value())
 			return this->computeQueue.value();
 		else
 			return this->graphicsQueue;
 	}
-	VmaAllocator& getAllocator() { return this->allocator->get(); }
+	vk::Instance& getInstance() {return this->instance; }
+	Allocator& getAllocator() {
+		assert(this->allocator && "Default allocator should have been created during startup. Something has gone wrong.");
+		return *this->allocator; 
+	}
 #pragma endregion
 
 #pragma region helperFunctions
@@ -162,7 +173,8 @@ protected:
 #endif    
 
 	bool hasDedicatedTransferQueue = false;
-	std::optional<uint32_t> dedicatedTransferQueueFamilyIndex = std::optional<uint32_t>();
+	std::optional<uint32_t> dedicatedTransferQueueFamilyIndex = std::nullopt;
+	std::optional<vk::Queue> dedicatedTransferQueue = std::nullopt;
 
 	vk::Instance instance;
 	vk::Device vulkanDevice;
@@ -174,7 +186,6 @@ protected:
 	//vulkan command storage
 	vk::CommandPool graphicsCommandPool;
 	vk::CommandPool transferCommandPool;
-	std::vector<vk::CommandBuffer> transferCommandBuffers;
 	vk::CommandPool computeCommandPool; 
 	vk::CommandPool tempCommandPool; //command pool for temporary use in small operations
 
@@ -195,7 +206,8 @@ protected:
 	vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
 
 	//queue family information
-	vk::Queue graphicsQueue, presentQueue; 
+	vk::Queue graphicsQueue, presentQueue;
+	std::optional<vk::Queue> transferQueue; 
 	std::optional<vk::Queue> computeQueue;
 
 #if __APPLE__

@@ -1,6 +1,6 @@
 #include "GlobalInfo.hpp"
 
-void star::GlobalInfo::writeBufferData(StarBuffer& buffer)
+void star::GlobalInfo::write(StarBuffer& buffer)
 {
     buffer.map(); 
 

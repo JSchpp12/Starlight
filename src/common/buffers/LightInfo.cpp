@@ -1,6 +1,6 @@
 #include "LightInfo.hpp"
 
-void star::LightInfo::writeBufferData(StarBuffer& buffer)
+void star::LightInfo::write(StarBuffer& buffer)
 {
 	buffer.map(); 
 
@@ -26,22 +26,11 @@ void star::LightInfo::writeBufferData(StarBuffer& buffer)
 	buffer.unmap(); 
 }
 
-bool star::LightInfo::checkIfShouldUpdateThisFrame()
+bool star::LightInfo::isValid(const uint8_t& currentFrameInFlightIndex) const
 {
-	if (this->lastWriteNumLights != this->lights.size()) {
-		this->lastWriteNumLights = this->lights.size();
-
-		this->init(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eStorageBuffer,
-			sizeof(LightBufferObject),
-			lights.size(),
-			vk::SharingMode::eConcurrent, 1); 
-
-		this->lastWriteNumLights = static_cast<uint16_t>(this->lights.size());
-
-		return true;
+	if (!star::BufferManagerRequest::isValid(currentFrameInFlightIndex) && this->lastWriteNumLights != this->lights.size()){
+		return false;
 	}
 
-	return false;
+	return true;
 }

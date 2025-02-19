@@ -114,7 +114,7 @@ void star::ManagerCommandBuffer::handleDynamicBufferRequests()
 	while (!ManagerCommandBuffer::dynamicBuffersToSubmit.empty()) {
 		Handle dynamicBufferRequest = ManagerCommandBuffer::dynamicBuffersToSubmit.top();
 
-		this->buffers.setToSubmitThisBuffer(dynamicBufferRequest.id); 
+		this->buffers.setToSubmitThisBuffer(dynamicBufferRequest.getID()); 
 
 		ManagerCommandBuffer::dynamicBuffersToSubmit.pop();
 	}

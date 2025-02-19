@@ -1,5 +1,8 @@
 #include "StarEngine.hpp"
 
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
+
 namespace star {
 
 std::unique_ptr<std::string> StarEngine::screenshotPath = nullptr;
@@ -23,8 +26,14 @@ StarEngine::StarEngine() {
 
 	this->renderingDevice = StarDevice::New(*window, features);
 
+	if (this->OVERRIDE_APPLY_SINGLE_THREAD_MODE || this->renderingDevice->getHasDedicatedTransferQueue()){
+		this->transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->renderingDevice->getAllocator(), this->renderingDevice->getTransferQueue(), this->renderingDevice->getCommandPool(star::Command_Buffer_Type::Ttransfer));
+	}else{
+		this->transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->renderingDevice->getAllocator());
+	}
+
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-	ManagerBuffer::init(*this->renderingDevice, framesInFlight);
+	ManagerBuffer::init(*this->renderingDevice, *this->transferWorker, framesInFlight);
 
 	this->currentScene = std::unique_ptr<StarScene>(new StarScene(framesInFlight));
 }
@@ -36,15 +45,8 @@ StarEngine::~StarEngine()
 
 void StarEngine::Run()
 {
-	std::unique_ptr<star::TransferWorker> transferWorker = std::unique_ptr<star::TransferWorker>();
-
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
-	// if (this->renderingDevice->getHasDedicatedTransferQueue()){
-	// 	transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->renderingDevice->giveMeDedicatedTranferQueue(), &ManagerBuffer::asyncTransferRequests);
-	// }else{
-	// 	throw std::runtime_error("Single threaded mode not implemented yet.");
-	// }
 
 	ManagerDescriptorPool descriptorManager(*this->renderingDevice, framesInFlight);
 	RenderResourceSystem::init(*this->renderingDevice, framesInFlight, mainRenderer->getMainExtent());
@@ -59,7 +61,6 @@ void StarEngine::Run()
 		//check if any new objects have been added
 		RenderResourceSystem::runInits(*this->renderingDevice, framesInFlight, this->mainRenderer->getMainExtent());
 		descriptorManager.update(framesInFlight); 
-		ManagerBuffer::update(this->mainRenderer->getFrameToBeDrawn()); 
 
 		if (screenshotPath) {
 			this->mainRenderer->triggerScreenshot(*screenshotPath);
@@ -69,8 +70,11 @@ void StarEngine::Run()
 		mainRenderer->pollEvents();
 		InteractionSystem::callWorldUpdates();
 		const uint32_t frameIndex = mainRenderer->getFrameToBeDrawn();
+		ManagerBuffer::update(frameIndex);
 		vk::Semaphore allBuffersSubmitted = commandBufferManager.update(frameIndex);
 		mainRenderer->submitPresentation(frameIndex, &allBuffersSubmitted);
+
+		this->transferWorker->update();
 	}
 
 	this->renderingDevice->getDevice().waitIdle();

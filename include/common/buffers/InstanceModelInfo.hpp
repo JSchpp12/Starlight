@@ -1,6 +1,6 @@
-#pragma once 
+#pragma once
 
-#include "BufferModifier.hpp"
+#include "BufferManagerRequest.hpp"
 #include "StarObjectInstance.hpp"
 
 #include <glm/glm.hpp>
@@ -9,24 +9,28 @@
 #include <memory>
 
 namespace star {
-	class InstanceModelInfo : public BufferModifier {
+	class InstanceModelInfo : public BufferManagerRequest {
 	public:
-		InstanceModelInfo(const std::vector<std::unique_ptr<star::StarObjectInstance>>& objectInstances, const vk::DeviceSize& minPropertyFromDevice, const int& frameInFlightToUpdateOn)
-			: BufferModifier(
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-				VMA_MEMORY_USAGE_AUTO,
-				vk::BufferUsageFlagBits::eUniformBuffer,
-				sizeof(glm::mat4),
-				objectInstances.size(), 
-				vk::SharingMode::eConcurrent, 
-				minPropertyFromDevice, 
-				frameInFlightToUpdateOn), 
-			objectInstances(objectInstances) {};
+		InstanceModelInfo(const std::vector<std::unique_ptr<star::StarObjectInstance>>& objectInstances, const int& frameInFlightToUpdateOn)
+			: star::BufferManagerRequest(
+				BufferManagerRequest::BufferCreationArgs{
+					sizeof(glm::mat4),
+					static_cast<uint32_t>(objectInstances.size()),
+					VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+					VMA_MEMORY_USAGE_AUTO,
+					vk::BufferUsageFlagBits::eUniformBuffer,
+					vk::SharingMode::eConcurrent},
+					static_cast<uint8_t>(frameInFlightToUpdateOn)), 
+				displayMatrixInfo(std::vector<glm::mat4>(objectInstances.size())){
+					for (int i = 0; i < objectInstances.size(); i++){
+						displayMatrixInfo[i] = objectInstances[i]->getDisplayMatrix();
+					}
+				}
 
-		// Inherited via BufferModifier
-		void writeBufferData(StarBuffer& buffer) override;
+		void write(StarBuffer& buffer) override;
 
 	private:
-		const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances;
+		std::vector<glm::mat4> displayMatrixInfo;
+
 	};
 }

@@ -1,5 +1,21 @@
 #include "StarScene.hpp"
 
+star::StarScene::StarScene(const int& numFramesInFlight) 
+: camera(std::make_shared<star::BasicCamera>(1280, 720)){
+
+	this->lightInfoBuffers.resize(numFramesInFlight);
+
+	for (int i = 0; i < numFramesInFlight; i++) {
+		this->globalInfoBuffers.emplace_back(ManagerBuffer::addRequest(std::make_unique<GlobalInfo>(static_cast<uint16_t>(i), *this->camera, this->lightCounter)));
+	}
+}
+
+star::StarScene::StarScene(const int& numFramesInFLight, std::shared_ptr<star::StarCamera> camera, std::vector<star::Handle> globalInfoBuffers)
+: camera(camera), globalInfoBuffers(globalInfoBuffers) {
+
+	this->lightInfoBuffers.resize(numFramesInFLight); 
+}
+
 int star::StarScene::add(std::unique_ptr<star::Light> newLight) {
 	this->lightCounter++; 
 
@@ -8,7 +24,15 @@ int star::StarScene::add(std::unique_ptr<star::Light> newLight) {
 
 	//re-create light buffers
 	for (int i = 0; i < this->lightInfoBuffers.size(); i++) {
-		this->lightInfoBuffers[i] = std::make_shared<LightInfo>(i, this->lightList);
+		//TODO: need a function which will replace a buffer contained within the buffer manager...all handles to the information represented in that buffer need to remain valid
+		if (!this->lightInfoBuffers[i].isInitialized())
+			this->lightInfoBuffers[i] = ManagerBuffer::addRequest(std::make_unique<LightInfo>(i, this->lightList));
+		else
+			ManagerBuffer::updateRequest(std::make_unique<LightInfo>(i, this->lightList), this->lightInfoBuffers[i]); 
+	}
+
+	for (int i = 0; i < this->globalInfoBuffers.size(); i++){
+		ManagerBuffer::updateRequest(std::make_unique<GlobalInfo>(i, *this->camera, this->lightCounter), this->globalInfoBuffers[i]); 
 	}
 	return lightIndex;
 }
