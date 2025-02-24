@@ -55,6 +55,10 @@ void star::SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn,
 	else if (presentResult != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to present swap chain image");
 	}
+
+	//advance to next frame
+	previousFrame = currentFrame;
+	currentFrame = (currentFrame + 1) % this->numFramesInFlight;
 }
 
 void star::SwapChainRenderer::pollEvents() {
@@ -193,13 +197,6 @@ void star::SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDraw
 		throw std::runtime_error("Failed to reset fences"); 
 }
 
-void star::SwapChainRenderer::submissionDone()
-{
-	//advance to next frame
-	previousFrame = currentFrame;
-	currentFrame = (currentFrame + 1) % this->numFramesInFlight;
-}
-
 void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor)
 {
 	vk::SubmitInfo submitInfo{}; 
@@ -225,11 +222,6 @@ void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int&
 	if (*commandResult != vk::Result::eSuccess) {
 		throw std::runtime_error("Failed to submit command buffer");
 	}
-}
-
-std::optional<std::function<void(const int&)>> star::SwapChainRenderer::getAfterBufferSubmissionCallback()
-{
-	return std::optional<std::function<void(const int&)>>(std::bind(&SwapChainRenderer::submissionDone, this));
 }
 
 std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()

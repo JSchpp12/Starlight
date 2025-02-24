@@ -46,7 +46,6 @@ void star::ManagerCommandBuffer::handleNewRequests()
 				request.waitStage,
 				request.order,
 				request.beforeBufferSubmissionCallback, 
-				request.afterBufferSubmissionCallback, 
 				request.overrideBufferSubmissionCallback), 
 			request.willBeSubmittedEachFrame, request.type, request.order, static_cast<Command_Buffer_Order_Index>(request.orderIndex));
 
@@ -93,9 +92,6 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 	} else {
 		mainGraphicsBuffer.commandBuffer->submit(swapChainIndex);
 	}
-
-	if (mainGraphicsBuffer.afterBufferSubmissionCallback.has_value())
-		mainGraphicsBuffer.afterBufferSubmissionCallback.value()(swapChainIndex);
 
 	vk::Semaphore* mainGraphicsSemaphore = &mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
 	

@@ -1,4 +1,6 @@
 #pragma once
+
+#include "BufferMemoryTransferRequest.hpp"
 #include "BufferManagerRequest.hpp"
 #include "Enums.hpp"
 #include "StarBuffer.hpp"
@@ -63,16 +65,15 @@ namespace star {
 		static int staticBufferIDCounter; 
 		static int dynamicBufferIDCounter; 
 
-		static std::set<Handle> oneTimeWriteBuffersNeedWritten; 
-
 		static std::vector<std::unique_ptr<FinalizedBufferRequest>> allBuffers;
 
+		static std::stack<FinalizedBufferRequest*> newRequests; 
 		static std::set<vk::Fence> highPriorityRequestCompleteFlags;
 
 		//odd handles
-		// static std::unordered_map<Handle, FinalizedBufferRequest*, HandleHash> updateableBuffers;
-		// //even handles
-		// static std::unordered_map<Handle, FinalizedBufferRequest*, HandleHash> staticBuffers; 
+		static std::unordered_map<Handle, std::unique_ptr<FinalizedBufferRequest>*, HandleHash> updateableBuffers;
+		//even handles
+		static std::unordered_map<Handle, std::unique_ptr<FinalizedBufferRequest>*, HandleHash> staticBuffers; 
 
 		// static std::unordered_set<Handle> changedBuffers;
 		static bool isBufferStatic(const Handle& handle); 

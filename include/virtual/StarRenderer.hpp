@@ -24,11 +24,11 @@ public:
     //virtual void prepare() = 0;
 
 protected:
-    StarCamera& camera; 
+    const StarCamera* camera; 
 
 	std::optional<std::reference_wrapper<StarRenderer>> waitFor; 
 
-	StarRenderer(StarCamera& inCamera) 
+	StarRenderer(const StarCamera* inCamera) 
         : camera(inCamera){};
 };
 }

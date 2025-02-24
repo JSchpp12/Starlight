@@ -35,10 +35,6 @@ namespace star {
 
 		virtual bool getWillBeRecordedOnce() = 0;
 
-		/// @brief A callback can be provided to be called after the buffer has been submitted
-		/// @return The function to call
-		virtual std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback(); 
-
 		virtual std::optional<std::function<void(const int&)>> getBeforeBufferSubmissionCallback();
 
 		virtual std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> getOverrideBufferSubmissionCallback();

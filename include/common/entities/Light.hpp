@@ -27,6 +27,17 @@ public:
 	{
 	}
 
+	Light(const Light& other) 
+    : StarEntity(other), 
+	type(other.type),
+	ambient(other.ambient),
+	diffuse(other.diffuse),
+	specular(other.specular),
+	direction(other.direction),
+	linkedObjectHandle(other.linkedObjectHandle) 
+	{
+	}
+
 	//create light with no linked object
 	Light(Type::Light type, glm::vec3 position, const glm::vec4& ambient,
 		const glm::vec4& diffuse, const glm::vec4& specular,

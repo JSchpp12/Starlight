@@ -61,6 +61,7 @@ namespace star {
 
 		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
+		bool isReady(const uint8_t& swapChainImageIndex);
 	protected:
 		std::unique_ptr<StarShaderInfo> shaderInfo; 
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight);

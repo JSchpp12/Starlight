@@ -57,7 +57,7 @@ void star::ManagerDescriptorPool::init(const int& numFramesInFlight)
 	//build from actives 
 	auto builder = StarDescriptorPool::Builder(device); 
 	for (auto& active : this->actives) {
-		builder.addPoolSize(active.first, active.second); 
+		builder.addPoolSize(active.first, active.second + 1000); 
 	}
 
 	ready = true; 

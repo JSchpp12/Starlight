@@ -22,11 +22,6 @@ star::Command_Buffer_Order_Index star::CommandBufferModifier::getCommandBufferOr
 	return star::Command_Buffer_Order_Index::dont_care; 
 }
 
-std::optional<std::function<void(const int&)>> star::CommandBufferModifier::getAfterBufferSubmissionCallback()
-{
-	return std::optional<std::function<void(const int&)>>();
-}
-
 std::optional<std::function<void(const int&)>> star::CommandBufferModifier::getBeforeBufferSubmissionCallback()
 {
 	return std::optional<std::function<void(const int&)>>();
@@ -46,5 +41,5 @@ star::ManagerCommandBuffer::CommandBufferRequest star::CommandBufferModifier::ge
 		this->getCommandBufferType(), this->getWaitStages(),
 		this->getWillBeSubmittedEachFrame(), this->getWillBeRecordedOnce(), 
 		this->getBeforeBufferSubmissionCallback(), 
-		this->getAfterBufferSubmissionCallback(), this->getOverrideBufferSubmissionCallback());
+		this->getOverrideBufferSubmissionCallback());
 }

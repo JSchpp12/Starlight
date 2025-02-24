@@ -21,19 +21,16 @@ namespace star {
 			bool recordOnce;
 
 			std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback;
-			std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback;
 			std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback;
 
 			CompleteRequest(std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback, std::unique_ptr<StarCommandBuffer> commandBuffer,
 				const Command_Buffer_Type& type, const bool& recordOnce, const vk::PipelineStageFlags& waitStage,
 				const Command_Buffer_Order& order,
 				std::optional<std::function<void(const int&)>> beforeSubmissionCallback = std::optional<std::function<void(const int&)>>(),
-				std::optional<std::function<void(const int&)>> afterSubmissionCallback = std::optional<std::function<void(const int&)>>(),
 				std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback = std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>())
 				: recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)),
 				order(order), waitStage(waitStage),
 				beforeBufferSubmissionCallback(beforeSubmissionCallback),
-				afterBufferSubmissionCallback(afterSubmissionCallback),
 				overrideBufferSubmissionCallback(overrideBufferSubmissionCallback),
 				type(type), recordOnce(recordOnce) {};
 		};

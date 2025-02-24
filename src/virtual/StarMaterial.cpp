@@ -37,6 +37,10 @@ void star::StarMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayo
 	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(), descriptors.data(), 0, nullptr);
 }
 
+bool star::StarMaterial::isReady(const uint8_t& frameInFlightIndex){
+	return this->shaderInfo->isReady(frameInFlightIndex);
+}
+
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(const int& numFramesInFlight)
 {
 	return std::vector<std::pair<vk::DescriptorType, const int>>();

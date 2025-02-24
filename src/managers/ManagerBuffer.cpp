@@ -1,9 +1,9 @@
 #include "ManagerBuffer.hpp"
 
-std::set<star::Handle> star::ManagerBuffer::oneTimeWriteBuffersNeedWritten = std::set<star::Handle>();
 std::vector<std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>> star::ManagerBuffer::allBuffers = std::vector<std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>>(100);
-// std::unordered_map<star::Handle, star::ManagerBuffer::FinalizedBufferRequest*, star::HandleHash> star::ManagerBuffer::updateableBuffers = std::unordered_map<star::Handle, star::ManagerBuffer::FinalizedBufferRequest*, star::HandleHash>();
-// std::unordered_map<star::Handle, star::ManagerBuffer::FinalizedBufferRequest*, star::HandleHash> star::ManagerBuffer::staticBuffers = std::unordered_map<star::Handle, star::ManagerBuffer::FinalizedBufferRequest*, star::HandleHash>();
+std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash> star::ManagerBuffer::updateableBuffers = std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash>();
+std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash> star::ManagerBuffer::staticBuffers = std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash>();
+std::stack<star::ManagerBuffer::FinalizedBufferRequest*> star::ManagerBuffer::newRequests = std::stack<star::ManagerBuffer::FinalizedBufferRequest*>();
 
 std::set<vk::Fence> star::ManagerBuffer::highPriorityRequestCompleteFlags = std::set<vk::Fence>();
 star::StarDevice* star::ManagerBuffer::managerDevice = nullptr;
@@ -25,9 +25,24 @@ void star::ManagerBuffer::init(star::StarDevice& device, star::TransferWorker& w
 }
 
 star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManagerRequest> newRequest, const bool& isHighPriority) {
-	Handle newBufferHandle = Handle(bufferCounter, star::Handle_Type::buffer); 
+	Handle newBufferHandle = Handle(); 
+
 	allBuffers.at(bufferCounter) = std::make_unique<FinalizedBufferRequest>(std::move(newRequest));
 
+	if (!allBuffers.at(bufferCounter)->request->getFrameInFlightIndexToUpdateOn().has_value()){
+		newBufferHandle = Handle(staticBufferIDCounter, star::Handle_Type::buffer); 
+
+		staticBuffers.emplace(std::make_pair(newBufferHandle, &allBuffers.at(bufferCounter)));
+
+		staticBufferIDCounter += 2;
+	}else{
+		newBufferHandle = Handle(dynamicBufferIDCounter, star::Handle_Type::buffer); 
+
+		updateableBuffers.emplace(std::make_pair(newBufferHandle, &allBuffers.at(bufferCounter)));
+
+		dynamicBufferIDCounter += 2; 
+	}
+	
 	//add the new request to the transfer manager
 	{
 		vk::FenceCreateInfo info{}; 
@@ -36,8 +51,11 @@ star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManager
 	
 		auto* container = getRequestContainer(newBufferHandle);
 		container->get()->workingFence = managerDevice->getDevice().createFence(info);
-		managerWorker->add(*container->get()->request, &container->get()->workingFence, container->get()->buffer, isHighPriority);
-		highPriorityRequestCompleteFlags.insert(container->get()->workingFence);
+		managerWorker->add(container->get()->request->createTransferRequest(), &container->get()->workingFence, container->get()->buffer, isHighPriority);
+
+		auto& testBuffer = getBuffer(newBufferHandle);
+
+		std::cout << "test" << std::endl; 
 	}
 
 	bufferCounter++; 
@@ -46,19 +64,32 @@ star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManager
 
 void star::ManagerBuffer::update(const int& frameInFlightIndex){
 	//must wait for all high priority requests to complete
-	if (highPriorityRequestCompleteFlags.size() > 0){
-		std::cout << "Update request submitted before previous complete. Waiting..." << std::endl;
 
-		std::vector<vk::Fence> wait; 
-		for (auto& fence : highPriorityRequestCompleteFlags){
-			wait.push_back(fence);
+	//need to make sure any previous transfers have completed before submitting
+	std::vector<FinalizedBufferRequest*> requestsToUpdate = std::vector<FinalizedBufferRequest*>();
+	std::vector<vk::Fence> waits;
+	{
+		for (auto& request : updateableBuffers) {
+			std::unique_ptr<FinalizedBufferRequest>* container = getRequestContainer(request.first);
+
+			//check the requests which need updating this frame
+			if (!container->get()->request->isValid(frameInFlightIndex)) {
+			//check if the request is still in processing -- wait if it i
+				waits.push_back(container->get()->workingFence);
+				requestsToUpdate.push_back(container->get());
+			}
 		}
 
-		waitForFences(wait); 
-	
-		//reset
-		highPriorityRequestCompleteFlags = std::set<vk::Fence>();
+		if (waits.size() > 0)
+			waitForFences(waits);
 	}
+
+	for (int i = 0; i < requestsToUpdate.size(); i++){
+		managerWorker->add(requestsToUpdate[i]->request->createTransferRequest(), &requestsToUpdate[i]->workingFence, requestsToUpdate[i]->buffer, true);
+	}
+
+	if (waits.size() > 0)
+		waitForFences(waits); 
 }
 
 void star::ManagerBuffer::updateRequest(std::unique_ptr<BufferManagerRequest> newRequest, const star::Handle& handle, const bool& isHighPriority){
@@ -74,7 +105,7 @@ void star::ManagerBuffer::updateRequest(std::unique_ptr<BufferManagerRequest> ne
 	
 	container->get()->request = std::move(newRequest); 
 
-	managerWorker->add(*container->get()->request, &container->get()->workingFence, container->get()->buffer, isHighPriority);
+	managerWorker->add(container->get()->request->createTransferRequest(), &container->get()->workingFence, container->get()->buffer, isHighPriority);
 
 	highPriorityRequestCompleteFlags.insert(container->get()->workingFence);
 }
@@ -121,7 +152,9 @@ bool star::ManagerBuffer::isBufferStatic(const star::Handle& handle)
 std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>* star::ManagerBuffer::getRequestContainer(const Handle& handle){
 	assert(handle.getID() < allBuffers.size() && "Requested handle is outside range of conatiners. So it is invalid.");
 
-	std::unique_ptr<FinalizedBufferRequest>* container = &allBuffers[handle.getID()]; 
+	auto* map = isBufferStatic(handle) ? &staticBuffers : &updateableBuffers;
+
+	std::unique_ptr<FinalizedBufferRequest>* container = map->at(handle);
 	assert(container && "Requested container is empty");
 
 	return container; 

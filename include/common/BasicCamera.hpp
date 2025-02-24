@@ -51,7 +51,7 @@ namespace star {
 		/// <summary>
 		/// Update camera locations as needed 
 		/// </summary>
-		virtual void onWorldUpdate() override;
+		virtual void onWorldUpdate(const uint32_t& frameInFlightIndex) override;
 
 		void onScroll(double xoffset, double yoffset) override {};
 

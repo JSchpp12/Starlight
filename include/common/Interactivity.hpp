@@ -14,16 +14,16 @@ namespace star {
 class Interactivity {
 public:
 
-	virtual void onKeyPress(int key, int scancode, int mods) = 0;
+	virtual void onKeyPress(int key, int scancode, int mods){};
 
-	virtual void onKeyRelease(int key, int scancode, int mods) = 0; 
+	virtual void onKeyRelease(int key, int scancode, int mods){}; 
 
 	/// <summary>
 	/// Function that will be called when mouse movement is registered by the windowing system
 	/// </summary>
 	/// <param name="xpos">Current x position of the mouse</param>
 	/// <param name="ypos">Current y position of the mouse</param>
-	virtual void onMouseMovement(double xpos, double ypos) = 0;
+	virtual void onMouseMovement(double xpos, double ypos){};
 
 	/// <summary>
 	/// Function that will be called when a mouse button interaction is registered by the windowing system
@@ -31,19 +31,19 @@ public:
 	/// <param name="button">GLFW key code for the button pressed</param>
 	/// <param name="action">GLFW action</param>
 	/// <param name="mods"></param>
-	virtual void onMouseButtonAction(int button, int action, int mods) = 0;
+	virtual void onMouseButtonAction(int button, int action, int mods){};
 
 	/// <summary>
 	/// Function that will be called when a mouse wheel scroll interaction is registered by the windowing system. 
 	/// </summary>
 	/// <param name="xoffset"></param>
 	/// <param name="yoffset"></param>
-	virtual void onScroll(double xoffset, double yoffset) = 0;
+	virtual void onScroll(double xoffset, double yoffset){};
 
 	/// <summary>
 	/// Function that will be called before the user defined application world update function
 	/// </summary>
-	virtual void onWorldUpdate() = 0;
+	virtual void onWorldUpdate(const uint32_t& frameInFlightIndex) = 0;
 
 	/// <summary>
 	/// Register all ineractions in this class with the interaction system. This function MUST be called from every inheriting class

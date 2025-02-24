@@ -4,7 +4,7 @@ std::vector<std::unique_ptr<std::function<void(int, int, int, int)>>> star::Inte
 std::vector<std::unique_ptr<std::function<void(double, double)>>> star::InteractionSystem::mouseMovementCallbacks = std::vector<std::unique_ptr<std::function<void(double, double)>>>();
 std::vector<std::unique_ptr<std::function<void(int, int, int)>>> star::InteractionSystem::mouseButtonCallbacks = std::vector<std::unique_ptr<std::function<void(int, int, int)>>>();
 std::vector<std::unique_ptr<std::function<void(double, double)>>> star::InteractionSystem::mouseScrollCallbacks = std::vector<std::unique_ptr<std::function<void(double, double)>>>();
-std::vector<std::unique_ptr<std::function<void()>>> star::InteractionSystem::worldUpdateCallbacks = std::vector<std::unique_ptr<std::function<void()>>>();
+std::vector<std::unique_ptr<std::function<void(const uint32_t&)>>> star::InteractionSystem::worldUpdateCallbacks = std::vector<std::unique_ptr<std::function<void(const uint32_t&)>>>();
 
 void star::InteractionSystem::registerKeyCallback(std::unique_ptr<std::function<void(int, int, int, int)>> newKeyCallback)
 {
@@ -26,7 +26,7 @@ void star::InteractionSystem::registerMouseScrollCallback(std::unique_ptr<std::f
 	mouseScrollCallbacks.push_back(std::move(newMouseScrollCallback));
 }
 
-void star::InteractionSystem::registerWorldUpdateCallback(std::unique_ptr<std::function<void()>> newWorldUpdateCallback)
+void star::InteractionSystem::registerWorldUpdateCallback(std::unique_ptr<std::function<void(const uint32_t&)>> newWorldUpdateCallback)
 {
 	worldUpdateCallbacks.push_back(std::move(newWorldUpdateCallback));
 }
@@ -81,12 +81,12 @@ void star::InteractionSystem::glfwScrollCallback(GLFWwindow* window, double xoff
 	}
 }
 
-void star::InteractionSystem::callWorldUpdates()
+void star::InteractionSystem::callWorldUpdates(const uint32_t& frameInFlightIndex)
 {
-	std::function<void()> call;
+	std::function<void(const uint32_t&)> call;
 
 	for (size_t i = 0; i < worldUpdateCallbacks.size(); i++) {
 		call = *worldUpdateCallbacks.at(i);
-		call();
+		call(frameInFlightIndex);
 	}
 }

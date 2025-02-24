@@ -15,7 +15,7 @@ void Interactivity::registerInteractions()
 	auto scrollCallback = std::make_unique<std::function<void(double, double)>>(std::bind(&Interactivity::onScroll, this, std::placeholders::_1, std::placeholders::_2));
 	InteractionSystem::registerMouseScrollCallback(std::move(scrollCallback));
 
-	auto worldUpdateCallback = std::make_unique<std::function<void()>>(std::bind(&Interactivity::onWorldUpdate, this));
+	auto worldUpdateCallback = std::make_unique<std::function<void(const uint32_t&)>>(std::bind(&Interactivity::onWorldUpdate, this, std::placeholders::_1));
 	InteractionSystem::registerWorldUpdateCallback(std::move(worldUpdateCallback));
 }
 }

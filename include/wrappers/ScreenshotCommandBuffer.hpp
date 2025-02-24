@@ -23,8 +23,6 @@ namespace star {
 		void takeScreenshot(const std::string& path); 
 
 	protected: 
-		std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
-
 		// Inherited via RenderResourceModifier
 		void initResources(StarDevice& device, const int& numFramesInFlight, 
 			const vk::Extent2D& screensize) override;

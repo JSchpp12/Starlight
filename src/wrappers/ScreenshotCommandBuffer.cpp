@@ -150,11 +150,6 @@ void star::ScreenshotBuffer::takeScreenshot(const std::string& path)
 	this->screenshotSavePath = std::string(path);
 }
 
-std::optional<std::function<void(const int&)>> star::ScreenshotBuffer::getAfterBufferSubmissionCallback()
-{
-	return std::optional<std::function<void(const int&)>>(std::bind(&ScreenshotBuffer::saveScreenshotToDisk, this, std::placeholders::_1));
-}
-
 bool star::ScreenshotBuffer::deviceSupportsSwapchainBlit(const vk::Format& swapChainImageFormat)
 {
 	bool supportsBlit = true;

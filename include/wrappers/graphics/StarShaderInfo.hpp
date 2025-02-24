@@ -1,7 +1,6 @@
 #pragma once 
 
 #include "StarDescriptorBuilders.hpp"
-#include "BufferModifier.hpp"
 #include "StarDevice.hpp"
 #include "StarImage.hpp"
 #include "ManagerDescriptorPool.hpp"
@@ -82,9 +81,12 @@ namespace star {
 			};
 
 			vk::DescriptorSet getDescriptorSet() {
-				if (this->setNeedsRebuild)
+				if (this->setNeedsRebuild){
+					std::cout << "rebuilding" << std::endl;
 					rebuildSet();
+				}
 
+				this->setNeedsRebuild = false;
 				return *this->descriptorSet;
 			};
 
@@ -117,6 +119,19 @@ namespace star {
 			}
 		};
 
+		bool isReady(const uint8_t& frameInFlight){
+			for (auto& set : this->shaderInfoSets[frameInFlight]){
+				for (int i = 0; i < set->shaderInfos.size(); i++){
+					if (set->shaderInfos.at(i).bufferInfo.has_value()){
+						if (!ManagerBuffer::isReady(set->shaderInfos.at(i).bufferInfo.value().handle))
+						return false;
+					}
+				}
+			}
+
+			return true; 
+		}
+
 		std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts() {
 			std::vector<vk::DescriptorSetLayout> fLayouts = std::vector<vk::DescriptorSetLayout>();
 			for (auto& set : this->layouts) {
@@ -136,7 +151,6 @@ namespace star {
 							info.currentBuffer = buffer;
 							set->buildIndex(i);
 						}
-
 					}
 				}
 			}

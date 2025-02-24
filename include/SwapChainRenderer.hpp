@@ -34,6 +34,11 @@ namespace star {
 		vk::Extent2D getMainExtent() const { return *this->swapChainExtent; }
 		int getFrameToBeDrawn() const { return this->currentFrame; }
 
+		vk::Fence getframeStatusFlag(const uint8_t frameIndex){
+			assert(frameIndex < this->imagesInFlight.size() && "Out of range.");
+			return this->imagesInFlight[frameIndex];
+		}
+
 	protected:
 		StarWindow& window;
 		StarDevice& device; 
@@ -56,11 +61,7 @@ namespace star {
 		
 		virtual void prepareForSubmission(const int& frameIndexToBeDrawn) override;
 
-		virtual void submissionDone();
-
 		void submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor);
-
-		virtual std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
 
 		std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> getOverrideBufferSubmissionCallback() override;
 		

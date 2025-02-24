@@ -3,7 +3,7 @@
 namespace star {
 
 SceneRenderer::SceneRenderer(star::StarScene& scene)
-	: StarRenderer(*scene.getCamera()), scene(scene)
+	: StarRenderer(scene.getCamera()), scene(scene)
 {
 }
 

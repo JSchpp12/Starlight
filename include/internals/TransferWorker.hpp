@@ -4,7 +4,7 @@
 #include "Allocator.hpp"
 #include "StarDevice.hpp"
 #include "StarBuffer.hpp"
-#include "BufferManagerRequest.hpp"
+#include "BufferMemoryTransferRequest.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <boost/atomic.hpp>
@@ -35,14 +35,13 @@ namespace star{
     class TransferManagerThread {
         public:
         struct InterThreadRequest{
-            std::optional<BufferManagerRequest*> bufferTransferRequest = std::nullopt;
+            std::unique_ptr<BufferMemoryTransferRequest> bufferTransferRequest = nullptr;
             std::optional<std::unique_ptr<StarBuffer>*> resultingBuffer = std::nullopt; 
             vk::Fence* completeFence = nullptr;
 
-            InterThreadRequest(BufferManagerRequest& request, std::unique_ptr<StarBuffer>& resultingBufferAddress, 
+            InterThreadRequest(std::unique_ptr<BufferMemoryTransferRequest> request, std::unique_ptr<StarBuffer>& resultingBufferAddress, 
                 vk::Fence* completeFence) 
-                : bufferTransferRequest(&request), resultingBuffer(&resultingBufferAddress), completeFence(completeFence) {}
-
+                : bufferTransferRequest(std::move(request)), resultingBuffer(&resultingBufferAddress), completeFence(completeFence) {}
         };
 
         struct InProcessRequestDependencies{
@@ -71,12 +70,12 @@ namespace star{
             this->thread.join();
         }
 
-        void add(InterThreadRequest request, const bool& isHighPriority = false);
+        void add(std::unique_ptr<InterThreadRequest> request, const bool& isHighPriority = false);
 
         void inSyncCleanup();
 
         //Manually create a buffer object, should only be used in non-async mode
-        std::unique_ptr<star::StarBuffer> syncCreate(BufferManagerRequest* newBufferRequest, boost::atomic<vk::Fence>& workCompleteFence);
+        std::unique_ptr<star::StarBuffer> syncCreate(BufferMemoryTransferRequest* newBufferRequest, boost::atomic<vk::Fence>& workCompleteFence);
 
         static void mainLoop(boost::atomic<bool>& shouldRun, boost::lockfree::stack<InterThreadRequest, boost::lockfree::capacity<50>>& highPriorityRequests, 
             boost::lockfree::stack<InterThreadRequest, boost::lockfree::capacity<50>>& standardTransferRequests);
@@ -84,18 +83,21 @@ namespace star{
         static std::vector<vk::CommandBuffer> createCommandBuffers(vk::Device& device, vk::CommandPool pool, 
             const uint8_t& numToCreate);
 
-        static std::unique_ptr<StarBuffer> createBuffer(vk::Device& device, Allocator& allocator, 
+        static void updateBufferData(vk::Device& device);
+
+        static void createBuffer(vk::Device& device, Allocator& allocator, 
             vk::Queue& transferQueue, vk::PhysicalDeviceLimits& limits, vk::Fence* workCompleteFence, 
-            BufferManagerRequest *newBufferRequest, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, 
-            size_t bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<vk::Fence*>& commandBufferFences);
+            BufferMemoryTransferRequest *newBufferRequest, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, 
+            size_t bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<vk::Fence*>& commandBufferFences,
+            std::unique_ptr<StarBuffer>* resultingBuffer);
 
         static void checkForCleanups(vk::Device& device, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, std::vector<vk::Fence*>& commandBufferFences); 
 
         static void readyCommandBuffer(vk::Device& device, const size_t& indexSelected, std::vector<vk::Fence*>& commandBufferFences); 
 
         protected:
-        std::optional<boost::lockfree::stack<InterThreadRequest, boost::lockfree::capacity<50>>> highPriorityRequests = std::nullopt;
-        std::optional<boost::lockfree::stack<InterThreadRequest, boost::lockfree::capacity<50>>> standardTransferRequests = std::nullopt; 
+        std::optional<boost::lockfree::stack<InterThreadRequest*, boost::lockfree::capacity<50>>> highPriorityRequests = std::nullopt;
+        std::optional<boost::lockfree::stack<InterThreadRequest*, boost::lockfree::capacity<50>>> standardTransferRequests = std::nullopt; 
 
         bool ownsVulkanResources = false;
         std::queue<std::unique_ptr<InProcessRequestDependencies>> inProcessRequests = std::queue<std::unique_ptr<InProcessRequestDependencies>>();
@@ -108,6 +110,7 @@ namespace star{
         size_t previousBufferIndexUsed = 0; 
         std::vector<vk::Queue> transferQueues;
         Allocator& allocator; 
+        std::vector<std::unique_ptr<InterThreadRequest>> transferRequests = std::vector<std::unique_ptr<InterThreadRequest>>(); 
 
         boost::atomic<bool> shouldRun = false;
         boost::thread thread;
@@ -127,7 +130,7 @@ namespace star{
         TransferWorker(StarDevice& device, star::Allocator& allocator,
             vk::Queue sharedTransferQueue, vk::CommandPool sharedCommandPool);
 
-        void add(BufferManagerRequest& newBufferRequest, vk::Fence* workCompleteFence, 
+        void add(std::unique_ptr<BufferMemoryTransferRequest> newBufferRequest, vk::Fence* workCompleteFence, 
             std::unique_ptr<StarBuffer>& resultingBuffer, const bool& isHighPriority);
 
         void update(); 

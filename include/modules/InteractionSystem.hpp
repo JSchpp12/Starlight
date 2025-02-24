@@ -43,7 +43,7 @@ public:
 	/// REgister a new defined world update callback. 
 	/// </summary>
 	/// <param name="newWorldUpdateFunction"></param>
-	static void registerWorldUpdateCallback(std::unique_ptr<std::function<void()>> newWorldUpdateCallback);
+	static void registerWorldUpdateCallback(std::unique_ptr<std::function<void(const uint32_t&)>> newWorldUpdateCallback);
 
 	/// <summary>
 	/// Main callback point from glfw when a key interaction is registered by glfw. 
@@ -83,7 +83,7 @@ public:
 	/// <summary>
 	/// Call all world update functions as needed.
 	/// </summary>
-	static void callWorldUpdates();
+	static void callWorldUpdates(const uint32_t& frameInFlightIndex);
 
 protected:
 	//pointer to user defined keyboard callback function located in application program
@@ -98,7 +98,7 @@ protected:
 	//container for pointers to defined mouse scroll callbacks
 	static std::vector<std::unique_ptr<std::function<void(double, double)>>> mouseScrollCallbacks;
 
-	static std::vector<std::unique_ptr<std::function<void()>>> worldUpdateCallbacks;
+	static std::vector<std::unique_ptr<std::function<void(const uint32_t&)>>> worldUpdateCallbacks;
 
 private:
 	//TODO: keep list of pressed buttons

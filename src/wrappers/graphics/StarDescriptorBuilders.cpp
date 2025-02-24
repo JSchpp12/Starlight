@@ -141,9 +141,15 @@ bool StarDescriptorPool::allocateDescriptorSet(const vk::DescriptorSetLayout des
 	allocInfo.pSetLayouts = &descriptorSetLayout;
 	allocInfo.descriptorSetCount = 1;
 
-auto result = this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet);
+	auto result = this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet);
+	
 	if (result != vk::Result::eSuccess) {
-		std::cout << "Failed to allocate descriptor set " << result << std::endl;
+		if (result == vk::Result::eErrorOutOfPoolMemory){
+			std::cout << "Out of pool memory" << std::endl; 
+		}else{
+			std::cout << "Failed to allocate descriptor set " << result << std::endl;
+		}
+
 		return false;
 	}
 
@@ -170,6 +176,13 @@ StarDescriptorWriter& StarDescriptorWriter::writeBuffer(uint32_t binding, vk::De
 
 	auto& bindingDescription = setLayout.bindings[binding];
 	assert(bindingDescription.descriptorCount == 1 && "Binding single descriptor info, but binding expects multiple");
+
+	for (auto& set : this->writeSets){
+		if (set.binding == binding){
+			set = FullDescriptorInfo(bufferInfos, bindingDescription.descriptorType, binding);
+			return *this;
+		}
+	}
 
 	this->writeSets.push_back(FullDescriptorInfo(bufferInfos, bindingDescription.descriptorType, binding));
 	return *this;

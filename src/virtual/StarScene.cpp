@@ -1,17 +1,17 @@
 #include "StarScene.hpp"
 
 star::StarScene::StarScene(const int& numFramesInFlight) 
-: camera(std::make_shared<star::BasicCamera>(1280, 720)){
+: myCamera(std::make_optional(std::make_unique<star::BasicCamera>(1280, 720))){
 
 	this->lightInfoBuffers.resize(numFramesInFlight);
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		this->globalInfoBuffers.emplace_back(ManagerBuffer::addRequest(std::make_unique<GlobalInfo>(static_cast<uint16_t>(i), *this->camera, this->lightCounter)));
+		this->globalInfoBuffers.emplace_back(ManagerBuffer::addRequest(std::make_unique<GlobalInfo>(static_cast<uint16_t>(i), *this->myCamera.value(), this->lightCounter)));
 	}
 }
 
-star::StarScene::StarScene(const int& numFramesInFLight, std::shared_ptr<star::StarCamera> camera, std::vector<star::Handle> globalInfoBuffers)
-: camera(camera), globalInfoBuffers(globalInfoBuffers) {
+star::StarScene::StarScene(const int& numFramesInFLight, star::StarCamera* externalCamera, std::vector<star::Handle> globalInfoBuffers)
+: externalCamera(std::make_optional(externalCamera)), globalInfoBuffers(globalInfoBuffers) {
 
 	this->lightInfoBuffers.resize(numFramesInFLight); 
 }
@@ -32,7 +32,9 @@ int star::StarScene::add(std::unique_ptr<star::Light> newLight) {
 	}
 
 	for (int i = 0; i < this->globalInfoBuffers.size(); i++){
-		ManagerBuffer::updateRequest(std::make_unique<GlobalInfo>(i, *this->camera, this->lightCounter), this->globalInfoBuffers[i]); 
+		// if (this->myCamera.has)
+
+		// ManagerBuffer::updateRequest(std::make_unique<GlobalInfo>(i, *this->camera, this->lightCounter), this->globalInfoBuffers[i]); 
 	}
 	return lightIndex;
 }
@@ -51,4 +53,12 @@ std::vector<std::reference_wrapper<star::StarObject>> star::StarScene::getObject
 		result.push_back(*obj.second);
 	}
 	return result; 
+}
+
+void star::StarScene::onWorldUpdate(const uint32_t& frameInFlightIndex){
+	//check if any objects have changed since last frame, if so, they need to be updated on GPU memory
+
+	if (this->myCamera.has_value()){
+		ManagerBuffer::updateRequest(std::make_unique<GlobalInfo>(frameInFlightIndex, *this->myCamera.value(), this->lightList.size()), this->globalInfoBuffers[frameInFlightIndex]);
+	}
 }

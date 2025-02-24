@@ -1,6 +1,7 @@
 #include "InstanceNormalInfo.hpp"
 
-void star::InstanceNormalInfo::write(StarBuffer& buffer)
+
+void star::InstanceNormalTransfer::writeData(star::StarBuffer& buffer) const
 {
 	buffer.map(); 
 
@@ -11,4 +12,9 @@ void star::InstanceNormalInfo::write(StarBuffer& buffer)
 	}
 	buffer.writeToBuffer(inverseTranspose.data());
 	buffer.unmap(); 
+}
+
+std::unique_ptr<star::BufferMemoryTransferRequest> star::InstanceNormalInfo::createTransferRequest() const
+{
+	return std::make_unique<InstanceNormalTransfer>(this->objectInstances);
 }

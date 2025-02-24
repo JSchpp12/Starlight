@@ -22,7 +22,6 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 	}
 
 	std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>();
-	std::vector<std::pair<CompleteRequest*, vk::Fence>> buffersToSubmitWithFences = std::vector<std::pair<CompleteRequest*, vk::Fence>>();
 
 	//submit buffers which have a suborder first
 	for (int i = star::Command_Buffer_Order_Index::first; i != star::Command_Buffer_Order_Index::fifth; i++) {
@@ -48,11 +47,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 		}
 
 		buffer->commandBuffer->submit(swapChainIndex);
-
-		if (buffer->afterBufferSubmissionCallback.has_value())
-			buffer->afterBufferSubmissionCallback.value()(swapChainIndex);
 	}
-
 
 	//submit all other buffers second
 	for (int type = star::Command_Buffer_Type::Tgraphics; type != star::Command_Buffer_Type::Tcompute; type++) {
@@ -123,20 +118,8 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 				if (*commandResult.get() != vk::Result::eSuccess) {
 					throw std::runtime_error("Failed to submit command buffer");
 				}
-
-				for (CompleteRequest& buffer : buffersToSubmit) {
-					buffersToSubmitWithFences.push_back(std::make_pair(&buffer, workingFence));
-				}
 			}
 		}
-	}
-
-	//after submit
-	for (auto& bufferAndFence : buffersToSubmitWithFences) {
-		this->device.getDevice().waitForFences(bufferAndFence.second, VK_TRUE, UINT64_MAX);
-
-		if (bufferAndFence.first->afterBufferSubmissionCallback.has_value())
-			bufferAndFence.first->afterBufferSubmissionCallback.value()(swapChainIndex);
 	}
 
 	return semaphores;

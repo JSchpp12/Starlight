@@ -47,7 +47,6 @@ void StarEngine::Run()
 {
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
-
 	ManagerDescriptorPool descriptorManager(*this->renderingDevice, framesInFlight);
 	RenderResourceSystem::init(*this->renderingDevice, framesInFlight, mainRenderer->getMainExtent());
 	ManagerCommandBuffer commandBufferManager(*this->renderingDevice, framesInFlight);
@@ -57,6 +56,8 @@ void StarEngine::Run()
 		framesInFlight, 
 		this->mainRenderer->getGlobalShaderInfo(), this->mainRenderer->getRenderingInfo());
 
+	uint8_t previousFrame = 0; 
+	uint8_t currentFrame = 0; 
 	while (!window->shouldClose()) {
 		//check if any new objects have been added
 		RenderResourceSystem::runInits(*this->renderingDevice, framesInFlight, this->mainRenderer->getMainExtent());
@@ -67,12 +68,14 @@ void StarEngine::Run()
 			screenshotPath = nullptr;
 		}
 
+ 		previousFrame = currentFrame; 
+		currentFrame = mainRenderer->getFrameToBeDrawn();
+
 		mainRenderer->pollEvents();
-		InteractionSystem::callWorldUpdates();
-		const uint32_t frameIndex = mainRenderer->getFrameToBeDrawn();
-		ManagerBuffer::update(frameIndex);
-		vk::Semaphore allBuffersSubmitted = commandBufferManager.update(frameIndex);
-		mainRenderer->submitPresentation(frameIndex, &allBuffersSubmitted);
+		InteractionSystem::callWorldUpdates(currentFrame);
+		ManagerBuffer::update(currentFrame);
+		vk::Semaphore allBuffersSubmitted = commandBufferManager.update(currentFrame);
+		mainRenderer->submitPresentation(currentFrame, &allBuffersSubmitted);
 
 		this->transferWorker->update();
 	}

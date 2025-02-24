@@ -1,14 +1,14 @@
 #include "LightInfo.hpp"
 
-void star::LightInfo::write(StarBuffer& buffer)
+void star::LightInfoTransfer::writeData(StarBuffer& buffer) const
 {
 	buffer.map(); 
 
-	std::vector<LightBufferObject> lightInformation(this->lights.size());
+	std::vector<LightBufferObject> lightInformation(this->myLights.size());
 	LightBufferObject newBufferObject{};
 
-	for (size_t i = 0; i < this->lights.size(); i++) {
-		const Light& currLight = *this->lights.at(i);
+	for (size_t i = 0; i < this->myLights.size(); i++) {
+		const Light& currLight = this->myLights.at(i);
 		newBufferObject.position = glm::vec4{ currLight.getPosition(), 1.0f };
 		newBufferObject.direction = currLight.direction;
 		newBufferObject.ambient = currLight.getAmbient();
@@ -24,6 +24,11 @@ void star::LightInfo::write(StarBuffer& buffer)
 	buffer.writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
 
 	buffer.unmap(); 
+}
+
+std::unique_ptr<star::BufferMemoryTransferRequest> star::LightInfo::createTransferRequest() const
+{
+	return std::make_unique<LightInfoTransfer>(this->lights);
 }
 
 bool star::LightInfo::isValid(const uint8_t& currentFrameInFlightIndex) const
