@@ -240,7 +240,7 @@ star::TransferManagerThread::~TransferManagerThread(){
         //single threaded mode
 
     }
-
+    
     //make sure to wait for all child threads to exit
 
     //destroy transferpool

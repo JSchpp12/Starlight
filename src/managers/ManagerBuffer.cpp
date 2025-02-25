@@ -51,11 +51,7 @@ star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManager
 	
 		auto* container = getRequestContainer(newBufferHandle);
 		container->get()->workingFence = managerDevice->getDevice().createFence(info);
-		managerWorker->add(container->get()->request->createTransferRequest(), &container->get()->workingFence, container->get()->buffer, isHighPriority);
-
-		auto& testBuffer = getBuffer(newBufferHandle);
-
-		std::cout << "test" << std::endl; 
+		managerWorker->add(container->get()->request->createTransferRequest(), &container->get()->workingFence, container->get()->buffer, isHighPriority); 
 	}
 
 	bufferCounter++; 
@@ -135,8 +131,13 @@ star::StarBuffer& star::ManagerBuffer::getBuffer(const star::Handle& handle)
 
 void star::ManagerBuffer::cleanup(StarDevice& device)
 {
-	for (auto& buffer : allBuffers)
-		buffer.reset(); 
+	for (auto& container : allBuffers)
+	{
+		if (container){
+			device.getDevice().destroyFence(container->workingFence);
+			container.reset(); 
+		}
+	}
 }
 
 void star::ManagerBuffer::destroy(const star::Handle& handle) {

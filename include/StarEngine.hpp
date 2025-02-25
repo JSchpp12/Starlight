@@ -1,5 +1,4 @@
-#ifndef STAR_ENGINE_HPP
-#define STAR_ENGINE_HPP
+#pragma once
 
 #include "ManagerBuffer.hpp"
 #include "SwapChainRenderer.hpp"
@@ -56,5 +55,3 @@ private:
 	const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = true;
 };
 }
-
-#endif

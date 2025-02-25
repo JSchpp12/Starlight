@@ -44,7 +44,7 @@ StarEngine::~StarEngine()
 }
 
 void StarEngine::Run()
-{
+{ 
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
 	ManagerDescriptorPool descriptorManager(*this->renderingDevice, framesInFlight);
@@ -81,6 +81,7 @@ void StarEngine::Run()
 	}
 
 	this->renderingDevice->getDevice().waitIdle();
+	ManagerBuffer::cleanup(*this->renderingDevice);
 	RenderResourceSystem::cleanup(*this->renderingDevice);
 	StarObject::cleanupSharedResources(*this->renderingDevice); 
 }
