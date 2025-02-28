@@ -32,7 +32,7 @@ namespace star {
 			std::unique_ptr<BufferManagerRequest> request = nullptr;
 			std::unique_ptr<StarBuffer> buffer = nullptr; 
 			std::unique_ptr<SharedFence> workingFence;
-			boost::atomic<bool> cpuWorkDoneByTransferThread = false; 
+			boost::atomic<bool> cpuWorkDoneByTransferThread = true; 
 
 			FinalizedBufferRequest(std::unique_ptr<BufferManagerRequest> request) 
 			: request(std::move(request)){}

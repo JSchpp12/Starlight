@@ -32,25 +32,28 @@ star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManager
 		newBufferHandle = Handle(staticBufferIDCounter, star::Handle_Type::buffer); 
 
 		staticBuffers.emplace(std::make_pair(newBufferHandle, &allBuffers.at(bufferCounter)));
+			//add the new request to the transfer manager
+		{
+			auto* container = getRequestContainer(newBufferHandle);
+			container->get()->workingFence = std::make_unique<SharedFence>(*managerDevice, true);
+			container->get()->cpuWorkDoneByTransferThread.store(false);
+			managerWorker->add(container->get()->request->createTransferRequest(), *container->get()->workingFence, container->get()->buffer, container->get()->cpuWorkDoneByTransferThread, false); 
+			container->get()->request.release();
+		}
 
 		staticBufferIDCounter += 2;
 	}else{
 		newBufferHandle = Handle(dynamicBufferIDCounter, star::Handle_Type::buffer); 
 
 		updateableBuffers.emplace(std::make_pair(newBufferHandle, &allBuffers.at(bufferCounter)));
+		{
+			auto* container = getRequestContainer(newBufferHandle);
+			container->get()->workingFence = std::make_unique<SharedFence>(*managerDevice, true);
+		}
 
 		dynamicBufferIDCounter += 2; 
 	}
 	
-	//add the new request to the transfer manager
-	{
-		auto* container = getRequestContainer(newBufferHandle);
-		container->get()->workingFence = std::make_unique<SharedFence>(*managerDevice, true);
-		managerWorker->add(container->get()->request->createTransferRequest(), *container->get()->workingFence, container->get()->buffer, container->get()->cpuWorkDoneByTransferThread, true); 
-		if (true){
-			highPriorityRequestCompleteFlags.insert(container->get()->workingFence.get());	
-		}
-	}
 
 	bufferCounter++; 
 	return newBufferHandle; 
