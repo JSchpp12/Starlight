@@ -8,7 +8,6 @@
 #include "StarMaterialMesh.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
-#include "BufferModifier.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -17,6 +16,12 @@
 namespace star {
 	class StarMesh {
 	public:
+		StarMesh(const std::array<glm::vec3, 2>& aaboundingBoxBounds, std::shared_ptr<StarMaterial> material, 
+			const uint32_t& numVerts, const uint32_t& numInds, const bool& isTriangular, const bool& hasAdjacenciesPacked) : 
+			material(std::move(material)), hasAdjacenciesPacked(false), triangular(isTriangular), 
+			numVerts(numVerts), numInds(numInds) {
+		}
+
 		StarMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, 
 			std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked) : 
 			material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), 
@@ -24,8 +29,7 @@ namespace star {
 			numInds(CastHelpers::size_t_to_unsigned_int(indices.size())) {
 
 			calcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
-
-		};
+		}
 
 		StarMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices,
 			std::shared_ptr<StarMaterial> material, const glm::vec3& boundBoxMinCoord,
@@ -35,7 +39,8 @@ namespace star {
 			numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())),
 			numInds(CastHelpers::size_t_to_unsigned_int(indices.size()))
 		{
-		};
+			calcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
+		}
 
 		virtual void prepRender(StarDevice& device);
 
@@ -47,7 +52,7 @@ namespace star {
 				this->aaboundingBoxBounds[0],
 				this->aaboundingBoxBounds[1]
 			};
-		};
+		}
 
 		uint32_t getNumVerts() const { return this->numVerts; }
 		uint32_t getNumIndices() const { return this->numInds; }
