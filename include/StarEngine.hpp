@@ -43,7 +43,6 @@ protected:
 	std::unique_ptr<SwapChainRenderer> mainRenderer; 
 	std::unique_ptr<TransferWorker> transferWorker;
 
-	
 	std::vector<Handle> lightList; 
 
 	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
@@ -52,6 +51,6 @@ protected:
 private: 
 	static std::unique_ptr<std::string> screenshotPath;
 
-	const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = true;
+	const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
 };
 }

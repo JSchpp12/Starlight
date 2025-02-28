@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BufferMemoryTransferRequest.hpp"
+#include "SharedFence.hpp"
 #include "BufferManagerRequest.hpp"
 #include "Enums.hpp"
 #include "StarBuffer.hpp"
@@ -10,6 +11,8 @@
 #include "TransferWorker.hpp"
 
 #include <vulkan/vulkan.hpp>
+
+#include <boost/atomic.hpp>
 
 #include <memory>
 #include <map>
@@ -28,7 +31,8 @@ namespace star {
 		struct FinalizedBufferRequest {
 			std::unique_ptr<BufferManagerRequest> request = nullptr;
 			std::unique_ptr<StarBuffer> buffer = nullptr; 
-			vk::Fence workingFence;
+			std::unique_ptr<SharedFence> workingFence;
+			boost::atomic<bool> cpuWorkDoneByTransferThread = false; 
 
 			FinalizedBufferRequest(std::unique_ptr<BufferManagerRequest> request) 
 			: request(std::move(request)){}
@@ -46,6 +50,8 @@ namespace star {
 		static void update(const int& frameInFlightIndex); 
 
 		static bool isReady(const Handle& handle);
+
+		static void waitForReady(const Handle& handle);
 
 		static void waitForAllHighPriorityRequests(); 
 
@@ -68,7 +74,7 @@ namespace star {
 		static std::vector<std::unique_ptr<FinalizedBufferRequest>> allBuffers;
 
 		static std::stack<FinalizedBufferRequest*> newRequests; 
-		static std::set<vk::Fence> highPriorityRequestCompleteFlags;
+		static std::set<SharedFence*> highPriorityRequestCompleteFlags;
 
 		//odd handles
 		static std::unordered_map<Handle, std::unique_ptr<FinalizedBufferRequest>*, HandleHash> updateableBuffers;

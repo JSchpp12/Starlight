@@ -12,7 +12,7 @@ namespace star {
 	return instanceSize;
 }
 
-StarBuffer::StarBuffer(Allocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
+StarBuffer::StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 	const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
 	const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
 	vk::DeviceSize minOffsetAlignment) :
@@ -36,20 +36,20 @@ StarBuffer::StarBuffer(Allocator& allocator, vk::DeviceSize instanceSize, uint32
 
 StarBuffer::~StarBuffer() {
 	if (mapped)
-		vmaUnmapMemory(this->allocator.get(), this->memory);
+		vmaUnmapMemory(allocator, this->memory);
 
-	vmaDestroyBuffer(this->allocator.get(), this->buffer, this->memory);
+	vmaDestroyBuffer(allocator, this->buffer, this->memory);
 }
 
 void StarBuffer::map(vk::DeviceSize size, vk::DeviceSize offset) {
 	assert(this->buffer && this->memory && "Called map on buffer before creation");
 
-	vmaMapMemory(this->allocator.get(), this->memory, &this->mapped);
+	vmaMapMemory(this->allocator, this->memory, &this->mapped);
 }
 
 void StarBuffer::unmap() {
 	if (mapped) {
-		vmaUnmapMemory(this->allocator.get(), this->memory);
+		vmaUnmapMemory(this->allocator, this->memory);
 		this->mapped = nullptr;
 	}
 }
@@ -68,7 +68,7 @@ void StarBuffer::writeToBuffer(void* data, vk::DeviceSize size, vk::DeviceSize o
 }
 
 vk::Result StarBuffer::flush(vk::DeviceSize size, vk::DeviceSize offset) {
-	auto result = vmaFlushAllocation(this->allocator.get(), this->memory, offset, size);
+	auto result = vmaFlushAllocation(this->allocator, this->memory, offset, size);
 	return vk::Result(result);
 }
 
@@ -92,7 +92,7 @@ vk::DescriptorBufferInfo StarBuffer::descriptorInfoForIndex(int index) {
 	return descriptorInfo(this->alignmentSize, index * alignmentSize);
 }
 
-void StarBuffer::createBuffer(Allocator& allocator, vk::DeviceSize size, vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo)
+void StarBuffer::createBuffer(VmaAllocator& allocator, vk::DeviceSize size, vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo)
 {
 	vk::BufferCreateInfo bufferInfo{};
 	bufferInfo.size = size;
@@ -103,7 +103,7 @@ void StarBuffer::createBuffer(Allocator& allocator, vk::DeviceSize size, vk::Buf
 	allocInfo.usage = memoryUsage;
 	allocInfo.flags = flags;
 
-	vmaCreateBuffer(allocator.get(), (VkBufferCreateInfo*)&bufferInfo, &allocInfo, (VkBuffer*)&buffer, &memory, &allocationInfo);
+	vmaCreateBuffer(allocator, (VkBufferCreateInfo*)&bufferInfo, &allocInfo, (VkBuffer*)&buffer, &memory, &allocationInfo);
 }
 
 }

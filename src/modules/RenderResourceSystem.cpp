@@ -89,7 +89,7 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 
 	vk::DeviceSize vertexSize = sizeof(star::Vertex);
 	std::unique_ptr<StarBuffer> vertBuffer = std::make_unique<StarBuffer>(
-		device.getAllocator(),
+		device.getAllocator().get(),
 		vertexSize,
 		uint32_t(totalVertInstanceCount),
 		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
@@ -107,7 +107,7 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 
 	vk::DeviceSize indSize = sizeof(uint32_t);
 	std::unique_ptr<StarBuffer> indBuffer = std::make_unique<StarBuffer>(
-		device.getAllocator(),
+		device.getAllocator().get(),
 		indSize,
 		uint32_t(totalIndInstanceCount),
 		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,

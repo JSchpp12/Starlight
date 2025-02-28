@@ -234,7 +234,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 	{
 		vk::DeviceSize vertSize = sizeof(Vertex);
 		vertStagingBuffer = std::make_unique<StarBuffer>(
-			device.getAllocator(),
+			device.getAllocator().get(),
 			vertSize,
 			totalNumVerts,
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
@@ -257,7 +257,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 	{
 		vk::DeviceSize indSize = sizeof(uint32_t);
 		indStagingBuffer = std::make_unique<StarBuffer>(
-			device.getAllocator(),
+			device.getAllocator().get(),
 			indSize,
 			totalNumInds,
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,

@@ -66,6 +66,13 @@ void star::ManagerCommandBuffer::handleNewRequests()
 	}
 }
 
+void star::ManagerCommandBuffer::callPreRecordFunctions(const uint8_t& frameInFlightIndex){
+	
+}
+void star::ManagerCommandBuffer::recordCommandBuffers(const uint8_t& frameInFlightIndex){
+
+}
+
 vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapChainIndex)
 {
 	//determine the order of buffers to execute

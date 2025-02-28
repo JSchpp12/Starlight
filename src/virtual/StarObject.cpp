@@ -146,7 +146,6 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 
 	createInstanceBuffers(device, numSwapChainImages); 
 	prepareMeshes(device); 
-	StarDescriptorPool& pool = ManagerDescriptorPool::getPool(); 
 }
 
 void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImages, StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
@@ -279,7 +278,7 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 		uint32_t count = bbVerts.size();
 
 		StarBuffer stagingBuffer{
-			device.getAllocator(),
+			device.getAllocator().get(),
 			size,
 			count,
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
@@ -293,7 +292,7 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
 
 		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(
-			device.getAllocator(),
+			device.getAllocator().get(),
 			size,
 			uint32_t(count),
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
@@ -312,7 +311,7 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 		uint32_t count = bbInds.size();
 
 		StarBuffer stagingBuffer{
-			device.getAllocator(),
+			device.getAllocator().get(),
 			size,
 			count,
 			(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT),
@@ -324,7 +323,7 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 		stagingBuffer.writeToBuffer(bbInds.data());
 
 		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
-			device.getAllocator(),
+			device.getAllocator().get(),
 			size,
 			uint32_t(count),
 			(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT),

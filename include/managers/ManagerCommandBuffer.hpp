@@ -53,6 +53,10 @@ namespace star {
 
 		static void request(std::function<CommandBufferRequest(void)> request);
 
+		static void callPreRecordFunctions(const uint8_t& frameInFlightIndex);
+		
+		static void recordCommandBuffers(const uint8_t& frameInFlightIndex);
+
 		static void submitDynamicBuffer(Handle bufferHandle);
 
 		/// @brief Process and submit all command buffers

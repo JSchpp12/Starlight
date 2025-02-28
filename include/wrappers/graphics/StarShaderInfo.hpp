@@ -18,6 +18,7 @@ namespace star {
 				BufferInfo(const Handle& handle, const vk::Buffer& currentBuffer)
 				: handle(handle), currentBuffer(currentBuffer){}
 
+				BufferInfo(const Handle& handle) : handle(handle){}
 				Handle handle;
 				vk::Buffer currentBuffer;
 			};
@@ -51,6 +52,9 @@ namespace star {
 
 				if (shaderInfos[index].bufferInfo.has_value()) {
 					auto& info = shaderInfos[index].bufferInfo.value();
+					if (!ManagerBuffer::isReady(info.handle)){
+						ManagerBuffer::waitForReady(info.handle);
+					}
 					auto& buffer = star::ManagerBuffer::getBuffer(info.handle);
 
 					auto bufferInfo = vk::DescriptorBufferInfo{
@@ -73,6 +77,8 @@ namespace star {
 
 			void build() {
 				{
+					this->isBuilt = true; 
+					
 					this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->layout, ManagerDescriptorPool::getPool());
 					for (int i = 0; i < this->shaderInfos.size(); i++) {
 						buildIndex(i); 
@@ -88,14 +94,21 @@ namespace star {
 				return *this->descriptorSet;
 			};
 
+			bool getIsBuilt() const {return this->isBuilt;}
+
 		private:
 			StarDevice& device;
 			StarDescriptorSetLayout& layout; 
 			bool setNeedsRebuild = true;
+			bool isBuilt = false;
 			std::shared_ptr<vk::DescriptorSet> descriptorSet = std::shared_ptr<vk::DescriptorSet>();
 			std::shared_ptr<StarDescriptorWriter> descriptorWriter = std::shared_ptr<StarDescriptorWriter>();
 
 			void rebuildSet() {
+				if (!this->descriptorWriter){
+					this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->layout, ManagerDescriptorPool::getPool());
+				}
+
 				this->descriptorSet = std::make_shared<vk::DescriptorSet>(this->descriptorWriter->build());
 				this->setNeedsRebuild = false; 
 			};
@@ -110,11 +123,6 @@ namespace star {
 		StarShaderInfo(StarDevice& device, std::vector<std::shared_ptr<StarDescriptorSetLayout>> layouts, 
 			std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> shaderInfoSets) 
 			: device(device), layouts(layouts), shaderInfoSets(shaderInfoSets) {
-			for (auto& set : this->shaderInfoSets){
-				for (int i = 0; i < set.size(); i++) {
-					set[i]->build();
-				}
-			}
 		};
 
 		bool isReady(const uint8_t& frameInFlight){
@@ -140,14 +148,21 @@ namespace star {
 
 		std::vector<vk::DescriptorSet> getDescriptors(const int& frameInFlight) {
 			for (auto& set : this->shaderInfoSets[frameInFlight]) {
-				for (int i = 0; i < set->shaderInfos.size(); i++) {
-					if (set->shaderInfos.at(i).bufferInfo.has_value()) {
-						//check if buffer has changed
-						auto& info = set->shaderInfos.at(i).bufferInfo.value();
-						const auto& buffer = ManagerBuffer::getBuffer(info.handle).getVulkanBuffer();
-						if (info.currentBuffer != buffer){
-							info.currentBuffer = buffer;
-							set->buildIndex(i);
+				if (!set->getIsBuilt())
+					set->build();
+				else{
+					for (int i = 0; i < set->shaderInfos.size(); i++) {
+						if (set->shaderInfos.at(i).bufferInfo.has_value()) {
+							//check if buffer has changed
+							auto& info = set->shaderInfos.at(i).bufferInfo.value();
+							if (!ManagerBuffer::isReady(info.handle))
+								ManagerBuffer::waitForReady(info.handle);
+								
+							const auto& buffer = ManagerBuffer::getBuffer(info.handle).getVulkanBuffer();
+							if (!info.currentBuffer || info.currentBuffer != buffer){
+								info.currentBuffer = buffer;
+								set->buildIndex(i);
+							}
 						}
 					}
 				}
@@ -189,7 +204,7 @@ namespace star {
 			};
 
 			Builder& add(const Handle& bufferHandle) {
-				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle, ManagerBuffer::getBuffer(bufferHandle).getVulkanBuffer()}));
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}));
 				return *this;
 			};
 

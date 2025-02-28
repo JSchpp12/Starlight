@@ -12,7 +12,7 @@ class StarBuffer {
 public:
 	static vk::DeviceSize getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
 
-	StarBuffer(Allocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
+	StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 		const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
 		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
 		vk::DeviceSize minOffsetAlignment = 1);
@@ -46,7 +46,7 @@ public:
 	vk::DeviceSize getBufferSize() const { return bufferSize; }
 
 private:
-	Allocator& allocator;
+	VmaAllocator& allocator;
 	void* mapped = nullptr;
 	VmaAllocation memory = VmaAllocation();
 
@@ -60,8 +60,7 @@ private:
 
 	std::unique_ptr<VmaAllocationInfo> allocationInfo = nullptr;
 
-
-	static void createBuffer(Allocator& allocator, vk::DeviceSize size, 
+	static void createBuffer(VmaAllocator& allocator, vk::DeviceSize size, 
 		vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, 
 		vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo);
 };

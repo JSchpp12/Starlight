@@ -1,33 +1,94 @@
 #include "TransferWorker.hpp"
 
-// std::unique_ptr<star::StarBuffer> star::TransferManagerThread::syncCreate(star::BufferManagerRequest* newBufferRequest, boost::atomic<vk::Fence>& workCompleteFence){
-//     assert(!this->thread.joinable() && "This function should only be called in single threaded mode. The instance of this transferThread has a child thread running");
+star::TransferManagerThread::~TransferManagerThread(){
+    if (this->thread.joinable()){
+        this->stopAsync();
 
-//     return createBuffer(this->myDevice, this->myTransferQueue, this->myAllocator, newBufferRequest, workCompleteFence);
-// }
-
-// std::unique_ptr<star::StarBuffer> star::TransferThread::createBuffer(vk::Device& device, vk::Queue& transferQueue, Allocator& allocator, BufferManagerRequest *newBufferRequest, boost::atomic<vk::Fence>& workCompleteFence){
-
-//     //create resulting buffer
-//     auto stagingBuffer = std::make_unique<StarBuffer>(
-//         allocator, 
-//         newBufferRequest->getCreationArgs().instanceSize, 
-//         newBufferRequest->getCreationArgs().instanceCount,
-//         (VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT),
-//         (VMA_MEMORY_USAGE_AUTO),
-//         vk::BufferUsageFlagBits::eTransferSrc,
-//         newBufferRequest->getCreationArgs().sharingMode,
-//         1
-//     );
-
-//     //create resulting buffer
-//     newBufferRequest->write(*stagingBuffer);
-    
-//     //submit copy commands
+        this->thread.join();
+    }
+}
 
 
-//     return std::unique_ptr<StarBuffer>();
-// }
+void star::TransferManagerThread::initMultithreadedDeps(){
+    this->highPriorityRequests.emplace(50);
+    this->standardRequests.emplace(50);
+}
+
+void star::TransferManagerThread::startAsync(){
+   this->initMultithreadedDeps();
+
+    this->shouldRun.store(true);
+    this->thread = boost::thread(TransferManagerThread::mainLoop, 
+        &this->shouldRun, 
+        &this->device.getDevice(),
+        &this->transferPool,
+        &this->transferQueue, 
+        &this->allocator.get(), 
+        &this->deviceLimits,
+        &this->commandBufferFences,
+        &this->highPriorityRequests.value(), 
+        &this->standardRequests.value()
+    );
+
+    if (!this->thread.joinable())
+        throw std::runtime_error("Failed to launch transfer thread");
+}
+
+void star::TransferManagerThread::stopAsync(){
+    this->shouldRun.store(false);
+            
+    //wait for thread to exit
+    this->thread.join();
+}
+
+void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, vk::CommandPool* transferPool, vk::Queue* transferQueue, VmaAllocator* allocator, vk::PhysicalDeviceLimits* limits, std::vector<SharedFence*>* commandBufferFences, boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>* highPriorityRequests, boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>* standardRequests){
+    std::cout << "Transfer thread started..." << std::endl;
+    size_t targetBufferIndex = 0;
+    size_t previousBufferIndexUsed = 0;
+    std::vector<vk::CommandBuffer> commandBuffers = createCommandBuffers(*device, *transferPool, 5);
+    std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>> inProcessRequests = std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>>();
+
+    while(shouldRun->load()){
+        InterThreadRequest* request = nullptr; 
+        if(!highPriorityRequests->pop(request) && !standardRequests->pop(request)){
+            if (!inProcessRequests.empty()){
+                checkForCleanups(*device, inProcessRequests, *commandBufferFences);
+            }
+
+            
+            std::this_thread::sleep_for(std::chrono::microseconds(500));
+        }else{
+            if (!request->bufferTransferRequest){
+                std::runtime_error("Does not support textures yet.");
+            }else{
+
+                if (previousBufferIndexUsed != commandBuffers.size()-1){
+                    targetBufferIndex = previousBufferIndexUsed + 1;
+                    previousBufferIndexUsed++; 
+                }
+        
+                readyCommandBuffer(*device, targetBufferIndex, *commandBufferFences); 
+                
+                createBuffer(*device, 
+                    *allocator, 
+                    *transferQueue, 
+                    *limits, 
+                    *request->completeFence, 
+                    request->bufferTransferRequest.get(), 
+                    inProcessRequests, 
+                    targetBufferIndex, 
+                    commandBuffers, 
+                    *commandBufferFences, 
+                    request->resultingBuffer.value());                
+            }
+
+            request->cpuWorkDoneByTransferThread->store(true);
+            request->cpuWorkDoneByTransferThread->notify_one();
+        }
+    }
+
+    std::cout << "Transfer Thread exiting..." << std::endl;
+}
 
 std::vector<vk::CommandBuffer> star::TransferManagerThread::createCommandBuffers(vk::Device& device, vk::CommandPool pool, const uint8_t& numToCreate){
     vk::CommandBufferAllocateInfo allocInfo{};
@@ -55,7 +116,7 @@ std::vector<vk::Queue> star::TransferManagerThread::createTransferQueues(star::S
     return queues;
 }
 
-void star::TransferManagerThread::createBuffer(vk::Device& device, Allocator& allocator, vk::Queue& transferQueue, vk::PhysicalDeviceLimits& limits, vk::Fence* workCompleteFence, BufferMemoryTransferRequest *newBufferRequest, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, size_t bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<vk::Fence*>& commandBufferFences, std::unique_ptr<StarBuffer>* resultingBuffer) {
+void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, vk::PhysicalDeviceLimits& limits, SharedFence& workCompleteFence, BufferMemoryTransferRequest* newBufferRequest, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, size_t bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, std::unique_ptr<StarBuffer>* resultingBuffer) {
     assert(commandBufferFences[bufferIndexToUse] == nullptr && "Command buffer fence should have already been waited on and removed");
     
     auto transferSrcBuffer = std::make_unique<StarBuffer>(
@@ -112,7 +173,11 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, Allocator& al
         submitInfo.pCommandBuffers = &commandBuffer; 
         submitInfo.commandBufferCount = 1;
 
-        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, *workCompleteFence)); 
+        boost::unique_lock<boost::mutex> lock; 
+        vk::Fence fence; 
+        workCompleteFence.giveMeFence(lock, fence);
+
+        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, fence)); 
 
         if (*commandResult != vk::Result::eSuccess){
             //handle error
@@ -120,57 +185,88 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, Allocator& al
         }
     }
 
-    inProcessRequests.push(std::make_unique<InProcessRequestDependencies>(std::move(transferSrcBuffer), workCompleteFence));
-    commandBufferFences[bufferIndexToUse] = workCompleteFence; 
+    inProcessRequests.push(std::make_unique<InProcessRequestDependencies>(std::move(transferSrcBuffer), &workCompleteFence));
+    commandBufferFences[bufferIndexToUse] = &workCompleteFence; 
 }
 
-void star::TransferManagerThread::checkForCleanups(vk::Device& device, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, std::vector<vk::Fence*>& commandBufferFences){
+void star::TransferManagerThread::checkForCleanups(vk::Device& device, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, std::vector<SharedFence*>& commandBufferFences){
     
     std::queue<std::unique_ptr<InProcessRequestDependencies>> stillInProcess = std::queue<std::unique_ptr<InProcessRequestDependencies>>();
 
     while(!inProcessRequests.empty()){
-        std::unique_ptr<InProcessRequestDependencies>& deps = inProcessRequests.back();
+        std::unique_ptr<InProcessRequestDependencies>& deps = inProcessRequests.front();
+        {
+            boost::unique_lock<boost::mutex> lock; 
+            vk::Fence fence;
+            deps->completeFence->giveMeFence(lock, fence);
 
-        auto fenceResult = device.getFenceStatus(*deps->completeFence);
-        if(fenceResult != vk::Result::eSuccess){
-            stillInProcess.push(std::move(deps));
+            auto fenceResult = device.getFenceStatus(fence);
+            if(fenceResult != vk::Result::eSuccess){
+                stillInProcess.push(std::move(deps));
+            }
         }
 
         inProcessRequests.pop();
     }
 
-    inProcessRequests = std::move(stillInProcess);
+    if (stillInProcess.size() > 0)
+    {
+        while(!stillInProcess.empty()){
+            inProcessRequests.push(std::move(stillInProcess.front()));
+            stillInProcess.pop();
+        }
+    }
 }
 
-void star::TransferManagerThread::readyCommandBuffer(vk::Device& device, const size_t& indexSelected, std::vector<vk::Fence*>& commandBufferFences){
+void star::TransferManagerThread::readyCommandBuffer(vk::Device& device, const size_t& indexSelected, std::vector<SharedFence*>& commandBufferFences){
     //sometimes multiple updates can be called on a buffer which shares a fence with the commandBuffers, if this happens, the manager is expected to reset the fence 
     if (commandBufferFences[indexSelected] != nullptr){
-        auto result = device.waitForFences(*commandBufferFences[indexSelected], true, UINT64_MAX);
-
-        if (result != vk::Result::eSuccess)
-            throw std::runtime_error("Failed to wait for fence"); 
+        {
+            boost::unique_lock<boost::mutex> lock;
+            vk::Fence fence; 
+            commandBufferFences[indexSelected]->giveMeFence(lock, fence);
+    
+            auto result = device.waitForFences(fence, true, UINT64_MAX);
+           
+            if (result != vk::Result::eSuccess)
+                throw std::runtime_error("Failed to wait for fence"); 
+        }
 
         commandBufferFences[indexSelected] = nullptr; 
     }
 }
 
-
-star::TransferManagerThread::TransferManagerThread(vk::Device& device, star::Allocator& allocator, vk::PhysicalDeviceLimits deviceLimits)
-: device(device), deviceLimits(deviceLimits), ownsVulkanResources(true), allocator(allocator) {
-    // device.createPool(myTransferPoolIndex, vk::CommandPoolCreateFlagBits::eResetCommandBuffer, this->transferPool);
-    // this->transferQueues = createTransferQueues(device, myTransferPoolIndex);
-    // this->commandBuffers = createCommandBuffers(device, this->transferPool, 1);
-}
-
-star::TransferManagerThread::TransferManagerThread(vk::Device& device, star::Allocator& allocator, vk::PhysicalDeviceLimits deviceLimits, vk::Queue sharedTransferQueue, vk::CommandPool sharedCommandPool)
-: device(device), allocator(allocator), transferPool(sharedCommandPool), transferQueues({sharedTransferQueue}), 
-commandBuffers(createCommandBuffers(device, sharedCommandPool, 5)), commandBufferFences(std::vector<vk::Fence*>(5)), deviceLimits(deviceLimits){
+star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator, vk::PhysicalDeviceLimits deviceLimits, vk::Queue transferQueue, vk::CommandPool sharedCommandPool)
+: device(device), allocator(allocator), transferPool(sharedCommandPool), transferQueue(transferQueue), 
+commandBuffers(createCommandBuffers(device.getDevice(), sharedCommandPool, 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceLimits(deviceLimits){
 
 }
 
 void star::TransferManagerThread::add(std::unique_ptr<star::TransferManagerThread::InterThreadRequest> request, const bool& isHighPriority){
-    assert(this->device.getFenceStatus(*request->completeFence) == vk::Result::eSuccess && "Fences MUST be submitting in a signaled state to the worker");
-    
+    assert(!request->cpuWorkDoneByTransferThread->load() && "Request cannot be submitted if it is already in processing by worker");
+
+    {
+        boost::unique_lock<boost::mutex> lock;
+        vk::Fence fence; 
+        request->completeFence->giveMeFence(lock, fence);
+
+        assert(this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess && "Fences MUST be submitting in a signaled state to the worker");
+    }
+   
+    //check if in use by any fence
+    for (int i = 0; i < this->commandBufferFences.size(); i++){
+        if (this->commandBufferFences[i] != nullptr && this->commandBufferFences[i] == request->completeFence){
+            this->commandBufferFences[i] = VK_NULL_HANDLE;
+        }
+    }
+    {
+        boost::unique_lock<boost::mutex> lock;
+        vk::Fence fence;
+        request->completeFence->giveMeFence(lock, fence);
+        this->device.getDevice().resetFences(std::vector<vk::Fence>{fence});
+    }
+
+
     //TODO: will just need to manage removing elements from this when they are done
     this->transferRequests.emplace_back(std::move(request)); 
 
@@ -178,7 +274,7 @@ void star::TransferManagerThread::add(std::unique_ptr<star::TransferManagerThrea
         if (isHighPriority){
             this->highPriorityRequests.value().push(this->transferRequests.back().get());
         }else{
-            this->standardTransferRequests.value().push(this->transferRequests.back().get());
+            this->standardRequests.value().push(this->transferRequests.back().get());
         }
     }else{
         size_t targetBufferIndex = 0;
@@ -187,70 +283,61 @@ void star::TransferManagerThread::add(std::unique_ptr<star::TransferManagerThrea
             this->previousBufferIndexUsed++; 
         }
 
-        readyCommandBuffer(this->device, targetBufferIndex, this->commandBufferFences); 
-
-        this->device.resetFences(*this->transferRequests.back()->completeFence); 
+        readyCommandBuffer(this->device.getDevice(), targetBufferIndex, this->commandBufferFences); 
 
         {
-            createBuffer(this->device, this->allocator, 
-                this->transferQueues.back(), this->deviceLimits, this->transferRequests.back()->completeFence, 
+            createBuffer(this->device.getDevice(), this->allocator.get(), 
+                this->transferQueue, this->deviceLimits, *this->transferRequests.back()->completeFence, 
                 this->transferRequests.back()->bufferTransferRequest.get(), this->inProcessRequests, 
                 targetBufferIndex, this->commandBuffers, this->commandBufferFences, this->transferRequests.back()->resultingBuffer.value());
         }
 
         this->previousBufferIndexUsed = targetBufferIndex; 
-
+        this->transferRequests.back()->cpuWorkDoneByTransferThread->store(true);
         this->transferRequests.back().reset(); 
         this->transferRequests.pop_back();
     }
 }
 
-void star::TransferManagerThread::inSyncCleanup(){
-    checkForCleanups(this->device, this->inProcessRequests, this->commandBufferFences);
+void star::TransferManagerThread::cleanup(){
+    if (this->thread.joinable())
+        checkForCleanups(this->device.getDevice(), this->inProcessRequests, this->commandBufferFences);
+
+    bool fullCleanupAvailable = true;
+    for (int i = 0; i < this->transferRequests.size(); i++){
+        if (this->transferRequests[i]){
+            fullCleanupAvailable = false; 
+
+            {
+                boost::unique_lock<boost::mutex> lock;
+                vk::Fence fence; 
+                this->transferRequests[i]->completeFence->giveMeFence(lock, fence);
+
+                if (this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess){
+                    this->transferRequests[i].reset();
+                }
+            }
+        }
+    }
+
+    if (fullCleanupAvailable){
+        this->transferRequests = std::vector<std::unique_ptr<InterThreadRequest>>();
+    }
 }
 
 star::TransferWorker::~TransferWorker() {
-    if (this->asyncMode){
-        // for (auto& worker : this->workers){
-        //     worker->stop();
-        // }
-    }
 }
 
-star::TransferWorker::TransferWorker(star::StarDevice& device, star::Allocator& allocator) 
-: asyncMode(true), manager(std::make_unique<TransferManagerThread>(device.getDevice(), allocator, device.getPhysicalDevice().getProperties().limits)) {
-
+star::TransferWorker::TransferWorker(star::StarDevice& device, star::Allocator& allocator, vk::Queue sharedTransferQueue, vk::CommandPool sharedCommandPool, const bool& runAsync)
+: manager(std::make_unique<TransferManagerThread>(device, allocator, device.getPhysicalDevice().getProperties().limits, sharedTransferQueue, sharedCommandPool)) {
+    if (runAsync)
+        this->manager->startAsync(); 
 }
 
-star::TransferWorker::TransferWorker(star::StarDevice& device, star::Allocator& allocator, vk::Queue sharedTransferQueue, vk::CommandPool sharedCommandPool)
-: asyncMode(false), manager(std::make_unique<TransferManagerThread>(device.getDevice(), allocator, device.getPhysicalDevice().getProperties().limits, sharedTransferQueue, sharedCommandPool)) {
-
+void star::TransferWorker::add(std::unique_ptr<star::BufferMemoryTransferRequest> newBufferRequest, SharedFence& workCompleteFence, std::unique_ptr<star::StarBuffer>& resultingBuffer, boost::atomic<bool>& isBeingWorkedOnByTransferThread, const bool& isHighPriority){
+    this->manager->add(std::make_unique<TransferManagerThread::InterThreadRequest>(std::move(newBufferRequest), resultingBuffer, &workCompleteFence, &isBeingWorkedOnByTransferThread), isHighPriority);
 }
-
-void star::TransferWorker::add(std::unique_ptr<star::BufferMemoryTransferRequest> newBufferRequest, vk::Fence* workCompleteFence, std::unique_ptr<star::StarBuffer>& resultingBuffer, const bool& isHighPriority){
-    this->manager->add(std::make_unique<TransferManagerThread::InterThreadRequest>(std::move(newBufferRequest), resultingBuffer, workCompleteFence), isHighPriority);
-}
-
-star::TransferManagerThread::~TransferManagerThread(){
-    if (this->ownsVulkanResources){
-        //multithreaded mode
-        //means that this class is responsible for destroying the transfer pool it was using
-
-    }else{
-        //single threaded mode
-
-    }
-    
-    //make sure to wait for all child threads to exit
-
-    //destroy transferpool
-
-    //sync mode
-}
-
 
 void star::TransferWorker::update(){
-    if (!this->asyncMode){
-        this->manager->inSyncCleanup();
-    }
+    this->manager->cleanup(); 
 }

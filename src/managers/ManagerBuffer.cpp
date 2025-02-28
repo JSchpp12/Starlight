@@ -5,7 +5,7 @@ std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedB
 std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash> star::ManagerBuffer::staticBuffers = std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash>();
 std::stack<star::ManagerBuffer::FinalizedBufferRequest*> star::ManagerBuffer::newRequests = std::stack<star::ManagerBuffer::FinalizedBufferRequest*>();
 
-std::set<vk::Fence> star::ManagerBuffer::highPriorityRequestCompleteFlags = std::set<vk::Fence>();
+std::set<star::SharedFence*> star::ManagerBuffer::highPriorityRequestCompleteFlags = std::set<star::SharedFence*>();
 star::StarDevice* star::ManagerBuffer::managerDevice = nullptr;
 star::TransferWorker* star::ManagerBuffer::managerWorker = nullptr;
 int star::ManagerBuffer::managerNumFramesInFlight = 0;
@@ -15,8 +15,7 @@ int star::ManagerBuffer::staticBufferIDCounter = 0;
 int star::ManagerBuffer::dynamicBufferIDCounter = 1; 
 
 
-void star::ManagerBuffer::init(star::StarDevice& device, star::TransferWorker& worker, const int& numFramesInFlight)
-{
+void star::ManagerBuffer::init(star::StarDevice& device, star::TransferWorker& worker, const int& numFramesInFlight){
 	assert(managerDevice == nullptr && "Init function should only be called once");
 
 	managerDevice = &device;
@@ -45,13 +44,12 @@ star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManager
 	
 	//add the new request to the transfer manager
 	{
-		vk::FenceCreateInfo info{}; 
-		info.sType = vk::StructureType::eFenceCreateInfo;
-		info.flags = vk::FenceCreateFlagBits::eSignaled;
-	
 		auto* container = getRequestContainer(newBufferHandle);
-		container->get()->workingFence = managerDevice->getDevice().createFence(info);
-		managerWorker->add(container->get()->request->createTransferRequest(), &container->get()->workingFence, container->get()->buffer, isHighPriority); 
+		container->get()->workingFence = std::make_unique<SharedFence>(*managerDevice, true);
+		managerWorker->add(container->get()->request->createTransferRequest(), *container->get()->workingFence, container->get()->buffer, container->get()->cpuWorkDoneByTransferThread, true); 
+		if (true){
+			highPriorityRequestCompleteFlags.insert(container->get()->workingFence.get());	
+		}
 	}
 
 	bufferCounter++; 
@@ -63,78 +61,121 @@ void star::ManagerBuffer::update(const int& frameInFlightIndex){
 
 	//need to make sure any previous transfers have completed before submitting
 	std::vector<FinalizedBufferRequest*> requestsToUpdate = std::vector<FinalizedBufferRequest*>();
-	std::vector<vk::Fence> waits;
 	{
+		std::vector<vk::Fence> waits;
+		std::vector<std::unique_ptr<boost::unique_lock<boost::mutex>>> locks = std::vector<std::unique_ptr<boost::unique_lock<boost::mutex>>>(); 
+		
+		//check if the request is still in processing by GPU -- wait if it is
 		for (auto& request : updateableBuffers) {
 			std::unique_ptr<FinalizedBufferRequest>* container = getRequestContainer(request.first);
 
 			//check the requests which need updating this frame
 			if (!container->get()->request->isValid(frameInFlightIndex)) {
-			//check if the request is still in processing -- wait if it i
-				waits.push_back(container->get()->workingFence);
+				if (!container->get()->cpuWorkDoneByTransferThread.load())
+					container->get()->cpuWorkDoneByTransferThread.wait(false);
+
+				std::unique_ptr<boost::unique_lock<boost::mutex>> lock = std::unique_ptr<boost::unique_lock<boost::mutex>>(new boost::unique_lock<boost::mutex>());
+				vk::Fence fence; 
+				container->get()->workingFence->giveMeFence(*lock, fence);
+				waits.push_back(fence);
+				locks.push_back(std::move(lock));
+				
 				requestsToUpdate.push_back(container->get());
 			}
 		}
 
-		if (waits.size() > 0)
+		if (waits.size() > 0){
 			waitForFences(waits);
+		}
 	}
 
 	for (int i = 0; i < requestsToUpdate.size(); i++){
-		managerWorker->add(requestsToUpdate[i]->request->createTransferRequest(), &requestsToUpdate[i]->workingFence, requestsToUpdate[i]->buffer, true);
+		requestsToUpdate[i]->cpuWorkDoneByTransferThread.store(false);
+		managerWorker->add(requestsToUpdate[i]->request->createTransferRequest(), *requestsToUpdate[i]->workingFence, requestsToUpdate[i]->buffer, requestsToUpdate[i]->cpuWorkDoneByTransferThread, true);
 	}
-
-	if (waits.size() > 0)
-		waitForFences(waits); 
 }
 
 void star::ManagerBuffer::updateRequest(std::unique_ptr<BufferManagerRequest> newRequest, const star::Handle& handle, const bool& isHighPriority){
 	//possible race condition....need to make sure the request on the secondary thread has been finished first before replacing
 	auto* container = getRequestContainer(handle); 
 
-	auto wait = std::vector<vk::Fence>{container->get()->workingFence};
+	while (!container->get()->cpuWorkDoneByTransferThread.load()){
+		container->get()->cpuWorkDoneByTransferThread.wait(false);
+	}
+
 	if (!isReady(handle)){
 		std::cout << "Update request submitted before previous complete. Waiting..." << std::endl;
 
+		boost::unique_lock<boost::mutex> lock; 
+		vk::Fence fence; 
+		container->get()->workingFence->giveMeFence(lock, fence);
+		auto wait = std::vector<vk::Fence>{fence};
 		waitForFences(wait); 
 	}
 	
 	container->get()->request = std::move(newRequest); 
 
-	managerWorker->add(container->get()->request->createTransferRequest(), &container->get()->workingFence, container->get()->buffer, isHighPriority);
+	managerWorker->add(container->get()->request->createTransferRequest(), *container->get()->workingFence, container->get()->buffer, container->get()->cpuWorkDoneByTransferThread, isHighPriority);
 
-	highPriorityRequestCompleteFlags.insert(container->get()->workingFence);
+	highPriorityRequestCompleteFlags.insert(container->get()->workingFence.get());
 }
 
 bool star::ManagerBuffer::isReady(const star::Handle& handle){
 	//check the fence for the buffer request
-	auto* conatiner = getRequestContainer(handle); 
+	auto* container = getRequestContainer(handle); 
 
-	auto fenceResult = managerDevice->getDevice().getFenceStatus(conatiner->get()->workingFence);
+	if (!container->get()->cpuWorkDoneByTransferThread.load())
+	{
+		boost::unique_lock<boost::mutex> lock; 
+		vk::Fence fence; 
+		container->get()->workingFence->giveMeFence(lock, fence);
+		auto fenceResult = managerDevice->getDevice().getFenceStatus(fence);
 
-	//if it is ready and the request has not been destroyed, can remove safely becuase the secondary thread should be done with it
-	if (fenceResult == vk::Result::eSuccess){
-		if (conatiner->get()->request)
-			conatiner->get()->request.reset();
-		return true; 
+		//if it is ready and the request has not been destroyed, can remove safely becuase the secondary thread should be done with it
+		if (fenceResult == vk::Result::eSuccess){
+			return true; 
+		}
 	}
 
 	return false; 
 }
 
-star::StarBuffer& star::ManagerBuffer::getBuffer(const star::Handle& handle)
-{
-	assert(handle.getType() == star::Handle_Type::buffer && "Handle provided is not a buffer handle");
+void star::ManagerBuffer::waitForReady(const Handle& handle){
+	auto* container = getRequestContainer(handle);
 
-	return *getRequestContainer(handle)->get()->buffer;
+	while (!container->get()->cpuWorkDoneByTransferThread.load()){
+		container->get()->cpuWorkDoneByTransferThread.wait(false);
+	}
+
+	{
+		boost::unique_lock<boost::mutex> lock;
+		vk::Fence fence; 
+		container->get()->workingFence->giveMeFence(lock, fence);
+		auto wait = std::vector<vk::Fence>{fence};
+		waitForFences(wait); 
+	}
 }
 
-void star::ManagerBuffer::cleanup(StarDevice& device)
-{
-	for (auto& container : allBuffers)
+star::StarBuffer& star::ManagerBuffer::getBuffer(const star::Handle& handle){
+	assert(handle.getType() == star::Handle_Type::buffer && "Handle provided is not a buffer handle");
+
+	auto* container = getRequestContainer(handle)->get(); 
 	{
+		boost::unique_lock<boost::mutex> lock;
+		vk::Fence fence;
+		container->workingFence->giveMeFence(lock, fence);
+
+		if (managerDevice->getDevice().getFenceStatus(fence) != vk::Result::eSuccess){
+			throw std::runtime_error("Requester must call the isReady function to make sure the resource is ready before requesting it.");
+		}
+	}
+
+	return *container->buffer;
+}
+
+void star::ManagerBuffer::cleanup(StarDevice& device){
+	for (auto& container : allBuffers){
 		if (container){
-			device.getDevice().destroyFence(container->workingFence);
 			container.reset(); 
 		}
 	}
@@ -145,8 +186,7 @@ void star::ManagerBuffer::destroy(const star::Handle& handle) {
 	container->reset(); 
 }
 
-bool star::ManagerBuffer::isBufferStatic(const star::Handle& handle)
-{
+bool star::ManagerBuffer::isBufferStatic(const star::Handle& handle){
 	return handle.getID() % 2 == 0;
 }
 
