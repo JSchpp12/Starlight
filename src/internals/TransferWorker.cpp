@@ -55,7 +55,6 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
                 checkForCleanups(*device, inProcessRequests, *commandBufferFences);
             }
 
-            
             std::this_thread::sleep_for(std::chrono::microseconds(500));
         }else{
             if (!request->bufferTransferRequest){
@@ -81,6 +80,8 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
                     *commandBufferFences, 
                     request->resultingBuffer.value());                
             }
+
+            request->bufferTransferRequest.get()->afterWriteData();
 
             request->cpuWorkDoneByTransferThread->store(true);
             request->cpuWorkDoneByTransferThread->notify_one();

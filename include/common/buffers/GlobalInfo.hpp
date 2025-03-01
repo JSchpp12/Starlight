@@ -3,6 +3,7 @@
 #include "BufferManagerRequest.hpp"
 #include "BufferMemoryTransferRequest.hpp"
 #include "StarCamera.hpp"
+#include "ObjVertInfo.hpp"
 
 #include <vulkan/vulkan.hpp>
 

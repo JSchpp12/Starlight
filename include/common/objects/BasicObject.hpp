@@ -8,6 +8,7 @@
 #include "StarObject.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "VertColorMaterial.hpp"
+#include "ObjVertInfo.hpp"
 
 #include <tiny_obj_loader.h>
 

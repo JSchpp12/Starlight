@@ -1,5 +1,8 @@
 #pragma once
 
+#include "ObjVertInfo.hpp"
+#include "ObjIndicesInfo.hpp"
+#include "ManagerBuffer.hpp"
 #include "ConfigFile.hpp"
 #include "StarDevice.hpp"
 #include "StarEntity.hpp"
@@ -167,8 +170,7 @@ namespace star {
 		std::unique_ptr<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>> groupLayout;
 		std::unique_ptr<std::vector<std::vector<vk::DescriptorSet>>> globalSets;
 
-
-		std::unique_ptr<StarBuffer> boundingBoxVertBuffer, boundingBoxIndBuffer; 
+		Handle boundingBoxVertBuffer, boundingBoxIndexBuffer;
 		std::vector<std::vector<vk::DescriptorSet>> boundingDescriptors; 
 		std::unique_ptr<BufferHandle> vertBuffer, indBuffer; 
 		uint32_t boundingBoxIndsCount = 0; 

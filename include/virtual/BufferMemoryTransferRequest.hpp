@@ -30,6 +30,8 @@ namespace star{
     
     virtual void writeData(StarBuffer& buffer) const = 0; 
 
+    virtual void afterWriteData(){}
+
     protected:
 
     };

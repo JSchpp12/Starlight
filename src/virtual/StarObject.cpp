@@ -262,8 +262,7 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 
 void star::StarObject::destroyResources(StarDevice& device)
 {
-	this->boundingBoxIndBuffer.reset();
-	this->boundingBoxVertBuffer.reset();
+
 }
 
 void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
@@ -272,67 +271,9 @@ void star::StarObject::initResources(StarDevice& device, const int& numFramesInF
 	std::vector<uint32_t> bbInds;
 
 	calculateBoundingBox(bbVerts, bbInds);
-	{
-		vk::DeviceSize size = sizeof(bbVerts.front());
-		vk::DeviceSize bufferSize = size * bbVerts.size();
-		uint32_t count = bbVerts.size();
 
-		StarBuffer stagingBuffer{
-			device.getAllocator().get(),
-			size,
-			count,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent,
-			1
-		};
-
-		stagingBuffer.map();
-		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
-
-		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(
-			device.getAllocator().get(),
-			size,
-			uint32_t(count),
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::SharingMode::eConcurrent,
-			1
-		);
-
-		device.copyBuffer(stagingBuffer.getVulkanBuffer(), this->boundingBoxVertBuffer->getVulkanBuffer(), bufferSize);
-	}
-
-	{
-		vk::DeviceSize size = sizeof(bbInds.front());
-		vk::DeviceSize bufferSize = size * bbInds.size();
-		uint32_t count = bbInds.size();
-
-		StarBuffer stagingBuffer{
-			device.getAllocator().get(),
-			size,
-			count,
-			(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT),
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
-		};
-		stagingBuffer.map();
-		stagingBuffer.writeToBuffer(bbInds.data());
-
-		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
-			device.getAllocator().get(),
-			size,
-			uint32_t(count),
-			(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT),
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::SharingMode::eConcurrent
-		);
-		device.copyBuffer(stagingBuffer.getVulkanBuffer(), this->boundingBoxIndBuffer->getVulkanBuffer(), bufferSize);
-	}
+	this->boundingBoxVertBuffer = ManagerBuffer::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerBuffer::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
 }
 
 void star::StarObject::createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
@@ -386,8 +327,8 @@ void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer
 void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex)
 {
 	vk::DeviceSize offsets{}; 
-	commandBuffer.bindVertexBuffers(0, this->boundingBoxVertBuffer->getVulkanBuffer(), offsets); 
-	commandBuffer.bindIndexBuffer(this->boundingBoxIndBuffer->getVulkanBuffer(), 0, vk::IndexType::eUint32);
+	commandBuffer.bindVertexBuffers(0, ManagerBuffer::getBuffer(this->boundingBoxVertBuffer).getVulkanBuffer(), offsets); 
+	commandBuffer.bindIndexBuffer(ManagerBuffer::getBuffer(this->boundingBoxIndexBuffer).getVulkanBuffer(), 0, vk::IndexType::eUint32);
 
 	this->boundBoxPipeline->bind(commandBuffer); 
 	commandBuffer.setLineWidth(1.0f);
