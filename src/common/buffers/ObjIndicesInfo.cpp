@@ -3,11 +3,10 @@
 void star::ObjIndicesTransfer::writeData(star::StarBuffer& buffer) const {
 
     buffer.map();
-
-    for (int i = 0; i < indices.size(); ++i){
-        uint32_t index = indices.at(i);
-        buffer.writeToIndex(&index, sizeof(uint32_t));
-    }
+    
+    vk::DeviceSize indSize = sizeof(uint32_t) * this->indices.size();
+    std::vector<uint32_t> cpInd{this->indices};
+    buffer.writeToBuffer(cpInd.data(), indSize);
 
     buffer.unmap();
 }
