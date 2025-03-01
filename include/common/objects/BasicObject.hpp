@@ -1,5 +1,8 @@
 #pragma once
 
+#include "ObjVertInfo.hpp"
+#include "ObjIndicesInfo.hpp"
+
 #include "BumpMaterial.hpp"
 #include "CastHelpers.hpp"
 #include "FileHelpers.hpp"
@@ -37,10 +40,12 @@ namespace star {
 
 		Handle primaryVertBuffer, primaryIndbuffer;
 
-		BasicObject(std::string objectFilePath) : objectFilePath(objectFilePath) {};
+		BasicObject(std::string objectFilePath) : objectFilePath(objectFilePath) {
+			loadMesh();
+		};
 
 		std::string objectFilePath;
-
-		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) override;
+		
+		void loadMesh(); 
 	};
 }

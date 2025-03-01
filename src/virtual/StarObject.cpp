@@ -8,6 +8,10 @@ std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::boundDescriptor
 vk::PipelineLayout star::StarObject::boundPipelineLayout = vk::PipelineLayout{}; 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::boundBoxPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
 
+star::StarObject::StarObject(){
+
+}
+
 void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent, int numSwapChainImages, 
 	StarDescriptorSetLayout& globalDescriptors, RenderingTargetInfo renderingInfo)
 {
@@ -139,6 +143,14 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo, int numSwapChainImages, 
 	star::StarShaderInfo::Builder fullEngineBuilder)
 {
+	std::vector<Vertex> bbVerts;
+	std::vector<uint32_t> bbInds;
+
+	calculateBoundingBox(bbVerts, bbInds);
+
+	this->boundingBoxVertBuffer = ManagerBuffer::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerBuffer::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
+
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
 	//handle pipeline infos
@@ -150,6 +162,14 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 
 void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImages, StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
 {
+	std::vector<Vertex> bbVerts;
+	std::vector<uint32_t> bbInds;
+
+	calculateBoundingBox(bbVerts, bbInds);
+
+	this->boundingBoxVertBuffer = ManagerBuffer::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerBuffer::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
+
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder); 
 
 	this->sharedPipeline = &sharedPipeline;
@@ -160,25 +180,16 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout,
 	int swapChainIndexNum) {
-	RenderResourceSystem::bind(*this->indBuffer, commandBuffer);
-	RenderResourceSystem::bind(*this->vertBuffer, commandBuffer);
-
 	if (this->pipeline)
 		this->pipeline->bind(commandBuffer); 
 
 	for (auto& rmesh : this->getMeshes()) {
-
-		rmesh->getMaterial().bind(commandBuffer, pipelineLayout, swapChainIndexNum);
-
 		uint32_t instanceCount = static_cast<uint32_t>(this->instances.size()); 
-		uint32_t vertexCount = rmesh->getNumVerts();
-		uint32_t indexCount = rmesh->getNumIndices();
-		if (this->isVisible)
-			commandBuffer.drawIndexed(this->numIndices, instanceCount, this->indBufferOffset, 0, 0);
+		rmesh.get()->recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
 	}
 
 	if (this->drawNormals)
-		recordDrawCommandNormals(commandBuffer, this->indBufferOffset, swapChainIndexNum); 
+		recordDrawCommandNormals(commandBuffer); 
 	if (this->drawBoundingBox)
 		recordDrawCommandBoundingBox(commandBuffer, swapChainIndexNum); 
 }
@@ -260,22 +271,6 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 	}
 }
 
-void star::StarObject::destroyResources(StarDevice& device)
-{
-
-}
-
-void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
-{
-	std::vector<Vertex> bbVerts;
-	std::vector<uint32_t> bbInds;
-
-	calculateBoundingBox(bbVerts, bbInds);
-
-	this->boundingBoxVertBuffer = ManagerBuffer::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
-	this->boundingBoxIndexBuffer = ManagerBuffer::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
-}
-
 void star::StarObject::createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
 {
 	std::array<glm::vec3, 2> bbBounds = this->meshes.front()->getBoundingBoxCoords();
@@ -301,9 +296,9 @@ void star::StarObject::createBoundingBox(std::vector<Vertex>& verts, std::vector
 	star::GeometryHelpers::calculateAxisAlignedBoundingBox(bbBounds[0], bbBounds[1], verts, inds, true);
 }
 
-void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex)
+void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer)
 {
-	uint32_t ib = ib_start;
+	uint32_t ib = 0;
 
 	//assuming all meshes have same packing approach at this point. Should have checked earlier on during load time
 	bool useAdjPipe = this->getMeshes().front()->hasAdjacentVertsPacked();
@@ -334,14 +329,6 @@ void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer& commandBu
 	commandBuffer.setLineWidth(1.0f);
 
 	commandBuffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0);
-}
-
-std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::StarObject::loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer)
-{
-	this->vertBuffer = std::make_unique<BufferHandle>(primaryVertBuffer);
-	this->indBuffer = std::make_unique<BufferHandle>(primaryIndexBuffer);
-
-	return this->loadGeometryBuffers(device);
 }
 
 void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)

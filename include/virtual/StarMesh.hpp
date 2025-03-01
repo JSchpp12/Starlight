@@ -1,5 +1,7 @@
 #pragma once 
 
+#include "ManagerBuffer.hpp"
+#include "Handle.hpp"
 #include "GeometryHelpers.hpp"
 #include "CastHelpers.hpp"
 #include "StarCommandBuffer.hpp"
@@ -16,33 +18,32 @@
 namespace star {
 	class StarMesh {
 	public:
-		StarMesh(const std::array<glm::vec3, 2>& aaboundingBoxBounds, std::shared_ptr<StarMaterial> material, 
-			const uint32_t& numVerts, const uint32_t& numInds, const bool& isTriangular, const bool& hasAdjacenciesPacked) : 
-			material(std::move(material)), hasAdjacenciesPacked(false), triangular(isTriangular), 
-			numVerts(numVerts), numInds(numInds) {
-		}
-
-		StarMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, 
+		StarMesh(const Handle& vertBuffer, const Handle& indBuffer, 
+			std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, 
 			std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked) : 
 			material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), 
 			triangular(indices.size() % 3 == 0), numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())), 
-			numInds(CastHelpers::size_t_to_unsigned_int(indices.size())) {
+			numInds(CastHelpers::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer) {
 
 			calcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
 		}
 
-		StarMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices,
+		StarMesh(const Handle& vertBuffer, const Handle& indBuffer, 
+			std::vector<Vertex>& vertices, std::vector<uint32_t>& indices,
 			std::shared_ptr<StarMaterial> material, const glm::vec3& boundBoxMinCoord,
 			const glm::vec3& boundBoxMaxCoord, bool packAdjacencies = false) :
 			material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), 
 			triangular(indices.size() % 3 == 0), aaboundingBoxBounds{ boundBoxMinCoord, boundBoxMaxCoord },
 			numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())),
-			numInds(CastHelpers::size_t_to_unsigned_int(indices.size()))
+			numInds(CastHelpers::size_t_to_unsigned_int(indices.size())), 
+			vertBuffer(vertBuffer), indBuffer(indBuffer)
 		{
 			calcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
 		}
 
 		virtual void prepRender(StarDevice& device);
+
+		virtual void recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int& frameInFlightIndex, const uint32_t& instanceCount); 
 
 		StarMaterial& getMaterial() { return *this->material; }
 		bool hasAdjacentVertsPacked() const { return this->hasAdjacenciesPacked; }
@@ -56,8 +57,8 @@ namespace star {
 
 		uint32_t getNumVerts() const { return this->numVerts; }
 		uint32_t getNumIndices() const { return this->numInds; }
-
 	protected:
+		Handle vertBuffer, indBuffer; 
 		bool hasAdjacenciesPacked = false; 
 		bool triangular = false; 
 		glm::vec3 aaboundingBoxBounds[2];

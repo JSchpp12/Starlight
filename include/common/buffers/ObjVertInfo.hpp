@@ -13,20 +13,7 @@
 #include <string>
 
 namespace star{
-    class AABBInterThreadData {
-        public:
-        AABBInterThreadData();
 
-        void giveMeData(boost::unique_lock<boost::mutex>& lock, std::array<glm::vec3, 2>& aabb) {
-            lock = boost::unique_lock<boost::mutex>(this->mutex);
-
-            aabb = this->aabboundingBoxBounds;
-        }
-
-        private:
-        std::array<glm::vec3, 2> aabboundingBoxBounds;
-        boost::mutex mutex = boost::mutex();
-    };
 
     class ObjVertTransfer : public BufferMemoryTransferRequest{
         public:

@@ -17,7 +17,6 @@
 #include "InstanceNormalInfo.hpp"
 #include "InstanceModelInfo.hpp"
 #include "ManagerDescriptorPool.hpp"
-#include "RenderResourceModifierGeometry.hpp"
 #include "RenderingTargetInfo.hpp"
 #include "DescriptorModifier.hpp"
 
@@ -41,7 +40,7 @@ namespace star {
 	/// <summary>
 	/// Base class for renderable objects.
 	/// </summary>
-	class StarObject : private RenderResourceModifierGeometry, private DescriptorModifier {
+	class StarObject : private DescriptorModifier {
 	public:
 		bool drawNormals = false;
 		bool drawBoundingBox = false; 
@@ -57,7 +56,7 @@ namespace star {
 		/// Create an object from manually defined/generated mesh structures
 		/// </summary>
 		/// <param name="meshes"></param>
-		StarObject() = default; 
+		StarObject(); 
 
 		virtual ~StarObject(){}
 
@@ -84,8 +83,8 @@ namespace star {
 		/// <param name="groupPool"></param>
 		/// <param name="globalSets"></param>
 		/// <param name="sharedPipeline"></param>
-		virtual void prepRender(star::StarDevice& device, int numSwapChainImages, StarPipeline& sharedPipeline,
-		star::StarShaderInfo::Builder fullEngineBuilder);
+		virtual void prepRender(star::StarDevice& device, int numSwapChainImages, 
+			StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder);
 
 		virtual void recordPreRenderPassCommands(vk::CommandBuffer& commandBuffer, int swapChainIndexNum) {};
 
@@ -119,8 +118,6 @@ namespace star {
 		/// @return 
 		virtual std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(StarDevice& device);
 
-		virtual std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) = 0;
-
 		virtual void prepareDescriptors(star::StarDevice& device, int numSwapChainImages,
 			StarShaderInfo::Builder engineInfoBuilder);
 
@@ -149,10 +146,6 @@ namespace star {
 
 		virtual void createInstanceBuffers(star::StarDevice& device, int numImagesInFlight);
 
-		virtual void destroyResources(StarDevice& device) override;
-
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
-
 		virtual void createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 
 		// Inherited via DescriptorModifier
@@ -175,11 +168,9 @@ namespace star {
 		std::unique_ptr<BufferHandle> vertBuffer, indBuffer; 
 		uint32_t boundingBoxIndsCount = 0; 
 
-		void recordDrawCommandNormals(vk::CommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex);
+		void recordDrawCommandNormals(vk::CommandBuffer& commandBuffer);
 
 		void recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex);;
-
-		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer);
 
 		void calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 };

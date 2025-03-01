@@ -40,8 +40,8 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
 	return shaders; 
 }
 
-std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::BasicObject::loadGeometryBuffers(StarDevice& device)
-{
+
+void star::BasicObject::loadMesh(){
 	std::string texturePath = FileHelpers::GetBaseFileDirectory(objectFilePath);
 	std::string materialFile = FileHelpers::GetBaseFileDirectory(objectFilePath);
 
@@ -217,8 +217,10 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 			}
 
 			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
+				Handle meshVertBuffer = ManagerBuffer::addRequest(std::make_unique<ObjVertInfo>(*vertices));
+				Handle meshIndBuffer = ManagerBuffer::addRequest(std::make_unique<ObjIndicesInfo>(*fullInd)); 
 				//apply material from files to mesh -- will ignore passed values 
-				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(*vertices, *fullInd, preparedMaterials.at(shape.mesh.material_ids[0]), false));
+				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd, preparedMaterials.at(shape.mesh.material_ids[0]), false));
 			}
 
 			meshVerts.push_back(std::move(vertices));
@@ -228,55 +230,4 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 	}
 
 	this->meshes = std::move(meshes);
-
-	//create buffers
-	std::unique_ptr<StarBuffer> vertStagingBuffer;
-	{
-		vk::DeviceSize vertSize = sizeof(Vertex);
-		vertStagingBuffer = std::make_unique<StarBuffer>(
-			device.getAllocator().get(),
-			vertSize,
-			totalNumVerts,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
-		);
-		vertStagingBuffer->map();
-		vk::DeviceSize offset = 0;
-		for (std::unique_ptr<std::vector<Vertex>>& verts : meshVerts) {
-			vk::DeviceSize meshVertsSize = sizeof(Vertex) * verts->size();
-			vertStagingBuffer->writeToBuffer(verts->data(), meshVertsSize, offset);
-
-			offset += meshVertsSize;
-		}
-		vertStagingBuffer->unmap();
-	}
-
-	std::unique_ptr<StarBuffer> indStagingBuffer;
-	{
-		vk::DeviceSize indSize = sizeof(uint32_t);
-		indStagingBuffer = std::make_unique<StarBuffer>(
-			device.getAllocator().get(),
-			indSize,
-			totalNumInds,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
-		);
-		indStagingBuffer->map();
-
-		vk::DeviceSize offset = 0;
-		for (auto& inds : meshInds) {
-			vk::DeviceSize meshIndSize = sizeof(uint32_t) * inds->size();
-			indStagingBuffer->writeToBuffer(inds->data(), meshIndSize, offset);
-
-			offset += meshIndSize;
-		}
-
-		indStagingBuffer->unmap();
-	}
-
-	return std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(std::move(vertStagingBuffer), std::move(indStagingBuffer));
 }
