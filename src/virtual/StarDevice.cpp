@@ -18,7 +18,6 @@ StarDevice::StarDevice(StarWindow& window, std::set<star::Rendering_Features> re
 
 	pickPhysicalDevice();
 	createLogicalDevice();
-	createCommandPool();
 	createAllocator(); 
 }
 
@@ -28,13 +27,40 @@ std::unique_ptr<StarDevice> StarDevice::New(StarWindow& window, std::set<star::R
 }
 
 StarDevice::~StarDevice() {
-	this->vulkanDevice.destroyCommandPool(this->computeCommandPool); 
-	this->vulkanDevice.destroyCommandPool(this->transferCommandPool);
-	this->vulkanDevice.destroyCommandPool(this->graphicsCommandPool);
+	this->defaultFamily.reset();
+	if (this->preferredTransferFamily)
+		this->preferredTransferFamily.reset();
+	if (this->preferredComputeFamily)
+		this->preferredComputeFamily.reset();
+	for (auto& buffer : this->extraFamilies){
+		buffer.reset();
+	}
+
 	this->allocator.reset();
 	this->vulkanDevice.destroy();
 	this->surface.reset();
 	this->instance.destroy();
+}
+
+void StarDevice::updatePreferredFamilies(const star::Queue_Type& type){
+	for (auto& queue : this->extraFamilies){
+		if (queue){
+			switch(type){
+				case(star::Queue_Type::Tcompute):
+				if (queue.get()->doesSupport(type)){
+					this->preferredComputeFamily = std::move(queue); 
+				}
+				break;
+				case(star::Queue_Type::Ttransfer):
+				if (queue.get()->doesSupport(type)){
+					this->preferredTransferFamily = std::move(queue);
+				}
+				break;
+				default:
+				throw std::runtime_error("Unsupported type");
+			}
+		}
+	}
 }
 
 void StarDevice::createInstance() {
@@ -105,12 +131,17 @@ void StarDevice::pickPhysicalDevice() {
 	}
 
 	//pick the best device of the potential devices that are suitable
+	std::vector<vk::PhysicalDevice> optimalDevices = std::vector<vk::PhysicalDevice>();
 	vk::PhysicalDevice optimalDevice; 
+	uint32_t largestQueueFamilyCount = 0;
 	for (const auto& device : suitableDevices) {
 		auto indicies = findQueueFamilies(device); 
 		if (indicies.isOptimalSupport()) {
 			//try to pick the device that has the most seperate queue families
-			optimalDevice = device;
+			if (indicies.getUniques().size() > largestQueueFamilyCount){
+				largestQueueFamilyCount = CastHelpers::size_t_to_unsigned_int(indicies.getUniques().size());
+				optimalDevice = device;
+			}
 		}
 	}
 
@@ -147,26 +178,24 @@ void StarDevice::pickPhysicalDevice() {
 }
 
 void StarDevice::createLogicalDevice() {
-	float queuePrioriy = 1.0f;
 	QueueFamilyIndicies indicies = findQueueFamilies(this->physicalDevice);
 
 	//need multiple structs since we now have a seperate family for presenting and graphics 
 	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = 
-		indicies.isFullySupported() ? std::set<uint32_t>{indicies.graphicsFamily.value().familyIndex, indicies.presentFamily.value().familyIndex, indicies.computeFamily.value().familyIndex, indicies.transferFamily.value().familyIndex} 
-									: std::set<uint32_t>{indicies.graphicsFamily.value().familyIndex, indicies.presentFamily.value().familyIndex};
+	auto uniqueIndices = indicies.getUniques();
+	std::set<uint32_t> uniqueQueueFamilies = indicies.getUniques();
 
-	for (uint32_t queueFamily : uniqueQueueFamilies) {
-		//create a struct to contain the information required 
-		//create a queue with graphics capabilities
-		vk::DeviceQueueCreateInfo queueCreateInfo{};
-		vk::StructureType::eApplicationInfo;
-		queueCreateInfo.sType = vk::StructureType::eDeviceQueueCreateInfo;
-		queueCreateInfo.queueFamilyIndex = queueFamily;
-		//most drivers support only a few queue per queueFamily 
-		queueCreateInfo.queueCount = 1;
-		queueCreateInfo.pQueuePriorities = &queuePrioriy;
-		queueCreateInfos.push_back(queueCreateInfo);
+	float priority = 1.0f;
+	for (auto uniqueIndex : uniqueQueueFamilies){
+		auto newFamily = std::make_unique<StarQueueFamily>(uniqueIndex, indicies.getNumQueuesForIndex(uniqueIndex), indicies.getSupportForIndex(uniqueIndex), indicies.getSupportsPresentForIndex(uniqueIndex));
+
+		if (!this->defaultFamily && newFamily->doesSupport(star::Queue_Type::Tgraphics) & newFamily->doesSupport(star::Queue_Type::Tpresent) & newFamily->doesSupport(star::Queue_Type::Ttransfer) & newFamily->doesSupport(star::Queue_Type::Tcompute)){
+			this->defaultFamily = std::move(newFamily); 
+			queueCreateInfos.push_back(this->defaultFamily->getDeviceCreateInfo());
+		}else{
+			this->extraFamilies.emplace_back(std::move(newFamily));
+			queueCreateInfos.push_back(this->extraFamilies.back()->getDeviceCreateInfo());
+		}
 	}
 
 	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{}; 
@@ -187,29 +216,17 @@ void StarDevice::createLogicalDevice() {
 
 	//call to create the logical device 
 	this->vulkanDevice = physicalDevice.createDevice(createInfo);
-
-	this->graphicsQueue = this->vulkanDevice.getQueue(indicies.graphicsFamily.value().familyIndex, 0);
-	this->presentQueue = this->vulkanDevice.getQueue(indicies.presentFamily.value().familyIndex, 0);
-
-	if (indicies.isFullySupported()) {
-		this->transferQueue = std::make_optional<vk::Queue>(this->vulkanDevice.getQueue(indicies.transferFamily.value().familyIndex, 0));
-		this->computeQueue = std::make_optional<vk::Queue>(this->vulkanDevice.getQueue(indicies.computeFamily.value().familyIndex, 0));
+	
+	//select preferred default
+	this->defaultFamily->init(this->vulkanDevice);
+	for (auto& queue : this->extraFamilies){
+		queue.get()->init(this->vulkanDevice);
 	}
-}
 
-void StarDevice::createCommandPool() {
-	auto queueFamilyIndicies = findQueueFamilies(physicalDevice);
-
-	//graphics command buffer
-	createPool(queueFamilyIndicies.graphicsFamily.value().familyIndex, vk::CommandPoolCreateFlagBits::eResetCommandBuffer, graphicsCommandPool);
-
-	//command buffer for transfer queue 
-	if (queueFamilyIndicies.transferFamily.has_value()) {
-		this->hasDedicatedTransferQueue = true;
-		this->dedicatedTransferQueueFamilyIndex = queueFamilyIndicies.transferFamily.value().familyIndex; 
-	}
-	if (queueFamilyIndicies.computeFamily.has_value()) {
-		createPool(queueFamilyIndicies.computeFamily.value().familyIndex, vk::CommandPoolCreateFlagBits::eResetCommandBuffer, computeCommandPool);
+	//set preferred graphics 
+	if (indicies.isOptimalSupport()){
+		updatePreferredFamilies(star::Queue_Type::Tcompute);
+		updatePreferredFamilies(star::Queue_Type::Ttransfer);
 	}
 }
 
@@ -330,30 +347,10 @@ QueueFamilyIndicies StarDevice::findQueueFamilies(vk::PhysicalDevice device) {
 	for (const auto& queueFamily : queueFamilies) {
 		vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, this->surface.get());
 
-		if (!indicies.transferFamily && !(queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) && !(queueFamily.queueFlags & vk::QueueFlagBits::eCompute) && (queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)){
-			indicies.transferFamily = QueueFamilyIndicies::FamilyInfo{i, queueFamily.queueCount};
-		}else if (presentSupport && !indicies.presentFamily) {
-			indicies.presentFamily = QueueFamilyIndicies::FamilyInfo{i, queueFamily.queueCount};
-		}
-		else if (!(indicies.graphicsFamily) && (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)) {
-			indicies.graphicsFamily = QueueFamilyIndicies::FamilyInfo{i, queueFamily.queueCount};
-		}
-		else if (!(indicies.computeFamily) && (queueFamily.queueFlags & vk::QueueFlagBits::eCompute)) {
-			indicies.computeFamily = QueueFamilyIndicies::FamilyInfo{i, queueFamily.queueCount};
-		}
-
+		indicies.registerFamily(i, queueFamily.queueFlags, presentSupport, queueFamily.queueCount);
 		i++;
 	}
-
-	//check if present family is capable of graphics
-	const auto& presentFamily = queueFamilies.at(indicies.presentFamily.value().familyIndex);
-
-	if (!indicies.graphicsFamily && (presentFamily.queueFlags & vk::QueueFlagBits::eGraphics))
-		indicies.graphicsFamily = indicies.presentFamily.value();
-	if (!indicies.transferFamily && (presentFamily.queueFlags & vk::QueueFlagBits::eTransfer))
-		indicies.transferFamily = indicies.presentFamily.value(); 
-	if (!indicies.computeFamily && (presentFamily.queueFlags & vk::QueueFlagBits::eCompute))
-		indicies.computeFamily = indicies.presentFamily.value(); 
+	
 	return indicies;
 }
 
@@ -411,51 +408,42 @@ vk::Format StarDevice::findSupportedFormat(const std::vector<vk::Format>& candid
 	throw std::runtime_error("failed to find supported format!");
 }
 
-vk::CommandPool& StarDevice::getCommandPool(star::Command_Buffer_Type type)
+star::StarQueueFamily& StarDevice::getQueueFamily(const star::Queue_Type& type)
 {
-	if (type == Command_Buffer_Type::Tgraphics) {
-		return this->graphicsCommandPool; 
-	}
-	else if (type == Command_Buffer_Type::Ttransfer) {
-		if (this->dedicatedTransferQueueFamilyIndex.has_value()){
-			if (!this->transferCommandPool){
-				createPool(this->dedicatedTransferQueueFamilyIndex.value(), vk::CommandPoolCreateFlagBits::eResetCommandBuffer, this->transferCommandPool);
-			}
+	if(type == star::Queue_Type::Tcompute && this->preferredComputeFamily)
+		return *this->preferredComputeFamily;
+	else if (type == star::Queue_Type::Ttransfer && this->preferredTransferFamily)
+		return *this->preferredTransferFamily;
 
-			return this->transferCommandPool;
-		}
-
-		return this->graphicsCommandPool;
-	}
-	else if (type == Command_Buffer_Type::Tcompute) {
-		return this->computeCommandPool; 
-	}
-
-	//graphics pool should support everything
-	return this->graphicsCommandPool;
+	return *this->defaultFamily;
 }
 
-vk::Queue& StarDevice::getQueue(star::Command_Buffer_Type type)
-{
-	if (type == Command_Buffer_Type::Tgraphics)
-		return this->graphicsQueue;
-	else if (type == Command_Buffer_Type::Tcompute)
-		return this->computeQueue.value();
-	else
-		throw std::runtime_error("Unrecgonized type provided to getQueue"); 
+bool StarDevice::doesHaveDedicatedFamily(const star::Queue_Type& type){
+	switch(type){
+		case(star::Queue_Type::Tgraphics):
+		return (this->preferredTransferFamily != nullptr);
+		break;
+
+		case(star::Queue_Type::Tcompute):
+		return (this->preferredComputeFamily != nullptr);
+		break;
+
+		case(star::Queue_Type::Ttransfer):
+		return (this->preferredTransferFamily != nullptr);
+		break;
+
+		default:
+		return false; 
+	}
 }
 
-void StarDevice::createPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits flags, vk::CommandPool& pool) {
-	vk::CommandPoolCreateInfo commandPoolInfo{};
-	commandPoolInfo.sType = vk::StructureType::eCommandPoolCreateInfo;
-	commandPoolInfo.queueFamilyIndex = queueFamilyIndex;
-	commandPoolInfo.flags = flags;
-
-	pool = this->vulkanDevice.createCommandPool(commandPoolInfo);
-
-	if (!pool) {
-		throw std::runtime_error("unable to create pool");
+std::unique_ptr<star::StarQueueFamily> StarDevice::giveMeQueueFamily(const star::Queue_Type& type){
+	if (type == star::Queue_Type::Ttransfer){
+		auto tmp = std::move(this->preferredTransferFamily);
+		updatePreferredFamilies(type);
+		return std::move(tmp);
 	}
+	throw std::runtime_error("Unsupported type requested");
 }
 
 void StarDevice::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags properties,
@@ -505,7 +493,7 @@ vk::CommandBuffer StarDevice::beginSingleTimeCommands() {
 	vk::CommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
 	allocInfo.level = vk::CommandBufferLevel::ePrimary;
-	allocInfo.commandPool = this->graphicsCommandPool;
+	allocInfo.commandPool = this->defaultFamily->getCommandPool();
 	allocInfo.commandBufferCount = 1;
 
 	//TODO: this returns a vector -- need to make only return one 
@@ -539,10 +527,10 @@ void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, vk::Semaph
 		submitInfo.signalSemaphoreCount = 1; 
 	}
 
-	this->graphicsQueue.submit(submitInfo, oneTimeFence);
+	this->defaultFamily->getQueue().submit(submitInfo, oneTimeFence);
 	this->vulkanDevice.waitForFences(oneTimeFence, VK_TRUE, UINT64_MAX);
-	this->graphicsQueue.waitIdle();
-	this->vulkanDevice.freeCommandBuffers(this->graphicsCommandPool, 1, &commandBuff);
+	this->defaultFamily->getQueue().waitIdle();
+	this->vulkanDevice.freeCommandBuffers(this->defaultFamily->getCommandPool(), 1, &commandBuff);
 
 	this->vulkanDevice.destroyFence(oneTimeFence);
 }

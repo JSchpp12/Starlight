@@ -30,7 +30,7 @@ namespace star {
 
 		// Inherited via CommandBufferModifier
 		Command_Buffer_Order getCommandBufferOrder() override;
-		Command_Buffer_Type getCommandBufferType() override;
+		Queue_Type getCommandBufferType() override;
 		vk::PipelineStageFlags getWaitStages() override;
 		bool getWillBeSubmittedEachFrame() override;
 		bool getWillBeRecordedOnce() override;

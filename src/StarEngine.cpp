@@ -26,8 +26,7 @@ StarEngine::StarEngine() {
 
 	this->renderingDevice = StarDevice::New(*window, features);
 
-	bool asyncTransfer = this->OVERRIDE_APPLY_SINGLE_THREAD_MODE || !this->renderingDevice->getHasDedicatedTransferQueue() ? false : true; 
-	this->transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->renderingDevice->getAllocator(), this->renderingDevice->getTransferQueue(), this->renderingDevice->getCommandPool(star::Command_Buffer_Type::Ttransfer), asyncTransfer);
+	this->transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->OVERRIDE_APPLY_SINGLE_THREAD_MODE);
 
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 	ManagerBuffer::init(*this->renderingDevice, *this->transferWorker, framesInFlight);

@@ -13,8 +13,6 @@
 #include <string>
 
 namespace star{
-
-
     class ObjVertTransfer : public BufferMemoryTransferRequest{
         public:
         // ObjVertTransfer(const uint32_t& numVerts) : numVerts(numVerts){}

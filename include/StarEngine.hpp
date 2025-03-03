@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Enums.hpp"
 #include "ManagerBuffer.hpp"
 #include "SwapChainRenderer.hpp"
 #include "BasicWindow.hpp"

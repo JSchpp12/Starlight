@@ -51,7 +51,7 @@ void star::ManagerCommandBuffer::handleNewRequests()
 
 		request.promiseBufferHandleCallback(newHandle);
 
-		if (request.type == Command_Buffer_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
+		if (request.type == Queue_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
 			this->mainGraphicsBufferHandle = std::make_unique<Handle>(newHandle);
 
 		if (request.recordOnce) {

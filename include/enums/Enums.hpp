@@ -31,10 +31,11 @@ namespace star {
         geometry_index
     };
 
-    enum Command_Buffer_Type {
+    enum Queue_Type {
         Tgraphics = 0, 
         Ttransfer = 1, 
-        Tcompute = 2
+        Tcompute = 2,
+        Tpresent = 3
     };
 
     enum Shader_File_Type {

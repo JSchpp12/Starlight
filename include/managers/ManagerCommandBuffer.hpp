@@ -24,7 +24,7 @@ namespace star {
 			std::function<void(star::Handle)> promiseBufferHandleCallback;
 			Command_Buffer_Order order;
 			int orderIndex; 
-			star::Command_Buffer_Type type;
+			star::Queue_Type type;
 			vk::PipelineStageFlags waitStage; 
 			bool willBeSubmittedEachFrame; 
 			bool recordOnce; 
@@ -35,7 +35,7 @@ namespace star {
 				std::function<void(star::Handle)> promiseBufferHandleCallback, 
 				const Command_Buffer_Order& order,
 				const int orderIndex,
-				const star::Command_Buffer_Type& type, const vk::PipelineStageFlags& waitStage,
+				const star::Queue_Type& type, const vk::PipelineStageFlags& waitStage,
 				const bool& willBeSubmittedEachFrame, 
 				const bool& recordOnce, std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback, 
 				std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback)

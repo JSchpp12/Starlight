@@ -46,7 +46,7 @@ void star::SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn,
 	presentInfo.pResults = nullptr; // Optional
 
 	//make call to present image
-	auto presentResult = this->device.getPresentQueue().presentKHR(presentInfo);
+	auto presentResult = this->device.getQueueFamily(star::Queue_Type::Tpresent).getQueue().presentKHR(presentInfo);
 
 	if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || frameBufferResized) {
 		frameBufferResized = false;
@@ -217,7 +217,7 @@ void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int&
 	submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
 	submitInfo.commandBufferCount = 1; 
 
-	auto commandResult = std::make_unique<vk::Result>(this->device.getGraphicsQueue().submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
+	auto commandResult = std::make_unique<vk::Result>(this->device.getQueueFamily(star::Queue_Type::Tpresent).getQueue().submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
 
 	if (*commandResult != vk::Result::eSuccess) {
 		throw std::runtime_error("Failed to submit command buffer");
@@ -402,24 +402,20 @@ void star::SwapChainRenderer::createSwapChain()
 	createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
 
 	QueueFamilyIndicies indicies = this->device.findPhysicalQueueFamilies();
-	std::vector<uint32_t> queueFamilyIndicies;
-	if (indicies.transferFamily.has_value())
-		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value().familyIndex, indicies.transferFamily.value().familyIndex, indicies.presentFamily.value().familyIndex };
-	else
-		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value().familyIndex, indicies.presentFamily.value().familyIndex };
-
-	if (indicies.graphicsFamily.value().familyIndex != indicies.presentFamily.value().familyIndex) {
+	std::vector<uint32_t> queueFamilyIndicies; 
+	{
+		std::set<uint32_t> uniques = indicies.getUniques();
+		for (const uint32_t& index : uniques){
+			queueFamilyIndicies.push_back(index);
+		}
+	}
+	if (queueFamilyIndicies.size() > 1) {
 		/*need to handle how images will be transferred between different queues
 		* so we need to draw images on the graphics queue and then submitting them to the presentation queue
 		* Two ways of handling this:
 		* 1. VK_SHARING_MODE_EXCLUSIVE: an image is owned by one queue family at a time and can be transferred between groups
 		* 2. VK_SHARING_MODE_CONCURRENT: images can be used across queue families without explicit ownership
 		*/
-		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-		createInfo.queueFamilyIndexCount = queueFamilyIndicies.size();
-		createInfo.pQueueFamilyIndices = queueFamilyIndicies.data();
-	}
-	else if (indicies.graphicsFamily.value().familyIndex != indicies.presentFamily.value().familyIndex && indicies.presentFamily.value().familyIndex == indicies.transferFamily.value().familyIndex) {
 		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 		createInfo.queueFamilyIndexCount = queueFamilyIndicies.size();
 		createInfo.pQueueFamilyIndices = queueFamilyIndicies.data();

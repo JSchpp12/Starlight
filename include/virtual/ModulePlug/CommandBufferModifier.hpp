@@ -27,7 +27,7 @@ namespace star {
 
 		virtual star::Command_Buffer_Order_Index getCommandBufferOrderIndex();
 
-		virtual Command_Buffer_Type getCommandBufferType() = 0;
+		virtual Queue_Type getCommandBufferType() = 0;
 
 		virtual vk::PipelineStageFlags getWaitStages() = 0; 
 

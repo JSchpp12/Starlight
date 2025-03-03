@@ -334,9 +334,9 @@ void SceneRenderer::recordRenderingCalls(vk::CommandBuffer& commandBuffer, const
 	}
 }
 
-Command_Buffer_Type SceneRenderer::getCommandBufferType()
+Queue_Type SceneRenderer::getCommandBufferType()
 {
-	return Command_Buffer_Type::Tgraphics;
+	return Queue_Type::Tgraphics;
 }
 
 void SceneRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)

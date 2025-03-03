@@ -1,6 +1,6 @@
 #include "ManagerBuffer.hpp"
 
-std::vector<std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>> star::ManagerBuffer::allBuffers = std::vector<std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>>(100);
+std::vector<std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>> star::ManagerBuffer::allBuffers = std::vector<std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>>(1000);
 std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash> star::ManagerBuffer::updateableBuffers = std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash>();
 std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash> star::ManagerBuffer::staticBuffers = std::unordered_map<star::Handle, std::unique_ptr<star::ManagerBuffer::FinalizedBufferRequest>*, star::HandleHash>();
 std::stack<star::ManagerBuffer::FinalizedBufferRequest*> star::ManagerBuffer::newRequests = std::stack<star::ManagerBuffer::FinalizedBufferRequest*>();

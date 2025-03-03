@@ -87,10 +87,11 @@ namespace star {
 			};
 
 			vk::DescriptorSet getDescriptorSet() {
-				if (this->setNeedsRebuild)
+				if (this->setNeedsRebuild){
+					std::cout << "Rebuilding" << std::endl;
 					rebuildSet();
+				}
 
-				this->setNeedsRebuild = false;
 				return *this->descriptorSet;
 			};
 

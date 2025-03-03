@@ -30,7 +30,7 @@ void star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarShaderInf
 std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::getDescriptorRequests(const int& numFramesInFlight)
 {
 	return std::vector<std::pair<vk::DescriptorType, const int>>{
-		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1)
+		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1 * numFramesInFlight)
 	};
 }
 

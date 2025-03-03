@@ -104,7 +104,7 @@ protected:
 		VmaAllocation& imageMemory);
 
 	// Inherited via CommandBufferModifier
-	Command_Buffer_Type getCommandBufferType() override;
+	Queue_Type getCommandBufferType() override;
 	virtual Command_Buffer_Order getCommandBufferOrder() = 0;
 	virtual vk::PipelineStageFlags getWaitStages() = 0;
 	virtual bool getWillBeSubmittedEachFrame() = 0;

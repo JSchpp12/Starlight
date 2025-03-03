@@ -13,7 +13,7 @@ namespace star {
 	/// </summary>
 	class StarCommandBuffer {
 	public:
-		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Command_Buffer_Type type, bool initFences, bool initSemaphores);
+		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Queue_Type type, bool initFences, bool initSemaphores);
 		~StarCommandBuffer(); 
 
 		/// <summary>

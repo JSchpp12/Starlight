@@ -18,6 +18,7 @@ namespace star {
 		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
 		void cleanup(StarDevice& device) override;
 		void buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
+		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 
 	protected:
 		std::shared_ptr<FileTexture> texture;
@@ -25,8 +26,6 @@ namespace star {
 		void prep(StarDevice& device) override;
 
 		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
-
-		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 
 		// Inherited via StarMaterial
 		void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;

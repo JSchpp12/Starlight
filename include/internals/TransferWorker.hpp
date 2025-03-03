@@ -7,6 +7,7 @@
 #include "StarBuffer.hpp"
 #include "BufferMemoryTransferRequest.hpp"
 #include "SharedFence.hpp"
+#include "StarQueueFamily.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <boost/atomic.hpp>
@@ -44,7 +45,7 @@ namespace star{
         };
 
         TransferManagerThread(StarDevice& device, Allocator& allocator, 
-            vk::PhysicalDeviceLimits deviceLimits, vk::Queue transferQueue, vk::CommandPool sharedCommandPool);
+            vk::PhysicalDeviceLimits deviceLimits, std::unique_ptr<StarQueueFamily> ownedQueue);
 
         ~TransferManagerThread();
 
@@ -86,12 +87,11 @@ namespace star{
         std::queue<std::unique_ptr<InProcessRequestDependencies>> inProcessRequests = std::queue<std::unique_ptr<InProcessRequestDependencies>>();
         
         StarDevice& device;
-        vk::CommandPool transferPool; 
+        std::unique_ptr<StarQueueFamily> transferQueue = nullptr; 
         vk::PhysicalDeviceLimits deviceLimits;
         std::vector<vk::CommandBuffer> commandBuffers;
         std::vector<SharedFence*> commandBufferFences;
         size_t previousBufferIndexUsed = 0; 
-        vk::Queue transferQueue;
         Allocator& allocator; 
         std::vector<std::unique_ptr<InterThreadRequest>> transferRequests = std::vector<std::unique_ptr<InterThreadRequest>>(); 
 
@@ -107,8 +107,7 @@ namespace star{
     public:
     /// @brief Creates a transfer worker which does not own the dedicated transfer queue. Device might not support dedicated transfer queue. As such, transfers are submitted on the main thread.
     /// @param device Created star device from which vulkan objects can be made
-    TransferWorker(StarDevice& device, star::Allocator& allocator,
-        vk::Queue sharedTransferQueue, vk::CommandPool sharedCommandPool, const bool& runAsync);
+    TransferWorker(StarDevice& device, const bool& overrideRunAsync);
 
     void add(std::unique_ptr<BufferMemoryTransferRequest> newBufferRequest, SharedFence& workCompleteFence,
         std::unique_ptr<StarBuffer>& resultingBuffer, boost::atomic<bool>& isBeingWorkedOnByTransferThread, const bool& isHighPriority);
@@ -118,7 +117,7 @@ namespace star{
     ~TransferWorker(); 
 
     private:
-    std::unique_ptr<TransferManagerThread> manager;
+    std::vector<std::unique_ptr<TransferManagerThread>> threads = std::vector<std::unique_ptr<TransferManagerThread>>();
     };
 
 }

@@ -229,12 +229,12 @@ star::Command_Buffer_Order star::ScreenshotBuffer::getCommandBufferOrder()
 	return star::Command_Buffer_Order::end_of_frame;
 }
 
-star::Command_Buffer_Type star::ScreenshotBuffer::getCommandBufferType()
+star::Queue_Type star::ScreenshotBuffer::getCommandBufferType()
 {
 	if (this->supportsBlit)
-		return star::Command_Buffer_Type::Tgraphics;
+		return star::Queue_Type::Tgraphics;
 	else
-		return star::Command_Buffer_Type::Ttransfer; 
+		return star::Queue_Type::Ttransfer; 
 }
 
 vk::PipelineStageFlags star::ScreenshotBuffer::getWaitStages()

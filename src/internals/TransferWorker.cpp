@@ -21,8 +21,8 @@ void star::TransferManagerThread::startAsync(){
     this->thread = boost::thread(TransferManagerThread::mainLoop, 
         &this->shouldRun, 
         &this->device.getDevice(),
-        &this->transferPool,
-        &this->transferQueue, 
+        &this->transferQueue->getCommandPool(),
+        &this->transferQueue->getQueue(), 
         &this->allocator.get(), 
         &this->deviceLimits,
         &this->commandBufferFences,
@@ -237,9 +237,9 @@ void star::TransferManagerThread::readyCommandBuffer(vk::Device& device, const s
     }
 }
 
-star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator, vk::PhysicalDeviceLimits deviceLimits, vk::Queue transferQueue, vk::CommandPool sharedCommandPool)
-: device(device), allocator(allocator), transferPool(sharedCommandPool), transferQueue(transferQueue), 
-commandBuffers(createCommandBuffers(device.getDevice(), sharedCommandPool, 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceLimits(deviceLimits){
+star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator, vk::PhysicalDeviceLimits deviceLimits, std::unique_ptr<star::StarQueueFamily> ownedQueue)
+: device(device), allocator(allocator), transferQueue(std::move(ownedQueue)), 
+commandBuffers(createCommandBuffers(device.getDevice(), transferQueue->getCommandPool(), 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceLimits(deviceLimits){
 
 }
 
@@ -288,7 +288,7 @@ void star::TransferManagerThread::add(std::unique_ptr<star::TransferManagerThrea
 
         {
             createBuffer(this->device.getDevice(), this->allocator.get(), 
-                this->transferQueue, this->deviceLimits, *this->transferRequests.back()->completeFence, 
+                this->transferQueue->getQueue(), this->deviceLimits, *this->transferRequests.back()->completeFence, 
                 this->transferRequests.back()->bufferTransferRequest.get(), this->inProcessRequests, 
                 targetBufferIndex, this->commandBuffers, this->commandBufferFences, this->transferRequests.back()->resultingBuffer.value());
         }
@@ -329,16 +329,22 @@ void star::TransferManagerThread::cleanup(){
 star::TransferWorker::~TransferWorker() {
 }
 
-star::TransferWorker::TransferWorker(star::StarDevice& device, star::Allocator& allocator, vk::Queue sharedTransferQueue, vk::CommandPool sharedCommandPool, const bool& runAsync)
-: manager(std::make_unique<TransferManagerThread>(device, allocator, device.getPhysicalDevice().getProperties().limits, sharedTransferQueue, sharedCommandPool)) {
+star::TransferWorker::TransferWorker(star::StarDevice& device, const bool& runAsync){
+
+    if (device.doesHaveDedicatedFamily(star::Queue_Type::Ttransfer)){
+        
+    }
+
+    this->threads.emplace_back(std::make_unique<TransferManagerThread>(device, device.getAllocator(), device.getPhysicalDevice().getProperties().limits, device.giveMeQueueFamily(star::Queue_Type::Ttransfer)));
+    
     if (runAsync)
-        this->manager->startAsync(); 
+        this->threads.back()->startAsync();
 }
 
 void star::TransferWorker::add(std::unique_ptr<star::BufferMemoryTransferRequest> newBufferRequest, SharedFence& workCompleteFence, std::unique_ptr<star::StarBuffer>& resultingBuffer, boost::atomic<bool>& isBeingWorkedOnByTransferThread, const bool& isHighPriority){
-    this->manager->add(std::make_unique<TransferManagerThread::InterThreadRequest>(std::move(newBufferRequest), resultingBuffer, &workCompleteFence, &isBeingWorkedOnByTransferThread), isHighPriority);
+    this->threads.back()->add(std::make_unique<TransferManagerThread::InterThreadRequest>(std::move(newBufferRequest), resultingBuffer, &workCompleteFence, &isBeingWorkedOnByTransferThread), isHighPriority);
 }
 
 void star::TransferWorker::update(){
-    this->manager->cleanup(); 
+    this->threads.back()->cleanup(); 
 }

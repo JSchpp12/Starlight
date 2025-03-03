@@ -1,8 +1,8 @@
 #include "StarCommandBuffer.hpp"
 
 star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToCreate, 
-	star::Command_Buffer_Type type, bool initFences, bool initSemaphores)
-	: device(device), targetQueue(device.getQueue(type))
+	star::Queue_Type type, bool initFences, bool initSemaphores)
+	: device(device), targetQueue(device.getQueueFamily(type).getQueue())
 {
 	this->recordedImageTransitions.resize(numBuffersToCreate); 
 	for (auto& empty : this->recordedImageTransitions) {
@@ -10,7 +10,7 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 	}
 	this->waitSemaphores.resize(numBuffersToCreate); 
 
-	vk::CommandPool& pool = device.getCommandPool(type); 
+	vk::CommandPool& pool = device.getQueueFamily(type).getCommandPool(); 
 
 	//allocate this from the pool
 	vk::CommandBufferAllocateInfo allocateInfo = vk::CommandBufferAllocateInfo{}; 
