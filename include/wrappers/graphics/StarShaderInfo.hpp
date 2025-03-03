@@ -88,7 +88,6 @@ namespace star {
 
 			vk::DescriptorSet getDescriptorSet() {
 				if (this->setNeedsRebuild){
-					std::cout << "Rebuilding" << std::endl;
 					rebuildSet();
 				}
 
