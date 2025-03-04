@@ -5,6 +5,7 @@
 #include "StarBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "ConfigFile.hpp"
+#include "StarTexture.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
@@ -15,48 +16,16 @@
 #include <optional>
 
 namespace star {
-class StarImage {
+class StarImage : public StarTexture{
 public:
-	/// <summary>
-	/// Options to be used when creating a new texture
-	/// </summary>
-	/// <returns></returns>
-	struct TextureCreateSettings {
-		TextureCreateSettings(const int& width, 
-			const int& height, const int& channels, 
-			const int& depth, const int& byteDepth,
-			const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat,
-			const vk::ImageAspectFlags& imageAspectFlags, const VmaMemoryUsage& memoryUsage,
-			const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
-			const bool& isMutable, const bool& createSampler) 
-			: width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
-			imageUsage(imageUsage), imageFormat(imageFormat), 
-			allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
-			isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), aspectFlags(imageAspectFlags){ }
-
-		~TextureCreateSettings() = default; 
-
-		TextureCreateSettings() = default;
-
-		bool createSampler = false; 
-		bool isMutable = false;
-		int height, width, channels, depth, byteDepth = 0; 
-		vk::ImageUsageFlags imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-		vk::Format imageFormat = vk::Format::eR8G8B8A8Srgb;
-		VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-		VmaAllocationCreateFlags allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
-		vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
-		vk::ImageLayout initialLayout = vk::ImageLayout::eShaderReadOnlyOptimal; 
-	}; 
-
 	StarImage(TextureCreateSettings settings,
 		const vk::Image& image) 
-		: creationSettings(settings), textureImage(image), layout(settings.initialLayout)
+		: StarTexture(settings), textureImage(image), layout(settings.initialLayout)
 	{
 	}; 
 
 	StarImage(TextureCreateSettings settings)
-		: creationSettings(settings)
+		: StarTexture(settings)
 	{
 	};
 
@@ -82,11 +51,7 @@ public:
 		vk::AccessFlags dstFlags, vk::PipelineStageFlags sourceStage,
 		vk::PipelineStageFlags dstStage);
 
-	int getWidth() const { return this->creationSettings.width; };
-	int getHeight() const { return this->creationSettings.height; };
-	int getChannels() const { return this->creationSettings.channels; }
-	int getDepth() const { return this->creationSettings.depth; }
-	TextureCreateSettings getCreationSettings() const { return this->creationSettings; }
+
 	//std::vector<vk::Format> getFormats() const {
 	//	std::vector<vk::Format> formats; 
 	//	for (auto& info : this->imageViews) {
@@ -94,7 +59,6 @@ public:
 	//	}
 	//}
 protected:
-	TextureCreateSettings creationSettings;
 	vk::ImageLayout layout = vk::ImageLayout::eUndefined;
 	vk::Image textureImage = vk::Image();
 

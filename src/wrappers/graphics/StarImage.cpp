@@ -5,8 +5,8 @@ namespace star {
 void StarImage::prepRender(StarDevice& device) {
 	if (!this->textureImage)
 		createImage(device);
-	createTextureImageView(device, this->creationSettings.imageFormat, this->creationSettings.aspectFlags);
-	if (this->creationSettings.createSampler)
+	createTextureImageView(device, this->createSettings.imageFormat, this->createSettings.aspectFlags);
+	if (this->createSettings.createSampler)
 		createImageSampler(device);
 }
 
@@ -44,18 +44,18 @@ void StarImage::createImage(StarDevice& device) {
 
 	auto loadedData = this->loadImageData(device); 
 	if (loadedData) {
-		createImage(device, this->creationSettings.width, this->creationSettings.height, this->creationSettings.depth, this->creationSettings.imageFormat, vk::ImageTiling::eOptimal, this->creationSettings.imageUsage, this->creationSettings.memoryUsage, this->creationSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->creationSettings.isMutable);
+		createImage(device, this->createSettings.width, this->createSettings.height, this->createSettings.depth, this->createSettings.imageFormat, vk::ImageTiling::eOptimal, this->createSettings.imageUsage, this->createSettings.memoryUsage, this->createSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->createSettings.isMutable);
 
 		//copy staging buffer to texture image 
-		transitionImageLayout(device, textureImage, this->creationSettings.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+		transitionImageLayout(device, textureImage, this->createSettings.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-		device.copyBufferToImage(loadedData->getVulkanBuffer(), textureImage, static_cast<uint32_t>(this->creationSettings.width), static_cast<uint32_t>(this->creationSettings.height));
+		device.copyBufferToImage(loadedData->getVulkanBuffer(), textureImage, static_cast<uint32_t>(this->createSettings.width), static_cast<uint32_t>(this->createSettings.height));
 
 		//prepare final image for texture mapping in shaders 
-		transitionImageLayout(device, textureImage, this->creationSettings.imageFormat, vk::ImageLayout::eTransferDstOptimal, this->creationSettings.initialLayout);
+		transitionImageLayout(device, textureImage, this->createSettings.imageFormat, vk::ImageLayout::eTransferDstOptimal, this->createSettings.initialLayout);
 	}
 	else {
-		createImage(device, this->creationSettings.width, this->creationSettings.height, this->creationSettings.depth, this->creationSettings.imageFormat, vk::ImageTiling::eOptimal, this->creationSettings.imageUsage, this->creationSettings.memoryUsage, this->creationSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->creationSettings.isMutable);
+		createImage(device, this->createSettings.width, this->createSettings.height, this->createSettings.depth, this->createSettings.imageFormat, vk::ImageTiling::eOptimal, this->createSettings.imageUsage, this->createSettings.memoryUsage, this->createSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->createSettings.isMutable);
 	}
 }
 

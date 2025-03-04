@@ -36,7 +36,7 @@ void star::FileTexture::saveToDisk(const std::string& path)
 
 std::unique_ptr<star::StarBuffer> star::FileTexture::loadImageData(StarDevice& device)
 {
-    vk::DeviceSize imageSize = (this->creationSettings.width * this->creationSettings.height * this->creationSettings.channels * this->creationSettings.depth) * this->creationSettings.byteDepth;
+    vk::DeviceSize imageSize = (this->createSettings.width * this->createSettings.height * this->createSettings.channels * this->createSettings.depth) * this->createSettings.byteDepth;
     std::unique_ptr<star::StarBuffer> stagingBuffer = std::make_unique<star::StarBuffer>(
         device.getAllocator().get(),
         imageSize,

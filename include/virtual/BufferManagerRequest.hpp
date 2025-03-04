@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StarBuffer.hpp"
+#include "ManagerController.hpp"
 #include "BufferMemoryTransferRequest.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -10,30 +11,17 @@
 #include <functional>
 
 namespace star{
-    class BufferManagerRequest {
+    class BufferManagerRequest : public ManagerController {
     public:
 
     BufferManagerRequest() = default;
 
     BufferManagerRequest(const uint8_t& frameInFlightIndexToUpdateOn) 
-    : frameInFlightIndexToUpdateOn(frameInFlightIndexToUpdateOn){}; 
+    : ManagerController(frameInFlightIndexToUpdateOn){}; 
 
     virtual std::unique_ptr<BufferMemoryTransferRequest> createTransferRequest() const = 0; 
 
-    virtual bool isValid(const uint8_t& currentFrameInFlightIndex) const {
-        if(frameInFlightIndexToUpdateOn.has_value() && currentFrameInFlightIndex == frameInFlightIndexToUpdateOn.value()) {
-            return false;
-        }
-
-        return true;
-    }
-
-    const std::optional<uint8_t>& getFrameInFlightIndexToUpdateOn() const { return frameInFlightIndexToUpdateOn; }
-
-    //If buffer needs to be recreated, should give a handle with the request
-    //BufferManagerRequest(handle handle)
-
     protected:
-    std::optional<uint8_t> frameInFlightIndexToUpdateOn = std::nullopt;
+
     };
 }

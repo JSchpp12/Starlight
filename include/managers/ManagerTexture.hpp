@@ -19,7 +19,6 @@ public:
 		Request(std::unique_ptr<StarImage> createdTexture) : createdTexture(std::make_optional(std::move(createdTexture))) {}
 	};
 
-	static Handle submitRequest(std::unique_ptr<Request> newRequest); 
 
 	//void update(); 
 
