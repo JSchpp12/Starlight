@@ -23,8 +23,7 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
-find_package(boost_thread CONFIG REQUIRED)
-find_package(TBB CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS container thread)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -132,6 +131,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/helpers/GeometryHelpers.cpp"
     "src/internals/CommandBufferContainer.cpp"
     "src/internals/TransferWorker.cpp"
+    "src/internals/ManagerStorageContainer.cpp"
 )
 
 set(${PROJECT_NAME}_HEADERS
@@ -206,6 +206,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/systems/StarRenderGroup.hpp"
     "include/internals/CommandBufferContainer.hpp"
     "include/internals/TransferWorker.hpp"
+    "include/internals/ManagerStorageContainer.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarEntity.hpp"
@@ -243,8 +244,8 @@ target_link_libraries(${PROJECT_NAME}
         GPUOpen::VulkanMemoryAllocator
         nlohmann_json::nlohmann_json
         Boost::thread
-        TBB::tbb
-)
+        Boost::container
+    )
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
