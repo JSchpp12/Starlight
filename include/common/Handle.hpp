@@ -17,6 +17,9 @@ namespace star {
         Handle() : global_id(id_counter++), id(0), type(Handle_Type::defaultHandle) {};
         Handle(const Handle& other) = default;
         Handle(const size_t id, const Handle_Type type) : isInit(true), global_id(id_counter++), id(id), type(type) {};
+        Handle(const Handle_Type& type) : global_id(id_counter++), type(type) {};
+        ~Handle() = default;
+
 
 		bool operator==(const Handle& other) const {
 			return global_id == other.global_id && id == other.id && type == other.type;

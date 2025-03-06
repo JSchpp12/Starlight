@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ManagerStorageContainer.hpp"
 #include "BufferMemoryTransferRequest.hpp"
 #include "SharedFence.hpp"
 #include "BufferManagerRequest.hpp"
@@ -30,12 +31,11 @@ namespace star {
 	public:
 		struct FinalizedBufferRequest {
 			std::unique_ptr<BufferManagerRequest> request = nullptr;
-			std::unique_ptr<StarBuffer> buffer = nullptr; 
 			std::unique_ptr<SharedFence> workingFence;
+			std::unique_ptr<StarBuffer> buffer = nullptr; 
 			boost::atomic<bool> cpuWorkDoneByTransferThread = true; 
 
-			FinalizedBufferRequest(std::unique_ptr<BufferManagerRequest> request) 
-			: request(std::move(request)){}
+			FinalizedBufferRequest(std::unique_ptr<BufferManagerRequest> request, std::unique_ptr<SharedFence> workingFence) : request(std::move(request)), workingFence(std::move(workingFence)){}
 		};
 
 		static void init(StarDevice& device, TransferWorker& worker, const int& totalNumFramesInFlight); 
@@ -57,34 +57,20 @@ namespace star {
 
 		static StarBuffer& getBuffer(const Handle& handle); 
 
-		// static void recreate(const Handle& handle, const BufferManagerRequest::BufferCreationArgs& newBufferCreationArgs); 
+		static void destroy(const Handle& handle);
 
 		static void cleanup(StarDevice& device); 
 
-		static void destroy(const Handle& handle);
 	protected:
 		static TransferWorker* managerWorker;
 		static StarDevice* managerDevice;
 		static int bufferCounter; 
-		static int managerNumFramesInFlight; 
-		static int currentFrameInFlight; 
 		static int staticBufferIDCounter; 
 		static int dynamicBufferIDCounter; 
 
-		static std::vector<std::unique_ptr<FinalizedBufferRequest>> allBuffers;
+		static std::unique_ptr<ManagerStorageContainer<FinalizedBufferRequest>> bufferStorage;
 
-		static std::stack<FinalizedBufferRequest*> newRequests; 
 		static std::set<SharedFence*> highPriorityRequestCompleteFlags;
-
-		//odd handles
-		static std::unordered_map<Handle, std::unique_ptr<FinalizedBufferRequest>*, HandleHash> updateableBuffers;
-		//even handles
-		static std::unordered_map<Handle, std::unique_ptr<FinalizedBufferRequest>*, HandleHash> staticBuffers; 
-
-		// static std::unordered_set<Handle> changedBuffers;
-		static bool isBufferStatic(const Handle& handle); 
-
-		static std::unique_ptr<FinalizedBufferRequest>* getRequestContainer(const Handle& handle); 
 
 		static void waitForFences(std::vector<vk::Fence>& fence);
 	};

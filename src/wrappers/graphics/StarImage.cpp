@@ -1,10 +1,21 @@
 #include "StarImage.hpp"
 
+
+#include "StarDescriptorBuilders.hpp"
+#include "ConfigFile.hpp"
+
+#include <sstream>
+#include <optional>
+
 namespace star {
 
 void StarImage::prepRender(StarDevice& device) {
 	if (!this->textureImage)
+	{
+		this->StarTexture::prepRender(device);
 		createImage(device);
+	}
+
 	createTextureImageView(device, this->createSettings.imageFormat, this->createSettings.aspectFlags);
 	if (this->createSettings.createSampler)
 		createImageSampler(device);
@@ -19,9 +30,7 @@ void StarImage::cleanupRender(StarDevice& device)
 		device.getDevice().destroyImageView(item.second);
 	}
 
-	//only destroy if the image memory was allocated with the creation of this instance
-	if (this->textureImage && this->imageAllocation)
-		vmaDestroyImage(device.getAllocator().get(), this->textureImage, *this->imageAllocation);
+
 }
 
 vk::ImageView StarImage::getImageView(vk::Format* requestedFormat) const{
@@ -38,72 +47,15 @@ vk::ImageView StarImage::getImageView(vk::Format* requestedFormat) const{
 }
 
 void StarImage::createImage(StarDevice& device) { 
-
-	//image has data in cpu memory, it must be copied over
-	this->imageAllocation = std::make_unique<VmaAllocation>();
-
 	auto loadedData = this->loadImageData(device); 
 	if (loadedData) {
-		createImage(device, this->createSettings.width, this->createSettings.height, this->createSettings.depth, this->createSettings.imageFormat, vk::ImageTiling::eOptimal, this->createSettings.imageUsage, this->createSettings.memoryUsage, this->createSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->createSettings.isMutable);
-
 		//copy staging buffer to texture image 
-		transitionImageLayout(device, textureImage, this->createSettings.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+		transitionImageLayout(device, this->textureImage, this->createSettings.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-		device.copyBufferToImage(loadedData->getVulkanBuffer(), textureImage, static_cast<uint32_t>(this->createSettings.width), static_cast<uint32_t>(this->createSettings.height));
+		device.copyBufferToImage(loadedData->getVulkanBuffer(), this->textureImage, static_cast<uint32_t>(this->createSettings.width), static_cast<uint32_t>(this->createSettings.height));
 
 		//prepare final image for texture mapping in shaders 
-		transitionImageLayout(device, textureImage, this->createSettings.imageFormat, vk::ImageLayout::eTransferDstOptimal, this->createSettings.initialLayout);
-	}
-	else {
-		createImage(device, this->createSettings.width, this->createSettings.height, this->createSettings.depth, this->createSettings.imageFormat, vk::ImageTiling::eOptimal, this->createSettings.imageUsage, this->createSettings.memoryUsage, this->createSettings.allocationCreateFlags, textureImage, *this->imageAllocation, this->createSettings.isMutable);
-	}
-}
-
-void StarImage::createImage(StarDevice& device, int width, int height, int depth, vk::Format format,
-	vk::ImageTiling tiling, vk::ImageUsageFlags usage, const VmaMemoryUsage& memoryUsage, 
-	const VmaAllocationCreateFlags& allocationCreateFlags, vk::Image& image, 
-	VmaAllocation& imageMemory, bool isMutable, 
-	vk::MemoryPropertyFlags* optional_setRequiredMemoryPropertyFlags) 
-{
-
-	/* Create vulkan image */
-	vk::ImageCreateInfo imageInfo{};
-	imageInfo.sType = vk::StructureType::eImageCreateInfo;
-
-	if (depth > 1) {
-		imageInfo.imageType = vk::ImageType::e3D;
-		imageInfo.flags = vk::ImageCreateFlagBits::e2DArrayCompatible;
-	}
-	else
-		imageInfo.imageType = vk::ImageType::e2D;
-
-	imageInfo.extent.width = width;
-	imageInfo.extent.height = height;
-	imageInfo.extent.depth = depth;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = format;
-	imageInfo.tiling = tiling;
-	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.usage = usage;
-	imageInfo.samples = vk::SampleCountFlagBits::e1;
-	imageInfo.sharingMode = vk::SharingMode::eExclusive;
-
-	if (isMutable)
-		imageInfo.flags = imageInfo.flags | vk::ImageCreateFlagBits::eMutableFormat; 
-
-	device.verifyImageCreate(imageInfo);
-
-	VmaAllocationCreateInfo allocInfo = {};
-	allocInfo.flags = allocationCreateFlags;
-	allocInfo.usage = memoryUsage;
-	if (optional_setRequiredMemoryPropertyFlags != nullptr)
-		allocInfo.requiredFlags = static_cast<VkMemoryPropertyFlags>(*optional_setRequiredMemoryPropertyFlags);
-
-	auto result = vmaCreateImage(device.getAllocator().get(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
-
-	if (result != VK_SUCCESS) {
-		throw std::exception("Failed to create image: " + result); 
+		transitionImageLayout(device, this->textureImage, this->createSettings.imageFormat, vk::ImageLayout::eTransferDstOptimal, this->createSettings.initialLayout);
 	}
 }
 
@@ -294,7 +246,7 @@ void StarImage::createImageSampler(StarDevice& device) {
 }
 
 void StarImage::createTextureImageView(StarDevice& device, const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
-	vk::ImageView imageView = createImageView(device, textureImage, viewFormat, aspectFlags);
+	vk::ImageView imageView = createImageView(device, this->textureImage, viewFormat, aspectFlags);
 	this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
 }
 

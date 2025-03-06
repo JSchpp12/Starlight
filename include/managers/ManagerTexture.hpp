@@ -1,31 +1,45 @@
 #pragma once
 
-#include "StarImage.hpp"
+#include "StarTexture.hpp"
+#include "StarManager.hpp"
 #include "Handle.hpp"
+#include "TextureManagerRequest.hpp"
+#include "SharedFence.hpp"
+#include "TransferWorker.hpp"
 
-#include <unordered_map>
-#include <stack>
-#include <functional>
+#include <boost/atomic.hpp>
+
 #include <optional>
+#include <memory>
+#include <map>
 
 namespace star {
 class ManagerTexture {
 public:
-	struct Request {
-		std::optional<StarImage::TextureCreateSettings> textureSettings;
-		std::optional<std::unique_ptr<StarImage>> createdTexture; 
+	struct FinalizedTextureRequest {
+		std::unique_ptr<TextureManagerRequest> request = nullptr;
+		std::unique_ptr<StarTexture> texture = nullptr; 
+		std::unique_ptr<SharedFence> workingFence;
+		boost::atomic<bool> cpuWorkDoneByTransferThread = true; 
 
-		Request(StarImage::TextureCreateSettings textureSettings) : textureSettings(textureSettings) {}
-		Request(std::unique_ptr<StarImage> createdTexture) : createdTexture(std::make_optional(std::move(createdTexture))) {}
+		FinalizedTextureRequest(std::unique_ptr<TextureManagerRequest> request) 
+		: request(std::move(request)){}
 	};
+
 
 
 	//void update(); 
 
 private:
-	static size_t counter; 
-	static std::stack<std::unique_ptr<Request>> newRequests; 
+	static TransferWorker* managerWorker; 
+	static StarDevice* managerDevice; 
+	static int bufferCounter;
+	static int staticTextureIDCoutner;
+	static int dynamicTextureIDCoutner;
 
-	std::vector<std::unique_ptr<StarImage>> textures = std::vector<std::unique_ptr<StarImage>>(50);
+	static std::vector<std::unique_ptr<FinalizedTextureRequest>> allTextures;
+	static std::unordered_map<Handle, std::unique_ptr<FinalizedTextureRequest>*> updateableTextures;
+	static std::unordered_map<Handle, std::unique_ptr<FinalizedTextureRequest>*> staticTextures;
+
 };
 }

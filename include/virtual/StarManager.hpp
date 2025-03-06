@@ -12,7 +12,5 @@ public:
 	virtual void destroy(const Handle& resourceHandle) = 0; 
 
 protected:
-	std::unique_ptr<Handle> handle = nullptr; 
-
 };
 }
