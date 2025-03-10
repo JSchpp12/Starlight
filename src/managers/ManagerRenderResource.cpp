@@ -1,19 +1,16 @@
-#include "ManagerBuffer.hpp"
+#include "ManagerRenderResource.hpp"
 
-std::set<star::SharedFence*> star::ManagerBuffer::highPriorityRequestCompleteFlags = std::set<star::SharedFence*>();
-star::StarDevice* star::ManagerBuffer::managerDevice = nullptr;
-star::TransferWorker* star::ManagerBuffer::managerWorker = nullptr;
-std::unique_ptr<star::ManagerStorageContainer<star::ManagerBuffer::FinalizedBufferRequest>> star::ManagerBuffer::bufferStorage = std::make_unique<star::ManagerStorageContainer<star::ManagerBuffer::FinalizedBufferRequest>>();
+std::set<star::SharedFence*> star::ManagerRenderResource::highPriorityRequestCompleteFlags = std::set<star::SharedFence*>();
+std::unique_ptr<star::ManagerStorageContainer<star::ManagerRenderResource::FinalizedBufferRequest>> star::ManagerRenderResource::bufferStorage = std::make_unique<star::ManagerStorageContainer<star::ManagerRenderResource::FinalizedBufferRequest>>();
 
-
-void star::ManagerBuffer::init(star::StarDevice& device, star::TransferWorker& worker, const int& numFramesInFlight){
+void star::ManagerRenderResource::init(star::StarDevice& device, star::TransferWorker& worker, const int& numFramesInFlight){
 	assert(managerDevice == nullptr && "Init function should only be called once");
 
 	managerDevice = &device;
 	managerWorker = &worker;
 }
 
-star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManagerRequest> newRequest, const bool& isHighPriority) {
+star::Handle star::ManagerRenderResource::addRequest(std::unique_ptr<star::BufferManagerRequest> newRequest, const bool& isHighPriority) {
 	Handle newBufferHandle = Handle(Handle_Type::buffer); 
 
 	bool isStatic = !newRequest->getFrameInFlightIndexToUpdateOn().has_value();
@@ -21,7 +18,7 @@ star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManager
 	auto newFull = std::make_unique<FinalizedBufferRequest>(std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
 	if (isStatic){
 		newFull->cpuWorkDoneByTransferThread.store(false);
-		managerWorker->add(newFull->request->createTransferRequest(), *newFull->workingFence, newFull->buffer, newFull->cpuWorkDoneByTransferThread, isHighPriority);
+		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, newFull->request->createTransferRequest(), newFull->buffer, isHighPriority);
 		newFull->request.release(); 
 	}
 
@@ -34,7 +31,7 @@ star::Handle star::ManagerBuffer::addRequest(std::unique_ptr<star::BufferManager
 	return newBufferHandle; 
 }
 
-void star::ManagerBuffer::update(const int& frameInFlightIndex){
+void star::ManagerRenderResource::update(const int& frameInFlightIndex){
 	//must wait for all high priority requests to complete
 
 	//need to make sure any previous transfers have completed before submitting
@@ -69,11 +66,11 @@ void star::ManagerBuffer::update(const int& frameInFlightIndex){
 
 	for (int i = 0; i < requestsToUpdate.size(); i++){
 		requestsToUpdate[i]->cpuWorkDoneByTransferThread.store(false);
-		managerWorker->add(requestsToUpdate[i]->request->createTransferRequest(), *requestsToUpdate[i]->workingFence, requestsToUpdate[i]->buffer, requestsToUpdate[i]->cpuWorkDoneByTransferThread, true);
+		managerWorker->add( *requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->request->createTransferRequest(), requestsToUpdate[i]->buffer, true);
 	}
 }
 
-void star::ManagerBuffer::updateRequest(std::unique_ptr<BufferManagerRequest> newRequest, const star::Handle& handle, const bool& isHighPriority){
+void star::ManagerRenderResource::updateRequest(std::unique_ptr<BufferManagerRequest> newRequest, const star::Handle& handle, const bool& isHighPriority){
 	//possible race condition....need to make sure the request on the secondary thread has been finished first before replacing
 	std::unique_ptr<FinalizedBufferRequest>& container = bufferStorage->get(handle);
 
@@ -93,12 +90,12 @@ void star::ManagerBuffer::updateRequest(std::unique_ptr<BufferManagerRequest> ne
 	
 	container->request = std::move(newRequest); 
 
-	managerWorker->add(container->request->createTransferRequest(), *container->workingFence, container->buffer, container->cpuWorkDoneByTransferThread, isHighPriority);
+	managerWorker->add(*container->workingFence, container->cpuWorkDoneByTransferThread, container->request->createTransferRequest(), container->buffer, isHighPriority);
 
 	highPriorityRequestCompleteFlags.insert(container->workingFence.get());
 }
 
-bool star::ManagerBuffer::isReady(const star::Handle& handle){
+bool star::ManagerRenderResource::isReady(const star::Handle& handle){
 	//check the fence for the buffer request
 	std::unique_ptr<FinalizedBufferRequest>& container = bufferStorage->get(handle);
 
@@ -119,7 +116,7 @@ bool star::ManagerBuffer::isReady(const star::Handle& handle){
 	return false; 
 }
 
-void star::ManagerBuffer::waitForReady(const Handle& handle){
+void star::ManagerRenderResource::waitForReady(const Handle& handle){
 	std::unique_ptr<FinalizedBufferRequest>& container = bufferStorage->get(handle); 
 
 
@@ -136,7 +133,7 @@ void star::ManagerBuffer::waitForReady(const Handle& handle){
 	}
 }
 
-star::StarBuffer& star::ManagerBuffer::getBuffer(const star::Handle& handle){
+star::StarBuffer& star::ManagerRenderResource::getBuffer(const star::Handle& handle){
 	assert(handle.getType() == star::Handle_Type::buffer && "Handle provided is not a buffer handle");
 
 	std::unique_ptr<FinalizedBufferRequest>& container = bufferStorage->get(handle);
@@ -153,18 +150,10 @@ star::StarBuffer& star::ManagerBuffer::getBuffer(const star::Handle& handle){
 	return *container->buffer;
 }
 
-void star::ManagerBuffer::destroy(const star::Handle& handle) {
+void star::ManagerRenderResource::destroy(const star::Handle& handle) {
 	bufferStorage->destroy(handle); 
 }
 
-void star::ManagerBuffer::cleanup(StarDevice& device){
+void star::ManagerRenderResource::cleanup(StarDevice& device){
 	bufferStorage.release();
-}
-
-void star::ManagerBuffer::waitForFences(std::vector<vk::Fence>& fences){
-
-	auto result = managerDevice->getDevice().waitForFences(fences, VK_TRUE, UINT64_MAX);
-
-	if (result != vk::Result::eSuccess)
-		throw std::runtime_error("Failed to wait for fence");
 }
