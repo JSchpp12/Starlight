@@ -1,17 +1,6 @@
 #pragma once
 
-#include "ObjVertInfo.hpp"
-#include "ObjIndicesInfo.hpp"
-
-#include "BumpMaterial.hpp"
-#include "CastHelpers.hpp"
-#include "FileHelpers.hpp"
-#include "StarMesh.hpp"
-#include "StarDevice.hpp"
 #include "StarObject.hpp"
-#include "StarGraphicsPipeline.hpp"
-#include "VertColorMaterial.hpp"
-#include "ObjVertInfo.hpp"
 
 #include <tiny_obj_loader.h>
 

@@ -1,5 +1,7 @@
 #include "BumpMaterial.hpp"
 
+#include <vulkan/vulkan.hpp>
+
 void star::BumpMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder)
 {
 	constBuilder.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
@@ -8,33 +10,19 @@ void star::BumpMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout
 
 void star::BumpMaterial::cleanup(StarDevice& device)
 {
-	if (this->texture){
-		this->texture->cleanupRender(device);
-		this->texture.reset(); 
-	}
 
-	if (this->bumpMap) {
-		this->bumpMap->cleanupRender(device);
-		this->bumpMap.reset(); 
-	}
 }
 
 void star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 
 {
-	builder.add(this->texture->getTexture(), vk::ImageLayout::eShaderReadOnlyOptimal);
-	builder.add(this->bumpMap->getTexture(), vk::ImageLayout::eShaderReadOnlyOptimal);
-}
-
-void star::BumpMaterial::prep(StarDevice& device)
-{
-	this->TextureMaterial::prep(device);
-	bumpMap->prepRender(device);
+	this->TextureMaterial::buildDescriptorSet(device, builder, imageInFlightIndex);
+	builder.add(this->bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::BumpMaterial::getDescriptorRequests(const int& numFramesInFlight)
 {
 	return std::vector<std::pair<vk::DescriptorType, const int>>{
-		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1)
+		std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 2)
 	};
 }

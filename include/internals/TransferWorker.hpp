@@ -51,7 +51,7 @@ namespace star{
         };
 
         TransferManagerThread(StarDevice& device, Allocator& allocator, 
-            vk::PhysicalDeviceLimits deviceLimits, std::unique_ptr<StarQueueFamily> ownedQueue);
+            const vk::PhysicalDeviceProperties& deviceLimits, std::unique_ptr<StarQueueFamily> ownedQueue);
 
         ~TransferManagerThread();
 
@@ -65,7 +65,7 @@ namespace star{
 
         static void mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, 
             vk::CommandPool* transferCommandPool, vk::Queue* transferQueue, 
-            VmaAllocator* allocator, vk::PhysicalDeviceLimits* limits,
+            VmaAllocator* allocator, const vk::PhysicalDeviceProperties* physicalProperties,
             std::vector<SharedFence*>* commandBufferFences, 
             boost::lockfree::stack<InterThreadRequest*>* highPriorityRequests, 
             boost::lockfree::stack<InterThreadRequest*>* standardTransferRequests);
@@ -74,13 +74,13 @@ namespace star{
             const uint8_t& numToCreate);
 
         static void createBuffer(vk::Device& device, VmaAllocator& allocator, 
-            vk::Queue& transferQueue, vk::PhysicalDeviceLimits& limits, SharedFence& workCompleteFence, 
+            vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
             std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, 
             std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences,
             TransferRequest::Memory<StarBuffer::BufferCreationArgs>* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer);
 
         static void createImage(vk::Device& device, VmaAllocator& allocator,
-            vk::Queue& transferQueue, vk::PhysicalDeviceLimits& limits, SharedFence& workCompleteFence, 
+            vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
             std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, 
             std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences,
             TransferRequest::Memory<StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<StarTexture>* resultingImage);
@@ -98,7 +98,7 @@ namespace star{
         
         StarDevice& device;
         std::unique_ptr<StarQueueFamily> transferQueue = nullptr; 
-        vk::PhysicalDeviceLimits deviceLimits;
+        const vk::PhysicalDeviceProperties deviceProperties;
         std::vector<vk::CommandBuffer> commandBuffers;
         std::vector<SharedFence*> commandBufferFences;
         size_t previousBufferIndexUsed = 0; 

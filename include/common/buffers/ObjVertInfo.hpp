@@ -30,7 +30,7 @@ namespace star{
             //     assert(!readingDoneFlag.load() && "Reading flag is already set");
             // }
     
-            StarBuffer::BufferCreationArgs getCreateArgs() const override{
+            StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
                 return StarBuffer::BufferCreationArgs{
                     sizeof(Vertex), 
                     CastHelpers::size_t_to_unsigned_int(this->vertices.size()),

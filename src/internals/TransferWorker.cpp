@@ -24,7 +24,7 @@ void star::TransferManagerThread::startAsync(){
         &this->transferQueue->getCommandPool(),
         &this->transferQueue->getQueue(), 
         &this->allocator.get(), 
-        &this->deviceLimits,
+        &this->deviceProperties,
         &this->commandBufferFences,
         &this->highPriorityRequests.value(), 
         &this->standardRequests.value()
@@ -41,7 +41,7 @@ void star::TransferManagerThread::stopAsync(){
     this->thread.join();
 }
 
-void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, vk::CommandPool* transferPool, vk::Queue* transferQueue, VmaAllocator* allocator, vk::PhysicalDeviceLimits* limits, std::vector<SharedFence*>* commandBufferFences, boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>* highPriorityRequests, boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>* standardRequests){
+void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, vk::CommandPool* transferPool, vk::Queue* transferQueue, VmaAllocator* allocator, const vk::PhysicalDeviceProperties* deviceProperties, std::vector<SharedFence*>* commandBufferFences, boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>* highPriorityRequests, boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>* standardRequests){
     std::cout << "Transfer thread started..." << std::endl;
     size_t targetBufferIndex = 0;
     size_t previousBufferIndexUsed = 0;
@@ -74,7 +74,7 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
                     createBuffer(*device, 
                         *allocator, 
                         *transferQueue, 
-                        *limits, 
+                        *deviceProperties, 
                         *request->completeFence,  
                         inProcessRequests, 
                         targetBufferIndex, 
@@ -125,32 +125,34 @@ std::vector<vk::Queue> star::TransferManagerThread::createTransferQueues(star::S
     return queues;
 }
 
-void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, vk::PhysicalDeviceLimits& limits, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Memory<StarBuffer::BufferCreationArgs>* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
+void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Memory<StarBuffer::BufferCreationArgs>* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
     assert(commandBufferFences[bufferIndexToUse] == nullptr && "Command buffer fence should have already been waited on and removed");
     
+    auto createArgs = newBufferRequest->getCreateArgs(deviceProperties);
+
     auto transferSrcBuffer = std::make_unique<StarBuffer>(
         allocator, 
-        newBufferRequest->getCreateArgs().instanceSize,
-        newBufferRequest->getCreateArgs().instanceCount,
+        createArgs.instanceSize,
+        createArgs.instanceCount,
         VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
         VMA_MEMORY_USAGE_AUTO,
         vk::BufferUsageFlagBits::eTransferSrc,
         vk::SharingMode::eConcurrent,
-        (newBufferRequest->getCreateArgs().useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? limits.minUniformBufferOffsetAlignment : 1
+        (createArgs.useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? deviceProperties.limits.minUniformBufferOffsetAlignment : 1
     );
 
     //check if the resulting buffer needs to be replaced or not 
-    vk::DeviceSize resultSize = newBufferRequest->getCreateArgs().instanceSize * newBufferRequest->getCreateArgs().instanceCount;
+    vk::DeviceSize resultSize = createArgs.instanceSize * createArgs.instanceCount;
     if (resultingBuffer->get() == nullptr || (resultingBuffer->get() != nullptr && resultSize > resultingBuffer->get()->getBufferSize())){ 
         auto newBuffer = std::make_unique<StarBuffer>(
             allocator, 
-            newBufferRequest->getCreateArgs().instanceSize,
-            newBufferRequest->getCreateArgs().instanceCount,
-            newBufferRequest->getCreateArgs().creationFlags,
-            newBufferRequest->getCreateArgs().memoryUsageFlags,
-            newBufferRequest->getCreateArgs().useFlags | vk::BufferUsageFlagBits::eTransferDst,
+            createArgs.instanceSize,
+            createArgs.instanceCount,
+            createArgs.creationFlags,
+            createArgs.memoryUsageFlags,
+            createArgs.useFlags | vk::BufferUsageFlagBits::eTransferDst,
             vk::SharingMode::eConcurrent, 
-            (newBufferRequest->getCreateArgs().useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? limits.minUniformBufferOffsetAlignment : 1
+            (createArgs.useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? deviceProperties.limits.minUniformBufferOffsetAlignment : 1
         );   
         resultingBuffer->swap(newBuffer);   
     }
@@ -198,7 +200,7 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
     commandBufferFences[bufferIndexToUse] = &workCompleteFence; 
 }
 
-void star::TransferManagerThread::createImage(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, vk::PhysicalDeviceLimits& limits, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingImage){
+void star::TransferManagerThread::createImage(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingImage){
 
 }
 
@@ -249,9 +251,9 @@ void star::TransferManagerThread::readyCommandBuffer(vk::Device& device, const s
     }
 }
 
-star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator, vk::PhysicalDeviceLimits deviceLimits, std::unique_ptr<star::StarQueueFamily> ownedQueue)
+star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator, const vk::PhysicalDeviceProperties& deviceProperties, std::unique_ptr<star::StarQueueFamily> ownedQueue)
 : device(device), allocator(allocator), transferQueue(std::move(ownedQueue)), 
-commandBuffers(createCommandBuffers(device.getDevice(), transferQueue->getCommandPool(), 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceLimits(deviceLimits){
+commandBuffers(createCommandBuffers(device.getDevice(), transferQueue->getCommandPool(), 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceProperties(deviceProperties){
 
 }
 
@@ -300,7 +302,7 @@ void star::TransferManagerThread::add(std::unique_ptr<star::TransferManagerThrea
 
         {
             createBuffer(this->device.getDevice(), this->allocator.get(), 
-                this->transferQueue->getQueue(), this->deviceLimits, *this->transferRequests.back()->completeFence, 
+                this->transferQueue->getQueue(), this->deviceProperties, *this->transferRequests.back()->completeFence, 
                 this->inProcessRequests, targetBufferIndex, this->commandBuffers, 
                 this->commandBufferFences, this->transferRequests.back()->bufferTransferRequest.get(), 
                 this->transferRequests.back()->resultingBuffer.value());
@@ -348,7 +350,7 @@ star::TransferWorker::TransferWorker(star::StarDevice& device, const bool& runAs
         
     }
 
-    this->threads.emplace_back(std::make_unique<TransferManagerThread>(device, device.getAllocator(), device.getPhysicalDevice().getProperties().limits, device.giveMeQueueFamily(star::Queue_Type::Ttransfer)));
+    this->threads.emplace_back(std::make_unique<TransferManagerThread>(device, device.getAllocator(), device.getPhysicalDevice().getProperties(), device.giveMeQueueFamily(star::Queue_Type::Ttransfer)));
     
     if (runAsync)
         this->threads.back()->startAsync();

@@ -76,7 +76,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/ManagerController_Controller.cpp"
     "src/virtual/ManagerController_RenderResource_Buffer.cpp"
     "src/virtual/ManagerController_RenderResource_Texture.cpp"
-    "src/virtual/TextureManagerRequest.cpp"
     "src/wrappers/graphics/StarDescriptorBuilders.cpp"  
     "src/wrappers/graphics/StarBuffer.cpp"  
     "src/wrappers/graphics/StarGraphicsPipeline.cpp"  
@@ -92,7 +91,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/wrappers/ScreenshotCommandBuffer.cpp"
     "src/managers/ShaderManager.cpp" 
     "src/managers/ManagerRenderResource.cpp"
-    "src/managers/TextureManager.cpp"
     "src/managers/LightManager.cpp"
     "src/managers/MapManager.cpp" 
     "src/managers/ManagerDescriptorPool.cpp"
@@ -124,6 +122,8 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/buffers/ObjVertInfo.cpp"
     "src/common/buffers/ObjIndicesInfo.cpp"
     "src/common/buffers/ObjVertInfoFile.cpp"
+    "src/common/textures/TransferRequest_FileTexture.cpp"
+    "src/common/controllers/ManagerController_RenderResource_FileTexture.cpp"
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
@@ -157,6 +157,8 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/buffers/ObjVertInfo.hpp"
     "include/common/buffers/ObjIndicesInfo.hpp"
     "include/common/buffers/ObjVertInfoFile.hpp"
+    "include/common/textures/TransferRequest_FileTexture.hpp"
+    "include/common/controllers/ManagerController_RenderResource_FileTexture.hpp"
     "include/virtual/ModulePlug/RenderResourceModifier.hpp"
     "include/virtual/ModulePlug/CommandBufferModifier.hpp"
     "include/virtual/ModulePlug/DescriptorModifier.hpp"
@@ -176,7 +178,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/ManagerController_Controller.hpp"
     "include/virtual/ManagerController_RenderResource_Buffer.hpp"
     "include/virtual/ManagerController_RenderResource_Texture.hpp"
-    "include/virtual/TextureManagerRequest.hpp"
     "include/common/StarMaterialMesh.hpp"
     "include/wrappers/graphics/StarDescriptorBuilders.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
@@ -192,7 +193,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/wrappers/graphics/StarTexture.hpp"
     "include/wrappers/Allocator.hpp"
     "include/managers/ShaderManager.hpp"
-    "include/managers/TextureManager.hpp"
     "include/managers/LightManager.hpp"
     "include/managers/MapManager.hpp"
     "include/managers/ManagerDescriptorPool.hpp"
@@ -262,6 +262,8 @@ target_include_directories(${PROJECT_NAME}
         "include/common/helpers/"
         "include/common/objects/"
         "include/common/buffers/"
+        "include/common/textures"
+        "include/common/controllers/"
         "include/builders/"
         "include/controllers/"
         "include/modules/"
@@ -272,6 +274,35 @@ target_include_directories(${PROJECT_NAME}
         ${glm_SOURCE_DIR}
         ${Stb_INCLUDE_DIR}
 )
+
+find_program(CPPCHECK_EXECUTABLE cppcheck)
+if (CPPCHECK_EXECUTABLE)
+	set(CPPCHECK_FILES "")
+
+	foreach(FILE "${${PROJECT_NAME}_SOURCE}" "${PROJECT_NAME}_HEADERS")
+		file(TO_CMAKE_PATH "${FILE}" UNIX_PATH)
+		list(APPEND CPPCHECK_FILES "${UNIX_PATH}")
+	endforeach()
+
+	add_custom_target("${PROJECT_NAME}_cppcheck"
+		COMMAND ${CPPCHECK_EXECUTABLE} 
+			--enable=all 
+			-q
+			--inline-suppr
+			--language=c++
+			--std=c++20
+			--template=gcc
+			-I"include"
+			-I""
+			${CPPCHECK_FILES}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		COMMENT "Running Cppcheck"
+		VERBATIM
+	)
+
+	add_dependencies("${PROJECT_NAME}_cppcheck" ${CMAKE_PROJECT_NAME})
+endif()
+
 
 if (UNIX)
     set_target_properties(${PROJECT_NAME} PROPERTIES 

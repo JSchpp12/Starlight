@@ -21,7 +21,7 @@ namespace star {
 					}
 				}
 		
-			StarBuffer::BufferCreationArgs getCreateArgs() const override{
+			StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
 				return StarBuffer::BufferCreationArgs{
 					sizeof(glm::mat4),
 					static_cast<uint32_t>(this->displayMatrixInfo.size()),

@@ -1,9 +1,6 @@
 #include "TextureMaterial.hpp"
 
-void star::TextureMaterial::prep(StarDevice& device)
-{
-	texture->prepRender(device);
-}
+#include "StarShaderInfo.hpp"
 
 void star::TextureMaterial::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
@@ -17,14 +14,13 @@ void star::TextureMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLay
 
 void star::TextureMaterial::cleanup(StarDevice& device)
 {
-	if (texture)
-		texture->cleanupRender(device); 
+
 }
 
 void star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 {
 	builder.startSet();
-	builder.add(this->texture->getTexture(), vk::ImageLayout::eShaderReadOnlyOptimal); 
+	builder.add(this->texture, vk::ImageLayout::eShaderReadOnlyOptimal); 
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::getDescriptorRequests(const int& numFramesInFlight)

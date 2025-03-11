@@ -14,7 +14,7 @@ namespace star::TransferRequest{
 
     Memory() = default;
 
-    virtual T getCreateArgs() const = 0;
+    virtual T getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const = 0;
     
     virtual void writeData(StarBuffer& buffer) const = 0; 
 

@@ -1,5 +1,20 @@
 #include "BasicObject.hpp"
 
+
+#include "ManagerController_RenderResource_FileTexture.hpp"
+#include "ManagerRenderResource.hpp"
+#include "ObjVertInfo.hpp"
+#include "ObjIndicesInfo.hpp"
+
+#include "BumpMaterial.hpp"
+#include "CastHelpers.hpp"
+#include "FileHelpers.hpp"
+#include "StarMesh.hpp"
+
+#include "StarGraphicsPipeline.hpp"
+#include "VertColorMaterial.hpp"
+#include "ObjVertInfo.hpp"
+
 std::unique_ptr<star::BasicObject> star::BasicObject::New(std::string objPath)
 {
 	return std::unique_ptr<BasicObject>(new BasicObject(objPath));
@@ -88,16 +103,16 @@ void star::BasicObject::loadMesh(){
 		//create needed materials
 		for (size_t i = 0; i < materials.size(); i++) {
 			currMaterial = &materials.at(i);
-			std::unique_ptr<FileTexture> texture;
-			std::unique_ptr<FileTexture> bumpMap;
+			Handle texture; 
+			Handle bumpMap; 
 
 			if (currMaterial->diffuse_texname != "") {
-				texture = std::unique_ptr<FileTexture>(new FileTexture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
+				texture = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::FileTexture>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
 			}
 
 			//apply maps 
 			if (currMaterial->bump_texname != "") {
-				bumpMap = std::unique_ptr<FileTexture>(new FileTexture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
+				bumpMap = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::FileTexture>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
 			}
 
 			//check if any material values are 0 - ambient is important
@@ -107,7 +122,7 @@ void star::BasicObject::loadMesh(){
 				currMaterial->ambient[2] = 1.0;
 			}
 
-			if (bumpMap)
+			if (bumpMap.isInitialized())
 			{
 				this->isBumpyMaterial = true;
 				preparedMaterials.push_back(std::shared_ptr<BumpMaterial>(new BumpMaterial(glm::vec4(1.0),
@@ -128,7 +143,7 @@ void star::BasicObject::loadMesh(){
 							std::move(bumpMap)
 							)));
 			}
-			else if (texture) {
+			else if (texture.isInitialized()) {
 				this->isTextureMaterial = true;
 				preparedMaterials.push_back(std::shared_ptr<TextureMaterial>(new TextureMaterial(glm::vec4(1.0),
 					glm::vec4(1.0),
@@ -144,7 +159,7 @@ void star::BasicObject::loadMesh(){
 							currMaterial->specular[2],
 							1.0f },
 							currMaterial->shininess,
-							std::move(texture)
+							texture
 							)));
 			}
 			else {

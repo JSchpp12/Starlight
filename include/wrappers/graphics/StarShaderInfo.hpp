@@ -240,6 +240,7 @@ namespace star {
 
 			Builder add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout){
 				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout})); 
+				return *this;
 			}
 
 			std::unique_ptr<StarShaderInfo> build() {

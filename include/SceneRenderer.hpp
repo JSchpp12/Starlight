@@ -15,7 +15,6 @@
 #include "MapManager.hpp"
 #include "StarRenderGroup.hpp"
 #include "ShaderManager.hpp"
-#include "TextureManager.hpp"
 #include "LightManager.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "ManagerCommandBuffer.hpp"

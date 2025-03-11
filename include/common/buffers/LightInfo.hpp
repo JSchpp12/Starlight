@@ -33,7 +33,7 @@ namespace star {
 				} 
 			}
 		
-			StarBuffer::BufferCreationArgs getCreateArgs() const override{
+			StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
 				return StarBuffer::BufferCreationArgs{
 					sizeof(LightBufferObject),
 					static_cast<uint32_t>(this->myLights.size()),

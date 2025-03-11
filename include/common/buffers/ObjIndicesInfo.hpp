@@ -15,7 +15,7 @@ namespace star{
     
             void writeData(StarBuffer& buffer) const override;
     
-            StarBuffer::BufferCreationArgs getCreateArgs() const override{
+            StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
                 return StarBuffer::BufferCreationArgs{
                     sizeof(uint32_t),
                     CastHelpers::size_t_to_unsigned_int(this->indices.size()),
