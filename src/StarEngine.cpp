@@ -1,5 +1,17 @@
 #include "StarEngine.hpp"
 
+#include "Enums.hpp"
+#include "ManagerRenderResource.hpp"
+#include "SwapChainRenderer.hpp"
+#include "ConfigFile.hpp"
+
+#include "StarCommandBuffer.hpp"
+#include "ManagerDescriptorPool.hpp"
+#include "StarRenderGroup.hpp"
+#include "ManagerCommandBuffer.hpp"
+
+#include <vulkan/vulkan.hpp>
+
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
@@ -29,7 +41,7 @@ StarEngine::StarEngine() {
 	this->transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->OVERRIDE_APPLY_SINGLE_THREAD_MODE);
 
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-	ManagerBuffer::init(*this->renderingDevice, *this->transferWorker, framesInFlight);
+	StarManager::init(*this->renderingDevice, *this->transferWorker);
 
 	this->currentScene = std::unique_ptr<StarScene>(new StarScene(framesInFlight));
 }
@@ -69,7 +81,7 @@ void StarEngine::Run()
 
 		mainRenderer->pollEvents();
 		InteractionSystem::callWorldUpdates(currentFrame);
-		ManagerBuffer::update(currentFrame);
+		ManagerRenderResource::update(currentFrame);
 		vk::Semaphore allBuffersSubmitted = commandBufferManager.update(currentFrame);
 		mainRenderer->submitPresentation(currentFrame, &allBuffersSubmitted);
 
@@ -77,7 +89,7 @@ void StarEngine::Run()
 	}
 
 	this->renderingDevice->getDevice().waitIdle();
-	ManagerBuffer::cleanup(*this->renderingDevice);
+	ManagerRenderResource::cleanup(*this->renderingDevice);
 	RenderResourceSystem::cleanup(*this->renderingDevice);
 	StarObject::cleanupSharedResources(*this->renderingDevice); 
 }

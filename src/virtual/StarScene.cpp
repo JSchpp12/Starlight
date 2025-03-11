@@ -6,7 +6,7 @@ star::StarScene::StarScene(const int& numFramesInFlight)
 	this->lightInfoBuffers.resize(numFramesInFlight);
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		this->globalInfoBuffers.emplace_back(ManagerBuffer::addRequest(std::make_unique<GlobalInfo>(static_cast<uint16_t>(i), *this->myCamera.value(), this->lightCounter)));
+		this->globalInfoBuffers.emplace_back(ManagerRenderResource::addRequest(std::make_unique<GlobalInfo>(static_cast<uint16_t>(i), *this->myCamera.value(), this->lightCounter)));
 	}
 }
 
@@ -26,9 +26,9 @@ int star::StarScene::add(std::unique_ptr<star::Light> newLight) {
 	for (int i = 0; i < this->lightInfoBuffers.size(); i++) {
 		//TODO: need a function which will replace a buffer contained within the buffer manager...all handles to the information represented in that buffer need to remain valid
 		if (!this->lightInfoBuffers[i].isInitialized())
-			this->lightInfoBuffers[i] = ManagerBuffer::addRequest(std::make_unique<LightInfo>(i, this->lightList));
+			this->lightInfoBuffers[i] = ManagerRenderResource::addRequest(std::make_unique<LightInfo>(i, this->lightList));
 		else
-			ManagerBuffer::updateRequest(std::make_unique<LightInfo>(i, this->lightList), this->lightInfoBuffers[i]); 
+			ManagerRenderResource::updateRequest(std::make_unique<LightInfo>(i, this->lightList), this->lightInfoBuffers[i]); 
 	}
 
 	for (int i = 0; i < this->globalInfoBuffers.size(); i++){
@@ -59,6 +59,6 @@ void star::StarScene::onWorldUpdate(const uint32_t& frameInFlightIndex){
 	//check if any objects have changed since last frame, if so, they need to be updated on GPU memory
 
 	if (this->myCamera.has_value()){
-		ManagerBuffer::updateRequest(std::make_unique<GlobalInfo>(frameInFlightIndex, *this->myCamera.value(), this->lightList.size()), this->globalInfoBuffers[frameInFlightIndex]);
+		ManagerRenderResource::updateRequest(std::make_unique<GlobalInfo>(frameInFlightIndex, *this->myCamera.value(), this->lightList.size()), this->globalInfoBuffers[frameInFlightIndex]);
 	}
 }

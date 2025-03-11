@@ -1,7 +1,7 @@
 #include "GlobalInfo.hpp"
 
 
-void star::GlobalInfoTransfer::writeData(star::StarBuffer& buffer) const
+void star::TransferRequest::GlobalInfo::writeData(star::StarBuffer& buffer) const
 {
     buffer.map(); 
 
@@ -19,7 +19,7 @@ void star::GlobalInfoTransfer::writeData(star::StarBuffer& buffer) const
     buffer.unmap(); 
 }
 
-std::unique_ptr<star::BufferMemoryTransferRequest> star::GlobalInfo::createTransferRequest() const 
+std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::GlobalInfo::createTransferRequest() const 
 {
-    return std::make_unique<GlobalInfoTransfer>(this->camera, this->numLights);
+    return std::make_unique<TransferRequest::GlobalInfo>(this->camera, this->numLights);
 }

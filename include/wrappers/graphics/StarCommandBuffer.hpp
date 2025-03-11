@@ -65,10 +65,6 @@ namespace star {
 		/// </summary>
 		std::vector<vk::Semaphore>& getCompleteSemaphores(); 
 
-		void transitionImageLayout(int bufferIndex, star::StarImage& texture, vk::ImageLayout newLayout, 
-			vk::AccessFlags srcFlags, vk::AccessFlags dstFlags,
-			vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage); 
-
 		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
 
 		vk::Fence& getFence(const int& bufferIndex) { 

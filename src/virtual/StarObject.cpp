@@ -148,8 +148,8 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 
 	calculateBoundingBox(bbVerts, bbInds);
 
-	this->boundingBoxVertBuffer = ManagerBuffer::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
-	this->boundingBoxIndexBuffer = ManagerBuffer::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
+	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
 
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
@@ -167,8 +167,8 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 
 	calculateBoundingBox(bbVerts, bbInds);
 
-	this->boundingBoxVertBuffer = ManagerBuffer::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
-	this->boundingBoxIndexBuffer = ManagerBuffer::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
+	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
 
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder); 
 
@@ -263,10 +263,10 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 	//create a buffer for each image
 	for (int i = 0; i < numImagesInFlight; i++) {
 		this->instanceModelInfos.emplace_back(
-			ManagerBuffer::addRequest(std::make_unique<InstanceModelInfo>(this->instances, i))
+			ManagerRenderResource::addRequest(std::make_unique<InstanceModelInfo>(this->instances, i))
 		);
 		this->instanceNormalInfos.emplace_back(
-			ManagerBuffer::addRequest(std::make_unique<InstanceNormalInfo>(this->instances, i))
+			ManagerRenderResource::addRequest(std::make_unique<InstanceNormalInfo>(this->instances, i))
 		); 
 	}
 }
@@ -322,8 +322,8 @@ void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer
 void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex)
 {
 	vk::DeviceSize offsets{}; 
-	commandBuffer.bindVertexBuffers(0, ManagerBuffer::getBuffer(this->boundingBoxVertBuffer).getVulkanBuffer(), offsets); 
-	commandBuffer.bindIndexBuffer(ManagerBuffer::getBuffer(this->boundingBoxIndexBuffer).getVulkanBuffer(), 0, vk::IndexType::eUint32);
+	commandBuffer.bindVertexBuffers(0, ManagerRenderResource::getBuffer(this->boundingBoxVertBuffer).getVulkanBuffer(), offsets); 
+	commandBuffer.bindIndexBuffer(ManagerRenderResource::getBuffer(this->boundingBoxIndexBuffer).getVulkanBuffer(), 0, vk::IndexType::eUint32);
 
 	this->boundBoxPipeline->bind(commandBuffer); 
 	commandBuffer.setLineWidth(1.0f);

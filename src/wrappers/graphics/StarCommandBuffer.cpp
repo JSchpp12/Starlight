@@ -234,18 +234,6 @@ std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores()
 	return this->completeSemaphores;
 }
 
-void star::StarCommandBuffer::transitionImageLayout(int bufferIndex, star::StarImage& texture,
-	vk::ImageLayout newLayout, vk::AccessFlags srcFlags, vk::AccessFlags dstFlags, 
-	vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage)
-{
-	//add transition instruction to buffer
-	texture.transitionLayout(this->commandBuffers[bufferIndex], newLayout, srcFlags, dstFlags, sourceStage, dstStage); 
-
-	//record transition information here
-	auto newPair = std::pair<star::StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>(&texture, std::pair<vk::ImageLayout, vk::ImageLayout>(texture.getCurrentLayout(), newLayout)); 
-	this->recordedImageTransitions[bufferIndex]->insert(newPair); 
-}
-
 void star::StarCommandBuffer::wait(int bufferIndex)
 {
 	this->device.getDevice().waitForFences(this->readyFence.at(bufferIndex), VK_TRUE, UINT64_MAX); 

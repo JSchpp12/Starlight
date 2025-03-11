@@ -1,6 +1,6 @@
 #include "LightInfo.hpp"
 
-void star::LightInfoTransfer::writeData(StarBuffer& buffer) const
+void star::TransferRequest::LightInfo::writeData(StarBuffer& buffer) const
 {
 	buffer.map(); 
 
@@ -26,14 +26,14 @@ void star::LightInfoTransfer::writeData(StarBuffer& buffer) const
 	buffer.unmap(); 
 }
 
-std::unique_ptr<star::BufferMemoryTransferRequest> star::LightInfo::createTransferRequest() const
+std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::LightInfo::createTransferRequest() const
 {
-	return std::make_unique<LightInfoTransfer>(this->lights);
+	return std::make_unique<TransferRequest::LightInfo>(this->lights);
 }
 
 bool star::LightInfo::isValid(const uint8_t& currentFrameInFlightIndex) const
 {
-	if (!star::BufferManagerRequest::isValid(currentFrameInFlightIndex) && this->lastWriteNumLights != this->lights.size()){
+	if (!star::ManagerController::RenderResource::Buffer::isValid(currentFrameInFlightIndex) && this->lastWriteNumLights != this->lights.size()){
 		return false;
 	}
 

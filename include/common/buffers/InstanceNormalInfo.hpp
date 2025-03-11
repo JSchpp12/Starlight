@@ -1,7 +1,7 @@
 #pragma once
 
-#include "BufferManagerRequest.hpp"
-#include "BufferMemoryTransferRequest.hpp"
+#include "ManagerController_RenderResource_Buffer.hpp"
+#include "TransferRequest_Memory.hpp"
 #include "StarObjectInstance.hpp"
 
 #include <glm/glm.hpp>
@@ -10,17 +10,17 @@
 #include <memory>
 
 namespace star {
-
-	class InstanceNormalTransfer : public BufferMemoryTransferRequest{
-		public:
-			InstanceNormalTransfer(const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances) {
+	namespace TransferRequest{
+		class InstanceNormal : public Memory<StarBuffer::BufferCreationArgs>{
+			public:
+			InstanceNormal(const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances) {
 				for (auto& instance : objectInstances) {
 					this->normalMatrixInfo.push_back(instance->getDisplayMatrix());
 				}
 			}
-
-			virtual BufferMemoryTransferRequest::BufferCreationArgs getCreateArgs() const override{
-				return BufferCreationArgs{
+	
+			virtual StarBuffer::BufferCreationArgs getCreateArgs() const override{
+				return StarBuffer::BufferCreationArgs{
 					sizeof(glm::mat4),
 					static_cast<uint32_t>(this->normalMatrixInfo.size()),
 					VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
@@ -30,20 +30,21 @@ namespace star {
 				};
 			}
 
-		protected:
-			std::vector<glm::mat4> normalMatrixInfo = std::vector<glm::mat4>(); 
+			protected:
+				std::vector<glm::mat4> normalMatrixInfo = std::vector<glm::mat4>(); 
+	
+				void writeData(StarBuffer& buffer) const override;
+		};
+	}
 
-			void writeData(StarBuffer& buffer) const override;
-	};
-
-	class InstanceNormalInfo : public BufferManagerRequest {
+	class InstanceNormalInfo : public ManagerController::RenderResource::Buffer {
 	public:
 		InstanceNormalInfo(const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances, const int& frameInFlightToUpdateOn)
-			: BufferManagerRequest(static_cast<uint8_t>(frameInFlightToUpdateOn)),
+			: ManagerController::RenderResource::Buffer(static_cast<uint8_t>(frameInFlightToUpdateOn)),
 			objectInstances(objectInstances) {}
 
 	protected:
-		std::unique_ptr<BufferMemoryTransferRequest> createTransferRequest() const override;
+		std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> createTransferRequest() const override;
 
 	private:
 		const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances;

@@ -217,8 +217,8 @@ void star::BasicObject::loadMesh(){
 			}
 
 			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
-				Handle meshVertBuffer = ManagerBuffer::addRequest(std::make_unique<ObjVertInfo>(*vertices));
-				Handle meshIndBuffer = ManagerBuffer::addRequest(std::make_unique<ObjIndicesInfo>(*fullInd)); 
+				Handle meshVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjVertInfo>(*vertices));
+				Handle meshIndBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjIndicesInfo>(*fullInd)); 
 				//apply material from files to mesh -- will ignore passed values 
 				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd, preparedMaterials.at(shape.mesh.material_ids[0]), false));
 			}

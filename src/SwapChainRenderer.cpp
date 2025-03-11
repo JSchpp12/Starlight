@@ -229,11 +229,11 @@ std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vect
 	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-std::vector<std::unique_ptr<star::StarImage>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
+	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	auto settings = StarImage::TextureCreateSettings(
+	auto settings = StarTexture::TextureCreateSettings(
 		this->swapChainExtent->width,
 		this->swapChainExtent->height,
 		4,
@@ -250,8 +250,7 @@ std::vector<std::unique_ptr<star::StarImage>> star::SwapChainRenderer::createRen
 
 	//get images in the newly created swapchain 
 	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
-		newRenderToImages.push_back(std::make_unique<StarImage>(settings, image));
-		newRenderToImages.back()->prepRender(device);
+		newRenderToImages.push_back(std::make_unique<StarTexture>(settings, device.getDevice(), image));
 
 		auto buffer = device.beginSingleTimeCommands(); 
 		newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput); 
@@ -493,10 +492,10 @@ void star::SwapChainRenderer::recreateSwapChain()
 void star::SwapChainRenderer::cleanupSwapChain()
 {
 	for (auto& image : this->renderToImages) {
-		image->cleanupRender(this->device);
+		image.release();
 	}
 	for (auto& image : this->renderToDepthImages) {
-		image->cleanupRender(this->device);
+		image.release();
 	}
 
 	this->device.getDevice().destroySwapchainKHR(this->swapChain);

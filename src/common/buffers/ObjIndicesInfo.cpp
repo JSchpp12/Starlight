@@ -1,6 +1,6 @@
 #include "ObjIndicesInfo.hpp"
 
-void star::ObjIndicesTransfer::writeData(star::StarBuffer& buffer) const {
+void star::TransferRequest::ObjIndicies::writeData(star::StarBuffer& buffer) const {
 
     buffer.map();
     
@@ -11,6 +11,6 @@ void star::ObjIndicesTransfer::writeData(star::StarBuffer& buffer) const {
     buffer.unmap();
 }
 
-std::unique_ptr<star::BufferMemoryTransferRequest> star::ObjIndicesInfo::createTransferRequest() const{
-    return std::make_unique<ObjIndicesTransfer>(this->indices);
+std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::ObjIndicesInfo::createTransferRequest() const{
+    return std::make_unique<TransferRequest::ObjIndicies>(this->indices);
 }

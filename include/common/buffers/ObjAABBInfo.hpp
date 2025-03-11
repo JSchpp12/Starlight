@@ -7,7 +7,7 @@ namespace star{
     class AABBInfoTransfer : public BufferMemoryTransferRequest{
     };
 
-    class ObjBoundingBoxInfo : public BufferManagerRequest{
+    class ObjBoundingBoxInfo : public RequestManagerRenderResource{
 
     };
 

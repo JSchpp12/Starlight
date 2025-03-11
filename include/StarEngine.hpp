@@ -1,25 +1,16 @@
 #pragma once
 
-#include "Enums.hpp"
-#include "ManagerBuffer.hpp"
-#include "SwapChainRenderer.hpp"
+#include "StarDevice.hpp"
+#include "Handle.hpp"
 #include "BasicWindow.hpp"
-#include "Color.hpp"
-#include "ConfigFile.hpp"
-#include "Light.hpp"
-#include "StarObject.hpp"
+#include "StarBuffer.hpp"
 #include "StarScene.hpp"
 #include "StarApplication.hpp"
-#include "StarCommandBuffer.hpp"
-#include "ManagerDescriptorPool.hpp"
-#include "StarRenderGroup.hpp"
-#include "ManagerCommandBuffer.hpp"
 #include "TransferWorker.hpp"
-
-#include <vulkan/vulkan.hpp>
 
 #include <memory>
 #include <vector>
+#include <string>
 
 namespace star {
 class StarEngine {

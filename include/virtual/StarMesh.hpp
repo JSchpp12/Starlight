@@ -1,6 +1,6 @@
 #pragma once 
 
-#include "ManagerBuffer.hpp"
+#include "ManagerRenderResource.hpp"
 #include "Handle.hpp"
 #include "GeometryHelpers.hpp"
 #include "CastHelpers.hpp"

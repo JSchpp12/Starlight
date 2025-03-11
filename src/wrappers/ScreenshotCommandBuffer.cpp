@@ -254,7 +254,7 @@ bool star::ScreenshotBuffer::getWillBeRecordedOnce()
 
 std::unique_ptr<star::StarImage> star::ScreenshotBuffer::createNewCopyToImage(star::StarDevice& device, const vk::Extent2D& screensize)
 {
-	return std::make_unique<StarImage>(StarImage::TextureCreateSettings{
+	return std::make_unique<StarImage>(StarTexture::TextureCreateSettings{
 		static_cast<int>(screensize.width),
 		static_cast<int>(screensize.height),
 		4,

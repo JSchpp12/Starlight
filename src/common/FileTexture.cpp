@@ -7,7 +7,7 @@
 
 star::FileTexture::FileTexture(const std::string& pathToImage)
     : pathToFile(pathToImage), 
-    StarImage(TextureCreateSettings{
+    StarImage(StarTexture::TextureCreateSettings{
         getTextureWidth(pathToImage),
         getTextureHeight(pathToImage),
         4,
@@ -57,10 +57,10 @@ std::unique_ptr<star::StarBuffer> star::FileTexture::loadImageData(StarDevice& d
         }
 
         //apply overriden alpha value if needed
-        if (this->overrideAlpha.has_value() && this->getChannels() == 4) {
+        if (this->overrideAlpha.has_value() && this->getSettings().channels == 4) {
             for (int i = 0; i < l_height; i++) {
                 for (int j = 0; j < l_width; j++) {
-                    unsigned char* pixelOffset = pixelData + (i + this->getHeight() * j) * this->getChannels();
+                    unsigned char* pixelOffset = pixelData + (i + this->getSettings().height * j) * this->getSettings().channels;
                     pixelOffset[3] = this->overrideAlpha.value().raw_a();
                 }
             }

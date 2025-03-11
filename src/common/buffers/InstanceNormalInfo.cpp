@@ -1,8 +1,7 @@
 #include "InstanceNormalInfo.hpp"
 
 
-void star::InstanceNormalTransfer::writeData(star::StarBuffer& buffer) const
-{
+void star::TransferRequest::InstanceNormal::writeData(star::StarBuffer& buffer) const{
 	buffer.map(); 
 
 	std::vector<glm::mat4> inverseTranspose = std::vector<glm::mat4>(this->normalMatrixInfo.size());
@@ -14,7 +13,6 @@ void star::InstanceNormalTransfer::writeData(star::StarBuffer& buffer) const
 	buffer.unmap(); 
 }
 
-std::unique_ptr<star::BufferMemoryTransferRequest> star::InstanceNormalInfo::createTransferRequest() const
-{
-	return std::make_unique<InstanceNormalTransfer>(this->objectInstances);
+std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::InstanceNormalInfo::createTransferRequest() const{
+	return std::make_unique<star::TransferRequest::InstanceNormal>(this->objectInstances);
 }

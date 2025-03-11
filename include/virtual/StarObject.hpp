@@ -2,7 +2,7 @@
 
 #include "ObjVertInfo.hpp"
 #include "ObjIndicesInfo.hpp"
-#include "ManagerBuffer.hpp"
+#include "ManagerRenderResource.hpp"
 #include "ConfigFile.hpp"
 #include "StarDevice.hpp"
 #include "StarEntity.hpp"

@@ -13,40 +13,32 @@
 #include <string>
 
 namespace star {
-class StarImage : public StarTexture{
+	///"Smarter" version of StarTexture which automatically creates and loads data...
+class StarImage{
 public:
-	StarImage(TextureCreateSettings settings,
+	StarImage(const StarTexture::TextureCreateSettings& createSettings, vk::Device& device,
 		const vk::Image& image) 
-		: StarTexture(settings, image), layout(settings.initialLayout)
+		: createSettings(createSettings), texture(std::make_unique<StarTexture>(createSettings, device, image))
 	{
 	}
 
-	StarImage(TextureCreateSettings settings, VmaAllocator& allocator)
-		: StarTexture(settings, allocator)
+	StarImage(StarTexture::TextureCreateSettings createSettings) : createSettings(createSettings)
 	{
 	}
 
-	StarImage(TextureCreateSettings settings) : StarTexture(settings)
-	{
-	}
-
-	virtual void prepRender(StarDevice& device) override;
+	virtual void prepRender(StarDevice& device);
 
 	virtual ~StarImage() = default;
 
 	void cleanupRender(StarDevice& device); 
 
-	void createTextureImageView(StarDevice& device, const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags);
+	StarTexture& getTexture() {return *this->texture;}
+	vk::Sampler getSampler() const { return this->texture->getSampler(); }
+	vk::Image getImage() const { return this->texture->getImage(); }
+	vk::ImageLayout getCurrentLayout() const { return this->texture->getCurrentLayout(); }
+	void overrideImageLayout(vk::ImageLayout newLayout) { this->texture->overrideImageLayout(newLayout); }
+	const StarTexture::TextureCreateSettings& getSettings() {return this->createSettings;}
 
-	vk::ImageView getImageView(vk::Format* requestedFormat = nullptr) const;
-	vk::Sampler getSampler() const { return this->textureSampler ? *this->textureSampler : VK_NULL_HANDLE; }
-	vk::Image getImage() const { return this->textureImage; }
-	vk::ImageLayout getCurrentLayout() const { return this->layout; }
-	void overrideImageLayout(vk::ImageLayout newLayout) { this->layout = newLayout; }
-
-	void transitionLayout(vk::CommandBuffer& commandBuffer, vk::ImageLayout newLayout, vk::AccessFlags srcFlags, 
-		vk::AccessFlags dstFlags, vk::PipelineStageFlags sourceStage,
-		vk::PipelineStageFlags dstStage);
 
 
 	//std::vector<vk::Format> getFormats() const {
@@ -56,10 +48,9 @@ public:
 	//	}
 	//}
 protected:
-	vk::ImageLayout layout = vk::ImageLayout::eUndefined;
-
-	std::unordered_map<vk::Format, vk::ImageView> imageViews	= std::unordered_map<vk::Format, vk::ImageView>();				//image view: describe to vulkan how to access an image
-	std::unique_ptr<vk::Sampler> textureSampler									= std::unique_ptr<vk::Sampler>();					//using sampler to apply filtering or other improvements over raw texel access
+	//TODO: this is stored in two places, dont need both
+	const StarTexture::TextureCreateSettings createSettings;
+	std::unique_ptr<StarTexture> texture = nullptr; 
 
 	virtual std::unique_ptr<StarBuffer> loadImageData(StarDevice& device) {
 		return nullptr; 
@@ -69,9 +60,5 @@ protected:
 
 	void transitionImageLayout(StarDevice& device, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
 		vk::ImageLayout newLayout);
-
-	void createImageSampler(StarDevice& device);
-
-	vk::ImageView createImageView(StarDevice& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags);
 };
 }

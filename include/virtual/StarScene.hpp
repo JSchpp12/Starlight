@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Interactivity.hpp"
-#include "ManagerBuffer.hpp"
+#include "ManagerRenderResource.hpp"
 #include "Handle.hpp"
 #include "StarObject.hpp"
 #include "Light.hpp"

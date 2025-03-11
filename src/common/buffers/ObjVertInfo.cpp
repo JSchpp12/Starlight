@@ -18,7 +18,7 @@
 // }
 
 
-void star::ObjVertTransfer::writeData(star::StarBuffer& buffer) const{
+void star::TransferRequest::ObjVert::writeData(star::StarBuffer& buffer) const{
     buffer.map(); 
 
     auto data = this->getVertices();
@@ -30,11 +30,11 @@ void star::ObjVertTransfer::writeData(star::StarBuffer& buffer) const{
     buffer.unmap();
 }
 
-std::vector<star::Vertex> star::ObjVertTransfer::getVertices() const{
+std::vector<star::Vertex> star::TransferRequest::ObjVert::getVertices() const{
     return vertices;
 }
 
-std::unique_ptr<star::BufferMemoryTransferRequest> star::ObjVertInfo::createTransferRequest() const{
+std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::ObjVertInfo::createTransferRequest() const{
     // size_t passOffVerts = 0; 
     // if (this->numVerts.has_value()){
     //     passOffVerts = this->numVerts.value();
@@ -42,7 +42,7 @@ std::unique_ptr<star::BufferMemoryTransferRequest> star::ObjVertInfo::createTran
     //     passOffVerts = getNumVerts(this->filePath, this->shapeIndex);   
     // }
 
-    return std::make_unique<ObjVertTransfer>(this->vertices);
+    return std::make_unique<TransferRequest::ObjVert>(this->vertices);
 }
 
 // size_t star::ObjVertInfo::getNumVerts(const std::string& filePath, const size_t& shapeIndex){

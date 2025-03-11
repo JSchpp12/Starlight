@@ -2,10 +2,10 @@
 
 #include "StarDescriptorBuilders.hpp"
 #include "StarDevice.hpp"
-#include "StarImage.hpp"
+#include "StarTexture.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "Handle.hpp"
-#include "ManagerBuffer.hpp"
+#include "ManagerRenderResource.hpp"
 
 #include <memory>
 #include <vector>
@@ -20,21 +20,32 @@ namespace star {
 
 				BufferInfo(const Handle& handle) : handle(handle){}
 				Handle handle;
-				vk::Buffer currentBuffer;
+				std::optional<vk::Buffer> currentBuffer;
+			};
+
+			struct TextureInfo{
+				TextureInfo(const Handle& handle, const vk::ImageLayout& expectedLayout)
+				: handle(handle), expectedLayout(expectedLayout){}
+
+				TextureInfo(const StarTexture* texture, const vk::ImageLayout& expectedLayout) : texture(texture), expectedLayout(expectedLayout){}
+
+				std::optional<const Handle> handle = std::nullopt;
+				std::optional<vk::Image> currentImage = std::nullopt;
+				
+				std::optional<const StarTexture*> texture = std::nullopt;
+				const vk::ImageLayout expectedLayout;
 			};
 
 			ShaderInfo(const BufferInfo& bufferInfo) 
 				: bufferInfo(bufferInfo) {}
 
-			ShaderInfo(const StarImage& textureInfo, const vk::ImageLayout& expectedLayout) 
-				: textureInfo(textureInfo), expectedLayout(expectedLayout) {};
+			ShaderInfo(const TextureInfo& textureInfo) 
+				: textureInfo(textureInfo){};
 
 			~ShaderInfo() = default;
 
-			std::optional<BufferInfo> bufferInfo 									= std::nullopt;
-			std::optional<std::reference_wrapper<const StarImage>> textureInfo 	= std::nullopt;
-			std::optional<vk::ImageLayout> expectedLayout 						= std::nullopt;
-			
+			std::optional<BufferInfo> bufferInfo = std::nullopt;
+			std::optional<TextureInfo> textureInfo 	= std::nullopt;
 		};
 
 		struct ShaderInfoSet {
@@ -52,10 +63,10 @@ namespace star {
 
 				if (shaderInfos[index].bufferInfo.has_value()) {
 					auto& info = shaderInfos[index].bufferInfo.value();
-					if (!ManagerBuffer::isReady(info.handle)){
-						ManagerBuffer::waitForReady(info.handle);
+					if (!ManagerRenderResource::isReady(info.handle)){
+						ManagerRenderResource::waitForReady(info.handle);
 					}
-					auto& buffer = star::ManagerBuffer::getBuffer(info.handle);
+					auto& buffer = star::ManagerRenderResource::getBuffer(info.handle);
 
 					auto bufferInfo = vk::DescriptorBufferInfo{
 						buffer.getVulkanBuffer(),
@@ -65,10 +76,16 @@ namespace star {
 					this->descriptorWriter->writeBuffer(index, bufferInfo);
 				}
 				else if (shaderInfos[index].textureInfo.has_value()) {
+					const StarTexture* texture = nullptr; 
+					if (shaderInfos[index].textureInfo.value().texture.has_value())
+						texture = shaderInfos[index].textureInfo.value().texture.value();
+					else 
+						texture = &star::ManagerRenderResource::getTexture(shaderInfos[index].bufferInfo.value().handle);
+
 					auto textureInfo = vk::DescriptorImageInfo{
-						shaderInfos[index].textureInfo.value().get().getSampler(),
-						shaderInfos[index].textureInfo.value().get().getImageView(),
-						shaderInfos[index].expectedLayout.value()
+						texture->getSampler(),
+						texture->getImageView(),
+						shaderInfos[index].textureInfo.value().expectedLayout
 					};
 
 					this->descriptorWriter->writeImage(index, textureInfo);
@@ -129,7 +146,7 @@ namespace star {
 			for (auto& set : this->shaderInfoSets[frameInFlight]){
 				for (int i = 0; i < set->shaderInfos.size(); i++){
 					if (set->shaderInfos.at(i).bufferInfo.has_value()){
-						if (!ManagerBuffer::isReady(set->shaderInfos.at(i).bufferInfo.value().handle))
+						if (!ManagerRenderResource::isReady(set->shaderInfos.at(i).bufferInfo.value().handle))
 						return false;
 					}
 				}
@@ -155,12 +172,20 @@ namespace star {
 						if (set->shaderInfos.at(i).bufferInfo.has_value()) {
 							//check if buffer has changed
 							auto& info = set->shaderInfos.at(i).bufferInfo.value();
-							if (!ManagerBuffer::isReady(info.handle))
-								ManagerBuffer::waitForReady(info.handle);
+							if (!ManagerRenderResource::isReady(info.handle))
+								ManagerRenderResource::waitForReady(info.handle);
 								
-							const auto& buffer = ManagerBuffer::getBuffer(info.handle).getVulkanBuffer();
+							const auto& buffer = ManagerRenderResource::getBuffer(info.handle).getVulkanBuffer();
 							if (!info.currentBuffer || info.currentBuffer != buffer){
 								info.currentBuffer = buffer;
+								set->buildIndex(i);
+							}
+						}else if (set->shaderInfos.at(i).textureInfo.value().handle.has_value()){
+							auto& info = set->shaderInfos.at(i).textureInfo.value();
+
+							const auto& texture = ManagerRenderResource::getTexture(info.handle.value()).getImage();
+							if (!info.currentImage.has_value() || info.currentImage.value() != texture){
+								info.currentImage = texture;
 								set->buildIndex(i);
 							}
 						}
@@ -208,10 +233,14 @@ namespace star {
 				return *this;
 			};
 
-			Builder& add(const StarImage& texture, const vk::ImageLayout& desiredLayout) {
-				this->activeSet->back()->add(ShaderInfo(texture, desiredLayout));
+			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout) {
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}));
 				return *this; 
 			};
+
+			Builder add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout){
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout})); 
+			}
 
 			std::unique_ptr<StarShaderInfo> build() {
 				return std::make_unique<StarShaderInfo>(this->device, std::move(this->layouts), std::move(this->sets));

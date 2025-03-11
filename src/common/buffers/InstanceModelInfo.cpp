@@ -1,6 +1,6 @@
 #include "InstanceModelInfo.hpp"
 
-void star::InstanceModelInfoTransfer::writeData(star::StarBuffer& buffer) const
+void star::TransferRequest::InstanceModel::writeData(star::StarBuffer& buffer) const
 {
 	buffer.map();
 	for (int i = 0; i < this->displayMatrixInfo.size(); ++i){
@@ -11,8 +11,7 @@ void star::InstanceModelInfoTransfer::writeData(star::StarBuffer& buffer) const
 	buffer.unmap();
 }
 
-std::unique_ptr<star::BufferMemoryTransferRequest> star::InstanceModelInfo::createTransferRequest() const
+std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::InstanceModelInfo::createTransferRequest() const
 {
-	auto request = std::make_unique<InstanceModelInfoTransfer>(this->objectInstances);
-	return request;
+	return std::make_unique<TransferRequest::InstanceModel>(this->objectInstances);
 }

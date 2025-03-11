@@ -10,6 +10,21 @@ namespace star {
 
 class StarBuffer {
 public:
+	struct BufferCreationArgs {
+		vk::DeviceSize instanceSize;
+		uint32_t instanceCount;
+		VmaAllocationCreateFlags creationFlags;
+		VmaMemoryUsage memoryUsageFlags;
+		vk::BufferUsageFlags useFlags;
+		vk::SharingMode sharingMode;
+
+		BufferCreationArgs(const vk::DeviceSize& instanceSize,
+			const uint32_t& instanceCount, const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
+			const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode) 
+			: instanceSize(instanceSize), instanceCount(instanceCount), creationFlags(creationFlags), memoryUsageFlags(memoryUsageFlags),
+			useFlags(useFlags), sharingMode(sharingMode){};
+	};
+
 	static vk::DeviceSize getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
 
 	StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
