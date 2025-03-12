@@ -61,7 +61,7 @@ namespace star {
 
 		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
 
-		bool isReady(const uint8_t& swapChainImageIndex);
+		bool isKnownToBeReady(const uint8_t& swapChainImageIndex);
 	protected:
 		std::unique_ptr<StarShaderInfo> shaderInfo; 
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight);
@@ -89,6 +89,6 @@ namespace star {
 		virtual void destroyResources(StarDevice& device) override {};
 	private:
 		//flag to determine if the material has been prepped for rendering operations
-		bool isPrepared = false;
+		bool knownToBeReady = false;
 	};
 }

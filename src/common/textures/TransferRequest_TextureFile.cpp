@@ -1,4 +1,4 @@
-#include "TransferRequest_FileTexture.hpp"
+#include "TransferRequest_TextureFile.hpp"
 
 #include "Enums.hpp"
 #include "FileHelpers.hpp"
@@ -8,11 +8,11 @@
 
 #include <assert.h>
 
-star::TransferRequest::FileTexture::FileTexture(const std::string& pathToImage) : imagePath(imagePath){
-    assert(star::FileHelpers::FileExists(pathToImage) && "Provided path does not exist");
+star::TransferRequest::TextureFile::TextureFile(const std::string& imagePath) : imagePath(imagePath){
+    assert(star::FileHelpers::FileExists(this->imagePath) && "Provided path does not exist");
 }
 
-star::StarTexture::TextureCreateSettings star::TransferRequest::FileTexture::getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const{
+star::StarTexture::TextureCreateSettings star::TransferRequest::TextureFile::getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const{
     int width, height, channels = 0;
     getTextureInfo(this->imagePath, width, height, channels);
 
@@ -35,7 +35,7 @@ star::StarTexture::TextureCreateSettings star::TransferRequest::FileTexture::get
     return iSet;
 }
 
-void star::TransferRequest::FileTexture::writeData(star::StarBuffer& stagingBuffer) const{
+void star::TransferRequest::TextureFile::writeData(star::StarBuffer& stagingBuffer) const{
     int l_width, l_height, l_channels = 0;
     unsigned char* pixelData(stbi_load(this->imagePath.c_str(), &l_width, &l_height, &l_channels, STBI_rgb_alpha));
 
@@ -61,7 +61,7 @@ void star::TransferRequest::FileTexture::writeData(star::StarBuffer& stagingBuff
     stbi_image_free(pixelData);
 }
 
-float star::TransferRequest::FileTexture::selectAnisotropyLevel(const vk::PhysicalDeviceProperties& deviceProperties) const{
+float star::TransferRequest::TextureFile::selectAnisotropyLevel(const vk::PhysicalDeviceProperties& deviceProperties) const{
     std::string anisotropySetting = star::ConfigFile::getSetting(star::Config_Settings::texture_anisotropy);
     float anisotropyLevel = 1.0f;
 
@@ -75,7 +75,7 @@ float star::TransferRequest::FileTexture::selectAnisotropyLevel(const vk::Physic
     return anisotropyLevel;
 }
 
-vk::Filter star::TransferRequest::FileTexture::selectTextureFiltering(const vk::PhysicalDeviceProperties& deviceProperties) const{
+vk::Filter star::TransferRequest::TextureFile::selectTextureFiltering(const vk::PhysicalDeviceProperties& deviceProperties) const{
     auto textureFilteringSetting = ConfigFile::getSetting(Config_Settings::texture_filtering);
 
     vk::Filter filterType;
@@ -90,6 +90,6 @@ vk::Filter star::TransferRequest::FileTexture::selectTextureFiltering(const vk::
     return filterType; 
 }
 
-void star::TransferRequest::FileTexture::getTextureInfo(const std::string& imagePath, int& width, int& height, int& channels){
+void star::TransferRequest::TextureFile::getTextureInfo(const std::string& imagePath, int& width, int& height, int& channels){
     stbi_info(imagePath.c_str(), &width, &height, &channels);
 }

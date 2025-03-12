@@ -180,6 +180,12 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout,
 	int swapChainIndexNum) {
+	for (auto& rmesh : this->getMeshes()){
+		if (!rmesh.get()->isKnownToBeReady(swapChainIndexNum)){
+			return;
+		}	
+	}
+
 	if (this->pipeline)
 		this->pipeline->bind(commandBuffer); 
 

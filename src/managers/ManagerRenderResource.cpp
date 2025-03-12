@@ -122,8 +122,7 @@ bool star::ManagerRenderResource::isReady(const star::Handle& handle){
 	//check the fence for the buffer request
 	std::unique_ptr<FinalizedRenderRequest>& container = bufferStorage->get(handle);
 
-
-	if (!container->cpuWorkDoneByTransferThread.load())
+	if (container->cpuWorkDoneByTransferThread.load())
 	{
 		boost::unique_lock<boost::mutex> lock; 
 		vk::Fence fence; 

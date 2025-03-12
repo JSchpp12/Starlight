@@ -5,6 +5,18 @@ void star::StarMesh::prepRender(star::StarDevice& device)
 	this->material->prepRender(device);
 }
 
+bool star::StarMesh::isKnownToBeReady(const uint8_t& frameInFlightIndex){
+	if (this->isReady)
+		return true;
+
+	if (this->material->isKnownToBeReady(frameInFlightIndex)){
+		this->isReady = true; 
+		return true; 
+	}
+	
+	return false; 
+}
+
 void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int& frameInFlightIndex, const uint32_t& instanceCount){
 
 	this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex);

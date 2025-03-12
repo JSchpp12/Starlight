@@ -1,7 +1,7 @@
 #include "BasicObject.hpp"
 
 
-#include "ManagerController_RenderResource_FileTexture.hpp"
+#include "ManagerController_RenderResource_TextureFile.hpp"
 #include "ManagerRenderResource.hpp"
 #include "ObjVertInfo.hpp"
 #include "ObjIndicesInfo.hpp"
@@ -107,12 +107,12 @@ void star::BasicObject::loadMesh(){
 			Handle bumpMap; 
 
 			if (currMaterial->diffuse_texname != "") {
-				texture = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::FileTexture>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
+				texture = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::TextureFile>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
 			}
 
 			//apply maps 
 			if (currMaterial->bump_texname != "") {
-				bumpMap = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::FileTexture>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
+				bumpMap = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::TextureFile>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
 			}
 
 			//check if any material values are 0 - ambient is important

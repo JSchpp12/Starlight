@@ -17,6 +17,10 @@ void star::TextureMaterial::cleanup(StarDevice& device)
 
 }
 
+void star::TextureMaterial::prep(StarDevice& device){
+	
+}
+
 void star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 {
 	builder.startSet();

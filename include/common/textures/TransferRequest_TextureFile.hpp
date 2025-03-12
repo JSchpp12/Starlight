@@ -6,9 +6,9 @@
 #include <string>
 
 namespace star::TransferRequest{
-    class FileTexture : public Memory<star::StarTexture::TextureCreateSettings>{
+    class TextureFile : public Memory<star::StarTexture::TextureCreateSettings>{
         public:
-        FileTexture(const std::string& imagePath);
+        TextureFile(const std::string& imagePath);
 
         star::StarTexture::TextureCreateSettings getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override;
 

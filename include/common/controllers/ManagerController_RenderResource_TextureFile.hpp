@@ -7,9 +7,9 @@
 #include <memory>
 
 namespace star::ManagerController::RenderResource{
-    class FileTexture : public star::ManagerController::RenderResource::Texture{
+    class TextureFile : public star::ManagerController::RenderResource::Texture{
         public:
-        FileTexture(const std::string& filePath) : filePath(filePath){}; 
+        TextureFile(const std::string& filePath) : filePath(filePath){}; 
 
         virtual std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> createTransferRequest() const override; 
 

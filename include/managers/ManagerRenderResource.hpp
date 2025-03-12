@@ -10,11 +10,9 @@
 #include "StarDevice.hpp"
 #include "StarManager.hpp"
 #include "Handle.hpp"
-#include "TransferWorker.hpp"
 
+#include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
-
-#include <boost/atomic.hpp>
 
 #include <memory>
 #include <map>
@@ -22,7 +20,6 @@
 #include <optional>
 #include <set>
 
-#include <vma/vk_mem_alloc.h>
 
 namespace star {
 	class ManagerRenderResource : public StarManager{

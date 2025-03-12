@@ -45,6 +45,8 @@ namespace star {
 
 		virtual void recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int& frameInFlightIndex, const uint32_t& instanceCount); 
 
+		bool isKnownToBeReady(const uint8_t& frameInFlightIndex);
+
 		StarMaterial& getMaterial() { return *this->material; }
 		bool hasAdjacentVertsPacked() const { return this->hasAdjacenciesPacked; }
 		bool isTriangular() const { return this->triangular; }
@@ -64,6 +66,7 @@ namespace star {
 		glm::vec3 aaboundingBoxBounds[2];
 		std::shared_ptr<StarMaterial> material; 
 		uint32_t numVerts=0, numInds=0; 
+		bool isReady = false;
 
 		static void calcBoundingBox(const std::vector<Vertex>& verts, glm::vec3& upperBoundingBoxCoord, glm::vec3& lowerBoundingBoxCoord) {
 			glm::vec3 max{}, min{};

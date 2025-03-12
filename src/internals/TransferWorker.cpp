@@ -1,5 +1,7 @@
 #include "TransferWorker.hpp"
 
+#include "CastHelpers.hpp"
+
 star::TransferManagerThread::~TransferManagerThread(){
     if (this->thread.joinable()){
         this->stopAsync();
@@ -82,15 +84,24 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
                         *commandBufferFences, 
                         request->bufferTransferRequest.get(),
                         request->resultingBuffer.value());   
+
+                    request->bufferTransferRequest.get()->afterWriteData();
                 }else if (request->textureTransferRequest){
                     assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr && "Texture request must contain both a request and a resulting address");
-
-
+                    
+                    createTexture(*device, 
+                        *allocator, 
+                        *transferQueue, 
+                        *deviceProperties, 
+                        *request->completeFence, 
+                        inProcessRequests, 
+                        targetBufferIndex, 
+                        commandBuffers, 
+                        *commandBufferFences, 
+                        request->textureTransferRequest.get(), 
+                        request->resultingTexture.value());
                 }
             }
-
-            request->bufferTransferRequest.get()->afterWriteData();
-
             request->cpuWorkDoneByTransferThread->store(true);
             request->cpuWorkDoneByTransferThread->notify_one();
         }
@@ -123,6 +134,71 @@ std::vector<vk::Queue> star::TransferManagerThread::createTransferQueues(star::S
     }
 
     return queues;
+}
+
+void star::TransferManagerThread::transitionImageLayout(vk::Image &image, vk::CommandBuffer &commandBuffer, const vk::Format &format, const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout)
+{
+	//create a barrier to prevent pipeline from moving forward until image transition is complete
+	vk::ImageMemoryBarrier barrier{};
+	barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
+	barrier.oldLayout = oldLayout;
+	barrier.newLayout = newLayout;
+
+	//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+	barrier.image = image;
+	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
+	barrier.subresourceRange.levelCount = 1;                            //image is not an array
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+
+	//the operations that need to be completed before and after the barrier, need to be defined
+	barrier.srcAccessMask = {}; //TODO
+	barrier.dstAccessMask = {}; //TODO
+
+	vk::PipelineStageFlags sourceStage, destinationStage;
+
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+		//undefined transition state, dont need to wait for this to complete
+		barrier.srcAccessMask = {};
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eTransfer;
+	}
+	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal || newLayout == vk::ImageLayout::eGeneral)) {
+		//transfer destination shader reading, will need to wait for completion. Especially in the frag shader where reads will happen
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eNone;
+
+		sourceStage = vk::PipelineStageFlagBits::eTransfer;
+		destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
+	}
+	// else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout == vk::ImageLayout::eTransferDstOptimal) {
+	// 	//preparing to update texture during runtime, need to wait for top of pipe
+	// 	//barrier.srcAccessMask = vk::AccessFlagBits::;
+	// 	barrier.srcAccessMask = {}; 
+	// 	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; 
+
+	// 	sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+	// 	destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	// }
+	else{
+		throw std::invalid_argument("unsupported layout transition!");
+	}
+
+	//transfer writes must occurr during the pipeline transfer stage
+	commandBuffer.pipelineBarrier(
+		sourceStage,                        //which pipeline stages should occurr before barrier 
+		destinationStage,                   //pipeline stage in which operations will wait on the barrier 
+		{},
+		{},
+		nullptr,
+		barrier
+	);
 }
 
 void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Memory<StarBuffer::BufferCreationArgs>* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
@@ -200,8 +276,95 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
     commandBufferFences[bufferIndexToUse] = &workCompleteFence; 
 }
 
-void star::TransferManagerThread::createImage(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingImage){
+void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
+    StarTexture::TextureCreateSettings createArgs = newTextureRequest->getCreateArgs(deviceProperties);
+    createArgs.imageUsage |= vk::ImageUsageFlagBits::eTransferDst;
 
+    bool newImageCreated = false; 
+    
+    vk::DeviceSize size = createArgs.height * createArgs.width * createArgs.channels * createArgs.depth * createArgs.byteDepth;
+    {
+        newImageCreated = true; 
+
+        auto finalTexture = std::make_unique<StarTexture>(createArgs, device, allocator);
+        resultingTexture->swap(finalTexture);
+    }
+
+    auto transferSrcBuffer = std::make_unique<StarBuffer>(
+        allocator,
+        size, 
+        1,
+        VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT | VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        vk::BufferUsageFlagBits::eTransferSrc,
+        vk::SharingMode::eConcurrent
+    );
+
+    newTextureRequest->writeData(*transferSrcBuffer);
+
+    //transition image layout
+    if (!newImageCreated){
+        //Not sure how to manage vulkan images since we wont know what layout they might be in at this point
+        throw std::runtime_error("unsupported image operation in transfer manager");
+    }
+
+    //copy operations
+    vk::CommandBuffer& commandBuffer = commandBuffers[bufferIndexToUse];
+    {
+        vk::CommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
+    
+        commandBuffer.begin(beginInfo);
+    }
+    {
+        auto vulkanImage = resultingTexture->get()->getImage();
+    
+        transitionImageLayout(vulkanImage, commandBuffer, createArgs.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+    
+        {
+            vk::BufferImageCopy region{}; 
+            region.bufferOffset = 0; 
+            region.bufferRowLength = 0; 
+            region.bufferImageHeight = 0; 
+    
+            region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor; 
+            region.imageSubresource.mipLevel = 0;
+            region.imageSubresource.baseArrayLayer = 0;
+            region.imageSubresource.layerCount = 1;
+            region.imageOffset = vk::Offset3D{}; 
+            region.imageExtent = vk::Extent3D{
+                CastHelpers::int_to_unsigned_int(createArgs.width),
+                CastHelpers::int_to_unsigned_int(createArgs.height), 
+                1
+            };
+    
+            commandBuffer.copyBufferToImage(transferSrcBuffer->getVulkanBuffer(), resultingTexture->get()->getImage(), vk::ImageLayout::eTransferDstOptimal, region);
+        }
+    
+        transitionImageLayout(vulkanImage, commandBuffer, createArgs.imageFormat, vk::ImageLayout::eTransferDstOptimal, createArgs.initialLayout);
+    }
+
+    commandBuffer.end();
+
+    {
+        vk::SubmitInfo submitInfo{};
+        submitInfo.pCommandBuffers = &commandBuffer; 
+        submitInfo.commandBufferCount = 1;
+
+        boost::unique_lock<boost::mutex> lock; 
+        vk::Fence fence; 
+        workCompleteFence.giveMeFence(lock, fence);
+
+        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, fence)); 
+
+        if (*commandResult != vk::Result::eSuccess){
+            //handle error
+            std::runtime_error("Failed to submit transfer request"); 
+        }
+    }
+
+    inProcessRequests.push(std::make_unique<InProcessRequestDependencies>(std::move(transferSrcBuffer), &workCompleteFence));
+    commandBufferFences[bufferIndexToUse] = &workCompleteFence; 
 }
 
 void star::TransferManagerThread::checkForCleanups(vk::Device& device, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, std::vector<SharedFence*>& commandBufferFences){
@@ -299,13 +462,18 @@ void star::TransferManagerThread::add(std::unique_ptr<star::TransferManagerThrea
         }
 
         readyCommandBuffer(this->device.getDevice(), targetBufferIndex, this->commandBufferFences); 
-
-        {
+        if (this->transferRequests.back()->bufferTransferRequest){
             createBuffer(this->device.getDevice(), this->allocator.get(), 
                 this->transferQueue->getQueue(), this->deviceProperties, *this->transferRequests.back()->completeFence, 
                 this->inProcessRequests, targetBufferIndex, this->commandBuffers, 
                 this->commandBufferFences, this->transferRequests.back()->bufferTransferRequest.get(), 
                 this->transferRequests.back()->resultingBuffer.value());
+        }else if (this->transferRequests.back()->textureTransferRequest){
+            createTexture(this->device.getDevice(), this->allocator.get(), 
+                this->transferQueue->getQueue(), this->deviceProperties, *this->transferRequests.back()->completeFence, 
+                this->inProcessRequests, targetBufferIndex, this->commandBuffers, 
+                this->commandBufferFences, this->transferRequests.back()->textureTransferRequest.get(),
+                this->transferRequests.back()->resultingTexture.value());
         }
 
         this->previousBufferIndexUsed = targetBufferIndex; 
@@ -344,10 +512,10 @@ void star::TransferManagerThread::cleanup(){
 star::TransferWorker::~TransferWorker() {
 }
 
-star::TransferWorker::TransferWorker(star::StarDevice& device, const bool& runAsync){
-
-    if (device.doesHaveDedicatedFamily(star::Queue_Type::Ttransfer)){
-        
+star::TransferWorker::TransferWorker(star::StarDevice& device, bool overrideToSingleThreadMode){
+    bool runAsync = !overrideToSingleThreadMode;
+    if (!device.doesHaveDedicatedFamily(star::Queue_Type::Ttransfer)){
+        runAsync = false;
     }
 
     this->threads.emplace_back(std::make_unique<TransferManagerThread>(device, device.getAllocator(), device.getPhysicalDevice().getProperties(), device.giveMeQueueFamily(star::Queue_Type::Ttransfer)));

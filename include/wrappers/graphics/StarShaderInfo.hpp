@@ -3,9 +3,8 @@
 #include "StarDescriptorBuilders.hpp"
 #include "StarDevice.hpp"
 #include "StarTexture.hpp"
-#include "ManagerDescriptorPool.hpp"
+
 #include "Handle.hpp"
-#include "ManagerRenderResource.hpp"
 
 #include <memory>
 #include <vector>
@@ -53,55 +52,11 @@ namespace star {
 
 			ShaderInfoSet(StarDevice& device, StarDescriptorSetLayout& setLayout) : device(device), layout(setLayout) {};
 
-			void add(const ShaderInfo& shaderInfo) {
-				this->shaderInfos.push_back(shaderInfo);
-			};
+			void add(const ShaderInfo& shaderInfo);
 
-			void buildIndex(const int& index) {
-				assert(this->descriptorWriter && "Dependencies must have been built first");
-				this->setNeedsRebuild = true; 
+			void buildIndex(const int& index);
 
-				if (shaderInfos[index].bufferInfo.has_value()) {
-					auto& info = shaderInfos[index].bufferInfo.value();
-					if (!ManagerRenderResource::isReady(info.handle)){
-						ManagerRenderResource::waitForReady(info.handle);
-					}
-					auto& buffer = star::ManagerRenderResource::getBuffer(info.handle);
-
-					auto bufferInfo = vk::DescriptorBufferInfo{
-						buffer.getVulkanBuffer(),
-						0,
-						buffer.getBufferSize()
-					};
-					this->descriptorWriter->writeBuffer(index, bufferInfo);
-				}
-				else if (shaderInfos[index].textureInfo.has_value()) {
-					const StarTexture* texture = nullptr; 
-					if (shaderInfos[index].textureInfo.value().texture.has_value())
-						texture = shaderInfos[index].textureInfo.value().texture.value();
-					else 
-						texture = &star::ManagerRenderResource::getTexture(shaderInfos[index].bufferInfo.value().handle);
-
-					auto textureInfo = vk::DescriptorImageInfo{
-						texture->getSampler(),
-						texture->getImageView(),
-						shaderInfos[index].textureInfo.value().expectedLayout
-					};
-
-					this->descriptorWriter->writeImage(index, textureInfo);
-				}
-			}
-
-			void build() {
-				{
-					this->isBuilt = true; 
-					
-					this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->layout, ManagerDescriptorPool::getPool());
-					for (int i = 0; i < this->shaderInfos.size(); i++) {
-						buildIndex(i); 
-					}
-				}
-			};
+			void build();
 
 			vk::DescriptorSet getDescriptorSet() {
 				if (this->setNeedsRebuild){
@@ -121,14 +76,7 @@ namespace star {
 			std::shared_ptr<vk::DescriptorSet> descriptorSet = std::shared_ptr<vk::DescriptorSet>();
 			std::shared_ptr<StarDescriptorWriter> descriptorWriter = std::shared_ptr<StarDescriptorWriter>();
 
-			void rebuildSet() {
-				if (!this->descriptorWriter){
-					this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->layout, ManagerDescriptorPool::getPool());
-				}
-
-				this->descriptorSet = std::make_shared<vk::DescriptorSet>(this->descriptorWriter->build());
-				this->setNeedsRebuild = false; 
-			};
+			void rebuildSet();
 		};
 
 		StarDevice& device;
@@ -142,64 +90,11 @@ namespace star {
 			: device(device), layouts(layouts), shaderInfoSets(shaderInfoSets) {
 		};
 
-		bool isReady(const uint8_t& frameInFlight){
-			for (auto& set : this->shaderInfoSets[frameInFlight]){
-				for (int i = 0; i < set->shaderInfos.size(); i++){
-					if (set->shaderInfos.at(i).bufferInfo.has_value()){
-						if (!ManagerRenderResource::isReady(set->shaderInfos.at(i).bufferInfo.value().handle))
-						return false;
-					}
-				}
-			}
+		bool isReady(const uint8_t& frameInFlight);
 
-			return true; 
-		}
+		std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
-		std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts() {
-			std::vector<vk::DescriptorSetLayout> fLayouts = std::vector<vk::DescriptorSetLayout>();
-			for (auto& set : this->layouts) {
-				fLayouts.push_back(set->getDescriptorSetLayout());
-			}
-			return fLayouts;
-		};
-
-		std::vector<vk::DescriptorSet> getDescriptors(const int& frameInFlight) {
-			for (auto& set : this->shaderInfoSets[frameInFlight]) {
-				if (!set->getIsBuilt())
-					set->build();
-				else{
-					for (int i = 0; i < set->shaderInfos.size(); i++) {
-						if (set->shaderInfos.at(i).bufferInfo.has_value()) {
-							//check if buffer has changed
-							auto& info = set->shaderInfos.at(i).bufferInfo.value();
-							if (!ManagerRenderResource::isReady(info.handle))
-								ManagerRenderResource::waitForReady(info.handle);
-								
-							const auto& buffer = ManagerRenderResource::getBuffer(info.handle).getVulkanBuffer();
-							if (!info.currentBuffer || info.currentBuffer != buffer){
-								info.currentBuffer = buffer;
-								set->buildIndex(i);
-							}
-						}else if (set->shaderInfos.at(i).textureInfo.value().handle.has_value()){
-							auto& info = set->shaderInfos.at(i).textureInfo.value();
-
-							const auto& texture = ManagerRenderResource::getTexture(info.handle.value()).getImage();
-							if (!info.currentImage.has_value() || info.currentImage.value() != texture){
-								info.currentImage = texture;
-								set->buildIndex(i);
-							}
-						}
-					}
-				}
-			}
-
-			auto allSets = std::vector<vk::DescriptorSet>(); 
-			for (int i = 0; i < this->shaderInfoSets[frameInFlight].size(); i++) {
-				allSets.push_back(this->shaderInfoSets[frameInFlight].at(i)->getDescriptorSet()); 
-			}
-
-			return allSets; 
-		};
+		std::vector<vk::DescriptorSet> getDescriptors(const int& frameInFlight);
 
 		class Builder {
 		public:

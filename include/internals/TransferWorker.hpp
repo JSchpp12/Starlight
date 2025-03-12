@@ -79,11 +79,11 @@ namespace star{
             std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences,
             TransferRequest::Memory<StarBuffer::BufferCreationArgs>* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer);
 
-        static void createImage(vk::Device& device, VmaAllocator& allocator,
+        static void createTexture(vk::Device& device, VmaAllocator& allocator,
             vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
             std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, 
             std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences,
-            TransferRequest::Memory<StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<StarTexture>* resultingImage);
+            TransferRequest::Memory<StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<StarTexture>* resultingTexture);
 
         static void checkForCleanups(vk::Device& device, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, std::vector<SharedFence*>& commandBufferFences); 
 
@@ -110,6 +110,8 @@ namespace star{
 
         static std::vector<vk::Queue> createTransferQueues(star::StarDevice& device, const uint32_t& dedicatedTransferQueueFamilyIndex); 
 
+        static void transitionImageLayout(vk::Image& image, vk::CommandBuffer& commandBuffer, const vk::Format& format, const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout);
+
         void initMultithreadedDeps(); 
     };
 
@@ -117,7 +119,7 @@ namespace star{
     public:
     /// @brief Creates a transfer worker which does not own the dedicated transfer queue. Device might not support dedicated transfer queue. As such, transfers are submitted on the main thread.
     /// @param device Created star device from which vulkan objects can be made
-    TransferWorker(StarDevice& device, const bool& overrideRunAsync);
+    TransferWorker(StarDevice& device, bool overrideRunAsync);
 
     void add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, 
         std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> newBufferRequest, std::unique_ptr<StarBuffer>& resultingBuffer, const bool& isHighPriority);
@@ -131,6 +133,7 @@ namespace star{
 
     private:
     std::vector<std::unique_ptr<TransferManagerThread>> threads = std::vector<std::unique_ptr<TransferManagerThread>>();
+
     };
 
 }
