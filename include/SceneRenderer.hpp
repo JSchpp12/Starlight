@@ -9,7 +9,6 @@
 #include "InteractionSystem.hpp"
 #include "StarObject.hpp"
 #include "StarCommandBuffer.hpp"
-#include "GlobalInfo.hpp"
 #include "StarShaderInfo.hpp"
 
 #include "MapManager.hpp"

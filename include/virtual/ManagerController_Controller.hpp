@@ -16,7 +16,7 @@ namespace star::ManagerController{
             return true;
         };
 
-        virtual std::unique_ptr<T> createTransferRequest() const = 0;
+        virtual std::unique_ptr<T> createTransferRequest() = 0;
 
         const std::optional<uint8_t>& getFrameInFlightIndexToUpdateOn() const { return frameInFlightIndexToUpdateOn; }
         private:

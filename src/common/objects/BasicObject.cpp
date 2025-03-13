@@ -3,8 +3,8 @@
 
 #include "ManagerController_RenderResource_TextureFile.hpp"
 #include "ManagerRenderResource.hpp"
-#include "ObjVertInfo.hpp"
-#include "ObjIndicesInfo.hpp"
+#include "ManagerController_RenderResource_IndicesInfo.hpp"
+#include "ManagerController_RenderResource_VertInfo.hpp"
 
 #include "BumpMaterial.hpp"
 #include "CastHelpers.hpp"
@@ -13,7 +13,6 @@
 
 #include "StarGraphicsPipeline.hpp"
 #include "VertColorMaterial.hpp"
-#include "ObjVertInfo.hpp"
 
 std::unique_ptr<star::BasicObject> star::BasicObject::New(std::string objPath)
 {
@@ -232,8 +231,8 @@ void star::BasicObject::loadMesh(){
 			}
 
 			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
-				Handle meshVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjVertInfo>(*vertices));
-				Handle meshIndBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjIndicesInfo>(*fullInd)); 
+				Handle meshVertBuffer = ManagerRenderResource::addRequest(std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
+				Handle meshIndBuffer = ManagerRenderResource::addRequest(std::make_unique<star::ManagerController::RenderResource::IndicesInfo>(*fullInd)); 
 				//apply material from files to mesh -- will ignore passed values 
 				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd, preparedMaterials.at(shape.mesh.material_ids[0]), false));
 			}

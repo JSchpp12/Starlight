@@ -1,8 +1,6 @@
-#include "GlobalInfo.hpp"
+#include "TransferRequest_GlobalInfo.hpp"
 
-
-void star::TransferRequest::GlobalInfo::writeData(star::StarBuffer& buffer) const
-{
+void star::TransferRequest::GlobalInfo::writeData(star::StarBuffer& buffer) const{
     buffer.map(); 
 
     //update global ubo 
@@ -17,9 +15,4 @@ void star::TransferRequest::GlobalInfo::writeData(star::StarBuffer& buffer) cons
     buffer.writeToBuffer(&globalUbo, sizeof(globalUbo)); 
 
     buffer.unmap(); 
-}
-
-std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::GlobalInfo::createTransferRequest() const 
-{
-    return std::make_unique<TransferRequest::GlobalInfo>(this->camera, this->numLights);
 }

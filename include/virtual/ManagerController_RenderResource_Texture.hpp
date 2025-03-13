@@ -12,7 +12,7 @@ namespace star::ManagerController::RenderResource{
         Texture(const uint8_t& frameInFlightIndexToUpdateOn)
             : star::ManagerController::Controller<TransferRequest::Memory<StarTexture::TextureCreateSettings>>(frameInFlightIndexToUpdateOn){}
 
-        virtual std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> createTransferRequest() const = 0;
+        virtual std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> createTransferRequest() override = 0;
 
         protected:
 

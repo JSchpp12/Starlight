@@ -1,5 +1,10 @@
 #include "StarObject.hpp"
 
+#include "ManagerController_RenderResource_InstanceModelInfo.hpp"
+#include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
+#include "ManagerController_RenderResource_IndicesInfo.hpp"
+#include "ManagerController_RenderResource_VertInfo.hpp"
+
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout = std::unique_ptr<star::StarDescriptorSetLayout>(); 
 vk::PipelineLayout star::StarObject::extrusionPipelineLayout = vk::PipelineLayout{}; 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::tri_normalExtrusionPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
@@ -148,8 +153,8 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 
 	calculateBoundingBox(bbVerts, bbInds);
 
-	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
-	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
+	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
 
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
@@ -167,8 +172,8 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 
 	calculateBoundingBox(bbVerts, bbInds);
 
-	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjVertInfo>(bbVerts));
-	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ObjIndicesInfo>(bbInds));
+	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
 
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder); 
 
@@ -269,10 +274,10 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 	//create a buffer for each image
 	for (int i = 0; i < numImagesInFlight; i++) {
 		this->instanceModelInfos.emplace_back(
-			ManagerRenderResource::addRequest(std::make_unique<InstanceModelInfo>(this->instances, i))
+			ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(this->instances, i))
 		);
 		this->instanceNormalInfos.emplace_back(
-			ManagerRenderResource::addRequest(std::make_unique<InstanceNormalInfo>(this->instances, i))
+			ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(this->instances, i))
 		); 
 	}
 }

@@ -11,7 +11,7 @@ namespace star::ManagerController::RenderResource{
         public:
         TextureFile(const std::string& filePath) : filePath(filePath){}; 
 
-        virtual std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> createTransferRequest() const override; 
+        virtual std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> createTransferRequest() override; 
 
         protected:
         const std::string filePath; 

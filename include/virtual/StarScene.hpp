@@ -7,9 +7,7 @@
 #include "Light.hpp"
 #include "StarWindow.hpp"
 #include "StarRenderObject.hpp"
-#include "GlobalInfo.hpp"
 #include "BasicCamera.hpp"
-#include "LightInfo.hpp"
 
 #include <map>
 #include <memory>

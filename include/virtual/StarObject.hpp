@@ -1,7 +1,5 @@
 #pragma once
 
-#include "ObjVertInfo.hpp"
-#include "ObjIndicesInfo.hpp"
 #include "ManagerRenderResource.hpp"
 #include "ConfigFile.hpp"
 #include "StarDevice.hpp"
@@ -14,8 +12,6 @@
 #include "StarShaderInfo.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "StarCommandBuffer.hpp"
-#include "InstanceNormalInfo.hpp"
-#include "InstanceModelInfo.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "RenderingTargetInfo.hpp"
 #include "DescriptorModifier.hpp"
