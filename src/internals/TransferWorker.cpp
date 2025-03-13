@@ -57,51 +57,47 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
                 checkForCleanups(*device, inProcessRequests, *commandBufferFences);
             }
 
-            std::this_thread::sleep_for(std::chrono::microseconds(500));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }else{
-            if (!request->bufferTransferRequest){
-                std::runtime_error("Does not support textures yet.");
-            }else{
-
-                if (previousBufferIndexUsed != commandBuffers.size()-1){
-                    targetBufferIndex = previousBufferIndexUsed + 1;
-                    previousBufferIndexUsed++; 
-                }
-        
-                readyCommandBuffer(*device, targetBufferIndex, *commandBufferFences); 
-
-                if (request->bufferTransferRequest){
-                    assert(request->resultingBuffer.has_value() && request->resultingBuffer.value() != nullptr && "Buffer request must contain both a request and a resulting address");
-
-                    createBuffer(*device, 
-                        *allocator, 
-                        *transferQueue, 
-                        *deviceProperties, 
-                        *request->completeFence,  
-                        inProcessRequests, 
-                        targetBufferIndex, 
-                        commandBuffers, 
-                        *commandBufferFences, 
-                        request->bufferTransferRequest.get(),
-                        request->resultingBuffer.value());   
-
-                    request->bufferTransferRequest.get()->afterWriteData();
-                }else if (request->textureTransferRequest){
-                    assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr && "Texture request must contain both a request and a resulting address");
-                    
-                    createTexture(*device, 
-                        *allocator, 
-                        *transferQueue, 
-                        *deviceProperties, 
-                        *request->completeFence, 
-                        inProcessRequests, 
-                        targetBufferIndex, 
-                        commandBuffers, 
-                        *commandBufferFences, 
-                        request->textureTransferRequest.get(), 
-                        request->resultingTexture.value());
-                }
+            if (previousBufferIndexUsed != commandBuffers.size()-1){
+                targetBufferIndex = previousBufferIndexUsed + 1;
+                previousBufferIndexUsed++; 
             }
+    
+            readyCommandBuffer(*device, targetBufferIndex, *commandBufferFences); 
+
+            if (request->bufferTransferRequest){
+                assert(request->resultingBuffer.has_value() && request->resultingBuffer.value() != nullptr && "Buffer request must contain both a request and a resulting address");
+
+                createBuffer(*device, 
+                    *allocator, 
+                    *transferQueue, 
+                    *deviceProperties, 
+                    *request->completeFence,  
+                    inProcessRequests, 
+                    targetBufferIndex, 
+                    commandBuffers, 
+                    *commandBufferFences, 
+                    request->bufferTransferRequest.get(),
+                    request->resultingBuffer.value());   
+
+                request->bufferTransferRequest.get()->afterWriteData();
+            }else if (request->textureTransferRequest){
+                assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr && "Texture request must contain both a request and a resulting address");
+                
+                createTexture(*device, 
+                    *allocator, 
+                    *transferQueue, 
+                    *deviceProperties, 
+                    *request->completeFence, 
+                    inProcessRequests, 
+                    targetBufferIndex, 
+                    commandBuffers, 
+                    *commandBufferFences, 
+                    request->textureTransferRequest.get(), 
+                    request->resultingTexture.value());
+            }
+
             request->cpuWorkDoneByTransferThread->store(true);
             request->cpuWorkDoneByTransferThread->notify_one();
         }

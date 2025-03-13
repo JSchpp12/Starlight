@@ -35,16 +35,17 @@ namespace star {
 				const vk::ImageLayout expectedLayout;
 			};
 
-			ShaderInfo(const BufferInfo& bufferInfo) 
-				: bufferInfo(bufferInfo) {}
+			ShaderInfo(const BufferInfo& bufferInfo, const bool& willCheckForIfReady) 
+				: bufferInfo(bufferInfo), willCheckForIfReady(willCheckForIfReady) {}
 
-			ShaderInfo(const TextureInfo& textureInfo) 
-				: textureInfo(textureInfo){};
+			ShaderInfo(const TextureInfo& textureInfo, const bool& willCheckForIfReady) 
+				: textureInfo(textureInfo), willCheckForIfReady(willCheckForIfReady){};
 
 			~ShaderInfo() = default;
 
 			std::optional<BufferInfo> bufferInfo = std::nullopt;
 			std::optional<TextureInfo> textureInfo 	= std::nullopt;
+			const bool willCheckForIfReady; 
 		};
 
 		struct ShaderInfoSet {
@@ -123,18 +124,18 @@ namespace star {
 				return *this;
 			};
 
-			Builder& add(const Handle& bufferHandle) {
-				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}));
+			Builder& add(const Handle& bufferHandle, const bool& willCheckForIfReady = false) {
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, willCheckForIfReady));
 				return *this;
 			};
 
-			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout) {
-				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}));
+			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout, const bool& willCheckForIfReady = false) {
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, willCheckForIfReady));
 				return *this; 
 			};
 
-			Builder add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout){
-				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout})); 
+			Builder add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout, const bool& willCheckForIfReady = false){
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, willCheckForIfReady)); 
 				return *this;
 			}
 

@@ -24,7 +24,7 @@ void star::TextureMaterial::prep(StarDevice& device){
 void star::TextureMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 {
 	builder.startSet();
-	builder.add(this->texture, vk::ImageLayout::eShaderReadOnlyOptimal); 
+	builder.add(this->texture, vk::ImageLayout::eShaderReadOnlyOptimal, true); 
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::getDescriptorRequests(const int& numFramesInFlight)

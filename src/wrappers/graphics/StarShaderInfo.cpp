@@ -71,14 +71,15 @@ bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
 {
     for (auto& set : this->shaderInfoSets[frameInFlight]){
         for (int i = 0; i < set->shaderInfos.size(); i++){
-            if (set->shaderInfos.at(i).bufferInfo.has_value()){
-                if (!ManagerRenderResource::isReady(set->shaderInfos.at(i).bufferInfo.value().handle))
-                return false;
-            }else if (set->shaderInfos.at(i).textureInfo.has_value()){
-                if (set->shaderInfos.at(i).textureInfo.value().handle.has_value() && !ManagerRenderResource::isReady(set->shaderInfos.at(i).textureInfo.value().handle.value())){
+            if (set->shaderInfos.at(i).willCheckForIfReady){
+                if (set->shaderInfos.at(i).bufferInfo.has_value()){
+                    if (!ManagerRenderResource::isReady(set->shaderInfos.at(i).bufferInfo.value().handle))
                     return false;
+                }else if (set->shaderInfos.at(i).textureInfo.has_value()){
+                    if (set->shaderInfos.at(i).textureInfo.value().handle.has_value() && !ManagerRenderResource::isReady(set->shaderInfos.at(i).textureInfo.value().handle.value())){
+                        return false;
+                    }
                 }
-
             }
         }
     }
@@ -105,6 +106,7 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int & 
                 if (set->shaderInfos.at(i).bufferInfo.has_value()) {
                     //check if buffer has changed
                     auto& info = set->shaderInfos.at(i).bufferInfo.value();
+                    ManagerRenderResource::waitForReady(info.handle);
                     if (!ManagerRenderResource::isReady(info.handle))
                         ManagerRenderResource::waitForReady(info.handle);
                         
