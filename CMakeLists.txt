@@ -253,32 +253,36 @@ target_link_libraries(${PROJECT_NAME}
         Boost::container
     )
 
+set(INCLUDE_DIRS
+    "include/"
+    "include/virtual/"
+    "include/internals"
+    "include/virtual/ModulePlug/"
+    "include/wrappers/"
+    "include/wrappers/graphics/"
+    "include/structs/"
+    "include/enums/"
+    "include/templates/"
+    "include/managers/"
+    "include/common/"
+    "include/common/entities/"
+    "include/common/materials/"
+    "include/common/helpers/"
+    "include/common/objects/"
+    "include/common/buffers/"
+    "include/common/textures"
+    "include/common/controllers/"
+    "include/builders/"
+    "include/controllers/"
+    "include/modules/"
+    "include/systems/"
+    "include/structs/"
+    "include/renderers/" 
+)
+
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        "include/"
-        "include/virtual/"
-        "include/internals"
-        "include/virtual/ModulePlug/"
-        "include/wrappers/"
-        "include/wrappers/graphics/"
-        "include/structs/"
-        "include/enums/"
-        "include/templates/"
-        "include/managers/"
-        "include/common/"
-        "include/common/entities/"
-        "include/common/materials/"
-        "include/common/helpers/"
-        "include/common/objects/"
-        "include/common/buffers/"
-        "include/common/textures"
-        "include/common/controllers/"
-        "include/builders/"
-        "include/controllers/"
-        "include/modules/"
-        "include/systems/"
-        "include/structs/"
-        "include/renderers/"
+        ${INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
         ${Stb_INCLUDE_DIR}
@@ -287,24 +291,29 @@ target_include_directories(${PROJECT_NAME}
 find_program(CPPCHECK_EXECUTABLE cppcheck)
 if (CPPCHECK_EXECUTABLE)
 	set(CPPCHECK_FILES "")
+    set(CPPCHECK_INCLUDES "")
 
-	foreach(FILE "${${PROJECT_NAME}_SOURCE}" "${PROJECT_NAME}_HEADERS")
+	foreach(FILE "${${PROJECT_NAME}_SOURCE}")
 		file(TO_CMAKE_PATH "${FILE}" UNIX_PATH)
 		list(APPEND CPPCHECK_FILES "${UNIX_PATH}")
 	endforeach()
 
+    foreach(DIR ${INCLUDE_DIRS})
+        list(APPEND CPPCHECK_INCLUDES "-I" "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
+    endforeach()
+
 	add_custom_target("${PROJECT_NAME}_cppcheck"
 		COMMAND ${CPPCHECK_EXECUTABLE} 
 			--enable=all 
+            --suppress=missingIncludeSystem
 			-q
 			--inline-suppr
 			--language=c++
 			--std=c++20
 			--template=gcc
-			-I"include"
-			-I""
+            ${CPPCHECK_INCLUDES}
 			${CPPCHECK_FILES}
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 		COMMENT "Running Cppcheck"
 		VERBATIM
 	)
