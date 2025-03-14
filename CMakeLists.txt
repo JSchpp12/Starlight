@@ -321,10 +321,8 @@ if (CPPCHECK_EXECUTABLE)
 	add_dependencies("${PROJECT_NAME}_cppcheck" ${CMAKE_PROJECT_NAME})
 endif()
 
-
-if (UNIX)
-    set_target_properties(${PROJECT_NAME} PROPERTIES 
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED ON
-    )
-endif()
+set_target_properties(${PROJECT_NAME} PROPERTIES 
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    DEBUG_POSTFIX "d"
+)
