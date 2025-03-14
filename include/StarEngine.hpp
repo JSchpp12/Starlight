@@ -43,7 +43,7 @@ protected:
 private: 
 	static std::unique_ptr<std::string> screenshotPath;
 
-	const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
+	const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = true;
 
 };
 }

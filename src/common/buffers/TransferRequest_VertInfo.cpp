@@ -9,7 +9,8 @@ star::StarBuffer::BufferCreationArgs star::TransferRequest::VertInfo::getCreateA
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         VMA_MEMORY_USAGE_AUTO,
         vk::BufferUsageFlagBits::eVertexBuffer,
-        vk::SharingMode::eConcurrent
+        vk::SharingMode::eConcurrent,
+        "VertInfoBuffer"
     };
 }
 

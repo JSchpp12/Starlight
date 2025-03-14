@@ -6,6 +6,8 @@
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
 
+#include <string>
+
 namespace star {
 
 class StarBuffer {
@@ -17,19 +19,22 @@ public:
 		VmaMemoryUsage memoryUsageFlags;
 		vk::BufferUsageFlags useFlags;
 		vk::SharingMode sharingMode;
+		std::string allocationName = "BufferDefaultName";
+
+		BufferCreationArgs() = default;
 
 		BufferCreationArgs(const vk::DeviceSize& instanceSize,
 			const uint32_t& instanceCount, const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
-			const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode) 
+			const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName) 
 			: instanceSize(instanceSize), instanceCount(instanceCount), creationFlags(creationFlags), memoryUsageFlags(memoryUsageFlags),
-			useFlags(useFlags), sharingMode(sharingMode){};
+			useFlags(useFlags), sharingMode(sharingMode), allocationName(allocationName){};
 	};
 
 	static vk::DeviceSize getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
 
 	StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 		const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
-		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
+		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName, 
 		vk::DeviceSize minOffsetAlignment = 1);
 	~StarBuffer();
 
@@ -75,8 +80,8 @@ private:
 
 	std::unique_ptr<VmaAllocationInfo> allocationInfo = nullptr;
 
-	static void createBuffer(VmaAllocator& allocator, vk::DeviceSize size, 
-		vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, 
-		vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo);
+	static void createBuffer(VmaAllocator& allocator, const vk::DeviceSize& size, 
+		const vk::BufferUsageFlags& usage, const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& flags, 
+		vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo, const std::string& allocationName);
 };
 }

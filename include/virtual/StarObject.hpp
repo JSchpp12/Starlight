@@ -161,7 +161,7 @@ namespace star {
 
 		Handle boundingBoxVertBuffer, boundingBoxIndexBuffer;
 		std::vector<std::vector<vk::DescriptorSet>> boundingDescriptors; 
-		std::unique_ptr<BufferHandle> vertBuffer, indBuffer; 
+		Handle vertBuffer, indBuffer;
 		uint32_t boundingBoxIndsCount = 0; 
 
 		void recordDrawCommandNormals(vk::CommandBuffer& commandBuffer);

@@ -10,6 +10,8 @@
 #include "StarRenderGroup.hpp"
 #include "ManagerCommandBuffer.hpp"
 
+#include "RenderResourceSystem.hpp"
+
 #include <vulkan/vulkan.hpp>
 
 #define VMA_IMPLEMENTATION

@@ -12,11 +12,11 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const int& index){
     this->setNeedsRebuild = true; 
 
     if (shaderInfos[index].bufferInfo.has_value()) {
-        auto& info = shaderInfos[index].bufferInfo.value();
+        const auto& info = shaderInfos[index].bufferInfo.value();
         if (!ManagerRenderResource::isReady(info.handle)){
             ManagerRenderResource::waitForReady(info.handle);
         }
-        auto& buffer = star::ManagerRenderResource::getBuffer(info.handle);
+        const auto& buffer = star::ManagerRenderResource::getBuffer(info.handle);
 
         auto bufferInfo = vk::DescriptorBufferInfo{
             buffer.getVulkanBuffer(),
@@ -69,7 +69,7 @@ void star::StarShaderInfo::ShaderInfoSet::rebuildSet()
 
 bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
 {
-    for (auto& set : this->shaderInfoSets[frameInFlight]){
+    for (const auto& set : this->shaderInfoSets[frameInFlight]){
         for (int i = 0; i < set->shaderInfos.size(); i++){
             if (set->shaderInfos.at(i).willCheckForIfReady){
                 if (set->shaderInfos.at(i).bufferInfo.has_value()){
@@ -134,4 +134,19 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int & 
     }
 
     return allSets; 
+}
+
+star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::startSet()
+{
+    auto size = this->activeSet->size();
+    assert(size < this->layouts.size() && "Pushed beyond size");
+
+    this->activeSet->push_back(std::make_shared<ShaderInfoSet>(this->device, *this->layouts[size]));
+    return *this;
+}
+
+star::StarShaderInfo::Builder& star::StarShaderInfo::Builder::add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, const bool willCheckForIfReady)
+{
+    this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, willCheckForIfReady)); 
+    return *this;
 }

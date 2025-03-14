@@ -4,10 +4,10 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 	star::Queue_Type type, bool initFences, bool initSemaphores)
 	: device(device), targetQueue(device.getQueueFamily(type).getQueue())
 {
-	this->recordedImageTransitions.resize(numBuffersToCreate); 
-	for (auto& empty : this->recordedImageTransitions) {
-		empty = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
-	}
+	// this->recordedImageTransitions.resize(numBuffersToCreate); 
+	// for (auto& empty : this->recordedImageTransitions) {
+	// 	empty = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
+	// }
 	this->waitSemaphores.resize(numBuffersToCreate); 
 
 	vk::CommandPool& pool = device.getQueueFamily(type).getCommandPool(); 
@@ -216,8 +216,8 @@ void star::StarCommandBuffer::reset(int bufferIndex)
 	this->device.getDevice().waitForFences(this->readyFence[bufferIndex], VK_TRUE, UINT64_MAX);
 
 	//reset image transitions
-	this->recordedImageTransitions.at(bufferIndex).reset();
-	this->recordedImageTransitions.at(bufferIndex) = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
+	// this->recordedImageTransitions.at(bufferIndex).reset();
+	// this->recordedImageTransitions.at(bufferIndex) = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
 
 	//reset vulkan buffers
 	this->commandBuffers.at(bufferIndex).reset();
@@ -247,12 +247,12 @@ void star::StarCommandBuffer::checkForImageTransitions(int bufferIndex)
 	//WARNING: if multithreading is used, this tracking system will NOT work
 
 	//for the images that have transitions, manually update their layout in the event this buffer is not recorded each frame
-	for (auto& transitions : *this->recordedImageTransitions.at(bufferIndex).get()) {
-		if (transitions.first->getCurrentLayout() != transitions.second.first)
-			std::cout << "Warning: iamge not in expected format. This might cause undefined behavior from renderer" << std::endl;
+	// for (auto& transitions : *this->recordedImageTransitions.at(bufferIndex).get()) {
+	// 	if (transitions.first->getCurrentLayout() != transitions.second.first)
+	// 		std::cout << "Warning: iamge not in expected format. This might cause undefined behavior from renderer" << std::endl;
 
-		transitions.first->overrideImageLayout(transitions.second.second); 
-	}
+	// 	transitions.first->overrideImageLayout(transitions.second.second); 
+	// }
 }
 
 void star::StarCommandBuffer::createSemaphores()

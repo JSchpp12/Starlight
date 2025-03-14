@@ -17,7 +17,7 @@ void star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::
 
 {
 	this->TextureMaterial::buildDescriptorSet(device, builder, imageInFlightIndex);
-	builder.add(this->bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal);
+	builder.add(this->bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal, true);
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::BumpMaterial::getDescriptorRequests(const int& numFramesInFlight)

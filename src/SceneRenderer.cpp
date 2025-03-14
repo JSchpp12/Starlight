@@ -41,6 +41,7 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
 	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY; 
 	imSetting.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 	imSetting.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
+	imSetting.allocationName = "SceneRenderToImages";
 
 	imSetting.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled; 
 
@@ -69,6 +70,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 	imSetting.aspectFlags = vk::ImageAspectFlagBits::eDepth;
 	imSetting.allocationCreateFlags = VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	imSetting.allocationName = "SceneRenderToDepthImages";
 
 	for (int i = 0; i < numFramesInFlight; i++) {
 		newRenderToImages.push_back(std::make_unique<StarTexture>(imSetting, device.getDevice(), device.getAllocator().get()));
@@ -173,8 +175,8 @@ star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarD
 		globalBuilder
 			.startOnFrameIndex(i)
 			.startSet()
-			.add(this->scene.getGlobalInfoBuffer(i))
-			.add(this->scene.getLightInfoBuffer(i));
+			.add(this->scene.getGlobalInfoBuffer(i), false)
+			.add(this->scene.getLightInfoBuffer(i), false);
 	}
 
 	return globalBuilder; 
@@ -223,11 +225,11 @@ void SceneRenderer::initResources(StarDevice& device, const int& numFramesInFlig
 void SceneRenderer::destroyResources(StarDevice& device)
 {
 	for (auto& image : this->renderToImages) {
-		image.release();
+		image.reset();
 	}
 
 	for (auto& image : this->renderToDepthImages) {
-		image.release();
+		image.reset();
 	}
 }
 

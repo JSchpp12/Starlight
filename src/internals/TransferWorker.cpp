@@ -210,6 +210,7 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
         VMA_MEMORY_USAGE_AUTO,
         vk::BufferUsageFlagBits::eTransferSrc,
         vk::SharingMode::eConcurrent,
+        createArgs.allocationName + "_TransferSRCBuffer",
         (createArgs.useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? deviceProperties.limits.minUniformBufferOffsetAlignment : 1
     );
 
@@ -224,6 +225,7 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
             createArgs.memoryUsageFlags,
             createArgs.useFlags | vk::BufferUsageFlagBits::eTransferDst,
             vk::SharingMode::eConcurrent, 
+            createArgs.allocationName,
             (createArgs.useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? deviceProperties.limits.minUniformBufferOffsetAlignment : 1
         );   
         resultingBuffer->swap(newBuffer);   
@@ -293,7 +295,8 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
         VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT | VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
         VMA_MEMORY_USAGE_AUTO,
         vk::BufferUsageFlagBits::eTransferSrc,
-        vk::SharingMode::eConcurrent
+        vk::SharingMode::eConcurrent,
+        createArgs.allocationName + "_TransferSRCBuffer"
     );
 
     newTextureRequest->writeData(*transferSrcBuffer);

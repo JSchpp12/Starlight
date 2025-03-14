@@ -1,5 +1,9 @@
 #include "SwapChainRenderer.hpp"
 
+#include "ConfigFile.hpp"
+
+#include <GLFW/glfw3.h>
+
 star::SwapChainRenderer::SwapChainRenderer(StarWindow& window, StarScene& scene, StarDevice& device, const int& numFramesInFlight)
 	: device(device), window(window), SceneRenderer(scene), numFramesInFlight(numFramesInFlight)
 {
@@ -245,7 +249,11 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
 		VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
 		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
 		vk::ImageLayout::eUndefined,
-		false, true
+		false, true, 
+		{},
+		1.0f,
+		vk::Filter::eNearest, 
+		"SwapChainRendererToImage"
 	);
 
 	//get images in the newly created swapchain 
@@ -317,10 +325,6 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuff
 	);
 
 	this->SceneRenderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
-}
-
-void star::SwapChainRenderer::destroyResources(StarDevice& device)
-{
 }
 
 void star::SwapChainRenderer::createSemaphores()

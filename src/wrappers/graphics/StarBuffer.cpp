@@ -14,7 +14,7 @@ namespace star {
 
 StarBuffer::StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 	const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
-	const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
+	const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName,
 	vk::DeviceSize minOffsetAlignment) :
 	allocator(allocator),
 	usageFlags{useFlags},
@@ -29,7 +29,7 @@ StarBuffer::StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uin
 		throw std::runtime_error("Unable to create a buffer of size 0");
 
 	VmaAllocationInfo allocationInfo{}; 
-	createBuffer(allocator, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, this->buffer, this->memory, allocationInfo);
+	createBuffer(allocator, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, this->buffer, this->memory, allocationInfo, allocationName);
 
 	this->allocationInfo = std::make_unique<VmaAllocationInfo>(allocationInfo);
 }
@@ -92,7 +92,7 @@ vk::DescriptorBufferInfo StarBuffer::descriptorInfoForIndex(int index) {
 	return descriptorInfo(this->alignmentSize, index * alignmentSize);
 }
 
-void StarBuffer::createBuffer(VmaAllocator& allocator, vk::DeviceSize size, vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo)
+void StarBuffer::createBuffer(VmaAllocator& allocator, const vk::DeviceSize& size, const vk::BufferUsageFlags& usage, const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& flags, vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo, const std::string& allocationName)
 {
 	vk::BufferCreateInfo bufferInfo{};
 	bufferInfo.size = size;
@@ -103,7 +103,14 @@ void StarBuffer::createBuffer(VmaAllocator& allocator, vk::DeviceSize size, vk::
 	allocInfo.usage = memoryUsage;
 	allocInfo.flags = flags;
 
-	vmaCreateBuffer(allocator, (VkBufferCreateInfo*)&bufferInfo, &allocInfo, (VkBuffer*)&buffer, &memory, &allocationInfo);
+	auto result = (vk::Result)vmaCreateBuffer(allocator, (VkBufferCreateInfo*)&bufferInfo, &allocInfo, (VkBuffer*)&buffer, &memory, &allocationInfo);
+
+	if (result != vk::Result::eSuccess)
+		throw std::runtime_error("Failed to allocate buffer memory");
+
+	std::string fullAllocationName = std::string(allocationName);
+	fullAllocationName += "_BUFFER";
+	vmaSetAllocationName(allocator, memory, fullAllocationName.c_str());
 }
 
 }

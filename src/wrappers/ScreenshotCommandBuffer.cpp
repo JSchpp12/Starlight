@@ -267,6 +267,10 @@ std::unique_ptr<star::StarImage> star::ScreenshotBuffer::createNewCopyToImage(st
 		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT,
 		vk::ImageLayout::eTransferDstOptimal,
 		false,
-		false
+		false, 
+		{},
+		1.0f,
+		vk::Filter::eNearest,
+		"screenshotTargetTexture",
 	});
 }

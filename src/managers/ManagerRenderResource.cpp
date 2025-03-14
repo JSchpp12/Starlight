@@ -194,5 +194,5 @@ void star::ManagerRenderResource::destroy(const star::Handle& handle) {
 }
 
 void star::ManagerRenderResource::cleanup(StarDevice& device){
-	bufferStorage.release();
+	bufferStorage.reset();
 }

@@ -251,8 +251,8 @@ void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapC
 	for (int i = 0; i < numSwapChainImages; i++) {
 		frameBuilder.startOnFrameIndex(i);
 		frameBuilder.startSet(); 
-		frameBuilder.add(this->instanceModelInfos[i]);
-		frameBuilder.add(this->instanceNormalInfos[i]); 
+		frameBuilder.add(this->instanceModelInfos[i], false);
+		frameBuilder.add(this->instanceNormalInfos[i], false); 
 	}
 	
 	for (auto& mesh : this->getMeshes()) {

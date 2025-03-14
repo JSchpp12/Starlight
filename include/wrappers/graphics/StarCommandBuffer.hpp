@@ -1,7 +1,6 @@
 #pragma once 
 
 #include "StarDevice.hpp"
-#include "StarImage.hpp"
 
 #include "vulkan/vulkan.hpp"
 
@@ -82,7 +81,7 @@ namespace star {
 		std::vector<vk::Semaphore> completeSemaphores; 
 		std::vector<vk::Fence> readyFence; 
 		std::vector<std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>> waitSemaphores; 
-		std::vector<std::unique_ptr<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>> recordedImageTransitions; 
+		// std::vector<std::unique_ptr<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>> recordedImageTransitions; 
 		bool recorded = false; 
 
 

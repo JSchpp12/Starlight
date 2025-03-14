@@ -2,13 +2,9 @@
 
 #include "SceneRenderer.hpp"
 #include "CommandBufferModifier.hpp"
-#include "RenderingTargetInfo.hpp"
 #include "ScreenshotCommandBuffer.hpp"
-#include "StarObject.hpp"
-#include "ConfigFile.hpp"
 
 #include <vulkan/vulkan.hpp>
-#include <GLFW/glfw3.h>
 
 #include <memory>
 
@@ -70,8 +66,6 @@ namespace star {
 		virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) override;
 
 		virtual void recordCommandBuffer(vk::CommandBuffer& buffer, const int& frameIndexToBeDrawn) override;
-
-		virtual void destroyResources(StarDevice& device) override;
 	private:
 		//more swapchain info 
 		vk::SwapchainKHR swapChain;

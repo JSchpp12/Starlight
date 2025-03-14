@@ -8,8 +8,9 @@ star::StarTexture::~StarTexture(){
 		this->device.destroyImageView(item.second);
 	}
 
-    if (this->allocator != nullptr && this->textureMemory)
+    if (this->allocator && this->textureMemory){
         vmaDestroyImage(*this->allocator, this->textureImage, this->textureMemory);
+	}
 }
 
 star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, VmaAllocator& allocator) : createSettings(createSettings), allocator(&allocator), device(device){
@@ -93,6 +94,10 @@ void star::StarTexture::createAllocation(const TextureCreateSettings& createSett
     if (result != VK_SUCCESS){
         throw std::runtime_error("Failed to create image: " + result);
     }
+
+	std::string fullAllocationName = std::string(createSettings.allocationName);
+	fullAllocationName += "_TEXTURE";
+	vmaSetAllocationName(allocator, textureMemory, fullAllocationName.c_str()); 
 }
 
 vk::ImageView star::StarTexture::getImageView(const vk::Format* requestedFormat) const{

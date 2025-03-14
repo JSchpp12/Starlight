@@ -17,9 +17,9 @@ namespace star {
 				BufferInfo(const Handle& handle, const vk::Buffer& currentBuffer)
 				: handle(handle), currentBuffer(currentBuffer){}
 
-				BufferInfo(const Handle& handle) : handle(handle){}
+				explicit BufferInfo(const Handle& handle) : handle(handle){}
 				Handle handle;
-				std::optional<vk::Buffer> currentBuffer;
+				std::optional<vk::Buffer> currentBuffer = std::nullopt;
 			};
 
 			struct TextureInfo{
@@ -35,10 +35,10 @@ namespace star {
 				const vk::ImageLayout expectedLayout;
 			};
 
-			ShaderInfo(const BufferInfo& bufferInfo, const bool& willCheckForIfReady) 
+			ShaderInfo(const BufferInfo& bufferInfo, const bool willCheckForIfReady) 
 				: bufferInfo(bufferInfo), willCheckForIfReady(willCheckForIfReady) {}
 
-			ShaderInfo(const TextureInfo& textureInfo, const bool& willCheckForIfReady) 
+			ShaderInfo(const TextureInfo& textureInfo, const bool willCheckForIfReady) 
 				: textureInfo(textureInfo), willCheckForIfReady(willCheckForIfReady){};
 
 			~ShaderInfo() = default;
@@ -86,8 +86,8 @@ namespace star {
 		std::vector<std::shared_ptr<StarDescriptorSetLayout>> layouts = std::vector<std::shared_ptr<StarDescriptorSetLayout>>();
 
 	public:
-		StarShaderInfo(StarDevice& device, std::vector<std::shared_ptr<StarDescriptorSetLayout>> layouts, 
-			std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> shaderInfoSets) 
+		StarShaderInfo(StarDevice& device, const std::vector<std::shared_ptr<StarDescriptorSetLayout>>& layouts, 
+			const std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>& shaderInfoSets) 
 			: device(device), layouts(layouts), shaderInfoSets(shaderInfoSets) {
 		};
 
@@ -114,30 +114,24 @@ namespace star {
 			};
 
 			Builder& startOnFrameIndex(const int& frameInFlight) {
+				assert(frameInFlight < this->sets.size() && "Pushed beyond size");
 				this->activeSet = &this->sets[frameInFlight];
 				return *this; 
 			}
-			Builder& startSet() {
-				auto size = this->activeSet->size();
-				auto& test = this->layouts[size]; 
-				this->activeSet->push_back(std::make_shared<ShaderInfoSet>(this->device, *test));
-				return *this;
-			};
 
-			Builder& add(const Handle& bufferHandle, const bool& willCheckForIfReady = false) {
+			Builder& startSet();
+
+			Builder& add(const Handle& bufferHandle, const bool willCheckForIfReady) {
 				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, willCheckForIfReady));
 				return *this;
 			};
 
-			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout, const bool& willCheckForIfReady = false) {
+			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout, const bool willCheckForIfReady) {
 				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, willCheckForIfReady));
 				return *this; 
 			};
 
-			Builder add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout, const bool& willCheckForIfReady = false){
-				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, willCheckForIfReady)); 
-				return *this;
-			}
+			Builder& add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout, const bool willCheckForIfReady);
 
 			std::unique_ptr<StarShaderInfo> build() {
 				return std::make_unique<StarShaderInfo>(this->device, std::move(this->layouts), std::move(this->sets));

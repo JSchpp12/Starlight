@@ -19,7 +19,7 @@ star::FileTexture::FileTexture(const std::string& pathToImage)
         VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
         VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         vk::ImageLayout::eShaderReadOnlyOptimal,
-        false, true})
+        false, true, {}, 1.0f, vk::Filter::eNearest, pathToImage})
 {
 
 }
@@ -44,7 +44,8 @@ std::unique_ptr<star::StarBuffer> star::FileTexture::loadImageData(StarDevice& d
         VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT,
         VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
         vk::BufferUsageFlagBits::eTransferSrc,
-        vk::SharingMode::eConcurrent
+        vk::SharingMode::eConcurrent, 
+        "FileTextureBuffer"
     );
 
     {

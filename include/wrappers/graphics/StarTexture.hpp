@@ -14,45 +14,6 @@ namespace star{
         /// <returns></returns>
         struct TextureCreateSettings {
             TextureCreateSettings() = default;
-            TextureCreateSettings(const int& width, 
-                const int& height, const int& channels, 
-                const int& depth, const int& byteDepth,
-                const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat,
-                const vk::ImageAspectFlags& imageAspectFlags, const VmaMemoryUsage& memoryUsage,
-                const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
-                const bool& isMutable, const bool& createSampler) 
-                : width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
-                imageUsage(imageUsage), imageFormat(imageFormat), 
-                allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
-                isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), 
-                aspectFlags(imageAspectFlags){ }
-
-            TextureCreateSettings(const int& width, 
-                const int& height, const int& channels, 
-                const int& depth, const int& byteDepth,
-                const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat,
-                const vk::ImageAspectFlags& imageAspectFlags, const VmaMemoryUsage& memoryUsage,
-                const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
-                const bool& isMutable, const bool& createSampler, const vk::MemoryPropertyFlags& requiredMemoryProperties) 
-                : width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
-                imageUsage(imageUsage), imageFormat(imageFormat), 
-                allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
-                isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), 
-                aspectFlags(imageAspectFlags), requiredMemoryProperties(requiredMemoryProperties){ }
-
-            TextureCreateSettings(const int& width, 
-                const int& height, const int& channels, 
-                const int& depth, const int& byteDepth,
-                const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat,
-                const vk::ImageAspectFlags& imageAspectFlags, const VmaMemoryUsage& memoryUsage,
-                const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
-                const bool& isMutable, const bool& createSampler, const vk::MemoryPropertyFlags& requiredMemoryProperties, const float& anisotropyLevel) 
-                : width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
-                imageUsage(imageUsage), imageFormat(imageFormat), 
-                allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
-                isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), 
-                aspectFlags(imageAspectFlags), requiredMemoryProperties(requiredMemoryProperties), 
-                anisotropyLevel(anisotropyLevel){ }
 
             TextureCreateSettings(const int& width, 
                 const int& height, const int& channels, 
@@ -61,13 +22,13 @@ namespace star{
                 const vk::ImageAspectFlags& imageAspectFlags, const VmaMemoryUsage& memoryUsage,
                 const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
                 const bool& isMutable, const bool& createSampler, const vk::MemoryPropertyFlags& requiredMemoryProperties, 
-                const float& anisotropyLevel, const vk::Filter& textureFilteringMode) 
+                const float& anisotropyLevel, const vk::Filter& textureFilteringMode, const std::string& allocationName) 
                 : width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
                 imageUsage(imageUsage), imageFormat(imageFormat), 
                 allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
                 isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), 
                 aspectFlags(imageAspectFlags), requiredMemoryProperties(requiredMemoryProperties), 
-                anisotropyLevel(anisotropyLevel), textureFilteringMode(textureFilteringMode){ }
+                anisotropyLevel(anisotropyLevel), textureFilteringMode(textureFilteringMode), allocationName(allocationName){ }
 
             ~TextureCreateSettings() = default; 
 
@@ -85,6 +46,7 @@ namespace star{
             std::optional<vk::MemoryPropertyFlags> requiredMemoryProperties = std::nullopt; 
             float anisotropyLevel = 1.0f;
             vk::Filter textureFilteringMode = vk::Filter::eNearest;
+            std::string allocationName = "TextureDefaultName";
         }; 
 
         virtual ~StarTexture();

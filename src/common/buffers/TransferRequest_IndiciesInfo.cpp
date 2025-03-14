@@ -20,6 +20,7 @@ star::StarBuffer::BufferCreationArgs star::TransferRequest::IndicesInfo::getCrea
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         VMA_MEMORY_USAGE_AUTO, 
         vk::BufferUsageFlagBits::eIndexBuffer, 
-        vk::SharingMode::eConcurrent
+        vk::SharingMode::eConcurrent,
+        "IndiciesInfoBuffer"
     };
 }

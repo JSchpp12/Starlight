@@ -32,6 +32,7 @@ star::StarTexture::TextureCreateSettings star::TransferRequest::TextureFile::get
     iSet.createSampler = true; 
     iSet.anisotropyLevel = this->selectAnisotropyLevel(deviceProperties);
     iSet.textureFilteringMode = this->selectTextureFiltering(deviceProperties);
+    iSet.allocationName = this->imagePath; 
     return iSet;
 }
 
