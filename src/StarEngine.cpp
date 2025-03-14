@@ -1,5 +1,6 @@
 #include "StarEngine.hpp"
 
+#include "BasicWindow.hpp"
 #include "Enums.hpp"
 #include "ManagerRenderResource.hpp"
 #include "SwapChainRenderer.hpp"

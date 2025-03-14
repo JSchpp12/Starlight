@@ -1,8 +1,6 @@
 #pragma once
 
-#include "StarDevice.hpp"
-#include "Handle.hpp"
-#include "BasicWindow.hpp"
+#include "StarWindow.hpp"
 #include "StarBuffer.hpp"
 #include "StarScene.hpp"
 #include "StarApplication.hpp"
@@ -34,8 +32,6 @@ protected:
 	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<SwapChainRenderer> mainRenderer; 
 	std::unique_ptr<TransferWorker> transferWorker;
-
-	std::vector<Handle> lightList; 
 
 	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
 	std::vector<StarRenderGroup> renderGroups;  
