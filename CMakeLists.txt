@@ -23,6 +23,7 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS container thread)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -58,11 +59,8 @@ set(${PROJECT_NAME}_SOURCE
     "src/SwapChainRenderer.cpp"
     "src/virtual/StarObject.cpp"
     "src/virtual/ModulePlug/RenderResourceModifier.cpp"
-    "src/virtual/ModulePlug/RenderResourceModifierGeometry.cpp"
     "src/virtual/ModulePlug/CommandBufferModifier.cpp"
     "src/virtual/ModulePlug/DescriptorModifier.cpp"
-    "src/virtual/ModulePlug/BufferModifier.cpp"
-    "src/virtual/ModulePlug/TextureModifier.cpp"
     "src/virtual/ModulePlug/ManagerPlug.cpp"
     "src/virtual/StarMesh.cpp"
     "src/virtual/StarRenderer.cpp" 
@@ -74,6 +72,10 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarMaterial.cpp" 
     "src/virtual/StarCamera.cpp"
     "src/virtual/StarPipeline.cpp"
+    "src/virtual/TransferRequest_Memory.cpp"
+    "src/virtual/ManagerController_Controller.cpp"
+    "src/virtual/ManagerController_RenderResource_Buffer.cpp"
+    "src/virtual/ManagerController_RenderResource_Texture.cpp"
     "src/wrappers/graphics/StarDescriptorBuilders.cpp"  
     "src/wrappers/graphics/StarBuffer.cpp"  
     "src/wrappers/graphics/StarGraphicsPipeline.cpp"  
@@ -82,11 +84,13 @@ set(${PROJECT_NAME}_SOURCE
     "src/wrappers/graphics/StarRenderPass.cpp"
     "src/wrappers/graphics/StarCommandBuffer.cpp"
     "src/wrappers/graphics/StarShaderInfo.cpp"
+    "src/wrappers/graphics/SharedFence.cpp"
+    "src/wrappers/graphics/StarQueueFamily.cpp"
+    "src/wrappers/graphics/StarTexture.cpp"
     "src/wrappers/Allocator.cpp"
     "src/wrappers/ScreenshotCommandBuffer.cpp"
     "src/managers/ShaderManager.cpp" 
-    "src/managers/ManagerBuffer.cpp"
-    "src/managers/TextureManager.cpp"
+    "src/managers/ManagerRenderResource.cpp"
     "src/managers/LightManager.cpp"
     "src/managers/MapManager.cpp" 
     "src/managers/ManagerDescriptorPool.cpp"
@@ -111,14 +115,26 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/BasicCamera.cpp"
     "src/common/FileTexture.cpp"
     "src/common/Handle.cpp"
-    "src/common/buffers/GlobalInfo.cpp"
-    "src/common/buffers/LightInfo.cpp"
-    "src/common/buffers/InstanceModelInfo.cpp"
-    "src/common/buffers/InstanceNormalInfo.cpp"
+    "src/common/buffers/TransferRequest_GlobalInfo.cpp"
+    "src/common/buffers/TransferRequest_InstanceModelInfo.cpp"
+    "src/common/buffers/TransferRequest_InstanceNormalInfo.cpp"
+    "src/common/buffers/TransferRequest_LightInfo.cpp"
+    "src/common/buffers/TransferRequest_IndiciesInfo.cpp"
+    "src/common/buffers/TransferRequest_VertInfo.cpp"
+    "src/common/textures/TransferRequest_TextureFile.cpp"
+    "src/common/controllers/ManagerController_RenderResource_TextureFile.cpp"
+    "src/common/controllers/ManagerController_RenderResource_GlobalInfo.cpp"
+    "src/common/controllers/ManagerController_RenderResource_InstanceModelInfo.cpp"
+    "src/common/controllers/ManagerController_RenderResource_InstanceNormalInfo.cpp"
+    "src/common/controllers/ManagerController_RenderResource_LightInfo.cpp"
+    "src/common/controllers/ManagerController_RenderResource_IndicesInfo.cpp"
+    "src/common/controllers/ManagerController_RenderResource_VertInfo.cpp"
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
     "src/internals/CommandBufferContainer.cpp"
+    "src/internals/TransferWorker.cpp"
+    "src/internals/ManagerStorageContainer.cpp"
 )
 
 set(${PROJECT_NAME}_HEADERS
@@ -139,16 +155,22 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/objects/StarObjectInstance.hpp"
     "include/common/BasicCamera.hpp"
     "include/common/RuntimeUpdateTexture.hpp"
-    "include/common/buffers/GlobalInfo.hpp"
-    "include/common/buffers/LightInfo.hpp"
-    "include/common/buffers/InstanceModelInfo.hpp"
-    "include/common/buffers/InstanceNormalInfo.hpp"
+    "include/common/buffers/TransferRequest_GlobalInfo.hpp"
+    "include/common/buffers/TransferRequest_InstanceModelInfo.hpp"
+    "include/common/buffers/TransferRequest_InstanceNormalInfo.hpp"
+    "include/common/buffers/TransferRequest_IndicesInfo.hpp"
+    "include/common/buffers/TransferRequest_VertInfo.hpp"
+    "include/common/textures/TransferRequest_TextureFile.hpp"
+    "include/common/controllers/ManagerController_RenderResource_TextureFile.hpp"
+    "include/common/controllers/ManagerController_RenderResource_GlobalInfo.hpp"
+    "include/common/controllers/ManagerController_RenderResource_InstanceModelInfo.hpp"
+    "include/common/controllers/ManagerController_RenderResource_InstanceNormalInfo.hpp"
+    "include/common/controllers/ManagerController_RenderResource_LightInfo.hpp"
+    "include/common/controllers/ManagerController_RenderResource_IndicesInfo.hpp"
+    "include/common/controllers/ManagerController_RenderResource_VertInfo.hpp"
     "include/virtual/ModulePlug/RenderResourceModifier.hpp"
-    "include/virtual/ModulePlug/RenderResourceModifierGeometry.hpp"
     "include/virtual/ModulePlug/CommandBufferModifier.hpp"
     "include/virtual/ModulePlug/DescriptorModifier.hpp"
-    "include/virtual/ModulePlug/BufferModifier.hpp"
-    "include/virtual/ModulePlug/TextureModifier.hpp"
     "include/virtual/ModulePlug/ManagerPlug.hpp"
     "include/virtual/StarManager.hpp"
     "include/virtual/StarRenderer.hpp" 
@@ -161,6 +183,10 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarMaterial.hpp"
     "include/virtual/StarSystemPipeline.hpp"
     "include/virtual/StarPipeline.hpp"
+    "include/virtual/TransferRequest_Memory.hpp"
+    "include/virtual/ManagerController_Controller.hpp"
+    "include/virtual/ManagerController_RenderResource_Buffer.hpp"
+    "include/virtual/ManagerController_RenderResource_Texture.hpp"
     "include/common/StarMaterialMesh.hpp"
     "include/wrappers/graphics/StarDescriptorBuilders.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
@@ -169,19 +195,24 @@ set(${PROJECT_NAME}_HEADERS
     "include/wrappers/graphics/StarComputePipeline.hpp"
     "include/wrappers/graphics/StarRenderPass.hpp"
     "include/wrappers/graphics/StarCommandBuffer.hpp"
+    "include/wrappers/graphics/SharedFence.hpp"
     "include/wrappers/ScreenshotCommandBuffer.hpp"
     "include/wrappers/graphics/StarShaderInfo.hpp"
+    "include/wrappers/graphics/StarQueueFamily.hpp"
+    "include/wrappers/graphics/StarTexture.hpp"
     "include/wrappers/Allocator.hpp"
     "include/managers/ShaderManager.hpp"
-    "include/managers/TextureManager.hpp"
     "include/managers/LightManager.hpp"
     "include/managers/MapManager.hpp"
     "include/managers/ManagerDescriptorPool.hpp"
     "include/managers/ManagerCommandBuffer.hpp"
+    "include/managers/ManagerRenderResource.hpp"
     "include/modules/InteractionSystem.hpp"
     "include/modules/RenderResourceSystem.hpp"
     "include/systems/StarRenderGroup.hpp"
     "include/internals/CommandBufferContainer.hpp"
+    "include/internals/TransferWorker.hpp"
+    "include/internals/ManagerStorageContainer.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarEntity.hpp"
@@ -218,39 +249,80 @@ target_link_libraries(${PROJECT_NAME}
         spirv-reflect-static
         GPUOpen::VulkanMemoryAllocator
         nlohmann_json::nlohmann_json
+        Boost::thread
+        Boost::container
+    )
+
+set(INCLUDE_DIRS
+    "include/"
+    "include/virtual/"
+    "include/internals"
+    "include/virtual/ModulePlug/"
+    "include/wrappers/"
+    "include/wrappers/graphics/"
+    "include/structs/"
+    "include/enums/"
+    "include/templates/"
+    "include/managers/"
+    "include/common/"
+    "include/common/entities/"
+    "include/common/materials/"
+    "include/common/helpers/"
+    "include/common/objects/"
+    "include/common/buffers/"
+    "include/common/textures"
+    "include/common/controllers/"
+    "include/builders/"
+    "include/controllers/"
+    "include/modules/"
+    "include/systems/"
+    "include/structs/"
+    "include/renderers/" 
 )
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        "include/"
-        "include/virtual/"
-        "include/virtual/ModulePlug/"
-        "include/wrappers/"
-        "include/wrappers/graphics/"
-        "include/structs/"
-        "include/enums/"
-        "include/templates/"
-        "include/managers/"
-        "include/common/"
-        "include/common/entities/"
-        "include/common/materials/"
-        "include/common/helpers/"
-        "include/common/objects/"
-        "include/common/buffers/"
-        "include/builders/"
-        "include/controllers/"
-        "include/modules/"
-        "include/systems/"
-        "include/structs/"
-        "include/renderers/"
+        ${INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
         ${Stb_INCLUDE_DIR}
 )
 
-if (UNIX)
-    set_target_properties(${PROJECT_NAME} PROPERTIES 
-        CXX_STANDARD 20
-        CXX_STANDARD_REQUIRED ON
-    )
+find_program(CPPCHECK_EXECUTABLE cppcheck)
+if (CPPCHECK_EXECUTABLE)
+	set(CPPCHECK_FILES "")
+    set(CPPCHECK_INCLUDES "")
+
+	foreach(FILE "${${PROJECT_NAME}_SOURCE}")
+		file(TO_CMAKE_PATH "${FILE}" UNIX_PATH)
+		list(APPEND CPPCHECK_FILES "${UNIX_PATH}")
+	endforeach()
+
+    foreach(DIR ${INCLUDE_DIRS})
+        list(APPEND CPPCHECK_INCLUDES "-I" "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
+    endforeach()
+
+	add_custom_target("${PROJECT_NAME}_cppcheck"
+		COMMAND ${CPPCHECK_EXECUTABLE} 
+			--enable=all 
+            --suppress=missingIncludeSystem
+			-q
+			--inline-suppr
+			--language=c++
+			--std=c++20
+			--template=gcc
+            ${CPPCHECK_INCLUDES}
+			${CPPCHECK_FILES}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+		COMMENT "Running Cppcheck"
+		VERBATIM
+	)
+
+	add_dependencies("${PROJECT_NAME}_cppcheck" ${CMAKE_PROJECT_NAME})
 endif()
+
+set_target_properties(${PROJECT_NAME} PROPERTIES 
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+    DEBUG_POSTFIX "d"
+)

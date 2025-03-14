@@ -1,16 +1,16 @@
 #include "StarCommandBuffer.hpp"
 
 star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToCreate, 
-	star::Command_Buffer_Type type, bool initFences, bool initSemaphores)
-	: device(device), targetQueue(device.getQueue(type))
+	star::Queue_Type type, bool initFences, bool initSemaphores)
+	: device(device), targetQueue(device.getQueueFamily(type).getQueue())
 {
-	this->recordedImageTransitions.resize(numBuffersToCreate); 
-	for (auto& empty : this->recordedImageTransitions) {
-		empty = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
-	}
+	// this->recordedImageTransitions.resize(numBuffersToCreate); 
+	// for (auto& empty : this->recordedImageTransitions) {
+	// 	empty = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
+	// }
 	this->waitSemaphores.resize(numBuffersToCreate); 
 
-	vk::CommandPool& pool = device.getCommandPool(type); 
+	vk::CommandPool& pool = device.getQueueFamily(type).getCommandPool(); 
 
 	//allocate this from the pool
 	vk::CommandBufferAllocateInfo allocateInfo = vk::CommandBufferAllocateInfo{}; 
@@ -216,8 +216,8 @@ void star::StarCommandBuffer::reset(int bufferIndex)
 	this->device.getDevice().waitForFences(this->readyFence[bufferIndex], VK_TRUE, UINT64_MAX);
 
 	//reset image transitions
-	this->recordedImageTransitions.at(bufferIndex).reset();
-	this->recordedImageTransitions.at(bufferIndex) = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
+	// this->recordedImageTransitions.at(bufferIndex).reset();
+	// this->recordedImageTransitions.at(bufferIndex) = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
 
 	//reset vulkan buffers
 	this->commandBuffers.at(bufferIndex).reset();
@@ -234,18 +234,6 @@ std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores()
 	return this->completeSemaphores;
 }
 
-void star::StarCommandBuffer::transitionImageLayout(int bufferIndex, star::StarImage& texture,
-	vk::ImageLayout newLayout, vk::AccessFlags srcFlags, vk::AccessFlags dstFlags, 
-	vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage)
-{
-	//add transition instruction to buffer
-	texture.transitionLayout(this->commandBuffers[bufferIndex], newLayout, srcFlags, dstFlags, sourceStage, dstStage); 
-
-	//record transition information here
-	auto newPair = std::pair<star::StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>(&texture, std::pair<vk::ImageLayout, vk::ImageLayout>(texture.getCurrentLayout(), newLayout)); 
-	this->recordedImageTransitions[bufferIndex]->insert(newPair); 
-}
-
 void star::StarCommandBuffer::wait(int bufferIndex)
 {
 	this->device.getDevice().waitForFences(this->readyFence.at(bufferIndex), VK_TRUE, UINT64_MAX); 
@@ -259,12 +247,12 @@ void star::StarCommandBuffer::checkForImageTransitions(int bufferIndex)
 	//WARNING: if multithreading is used, this tracking system will NOT work
 
 	//for the images that have transitions, manually update their layout in the event this buffer is not recorded each frame
-	for (auto& transitions : *this->recordedImageTransitions.at(bufferIndex).get()) {
-		if (transitions.first->getCurrentLayout() != transitions.second.first)
-			std::cout << "Warning: iamge not in expected format. This might cause undefined behavior from renderer" << std::endl;
+	// for (auto& transitions : *this->recordedImageTransitions.at(bufferIndex).get()) {
+	// 	if (transitions.first->getCurrentLayout() != transitions.second.first)
+	// 		std::cout << "Warning: iamge not in expected format. This might cause undefined behavior from renderer" << std::endl;
 
-		transitions.first->overrideImageLayout(transitions.second.second); 
-	}
+	// 	transitions.first->overrideImageLayout(transitions.second.second); 
+	// }
 }
 
 void star::StarCommandBuffer::createSemaphores()

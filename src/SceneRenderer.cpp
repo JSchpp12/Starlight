@@ -3,7 +3,7 @@
 namespace star {
 
 SceneRenderer::SceneRenderer(star::StarScene& scene)
-	: StarRenderer(*scene.getCamera()), scene(scene)
+	: StarRenderer(scene.getCamera()), scene(scene)
 {
 }
 
@@ -21,39 +21,32 @@ void SceneRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExt
 	assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering");
 	this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
 	assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
-
-	//for (std::unique_ptr<StarTexture>& texture : this->renderToImages) {
-	//	texture->prepRender(device); 
-	//}
 	
 	createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<StarImage>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
+	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	auto imageCreateSettings = star::StarImage::TextureCreateSettings{
-		static_cast<int>(this->swapChainExtent->width),
-		static_cast<int>(this->swapChainExtent->height),
-		4,
-		1,
-		1,
-		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
-		this->getCurrentRenderToImageFormat(),
-		vk::ImageAspectFlagBits::eColor | vk::ImageAspectFlagBits::eDepth,
-		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY,
-		VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, 
-		vk::ImageLayout::eColorAttachmentOptimal,
-		false, false 
-	};
+	auto imSetting = star::StarTexture::TextureCreateSettings{}; 
+	imSetting.width = static_cast<int>(this->swapChainExtent->width);
+	imSetting.height = static_cast<int>(this->swapChainExtent->height);
+	imSetting.channels = 4;
+	imSetting.byteDepth = 1;
+	imSetting.depth = 1;
+	imSetting.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+	imSetting.imageFormat = this->getCurrentRenderToImageFormat();
+	imSetting.aspectFlags = vk::ImageAspectFlagBits::eColor | vk::ImageAspectFlagBits::eDepth;
+	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY; 
+	imSetting.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+	imSetting.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
+	imSetting.allocationName = "SceneRenderToImages";
 
-	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled; 
+	imSetting.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled; 
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<star::StarImage>(imageCreateSettings));
-
-		newRenderToImages.back()->prepRender(device);
+		newRenderToImages.push_back(std::make_unique<StarTexture>(imSetting, device.getDevice(), device.getAllocator().get()));
 
 		auto oneTimeSetup = device.beginSingleTimeCommands(); 
 		newRenderToImages.back()->transitionLayout(oneTimeSetup, vk::ImageLayout::eColorAttachmentOptimal, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput);
@@ -63,30 +56,24 @@ std::vector<std::unique_ptr<StarImage>> SceneRenderer::createRenderToImages(star
 	return newRenderToImages; 
 }
 
-std::vector<std::unique_ptr<StarImage>> SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRenderToDepthImages(StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
+	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	auto imageCreateSettings = star::StarImage::TextureCreateSettings{
-		static_cast<int>(this->swapChainExtent->width),
-		static_cast<int>(this->swapChainExtent->height),
-		1,
-		1,
-		1,
-		vk::ImageUsageFlagBits::eDepthStencilAttachment,
-		this->findDepthFormat(device),
-		vk::ImageAspectFlagBits::eDepth,
-		VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-		VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
-		vk::ImageLayout::eDepthAttachmentOptimal,
-		false, false
-	};
-	imageCreateSettings.imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+	auto imSetting = star::StarTexture::TextureCreateSettings{}; 
+	imSetting.width = static_cast<int>(this->swapChainExtent->width);
+	imSetting.height = static_cast<int>(this->swapChainExtent->height);
+	imSetting.depth = 1; 
+	imSetting.byteDepth = 1;
+	imSetting.imageFormat = this->findDepthFormat(device);
+	imSetting.imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+	imSetting.aspectFlags = vk::ImageAspectFlagBits::eDepth;
+	imSetting.allocationCreateFlags = VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	imSetting.allocationName = "SceneRenderToDepthImages";
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<star::StarImage>(imageCreateSettings));
-
-		newRenderToImages.back()->prepRender(device); 
+		newRenderToImages.push_back(std::make_unique<StarTexture>(imSetting, device.getDevice(), device.getAllocator().get()));
 
 		auto oneTimeSetup = device.beginSingleTimeCommands();
 
@@ -188,8 +175,8 @@ star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarD
 		globalBuilder
 			.startOnFrameIndex(i)
 			.startSet()
-			.add(*this->scene.getGlobalInfoBuffer(i))
-			.add(*this->scene.getLightInfoBuffer(i));
+			.add(this->scene.getGlobalInfoBuffer(i), false)
+			.add(this->scene.getLightInfoBuffer(i), false);
 	}
 
 	return globalBuilder; 
@@ -218,7 +205,7 @@ void SceneRenderer::createImage(star::StarDevice& device, uint32_t width, uint32
 	allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 	allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-	vmaCreateImage(device.getAllocator(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
+	vmaCreateImage(device.getAllocator().get(), (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &imageMemory, nullptr);
 }
 
 vk::Format SceneRenderer::findDepthFormat(star::StarDevice& device)
@@ -238,11 +225,11 @@ void SceneRenderer::initResources(StarDevice& device, const int& numFramesInFlig
 void SceneRenderer::destroyResources(StarDevice& device)
 {
 	for (auto& image : this->renderToImages) {
-		image->cleanupRender(device);
+		image.reset();
 	}
 
 	for (auto& image : this->renderToDepthImages) {
-		image->cleanupRender(device);
+		image.reset();
 	}
 }
 
@@ -334,9 +321,9 @@ void SceneRenderer::recordRenderingCalls(vk::CommandBuffer& commandBuffer, const
 	}
 }
 
-Command_Buffer_Type SceneRenderer::getCommandBufferType()
+Queue_Type SceneRenderer::getCommandBufferType()
 {
-	return Command_Buffer_Type::Tgraphics;
+	return Queue_Type::Tgraphics;
 }
 
 void SceneRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)

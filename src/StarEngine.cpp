@@ -1,5 +1,23 @@
 #include "StarEngine.hpp"
 
+#include "BasicWindow.hpp"
+#include "Enums.hpp"
+#include "ManagerRenderResource.hpp"
+#include "SwapChainRenderer.hpp"
+#include "ConfigFile.hpp"
+
+#include "StarCommandBuffer.hpp"
+#include "ManagerDescriptorPool.hpp"
+#include "StarRenderGroup.hpp"
+#include "ManagerCommandBuffer.hpp"
+
+#include "RenderResourceSystem.hpp"
+
+#include <vulkan/vulkan.hpp>
+
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
+
 namespace star {
 
 std::unique_ptr<std::string> StarEngine::screenshotPath = nullptr;
@@ -23,8 +41,10 @@ StarEngine::StarEngine() {
 
 	this->renderingDevice = StarDevice::New(*window, features);
 
+	this->transferWorker = std::make_unique<TransferWorker>(*this->renderingDevice, this->OVERRIDE_APPLY_SINGLE_THREAD_MODE);
+
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-	ManagerBuffer::init(*this->renderingDevice, framesInFlight);
+	StarManager::init(*this->renderingDevice, *this->transferWorker);
 
 	this->currentScene = std::unique_ptr<StarScene>(new StarScene(framesInFlight));
 }
@@ -35,7 +55,7 @@ StarEngine::~StarEngine()
 }
 
 void StarEngine::Run()
-{
+{ 
 	int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
 	ManagerDescriptorPool descriptorManager(*this->renderingDevice, framesInFlight);
@@ -47,25 +67,32 @@ void StarEngine::Run()
 		framesInFlight, 
 		this->mainRenderer->getGlobalShaderInfo(), this->mainRenderer->getRenderingInfo());
 
+	uint8_t previousFrame = 0; 
+	uint8_t currentFrame = 0; 
 	while (!window->shouldClose()) {
 		//check if any new objects have been added
 		RenderResourceSystem::runInits(*this->renderingDevice, framesInFlight, this->mainRenderer->getMainExtent());
 		descriptorManager.update(framesInFlight); 
-		ManagerBuffer::update(this->mainRenderer->getFrameToBeDrawn()); 
 
 		if (screenshotPath) {
 			this->mainRenderer->triggerScreenshot(*screenshotPath);
 			screenshotPath = nullptr;
 		}
 
+ 		previousFrame = currentFrame; 
+		currentFrame = mainRenderer->getFrameToBeDrawn();
+
 		mainRenderer->pollEvents();
-		InteractionSystem::callWorldUpdates();
-		const uint32_t frameIndex = mainRenderer->getFrameToBeDrawn();
-		vk::Semaphore allBuffersSubmitted = commandBufferManager.update(frameIndex);
-		mainRenderer->submitPresentation(frameIndex, &allBuffersSubmitted);
+		InteractionSystem::callWorldUpdates(currentFrame);
+		ManagerRenderResource::update(currentFrame);
+		vk::Semaphore allBuffersSubmitted = commandBufferManager.update(currentFrame);
+		mainRenderer->submitPresentation(currentFrame, &allBuffersSubmitted);
+
+		this->transferWorker->update();
 	}
 
 	this->renderingDevice->getDevice().waitIdle();
+	ManagerRenderResource::cleanup(*this->renderingDevice);
 	RenderResourceSystem::cleanup(*this->renderingDevice);
 	StarObject::cleanupSharedResources(*this->renderingDevice); 
 }

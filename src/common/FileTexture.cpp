@@ -1,5 +1,4 @@
 #include "FileTexture.hpp"
-#include "FileTexture.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -8,7 +7,7 @@
 
 star::FileTexture::FileTexture(const std::string& pathToImage)
     : pathToFile(pathToImage), 
-    StarImage(TextureCreateSettings{
+    StarImage(StarTexture::TextureCreateSettings{
         getTextureWidth(pathToImage),
         getTextureHeight(pathToImage),
         4,
@@ -20,7 +19,7 @@ star::FileTexture::FileTexture(const std::string& pathToImage)
         VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
         VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         vk::ImageLayout::eShaderReadOnlyOptimal,
-        false, true})
+        false, true, {}, 1.0f, vk::Filter::eNearest, pathToImage})
 {
 
 }
@@ -37,15 +36,16 @@ void star::FileTexture::saveToDisk(const std::string& path)
 
 std::unique_ptr<star::StarBuffer> star::FileTexture::loadImageData(StarDevice& device)
 {
-    vk::DeviceSize imageSize = (this->creationSettings.width * this->creationSettings.height * this->creationSettings.channels * this->creationSettings.depth) * this->creationSettings.byteDepth;
+    vk::DeviceSize imageSize = (this->createSettings.width * this->createSettings.height * this->createSettings.channels * this->createSettings.depth) * this->createSettings.byteDepth;
     std::unique_ptr<star::StarBuffer> stagingBuffer = std::make_unique<star::StarBuffer>(
-        device,
+        device.getAllocator().get(),
         imageSize,
         uint32_t(1),
         VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT,
         VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
         vk::BufferUsageFlagBits::eTransferSrc,
-        vk::SharingMode::eConcurrent
+        vk::SharingMode::eConcurrent, 
+        "FileTextureBuffer"
     );
 
     {
@@ -58,10 +58,10 @@ std::unique_ptr<star::StarBuffer> star::FileTexture::loadImageData(StarDevice& d
         }
 
         //apply overriden alpha value if needed
-        if (this->overrideAlpha.has_value() && this->getChannels() == 4) {
+        if (this->overrideAlpha.has_value() && this->getSettings().channels == 4) {
             for (int i = 0; i < l_height; i++) {
                 for (int j = 0; j < l_width; j++) {
-                    unsigned char* pixelOffset = pixelData + (i + this->getHeight() * j) * this->getChannels();
+                    unsigned char* pixelOffset = pixelData + (i + this->getSettings().height * j) * this->getSettings().channels;
                     pixelOffset[3] = this->overrideAlpha.value().raw_a();
                 }
             }

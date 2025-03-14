@@ -2,13 +2,9 @@
 
 #include "SceneRenderer.hpp"
 #include "CommandBufferModifier.hpp"
-#include "RenderingTargetInfo.hpp"
 #include "ScreenshotCommandBuffer.hpp"
-#include "StarObject.hpp"
-#include "ConfigFile.hpp"
 
 #include <vulkan/vulkan.hpp>
-#include <GLFW/glfw3.h>
 
 #include <memory>
 
@@ -34,6 +30,11 @@ namespace star {
 		vk::Extent2D getMainExtent() const { return *this->swapChainExtent; }
 		int getFrameToBeDrawn() const { return this->currentFrame; }
 
+		vk::Fence getframeStatusFlag(const uint8_t frameIndex){
+			assert(frameIndex < this->imagesInFlight.size() && "Out of range.");
+			return this->imagesInFlight[frameIndex];
+		}
+
 	protected:
 		StarWindow& window;
 		StarDevice& device; 
@@ -56,21 +57,15 @@ namespace star {
 		
 		virtual void prepareForSubmission(const int& frameIndexToBeDrawn) override;
 
-		virtual void submissionDone();
-
 		void submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor);
-
-		virtual std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
 
 		std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> getOverrideBufferSubmissionCallback() override;
 		
-		virtual std::vector<std::unique_ptr<StarImage>> createRenderToImages(star::StarDevice& device, const int& numFramesInFlight) override;
+		virtual std::vector<std::unique_ptr<StarTexture>> createRenderToImages(StarDevice& device, const int& numFramesInFlight) override;
 
 		virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) override;
 
 		virtual void recordCommandBuffer(vk::CommandBuffer& buffer, const int& frameIndexToBeDrawn) override;
-
-		virtual void destroyResources(StarDevice& device) override;
 	private:
 		//more swapchain info 
 		vk::SwapchainKHR swapChain;

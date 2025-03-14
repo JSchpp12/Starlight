@@ -1,5 +1,10 @@
 #include "StarObject.hpp"
 
+#include "ManagerController_RenderResource_InstanceModelInfo.hpp"
+#include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
+#include "ManagerController_RenderResource_IndicesInfo.hpp"
+#include "ManagerController_RenderResource_VertInfo.hpp"
+
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout = std::unique_ptr<star::StarDescriptorSetLayout>(); 
 vk::PipelineLayout star::StarObject::extrusionPipelineLayout = vk::PipelineLayout{}; 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::tri_normalExtrusionPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
@@ -7,6 +12,10 @@ std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::triAdj_normalExtru
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::boundDescriptorLayout = std::unique_ptr<star::StarDescriptorSetLayout>();
 vk::PipelineLayout star::StarObject::boundPipelineLayout = vk::PipelineLayout{}; 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::boundBoxPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
+
+star::StarObject::StarObject(){
+
+}
 
 void star::StarObject::initSharedResources(StarDevice& device, vk::Extent2D swapChainExtent, int numSwapChainImages, 
 	StarDescriptorSetLayout& globalDescriptors, RenderingTargetInfo renderingInfo)
@@ -139,6 +148,14 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo, int numSwapChainImages, 
 	star::StarShaderInfo::Builder fullEngineBuilder)
 {
+	std::vector<Vertex> bbVerts;
+	std::vector<uint32_t> bbInds;
+
+	calculateBoundingBox(bbVerts, bbInds);
+
+	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
+
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
 	//handle pipeline infos
@@ -146,11 +163,18 @@ void star::StarObject::prepRender(star::StarDevice& device, vk::Extent2D swapCha
 
 	createInstanceBuffers(device, numSwapChainImages); 
 	prepareMeshes(device); 
-	StarDescriptorPool& pool = ManagerDescriptorPool::getPool(); 
 }
 
 void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImages, StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
 {
+	std::vector<Vertex> bbVerts;
+	std::vector<uint32_t> bbInds;
+
+	calculateBoundingBox(bbVerts, bbInds);
+
+	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
+
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder); 
 
 	this->sharedPipeline = &sharedPipeline;
@@ -161,25 +185,22 @@ void star::StarObject::prepRender(star::StarDevice& device, int numSwapChainImag
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout,
 	int swapChainIndexNum) {
-	RenderResourceSystem::bind(*this->indBuffer, commandBuffer);
-	RenderResourceSystem::bind(*this->vertBuffer, commandBuffer);
+	for (auto& rmesh : this->getMeshes()){
+		if (!rmesh.get()->isKnownToBeReady(swapChainIndexNum)){
+			return;
+		}	
+	}
 
 	if (this->pipeline)
 		this->pipeline->bind(commandBuffer); 
 
 	for (auto& rmesh : this->getMeshes()) {
-
-		rmesh->getMaterial().bind(commandBuffer, pipelineLayout, swapChainIndexNum);
-
 		uint32_t instanceCount = static_cast<uint32_t>(this->instances.size()); 
-		uint32_t vertexCount = rmesh->getNumVerts();
-		uint32_t indexCount = rmesh->getNumIndices();
-		if (this->isVisible)
-			commandBuffer.drawIndexed(this->numIndices, instanceCount, this->indBufferOffset, 0, 0);
+		rmesh.get()->recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
 	}
 
 	if (this->drawNormals)
-		recordDrawCommandNormals(commandBuffer, this->indBufferOffset, swapChainIndexNum); 
+		recordDrawCommandNormals(commandBuffer); 
 	if (this->drawBoundingBox)
 		recordDrawCommandBoundingBox(commandBuffer, swapChainIndexNum); 
 }
@@ -230,8 +251,8 @@ void star::StarObject::prepareDescriptors(star::StarDevice& device, int numSwapC
 	for (int i = 0; i < numSwapChainImages; i++) {
 		frameBuilder.startOnFrameIndex(i);
 		frameBuilder.startSet(); 
-		frameBuilder.add(*this->instanceModelInfos[i]);
-		frameBuilder.add(*this->instanceNormalInfos[i]); 
+		frameBuilder.add(this->instanceModelInfos[i], false);
+		frameBuilder.add(this->instanceNormalInfos[i], false); 
 	}
 	
 	for (auto& mesh : this->getMeshes()) {
@@ -247,87 +268,17 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 
 	//each instance must provide the number of buffers that it will need
 	//this is a bit limiting and might need some rework
-	auto minProp = device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+
 	uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
 
 	//create a buffer for each image
 	for (int i = 0; i < numImagesInFlight; i++) {
-		this->instanceModelInfos.emplace_back(std::make_unique<InstanceModelInfo>(this->instances, minProp, i));
-		this->instanceNormalInfos.emplace_back(std::make_unique<InstanceNormalInfo>(this->instances, minProp, i)); 
-	}
-}
-
-void star::StarObject::destroyResources(StarDevice& device)
-{
-	this->boundingBoxIndBuffer.reset();
-	this->boundingBoxVertBuffer.reset();
-}
-
-void star::StarObject::initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
-{
-	std::vector<Vertex> bbVerts;
-	std::vector<uint32_t> bbInds;
-
-	calculateBoundingBox(bbVerts, bbInds);
-	{
-		vk::DeviceSize size = sizeof(bbVerts.front());
-		vk::DeviceSize bufferSize = size * bbVerts.size();
-		uint32_t count = bbVerts.size();
-
-		StarBuffer stagingBuffer{
-			device,
-			size,
-			count,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
-		};
-
-		stagingBuffer.map();
-		stagingBuffer.writeToBuffer(bbVerts.data(), VK_WHOLE_SIZE);
-
-		this->boundingBoxVertBuffer = std::make_unique<StarBuffer>(
-			device,
-			size,
-			uint32_t(count),
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::SharingMode::eConcurrent
+		this->instanceModelInfos.emplace_back(
+			ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(this->instances, i))
 		);
-
-		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxVertBuffer->getBuffer(), bufferSize);
-	}
-
-	{
-		vk::DeviceSize size = sizeof(bbInds.front());
-		vk::DeviceSize bufferSize = size * bbInds.size();
-		uint32_t count = bbInds.size();
-
-		StarBuffer stagingBuffer{
-			device,
-			size,
-			count,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
-
-		};
-		stagingBuffer.map();
-		stagingBuffer.writeToBuffer(bbInds.data());
-
-		this->boundingBoxIndBuffer = std::make_unique<StarBuffer>(
-			device,
-			size,
-			uint32_t(count),
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::SharingMode::eConcurrent
-		);
-		device.copyBuffer(stagingBuffer.getBuffer(), this->boundingBoxIndBuffer->getBuffer(), bufferSize);
+		this->instanceNormalInfos.emplace_back(
+			ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(this->instances, i))
+		); 
 	}
 }
 
@@ -356,9 +307,9 @@ void star::StarObject::createBoundingBox(std::vector<Vertex>& verts, std::vector
 	star::GeometryHelpers::calculateAxisAlignedBoundingBox(bbBounds[0], bbBounds[1], verts, inds, true);
 }
 
-void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer, uint32_t ib_start, int inFlightIndex)
+void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer)
 {
-	uint32_t ib = ib_start;
+	uint32_t ib = 0;
 
 	//assuming all meshes have same packing approach at this point. Should have checked earlier on during load time
 	bool useAdjPipe = this->getMeshes().front()->hasAdjacentVertsPacked();
@@ -382,21 +333,13 @@ void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer
 void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex)
 {
 	vk::DeviceSize offsets{}; 
-	commandBuffer.bindVertexBuffers(0, this->boundingBoxVertBuffer->getBuffer(), offsets); 
-	commandBuffer.bindIndexBuffer(this->boundingBoxIndBuffer->getBuffer(), 0, vk::IndexType::eUint32);
+	commandBuffer.bindVertexBuffers(0, ManagerRenderResource::getBuffer(this->boundingBoxVertBuffer).getVulkanBuffer(), offsets); 
+	commandBuffer.bindIndexBuffer(ManagerRenderResource::getBuffer(this->boundingBoxIndexBuffer).getVulkanBuffer(), 0, vk::IndexType::eUint32);
 
 	this->boundBoxPipeline->bind(commandBuffer); 
 	commandBuffer.setLineWidth(1.0f);
 
 	commandBuffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0);
-}
-
-std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::StarObject::loadGeometryStagingBuffers(StarDevice& device, BufferHandle primaryVertBuffer, BufferHandle primaryIndexBuffer)
-{
-	this->vertBuffer = std::make_unique<BufferHandle>(primaryVertBuffer);
-	this->indBuffer = std::make_unique<BufferHandle>(primaryIndexBuffer);
-
-	return this->loadGeometryBuffers(device);
 }
 
 void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds)
@@ -409,7 +352,7 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex>& verts, std::vec
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarObject::getDescriptorRequests(const int& numFramesInFlight)
 {
-	return std::vector<std::pair<vk::DescriptorType, const int>>();
+	return std::vector<std::pair<vk::DescriptorType, const int>>{std::make_pair(vk::DescriptorType::eUniformBuffer, 2)};
 }
 
 void star::StarObject::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)

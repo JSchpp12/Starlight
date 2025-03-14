@@ -1,7 +1,6 @@
 #pragma once 
 
 #include "StarDevice.hpp"
-#include "StarImage.hpp"
 
 #include "vulkan/vulkan.hpp"
 
@@ -13,7 +12,7 @@ namespace star {
 	/// </summary>
 	class StarCommandBuffer {
 	public:
-		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Command_Buffer_Type type, bool initFences, bool initSemaphores);
+		StarCommandBuffer(StarDevice& device, int numBuffersToCreate, star::Queue_Type type, bool initFences, bool initSemaphores);
 		~StarCommandBuffer(); 
 
 		/// <summary>
@@ -65,10 +64,6 @@ namespace star {
 		/// </summary>
 		std::vector<vk::Semaphore>& getCompleteSemaphores(); 
 
-		void transitionImageLayout(int bufferIndex, star::StarImage& texture, vk::ImageLayout newLayout, 
-			vk::AccessFlags srcFlags, vk::AccessFlags dstFlags,
-			vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage); 
-
 		vk::CommandBuffer& buffer(int buffIndex) { return this->commandBuffers.at(buffIndex); }
 
 		vk::Fence& getFence(const int& bufferIndex) { 
@@ -86,7 +81,7 @@ namespace star {
 		std::vector<vk::Semaphore> completeSemaphores; 
 		std::vector<vk::Fence> readyFence; 
 		std::vector<std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>> waitSemaphores; 
-		std::vector<std::unique_ptr<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>> recordedImageTransitions; 
+		// std::vector<std::unique_ptr<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>> recordedImageTransitions; 
 		bool recorded = false; 
 
 

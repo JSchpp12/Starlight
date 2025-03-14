@@ -27,17 +27,13 @@ namespace star {
 
 		virtual star::Command_Buffer_Order_Index getCommandBufferOrderIndex();
 
-		virtual Command_Buffer_Type getCommandBufferType() = 0;
+		virtual Queue_Type getCommandBufferType() = 0;
 
 		virtual vk::PipelineStageFlags getWaitStages() = 0; 
 
 		virtual bool getWillBeSubmittedEachFrame() = 0;
 
 		virtual bool getWillBeRecordedOnce() = 0;
-
-		/// @brief A callback can be provided to be called after the buffer has been submitted
-		/// @return The function to call
-		virtual std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback(); 
 
 		virtual std::optional<std::function<void(const int&)>> getBeforeBufferSubmissionCallback();
 

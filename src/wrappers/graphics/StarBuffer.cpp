@@ -12,41 +12,44 @@ namespace star {
 	return instanceSize;
 }
 
-StarBuffer::StarBuffer(StarDevice& device, vk::DeviceSize instanceSize, uint32_t instanceCount,
+StarBuffer::StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 	const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
-	const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
+	const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName,
 	vk::DeviceSize minOffsetAlignment) :
-	starDevice(device),
+	allocator(allocator),
 	usageFlags{useFlags},
 	instanceSize{ instanceSize },
 	instanceCount{ instanceCount },
 	memoryPropertyFlags{ memoryPropertyFlags } {
+
 	this->alignmentSize = getAlignment(this->instanceSize, minOffsetAlignment);
 	this->bufferSize = this->alignmentSize * instanceCount;
 
+	if (bufferSize == 0)
+		throw std::runtime_error("Unable to create a buffer of size 0");
+
 	VmaAllocationInfo allocationInfo{}; 
-	createBuffer(device, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, this->buffer, this->memory, allocationInfo);
+	createBuffer(allocator, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, this->buffer, this->memory, allocationInfo, allocationName);
 
 	this->allocationInfo = std::make_unique<VmaAllocationInfo>(allocationInfo);
-	//this->starDevice.createBuffer(this->bufferSize, this->usageFlags, this->memoryPropertyFlags, this->buffer, this->memory);
 }
 
 StarBuffer::~StarBuffer() {
 	if (mapped)
-		vmaUnmapMemory(this->starDevice.getAllocator(), this->memory);
+		vmaUnmapMemory(allocator, this->memory);
 
-	vmaDestroyBuffer(this->starDevice.getAllocator(), this->buffer, this->memory);
+	vmaDestroyBuffer(allocator, this->buffer, this->memory);
 }
 
 void StarBuffer::map(vk::DeviceSize size, vk::DeviceSize offset) {
 	assert(this->buffer && this->memory && "Called map on buffer before creation");
 
-	vmaMapMemory(this->starDevice.getAllocator(), this->memory, &this->mapped);
+	vmaMapMemory(this->allocator, this->memory, &this->mapped);
 }
 
 void StarBuffer::unmap() {
 	if (mapped) {
-		vmaUnmapMemory(this->starDevice.getAllocator(), this->memory);
+		vmaUnmapMemory(this->allocator, this->memory);
 		this->mapped = nullptr;
 	}
 }
@@ -65,7 +68,7 @@ void StarBuffer::writeToBuffer(void* data, vk::DeviceSize size, vk::DeviceSize o
 }
 
 vk::Result StarBuffer::flush(vk::DeviceSize size, vk::DeviceSize offset) {
-	auto result = vmaFlushAllocation(this->starDevice.getAllocator(), this->memory, offset, size);
+	auto result = vmaFlushAllocation(this->allocator, this->memory, offset, size);
 	return vk::Result(result);
 }
 
@@ -89,7 +92,7 @@ vk::DescriptorBufferInfo StarBuffer::descriptorInfoForIndex(int index) {
 	return descriptorInfo(this->alignmentSize, index * alignmentSize);
 }
 
-void StarBuffer::createBuffer(StarDevice& device, vk::DeviceSize size, vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo)
+void StarBuffer::createBuffer(VmaAllocator& allocator, const vk::DeviceSize& size, const vk::BufferUsageFlags& usage, const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& flags, vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo, const std::string& allocationName)
 {
 	vk::BufferCreateInfo bufferInfo{};
 	bufferInfo.size = size;
@@ -100,7 +103,14 @@ void StarBuffer::createBuffer(StarDevice& device, vk::DeviceSize size, vk::Buffe
 	allocInfo.usage = memoryUsage;
 	allocInfo.flags = flags;
 
-	vmaCreateBuffer(device.getAllocator(), (VkBufferCreateInfo*)&bufferInfo, &allocInfo, (VkBuffer*)&buffer, &memory, &allocationInfo);
+	auto result = (vk::Result)vmaCreateBuffer(allocator, (VkBufferCreateInfo*)&bufferInfo, &allocInfo, (VkBuffer*)&buffer, &memory, &allocationInfo);
+
+	if (result != vk::Result::eSuccess)
+		throw std::runtime_error("Failed to allocate buffer memory");
+
+	std::string fullAllocationName = std::string(allocationName);
+	fullAllocationName += "_BUFFER";
+	vmaSetAllocationName(allocator, memory, fullAllocationName.c_str());
 }
 
 }

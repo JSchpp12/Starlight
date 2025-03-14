@@ -1,23 +1,14 @@
 #pragma once
 
-#include "ManagerBuffer.hpp"
-#include "SwapChainRenderer.hpp"
-#include "BasicWindow.hpp"
-#include "Color.hpp"
-#include "ConfigFile.hpp"
-#include "Light.hpp"
-#include "StarObject.hpp"
+#include "StarWindow.hpp"
+#include "StarBuffer.hpp"
 #include "StarScene.hpp"
 #include "StarApplication.hpp"
-#include "StarCommandBuffer.hpp"
-#include "ManagerDescriptorPool.hpp"
-#include "StarRenderGroup.hpp"
-#include "ManagerCommandBuffer.hpp"
-
-#include <vulkan/vulkan.hpp>
+#include "TransferWorker.hpp"
 
 #include <memory>
 #include <vector>
+#include <string>
 
 namespace star {
 class StarEngine {
@@ -40,12 +31,15 @@ protected:
 	std::unique_ptr<StarDevice> renderingDevice;
 	std::unique_ptr<StarScene> currentScene;
 	std::unique_ptr<SwapChainRenderer> mainRenderer; 
-	std::vector<Handle> lightList; 
+	std::unique_ptr<TransferWorker> transferWorker;
 
 	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
 	std::vector<StarRenderGroup> renderGroups;  
 
 private: 
 	static std::unique_ptr<std::string> screenshotPath;
+
+	const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = true;
+
 };
 }

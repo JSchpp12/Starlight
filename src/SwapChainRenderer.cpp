@@ -1,5 +1,9 @@
 #include "SwapChainRenderer.hpp"
 
+#include "ConfigFile.hpp"
+
+#include <GLFW/glfw3.h>
+
 star::SwapChainRenderer::SwapChainRenderer(StarWindow& window, StarScene& scene, StarDevice& device, const int& numFramesInFlight)
 	: device(device), window(window), SceneRenderer(scene), numFramesInFlight(numFramesInFlight)
 {
@@ -46,7 +50,7 @@ void star::SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn,
 	presentInfo.pResults = nullptr; // Optional
 
 	//make call to present image
-	auto presentResult = this->device.getPresentQueue().presentKHR(presentInfo);
+	auto presentResult = this->device.getQueueFamily(star::Queue_Type::Tpresent).getQueue().presentKHR(presentInfo);
 
 	if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || frameBufferResized) {
 		frameBufferResized = false;
@@ -55,6 +59,10 @@ void star::SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn,
 	else if (presentResult != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to present swap chain image");
 	}
+
+	//advance to next frame
+	previousFrame = currentFrame;
+	currentFrame = (currentFrame + 1) % this->numFramesInFlight;
 }
 
 void star::SwapChainRenderer::pollEvents() {
@@ -193,13 +201,6 @@ void star::SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDraw
 		throw std::runtime_error("Failed to reset fences"); 
 }
 
-void star::SwapChainRenderer::submissionDone()
-{
-	//advance to next frame
-	previousFrame = currentFrame;
-	currentFrame = (currentFrame + 1) % this->numFramesInFlight;
-}
-
 void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor)
 {
 	vk::SubmitInfo submitInfo{}; 
@@ -220,16 +221,11 @@ void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int&
 	submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
 	submitInfo.commandBufferCount = 1; 
 
-	auto commandResult = std::make_unique<vk::Result>(this->device.getGraphicsQueue().submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
+	auto commandResult = std::make_unique<vk::Result>(this->device.getQueueFamily(star::Queue_Type::Tpresent).getQueue().submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
 
 	if (*commandResult != vk::Result::eSuccess) {
 		throw std::runtime_error("Failed to submit command buffer");
 	}
-}
-
-std::optional<std::function<void(const int&)>> star::SwapChainRenderer::getAfterBufferSubmissionCallback()
-{
-	return std::optional<std::function<void(const int&)>>(std::bind(&SwapChainRenderer::submissionDone, this));
 }
 
 std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
@@ -237,11 +233,11 @@ std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vect
 	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
-std::vector<std::unique_ptr<star::StarImage>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
+std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
 {
-	std::vector<std::unique_ptr<StarImage>> newRenderToImages = std::vector<std::unique_ptr<StarImage>>();
+	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	auto settings = StarImage::TextureCreateSettings(
+	auto settings = StarTexture::TextureCreateSettings(
 		this->swapChainExtent->width,
 		this->swapChainExtent->height,
 		4,
@@ -253,13 +249,16 @@ std::vector<std::unique_ptr<star::StarImage>> star::SwapChainRenderer::createRen
 		VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
 		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
 		vk::ImageLayout::eUndefined,
-		false, true
+		false, true, 
+		{},
+		1.0f,
+		vk::Filter::eNearest, 
+		"SwapChainRendererToImage"
 	);
 
 	//get images in the newly created swapchain 
 	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
-		newRenderToImages.push_back(std::make_unique<StarImage>(settings, image));
-		newRenderToImages.back()->prepRender(device);
+		newRenderToImages.push_back(std::make_unique<StarTexture>(settings, device.getDevice(), image));
 
 		auto buffer = device.beginSingleTimeCommands(); 
 		newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput); 
@@ -326,10 +325,6 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuff
 	);
 
 	this->SceneRenderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
-}
-
-void star::SwapChainRenderer::destroyResources(StarDevice& device)
-{
 }
 
 void star::SwapChainRenderer::createSemaphores()
@@ -410,13 +405,14 @@ void star::SwapChainRenderer::createSwapChain()
 	createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc; //how are these images going to be used? Color attachment since we are rendering to them (can change for postprocessing effects)
 
 	QueueFamilyIndicies indicies = this->device.findPhysicalQueueFamilies();
-	std::vector<uint32_t> queueFamilyIndicies;
-	if (indicies.transferFamily.has_value())
-		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value(), indicies.transferFamily.value(), indicies.presentFamily.value() };
-	else
-		queueFamilyIndicies = std::vector<uint32_t>{ indicies.graphicsFamily.value(), indicies.presentFamily.value() };
-
-	if (indicies.graphicsFamily != indicies.presentFamily && indicies.presentFamily != indicies.transferFamily) {
+	std::vector<uint32_t> queueFamilyIndicies; 
+	{
+		std::set<uint32_t> uniques = indicies.getUniques();
+		for (const uint32_t& index : uniques){
+			queueFamilyIndicies.push_back(index);
+		}
+	}
+	if (queueFamilyIndicies.size() > 1) {
 		/*need to handle how images will be transferred between different queues
 		* so we need to draw images on the graphics queue and then submitting them to the presentation queue
 		* Two ways of handling this:
@@ -424,13 +420,7 @@ void star::SwapChainRenderer::createSwapChain()
 		* 2. VK_SHARING_MODE_CONCURRENT: images can be used across queue families without explicit ownership
 		*/
 		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-		createInfo.queueFamilyIndexCount = 3;
-		createInfo.pQueueFamilyIndices = queueFamilyIndicies.data();
-	}
-	else if (indicies.graphicsFamily != indicies.presentFamily && indicies.presentFamily == indicies.transferFamily) {
-		uint32_t explicitQueueFamilyInd[] = { indicies.graphicsFamily.value(), indicies.presentFamily.value() };
-		createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-		createInfo.queueFamilyIndexCount = 2;
+		createInfo.queueFamilyIndexCount = queueFamilyIndicies.size();
 		createInfo.pQueueFamilyIndices = queueFamilyIndicies.data();
 	}
 	else {
@@ -446,7 +436,7 @@ void star::SwapChainRenderer::createSwapChain()
 
 	//what present mode is going to be used
 	createInfo.presentMode = presentMode;
-	//if clipped is set to true, we dont care about color of pixes that arent in sight -- best performance to enable this
+	//if clipped is set to true, we dont care about color of pixels that arent in sight -- best performance to enable this
 	createInfo.clipped = VK_TRUE;
 
 	//for now, only assume we are making one swapchain
@@ -455,8 +445,8 @@ void star::SwapChainRenderer::createSwapChain()
 	this->swapChain = this->device.getDevice().createSwapchainKHR(createInfo);
 
 	//save swapChain information for later use
-	swapChainImageFormat = std::make_unique<vk::Format>(surfaceFormat.format);
-	swapChainExtent = std::make_unique<vk::Extent2D>(extent);
+	this->swapChainImageFormat = std::make_unique<vk::Format>(surfaceFormat.format);
+	this->swapChainExtent = std::make_unique<vk::Extent2D>(extent);
 }
 
 star::Command_Buffer_Order star::SwapChainRenderer::getCommandBufferOrder()
@@ -506,10 +496,10 @@ void star::SwapChainRenderer::recreateSwapChain()
 void star::SwapChainRenderer::cleanupSwapChain()
 {
 	for (auto& image : this->renderToImages) {
-		image->cleanupRender(this->device);
+		image.release();
 	}
 	for (auto& image : this->renderToDepthImages) {
-		image->cleanupRender(this->device);
+		image.release();
 	}
 
 	this->device.getDevice().destroySwapchainKHR(this->swapChain);

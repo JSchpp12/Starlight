@@ -1,5 +1,21 @@
 #include "ConfigFile.hpp"
 
+#include "FileHelpers.hpp"
+
+#include <iostream> 
+
+#include <sstream>
+#include <map> 
+#include <memory> 
+#include <assert.h>
+#include <fstream>
+
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+
+boost::mutex star::ConfigFile::mutex = boost::mutex(); 
+
 std::map<star::Config_Settings, std::string> star::ConfigFile::settings = std::map<star::Config_Settings, std::string>(); 
 
 std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings = {
@@ -47,6 +63,8 @@ void star::ConfigFile::load(const std::string& configFilePath) {
 }
 
 std::string star::ConfigFile::getSetting(Config_Settings setting) {
+    boost::unique_lock<boost::mutex> lock = boost::unique_lock<boost::mutex>(mutex);
+    
     auto settingsRecord = settings.find(setting);
 
     if (settingsRecord != settings.end()) {

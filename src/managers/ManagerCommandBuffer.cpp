@@ -46,13 +46,12 @@ void star::ManagerCommandBuffer::handleNewRequests()
 				request.waitStage,
 				request.order,
 				request.beforeBufferSubmissionCallback, 
-				request.afterBufferSubmissionCallback, 
 				request.overrideBufferSubmissionCallback), 
 			request.willBeSubmittedEachFrame, request.type, request.order, static_cast<Command_Buffer_Order_Index>(request.orderIndex));
 
 		request.promiseBufferHandleCallback(newHandle);
 
-		if (request.type == Command_Buffer_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
+		if (request.type == Queue_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
 			this->mainGraphicsBufferHandle = std::make_unique<Handle>(newHandle);
 
 		if (request.recordOnce) {
@@ -65,6 +64,13 @@ void star::ManagerCommandBuffer::handleNewRequests()
 
 		ManagerCommandBuffer::newCommandBufferRequests.pop();
 	}
+}
+
+void star::ManagerCommandBuffer::callPreRecordFunctions(const uint8_t& frameInFlightIndex){
+	
+}
+void star::ManagerCommandBuffer::recordCommandBuffers(const uint8_t& frameInFlightIndex){
+
 }
 
 vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapChainIndex)
@@ -94,9 +100,6 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 		mainGraphicsBuffer.commandBuffer->submit(swapChainIndex);
 	}
 
-	if (mainGraphicsBuffer.afterBufferSubmissionCallback.has_value())
-		mainGraphicsBuffer.afterBufferSubmissionCallback.value()(swapChainIndex);
-
 	vk::Semaphore* mainGraphicsSemaphore = &mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
 	
 	std::vector<vk::Semaphore> waitSemaphores = { *mainGraphicsSemaphore };
@@ -114,7 +117,7 @@ void star::ManagerCommandBuffer::handleDynamicBufferRequests()
 	while (!ManagerCommandBuffer::dynamicBuffersToSubmit.empty()) {
 		Handle dynamicBufferRequest = ManagerCommandBuffer::dynamicBuffersToSubmit.top();
 
-		this->buffers.setToSubmitThisBuffer(dynamicBufferRequest.id); 
+		this->buffers.setToSubmitThisBuffer(dynamicBufferRequest.getID()); 
 
 		ManagerCommandBuffer::dynamicBuffersToSubmit.pop();
 	}

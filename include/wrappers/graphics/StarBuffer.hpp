@@ -1,20 +1,40 @@
 #pragma once 
 
-#include "StarDevice.hpp"
+#include "Allocator.hpp"
 #include "Enums.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <vma/vk_mem_alloc.h>
 
+#include <string>
+
 namespace star {
 
 class StarBuffer {
 public:
+	struct BufferCreationArgs {
+		vk::DeviceSize instanceSize;
+		uint32_t instanceCount;
+		VmaAllocationCreateFlags creationFlags;
+		VmaMemoryUsage memoryUsageFlags;
+		vk::BufferUsageFlags useFlags;
+		vk::SharingMode sharingMode;
+		std::string allocationName = "BufferDefaultName";
+
+		BufferCreationArgs() = default;
+
+		BufferCreationArgs(const vk::DeviceSize& instanceSize,
+			const uint32_t& instanceCount, const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
+			const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName) 
+			: instanceSize(instanceSize), instanceCount(instanceCount), creationFlags(creationFlags), memoryUsageFlags(memoryUsageFlags),
+			useFlags(useFlags), sharingMode(sharingMode), allocationName(allocationName){};
+	};
+
 	static vk::DeviceSize getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
 
-	StarBuffer(StarDevice& device, vk::DeviceSize instanceSize, uint32_t instanceCount,
+	StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 		const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
-		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode,
+		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName, 
 		vk::DeviceSize minOffsetAlignment = 1);
 	~StarBuffer();
 
@@ -36,7 +56,7 @@ public:
 	vk::Result flushIndex(int index);
 	vk::DescriptorBufferInfo descriptorInfoForIndex(int index);
 
-	vk::Buffer getBuffer() const { return buffer; }
+	vk::Buffer getVulkanBuffer() const { return buffer; }
 	void* getMappepMemory() const { return mapped; }
 	uint32_t getInstanceCount() const { return instanceCount; }
 	vk::DeviceSize getInstanceSize() const { return instanceSize; }
@@ -46,7 +66,7 @@ public:
 	vk::DeviceSize getBufferSize() const { return bufferSize; }
 
 private:
-	StarDevice& starDevice;
+	VmaAllocator& allocator;
 	void* mapped = nullptr;
 	VmaAllocation memory = VmaAllocation();
 
@@ -60,9 +80,8 @@ private:
 
 	std::unique_ptr<VmaAllocationInfo> allocationInfo = nullptr;
 
-
-	static void createBuffer(StarDevice& device, vk::DeviceSize size, 
-		vk::BufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags flags, 
-		vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo);
+	static void createBuffer(VmaAllocator& allocator, const vk::DeviceSize& size, 
+		const vk::BufferUsageFlags& usage, const VmaMemoryUsage& memoryUsage, const VmaAllocationCreateFlags& flags, 
+		vk::Buffer& buffer, VmaAllocation& memory, VmaAllocationInfo& allocationInfo, const std::string& allocationName);
 };
 }

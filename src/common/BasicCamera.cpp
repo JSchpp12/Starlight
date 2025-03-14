@@ -40,7 +40,7 @@ void star::BasicCamera::onMouseButtonAction(int button, int action, int mods)
 	}
 }
 
-void star::BasicCamera::onWorldUpdate() {
+void star::BasicCamera::onWorldUpdate(const uint32_t& frameInFlightIndex) {
 	//TODO: improve time var allocation 
 	bool moveLeft = KeyStates::state(A);
 	bool moveRight = KeyStates::state(D);

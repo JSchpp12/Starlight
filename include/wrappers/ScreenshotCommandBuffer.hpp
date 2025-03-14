@@ -23,8 +23,6 @@ namespace star {
 		void takeScreenshot(const std::string& path); 
 
 	protected: 
-		std::optional<std::function<void(const int&)>> getAfterBufferSubmissionCallback() override;
-
 		// Inherited via RenderResourceModifier
 		void initResources(StarDevice& device, const int& numFramesInFlight, 
 			const vk::Extent2D& screensize) override;
@@ -32,7 +30,7 @@ namespace star {
 
 		// Inherited via CommandBufferModifier
 		Command_Buffer_Order getCommandBufferOrder() override;
-		Command_Buffer_Type getCommandBufferType() override;
+		Queue_Type getCommandBufferType() override;
 		vk::PipelineStageFlags getWaitStages() override;
 		bool getWillBeSubmittedEachFrame() override;
 		bool getWillBeRecordedOnce() override;

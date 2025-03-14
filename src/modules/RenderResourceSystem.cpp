@@ -24,18 +24,18 @@ void star::RenderResourceSystem::registerSetDrawInfoCallback(std::function<void(
 
 void star::RenderResourceSystem::bind(const Handle& resource, vk::CommandBuffer& commandBuffer)
 {
-	switch (resource.type) {
+	switch (resource.getType()) {
 	case(Handle_Type::buffer):
-		bindBuffer(resource.id, commandBuffer);
+		bindBuffer(resource.getID(), commandBuffer);
 		break;
 	default:
-		throw std::runtime_error("Unsupported resource type requested for bind operation " + resource.type);
+		throw std::runtime_error("Unsupported resource type requested for bind operation " + resource.getType());
 	}
 }
 
 void star::RenderResourceSystem::bind(const BufferHandle& buffer, vk::CommandBuffer& commandBuffer)
 {
-	bindBuffer(buffer.id, commandBuffer, buffer.targetBufferOffset); 
+	bindBuffer(buffer.getID(), commandBuffer, buffer.targetBufferOffset); 
 }
 
 void star::RenderResourceSystem::init(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
@@ -87,47 +87,48 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 		geometryDataOffsetCallbacks.pop();
 	}
 
-	vk::DeviceSize vertexSize = sizeof(star::Vertex);
-	std::unique_ptr<StarBuffer> vertBuffer = std::make_unique<StarBuffer>(
-		device,
-		vertexSize,
-		uint32_t(totalVertInstanceCount),
-		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-		VMA_MEMORY_USAGE_AUTO,
-		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-		vk::SharingMode::eConcurrent
-	);
-	{
-		vk::DeviceSize currentOffset = 0;
-		for (auto& vertStage : stagingBuffersVert) {
-			device.copyBuffer(vertStage->getBuffer(), vertBuffer->getBuffer(), vertStage->getBufferSize(), currentOffset);
-			currentOffset += vertStage->getBufferSize();
-		}
-	}
+	// vk::DeviceSize vertexSize = sizeof(star::Vertex);
+	// std::unique_ptr<StarBuffer> vertBuffer = std::make_unique<StarBuffer>(
+	// 	device.getAllocator().get(),
+	// 	vertexSize,
+	// 	uint32_t(totalVertInstanceCount),
+	// 	VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+	// 	VMA_MEMORY_USAGE_AUTO,
+	// 	vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+	// 	vk::SharingMode::eConcurrent
+	// );
+	// {
+	// 	vk::DeviceSize currentOffset = 0;
+	// 	for (auto& vertStage : stagingBuffersVert) {
+	// 		device.copyBuffer(vertStage->getVulkanBuffer(), vertBuffer->getVulkanBuffer(), vertStage->getBufferSize(), currentOffset);
+	// 		currentOffset += vertStage->getBufferSize();
+	// 	}
+	// }
 
-	vk::DeviceSize indSize = sizeof(uint32_t);
-	std::unique_ptr<StarBuffer> indBuffer = std::make_unique<StarBuffer>(
-		device,
-		indSize,
-		uint32_t(totalIndInstanceCount),
-		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-		VMA_MEMORY_USAGE_AUTO,
-		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-		vk::SharingMode::eConcurrent
-	);
+	// vk::DeviceSize indSize = sizeof(uint32_t);
+	// std::unique_ptr<StarBuffer> indBuffer = std::make_unique<StarBuffer>(
+	// 	device.getAllocator().get(),
+	// 	indSize,
+	// 	uint32_t(totalIndInstanceCount),
+	// 	VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+	// 	VMA_MEMORY_USAGE_AUTO,
+	// 	vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+	// 	vk::SharingMode::eConcurrent,
+	// 	1
+	// );
 
-	{
-		vk::DeviceSize currentOffset = 0; 
+	// {
+	// 	vk::DeviceSize currentOffset = 0; 
 
-		for (auto& indStage : stagingBuffersIndex) {
-			device.copyBuffer(indStage->getBuffer(), indBuffer->getBuffer(), indStage->getBufferSize(), currentOffset);
+	// 	for (auto& indStage : stagingBuffersIndex) {
+	// 		device.copyBuffer(indStage->getVulkanBuffer(), indBuffer->getVulkanBuffer(), indStage->getBufferSize(), currentOffset);
 
-			currentOffset += indStage->getBufferSize(); 
-		}
-	}
+	// 		currentOffset += indStage->getBufferSize(); 
+	// 	}
+	// }
 
-	buffers.push_back(std::move(vertBuffer));
-	buffers.push_back(std::move(indBuffer));
+	// buffers.push_back(std::move(vertBuffer));
+	// buffers.push_back(std::move(indBuffer));
 }
 
 void star::RenderResourceSystem::runInits(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
@@ -156,10 +157,10 @@ void star::RenderResourceSystem::bindBuffer(const uint32_t& bufferId, vk::Comman
 	vk::DeviceSize vOffset{ offset };
 
 	if (buffer.getUsageFlags() & vk::BufferUsageFlagBits::eVertexBuffer) {
-		commandBuffer.bindVertexBuffers(0, buffer.getBuffer(), vOffset);
+		commandBuffer.bindVertexBuffers(0, buffer.getVulkanBuffer(), vOffset);
 	}
 	else if (buffer.getUsageFlags() & vk::BufferUsageFlagBits::eIndexBuffer)
-		commandBuffer.bindIndexBuffer(buffer.getBuffer(), vOffset, vk::IndexType::eUint32);
+		commandBuffer.bindIndexBuffer(buffer.getVulkanBuffer(), vOffset, vk::IndexType::eUint32);
 	else
 		throw std::runtime_error("Unsupported buffer type requested for bind operation from Resource System");
 }

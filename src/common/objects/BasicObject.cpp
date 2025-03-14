@@ -1,5 +1,19 @@
 #include "BasicObject.hpp"
 
+
+#include "ManagerController_RenderResource_TextureFile.hpp"
+#include "ManagerRenderResource.hpp"
+#include "ManagerController_RenderResource_IndicesInfo.hpp"
+#include "ManagerController_RenderResource_VertInfo.hpp"
+
+#include "BumpMaterial.hpp"
+#include "CastHelpers.hpp"
+#include "FileHelpers.hpp"
+#include "StarMesh.hpp"
+
+#include "StarGraphicsPipeline.hpp"
+#include "VertColorMaterial.hpp"
+
 std::unique_ptr<star::BasicObject> star::BasicObject::New(std::string objPath)
 {
 	return std::unique_ptr<BasicObject>(new BasicObject(objPath));
@@ -40,8 +54,8 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
 	return shaders; 
 }
 
-std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> star::BasicObject::loadGeometryBuffers(StarDevice& device)
-{
+
+void star::BasicObject::loadMesh(){
 	std::string texturePath = FileHelpers::GetBaseFileDirectory(objectFilePath);
 	std::string materialFile = FileHelpers::GetBaseFileDirectory(objectFilePath);
 
@@ -88,16 +102,16 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 		//create needed materials
 		for (size_t i = 0; i < materials.size(); i++) {
 			currMaterial = &materials.at(i);
-			std::unique_ptr<FileTexture> texture;
-			std::unique_ptr<FileTexture> bumpMap;
+			Handle texture; 
+			Handle bumpMap; 
 
 			if (currMaterial->diffuse_texname != "") {
-				texture = std::unique_ptr<FileTexture>(new FileTexture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
+				texture = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::TextureFile>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
 			}
 
 			//apply maps 
 			if (currMaterial->bump_texname != "") {
-				bumpMap = std::unique_ptr<FileTexture>(new FileTexture(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
+				bumpMap = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::TextureFile>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
 			}
 
 			//check if any material values are 0 - ambient is important
@@ -107,7 +121,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 				currMaterial->ambient[2] = 1.0;
 			}
 
-			if (bumpMap)
+			if (bumpMap.isInitialized())
 			{
 				this->isBumpyMaterial = true;
 				preparedMaterials.push_back(std::shared_ptr<BumpMaterial>(new BumpMaterial(glm::vec4(1.0),
@@ -128,7 +142,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 							std::move(bumpMap)
 							)));
 			}
-			else if (texture) {
+			else if (texture.isInitialized()) {
 				this->isTextureMaterial = true;
 				preparedMaterials.push_back(std::shared_ptr<TextureMaterial>(new TextureMaterial(glm::vec4(1.0),
 					glm::vec4(1.0),
@@ -144,7 +158,7 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 							currMaterial->specular[2],
 							1.0f },
 							currMaterial->shininess,
-							std::move(texture)
+							texture
 							)));
 			}
 			else {
@@ -217,8 +231,10 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 			}
 
 			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
+				Handle meshVertBuffer = ManagerRenderResource::addRequest(std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
+				Handle meshIndBuffer = ManagerRenderResource::addRequest(std::make_unique<star::ManagerController::RenderResource::IndicesInfo>(*fullInd)); 
 				//apply material from files to mesh -- will ignore passed values 
-				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(*vertices, *fullInd, preparedMaterials.at(shape.mesh.material_ids[0]), false));
+				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd, preparedMaterials.at(shape.mesh.material_ids[0]), false));
 			}
 
 			meshVerts.push_back(std::move(vertices));
@@ -228,55 +244,4 @@ std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>> 
 	}
 
 	this->meshes = std::move(meshes);
-
-	//create buffers
-	std::unique_ptr<StarBuffer> vertStagingBuffer;
-	{
-		vk::DeviceSize vertSize = sizeof(Vertex);
-		vertStagingBuffer = std::make_unique<StarBuffer>(
-			device,
-			vertSize,
-			totalNumVerts,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
-		);
-		vertStagingBuffer->map();
-		vk::DeviceSize offset = 0;
-		for (std::unique_ptr<std::vector<Vertex>>& verts : meshVerts) {
-			vk::DeviceSize meshVertsSize = sizeof(Vertex) * verts->size();
-			vertStagingBuffer->writeToBuffer(verts->data(), meshVertsSize, offset);
-
-			offset += meshVertsSize;
-		}
-		vertStagingBuffer->unmap();
-	}
-
-	std::unique_ptr<StarBuffer> indStagingBuffer;
-	{
-		vk::DeviceSize indSize = sizeof(uint32_t);
-		indStagingBuffer = std::make_unique<StarBuffer>(
-			device,
-			indSize,
-			totalNumInds,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-			VMA_MEMORY_USAGE_AUTO,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eConcurrent
-		);
-		indStagingBuffer->map();
-
-		vk::DeviceSize offset = 0;
-		for (auto& inds : meshInds) {
-			vk::DeviceSize meshIndSize = sizeof(uint32_t) * inds->size();
-			indStagingBuffer->writeToBuffer(inds->data(), meshIndSize, offset);
-
-			offset += meshIndSize;
-		}
-
-		indStagingBuffer->unmap();
-	}
-
-	return std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(std::move(vertStagingBuffer), std::move(indStagingBuffer));
 }

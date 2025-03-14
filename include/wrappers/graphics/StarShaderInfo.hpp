@@ -1,10 +1,10 @@
 #pragma once 
 
 #include "StarDescriptorBuilders.hpp"
-#include "BufferModifier.hpp"
 #include "StarDevice.hpp"
-#include "StarImage.hpp"
-#include "ManagerDescriptorPool.hpp"
+#include "StarTexture.hpp"
+
+#include "Handle.hpp"
 
 #include <memory>
 #include <vector>
@@ -13,18 +13,39 @@ namespace star {
 	class StarShaderInfo {
 	private:
 		struct ShaderInfo {
+			struct BufferInfo{
+				BufferInfo(const Handle& handle, const vk::Buffer& currentBuffer)
+				: handle(handle), currentBuffer(currentBuffer){}
 
-			ShaderInfo(const BufferModifier& bufferModifier) 
-				: bufferModifier(bufferModifier) {};
+				explicit BufferInfo(const Handle& handle) : handle(handle){}
+				Handle handle;
+				std::optional<vk::Buffer> currentBuffer = std::nullopt;
+			};
 
-			ShaderInfo(const StarImage& textureInfo, const vk::ImageLayout& expectedLayout) 
-				: textureInfo(textureInfo), expectedLayout(expectedLayout) {};
+			struct TextureInfo{
+				TextureInfo(const Handle& handle, const vk::ImageLayout& expectedLayout)
+				: handle(handle), expectedLayout(expectedLayout){}
+
+				TextureInfo(const StarTexture* texture, const vk::ImageLayout& expectedLayout) : texture(texture), expectedLayout(expectedLayout){}
+
+				std::optional<const Handle> handle = std::nullopt;
+				std::optional<vk::Image> currentImage = std::nullopt;
+				
+				std::optional<const StarTexture*> texture = std::nullopt;
+				const vk::ImageLayout expectedLayout;
+			};
+
+			ShaderInfo(const BufferInfo& bufferInfo, const bool willCheckForIfReady) 
+				: bufferInfo(bufferInfo), willCheckForIfReady(willCheckForIfReady) {}
+
+			ShaderInfo(const TextureInfo& textureInfo, const bool willCheckForIfReady) 
+				: textureInfo(textureInfo), willCheckForIfReady(willCheckForIfReady){};
 
 			~ShaderInfo() = default;
 
-			std::optional<std::reference_wrapper<const BufferModifier>> bufferModifier = std::optional<std::reference_wrapper<const BufferModifier>>();
-			std::optional<std::reference_wrapper<const StarImage>> textureInfo = std::optional<std::reference_wrapper<const StarImage>>();
-			std::optional<vk::ImageLayout> expectedLayout = std::optional<vk::ImageLayout>();
+			std::optional<BufferInfo> bufferInfo = std::nullopt;
+			std::optional<TextureInfo> textureInfo 	= std::nullopt;
+			const bool willCheckForIfReady; 
 		};
 
 		struct ShaderInfoSet {
@@ -32,63 +53,31 @@ namespace star {
 
 			ShaderInfoSet(StarDevice& device, StarDescriptorSetLayout& setLayout) : device(device), layout(setLayout) {};
 
-			void add(const ShaderInfo& shaderInfo) {
-				this->shaderInfos.push_back(shaderInfo);
-			};
+			void add(const ShaderInfo& shaderInfo);
 
-			void buildIndex(const int& index) {
-				assert(this->descriptorWriter && "Dependencies must have been built first");
-				this->setNeedsRebuild = true; 
+			void buildIndex(const int& index);
 
-				if (shaderInfos[index].bufferModifier.has_value()) {
-					auto& handle = shaderInfos[index].bufferModifier.value().get().getHandle();
-					auto& buffer = star::ManagerBuffer::getBuffer(handle);
-
-					auto bufferInfo = vk::DescriptorBufferInfo{
-						buffer.getBuffer(),
-						0,
-						buffer.getBufferSize()
-					};
-					this->descriptorWriter->writeBuffer(index, bufferInfo);
-				}
-				else if (shaderInfos[index].textureInfo.has_value()) {
-					auto textureInfo = vk::DescriptorImageInfo{
-						shaderInfos[index].textureInfo.value().get().getSampler(),
-						shaderInfos[index].textureInfo.value().get().getImageView(),
-						shaderInfos[index].expectedLayout.value()
-					};
-
-					this->descriptorWriter->writeImage(index, textureInfo);
-				}
-			}
-
-			void build() {
-				{
-					this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->layout, ManagerDescriptorPool::getPool());
-					for (int i = 0; i < this->shaderInfos.size(); i++) {
-						buildIndex(i); 
-					}
-				}
-			};
+			void build();
 
 			vk::DescriptorSet getDescriptorSet() {
-				if (this->setNeedsRebuild)
+				if (this->setNeedsRebuild){
 					rebuildSet();
+				}
 
 				return *this->descriptorSet;
 			};
+
+			bool getIsBuilt() const {return this->isBuilt;}
 
 		private:
 			StarDevice& device;
 			StarDescriptorSetLayout& layout; 
 			bool setNeedsRebuild = true;
+			bool isBuilt = false;
 			std::shared_ptr<vk::DescriptorSet> descriptorSet = std::shared_ptr<vk::DescriptorSet>();
 			std::shared_ptr<StarDescriptorWriter> descriptorWriter = std::shared_ptr<StarDescriptorWriter>();
 
-			void rebuildSet() {
-				this->descriptorSet = std::make_shared<vk::DescriptorSet>(this->descriptorWriter->build());
-				this->setNeedsRebuild = false; 
-			};
+			void rebuildSet();
 		};
 
 		StarDevice& device;
@@ -97,43 +86,16 @@ namespace star {
 		std::vector<std::shared_ptr<StarDescriptorSetLayout>> layouts = std::vector<std::shared_ptr<StarDescriptorSetLayout>>();
 
 	public:
-		StarShaderInfo(StarDevice& device, std::vector<std::shared_ptr<StarDescriptorSetLayout>> layouts, 
-			std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> shaderInfoSets) 
+		StarShaderInfo(StarDevice& device, const std::vector<std::shared_ptr<StarDescriptorSetLayout>>& layouts, 
+			const std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>& shaderInfoSets) 
 			: device(device), layouts(layouts), shaderInfoSets(shaderInfoSets) {
-			for (auto& set : this->shaderInfoSets){
-				for (int i = 0; i < set.size(); i++) {
-					set[i]->build();
-				}
-			}
 		};
 
-		std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts() {
-			std::vector<vk::DescriptorSetLayout> fLayouts = std::vector<vk::DescriptorSetLayout>();
-			for (auto& set : this->layouts) {
-				fLayouts.push_back(set->getDescriptorSetLayout());
-			}
-			return fLayouts;
-		};
+		bool isReady(const uint8_t& frameInFlight);
 
-		std::vector<vk::DescriptorSet> getDescriptors(const int& frameInFlight) {
-			for (auto& set : this->shaderInfoSets[frameInFlight]) {
-				for (int i = 0; i < set->shaderInfos.size(); i++) {
-					if (set->shaderInfos.at(i).bufferModifier.has_value()) {
-						//check if buffer has changed
-						if (set->shaderInfos.at(i).bufferModifier.value().get().getBufferHasChanged()) {
-							set->buildIndex(i);
-						}
-					}
-				}
-			}
+		std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
-			auto allSets = std::vector<vk::DescriptorSet>(); 
-			for (int i = 0; i < this->shaderInfoSets[frameInFlight].size(); i++) {
-				allSets.push_back(this->shaderInfoSets[frameInFlight].at(i)->getDescriptorSet()); 
-			}
-
-			return allSets; 
-		};
+		std::vector<vk::DescriptorSet> getDescriptors(const int& frameInFlight);
 
 		class Builder {
 		public:
@@ -152,25 +114,24 @@ namespace star {
 			};
 
 			Builder& startOnFrameIndex(const int& frameInFlight) {
+				assert(frameInFlight < this->sets.size() && "Pushed beyond size");
 				this->activeSet = &this->sets[frameInFlight];
 				return *this; 
 			}
-			Builder& startSet() {
-				auto size = this->activeSet->size();
-				auto& test = this->layouts[size]; 
-				this->activeSet->push_back(std::make_shared<ShaderInfoSet>(this->device, *test));
+
+			Builder& startSet();
+
+			Builder& add(const Handle& bufferHandle, const bool willCheckForIfReady) {
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, willCheckForIfReady));
 				return *this;
 			};
 
-			Builder& add(const BufferModifier& bufferModifier) {
-				this->activeSet->back()->add(ShaderInfo(bufferModifier));
-				return *this;
-			};
-
-			Builder& add(const StarImage& texture, const vk::ImageLayout& desiredLayout) {
-				this->activeSet->back()->add(ShaderInfo(texture, desiredLayout));
+			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout, const bool willCheckForIfReady) {
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, willCheckForIfReady));
 				return *this; 
 			};
+
+			Builder& add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout, const bool willCheckForIfReady);
 
 			std::unique_ptr<StarShaderInfo> build() {
 				return std::make_unique<StarShaderInfo>(this->device, std::move(this->layouts), std::move(this->sets));

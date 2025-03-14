@@ -27,7 +27,7 @@ namespace star {
 
         virtual ~StarApplication() {};
 
-        virtual void onWorldUpdate() = 0;
+        virtual void onWorldUpdate(const uint32_t& frameInFlightIndex) = 0;
 
         virtual void onKeyPress(int key, int scancode, int mods) override {};
 

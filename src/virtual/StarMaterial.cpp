@@ -2,20 +2,13 @@
 
 void star::StarMaterial::cleanupRender(StarDevice& device)
 {
-	if (this->isPrepared) {
-		this->cleanup(device); 
-		this->isPrepared = false; 
-	}
+
 }
 
 void star::StarMaterial::prepRender(StarDevice& device)
 {
 	//since multiple meshes can share a material, ensure that the material has not already been prepared
 
-	if (!this->isPrepared) {
-		this->prep(device); 
-		this->isPrepared = true; 
-	}
 }
 
 void star::StarMaterial::finalizeDescriptors(StarDevice& device, star::StarShaderInfo::Builder builder, int numSwapChainImages)
@@ -35,6 +28,10 @@ void star::StarMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayo
 	//bind the descriptor sets for the given image index
 	auto descriptors = this->shaderInfo->getDescriptors(swapChainImageIndex); 
 	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(), descriptors.data(), 0, nullptr);
+}
+
+bool star::StarMaterial::isKnownToBeReady(const uint8_t& frameInFlightIndex){
+	return this->shaderInfo->isReady(frameInFlightIndex);
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(const int& numFramesInFlight)

@@ -1,13 +1,6 @@
 #pragma once
 
-#include "BumpMaterial.hpp"
-#include "CastHelpers.hpp"
-#include "FileHelpers.hpp"
-#include "StarMesh.hpp"
-#include "StarDevice.hpp"
 #include "StarObject.hpp"
-#include "StarGraphicsPipeline.hpp"
-#include "VertColorMaterial.hpp"
 
 #include <tiny_obj_loader.h>
 
@@ -36,10 +29,12 @@ namespace star {
 
 		Handle primaryVertBuffer, primaryIndbuffer;
 
-		BasicObject(std::string objectFilePath) : objectFilePath(objectFilePath) {};
+		BasicObject(std::string objectFilePath) : objectFilePath(objectFilePath) {
+			loadMesh();
+		};
 
 		std::string objectFilePath;
-
-		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> loadGeometryBuffers(StarDevice& device) override;
+		
+		void loadMesh(); 
 	};
 }

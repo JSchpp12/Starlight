@@ -3,9 +3,9 @@
 namespace star {
 
 #ifdef NDEBUG
-    bool Compiler::compileDebug = false;
-#else
     bool Compiler::compileDebug = true;
+#else
+    bool Compiler::compileDebug = false;
 #endif
 
     std::unique_ptr<std::vector<uint32_t>> Compiler::compile(const std::string& pathToFile, bool optimize) {

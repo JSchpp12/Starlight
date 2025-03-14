@@ -150,11 +150,6 @@ void star::ScreenshotBuffer::takeScreenshot(const std::string& path)
 	this->screenshotSavePath = std::string(path);
 }
 
-std::optional<std::function<void(const int&)>> star::ScreenshotBuffer::getAfterBufferSubmissionCallback()
-{
-	return std::optional<std::function<void(const int&)>>(std::bind(&ScreenshotBuffer::saveScreenshotToDisk, this, std::placeholders::_1));
-}
-
 bool star::ScreenshotBuffer::deviceSupportsSwapchainBlit(const vk::Format& swapChainImageFormat)
 {
 	bool supportsBlit = true;
@@ -234,12 +229,12 @@ star::Command_Buffer_Order star::ScreenshotBuffer::getCommandBufferOrder()
 	return star::Command_Buffer_Order::end_of_frame;
 }
 
-star::Command_Buffer_Type star::ScreenshotBuffer::getCommandBufferType()
+star::Queue_Type star::ScreenshotBuffer::getCommandBufferType()
 {
 	if (this->supportsBlit)
-		return star::Command_Buffer_Type::Tgraphics;
+		return star::Queue_Type::Tgraphics;
 	else
-		return star::Command_Buffer_Type::Ttransfer; 
+		return star::Queue_Type::Ttransfer; 
 }
 
 vk::PipelineStageFlags star::ScreenshotBuffer::getWaitStages()
@@ -259,7 +254,7 @@ bool star::ScreenshotBuffer::getWillBeRecordedOnce()
 
 std::unique_ptr<star::StarImage> star::ScreenshotBuffer::createNewCopyToImage(star::StarDevice& device, const vk::Extent2D& screensize)
 {
-	return std::make_unique<StarImage>(StarImage::TextureCreateSettings{
+	return std::make_unique<StarImage>(StarTexture::TextureCreateSettings{
 		static_cast<int>(screensize.width),
 		static_cast<int>(screensize.height),
 		4,
@@ -272,6 +267,10 @@ std::unique_ptr<star::StarImage> star::ScreenshotBuffer::createNewCopyToImage(st
 		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT,
 		vk::ImageLayout::eTransferDstOptimal,
 		false,
-		false
+		false, 
+		{},
+		1.0f,
+		vk::Filter::eNearest,
+		"screenshotTargetTexture",
 	});
 }

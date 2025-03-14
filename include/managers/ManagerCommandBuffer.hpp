@@ -24,29 +24,26 @@ namespace star {
 			std::function<void(star::Handle)> promiseBufferHandleCallback;
 			Command_Buffer_Order order;
 			int orderIndex; 
-			star::Command_Buffer_Type type;
+			star::Queue_Type type;
 			vk::PipelineStageFlags waitStage; 
 			bool willBeSubmittedEachFrame; 
 			bool recordOnce; 
 			std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback;
-			std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback;
 			std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback;
 
 			CommandBufferRequest(std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback, 
 				std::function<void(star::Handle)> promiseBufferHandleCallback, 
 				const Command_Buffer_Order& order,
 				const int orderIndex,
-				const star::Command_Buffer_Type& type, const vk::PipelineStageFlags& waitStage,
+				const star::Queue_Type& type, const vk::PipelineStageFlags& waitStage,
 				const bool& willBeSubmittedEachFrame, 
 				const bool& recordOnce, std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback, 
-				std::optional<std::function<void(const int&)>> afterBufferSubmissionCallback, 
 				std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback)
 				: recordBufferCallback(recordBufferCallback), promiseBufferHandleCallback(promiseBufferHandleCallback),
 				order(order), orderIndex(orderIndex),
 				type(type), waitStage(waitStage),
 				willBeSubmittedEachFrame(willBeSubmittedEachFrame), recordOnce(recordOnce),
 				beforeBufferSubmissionCallback(beforeBufferSubmissionCallback), 
-				afterBufferSubmissionCallback(afterBufferSubmissionCallback),
 				overrideBufferSubmissionCallback(overrideBufferSubmissionCallback){};
 		};
 
@@ -55,6 +52,10 @@ namespace star {
 		~ManagerCommandBuffer(); 
 
 		static void request(std::function<CommandBufferRequest(void)> request);
+
+		static void callPreRecordFunctions(const uint8_t& frameInFlightIndex);
+		
+		static void recordCommandBuffers(const uint8_t& frameInFlightIndex);
 
 		static void submitDynamicBuffer(Handle bufferHandle);
 

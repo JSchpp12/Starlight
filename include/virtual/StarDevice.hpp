@@ -2,13 +2,17 @@
 
 #include "Enums.hpp"
 #include "StarWindow.hpp"
+#include "StarQueueFamily.hpp"
 #include "Allocator.hpp"
+#include "CastHelpers.hpp"
+
+#include <vulkan/vulkan.hpp>
 
 #include <optional>
+#include <memory>
 #include <unordered_set>
 #include <set>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 #include <iostream>
 
 namespace star {
@@ -18,29 +22,128 @@ struct SwapChainSupportDetails {
 	std::vector<vk::PresentModeKHR> presentModes;
 };
 
-struct QueueFamilyIndicies {
-	std::optional<uint32_t> graphicsFamily;
-	std::optional<uint32_t> presentFamily;
-	std::optional<uint32_t> transferFamily;
-	std::optional<uint32_t> computeFamily; 
+class QueueFamilyIndicies {
+	public:
+	// struct UniqueIndices{
+	// 	std::set<uint32_t> uniqueGraphics;
+	// 	std::optional<std::set<uint32_t>> uniquePresents, uniqueTransfers, uniqueComputes;
+
+	// 	UniqueIndices(const std::set<uint32_t>& uniqueGraphics) : uniqueGraphics(uniqueGraphics){}
+	// 	UniqueIndices(const std::set<uint32_t>& uniqueGraphics, const std::set<uint32_t>& uniquePresents) : uniqueGraphics(uniqueGraphics), uniquePresents(uniquePresents){}
+	// 	UniqueIndices(const std::set<uint32_t>& uniqueGraphics, const std::set<uint32_t>& uniquePresents, const std::set<uint32_t>& uniqueTransfer) : uniquePresents(uniquePresents), uniqueGraphics(uniqueGraphics), uniqueTransfers(uniqueTransfer){}
+	// 	UniqueIndices(const std::set<uint32_t>& uniqueGraphics, const std::set<uint32_t>& uniquePresents, const std::set<uint32_t>& uniqueTransfer, const std::set<uint32_t>& uniqueCompute) : uniqueGraphics(uniqueGraphics), uniquePresents(uniquePresents), uniqueTransfers(uniqueTransfers), uniqueComputes(uniqueComputes){}
+
+	// 	std::set<uint32_t> getAllQueues(){
+	// 		std::set<uint32_t> uniques = this->uniqueGraphics; 
+			
+	// 		if (this->uniquePresents.has_value())
+	// 			std::set_intersection(uniques.begin(), uniques.end(), this->uniquePresents.value().begin(), this->uniquePresents.value().end(), std::back_inserter(uniques));
+
+	// 		if (this->uniqueTransfers.has_value())
+	// 			std::set_intersection(uniques.begin(), uniques.end(), this->uniqueTransfers.value().begin(), this->uniqueTransfers.value().end(), std::back_inserter(uniques));
+
+	// 		if (this->uniqueComputes.has_value())
+	// 			std::set_intersection(uniques.begin(), uniques.end(), this->uniqueComputes.value().begin(), this->uniqueComputes.value().end(), std::back_inserter(uniques));
+
+	// 		return uniques;
+	// 	}
+	// };
+
+	void registerFamily(const uint32_t& familyIndex, const vk::QueueFlags& queueSupport, const vk::Bool32& presentSupport, const uint32_t& familyQueueCount){
+		this->familyIndexQueueCount[familyIndex] = familyQueueCount; 
+		this->familyIndexQueueSupport[familyIndex] = queueSupport; 
+		this->allIndicies.insert(familyIndex);
+
+		if (presentSupport)
+			this->presentFamilies.insert(familyIndex);
+
+		if (queueSupport & vk::QueueFlagBits::eGraphics)
+			this->graphicsFamilies.insert(familyIndex);
+
+		if (queueSupport & vk::QueueFlagBits::eTransfer)
+			this->transferFamilies.insert(familyIndex);
+
+		if (queueSupport & vk::QueueFlagBits::eCompute)
+			this->computeFamilies.insert(familyIndex);
+	}
 
 	//check if queue families are all seperate -- this means more parallel work
 	bool isOptimalSupport() const {
-		if ((graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value())
-			&& (graphicsFamily.value() != transferFamily.value() && graphicsFamily.value() != computeFamily.value())) {
-				return true;
+		if (!this->isFullySupported()){
+			return false; 
 		}
-		return false; 
+
+		//select presentation
+		std::vector<uint32_t> base = std::vector<uint32_t>();
+
+		//select queue with present + graphics
+		{
+			std::vector<uint32_t> found; 
+			std::set_intersection(this->graphicsFamilies.begin(), this->graphicsFamilies.end(), this->presentFamilies.begin(), this->presentFamilies.end(), std::back_inserter(found));
+			if (found.size() > 0)
+				base.push_back(found[0]);
+			else
+				return false; 
+		}
+
+		//select compute
+		{
+			std::vector<uint32_t> found; 
+			std::set_difference(this->computeFamilies.begin(), this->computeFamilies.end(), base.begin(), base.end(), std::back_inserter(found));
+			if (found.size() > 0)
+				base.push_back(found[0]);
+			else
+				return false;
+		}
+
+		//select transfer
+		{
+			std::vector<uint32_t> found; 
+			std::set_difference(this->transferFamilies.begin(), this->transferFamilies.end(), base.begin(), base.end(), std::back_inserter(found));
+			if (found.size() > 0)
+				base.push_back(found[0]);
+			else
+				return false; 
+		}
+
+		return true;
 	}
+
 	bool isFullySupported() const {
-		if (graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value() && computeFamily.has_value()) {
+		if (this->graphicsFamilies.size() > 0 && this->presentFamilies.size() > 0 && this->transferFamilies.size() > 0 && this->computeFamilies.size() > 0) {
 			return true; 
 		}
 		return false; 
 	}
+
 	bool isSuitable() const {
-		return graphicsFamily.has_value() && presentFamily.has_value();
+		return this->graphicsFamilies.size() > 0 && this->presentFamilies.size() > 0;
 	}
+
+	uint32_t getNumQueuesForIndex(const uint32_t& index){
+		return this->familyIndexQueueCount[index];
+	}
+
+	vk::QueueFlags getSupportForIndex(const uint32_t& index){
+		return this->familyIndexQueueSupport[index];
+	}
+
+	std::set<uint32_t> getUniques() const{
+		return this->allIndicies; 
+	}
+
+	bool getSupportsPresentForIndex(const uint32_t& index){
+		return this->presentFamilies.find(index) != this->presentFamilies.end();
+	}
+
+	private:
+	std::set<uint32_t> allIndicies = std::set<uint32_t>(); 
+	std::unordered_map<uint32_t, vk::QueueFlags> familyIndexQueueSupport = std::unordered_map<uint32_t, vk::QueueFlags>(); 
+	std::unordered_map<uint32_t, uint32_t> familyIndexQueueCount = std::unordered_map<uint32_t, uint32_t>(); 
+	std::set<uint32_t> graphicsFamilies = std::set<uint32_t>(); 
+	std::set<uint32_t> presentFamilies = std::set<uint32_t>();
+	std::set<uint32_t> transferFamilies = std::set<uint32_t>();
+	std::set<uint32_t> computeFamilies = std::set<uint32_t>();
 };
 
 class StarDevice {
@@ -66,36 +169,25 @@ public:
 	/// <returns></returns>
 	vk::Format findSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
-	vk::CommandPool& getCommandPool(star::Command_Buffer_Type type);
+	StarQueueFamily& getQueueFamily(const star::Queue_Type& type);
 
-	vk::Queue& getQueue(star::Command_Buffer_Type type);
+	bool doesHaveDedicatedFamily(const star::Queue_Type& type);
+
+	std::unique_ptr<StarQueueFamily> giveMeQueueFamily(const star::Queue_Type& type);
 
 #pragma region getters
 	SwapChainSupportDetails getSwapChainSupportDetails() { return querySwapChainSupport(this->physicalDevice); }
-	vk::CommandPool getGraphicsCommandPool() { return this->graphicsCommandPool; }
 	vk::PhysicalDevice getPhysicalDevice() { return this->physicalDevice; }
-	inline vk::Device getDevice() { return this->vulkanDevice; }
+	inline vk::Device& getDevice() { return this->vulkanDevice; }
 	vk::SurfaceKHR getSurface() { return this->surface.get(); }
-	vk::Queue getGraphicsQueue() { return this->graphicsQueue; }
-	vk::Queue getPresentQueue() { return this->presentQueue; }
-	vk::Queue getTransferQueue() { 
-		if (this->transferQueue.has_value())
-			return this->transferQueue.value();
-		else
-			return this->graphicsQueue; 
-		};
-	vk::Queue getComputeQueue() {
-		if (this->computeQueue.has_value())
-			return this->computeQueue.value();
-		else
-			return this->graphicsQueue;
+	vk::Instance& getInstance() {return this->instance; }
+	Allocator& getAllocator() {
+		assert(this->allocator && "Default allocator should have been created during startup. Something has gone wrong.");
+		return *this->allocator; 
 	}
-	VmaAllocator& getAllocator() { return this->allocator->get(); }
 #pragma endregion
 
 #pragma region helperFunctions
-	void createPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits flags, vk::CommandPool& pool);
-	
 	/// <summary>
 	/// Create a buffer with the given arguments
 	/// </summary>
@@ -107,14 +199,14 @@ public:
 	/// </summary>
 	/// <param name="useTransferPool">Should command be submitted to the transfer command pool. Will be submitted to the graphics pool otherwise.</param>
 	/// <returns></returns>
-	vk::CommandBuffer beginSingleTimeCommands(bool useTransferPool = false);
+	vk::CommandBuffer beginSingleTimeCommands();
 
 	/// <summary>
 	/// Helper function to end execution of single time use command buffer
 	/// </summary>
 	/// <param name="commandBuffer"></param>
 	/// <param name="useTransferPool">Was command buffer submitted to the transfer pool. Assumed graphics pool otherwise.</param>
-	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, bool useTransferPool = false, vk::Semaphore* signalFinishSemaphore = nullptr);
+	void endSingleTimeCommands(vk::CommandBuffer commandBuffer, vk::Semaphore* signalFinishSemaphore = nullptr);
 
 	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size, const vk::DeviceSize dstOffset=0);
 
@@ -150,9 +242,6 @@ protected:
 #else
 	const bool enableValidationLayers = true;
 #endif    
-
-	bool hasDedicatedTransferQueue = false;
-
 	vk::Instance instance;
 	vk::Device vulkanDevice;
 	std::unique_ptr<star::Allocator> allocator;
@@ -160,12 +249,10 @@ protected:
 	vk::UniqueSurfaceKHR surface;
 	StarWindow& starWindow;
 
-	//vulkan command storage
-	vk::CommandPool graphicsCommandPool;
-	vk::CommandPool transferCommandPool;
-	std::vector<vk::CommandBuffer> transferCommandBuffers;
-	vk::CommandPool computeCommandPool; 
-	vk::CommandPool tempCommandPool; //command pool for temporary use in small operations
+	std::vector<std::unique_ptr<StarQueueFamily>> extraFamilies = std::vector<std::unique_ptr<StarQueueFamily>>();
+	std::unique_ptr<StarQueueFamily> defaultFamily = nullptr; 
+	std::unique_ptr<StarQueueFamily> preferredTransferFamily = nullptr;
+	std::unique_ptr<StarQueueFamily> preferredComputeFamily = nullptr;
 
 	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_KHRONOS_validation"
@@ -183,10 +270,6 @@ protected:
 
 	vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
 
-	//queue family information
-	vk::Queue graphicsQueue, presentQueue; 
-	std::optional<vk::Queue> transferQueue, computeQueue;
-
 #if __APPLE__
 	bool isMac = true;
 	std::vector<const char*> platformInstanceRequiredExtensions = {
@@ -198,6 +281,7 @@ protected:
 	bool isMac = false;
 	std::vector<const char*> platformInstanceRequiredExtensions = { };
 #endif
+	void updatePreferredFamilies(const star::Queue_Type& type); 
 
 	//Create the vulkan instance machine 
 	void createInstance();
@@ -206,10 +290,6 @@ protected:
 	void pickPhysicalDevice();
 	//Create a logical device to communicate with the physical device 
 	void createLogicalDevice();
-	/// <summary>
-	/// Create command pools which will contain all predefined draw commands for later use in vulkan main loop
-	/// </summary>
-	void createCommandPool();
 
 	void createAllocator(); 
 
@@ -249,6 +329,8 @@ protected:
 
 private: 
 	bool checkDynamicRenderingSupport(); 
+
+	static uint32_t numQueuesInFamily(const uint32_t& familyIndex); 
 
 };
 }
