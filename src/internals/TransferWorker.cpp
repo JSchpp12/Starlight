@@ -57,7 +57,7 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
                 checkForCleanups(*device, inProcessRequests, *commandBufferFences);
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }else{
             if (previousBufferIndexUsed != commandBuffers.size()-1){
                 targetBufferIndex = previousBufferIndexUsed + 1;

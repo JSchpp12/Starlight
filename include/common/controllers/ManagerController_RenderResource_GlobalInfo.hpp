@@ -12,8 +12,6 @@ namespace star::ManagerController::RenderResource{
 
         virtual std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> createTransferRequest() override;
 
-        virtual bool isValid(const uint8_t& currentFrameInFlightIndex) const override; 
-
         protected:
         const StarCamera& camera; 
         const int& numLights; 
