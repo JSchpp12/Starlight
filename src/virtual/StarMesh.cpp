@@ -9,11 +9,12 @@ bool star::StarMesh::isKnownToBeReady(const uint8_t& frameInFlightIndex){
 	if (this->isReady)
 		return true;
 
-	if (this->material->isKnownToBeReady(frameInFlightIndex)){
+	//need to also check if vert + ind buffers are ready
+	if (ManagerRenderResource::isReady(this->vertBuffer) && ManagerRenderResource::isReady(this->indBuffer) && this->material->isKnownToBeReady(frameInFlightIndex)){
 		this->isReady = true; 
 		return true; 
 	}
-	
+
 	return false; 
 }
 
