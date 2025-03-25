@@ -141,8 +141,8 @@ void star::TransferManagerThread::transitionImageLayout(vk::Image &image, vk::Co
 	barrier.newLayout = newLayout;
 
 	//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+	barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
 	barrier.image = image;
 	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;

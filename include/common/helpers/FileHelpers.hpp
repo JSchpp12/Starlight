@@ -25,13 +25,18 @@ struct FileHelpers {
         return(text);
     }
 
-
     static std::string GetFileExtension(const std::string& pathToFile) {
         return pathToFile.substr(pathToFile.find_last_of('.'));
     }
 
     static std::string GetFileNameWithExtension(const std::string& pathToFile) {
         return pathToFile.substr(pathToFile.find_last_of("/\\") + 1);
+    }
+
+    static std::string GetFileNameWithoutExtension(const std::string& pathToFile) {
+        const std::string mainFileName = GetFileNameWithExtension(pathToFile);
+        auto posOfExt = mainFileName.find_last_of('.');
+        return mainFileName.substr(0, posOfExt);
     }
 
     static std::string GetBaseFileDirectory(const std::string& pathToFile) {

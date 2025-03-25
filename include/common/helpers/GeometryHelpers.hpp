@@ -3,10 +3,6 @@
 #include "Vertex.hpp"
 
 #include <vector>
-#include <unordered_map>
-#include <string>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/hash.hpp>
 #include <array>
 
 namespace star {

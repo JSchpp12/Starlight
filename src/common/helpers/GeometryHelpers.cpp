@@ -1,5 +1,10 @@
 #include "GeometryHelpers.hpp"
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+
+#include <unordered_map>
+
 void star::GeometryHelpers::packTriangleAdjacency(std::vector<Vertex>& verts, std::vector<uint32_t>& indices)
 {
 	std::vector<uint32_t> neighborIndices; 

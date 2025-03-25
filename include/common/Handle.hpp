@@ -2,11 +2,6 @@
 
 #include "Enums.hpp"
 
-#include <optional>
-#include <stdint.h>
-
-#include <boost/functional/hash/hash.hpp>
-
 namespace star {
     struct Handle {
         static Handle getDefault() {
@@ -59,14 +54,8 @@ namespace star {
     };
 
 	struct HandleHash {
-		size_t operator()(const Handle& handle) const noexcept  {
-			size_t result = 0;
-			boost::hash_combine(result, handle.getGlobalID());
-            boost::hash_combine(result, handle.getID()); 
-			boost::hash_combine(result, handle.getType());
-			return result;
-		}
-	};
+		size_t operator()(const Handle& handle) const noexcept;
+    };
 
     inline bool operator<(const Handle& lhs, const Handle& rhs)
     {

@@ -5,9 +5,6 @@
 #include "StarEntity.hpp"
 
 #include <glm/glm.hpp>
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-
-#include <memory>
 
 //Note: this camera system will fail if the user looks up the +y-axis
 namespace star {
@@ -15,34 +12,23 @@ namespace star {
 class StarCamera : public StarEntity
 {
 public:
-	StarCamera(const float& width, const float& height) 
-		: resolution{width, height}
-	{
-	};
+	StarCamera(const float& width, const float& height);
 
 	virtual ~StarCamera() = default;
 
-	glm::mat4 getViewMatrix() const{
-		glm::vec3 position = this->getPosition(); 
+	glm::mat4 getViewMatrix() const; 
 
-		return glm::lookAt(
-			this->getPosition(),
-			this->getPosition() + glm::vec3(this->getForwardVector()),
-			glm::vec3(this->getUpVector())
-		);
-	}
-
-	glm::mat4 getProjectionMatrix() const{
-		return glm::perspective(glm::radians(this->fieldOfView), this->resolution.x / this->resolution.y, this->nearClippingPlaneDistance, this->farClippingPlaneDistance);
-	}
+	glm::mat4 getProjectionMatrix() const;
 
 	glm::vec2 getResolution() const{ return this->resolution; }
 
-	float getFieldOfView() const { return this->fieldOfView; }
-protected:
-	glm::vec2 resolution;
+	float getHorizontalFieldOfView(const bool& inRadians = false) const;
 
-	float fieldOfView = 45.0f, nearClippingPlaneDistance=0.1f, farClippingPlaneDistance=10.0f;
+	float getVerticalFieldOfView(const bool& inRadians = false) const; 
+protected:
+	const glm::vec2 resolution;
+
+	float horizontalFieldOfView = 90.0f, nearClippingPlaneDistance=0.1f, farClippingPlaneDistance=10000000.0f;
 	float pitch = 0.0f, yaw = 0.0f; 
 };
 }

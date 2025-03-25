@@ -31,8 +31,8 @@ void star::StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, vk::I
 	barrier.sType = vk::StructureType::eImageMemoryBarrier;
 	barrier.oldLayout = this->layout;
 	barrier.newLayout = newLayout;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+	barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
 	barrier.image = this->textureImage;
 	barrier.srcAccessMask = srcFlags;

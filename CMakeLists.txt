@@ -72,6 +72,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarMaterial.cpp" 
     "src/virtual/StarCamera.cpp"
     "src/virtual/StarPipeline.cpp"
+    "src/virtual/StarEntity.cpp"
     "src/virtual/TransferRequest_Memory.cpp"
     "src/virtual/ManagerController_Controller.cpp"
     "src/virtual/ManagerController_RenderResource_Buffer.cpp"
@@ -213,9 +214,9 @@ set(${PROJECT_NAME}_HEADERS
     "include/internals/CommandBufferContainer.hpp"
     "include/internals/TransferWorker.hpp"
     "include/internals/ManagerStorageContainer.hpp"
+    "include/virtual/StarEntity.hpp"
     #header only
     "include/common/entities/Light.hpp"
-    "include/virtual/StarEntity.hpp"
     "include/virtual/StarShader.hpp"
     "include/enums/Enums.hpp"
     "include/common/Handle.hpp"

@@ -18,11 +18,11 @@ namespace star {
 	/// <summary>
 	/// Container for all objects in a scene. 
 	/// </summary>
-	class StarScene : public Interactivity {
+	class StarScene {
 	public:
-		StarScene(const int& numFramesInFlight);
+		StarScene(const uint8_t& numFramesInFlight);
 
-		StarScene(const int& numFramesInFlight, StarCamera* camera, std::vector<Handle> globalInfoBuffers);
+		StarScene(const uint8_t& numFramesInFlight, StarCamera* camera, std::vector<Handle> globalInfoBuffers, std::vector<Handle> lightInfoBuffers);
 
 		virtual ~StarScene() = default;
 
@@ -67,6 +67,6 @@ namespace star {
 		std::unordered_map<int, std::unique_ptr<StarObject>> objects = std::unordered_map<int, std::unique_ptr<StarObject>>(); 
 		std::vector<std::unique_ptr<Light>> lightList = std::vector<std::unique_ptr<Light>>();
 
-		virtual void onWorldUpdate(const uint32_t& frameInFlightIndex) override; 
+		void initBuffers(const uint8_t& numFramesInFlight); 
 	};
 }

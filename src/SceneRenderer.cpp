@@ -81,8 +81,8 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 		barrier.sType = vk::StructureType::eImageMemoryBarrier;
 		barrier.oldLayout = vk::ImageLayout::eUndefined;
 		barrier.newLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+		barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
 		barrier.image = newRenderToImages.back()->getImage();
 		barrier.srcAccessMask = vk::AccessFlagBits::eNone;
