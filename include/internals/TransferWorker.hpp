@@ -18,11 +18,8 @@
 
 #include <vector>
 #include <memory>
-#include <thread>
-#include <map>
-#include <optional>
 #include <queue>
-#include <thread>
+#include <optional>
 
 namespace star{
     class TransferManagerThread {

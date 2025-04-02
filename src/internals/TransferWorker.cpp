@@ -5,8 +5,6 @@
 star::TransferManagerThread::~TransferManagerThread(){
     if (this->thread.joinable()){
         this->stopAsync();
-
-        this->thread.join();
     }
 }
 
