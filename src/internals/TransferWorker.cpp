@@ -10,15 +10,7 @@ star::TransferManagerThread::~TransferManagerThread(){
     }
 }
 
-
-void star::TransferManagerThread::initMultithreadedDeps(){
-    this->highPriorityRequests.emplace(50);
-    this->standardRequests.emplace(50);
-}
-
 void star::TransferManagerThread::startAsync(){
-   this->initMultithreadedDeps();
-
     this->shouldRun.store(true);
     this->thread = boost::thread(TransferManagerThread::mainLoop, 
         &this->shouldRun, 
@@ -28,8 +20,8 @@ void star::TransferManagerThread::startAsync(){
         &this->allocator.get(), 
         &this->deviceProperties,
         &this->commandBufferFences,
-        &this->highPriorityRequests.value(), 
-        &this->standardRequests.value()
+        &this->highPriorityRequests, 
+        &this->standardPriorityRequests
     );
 
     if (!this->thread.joinable())
@@ -413,124 +405,133 @@ void star::TransferManagerThread::readyCommandBuffer(vk::Device& device, const s
     }
 }
 
-star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator, const vk::PhysicalDeviceProperties& deviceProperties, std::unique_ptr<star::StarQueueFamily> ownedQueue)
-: device(device), allocator(allocator), transferQueue(std::move(ownedQueue)), 
-commandBuffers(createCommandBuffers(device.getDevice(), transferQueue->getCommandPool(), 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceProperties(deviceProperties){
+star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator, boost::lockfree::stack<InterThreadRequest*>& highPriorityRequests, boost::lockfree::stack<InterThreadRequest*>& standardPriorityRequests, const vk::PhysicalDeviceProperties& deviceProperties, std::unique_ptr<star::StarQueueFamily> ownedQueue)
+: device(device), allocator(allocator), transferQueue(std::move(ownedQueue)), standardPriorityRequests(standardPriorityRequests), highPriorityRequests(highPriorityRequests), commandBuffers(createCommandBuffers(device.getDevice(), transferQueue->getCommandPool(), 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceProperties(deviceProperties){
 
-}
-
-void star::TransferManagerThread::add(std::unique_ptr<star::TransferManagerThread::InterThreadRequest> request, const bool& isHighPriority){
-    assert(!request->cpuWorkDoneByTransferThread->load() && "Request cannot be submitted if it is already in processing by worker");
-
-    {
-        boost::unique_lock<boost::mutex> lock;
-        vk::Fence fence; 
-        request->completeFence->giveMeFence(lock, fence);
-
-        assert(this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess && "Fences MUST be submitting in a signaled state to the worker");
-    }
-   
-    //check if in use by any fence
-    for (int i = 0; i < this->commandBufferFences.size(); i++){
-        if (this->commandBufferFences[i] != nullptr && this->commandBufferFences[i] == request->completeFence){
-            this->commandBufferFences[i] = VK_NULL_HANDLE;
-        }
-    }
-    {
-        boost::unique_lock<boost::mutex> lock;
-        vk::Fence fence;
-        request->completeFence->giveMeFence(lock, fence);
-        this->device.getDevice().resetFences(std::vector<vk::Fence>{fence});
-    }
-
-
-    //TODO: will just need to manage removing elements from this when they are done
-    this->transferRequests.emplace_back(std::move(request)); 
-
-    if (this->thread.joinable()){
-        if (isHighPriority){
-            this->highPriorityRequests.value().push(this->transferRequests.back().get());
-        }else{
-            this->standardRequests.value().push(this->transferRequests.back().get());
-        }
-    }else{
-        size_t targetBufferIndex = 0;
-        if (this->previousBufferIndexUsed != this->commandBuffers.size()-1){
-            targetBufferIndex = this->previousBufferIndexUsed + 1;
-            this->previousBufferIndexUsed++; 
-        }
-
-        readyCommandBuffer(this->device.getDevice(), targetBufferIndex, this->commandBufferFences); 
-        if (this->transferRequests.back()->bufferTransferRequest){
-            createBuffer(this->device.getDevice(), this->allocator.get(), 
-                this->transferQueue->getQueue(), this->deviceProperties, *this->transferRequests.back()->completeFence, 
-                this->inProcessRequests, targetBufferIndex, this->commandBuffers, 
-                this->commandBufferFences, this->transferRequests.back()->bufferTransferRequest.get(), 
-                this->transferRequests.back()->resultingBuffer.value());
-        }else if (this->transferRequests.back()->textureTransferRequest){
-            createTexture(this->device.getDevice(), this->allocator.get(), 
-                this->transferQueue->getQueue(), this->deviceProperties, *this->transferRequests.back()->completeFence, 
-                this->inProcessRequests, targetBufferIndex, this->commandBuffers, 
-                this->commandBufferFences, this->transferRequests.back()->textureTransferRequest.get(),
-                this->transferRequests.back()->resultingTexture.value());
-        }
-
-        this->previousBufferIndexUsed = targetBufferIndex; 
-        this->transferRequests.back()->cpuWorkDoneByTransferThread->store(true);
-        this->transferRequests.back().reset(); 
-        this->transferRequests.pop_back();
-    }
 }
 
 void star::TransferManagerThread::cleanup(){
     if (this->thread.joinable())
         checkForCleanups(this->device.getDevice(), this->inProcessRequests, this->commandBufferFences);
+}
 
+bool star::TransferManagerThread::isFenceInUse(const SharedFence& fence, const bool& clearIfFound){
+        //check if in use by any fence
+        for (int i = 0; i < this->commandBufferFences.size(); i++){
+            if (this->commandBufferFences[i] != nullptr && this->commandBufferFences[i] == &fence){
+                if (clearIfFound)
+                    this->commandBufferFences[i] = VK_NULL_HANDLE;
+                return true;
+            }
+        }
+
+        return false;
+}
+
+star::TransferWorker::~TransferWorker() {
+}
+
+star::TransferWorker::TransferWorker(star::StarDevice& device, bool overrideToSingleThreadMode) : device(device){
+    bool runAsync = !overrideToSingleThreadMode;
+    if (!device.doesHaveDedicatedFamily(star::Queue_Type::Ttransfer)){
+        runAsync = false;
+    }
+
+    bool done = false;
+    while(!done){
+
+        //really only want to expect 2 possible transfer threads
+        if (this->threads.size() > 1){
+            break;
+        }
+
+        auto possibleQueue = device.giveMeQueueFamily(star::Queue_Type::Ttransfer); 
+        if (possibleQueue){
+            this->threads.emplace_back(std::make_unique<TransferManagerThread>(device, device.getAllocator(), this->highPriorityRequests, this->standardRequests, device.getPhysicalDevice().getProperties(), std::move(possibleQueue)));
+        }else{
+            break;
+        }
+    }
+
+    if (this->threads.size() == 0)
+        throw std::runtime_error("Failed to create transfer worker");
+
+    for (auto& thread : this->threads)
+        thread->startAsync(); 
+}
+
+void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, std::unique_ptr<TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> newBufferRequest, std::unique_ptr<star::StarBuffer>& resultingBuffer, const bool& isHighPriority){
+    
+    auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(&isBeingWorkedOnByTransferThread, &workCompleteFence, std::move(newBufferRequest), resultingBuffer);
+    
+    checkFenceStatus(*newRequest); 
+    insertRequest(std::move(newRequest), isHighPriority); 
+}
+
+void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, std::unique_ptr<star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>> newTextureRequest, std::unique_ptr<StarTexture>& resultingTexture, const bool& isHighPriority){
+    auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(&isBeingWorkedOnByTransferThread, &workCompleteFence, std::move(newTextureRequest), resultingTexture);
+    
+    checkFenceStatus(*newRequest); 
+    insertRequest(std::move(newRequest), isHighPriority); 
+}
+
+void star::TransferWorker::update(){
+    for (auto& thread : this->threads)
+        thread->cleanup();
+}
+
+void star::TransferWorker::checkFenceStatus(TransferManagerThread::InterThreadRequest& request){
+    {
+        boost::unique_lock<boost::mutex> lock;
+        vk::Fence fence; 
+        request.completeFence->giveMeFence(lock, fence);
+
+        assert(this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess && "Fences MUST be submitting in a signaled state to the worker");
+    }
+
+    for(auto& thread : this->threads){
+        if(thread->isFenceInUse(*request.completeFence, true))
+            break;
+    }
+
+    //check if in use by threads
+    {
+        boost::unique_lock<boost::mutex> lock;
+        vk::Fence fence;
+        request.completeFence->giveMeFence(lock, fence);
+        this->device.getDevice().resetFences(std::vector<vk::Fence>{fence});
+    }
+}
+
+void star::TransferWorker::insertRequest(std::unique_ptr<TransferManagerThread::InterThreadRequest> newRequest, const bool& isHighPriority){
+    this->requests.push_back(std::move(newRequest)); 
+
+    if (isHighPriority){
+        this->highPriorityRequests.push(this->requests.back().get()); 
+    }else{
+        this->standardRequests.push(this->requests.back().get()); 
+    }
+}
+
+void star::TransferWorker::checkForCleanups(){
     bool fullCleanupAvailable = true;
-    for (int i = 0; i < this->transferRequests.size(); i++){
-        if (this->transferRequests[i]){
+    for (int i = 0; i < this->requests.size(); i++){
+        if (this->requests[i]){
             fullCleanupAvailable = false; 
 
             {
                 boost::unique_lock<boost::mutex> lock;
                 vk::Fence fence; 
-                this->transferRequests[i]->completeFence->giveMeFence(lock, fence);
+                this->requests[i]->completeFence->giveMeFence(lock, fence);
 
                 if (this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess){
-                    this->transferRequests[i].reset();
+                    this->requests[i].reset();
                 }
             }
         }
     }
 
     if (fullCleanupAvailable){
-        this->transferRequests = std::vector<std::unique_ptr<InterThreadRequest>>();
+        this->requests = std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>>();
     }
-}
-
-star::TransferWorker::~TransferWorker() {
-}
-
-star::TransferWorker::TransferWorker(star::StarDevice& device, bool overrideToSingleThreadMode){
-    bool runAsync = !overrideToSingleThreadMode;
-    if (!device.doesHaveDedicatedFamily(star::Queue_Type::Ttransfer)){
-        runAsync = false;
-    }
-
-    this->threads.emplace_back(std::make_unique<TransferManagerThread>(device, device.getAllocator(), device.getPhysicalDevice().getProperties(), device.giveMeQueueFamily(star::Queue_Type::Ttransfer)));
-    
-    if (runAsync)
-        this->threads.back()->startAsync();
-}
-
-void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, std::unique_ptr<TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> newBufferRequest, std::unique_ptr<star::StarBuffer>& resultingBuffer, const bool& isHighPriority){
-    this->threads.back()->add(std::make_unique<TransferManagerThread::InterThreadRequest>(&isBeingWorkedOnByTransferThread, &workCompleteFence, std::move(newBufferRequest), resultingBuffer), isHighPriority);
-}
-
-void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, std::unique_ptr<star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>> newTextureRequest, std::unique_ptr<StarTexture>& resultingTexture, const bool& isHighPriority){
-    this->threads.back()->add(std::make_unique<TransferManagerThread::InterThreadRequest>(&isBeingWorkedOnByTransferThread, &workCompleteFence, std::move(newTextureRequest), resultingTexture), isHighPriority);
-}
-
-void star::TransferWorker::update(){
-    this->threads.back()->cleanup(); 
 }

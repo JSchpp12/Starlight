@@ -50,8 +50,9 @@ namespace star{
             : transferSourceBuffer(std::move(transferSourceBuffer)), completeFence(completeFence) {}
         };
 
-        TransferManagerThread(StarDevice& device, Allocator& allocator, 
-            const vk::PhysicalDeviceProperties& deviceLimits, std::unique_ptr<StarQueueFamily> ownedQueue);
+        TransferManagerThread(StarDevice& device, Allocator& allocator, boost::lockfree::stack<InterThreadRequest*>& highPriorityRequests, 
+            boost::lockfree::stack<InterThreadRequest*>& standardPriorityRequests, const vk::PhysicalDeviceProperties& deviceLimits, 
+            std::unique_ptr<StarQueueFamily> ownedQueue);
 
         ~TransferManagerThread();
 
@@ -59,9 +60,9 @@ namespace star{
 
         void stopAsync();
 
-        void add(std::unique_ptr<InterThreadRequest> request, const bool& isHighPriority = false);
-
         void cleanup();
+
+        bool isFenceInUse(const SharedFence& fence, const bool& clearIfFound = true); 
 
         static void mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, 
             vk::CommandPool* transferCommandPool, vk::Queue* transferQueue, 
@@ -90,9 +91,6 @@ namespace star{
         static void readyCommandBuffer(vk::Device& device, const size_t& indexSelected, std::vector<SharedFence*>& commandBufferFences); 
 
         protected:
-        std::optional<boost::lockfree::stack<InterThreadRequest*>> highPriorityRequests = std::nullopt;
-        std::optional<boost::lockfree::stack<InterThreadRequest*>> standardRequests = std::nullopt; 
-
         bool ownsVulkanResources = false;
         std::queue<std::unique_ptr<InProcessRequestDependencies>> inProcessRequests = std::queue<std::unique_ptr<InProcessRequestDependencies>>();
         
@@ -103,7 +101,9 @@ namespace star{
         std::vector<SharedFence*> commandBufferFences;
         size_t previousBufferIndexUsed = 0; 
         Allocator& allocator; 
-        std::vector<std::unique_ptr<InterThreadRequest>> transferRequests = std::vector<std::unique_ptr<InterThreadRequest>>(); 
+
+        boost::lockfree::stack<InterThreadRequest*>& highPriorityRequests;  
+        boost::lockfree::stack<InterThreadRequest*>& standardPriorityRequests; 
 
         boost::atomic<bool> shouldRun = false;
         boost::thread thread;
@@ -111,8 +111,6 @@ namespace star{
         static std::vector<vk::Queue> createTransferQueues(star::StarDevice& device, const uint32_t& dedicatedTransferQueueFamilyIndex); 
 
         static void transitionImageLayout(vk::Image& image, vk::CommandBuffer& commandBuffer, const vk::Format& format, const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout);
-
-        void initMultithreadedDeps(); 
     };
 
     class TransferWorker {
@@ -122,18 +120,30 @@ namespace star{
     TransferWorker(StarDevice& device, bool overrideRunAsync);
 
     void add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, 
-        std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> newBufferRequest, std::unique_ptr<StarBuffer>& resultingBuffer, const bool& isHighPriority);
+        std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> newBufferRequest, 
+        std::unique_ptr<StarBuffer>& resultingBuffer, const bool& isHighPriority);
 
     void add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, 
-        std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> newTextureRequest, std::unique_ptr<StarTexture>& resultingTexture, const bool& isHighPriority);
+        std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> newTextureRequest, 
+        std::unique_ptr<StarTexture>& resultingTexture, const bool& isHighPriority);
 
     void update(); 
     
     ~TransferWorker(); 
 
     private:
+    StarDevice& device; 
+
+    boost::lockfree::stack<TransferManagerThread::InterThreadRequest*> highPriorityRequests = boost::lockfree::stack<TransferManagerThread::InterThreadRequest*>(50);
+    boost::lockfree::stack<TransferManagerThread::InterThreadRequest*> standardRequests = boost::lockfree::stack<TransferManagerThread::InterThreadRequest*>(50); 
+    std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>> requests = std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>>(); 
     std::vector<std::unique_ptr<TransferManagerThread>> threads = std::vector<std::unique_ptr<TransferManagerThread>>();
 
-    };
+    void checkFenceStatus(TransferManagerThread::InterThreadRequest& newRequest); 
 
+    void insertRequest(std::unique_ptr<TransferManagerThread::InterThreadRequest> newRequest, const bool& isHighPriority);
+
+    void checkForCleanups(); 
+
+    };
 }

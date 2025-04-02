@@ -43,16 +43,23 @@ StarDevice::~StarDevice() {
 }
 
 void StarDevice::updatePreferredFamilies(const star::Queue_Type& type){
+	bool found = false; 
+
 	for (auto& queue : this->extraFamilies){
+		if (found)
+			break; 
+			
 		if (queue){
 			switch(type){
 				case(star::Queue_Type::Tcompute):
 				if (queue.get()->doesSupport(type)){
+					found = true; 
 					this->preferredComputeFamily = std::move(queue); 
 				}
 				break;
 				case(star::Queue_Type::Ttransfer):
 				if (queue.get()->doesSupport(type)){
+					found = true; 
 					this->preferredTransferFamily = std::move(queue);
 				}
 				break;
@@ -443,7 +450,8 @@ std::unique_ptr<star::StarQueueFamily> StarDevice::giveMeQueueFamily(const star:
 		updatePreferredFamilies(type);
 		return std::move(tmp);
 	}
-	throw std::runtime_error("Unsupported type requested");
+
+	return std::unique_ptr<StarQueueFamily>(); 
 }
 
 void StarDevice::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags properties,
