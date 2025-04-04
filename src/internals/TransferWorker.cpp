@@ -18,8 +18,7 @@ void star::TransferManagerThread::startAsync(){
         &this->allocator.get(), 
         &this->deviceProperties,
         &this->commandBufferFences,
-        &this->highPriorityRequests, 
-        &this->standardPriorityRequests
+        &this->requestQueues
     );
 
     if (!this->thread.joinable())
@@ -33,7 +32,7 @@ void star::TransferManagerThread::stopAsync(){
     this->thread.join();
 }
 
-void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, vk::CommandPool* transferPool, vk::Queue* transferQueue, VmaAllocator* allocator, const vk::PhysicalDeviceProperties* deviceProperties, std::vector<SharedFence*>* commandBufferFences, boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>* highPriorityRequests, boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>* standardRequests){
+void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, vk::CommandPool* transferPool, vk::Queue* transferQueue, VmaAllocator* allocator, const vk::PhysicalDeviceProperties* deviceProperties, std::vector<SharedFence*>* commandBufferFences, std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>*>* workingRequestQueues){
     std::cout << "Transfer thread started..." << std::endl;
     size_t targetBufferIndex = 0;
     size_t previousBufferIndexUsed = 0;
@@ -42,7 +41,18 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
 
     while(shouldRun->load()){
         InterThreadRequest* request = nullptr; 
-        if(!highPriorityRequests->pop(request) && !standardRequests->pop(request)){
+        bool allEmpty = true; 
+
+        //try to get a request
+        for (int i = 0; i < workingRequestQueues->size(); i++){
+            workingRequestQueues->at(i)->pop(request);
+            if (request != nullptr){
+                allEmpty = false; 
+                break;
+            }
+        }
+
+        if(request == nullptr && allEmpty){
             if (!inProcessRequests.empty()){
                 checkForCleanups(*device, inProcessRequests, *commandBufferFences);
             }
@@ -403,8 +413,8 @@ void star::TransferManagerThread::readyCommandBuffer(vk::Device& device, const s
     }
 }
 
-star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator, boost::lockfree::stack<InterThreadRequest*>& highPriorityRequests, boost::lockfree::stack<InterThreadRequest*>& standardPriorityRequests, const vk::PhysicalDeviceProperties& deviceProperties, std::unique_ptr<star::StarQueueFamily> ownedQueue)
-: device(device), allocator(allocator), transferQueue(std::move(ownedQueue)), standardPriorityRequests(standardPriorityRequests), highPriorityRequests(highPriorityRequests), commandBuffers(createCommandBuffers(device.getDevice(), transferQueue->getCommandPool(), 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceProperties(deviceProperties){
+star::TransferManagerThread::TransferManagerThread(star::StarDevice& device, star::Allocator& allocator,  std::vector<boost::lockfree::stack<InterThreadRequest*>*> requestQueues, const vk::PhysicalDeviceProperties& deviceProperties, std::unique_ptr<star::StarQueueFamily> ownedQueue)
+: device(device), allocator(allocator), transferQueue(std::move(ownedQueue)), requestQueues(requestQueues), commandBuffers(createCommandBuffers(device.getDevice(), transferQueue->getCommandPool(), 5)), commandBufferFences(std::vector<SharedFence*>(5)), deviceProperties(deviceProperties){
 
 }
 
@@ -435,20 +445,46 @@ star::TransferWorker::TransferWorker(star::StarDevice& device, bool overrideToSi
         runAsync = false;
     }
 
+    std::vector<std::unique_ptr<StarQueueFamily>> useableQueues; 
     bool done = false;
     while(!done){
 
         //really only want to expect 2 possible transfer threads
-        if (this->threads.size() > 1){
+        if (useableQueues.size() > 1){
             break;
         }
 
         auto possibleQueue = device.giveMeQueueFamily(star::Queue_Type::Ttransfer); 
         if (possibleQueue){
-            this->threads.emplace_back(std::make_unique<TransferManagerThread>(device, device.getAllocator(), this->highPriorityRequests, this->standardRequests, device.getPhysicalDevice().getProperties(), std::move(possibleQueue)));
+            useableQueues.emplace_back(std::move(possibleQueue)); 
         }else{
             break;
         }
+    }
+
+    if (useableQueues.size() == 2){
+        this->threads.emplace_back(std::make_unique<TransferManagerThread>(
+            device, 
+            device.getAllocator(),  
+            std::vector<boost::lockfree::stack<TransferManagerThread::InterThreadRequest*>*>{&this->highPriorityRequests}, 
+            device.getPhysicalDevice().getProperties(), 
+            std::move(useableQueues[0])));
+        this->threads.emplace_back(std::make_unique<TransferManagerThread>(
+            device, 
+            device.getAllocator(),  
+            std::vector<boost::lockfree::stack<TransferManagerThread::InterThreadRequest*>*>{&this->standardRequests}, 
+            device.getPhysicalDevice().getProperties(), 
+            std::move(useableQueues[1])));
+
+    }else if (useableQueues.size() == 1){
+        this->threads.emplace_back(std::make_unique<TransferManagerThread>(
+            device, 
+            device.getAllocator(),  
+            std::vector<boost::lockfree::stack<TransferManagerThread::InterThreadRequest*>*>{&this->highPriorityRequests, &this->standardRequests}, 
+            device.getPhysicalDevice().getProperties(), 
+            std::move(useableQueues[0])));
+    }else{
+        throw std::runtime_error("Needs at least 1 dedicated queue -- single threaded mode not supported yet"); 
     }
 
     if (this->threads.size() == 0)

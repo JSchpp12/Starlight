@@ -47,9 +47,8 @@ namespace star{
             : transferSourceBuffer(std::move(transferSourceBuffer)), completeFence(completeFence) {}
         };
 
-        TransferManagerThread(StarDevice& device, Allocator& allocator, boost::lockfree::stack<InterThreadRequest*>& highPriorityRequests, 
-            boost::lockfree::stack<InterThreadRequest*>& standardPriorityRequests, const vk::PhysicalDeviceProperties& deviceLimits, 
-            std::unique_ptr<StarQueueFamily> ownedQueue);
+        TransferManagerThread(StarDevice& device, Allocator& allocator, std::vector<boost::lockfree::stack<InterThreadRequest*>*> requestQueues, 
+            const vk::PhysicalDeviceProperties& deviceLimits, std::unique_ptr<StarQueueFamily> ownedQueue);
 
         ~TransferManagerThread();
 
@@ -65,8 +64,7 @@ namespace star{
             vk::CommandPool* transferCommandPool, vk::Queue* transferQueue, 
             VmaAllocator* allocator, const vk::PhysicalDeviceProperties* physicalProperties,
             std::vector<SharedFence*>* commandBufferFences, 
-            boost::lockfree::stack<InterThreadRequest*>* highPriorityRequests, 
-            boost::lockfree::stack<InterThreadRequest*>* standardTransferRequests);
+            std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>*>* workingRequestQueues);
 
         static std::vector<vk::CommandBuffer> createCommandBuffers(vk::Device& device, vk::CommandPool pool, 
             const uint8_t& numToCreate);
@@ -99,8 +97,7 @@ namespace star{
         size_t previousBufferIndexUsed = 0; 
         Allocator& allocator; 
 
-        boost::lockfree::stack<InterThreadRequest*>& highPriorityRequests;  
-        boost::lockfree::stack<InterThreadRequest*>& standardPriorityRequests; 
+        std::vector<boost::lockfree::stack<InterThreadRequest*>*> requestQueues; 
 
         boost::atomic<bool> shouldRun = false;
         boost::thread thread;
@@ -131,7 +128,7 @@ namespace star{
     private:
     StarDevice& device; 
 
-    boost::lockfree::stack<TransferManagerThread::InterThreadRequest*> highPriorityRequests = boost::lockfree::stack<TransferManagerThread::InterThreadRequest*>(50);
+boost::lockfree::stack<TransferManagerThread::InterThreadRequest*> highPriorityRequests = boost::lockfree::stack<TransferManagerThread::InterThreadRequest*>(50);
     boost::lockfree::stack<TransferManagerThread::InterThreadRequest*> standardRequests = boost::lockfree::stack<TransferManagerThread::InterThreadRequest*>(50); 
     std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>> requests = std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>>(); 
     std::vector<std::unique_ptr<TransferManagerThread>> threads = std::vector<std::unique_ptr<TransferManagerThread>>();
