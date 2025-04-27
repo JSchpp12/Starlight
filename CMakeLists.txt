@@ -289,6 +289,16 @@ target_include_directories(${PROJECT_NAME}
         ${Stb_INCLUDE_DIR}
 )
 
+if (MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        /Zi 
+        /MP
+    )
+    target_link_options(${PROJECT_NAME} PRIVATE 
+        /DEBUG
+    )
+endif()
+
 find_program(CPPCHECK_EXECUTABLE cppcheck)
 if (CPPCHECK_EXECUTABLE)
 	set(CPPCHECK_FILES "")
