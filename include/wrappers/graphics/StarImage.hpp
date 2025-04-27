@@ -5,8 +5,6 @@
 #include "StarDevice.hpp"
 #include "StarBuffer.hpp"
 
-
-#include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 
 #include <memory>

@@ -26,8 +26,6 @@ public:
 		managerWorker = &transferWorker;
 	}
 
-	virtual void destroy(const Handle& resourceHandle) = 0; 
-
 protected:
 	static StarDevice* managerDevice; 
 	static TransferWorker* managerWorker;

@@ -2,6 +2,8 @@
 
 #include "Enums.hpp"
 
+#include <sys/stat.h>
+
 #include <iostream>
 #include <vector>
 #include <fstream>

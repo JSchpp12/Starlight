@@ -44,10 +44,22 @@ namespace star {
 		float g() const { return rg; }
 		float b() const { return rb; }
 		float a() const { return ra; }
-		unsigned char raw_r() const { return unsigned char(255 * rr); }
-		unsigned char raw_g() const { return unsigned char(255 * rg); }
-		unsigned char raw_b() const { return unsigned char(255 * rb); }
-		unsigned char raw_a() const { return unsigned char(255 * ra); }
+		unsigned char raw_r() const { 
+			unsigned char result = (255 * rr);
+			return result; 
+		}
+		unsigned char raw_g() const { 
+			unsigned char result = (255 * rg);
+			return result;
+		}
+		unsigned char raw_b() const { 
+			unsigned char result = (255 * rb); 
+			return result;
+		}
+		unsigned char raw_a() const { 
+			unsigned char result = (255 * ra); 
+			return result;
+		}
 
 	protected:
 		float rr = 0.0f, rg = 0.0f, rb = 0.0f, ra = 0.0f;

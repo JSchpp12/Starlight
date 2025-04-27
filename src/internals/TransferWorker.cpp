@@ -2,6 +2,8 @@
 
 #include "CastHelpers.hpp"
 
+#include <thread>
+
 star::TransferManagerThread::~TransferManagerThread(){
     if (this->thread.joinable()){
         this->stopAsync();
