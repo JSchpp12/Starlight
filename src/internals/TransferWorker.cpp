@@ -278,7 +278,7 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
 
 void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
     StarTexture::TextureCreateSettings createArgs = newTextureRequest->getCreateArgs(deviceProperties);
-    createArgs.imageUsage |= vk::ImageUsageFlagBits::eTransferDst;
+    createArgs.usage |= vk::ImageUsageFlagBits::eTransferDst;
 
     bool newImageCreated = false; 
     
@@ -320,7 +320,7 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
     {
         auto vulkanImage = resultingTexture->get()->getImage();
     
-        transitionImageLayout(vulkanImage, commandBuffer, createArgs.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+        transitionImageLayout(vulkanImage, commandBuffer, createArgs.baseFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
     
         {
             vk::BufferImageCopy region{}; 
@@ -342,7 +342,7 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
             commandBuffer.copyBufferToImage(transferSrcBuffer->getVulkanBuffer(), resultingTexture->get()->getImage(), vk::ImageLayout::eTransferDstOptimal, region);
         }
     
-        transitionImageLayout(vulkanImage, commandBuffer, createArgs.imageFormat, vk::ImageLayout::eTransferDstOptimal, createArgs.initialLayout);
+        transitionImageLayout(vulkanImage, commandBuffer, createArgs.baseFormat, vk::ImageLayout::eTransferDstOptimal, createArgs.initialLayout);
     }
 
     commandBuffer.end();

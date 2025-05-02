@@ -35,15 +35,13 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
 	imSetting.channels = 4;
 	imSetting.byteDepth = 1;
 	imSetting.depth = 1;
-	imSetting.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-	imSetting.imageFormat = this->getCurrentRenderToImageFormat();
+	imSetting.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+	imSetting.baseFormat = this->getCurrentRenderToImageFormat();
 	imSetting.aspectFlags = vk::ImageAspectFlagBits::eColor | vk::ImageAspectFlagBits::eDepth;
 	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY; 
 	imSetting.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 	imSetting.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	imSetting.allocationName = "SceneRenderToImages";
-
-	imSetting.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled; 
 
 	for (int i = 0; i < numFramesInFlight; i++) {
 		newRenderToImages.push_back(std::make_unique<StarTexture>(imSetting, device.getDevice(), device.getAllocator().get()));
@@ -60,13 +58,15 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 {
 	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
+	const vk::Format depthFormat = this->findDepthFormat(device); 
+
 	auto imSetting = star::StarTexture::TextureCreateSettings{}; 
 	imSetting.width = static_cast<int>(this->swapChainExtent->width);
 	imSetting.height = static_cast<int>(this->swapChainExtent->height);
 	imSetting.depth = 1; 
 	imSetting.byteDepth = 1;
-	imSetting.imageFormat = this->findDepthFormat(device);
-	imSetting.imageUsage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+	imSetting.baseFormat = depthFormat;
+	imSetting.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
 	imSetting.aspectFlags = vk::ImageAspectFlagBits::eDepth;
 	imSetting.allocationCreateFlags = VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;

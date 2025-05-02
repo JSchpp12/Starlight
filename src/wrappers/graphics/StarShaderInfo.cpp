@@ -3,6 +3,14 @@
 #include "ManagerRenderResource.hpp"
 #include "ManagerDescriptorPool.hpp"
 
+vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet(){
+    if (this->setNeedsRebuild){
+        rebuildSet();
+    }
+
+    return *this->descriptorSet;
+}
+
 void star::StarShaderInfo::ShaderInfoSet::add(const star::StarShaderInfo::ShaderInfo& shaderInfo){
     this->shaderInfos.push_back(shaderInfo);
 }
@@ -38,11 +46,20 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const int& index){
         }
 
 
-        auto textureInfo = vk::DescriptorImageInfo{
-            texture->getSampler(),
-            texture->getImageView(),
-            shaderInfos[index].textureInfo.value().expectedLayout
-        };
+        vk::DescriptorImageInfo textureInfo; 
+        if (shaderInfos[index].textureInfo.value().requestedImageViewFormat.has_value()){
+            textureInfo = vk::DescriptorImageInfo{
+                texture->getSampler(),
+                texture->getImageView(&shaderInfos[index].textureInfo.value().requestedImageViewFormat.value()),
+                shaderInfos[index].textureInfo.value().expectedLayout
+            };
+        }else{
+            textureInfo = vk::DescriptorImageInfo{
+                texture->getSampler(),
+                texture->getImageView(),
+                shaderInfos[index].textureInfo.value().expectedLayout
+            };
+        }
 
         this->descriptorWriter->writeImage(index, textureInfo);
     }
@@ -136,6 +153,12 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int & 
     return allSets; 
 }
 
+star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, vk::Format &requestedImageViewFormat, const bool &willCheckForIfReady)
+{
+    this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout, requestedImageViewFormat}, willCheckForIfReady)); 
+    return *this;
+}
+
 star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::startSet()
 {
     auto size = this->activeSet->size();
@@ -145,7 +168,7 @@ star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::startSet()
     return *this;
 }
 
-star::StarShaderInfo::Builder& star::StarShaderInfo::Builder::add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, const bool willCheckForIfReady)
+star::StarShaderInfo::Builder& star::StarShaderInfo::Builder::add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, const bool& willCheckForIfReady)
 {
     this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, willCheckForIfReady)); 
     return *this;

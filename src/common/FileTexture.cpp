@@ -15,6 +15,7 @@ star::FileTexture::FileTexture(const std::string& pathToImage)
         1,
         vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
         vk::Format::eR8G8B8A8Srgb,
+        std::vector<vk::Format>{},
         vk::ImageAspectFlagBits::eColor,
         VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
         VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,

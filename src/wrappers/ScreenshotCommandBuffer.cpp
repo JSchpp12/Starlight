@@ -254,23 +254,36 @@ bool star::ScreenshotBuffer::getWillBeRecordedOnce()
 
 std::unique_ptr<star::StarImage> star::ScreenshotBuffer::createNewCopyToImage(star::StarDevice& device, const vk::Extent2D& screensize)
 {
-	return std::make_unique<StarImage>(StarTexture::TextureCreateSettings{
-		static_cast<int>(screensize.width),
-		static_cast<int>(screensize.height),
-		4,
-		1,
-		1,
-		vk::ImageUsageFlagBits::eTransferDst,
-		vk::Format::eB8G8R8A8Srgb,
-		vk::ImageAspectFlagBits::eColor,
-		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_TO_CPU,
-		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT,
-		vk::ImageLayout::eTransferDstOptimal,
-		false,
-		false, 
-		{},
-		1.0f,
-		vk::Filter::eNearest,
-		"screenshotTargetTexture",
-	});
+// 	return std::make_unique<StarImage>(StarTexture::TextureCreateSettings{
+// 		static_cast<int>(screensize.width),
+// 		static_cast<int>(screensize.height),
+// 		4,
+// 		1,
+// 		1,
+// 		vk::ImageUsageFlagBits::eTransferDst,
+// 		vk::Format::eB8G8R8A8Srgb,
+// 		vk::ImageAspectFlagBits::eColor,
+// 		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_TO_CPU,
+// 		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT,
+// 		vk::ImageLayout::eTransferDstOptimal,
+// 		false,
+// 		false, 
+// 		{},
+// 		1.0f,
+// 		vk::Filter::eNearest,
+// 		"screenshotTargetTexture",
+// 	});
+
+	StarTexture::TextureCreateSettings imSetting = StarTexture::TextureCreateSettings(); 
+	imSetting.width = static_cast<int>(screensize.width); 
+	imSetting.height = static_cast<int>(screensize.height); 
+	imSetting.channels = 4; 
+	imSetting.byteDepth = 1;
+	imSetting.depth = 1;
+	imSetting.baseFormat = vk::Format::eB8G8R8A8Srgb;
+	imSetting.usage = vk::ImageUsageFlagBits::eTransferDst;
+	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_TO_CPU; 
+
+	return std::make_unique<StarImage>(imSetting); 
+
 }

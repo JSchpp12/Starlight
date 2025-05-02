@@ -26,12 +26,12 @@ void StarImage::createImage(StarDevice& device) {
 	auto loadedData = this->loadImageData(device); 
 	if (loadedData) {
 		//copy staging buffer to texture image 
-		transitionImageLayout(device, this->texture->getImage(), this->createSettings.imageFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+		transitionImageLayout(device, this->texture->getImage(), this->createSettings.baseFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
 		device.copyBufferToImage(loadedData->getVulkanBuffer(), this->texture->getImage(), static_cast<uint32_t>(this->createSettings.width), static_cast<uint32_t>(this->createSettings.height));
 
 		//prepare final image for texture mapping in shaders 
-		transitionImageLayout(device, this->texture->getImage(), this->createSettings.imageFormat, vk::ImageLayout::eTransferDstOptimal, this->createSettings.initialLayout);
+		transitionImageLayout(device, this->texture->getImage(), this->createSettings.baseFormat, vk::ImageLayout::eTransferDstOptimal, this->createSettings.initialLayout);
 	}
 }
 

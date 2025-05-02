@@ -26,11 +26,19 @@ namespace star {
 				TextureInfo(const Handle& handle, const vk::ImageLayout& expectedLayout)
 				: handle(handle), expectedLayout(expectedLayout){}
 
+				TextureInfo(const Handle& handle, const vk::ImageLayout& expectedLayout, 
+					const vk::Format& requestedImageViewFormat) 
+					: handle(handle), expectedLayout(expectedLayout), requestedImageViewFormat(requestedImageViewFormat){}
+
 				TextureInfo(const StarTexture* texture, const vk::ImageLayout& expectedLayout) : texture(texture), expectedLayout(expectedLayout){}
+
+				TextureInfo(const StarTexture* texture, const vk::ImageLayout& expectedLayout, 
+					const vk::Format& requestedImageViewFormat)
+					: texture(texture), expectedLayout(expectedLayout), requestedImageViewFormat(requestedImageViewFormat){}
 
 				std::optional<const Handle> handle = std::nullopt;
 				std::optional<vk::Image> currentImage = std::nullopt;
-				
+				std::optional<vk::Format> requestedImageViewFormat = std::nullopt; 
 				std::optional<const StarTexture*> texture = std::nullopt;
 				const vk::ImageLayout expectedLayout;
 			};
@@ -39,7 +47,7 @@ namespace star {
 				: bufferInfo(bufferInfo), willCheckForIfReady(willCheckForIfReady) {}
 
 			ShaderInfo(const TextureInfo& textureInfo, const bool willCheckForIfReady) 
-				: textureInfo(textureInfo), willCheckForIfReady(willCheckForIfReady){};
+				: textureInfo(textureInfo), willCheckForIfReady(willCheckForIfReady){}
 
 			~ShaderInfo() = default;
 
@@ -59,13 +67,7 @@ namespace star {
 
 			void build();
 
-			vk::DescriptorSet getDescriptorSet() {
-				if (this->setNeedsRebuild){
-					rebuildSet();
-				}
-
-				return *this->descriptorSet;
-			};
+			vk::DescriptorSet getDescriptorSet(); 
 
 			bool getIsBuilt() const {return this->isBuilt;}
 
@@ -126,12 +128,19 @@ namespace star {
 				return *this;
 			};
 
-			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout, const bool willCheckForIfReady) {
-				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, willCheckForIfReady));
+			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout, const vk::Format& requestedImageViewFormat, const bool willCheckForIfReady) {
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout, requestedImageViewFormat}, willCheckForIfReady));
 				return *this; 
 			};
 
-			Builder& add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout, const bool willCheckForIfReady);
+			Builder& add(const StarTexture& texture, const vk::ImageLayout& desiredLayout, const bool& willCheckForIfReady){
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, willCheckForIfReady));
+				return *this; 
+			}
+
+			Builder& add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout, const bool& willCheckForIfReady);
+
+			Builder& add(const Handle& textureHandle, const vk::ImageLayout& desiredLayout, vk::Format& requestedImageViewFormat, const bool& willCheckForIfReady);
 
 			std::unique_ptr<StarShaderInfo> build() {
 				return std::make_unique<StarShaderInfo>(this->device, std::move(this->layouts), std::move(this->sets));

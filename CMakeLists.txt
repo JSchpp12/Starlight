@@ -17,17 +17,6 @@ enable_language(C CXX)
 find_package(Vulkan REQUIRED)
 find_package(Stb REQUIRED)
 
-find_package(glm CONFIG REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
-find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(glslang CONFIG REQUIRED)
-find_package(tinyobjloader CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS container thread)
-
-# add all necessary dependencies
-include(GNUInstallDirs)
-
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
 
@@ -37,6 +26,19 @@ add_subdirectory("extern/spirv_tools")
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
+
+find_package(glm CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(tinyobjloader CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS container thread)
+
+# add all necessary dependencies
+include(GNUInstallDirs)
+
+
+
 
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)

@@ -5,6 +5,8 @@
 
 #include <unordered_map>
 #include <optional>
+#include <vector> 
+
 namespace star{
     class StarTexture{
         public:
@@ -14,17 +16,16 @@ namespace star{
         /// <returns></returns>
         struct TextureCreateSettings {
             TextureCreateSettings() = default;
-
             TextureCreateSettings(const int& width, 
                 const int& height, const int& channels, 
                 const int& depth, const int& byteDepth,
-                const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat,
+                const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat, const std::vector<vk::Format>& additionalViewFormats,
                 const vk::ImageAspectFlags& imageAspectFlags, const VmaMemoryUsage& memoryUsage,
                 const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
                 const bool& isMutable, const bool& createSampler, const vk::MemoryPropertyFlags& requiredMemoryProperties, 
                 const float& anisotropyLevel, const vk::Filter& textureFilteringMode, const std::string& allocationName) 
                 : width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
-                imageUsage(imageUsage), imageFormat(imageFormat), 
+                usage(imageUsage), baseFormat(imageFormat), additionalViewFormats(additionalViewFormats),
                 allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
                 isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), 
                 aspectFlags(imageAspectFlags), requiredMemoryProperties(requiredMemoryProperties), 
@@ -37,8 +38,9 @@ namespace star{
             bool createSampler = false; 
             bool isMutable = false;
             int height, width, channels, depth, byteDepth = 0; 
-            vk::ImageUsageFlags imageUsage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-            vk::Format imageFormat = vk::Format::eR8G8B8A8Srgb;
+            vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+            std::vector<vk::Format> additionalViewFormats = std::vector<vk::Format>{};
+            vk::Format baseFormat = vk::Format::eR8G8B8A8Srgb;
             VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
             VmaAllocationCreateFlags allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
             vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
@@ -82,7 +84,8 @@ namespace star{
         std::unordered_map<vk::Format, vk::ImageView> imageViews = std::unordered_map<vk::Format, vk::ImageView>(); 
         vk::ImageLayout layout = vk::ImageLayout::eUndefined;
 
-        static void createAllocation(const TextureCreateSettings& createSettings, VmaAllocator& allocator, VmaAllocation& textureMemory, vk::Image& texture);
+        static void createAllocation(const TextureCreateSettings& createSettings, VmaAllocator& allocator, 
+            VmaAllocation& textureMemory, vk::Image& texture, const bool& isMutable);
 
         void createTextureImageView(const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags);
 

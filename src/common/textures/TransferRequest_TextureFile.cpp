@@ -22,8 +22,8 @@ star::StarTexture::TextureCreateSettings star::TransferRequest::TextureFile::get
     iSet.channels = 4;      //overriding the channels to 4 for simplicity
     iSet.byteDepth = 1;
     iSet.depth = 1;
-    iSet.imageUsage = vk::ImageUsageFlagBits::eSampled;
-    iSet.imageFormat = vk::Format::eR8G8B8A8Srgb;
+    iSet.usage = vk::ImageUsageFlagBits::eSampled;
+    iSet.baseFormat = vk::Format::eR8G8B8A8Srgb;
     iSet.aspectFlags = vk::ImageAspectFlagBits::eColor;
     iSet.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO;
     iSet.allocationCreateFlags = VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
@@ -70,8 +70,13 @@ float star::TransferRequest::TextureFile::selectAnisotropyLevel(const vk::Physic
         anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
     else{
         anisotropyLevel = std::stof(anisotropySetting);
+
+        if (anisotropyLevel > deviceProperties.limits.maxSamplerAnisotropy){
+            anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
+        }else if (anisotropyLevel < 1.0f){
+            anisotropyLevel = 1.0f; 
+        }
     }
-    assert(anisotropyLevel >= 1.0f);
 
     return anisotropyLevel;
 }

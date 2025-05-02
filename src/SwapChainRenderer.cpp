@@ -245,6 +245,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
 		1,
 		vk::ImageUsageFlagBits::eColorAttachment,
 		*this->swapChainImageFormat,
+		{},
 		vk::ImageAspectFlagBits::eColor,
 		VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
 		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,

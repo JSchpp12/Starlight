@@ -16,14 +16,26 @@ star::StarTexture::~StarTexture(){
 star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, VmaAllocator& allocator) : createSettings(createSettings), allocator(&allocator), device(device){
 	assert(this->allocator != nullptr && "Allocator must always exist");
 
-    this->createAllocation(this->createSettings, *this->allocator, this->textureMemory, this->textureImage);
-	this->createTextureImageView(this->createSettings.imageFormat, this->createSettings.aspectFlags);
+	bool isMutable = false; 
+	if (this->createSettings.additionalViewFormats.size() > 0)
+		isMutable = true; 
+
+    this->createAllocation(this->createSettings, *this->allocator, this->textureMemory, this->textureImage, isMutable);
+	this->createTextureImageView(this->createSettings.baseFormat, this->createSettings.aspectFlags);
+	
+	for (const auto& viewFormat : this->createSettings.additionalViewFormats){
+		this->createTextureImageView(viewFormat, this->createSettings.aspectFlags);
+	}
+
 	if (this->createSettings.createSampler)
 		this->textureSampler = this->createImageSampler(device, this->createSettings);
 }
 
 star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, const vk::Image& textureImage) : createSettings(createSettings), textureImage(textureImage), device(device){
-	this->createTextureImageView(this->createSettings.imageFormat, this->createSettings.aspectFlags);
+	this->createTextureImageView(this->createSettings.baseFormat, this->createSettings.aspectFlags);
+	for (const auto& viewFormat : this->createSettings.additionalViewFormats){
+		this->createTextureImageView(viewFormat, createSettings.aspectFlags); 
+	}
 }
 
 void star::StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, vk::ImageLayout newLayout, vk::AccessFlags srcFlags, vk::AccessFlags dstFlags, vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage){
@@ -56,7 +68,7 @@ void star::StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, vk::I
 	this->layout = newLayout; 
 }
 
-void star::StarTexture::createAllocation(const TextureCreateSettings& createSettings, VmaAllocator& allocator, VmaAllocation& textureMemory, vk::Image& image){
+void star::StarTexture::createAllocation(const TextureCreateSettings& createSettings, VmaAllocator& allocator, VmaAllocation& textureMemory, vk::Image& image, const bool& isMutable){
     /* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
 	imageInfo.sType = vk::StructureType::eImageCreateInfo;
@@ -68,15 +80,18 @@ void star::StarTexture::createAllocation(const TextureCreateSettings& createSett
 	else
 		imageInfo.imageType = vk::ImageType::e2D;
 
+	if (isMutable)
+		imageInfo.flags = vk::ImageCreateFlagBits::eMutableFormat; 
+
 	imageInfo.extent.width = createSettings.width;
 	imageInfo.extent.height = createSettings.height;
 	imageInfo.extent.depth = createSettings.depth;
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
-	imageInfo.format = createSettings.imageFormat;
+	imageInfo.format = createSettings.baseFormat;
 	imageInfo.tiling = vk::ImageTiling::eOptimal;
 	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.usage = createSettings.imageUsage;
+	imageInfo.usage = createSettings.usage;
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
 
@@ -114,8 +129,10 @@ vk::ImageView star::StarTexture::getImageView(const vk::Format* requestedFormat)
 }
 
 void star::StarTexture::createTextureImageView(const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
-	vk::ImageView imageView = createImageView(this->device, this->textureImage, viewFormat, aspectFlags);
-	this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
+	if (this->imageViews.find(viewFormat) == this->imageViews.end()){
+		vk::ImageView imageView = createImageView(this->device, this->textureImage, viewFormat, aspectFlags);
+		this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
+	}
 }
 
 vk::ImageView star::StarTexture::createImageView(vk::Device& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags) {
