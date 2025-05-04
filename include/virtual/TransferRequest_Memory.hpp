@@ -15,10 +15,12 @@ namespace star::TransferRequest{
     Memory() = default;
 
     virtual T getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const = 0;
+    ///Handle any operations necessary before a request is made for the creation arguments.
+    virtual void beforeCreate() {}; 
     
     virtual void writeData(StarBuffer& buffer) const = 0; 
 
-    virtual void afterWriteData(){}
+    virtual void afterCreate(){}
 
     protected:
 

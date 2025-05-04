@@ -162,7 +162,7 @@ star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::add(const Handle &
 star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::startSet()
 {
     auto size = this->activeSet->size();
-    assert(size < this->layouts.size() && "Pushed beyond size");
+    assert(size < this->layouts.size() && "Pushed beyond size defined in set layout");
 
     this->activeSet->push_back(std::make_shared<ShaderInfoSet>(this->device, *this->layouts[size]));
     return *this;

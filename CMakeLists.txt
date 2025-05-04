@@ -32,13 +32,11 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS container thread)
+find_package(Boost REQUIRED COMPONENTS container thread filesystem)
+find_package(ktx CONFIG REQUIRED COMPONENTS vulkan)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
-
-
-
 
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -125,6 +123,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/buffers/TransferRequest_IndiciesInfo.cpp"
     "src/common/buffers/TransferRequest_VertInfo.cpp"
     "src/common/textures/TransferRequest_TextureFile.cpp"
+    "src/common/textures/TransferRequest_CompressedTextureFile.cpp"
     "src/common/controllers/ManagerController_RenderResource_TextureFile.cpp"
     "src/common/controllers/ManagerController_RenderResource_GlobalInfo.cpp"
     "src/common/controllers/ManagerController_RenderResource_InstanceModelInfo.cpp"
@@ -135,6 +134,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
+    "src/common/helpers/FileHelpers.cpp"
     "src/internals/CommandBufferContainer.cpp"
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
@@ -164,6 +164,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/buffers/TransferRequest_IndicesInfo.hpp"
     "include/common/buffers/TransferRequest_VertInfo.hpp"
     "include/common/textures/TransferRequest_TextureFile.hpp"
+    "include/common/textures/TransferRequest_CompressedTextureFile.hpp"
     "include/common/controllers/ManagerController_RenderResource_TextureFile.hpp"
     "include/common/controllers/ManagerController_RenderResource_GlobalInfo.hpp"
     "include/common/controllers/ManagerController_RenderResource_InstanceModelInfo.hpp"
@@ -254,6 +255,8 @@ target_link_libraries(${PROJECT_NAME}
         nlohmann_json::nlohmann_json
         Boost::thread
         Boost::container
+        Boost::filesystem
+        KTX::ktx
     )
 
 set(INCLUDE_DIRS

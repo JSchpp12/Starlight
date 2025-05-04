@@ -18,7 +18,7 @@ star::Handle star::ManagerRenderResource::addRequest(std::unique_ptr<star::Manag
 	auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
 	if (isStatic){
 		newFull->cpuWorkDoneByTransferThread.store(false);
-		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, newFull->bufferRequest->createTransferRequest(), newFull->buffer, isHighPriority);
+		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, newFull->bufferRequest->createTransferRequest(managerDevice->getPhysicalDevice()), newFull->buffer, isHighPriority);
 		newFull->bufferRequest.release(); 
 	}
 
@@ -38,7 +38,7 @@ star::Handle star::ManagerRenderResource::addRequest(std::unique_ptr<star::Manag
 	auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
 	if (isStatic){
 		newFull->cpuWorkDoneByTransferThread.store(false);
-		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, newFull->textureRequest->createTransferRequest(), newFull->texture, isHighPriority);
+		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, newFull->textureRequest->createTransferRequest(managerDevice->getPhysicalDevice()), newFull->texture, isHighPriority);
 		newFull->textureRequest.release();
 	}
 
@@ -86,9 +86,9 @@ void star::ManagerRenderResource::update(const int& frameInFlightIndex){
 	for (int i = 0; i < requestsToUpdate.size(); i++){
 		requestsToUpdate[i]->cpuWorkDoneByTransferThread.store(false);
 		if (requestsToUpdate[i]->bufferRequest)
-			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->bufferRequest->createTransferRequest(), requestsToUpdate[i]->buffer, true);
+			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->bufferRequest->createTransferRequest(managerDevice->getPhysicalDevice()), requestsToUpdate[i]->buffer, true);
 		else if (requestsToUpdate[i]->textureRequest){
-			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->textureRequest->createTransferRequest(), requestsToUpdate[i]->texture, true);
+			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->textureRequest->createTransferRequest(managerDevice->getPhysicalDevice()), requestsToUpdate[i]->texture, true);
 		}
 	}
 }
@@ -113,7 +113,7 @@ void star::ManagerRenderResource::updateRequest(std::unique_ptr<ManagerControlle
 	
 	container->bufferRequest = std::move(newRequest); 
 
-	managerWorker->add(*container->workingFence, container->cpuWorkDoneByTransferThread, container->bufferRequest->createTransferRequest(), container->buffer, isHighPriority);
+	managerWorker->add(*container->workingFence, container->cpuWorkDoneByTransferThread, container->bufferRequest->createTransferRequest(managerDevice->getPhysicalDevice()), container->buffer, isHighPriority);
 
 	highPriorityRequestCompleteFlags.insert(container->workingFence.get());
 }

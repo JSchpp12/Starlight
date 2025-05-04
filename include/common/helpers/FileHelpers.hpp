@@ -8,13 +8,14 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include <optional>
 
 namespace star {
 struct FileHelpers {
-    static bool FileExists(const std::string& pathToFile) {
-        struct stat buffer; 
-        return (stat(pathToFile.c_str(), &buffer) == 0);
-    }
+    static bool FileExists(const std::string& pathToFile);
+
+    ///Search through directory where the provided file is located, and see if another file exists of the same name, just different type/extension
+    static std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const std::string& fullFilePath, const std::string& name); 
 
     static std::string ReadFile(std::string pathToFile, bool includeCarriageReturns = true) {
         std::string line, text;
@@ -27,9 +28,7 @@ struct FileHelpers {
         return(text);
     }
 
-    static std::string GetFileExtension(const std::string& pathToFile) {
-        return pathToFile.substr(pathToFile.find_last_of('.'));
-    }
+    static std::string GetFileExtension(const std::string& pathToFile);
 
     static std::string GetFileNameWithExtension(const std::string& pathToFile) {
         return pathToFile.substr(pathToFile.find_last_of("/\\") + 1);

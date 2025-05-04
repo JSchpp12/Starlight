@@ -82,8 +82,6 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
                     *commandBufferFences, 
                     request->bufferTransferRequest.get(),
                     request->resultingBuffer.value());   
-
-                request->bufferTransferRequest.get()->afterWriteData();
             }else if (request->textureTransferRequest){
                 assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr && "Texture request must contain both a request and a resulting address");
                 
@@ -202,6 +200,8 @@ void star::TransferManagerThread::transitionImageLayout(vk::Image &image, vk::Co
 void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Memory<StarBuffer::BufferCreationArgs>* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
     assert(commandBufferFences[bufferIndexToUse] == nullptr && "Command buffer fence should have already been waited on and removed");
     
+    newBufferRequest->beforeCreate(); 
+
     auto createArgs = newBufferRequest->getCreateArgs(deviceProperties);
 
     auto transferSrcBuffer = std::make_unique<StarBuffer>(
@@ -272,11 +272,15 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
         }
     }
 
+    newBufferRequest->afterCreate(); 
+
     inProcessRequests.push(std::make_unique<InProcessRequestDependencies>(std::move(transferSrcBuffer), &workCompleteFence));
     commandBufferFences[bufferIndexToUse] = &workCompleteFence; 
 }
 
 void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
+    newTextureRequest->beforeCreate(); 
+    
     StarTexture::TextureCreateSettings createArgs = newTextureRequest->getCreateArgs(deviceProperties);
     createArgs.usage |= vk::ImageUsageFlagBits::eTransferDst;
 
@@ -363,6 +367,8 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
             std::runtime_error("Failed to submit transfer request"); 
         }
     }
+
+    newTextureRequest->afterCreate(); 
 
     inProcessRequests.push(std::make_unique<InProcessRequestDependencies>(std::move(transferSrcBuffer), &workCompleteFence));
     commandBufferFences[bufferIndexToUse] = &workCompleteFence; 

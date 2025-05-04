@@ -23,8 +23,9 @@ public:
 	glm::vec2 getResolution() const{ return this->resolution; }
 
 	float getHorizontalFieldOfView(const bool& inRadians = false) const;
-
 	float getVerticalFieldOfView(const bool& inRadians = false) const; 
+	float getNearClippingDistance() const {return this->nearClippingPlaneDistance;}
+	float getFarClippingDistance() const {return this->farClippingPlaneDistance;}
 protected:
 	const glm::vec2 resolution;
 

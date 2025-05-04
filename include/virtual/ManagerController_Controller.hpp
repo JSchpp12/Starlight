@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vulkan/vulkan.hpp>
+
 #include <optional>
 #include <memory>
 
@@ -16,9 +18,9 @@ namespace star::ManagerController{
             return true;
         };
 
-        virtual std::unique_ptr<T> createTransferRequest() = 0;
-
+        virtual std::unique_ptr<T> createTransferRequest(const vk::PhysicalDevice& device) = 0;
         const std::optional<uint8_t>& getFrameInFlightIndexToUpdateOn() const { return frameInFlightIndexToUpdateOn; }
+        
         private:
         std::optional<uint8_t> frameInFlightIndexToUpdateOn = std::nullopt;
     };
