@@ -1,12 +1,12 @@
 #pragma once
 
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Buffer.hpp"
 #include "StarObjectInstance.hpp"
 
 #include <glm/glm.hpp>
 
 namespace star::TransferRequest{
-    class InstanceNormalInfo : public Memory<star::StarBuffer::BufferCreationArgs>{
+    class InstanceNormalInfo : public Buffer{
         public:
         InstanceNormalInfo(const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances) {
             for (auto& instance : objectInstances) {
@@ -14,7 +14,7 @@ namespace star::TransferRequest{
             }
         }
 
-        virtual StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
+        virtual StarBuffer::BufferCreationArgs getCreateArgs() const override{
             return StarBuffer::BufferCreationArgs{
                 sizeof(glm::mat4),
                 static_cast<uint32_t>(this->normalMatrixInfo.size()),
@@ -26,9 +26,11 @@ namespace star::TransferRequest{
             };
         }
 
+        void writeData(StarBuffer& buffer) const override;
+
         protected:
             std::vector<glm::mat4> normalMatrixInfo = std::vector<glm::mat4>(); 
 
-            void writeData(StarBuffer& buffer) const override;
+
     };
 }

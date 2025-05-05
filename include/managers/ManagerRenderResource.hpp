@@ -25,16 +25,14 @@ namespace star {
 	public:
 		struct FinalizedRenderRequest : public StarManager::FinalizedRequest {
 			std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest = nullptr;
-			std::vector<std::unique_ptr<StarBuffer>> buffers = std::vector<std::unique_ptr<StarBuffer>>(); 
+			std::unique_ptr<StarBuffer> buffer = std::unique_ptr<StarBuffer>(); 
 			std::unique_ptr<ManagerController::RenderResource::Texture> textureRequest = nullptr;
-			std::vector<std::unique_ptr<StarTexture>> textures = std::vector<std::unique_ptr<StarTexture>>();
+			std::unique_ptr<StarTexture> texture = std::unique_ptr<StarTexture>();
 
-			FinalizedRenderRequest(const size_t& numResources, std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest, std::unique_ptr<SharedFence> workingFence) : bufferRequest(std::move(bufferRequest)), StarManager::FinalizedRequest(std::move(workingFence)){
-				this->buffers.resize(numResources);
+			FinalizedRenderRequest(std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest, std::unique_ptr<SharedFence> workingFence) : bufferRequest(std::move(bufferRequest)), StarManager::FinalizedRequest(std::move(workingFence)){
 			}
 
-			FinalizedRenderRequest(const size_t& numResources, std::unique_ptr<ManagerController::RenderResource::Texture> textureRequest, std::unique_ptr<SharedFence> workingFence) : textureRequest(std::move(textureRequest)), StarManager::FinalizedRequest(std::move(workingFence)){
-				this->textures.resize(numResources);
+			FinalizedRenderRequest(std::unique_ptr<ManagerController::RenderResource::Texture> textureRequest, std::unique_ptr<SharedFence> workingFence) : textureRequest(std::move(textureRequest)), StarManager::FinalizedRequest(std::move(workingFence)){
 			}
 		};
 
@@ -55,9 +53,9 @@ namespace star {
 
 		static void waitForReady(const Handle& handle);
 
-		static StarBuffer& getBuffer(const Handle& handle, const size_t& requestIndex = 0); 
+		static StarBuffer& getBuffer(const Handle& handle); 
 
-		static StarTexture& getTexture(const Handle& handle, const size_t& requestIndex = 0);
+		static StarTexture& getTexture(const Handle& handle);
 
 		static void destroy(const Handle& handle);
 

@@ -1,5 +1,41 @@
 #include "StarTexture.hpp"
 
+#include "ConfigFile.hpp"
+
+float star::StarTexture::SelectAnisotropyLevel(const vk::PhysicalDeviceProperties& deviceProperties){
+	std::string anisotropySetting = star::ConfigFile::getSetting(star::Config_Settings::texture_anisotropy);
+    float anisotropyLevel = 1.0f;
+
+    if (anisotropySetting == "max")
+        anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
+    else{
+        anisotropyLevel = std::stof(anisotropySetting);
+
+        if (anisotropyLevel > deviceProperties.limits.maxSamplerAnisotropy){
+            anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
+        }else if (anisotropyLevel < 1.0f){
+            anisotropyLevel = 1.0f; 
+        }
+    }
+
+    return anisotropyLevel;
+}
+
+vk::Filter star::StarTexture::SelectTextureFiltering(const vk::PhysicalDeviceProperties& deviceProperties){
+	auto textureFilteringSetting = ConfigFile::getSetting(Config_Settings::texture_filtering);
+
+    vk::Filter filterType;
+    if (textureFilteringSetting == "nearest"){
+        filterType = vk::Filter::eNearest;
+    }else if (textureFilteringSetting == "linear"){
+        filterType = vk::Filter::eLinear;
+    }else{
+        throw std::runtime_error("Texture filtering setting must be 'nearest' or 'linear'");
+    }
+
+    return filterType; 
+}
+
 star::StarTexture::~StarTexture(){
 	if (this->textureSampler)
 		this->device.destroySampler(this->textureSampler);

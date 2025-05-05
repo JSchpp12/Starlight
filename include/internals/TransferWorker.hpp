@@ -5,7 +5,8 @@
 #include "Allocator.hpp"
 #include "StarDevice.hpp"
 #include "StarBuffer.hpp"
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Buffer.hpp"
+#include "TransferRequest_Texture.hpp"
 
 #include "SharedFence.hpp"
 #include "StarQueueFamily.hpp"
@@ -25,17 +26,17 @@ namespace star{
     class TransferManagerThread {
         public:
         struct InterThreadRequest{
-            std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> bufferTransferRequest = nullptr;
-            std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> textureTransferRequest = nullptr;
+            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest = nullptr;
+            std::unique_ptr<TransferRequest::Texture> textureTransferRequest = nullptr;
             std::optional<std::unique_ptr<StarBuffer>*> resultingBuffer = std::nullopt; 
             std::optional<std::unique_ptr<StarTexture>*> resultingTexture = std::nullopt;
             SharedFence* completeFence = nullptr;
             boost::atomic<bool>* cpuWorkDoneByTransferThread = nullptr;
 
-            InterThreadRequest(boost::atomic<bool>* cpuWorkDoneByTransferThread, SharedFence* completeFence, std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> bufferTransferRequest, std::unique_ptr<StarBuffer>& resultingBufferAddress) 
+            InterThreadRequest(boost::atomic<bool>* cpuWorkDoneByTransferThread, SharedFence* completeFence, std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest, std::unique_ptr<StarBuffer>& resultingBufferAddress) 
                 : bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBufferAddress), completeFence(completeFence), cpuWorkDoneByTransferThread(cpuWorkDoneByTransferThread){}
 
-            InterThreadRequest(boost::atomic<bool>* cpuWorkDoneByTransferThread, SharedFence* completeFence, std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> textureTransferRequest, std::unique_ptr<StarTexture>& resultingTextureAddress)
+            InterThreadRequest(boost::atomic<bool>* cpuWorkDoneByTransferThread, SharedFence* completeFence, std::unique_ptr<TransferRequest::Texture> textureTransferRequest, std::unique_ptr<StarTexture>& resultingTextureAddress)
                 : cpuWorkDoneByTransferThread(cpuWorkDoneByTransferThread), completeFence(completeFence), resultingTexture(&resultingTextureAddress), textureTransferRequest(std::move(textureTransferRequest)){}
         };
 
@@ -73,13 +74,13 @@ namespace star{
             vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
             std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, 
             std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences,
-            TransferRequest::Memory<StarBuffer::BufferCreationArgs>* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer);
+            TransferRequest::Buffer* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer);
 
         static void createTexture(vk::Device& device, VmaAllocator& allocator,
             vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
             std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, 
             std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences,
-            TransferRequest::Memory<StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<StarTexture>* resultingTexture);
+            TransferRequest::Texture* newTextureRequest, std::unique_ptr<StarTexture>* resultingTexture);
 
         static void checkForCleanups(vk::Device& device, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, std::vector<SharedFence*>& commandBufferFences); 
 
@@ -114,11 +115,11 @@ namespace star{
     TransferWorker(StarDevice& device, bool overrideRunAsync);
 
     void add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, 
-        std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> newBufferRequest, 
+        std::unique_ptr<TransferRequest::Buffer> newBufferRequest, 
         std::unique_ptr<StarBuffer>& resultingBuffer, const bool& isHighPriority);
 
     void add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, 
-        std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> newTextureRequest, 
+        std::unique_ptr<TransferRequest::Texture> newTextureRequest, 
         std::unique_ptr<StarTexture>& resultingTexture, const bool& isHighPriority);
 
     void update(); 

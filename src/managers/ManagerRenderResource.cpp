@@ -15,17 +15,10 @@ star::Handle star::ManagerRenderResource::addRequest(std::unique_ptr<star::Manag
 
 	bool isStatic = !newRequest->getFrameInFlightIndexToUpdateOn().has_value();
 
-	auto requests = newRequest->createTransferRequests(managerDevice->getPhysicalDevice()); 
-	auto newFull = std::make_unique<FinalizedRenderRequest>(requests.size(), std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
+	auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
 	if (isStatic){
 		newFull->cpuWorkDoneByTransferThread.store(false);
-		{
-			auto requests = newFull->bufferRequest->createTransferRequests(managerDevice->getPhysicalDevice()); 
-			for (int i = 0; i < requests.size(); i++){
-				managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, std::move(requests[i]), newFull->buffers[i], isHighPriority);
-			}
-		}
-
+		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, std::move(newFull->bufferRequest->createTransferRequest(managerDevice->getPhysicalDevice())), newFull->buffer, isHighPriority);
 		newFull->bufferRequest.release(); 
 	}
 
@@ -41,16 +34,11 @@ star::Handle star::ManagerRenderResource::addRequest(std::unique_ptr<star::Manag
 	Handle newHandle = Handle(Handle_Type::texture);
 
 	bool isStatic = !newRequest->getFrameInFlightIndexToUpdateOn().has_value();
-	
-	auto requests = newRequest->createTransferRequests(managerDevice->getPhysicalDevice());
 
-	auto newFull = std::make_unique<FinalizedRenderRequest>(requests.size(), std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
+	auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
 	if (isStatic){
 		newFull->cpuWorkDoneByTransferThread.store(false);
-		
-		for (int i = 0; i < requests.size(); i++){
-			managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, std::move(requests[i]), newFull->textures[i], isHighPriority);
-		}
+		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, std::move(newFull->textureRequest->createTransferRequest(managerDevice->getPhysicalDevice())), newFull->texture, isHighPriority);
 
 		newFull->textureRequest.release();
 	}
@@ -99,17 +87,12 @@ void star::ManagerRenderResource::update(const int& frameInFlightIndex){
 	for (int i = 0; i < requestsToUpdate.size(); i++){
 		requestsToUpdate[i]->cpuWorkDoneByTransferThread.store(false);
 		if (requestsToUpdate[i]->bufferRequest){
-			auto requests = requestsToUpdate[i]->bufferRequest->createTransferRequests(managerDevice->getPhysicalDevice());
-			for (int j = 0; j < requests.size(); j++){
-				managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, std::move(requests[j]), requestsToUpdate[i]->buffers[j], true);
-			}
+			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, std::move(requestsToUpdate[i]->bufferRequest->createTransferRequest(managerDevice->getPhysicalDevice())), requestsToUpdate[i]->buffer, true);
 		}
 		else if (requestsToUpdate[i]->textureRequest){
-			auto requests =  requestsToUpdate[i]->textureRequest->createTransferRequests(managerDevice->getPhysicalDevice());
-			for (int j = 0; j < requests.size(); j++){
-				managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, std::move(requests[j]), requestsToUpdate[i]->textures[j], true);
-			}
+			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, std::move(requestsToUpdate[i]->textureRequest->createTransferRequest(managerDevice->getPhysicalDevice())), requestsToUpdate[i]->texture, true);
 		}
+
 	}
 }
 
@@ -133,10 +116,7 @@ void star::ManagerRenderResource::updateRequest(std::unique_ptr<ManagerControlle
 	
 	container->bufferRequest = std::move(newRequest); 
 
-	auto requests = container->bufferRequest->createTransferRequests(managerDevice->getPhysicalDevice());
-	for (int i = 0; i < requests.size(); i++){
-		managerWorker->add(*container->workingFence, container->cpuWorkDoneByTransferThread, std::move(requests[i]), container->buffers[i], isHighPriority);
-	}
+	managerWorker->add(*container->workingFence, container->cpuWorkDoneByTransferThread, std::move(container->bufferRequest->createTransferRequest(managerDevice->getPhysicalDevice())), container->buffer, isHighPriority);
 
 	highPriorityRequestCompleteFlags.insert(container->workingFence.get());
 }
@@ -178,7 +158,7 @@ void star::ManagerRenderResource::waitForReady(const Handle& handle){
 	}
 }
 
-star::StarBuffer& star::ManagerRenderResource::getBuffer(const star::Handle& handle, const size_t& requestIndex){
+star::StarBuffer& star::ManagerRenderResource::getBuffer(const star::Handle& handle){
 	assert(handle.getType() == star::Handle_Type::buffer && "Handle provided is not a buffer handle");
 
 	std::unique_ptr<FinalizedRenderRequest>& container = bufferStorage->get(handle);
@@ -191,13 +171,11 @@ star::StarBuffer& star::ManagerRenderResource::getBuffer(const star::Handle& han
 			throw std::runtime_error("Requester must call the isReady function to make sure the resource is ready before requesting it.");
 		}
 	}
-	
-	assert(requestIndex < container->buffers.size() && "Resource instance request does not exist");
 
-	return *container->buffers[requestIndex];
+	return *container->buffer;
 }
 
-star::StarTexture& star::ManagerRenderResource::getTexture(const star::Handle& handle, const size_t& requestIndex){
+star::StarTexture& star::ManagerRenderResource::getTexture(const star::Handle& handle){
 	assert(handle.getType() == star::Handle_Type::texture && "Handle provided is not a texture handle");
 
 	std::unique_ptr<FinalizedRenderRequest>& container = bufferStorage->get(handle);
@@ -211,9 +189,7 @@ star::StarTexture& star::ManagerRenderResource::getTexture(const star::Handle& h
 		}
 	}
 
-	assert(requestIndex < container->textures.size() && "Beyond size of objects created by controller");
-
-	return *container->textures[requestIndex];
+	return *container->texture;
 }
 
 void star::ManagerRenderResource::destroy(const star::Handle& handle) {

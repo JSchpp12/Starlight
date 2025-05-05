@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Texture.hpp"
 #include "StarTexture.hpp"
 #include "SharedCompressedTexture.hpp"
 
@@ -10,37 +10,21 @@
 #include <memory>
 
 namespace star::TransferRequest{
-    class CompressedTextureFile : public Memory<star::StarTexture::TextureCreateSettings>{
+    class CompressedTextureFile : public TransferRequest::Texture{
         public:
-        CompressedTextureFile(const std::string& imagePath, 
-            std::vector<ktx_transcode_fmt_e>& availableFormats, std::vector<std::string>& availableFormatNames);
+        CompressedTextureFile(const vk::PhysicalDeviceProperties& deviceProperties, std::shared_ptr<SharedCompressedTexture> compressedTexture, const uint8_t& mipMapIndex);
 
-        StarTexture::TextureCreateSettings getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override;
-
-        void beforeCreate() override; 
+        StarTexture::TextureCreateSettings getCreateArgs() const override;
         
         void writeData(StarBuffer& buffer) const override; 
 
-        void afterCreate() override;
+        void copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarTexture& dstTexture, vk::CommandBuffer& commandBuffer) const override;
 
         private:
-        const std::string imagePath; 
-        std::vector<ktx_transcode_fmt_e> availableFormats = std::vector<ktx_transcode_fmt_e>(); 
-        std::vector<std::string> availableFormatNames = std::vector<std::string>();
-
-        size_t sizeOfCompressedTexture = 0; 
-        ktxTexture2* kTexture = nullptr; 
-        std::unique_ptr<ktx_transcode_fmt_e> selectedTranscodeFormat = std::unique_ptr<ktx_transcode_fmt_e>();
-        std::unique_ptr<uint8_t> transWidth, transHeight, transChannels; 
+        std::shared_ptr<SharedCompressedTexture> compressedTexture = nullptr; 
+        const uint8_t mipMapIndex;
+        const vk::PhysicalDeviceProperties deviceProperties; 
 
         static void getTextureInfo(const std::string& imagePath, int& width, int& height, int& channels);
-
-        static void verifyFiles(const std::string& imagePath); 
-
-        void setTranscodeTargetFormat(); 
-
-        void loadKTX(); 
-
-        void transcode(); 
     };
 }

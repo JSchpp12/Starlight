@@ -1,26 +1,26 @@
 #pragma once
 
-#include "TransferRequest_Memory.hpp"
-#include "StarTexture.hpp"
+#include "TransferRequest_Texture.hpp"
 
 #include <string>
 
 namespace star::TransferRequest{
-    class TextureFile : public Memory<star::StarTexture::TextureCreateSettings>{
+    class TextureFile : public Texture{
         public:
-        TextureFile(const std::string& imagePath);
+        TextureFile(const std::string& imagePath, const vk::PhysicalDeviceProperties& deviceProperties);
 
-        star::StarTexture::TextureCreateSettings getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override;
+        star::StarTexture::TextureCreateSettings getCreateArgs() const override;
 
         void writeData(star::StarBuffer& stagingBuffer) const override;
 
+        virtual void copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarTexture& dstTexture, vk::CommandBuffer& commandBuffer) const override; 
+
         protected:
-        virtual float selectAnisotropyLevel(const vk::PhysicalDeviceProperties& deviceProperties) const;
-        virtual vk::Filter selectTextureFiltering(const vk::PhysicalDeviceProperties& deviceProperties) const;
         
         private:
         const std::string imagePath; 
+        const vk::PhysicalDeviceProperties deviceProperties; 
 
-        static void getTextureInfo(const std::string& imagePath, int& width, int& height, int& channels);
+        static void GetTextureInfo(const std::string& imagePath, int& width, int& height, int& channels);
     };
 }

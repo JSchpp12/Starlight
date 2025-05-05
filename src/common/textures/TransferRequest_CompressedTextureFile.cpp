@@ -4,96 +4,71 @@
 
 #include <assert.h>
 
-star::TransferRequest::CompressedTextureFile::CompressedTextureFile(const std::string& imagePath, std::vector<ktx_transcode_fmt_e>& availableFormats, std::vector<std::string>& availableFormatNames) 
-: imagePath(imagePath), availableFormats(availableFormats), availableFormatNames(availableFormatNames)
+star::TransferRequest::CompressedTextureFile::CompressedTextureFile(const vk::PhysicalDeviceProperties& deviceProperties, std::shared_ptr<SharedCompressedTexture> compressedTexture, const uint8_t& mipMapIndex) 
+: compressedTexture(compressedTexture), mipMapIndex(mipMapIndex), deviceProperties(deviceProperties)
 {
-    assert(this->availableFormatNames.size() == this->availableFormats.size() && "names and available formats do not match");
-
-    verifyFiles(this->imagePath);
 }
 
-star::StarTexture::TextureCreateSettings star::TransferRequest::CompressedTextureFile::getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const{
+star::StarTexture::TextureCreateSettings star::TransferRequest::CompressedTextureFile::getCreateArgs() const{
     StarTexture::TextureCreateSettings createArgs;
 
-    createArgs.width = this->kTexture->baseWidth;
-    createArgs.height = this->kTexture->baseHeight;
-    createArgs.depth = this->kTexture->baseDepth; 
-    createArgs.overrideImageMemorySize = this->kTexture->dataSize;
+    {
+        boost::unique_lock<boost::mutex> lock;
+        ktxTexture2* texture = nullptr; 
+        this->compressedTexture->giveMeTranscodedImage(lock, texture); 
+
+        createArgs.width = texture->baseWidth; 
+        createArgs.height = texture->baseHeight; 
+        createArgs.depth = texture->baseDepth; 
+        createArgs.overrideImageMemorySize = texture->dataSize;
+        createArgs.baseFormat = (vk::Format)texture->vkFormat;
+        createArgs.anisotropyLevel = StarTexture::SelectAnisotropyLevel(this->deviceProperties); 
+        createArgs.textureFilteringMode = StarTexture::SelectTextureFiltering(this->deviceProperties);
+        createArgs.allocationName = star::FileHelpers::GetFileNameWithExtension(this->compressedTexture->getPathToFile());
+        createArgs.createSampler = true; 
+    }
+
     
     return createArgs;
 }
 
-void star::TransferRequest::CompressedTextureFile::beforeCreate() {
-    //transcode operation
-    loadKTX(); 
-
-    setTranscodeTargetFormat();
-
-    transcode();
-}
-
 void star::TransferRequest::CompressedTextureFile::writeData(StarBuffer& buffer) const{
-    assert(this->kTexture != nullptr && "Invalid k texture. Might have failed transcode.");
+    buffer.map();
 
+    {
+        boost::unique_lock<boost::mutex> lock;
+        ktxTexture2* texture = nullptr;
+        this->compressedTexture->giveMeTranscodedImage(lock, texture);
 
-}
-
-void star::TransferRequest::CompressedTextureFile::afterCreate(){
-    if (this->kTexture != nullptr){
-        ktxTexture_Destroy((ktxTexture*)this->kTexture); 
-        this->kTexture = nullptr;
-    }
-}
-
-void star::TransferRequest::CompressedTextureFile::verifyFiles(const std::string& imagePath){
-    //check extension on file
-    assert(FileHelpers::GetFileExtension(imagePath) == ".ktx2");
-
-    //ensure file exists
-    assert(FileHelpers::FileExists(imagePath));
-}
-
-void star::TransferRequest::CompressedTextureFile::setTranscodeTargetFormat(){
-    assert(this->availableFormats.size() > 0 && "System does not support any compression formats"); 
-    
-    ktx_transcode_fmt_e targetFormat; 
-
-    assert(availableFormats.size() > 0 && "There are no available target transcode formats for this device"); 
-
-    //find any available format which is not the raw format
-    for (const auto& format : this->availableFormats){
-        if (format != KTX_TTF_RGBA32){
-            targetFormat = format; 
-            break;
-        }
+        buffer.writeToBuffer(texture->pData, texture->dataSize); 
     }
 
-    if (!targetFormat){
-        targetFormat = KTX_TTF_RGBA32; 
-    }
-
-    this->selectedTranscodeFormat = std::make_unique<ktx_transcode_fmt_e>(targetFormat);
+    buffer.unmap(); 
 }
 
+void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarTexture& dstTexture, vk::CommandBuffer& commandBuffer) const{
+    boost::unique_lock<boost::mutex> lock; 
+    ktxTexture2* texture = nullptr; 
+    this->compressedTexture->giveMeTranscodedImage(lock, texture);
 
-void star::TransferRequest::CompressedTextureFile::loadKTX(){
-    KTX_error_code result = ktxTexture_CreateFromNamedFile(this->imagePath.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, reinterpret_cast<ktxTexture **>(&this->kTexture)); 
-    
-    if (result != KTX_SUCCESS){
-        throw std::runtime_error("Could not load the requested image file"); 
+    std::vector<vk::BufferImageCopy> bufferCopyRegions; 
+
+    for (int i = 0; i < texture->numLevels; i++){
+        ktx_size_t offset; 
+        KTX_error_code result = ktxTexture_GetImageOffset((ktxTexture*)texture, i, 0, 0, &offset); 
+
+        vk::BufferImageCopy copyRegion{}; 
+        copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor; 
+        copyRegion.imageSubresource.mipLevel = i;
+        copyRegion.imageSubresource.baseArrayLayer = 0;
+        copyRegion.imageSubresource.layerCount = 1;
+        copyRegion.imageExtent.width = texture->baseWidth >> i;
+        copyRegion.imageExtent.height = texture->baseHeight >> i;
+        copyRegion.imageExtent.depth = 1;
+        copyRegion.bufferOffset = offset; 
+        
+        bufferCopyRegions.push_back(copyRegion); 
     }
-}
 
-void star::TransferRequest::CompressedTextureFile::transcode(){
-    assert(this->kTexture != nullptr && "Invalid ktx texture");
-    assert(this->selectedTranscodeFormat != nullptr && "Format has not been selected"); 
-
-    KTX_error_code result; 
-
-    if (ktxTexture2_NeedsTranscoding(this->kTexture)){
-        result = ktxTexture2_TranscodeBasis(this->kTexture, *this->selectedTranscodeFormat, 0); 
-        if (result != KTX_SUCCESS){
-            throw std::runtime_error("Could not transcode the requested image file"); 
-        }
-    }
+    commandBuffer.copyBufferToImage(srcBuffer.getVulkanBuffer(), dstTexture.getImage(), vk::ImageLayout::eTransferDstOptimal, bufferCopyRegions); 
 }

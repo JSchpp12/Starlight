@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ManagerController_RenderResource_Buffer.hpp"
+#include "TransferRequest_Buffer.hpp"
 #include "StarObjectInstance.hpp"
 
 namespace star::ManagerController::RenderResource{
@@ -11,7 +12,7 @@ namespace star::ManagerController::RenderResource{
 			objectInstances(objectInstances) {}
 
         protected:
-            std::vector<std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>>> createTransferRequests(const vk::PhysicalDevice& physicalDevice) override;
+            std::unique_ptr<TransferRequest::Buffer> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override;
 
         private:
             const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances;

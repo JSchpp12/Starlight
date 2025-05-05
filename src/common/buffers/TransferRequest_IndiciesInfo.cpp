@@ -13,7 +13,7 @@ void star::TransferRequest::IndicesInfo::writeData(StarBuffer& buffer) const{
     buffer.unmap();
 }
 
-star::StarBuffer::BufferCreationArgs star::TransferRequest::IndicesInfo::getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const{
+star::StarBuffer::BufferCreationArgs star::TransferRequest::IndicesInfo::getCreateArgs() const{
     return StarBuffer::BufferCreationArgs{
         sizeof(uint32_t),
         CastHelpers::size_t_to_unsigned_int(this->indices.size()),
@@ -23,4 +23,8 @@ star::StarBuffer::BufferCreationArgs star::TransferRequest::IndicesInfo::getCrea
         vk::SharingMode::eConcurrent,
         "IndiciesInfoBuffer"
     };
+}
+
+void star::TransferRequest::IndicesInfo::copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarBuffer& dstBuffer, vk::CommandBuffer& commandBuffer) const{
+    Buffer::defaultCopy(srcBuffer, dstBuffer, commandBuffer);
 }

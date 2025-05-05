@@ -10,6 +10,10 @@
 namespace star{
     class StarTexture{
         public:
+        static float SelectAnisotropyLevel(const vk::PhysicalDeviceProperties& deviceProperties); 
+
+        static vk::Filter SelectTextureFiltering(const vk::PhysicalDeviceProperties& deviceProperties); 
+
         /// <summary>
         /// Options to be used when creating a new texture
         /// </summary>

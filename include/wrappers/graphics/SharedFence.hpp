@@ -11,7 +11,7 @@ namespace star{
         public:
         SharedFence();
         SharedFence(StarDevice& device, const bool& createInSignaledState);
-        virtual ~SharedFence() override;
+        virtual ~SharedFence() override; 
 
         bool operator==(const SharedFence& other) const{
             return this->resource == other.resource;
@@ -29,7 +29,5 @@ namespace star{
         StarDevice& device; 
 
         vk::Fence createFence(StarDevice& device, const bool& createInSignaledState); 
-
-        void destroyResource() override; 
     };
 }

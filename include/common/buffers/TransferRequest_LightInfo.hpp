@@ -1,13 +1,13 @@
 #pragma once
 
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Buffer.hpp"
 #include "Light.hpp"
 
 #include <glm/glm.hpp>
 #include <vector>
 
 namespace star::TransferRequest{
-    class LightInfo : public Memory<StarBuffer::BufferCreationArgs>{
+    class LightInfo : public Buffer{
         public:
         struct LightBufferObject {
             glm::vec4 position = glm::vec4(1.0f);
@@ -30,8 +30,10 @@ namespace star::TransferRequest{
                 myLights.push_back(Light(*lights[i].get()));
             } 
         }
+
+        void writeData(StarBuffer& buffer) const override;
     
-        StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
+        StarBuffer::BufferCreationArgs getCreateArgs() const override{
             return StarBuffer::BufferCreationArgs{
                 sizeof(LightBufferObject),
                 static_cast<uint32_t>(this->myLights.size()),
@@ -45,8 +47,6 @@ namespace star::TransferRequest{
     
         protected:
         std::vector<Light> myLights; 
-    
-        void writeData(StarBuffer& buffer) const override; 
     
     };
 }

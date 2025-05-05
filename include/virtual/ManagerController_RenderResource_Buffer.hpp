@@ -1,18 +1,18 @@
 #pragma once
 
 #include "StarBuffer.hpp"
+#include "TransferRequest_Buffer.hpp"
 #include "ManagerController_Controller.hpp"
-#include "TransferRequest_Memory.hpp"
 
 namespace star::ManagerController::RenderResource{
-    class Buffer : public star::ManagerController::Controller<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> {
+    class Buffer : public star::ManagerController::Controller<TransferRequest::Buffer> {
     public:
     Buffer() = default;
 
     Buffer(const uint8_t& frameInFlightIndexToUpdateOn) 
-    : star::ManagerController::Controller<TransferRequest::Memory<StarBuffer::BufferCreationArgs>>(frameInFlightIndexToUpdateOn){}; 
+    : star::ManagerController::Controller<TransferRequest::Buffer>(frameInFlightIndexToUpdateOn){}; 
 
-    virtual std::vector<std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>>> createTransferRequests(const vk::PhysicalDevice& physicalDevice) override = 0;
+    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override = 0;
 
     protected:
 

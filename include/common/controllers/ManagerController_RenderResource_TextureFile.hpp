@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ManagerController_RenderResource_Texture.hpp"
+#include "TransferRequest_Texture.hpp"
 #include "StarTexture.hpp"
 
 #include <ktx.h>
@@ -13,7 +14,7 @@ namespace star::ManagerController::RenderResource{
         public:
         TextureFile(const std::string& nFilePath);
 
-        virtual std::vector<std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>>> createTransferRequests(const vk::PhysicalDevice& physicalDevice) override; 
+        virtual std::unique_ptr<TransferRequest::Texture> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override; 
 
         protected:
         bool isCompressedTexture; 
@@ -22,10 +23,6 @@ namespace star::ManagerController::RenderResource{
         static std::string GetFilePath(const std::string& filePath); 
 
         static bool IsCompressedFileType(const std::string& filePath); 
-
-        static void GetSupportedCompressedTextureFormats(const vk::PhysicalDevice& physicalDevice, std::vector<ktx_transcode_fmt_e>& availableFormats, std::vector<std::string>& availableFormatNames);
-    
-        static bool IsFormatSupported(const vk::PhysicalDevice& physicalDevice, const vk::Format& format);
     };
 
 }

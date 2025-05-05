@@ -1,17 +1,17 @@
 #pragma once 
 
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Buffer.hpp"
 #include "StarCamera.hpp"
 
 #include <glm/glm.hpp>
 
 namespace star::TransferRequest{
-    class GlobalInfo : public Memory<star::StarBuffer::BufferCreationArgs>{
+    class GlobalInfo : public Buffer{
         public:
         
         GlobalInfo(const StarCamera& camera, const int& numLights) : camera(camera), numLights(numLights){}
 
-        StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
+        StarBuffer::BufferCreationArgs getCreateArgs() const override{
             return StarBuffer::BufferCreationArgs{
                 sizeof(GlobalUniformBufferObject),
                 1,

@@ -6,23 +6,21 @@ namespace star{
     template<typename T>
     class ThreadSharedResource{
         public:
-        ThreadSharedResource(T* resource) : resource(resource){}; 
+        ThreadSharedResource(T* resource = nullptr) : resource(resource){}; 
 
         virtual ~ThreadSharedResource(){
-            this->destroyResource(); 
+            delete(this->resource);
             this->resource = nullptr;
         }
 
-        void giveMeResource(boost::unique_lock<boost::mutex>& lock, T* resource){
-            assert(this->resource != nullptr && "Resource was not properly initalized.");
-
+        void giveMeResource(boost::unique_lock<boost::mutex>& lock, T*& inResource){
             lock = boost::unique_lock<boost::mutex>(this->mutex); 
-            resource = this->resource; 
+
+            if (this->resource != nullptr)
+                inResource = this->resource; 
         }
 
         protected:
-        virtual void destroyResource() = 0; 
-
         T* resource = nullptr;
         boost::mutex mutex = boost::mutex();
     };

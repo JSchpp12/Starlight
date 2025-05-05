@@ -2,7 +2,7 @@
 
 #include "CastHelpers.hpp"
 
-star::StarBuffer::BufferCreationArgs star::TransferRequest::VertInfo::getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const{
+star::StarBuffer::BufferCreationArgs star::TransferRequest::VertInfo::getCreateArgs() const{
     return StarBuffer::BufferCreationArgs{
         sizeof(Vertex), 
         CastHelpers::size_t_to_unsigned_int(this->vertices.size()),
@@ -25,6 +25,16 @@ void star::TransferRequest::VertInfo::writeData(StarBuffer &buffer) const{
 
     buffer.unmap();
 }
+
+void star::TransferRequest::VertInfo::copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarBuffer &dstBuffer, vk::CommandBuffer &commandBuffer) const{
+    vk::BufferCopy copyRegion{}; 
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = 0;
+    copyRegion.size = srcBuffer.getBufferSize(); 
+
+    commandBuffer.copyBuffer(srcBuffer.getVulkanBuffer(), dstBuffer.getVulkanBuffer(), copyRegion);
+}
+
 
 std::vector<star::Vertex> star::TransferRequest::VertInfo::getVertices() const{
     return this->vertices;
