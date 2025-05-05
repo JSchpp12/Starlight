@@ -18,7 +18,7 @@ namespace star::ManagerController::RenderResource{
         const std::vector<std::unique_ptr<Light>>& lights;
         uint16_t lastWriteNumLights = 0; 
     
-        std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override;
+        std::vector<std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>>> createTransferRequests(const vk::PhysicalDevice& physicalDevice) override;
     
         bool isValid(const uint8_t& currentFrameInFlightIndex) const override;
     };

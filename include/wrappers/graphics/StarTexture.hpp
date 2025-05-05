@@ -23,13 +23,15 @@ namespace star{
                 const vk::ImageAspectFlags& imageAspectFlags, const VmaMemoryUsage& memoryUsage,
                 const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
                 const bool& isMutable, const bool& createSampler, const vk::MemoryPropertyFlags& requiredMemoryProperties, 
-                const float& anisotropyLevel, const vk::Filter& textureFilteringMode, const std::string& allocationName) 
+                const float& anisotropyLevel, const vk::Filter& textureFilteringMode, const std::string& allocationName, 
+                const std::optional<vk::DeviceSize>& overrideImageMemorySize = std::nullopt) 
                 : width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
                 usage(imageUsage), baseFormat(imageFormat), additionalViewFormats(additionalViewFormats),
                 allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
                 isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), 
                 aspectFlags(imageAspectFlags), requiredMemoryProperties(requiredMemoryProperties), 
-                anisotropyLevel(anisotropyLevel), textureFilteringMode(textureFilteringMode), allocationName(allocationName){ }
+                anisotropyLevel(anisotropyLevel), textureFilteringMode(textureFilteringMode), allocationName(allocationName), 
+                overrideImageMemorySize(overrideImageMemorySize){ }
 
             ~TextureCreateSettings() = default; 
 
@@ -46,6 +48,7 @@ namespace star{
             vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
             vk::ImageLayout initialLayout = vk::ImageLayout::eShaderReadOnlyOptimal; 
             std::optional<vk::MemoryPropertyFlags> requiredMemoryProperties = std::nullopt; 
+            std::optional<vk::DeviceSize> overrideImageMemorySize = std::nullopt;
             float anisotropyLevel = 1.0f;
             vk::Filter textureFilteringMode = vk::Filter::eNearest;
             std::string allocationName = "TextureDefaultName";
@@ -73,6 +76,7 @@ namespace star{
         const int getChannels() const { return this->createSettings.channels; }
         const int getDepth() const { return this->createSettings.depth; }
         const bool isVulkanImageReady() const {return this->textureImage;}
+        vk::DeviceSize getImageMemorySize() const; 
 
         protected:
         const TextureCreateSettings createSettings;

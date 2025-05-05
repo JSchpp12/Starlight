@@ -2,34 +2,34 @@
 
 #include "StarDevice.hpp"
 
+#include "ThreadSharedResource.hpp"
+
 #include <vulkan/vulkan.hpp>
-#include <boost/thread/mutex.hpp>
 
 namespace star{
-    class SharedFence{
+    class SharedFence : public ThreadSharedResource<vk::Fence>{
         public:
         SharedFence();
         SharedFence(StarDevice& device, const bool& createInSignaledState);
-        ~SharedFence();
+        virtual ~SharedFence() override;
 
         bool operator==(const SharedFence& other) const{
-            return this->fence == other.fence;
+            return this->resource == other.resource;
         }
 
         bool operator!=(const SharedFence& other) const{
-            return this->fence != other.fence;
+            return this->resource != other.resource;
         }
 
         bool operator!() const{
-            return !this->fence;
+            return !this->resource;
         }
-
-        void giveMeFence(boost::unique_lock<boost::mutex>& lock, vk::Fence& fence);
 
         protected:
         StarDevice& device; 
 
-        vk::Fence fence = vk::Fence();
-        boost::mutex mutex = boost::mutex();
+        vk::Fence createFence(StarDevice& device, const bool& createInSignaledState); 
+
+        void destroyResource() override; 
     };
 }

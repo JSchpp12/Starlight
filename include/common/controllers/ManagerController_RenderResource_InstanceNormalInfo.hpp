@@ -11,7 +11,7 @@ namespace star::ManagerController::RenderResource{
 			objectInstances(objectInstances) {}
 
         protected:
-            std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override;
+            std::vector<std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>>> createTransferRequests(const vk::PhysicalDevice& physicalDevice) override;
 
         private:
             const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances;

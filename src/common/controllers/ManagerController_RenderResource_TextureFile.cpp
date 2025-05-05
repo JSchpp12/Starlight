@@ -4,24 +4,45 @@
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "FileHelpers.hpp"
 
-star::ManagerController::RenderResource::TextureFile::TextureFile(const std::string& filePath)
-: filePath(filePath), isCompressedTexture(IsCompressedFileType(filePath)) {
+#include <boost/filesystem.hpp>
 
+star::ManagerController::RenderResource::TextureFile::TextureFile(const std::string& nFilePath) {
+    this->filePath = GetFilePath(nFilePath); 
+    this->isCompressedTexture = IsCompressedFileType(this->filePath);
 }
 
+std::vector<std::unique_ptr<star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>>> star::ManagerController::RenderResource::TextureFile::createTransferRequests(const vk::PhysicalDevice& physicalDevice){
+    std::vector<std::unique_ptr<star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>>> result = std::vector<std::unique_ptr<star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>>>();
 
-std::unique_ptr<star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>> star::ManagerController::RenderResource::TextureFile::createTransferRequest(const vk::PhysicalDevice& physicalDevice){
     if (this->isCompressedTexture){
         std::vector<ktx_transcode_fmt_e> formats;
         std::vector<std::string> names;
         GetSupportedCompressedTextureFormats(physicalDevice, formats, names); 
-        return std::make_unique<TransferRequest::CompressedTextureFile>(this->filePath, formats, names);
-    }else
-        return std::make_unique<TransferRequest::TextureFile>(this->filePath);
+        result.emplace_back(std::make_unique<TransferRequest::CompressedTextureFile>(this->filePath, formats, names));
+    }else{
+        result.emplace_back(std::make_unique<TransferRequest::TextureFile>(this->filePath));
+    }
+    
+    return result; 
 }
 
 bool star::ManagerController::RenderResource::TextureFile::IsCompressedFileType(const std::string& filePath){
-    return FileHelpers::GetFileExtension(filePath) == ".basis";
+    return FileHelpers::GetFileExtension(filePath) == ".ktx2";
+}
+
+std::string star::ManagerController::RenderResource::TextureFile::GetFilePath(const std::string& filePath){
+    if (FileHelpers::FileExists(filePath)){
+        return filePath;
+    }
+    
+    const std::string name = FileHelpers::GetFileNameWithoutExtension(filePath);
+    
+    boost::filesystem::path parentDir = boost::filesystem::path(filePath);
+    auto result = FileHelpers::FindFileInDirectoryWithSameNameIgnoreFileType(parentDir.parent_path().string(), name); 
+
+    assert(result.has_value() && "Unable to find matching file!"); 
+
+    return result.value(); 
 }
 
 void star::ManagerController::RenderResource::TextureFile::GetSupportedCompressedTextureFormats(const vk::PhysicalDevice& physicalDevice, std::vector<ktx_transcode_fmt_e>& availableFormats, std::vector<std::string>& availableFormatNames){

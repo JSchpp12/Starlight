@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StarBuffer.hpp"
+#include "StarDevice.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -15,6 +16,9 @@ namespace star::TransferRequest{
     Memory() = default;
 
     virtual T getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const = 0;
+
+    virtual std::unique_ptr<StarBuffer> createTransferSRCBuffer() const; 
+
     ///Handle any operations necessary before a request is made for the creation arguments.
     virtual void beforeCreate() {}; 
     

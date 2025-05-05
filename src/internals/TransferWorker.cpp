@@ -261,10 +261,10 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
         submitInfo.commandBufferCount = 1;
 
         boost::unique_lock<boost::mutex> lock; 
-        vk::Fence fence; 
-        workCompleteFence.giveMeFence(lock, fence);
+        vk::Fence* fence = nullptr; 
+        workCompleteFence.giveMeResource(lock, fence);
 
-        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, fence)); 
+        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, *fence)); 
 
         if (*commandResult != vk::Result::eSuccess){
             //handle error
@@ -286,13 +286,13 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
 
     bool newImageCreated = false; 
     
-    vk::DeviceSize size = createArgs.height * createArgs.width * createArgs.channels * createArgs.depth * createArgs.byteDepth;
     {
         newImageCreated = true; 
 
         auto finalTexture = std::make_unique<StarTexture>(createArgs, device, allocator);
         resultingTexture->swap(finalTexture);
     }
+    vk::DeviceSize size = resultingTexture->get()->getImageMemorySize(); 
 
     auto transferSrcBuffer = std::make_unique<StarBuffer>(
         allocator,
@@ -357,10 +357,10 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
         submitInfo.commandBufferCount = 1;
 
         boost::unique_lock<boost::mutex> lock; 
-        vk::Fence fence; 
-        workCompleteFence.giveMeFence(lock, fence);
+        vk::Fence* fence = nullptr; 
+        workCompleteFence.giveMeResource(lock, fence);
 
-        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, fence)); 
+        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, *fence)); 
 
         if (*commandResult != vk::Result::eSuccess){
             //handle error
@@ -382,10 +382,10 @@ void star::TransferManagerThread::checkForCleanups(vk::Device& device, std::queu
         std::unique_ptr<InProcessRequestDependencies>& deps = inProcessRequests.front();
         {
             boost::unique_lock<boost::mutex> lock; 
-            vk::Fence fence;
-            deps->completeFence->giveMeFence(lock, fence);
+            vk::Fence* fence = nullptr;
+            deps->completeFence->giveMeResource(lock, fence);
 
-            auto fenceResult = device.getFenceStatus(fence);
+            auto fenceResult = device.getFenceStatus(*fence);
             if(fenceResult != vk::Result::eSuccess){
                 stillInProcess.push(std::move(deps));
             }
@@ -408,10 +408,10 @@ void star::TransferManagerThread::readyCommandBuffer(vk::Device& device, const s
     if (commandBufferFences[indexSelected] != nullptr){
         {
             boost::unique_lock<boost::mutex> lock;
-            vk::Fence fence; 
-            commandBufferFences[indexSelected]->giveMeFence(lock, fence);
+            vk::Fence* fence = nullptr; 
+            commandBufferFences[indexSelected]->giveMeResource(lock, fence);
     
-            auto result = device.waitForFences(fence, true, UINT64_MAX);
+            auto result = device.waitForFences(*fence, true, UINT64_MAX);
            
             if (result != vk::Result::eSuccess)
                 throw std::runtime_error("Failed to wait for fence"); 
@@ -525,10 +525,10 @@ void star::TransferWorker::update(){
 void star::TransferWorker::checkFenceStatus(TransferManagerThread::InterThreadRequest& request){
     {
         boost::unique_lock<boost::mutex> lock;
-        vk::Fence fence; 
-        request.completeFence->giveMeFence(lock, fence);
+        vk::Fence* fence = nullptr; 
+        request.completeFence->giveMeResource(lock, fence);
 
-        assert(this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess && "Fences MUST be submitting in a signaled state to the worker");
+        assert(this->device.getDevice().getFenceStatus(*fence) == vk::Result::eSuccess && "Fences MUST be submitting in a signaled state to the worker");
     }
 
     for(auto& thread : this->threads){
@@ -539,9 +539,9 @@ void star::TransferWorker::checkFenceStatus(TransferManagerThread::InterThreadRe
     //check if in use by threads
     {
         boost::unique_lock<boost::mutex> lock;
-        vk::Fence fence;
-        request.completeFence->giveMeFence(lock, fence);
-        this->device.getDevice().resetFences(std::vector<vk::Fence>{fence});
+        vk::Fence* fence = nullptr;
+        request.completeFence->giveMeResource(lock, fence);
+        this->device.getDevice().resetFences(std::vector<vk::Fence>{*fence});
     }
 }
 
@@ -563,10 +563,10 @@ void star::TransferWorker::checkForCleanups(){
 
             {
                 boost::unique_lock<boost::mutex> lock;
-                vk::Fence fence; 
-                this->requests[i]->completeFence->giveMeFence(lock, fence);
+                vk::Fence* fence = nullptr; 
+                this->requests[i]->completeFence->giveMeResource(lock, fence);
 
-                if (this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess){
+                if (this->device.getDevice().getFenceStatus(*fence) == vk::Result::eSuccess){
                     this->requests[i].reset();
                 }
             }

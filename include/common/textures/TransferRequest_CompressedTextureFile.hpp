@@ -2,9 +2,9 @@
 
 #include "TransferRequest_Memory.hpp"
 #include "StarTexture.hpp"
+#include "SharedCompressedTexture.hpp"
 
 #include <ktx.h>
-#include <ktxvulkan.h>
 
 #include <vector>
 #include <memory>
@@ -16,9 +16,9 @@ namespace star::TransferRequest{
             std::vector<ktx_transcode_fmt_e>& availableFormats, std::vector<std::string>& availableFormatNames);
 
         StarTexture::TextureCreateSettings getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override;
-        
-        void beforeCreate() override; 
 
+        void beforeCreate() override; 
+        
         void writeData(StarBuffer& buffer) const override; 
 
         void afterCreate() override;
@@ -31,6 +31,7 @@ namespace star::TransferRequest{
         size_t sizeOfCompressedTexture = 0; 
         ktxTexture2* kTexture = nullptr; 
         std::unique_ptr<ktx_transcode_fmt_e> selectedTranscodeFormat = std::unique_ptr<ktx_transcode_fmt_e>();
+        std::unique_ptr<uint8_t> transWidth, transHeight, transChannels; 
 
         static void getTextureInfo(const std::string& imagePath, int& width, int& height, int& channels);
 

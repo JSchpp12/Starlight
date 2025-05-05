@@ -18,20 +18,24 @@
 #include <stack>
 #include <optional>
 #include <set>
-
+#include <vector>
 
 namespace star {
 	class ManagerRenderResource : public StarManager{
 	public:
 		struct FinalizedRenderRequest : public StarManager::FinalizedRequest {
 			std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest = nullptr;
-			std::unique_ptr<StarBuffer> buffer = nullptr; 
+			std::vector<std::unique_ptr<StarBuffer>> buffers = std::vector<std::unique_ptr<StarBuffer>>(); 
 			std::unique_ptr<ManagerController::RenderResource::Texture> textureRequest = nullptr;
-			std::unique_ptr<StarTexture> texture = nullptr;
+			std::vector<std::unique_ptr<StarTexture>> textures = std::vector<std::unique_ptr<StarTexture>>();
 
-			FinalizedRenderRequest(std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest, std::unique_ptr<SharedFence> workingFence) : bufferRequest(std::move(bufferRequest)), StarManager::FinalizedRequest(std::move(workingFence)){}
+			FinalizedRenderRequest(const size_t& numResources, std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest, std::unique_ptr<SharedFence> workingFence) : bufferRequest(std::move(bufferRequest)), StarManager::FinalizedRequest(std::move(workingFence)){
+				this->buffers.resize(numResources);
+			}
 
-			FinalizedRenderRequest(std::unique_ptr<ManagerController::RenderResource::Texture> textureRequest, std::unique_ptr<SharedFence> workingFence) : textureRequest(std::move(textureRequest)), StarManager::FinalizedRequest(std::move(workingFence)){}
+			FinalizedRenderRequest(const size_t& numResources, std::unique_ptr<ManagerController::RenderResource::Texture> textureRequest, std::unique_ptr<SharedFence> workingFence) : textureRequest(std::move(textureRequest)), StarManager::FinalizedRequest(std::move(workingFence)){
+				this->textures.resize(numResources);
+			}
 		};
 
 		static void init(StarDevice& device, TransferWorker& worker, const int& totalNumFramesInFlight); 
@@ -51,9 +55,9 @@ namespace star {
 
 		static void waitForReady(const Handle& handle);
 
-		static StarBuffer& getBuffer(const Handle& handle); 
+		static StarBuffer& getBuffer(const Handle& handle, const size_t& requestIndex = 0); 
 
-		static StarTexture& getTexture(const Handle& handle);
+		static StarTexture& getTexture(const Handle& handle, const size_t& requestIndex = 0);
 
 		static void destroy(const Handle& handle);
 

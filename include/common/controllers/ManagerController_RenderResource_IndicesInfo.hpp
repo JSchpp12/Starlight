@@ -7,7 +7,7 @@ namespace star::ManagerController::RenderResource{
         public:
         IndicesInfo(const std::vector<uint32_t>& indices) : indices(indices){};
 
-        std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override;
+        std::vector<std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>>> createTransferRequests(const vk::PhysicalDevice& physicalDevice) override;
 
         protected:
         const std::vector<uint32_t> indices;

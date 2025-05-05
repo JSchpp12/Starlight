@@ -68,6 +68,14 @@ void star::StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, vk::I
 	this->layout = newLayout; 
 }
 
+vk::DeviceSize star::StarTexture::getImageMemorySize() const {
+	if (this->createSettings.overrideImageMemorySize.has_value()){
+		return this->createSettings.overrideImageMemorySize.value(); 
+	}else{
+		return vk::DeviceSize(this->createSettings.width * this->createSettings.height * this->createSettings.depth * this->createSettings.byteDepth);
+	}
+}
+
 void star::StarTexture::createAllocation(const TextureCreateSettings& createSettings, VmaAllocator& allocator, VmaAllocation& textureMemory, vk::Image& image, const bool& isMutable){
     /* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};

@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <memory>
+#include <vector>
 
 namespace star::ManagerController{
     template <typename T>
@@ -18,7 +19,7 @@ namespace star::ManagerController{
             return true;
         };
 
-        virtual std::unique_ptr<T> createTransferRequest(const vk::PhysicalDevice& device) = 0;
+        virtual std::vector<std::unique_ptr<T>> createTransferRequests(const vk::PhysicalDevice& device) = 0;
         const std::optional<uint8_t>& getFrameInFlightIndexToUpdateOn() const { return frameInFlightIndexToUpdateOn; }
         
         private:

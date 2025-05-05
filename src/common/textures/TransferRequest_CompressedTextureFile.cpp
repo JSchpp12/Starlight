@@ -14,6 +14,12 @@ star::TransferRequest::CompressedTextureFile::CompressedTextureFile(const std::s
 
 star::StarTexture::TextureCreateSettings star::TransferRequest::CompressedTextureFile::getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const{
     StarTexture::TextureCreateSettings createArgs;
+
+    createArgs.width = this->kTexture->baseWidth;
+    createArgs.height = this->kTexture->baseHeight;
+    createArgs.depth = this->kTexture->baseDepth; 
+    createArgs.overrideImageMemorySize = this->kTexture->dataSize;
+    
     return createArgs;
 }
 
@@ -29,16 +35,19 @@ void star::TransferRequest::CompressedTextureFile::beforeCreate() {
 void star::TransferRequest::CompressedTextureFile::writeData(StarBuffer& buffer) const{
     assert(this->kTexture != nullptr && "Invalid k texture. Might have failed transcode.");
 
-    
+
 }
 
 void star::TransferRequest::CompressedTextureFile::afterCreate(){
-
+    if (this->kTexture != nullptr){
+        ktxTexture_Destroy((ktxTexture*)this->kTexture); 
+        this->kTexture = nullptr;
+    }
 }
 
 void star::TransferRequest::CompressedTextureFile::verifyFiles(const std::string& imagePath){
     //check extension on file
-    assert(FileHelpers::GetFileExtension(imagePath) == ".basis");
+    assert(FileHelpers::GetFileExtension(imagePath) == ".ktx2");
 
     //ensure file exists
     assert(FileHelpers::FileExists(imagePath));
@@ -68,8 +77,8 @@ void star::TransferRequest::CompressedTextureFile::setTranscodeTargetFormat(){
 
 
 void star::TransferRequest::CompressedTextureFile::loadKTX(){
-    KTX_error_code result = ktxTexture_CreateFromNamedFile(this->imagePath.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, (ktxTexture **) &this->kTexture); 
-
+    KTX_error_code result = ktxTexture_CreateFromNamedFile(this->imagePath.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, reinterpret_cast<ktxTexture **>(&this->kTexture)); 
+    
     if (result != KTX_SUCCESS){
         throw std::runtime_error("Could not load the requested image file"); 
     }

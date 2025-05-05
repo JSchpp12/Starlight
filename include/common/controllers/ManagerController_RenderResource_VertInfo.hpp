@@ -8,7 +8,7 @@ namespace star::ManagerController::RenderResource{
         public:
         VertInfo(const std::vector<Vertex> vertices) : vertices(vertices){}
 
-        std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override;
+        std::vector<std::unique_ptr<TransferRequest::Memory<StarBuffer::BufferCreationArgs>>> createTransferRequests(const vk::PhysicalDevice& physicalDevice) override;
 
         protected:
         const std::vector<Vertex> vertices;

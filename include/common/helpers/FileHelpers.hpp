@@ -12,10 +12,10 @@
 
 namespace star {
 struct FileHelpers {
-    static bool FileExists(const std::string& pathToFile);
+    static bool FileExists(const std::string& filePath);
 
     ///Search through directory where the provided file is located, and see if another file exists of the same name, just different type/extension
-    static std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const std::string& fullFilePath, const std::string& name); 
+    static std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const std::string& directoryPath, const std::string& name); 
 
     static std::string ReadFile(std::string pathToFile, bool includeCarriageReturns = true) {
         std::string line, text;

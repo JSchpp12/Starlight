@@ -11,13 +11,15 @@
 namespace star::ManagerController::RenderResource{
     class TextureFile : public star::ManagerController::RenderResource::Texture{
         public:
-        TextureFile(const std::string& filePath);
+        TextureFile(const std::string& nFilePath);
 
-        virtual std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override; 
+        virtual std::vector<std::unique_ptr<TransferRequest::Memory<StarTexture::TextureCreateSettings>>> createTransferRequests(const vk::PhysicalDevice& physicalDevice) override; 
 
         protected:
-        const bool isCompressedTexture; 
-        const std::string filePath; 
+        bool isCompressedTexture; 
+        std::string filePath; 
+
+        static std::string GetFilePath(const std::string& filePath); 
 
         static bool IsCompressedFileType(const std::string& filePath); 
 

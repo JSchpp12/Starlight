@@ -2,10 +2,13 @@
 
 #include "TransferRequest_LightInfo.hpp"
 
-std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::ManagerController::RenderResource::LightInfo::createTransferRequest(const vk::PhysicalDevice& physicalDevice){
+std::vector<std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>>> star::ManagerController::RenderResource::LightInfo::createTransferRequests(const vk::PhysicalDevice& physicalDevice){
     this->lastWriteNumLights = this->lights.size();
 
-    return std::make_unique<TransferRequest::LightInfo>(this->lights);
+    auto result = std::vector<std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>>>(); 
+    result.emplace_back(std::make_unique<TransferRequest::LightInfo>(this->lights)); 
+
+    return result;
 }
 
 bool star::ManagerController::RenderResource::LightInfo::isValid(const uint8_t& currentFrameInFlightIndex) const{
