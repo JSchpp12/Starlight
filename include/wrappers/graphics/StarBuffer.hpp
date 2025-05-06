@@ -19,15 +19,17 @@ public:
 		VmaMemoryUsage memoryUsageFlags;
 		vk::BufferUsageFlags useFlags;
 		vk::SharingMode sharingMode;
+		vk::DeviceSize minOffsetAlignment = 1; 
 		std::string allocationName = "BufferDefaultName";
 
 		BufferCreationArgs() = default;
 
 		BufferCreationArgs(const vk::DeviceSize& instanceSize,
 			const uint32_t& instanceCount, const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
-			const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName) 
+			const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName, 
+			const vk::DeviceSize& minOffsetAlignment = 1) 
 			: instanceSize(instanceSize), instanceCount(instanceCount), creationFlags(creationFlags), memoryUsageFlags(memoryUsageFlags),
-			useFlags(useFlags), sharingMode(sharingMode), allocationName(allocationName){};
+			useFlags(useFlags), sharingMode(sharingMode), allocationName(allocationName), minOffsetAlignment(minOffsetAlignment){};
 	};
 
 	static vk::DeviceSize getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
@@ -36,6 +38,9 @@ public:
 		const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
 		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName, 
 		vk::DeviceSize minOffsetAlignment = 1);
+
+	StarBuffer(VmaAllocator& allocator, const BufferCreationArgs& creationArgs); 
+
 	~StarBuffer();
 
 	//prevent copying
@@ -62,7 +67,6 @@ public:
 	vk::DeviceSize getInstanceSize() const { return instanceSize; }
 	vk::DeviceSize getAlignmentSize() const { return alignmentSize; }
 	vk::BufferUsageFlags getUsageFlags() const { return usageFlags; }
-	vk::MemoryPropertyFlags getMemoryPropertyFlags() const { return memoryPropertyFlags; }
 	vk::DeviceSize getBufferSize() const { return bufferSize; }
 
 private:
@@ -76,7 +80,6 @@ private:
 	uint32_t instanceCount;
 	vk::DeviceSize instanceSize, alignmentSize;
 	vk::BufferUsageFlags usageFlags;
-	vk::MemoryPropertyFlags memoryPropertyFlags;
 
 	std::unique_ptr<VmaAllocationInfo> allocationInfo = nullptr;
 

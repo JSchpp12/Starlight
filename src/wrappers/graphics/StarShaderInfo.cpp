@@ -21,17 +21,30 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const int& index){
 
     if (shaderInfos[index].bufferInfo.has_value()) {
         const auto& info = shaderInfos[index].bufferInfo.value();
-        if (!ManagerRenderResource::isReady(info.handle)){
-            ManagerRenderResource::waitForReady(info.handle);
-        }
-        const auto& buffer = star::ManagerRenderResource::getBuffer(info.handle);
+        if (info.handle.has_value()){
 
-        auto bufferInfo = vk::DescriptorBufferInfo{
-            buffer.getVulkanBuffer(),
-            0,
-            buffer.getBufferSize()
-        };
-        this->descriptorWriter->writeBuffer(index, bufferInfo);
+            if (!ManagerRenderResource::isReady(info.handle.value())){
+                ManagerRenderResource::waitForReady(info.handle.value());
+            }
+            const auto& buffer = star::ManagerRenderResource::getBuffer(info.handle.value());
+    
+            auto bufferInfo = vk::DescriptorBufferInfo{
+                buffer.getVulkanBuffer(),
+                0,
+                buffer.getBufferSize()
+            };
+            this->descriptorWriter->writeBuffer(index, bufferInfo);
+        }else if (info.buffer.has_value()){
+            auto bufferInfo = vk::DescriptorBufferInfo{
+                info.buffer.value()->getVulkanBuffer(),
+                0,
+                info.buffer.value()->getBufferSize()
+            };
+            this->descriptorWriter->writeBuffer(index, bufferInfo); 
+        }else{
+            std::cerr << "Invalid buffer info provided to shader builder" << std::endl;
+            throw std::runtime_error("Invalid buffer info provided to shader builder"); 
+        }
     }
     else if (shaderInfos[index].textureInfo.has_value()) {
         const StarTexture* texture = nullptr; 
@@ -89,9 +102,9 @@ bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
     for (const auto& set : this->shaderInfoSets[frameInFlight]){
         for (int i = 0; i < set->shaderInfos.size(); i++){
             if (set->shaderInfos.at(i).willCheckForIfReady){
-                if (set->shaderInfos.at(i).bufferInfo.has_value()){
-                    if (!ManagerRenderResource::isReady(set->shaderInfos.at(i).bufferInfo.value().handle))
-                    return false;
+                if (set->shaderInfos.at(i).bufferInfo.has_value() && set->shaderInfos.at(i).bufferInfo.value().handle.has_value()){
+                    if (!ManagerRenderResource::isReady(set->shaderInfos.at(i).bufferInfo.value().handle.value()))
+                        return false;
                 }else if (set->shaderInfos.at(i).textureInfo.has_value()){
                     if (set->shaderInfos.at(i).textureInfo.value().handle.has_value() && !ManagerRenderResource::isReady(set->shaderInfos.at(i).textureInfo.value().handle.value())){
                         return false;
@@ -120,19 +133,20 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int & 
             set->build();
         else{
             for (int i = 0; i < set->shaderInfos.size(); i++) {
-                if (set->shaderInfos.at(i).bufferInfo.has_value()) {
+                if (set->shaderInfos.at(i).bufferInfo.has_value() && set->shaderInfos.at(i).bufferInfo.value().handle.has_value()) {
                     //check if buffer has changed
-                    auto& info = set->shaderInfos.at(i).bufferInfo.value();
-                    ManagerRenderResource::waitForReady(info.handle);
-                    if (!ManagerRenderResource::isReady(info.handle))
-                        ManagerRenderResource::waitForReady(info.handle);
+                    auto& info = set->shaderInfos.at(i).bufferInfo.value(); 
+                    auto& handle = set->shaderInfos.at(i).bufferInfo.value().handle.value();
+                    ManagerRenderResource::waitForReady(handle);
+                    if (!ManagerRenderResource::isReady(handle))
+                        ManagerRenderResource::waitForReady(handle);
                         
-                    const auto& buffer = ManagerRenderResource::getBuffer(info.handle).getVulkanBuffer();
-                    if (!info.currentBuffer || info.currentBuffer != buffer){
+                    const auto& buffer = ManagerRenderResource::getBuffer(handle).getVulkanBuffer();
+                    if (!info.currentBuffer.has_value() || info.currentBuffer.value() != buffer){
                         info.currentBuffer = buffer;
                         set->buildIndex(i);
                     }
-                }else if (set->shaderInfos.at(i).textureInfo.value().handle.has_value()){
+                }else if (set->shaderInfos.at(i).textureInfo.has_value() && set->shaderInfos.at(i).textureInfo.value().handle.has_value()){
                     auto& info = set->shaderInfos.at(i).textureInfo.value();
 
                     const auto& texture = ManagerRenderResource::getTexture(info.handle.value()).getImage();

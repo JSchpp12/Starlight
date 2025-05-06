@@ -3,11 +3,13 @@
 #include "StarDescriptorBuilders.hpp"
 #include "StarDevice.hpp"
 #include "StarTexture.hpp"
+#include "StarBuffer.hpp"
 
 #include "Handle.hpp"
 
 #include <memory>
 #include <vector>
+#include <optional>
 
 namespace star {
 	class StarShaderInfo {
@@ -17,8 +19,12 @@ namespace star {
 				BufferInfo(const Handle& handle, const vk::Buffer& currentBuffer)
 				: handle(handle), currentBuffer(currentBuffer){}
 
+				BufferInfo(const StarBuffer* buffer)
+				: buffer(buffer){}
+
 				explicit BufferInfo(const Handle& handle) : handle(handle){}
-				Handle handle;
+				std::optional<const StarBuffer*> buffer = std::nullopt;
+				std::optional<Handle> handle = std::nullopt;
 				std::optional<vk::Buffer> currentBuffer = std::nullopt;
 			};
 
@@ -125,6 +131,11 @@ namespace star {
 
 			Builder& add(const Handle& bufferHandle, const bool willCheckForIfReady) {
 				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, willCheckForIfReady));
+				return *this;
+			};
+
+			Builder& add(const StarBuffer& buffer){
+				this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{&buffer}, false));
 				return *this;
 			};
 

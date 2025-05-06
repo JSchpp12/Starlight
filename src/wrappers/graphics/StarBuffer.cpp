@@ -5,7 +5,7 @@
 */
 
 namespace star {
-	vk::DeviceSize StarBuffer::getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment) {
+vk::DeviceSize StarBuffer::getAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment) {
 	if (minOffsetAlignment > 0) {
 		return  (instanceSize + minOffsetAlignment - 1) & ~(minOffsetAlignment - 1);
 	}
@@ -15,12 +15,12 @@ namespace star {
 StarBuffer::StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 	const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
 	const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName,
-	vk::DeviceSize minOffsetAlignment) :
-	allocator(allocator),
+	vk::DeviceSize minOffsetAlignment) 
+	: allocator(allocator),
 	usageFlags{useFlags},
 	instanceSize{ instanceSize },
-	instanceCount{ instanceCount },
-	memoryPropertyFlags{ memoryPropertyFlags } {
+	instanceCount{ instanceCount }
+{
 
 	this->alignmentSize = getAlignment(this->instanceSize, minOffsetAlignment);
 	this->bufferSize = this->alignmentSize * instanceCount;
@@ -30,6 +30,33 @@ StarBuffer::StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uin
 
 	VmaAllocationInfo allocationInfo{}; 
 	createBuffer(allocator, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, this->buffer, this->memory, allocationInfo, allocationName);
+
+	this->allocationInfo = std::make_unique<VmaAllocationInfo>(allocationInfo);
+}
+
+StarBuffer::StarBuffer(VmaAllocator& allocator, const StarBuffer::BufferCreationArgs& creationArgs)
+	: allocator(allocator), 
+	usageFlags(creationArgs.creationFlags), 
+	instanceSize(creationArgs.instanceSize),
+	instanceCount(creationArgs.instanceCount)
+{
+	this->alignmentSize = getAlignment(this->instanceSize, creationArgs.minOffsetAlignment); 
+	this->bufferSize = this->alignmentSize * this->instanceCount; 
+
+	if (bufferSize == 0)
+		throw std::runtime_error("Unable to create a buffer of size 0");
+
+	VmaAllocationInfo allocationInfo{}; 
+	createBuffer(
+		allocator, 
+		this->bufferSize, 
+		creationArgs.useFlags, 
+		creationArgs.memoryUsageFlags, 
+		creationArgs.creationFlags, 
+		this->buffer, 
+		this->memory, 
+		allocationInfo, 
+		creationArgs.allocationName);
 
 	this->allocationInfo = std::make_unique<VmaAllocationInfo>(allocationInfo);
 }
