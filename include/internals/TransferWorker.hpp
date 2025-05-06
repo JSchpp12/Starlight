@@ -105,7 +105,7 @@ namespace star{
 
         static std::vector<vk::Queue> createTransferQueues(star::StarDevice& device, const uint32_t& dedicatedTransferQueueFamilyIndex); 
 
-        static void transitionImageLayout(vk::Image& image, vk::CommandBuffer& commandBuffer, const vk::Format& format, const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout);
+        static void transitionImageLayout(StarTexture& image, vk::CommandBuffer& commandBuffer, const vk::Format& format, const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout);
     };
 
     class TransferWorker {

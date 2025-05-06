@@ -132,7 +132,7 @@ std::vector<vk::Queue> star::TransferManagerThread::createTransferQueues(star::S
     return queues;
 }
 
-void star::TransferManagerThread::transitionImageLayout(vk::Image &image, vk::CommandBuffer &commandBuffer, const vk::Format &format, const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout)
+void star::TransferManagerThread::transitionImageLayout(StarTexture &image, vk::CommandBuffer &commandBuffer, const vk::Format &format, const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout)
 {
 	//create a barrier to prevent pipeline from moving forward until image transition is complete
 	vk::ImageMemoryBarrier barrier{};
@@ -144,10 +144,10 @@ void star::TransferManagerThread::transitionImageLayout(vk::Image &image, vk::Co
 	barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
 	barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
-	barrier.image = image;
+	barrier.image = image.getImage();
 	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-	barrier.subresourceRange.levelCount = 1;                            //image is not an array
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = image.getMipMapLevels();
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
 
@@ -309,13 +309,11 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
         commandBuffer.begin(beginInfo);
     }
     {
-        auto vulkanImage = resultingTexture->get()->getImage();
-    
-        transitionImageLayout(vulkanImage, commandBuffer, createArgs.baseFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+        transitionImageLayout(*resultingTexture->get(), commandBuffer, createArgs.baseFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
     
         newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(), commandBuffer);
     
-        transitionImageLayout(vulkanImage, commandBuffer, createArgs.baseFormat, vk::ImageLayout::eTransferDstOptimal, createArgs.initialLayout);
+        transitionImageLayout(*resultingTexture->get(), commandBuffer, createArgs.baseFormat, vk::ImageLayout::eTransferDstOptimal, createArgs.initialLayout);
     }
 
     commandBuffer.end();

@@ -26,6 +26,7 @@ star::StarTexture::TextureCreateSettings star::TransferRequest::CompressedTextur
         createArgs.textureFilteringMode = StarTexture::SelectTextureFiltering(this->deviceProperties);
         createArgs.allocationName = star::FileHelpers::GetFileNameWithExtension(this->compressedTexture->getPathToFile());
         createArgs.createSampler = true; 
+        createArgs.mipMapLevels = texture->numLevels;
     }
 
     

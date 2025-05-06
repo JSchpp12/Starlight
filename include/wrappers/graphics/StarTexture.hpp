@@ -28,14 +28,14 @@ namespace star{
                 const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
                 const bool& isMutable, const bool& createSampler, const vk::MemoryPropertyFlags& requiredMemoryProperties, 
                 const float& anisotropyLevel, const vk::Filter& textureFilteringMode, const std::string& allocationName, 
-                const std::optional<vk::DeviceSize>& overrideImageMemorySize = std::nullopt) 
+                const std::optional<vk::DeviceSize>& overrideImageMemorySize = std::nullopt, int mipMapLevels = 1) 
                 : width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
                 usage(imageUsage), baseFormat(imageFormat), additionalViewFormats(additionalViewFormats),
                 allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
                 isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), 
                 aspectFlags(imageAspectFlags), requiredMemoryProperties(requiredMemoryProperties), 
                 anisotropyLevel(anisotropyLevel), textureFilteringMode(textureFilteringMode), allocationName(allocationName), 
-                overrideImageMemorySize(overrideImageMemorySize){ }
+                overrideImageMemorySize(overrideImageMemorySize), mipMapLevels(mipMapLevels){ }
 
             ~TextureCreateSettings() = default; 
 
@@ -54,6 +54,7 @@ namespace star{
             std::optional<vk::MemoryPropertyFlags> requiredMemoryProperties = std::nullopt; 
             std::optional<vk::DeviceSize> overrideImageMemorySize = std::nullopt;
             float anisotropyLevel = 1.0f;
+            int mipMapLevels = 1; 
             vk::Filter textureFilteringMode = vk::Filter::eNearest;
             std::string allocationName = "TextureDefaultName";
         }; 
@@ -79,6 +80,7 @@ namespace star{
         const int getHeight() const { return this->createSettings.height; };
         const int getChannels() const { return this->createSettings.channels; }
         const int getDepth() const { return this->createSettings.depth; }
+        const int getMipMapLevels() const {return this->createSettings.mipMapLevels;}
         const bool isVulkanImageReady() const {return this->textureImage;}
         vk::DeviceSize getImageMemorySize() const; 
 
@@ -97,7 +99,7 @@ namespace star{
 
         void createTextureImageView(const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags);
 
-        vk::ImageView createImageView(vk::Device& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags); 
+        vk::ImageView createImageView(vk::Device& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags, const int& mipMapLevels); 
 
         static vk::Sampler createImageSampler(vk::Device& device, const TextureCreateSettings& createSettings); 
     };

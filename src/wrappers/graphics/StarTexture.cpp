@@ -51,7 +51,8 @@ star::StarTexture::~StarTexture(){
 
 star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, VmaAllocator& allocator) : createSettings(createSettings), allocator(&allocator), device(device){
 	assert(this->allocator != nullptr && "Allocator must always exist");
-
+	assert(createSettings.mipMapLevels == 1 || (createSettings.mipMapLevels != 1 && createSettings.overrideImageMemorySize.has_value()) && "If using mip maps, total size must be overriden");
+	
 	bool isMutable = false; 
 	if (this->createSettings.additionalViewFormats.size() > 0)
 		isMutable = true; 
@@ -130,7 +131,7 @@ void star::StarTexture::createAllocation(const TextureCreateSettings& createSett
 	imageInfo.extent.width = createSettings.width;
 	imageInfo.extent.height = createSettings.height;
 	imageInfo.extent.depth = createSettings.depth;
-	imageInfo.mipLevels = 1;
+	imageInfo.mipLevels = createSettings.mipMapLevels;
 	imageInfo.arrayLayers = 1;
 	imageInfo.format = createSettings.baseFormat;
 	imageInfo.tiling = vk::ImageTiling::eOptimal;
@@ -174,12 +175,12 @@ vk::ImageView star::StarTexture::getImageView(const vk::Format* requestedFormat)
 
 void star::StarTexture::createTextureImageView(const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
 	if (this->imageViews.find(viewFormat) == this->imageViews.end()){
-		vk::ImageView imageView = createImageView(this->device, this->textureImage, viewFormat, aspectFlags);
+		vk::ImageView imageView = createImageView(this->device, this->textureImage, viewFormat, aspectFlags, this->createSettings.mipMapLevels);
 		this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
 	}
 }
 
-vk::ImageView star::StarTexture::createImageView(vk::Device& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags) {
+vk::ImageView star::StarTexture::createImageView(vk::Device& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags, const int& mipMapLevels) {
 	vk::ImageViewCreateInfo viewInfo{};
 	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
 	viewInfo.image = image;
@@ -192,7 +193,7 @@ vk::ImageView star::StarTexture::createImageView(vk::Device& device, vk::Image i
 
 	viewInfo.subresourceRange.aspectMask = aspectFlags;
 	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.levelCount = mipMapLevels;
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
