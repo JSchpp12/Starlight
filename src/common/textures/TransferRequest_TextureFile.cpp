@@ -13,11 +13,11 @@ star::TransferRequest::TextureFile::TextureFile(const std::string& imagePath, co
     assert(star::FileHelpers::FileExists(this->imagePath) && "Provided path does not exist");
 }
 
-star::StarTexture::TextureCreateSettings star::TransferRequest::TextureFile::getCreateArgs() const{
+star::StarTexture::RawTextureCreateSettings star::TransferRequest::TextureFile::getCreateArgs() const{
     int width, height, channels = 0;
     GetTextureInfo(this->imagePath, width, height, channels);
 
-    auto iSet = star::StarTexture::TextureCreateSettings{};
+    auto iSet = star::StarTexture::RawTextureCreateSettings{};
     iSet.width = width;
     iSet.height = height; 
     iSet.channels = 4;      //overriding the channels to 4 for simplicity

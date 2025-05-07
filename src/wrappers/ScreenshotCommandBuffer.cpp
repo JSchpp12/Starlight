@@ -274,7 +274,7 @@ std::unique_ptr<star::StarImage> star::ScreenshotBuffer::createNewCopyToImage(st
 // 		"screenshotTargetTexture",
 // 	});
 
-	StarTexture::TextureCreateSettings imSetting = StarTexture::TextureCreateSettings(); 
+	StarTexture::RawTextureCreateSettings imSetting = StarTexture::RawTextureCreateSettings(); 
 	imSetting.width = static_cast<int>(screensize.width); 
 	imSetting.height = static_cast<int>(screensize.height); 
 	imSetting.channels = 4; 

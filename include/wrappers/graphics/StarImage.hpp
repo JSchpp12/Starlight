@@ -14,13 +14,13 @@ namespace star {
 	///"Smarter" version of StarTexture which automatically creates and loads data...
 class StarImage{
 public:
-	StarImage(const StarTexture::TextureCreateSettings& createSettings, vk::Device& device,
+	StarImage(const StarTexture::RawTextureCreateSettings& createSettings, vk::Device& device,
 		const vk::Image& image) 
 		: createSettings(createSettings), texture(std::make_unique<StarTexture>(createSettings, device, image))
 	{
 	}
 
-	StarImage(StarTexture::TextureCreateSettings createSettings) : createSettings(createSettings)
+	StarImage(StarTexture::RawTextureCreateSettings createSettings) : createSettings(createSettings)
 	{
 	}
 
@@ -35,7 +35,7 @@ public:
 	vk::Image getImage() const { return this->texture->getImage(); }
 	vk::ImageLayout getCurrentLayout() const { return this->texture->getCurrentLayout(); }
 	void overrideImageLayout(vk::ImageLayout newLayout) { this->texture->overrideImageLayout(newLayout); }
-	const StarTexture::TextureCreateSettings& getSettings() {return this->createSettings;}
+	const StarTexture::RawTextureCreateSettings& getSettings() {return this->createSettings;}
 
 
 
@@ -47,7 +47,7 @@ public:
 	//}
 protected:
 	//TODO: this is stored in two places, dont need both
-	const StarTexture::TextureCreateSettings createSettings;
+	const StarTexture::RawTextureCreateSettings createSettings;
 	std::unique_ptr<StarTexture> texture = nullptr; 
 
 	virtual std::unique_ptr<StarBuffer> loadImageData(StarDevice& device) {

@@ -29,7 +29,7 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
 {
 	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	auto imSetting = star::StarTexture::TextureCreateSettings{}; 
+	auto imSetting = star::StarTexture::RawTextureCreateSettings{}; 
 	imSetting.width = static_cast<int>(this->swapChainExtent->width);
 	imSetting.height = static_cast<int>(this->swapChainExtent->height);
 	imSetting.channels = 4;
@@ -60,7 +60,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 
 	const vk::Format depthFormat = this->findDepthFormat(device); 
 
-	auto imSetting = star::StarTexture::TextureCreateSettings{}; 
+	auto imSetting = star::StarTexture::RawTextureCreateSettings{}; 
 	imSetting.width = static_cast<int>(this->swapChainExtent->width);
 	imSetting.height = static_cast<int>(this->swapChainExtent->height);
 	imSetting.depth = 1; 

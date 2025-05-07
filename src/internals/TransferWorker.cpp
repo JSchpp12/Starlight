@@ -268,7 +268,7 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
 }
 
 void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Texture* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
-    StarTexture::TextureCreateSettings createArgs = newTextureRequest->getCreateArgs();
+    StarTexture::RawTextureCreateSettings createArgs = newTextureRequest->getCreateArgs();
     createArgs.usage |= vk::ImageUsageFlagBits::eTransferDst;
 
     bool newImageCreated = false; 

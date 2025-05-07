@@ -49,7 +49,7 @@ star::StarTexture::~StarTexture(){
 	}
 }
 
-star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, VmaAllocator& allocator) : createSettings(createSettings), allocator(&allocator), device(device){
+star::StarTexture::StarTexture(const RawTextureCreateSettings& createSettings, vk::Device& device, VmaAllocator& allocator) : createSettings(createSettings), allocator(&allocator), device(device){
 	assert(this->allocator != nullptr && "Allocator must always exist");
 	assert(createSettings.mipMapLevels == 1 || (createSettings.mipMapLevels != 1 && createSettings.overrideImageMemorySize.has_value()) && "If using mip maps, total size must be overriden");
 	
@@ -68,7 +68,7 @@ star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::
 		this->textureSampler = this->createImageSampler(device, this->createSettings);
 }
 
-star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, const vk::Image& textureImage) : createSettings(createSettings), textureImage(textureImage), device(device){
+star::StarTexture::StarTexture(const RawTextureCreateSettings& createSettings, vk::Device& device, const vk::Image& textureImage) : createSettings(createSettings), textureImage(textureImage), device(device){
 	this->createTextureImageView(this->createSettings.baseFormat, this->createSettings.aspectFlags);
 	for (const auto& viewFormat : this->createSettings.additionalViewFormats){
 		this->createTextureImageView(viewFormat, createSettings.aspectFlags); 
@@ -113,7 +113,7 @@ vk::DeviceSize star::StarTexture::getImageMemorySize() const {
 	}
 }
 
-void star::StarTexture::createAllocation(const TextureCreateSettings& createSettings, VmaAllocator& allocator, VmaAllocation& textureMemory, vk::Image& image, const bool& isMutable){
+void star::StarTexture::createAllocation(const RawTextureCreateSettings& createSettings, VmaAllocator& allocator, VmaAllocation& textureMemory, vk::Image& image, const bool& isMutable){
     /* Create vulkan image */
 	vk::ImageCreateInfo imageInfo{};
 	imageInfo.sType = vk::StructureType::eImageCreateInfo;
@@ -131,7 +131,7 @@ void star::StarTexture::createAllocation(const TextureCreateSettings& createSett
 	imageInfo.extent.width = createSettings.width;
 	imageInfo.extent.height = createSettings.height;
 	imageInfo.extent.depth = createSettings.depth;
-	imageInfo.mipLevels = createSettings.mipMapLevels;
+	imageInfo.mipLevels = 1 ? !createSettings.mipmapInfo.has_value() : createSettings.mipmapInfo.value().numLevels;
 	imageInfo.arrayLayers = 1;
 	imageInfo.format = createSettings.baseFormat;
 	imageInfo.tiling = vk::ImageTiling::eOptimal;
@@ -139,7 +139,6 @@ void star::StarTexture::createAllocation(const TextureCreateSettings& createSett
 	imageInfo.usage = createSettings.usage;
 	imageInfo.samples = vk::SampleCountFlagBits::e1;
 	imageInfo.sharingMode = vk::SharingMode::eExclusive;
-
 
     VmaAllocationCreateInfo allocInfo{};
     allocInfo.flags = createSettings.allocationCreateFlags;
@@ -175,7 +174,9 @@ vk::ImageView star::StarTexture::getImageView(const vk::Format* requestedFormat)
 
 void star::StarTexture::createTextureImageView(const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
 	if (this->imageViews.find(viewFormat) == this->imageViews.end()){
-		vk::ImageView imageView = createImageView(this->device, this->textureImage, viewFormat, aspectFlags, this->createSettings.mipMapLevels);
+		int mipLevels = 0 ? !this->createSettings.mipmapInfo.has_value() : this->createSettings.mipmapInfo.value().numLevels; 
+
+		vk::ImageView imageView = createImageView(this->device, this->textureImage, viewFormat, aspectFlags, mipLevels);
 		this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
 	}
 }
@@ -206,7 +207,7 @@ vk::ImageView star::StarTexture::createImageView(vk::Device& device, vk::Image i
 	return imageView;
 }
 
-vk::Sampler star::StarTexture::createImageSampler(vk::Device& device, const star::StarTexture::TextureCreateSettings& createSettings){
+vk::Sampler star::StarTexture::createImageSampler(vk::Device& device, const star::StarTexture::RawTextureCreateSettings& createSettings){
 	vk::SamplerCreateInfo samplerInfo{}; 
 	samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
 
@@ -223,7 +224,6 @@ vk::Sampler star::StarTexture::createImageSampler(vk::Device& device, const star
 	samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
 	samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
 
-	
 	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	//specifies coordinate system to use in addressing texels. 
 	//VK_TRUE - use coordinates [0, texWidth) and [0, texHeight]
@@ -233,12 +233,21 @@ vk::Sampler star::StarTexture::createImageSampler(vk::Device& device, const star
 	//if comparing, the texels will first compare to a value, the result of the comparison is used in filtering operations (percentage-closer filtering on shadow maps)
 	samplerInfo.compareEnable = VK_FALSE;
 	samplerInfo.compareOp = vk::CompareOp::eAlways;
-	
-	//following apply to mipmapping -- not using here
-	samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
+
+	if (!createSettings.mipmapInfo.has_value()){
+		//not using mipmaps
+		samplerInfo.mipmapMode 	= vk::SamplerMipmapMode::eLinear;
+		samplerInfo.mipLodBias 	= 0.0f;
+		samplerInfo.minLod 		= 0.0f;
+		samplerInfo.maxLod 		= 0.0f;
+	}else{
+		assert(createSettings.mipmapInfo.value().samplerSettings.has_value() && "Sampler settings were not created for the mipmap info"); 
+		
+		samplerInfo.mipmapMode 	= createSettings.mipmapInfo.value().samplerSettings.value().samplerMode; 
+		samplerInfo.mipLodBias 	= createSettings.mipmapInfo.value().samplerSettings.value().samplerLodBias;
+		samplerInfo.minLod 		= createSettings.mipmapInfo.value().samplerSettings.value().samplerMinLod; 
+		samplerInfo.maxLod 		= createSettings.mipmapInfo.value().samplerSettings.value().samplerMaxLod;
+	}
 
 	vk::Sampler textureSampler = device.createSampler(samplerInfo);
 	if (!textureSampler)

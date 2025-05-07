@@ -237,7 +237,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
 {
 	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	auto settings = StarTexture::TextureCreateSettings(
+	auto settings = StarTexture::RawTextureCreateSettings(
 		this->swapChainExtent->width,
 		this->swapChainExtent->height,
 		4,

@@ -9,7 +9,7 @@ namespace star::TransferRequest{
         public:
         TextureFile(const std::string& imagePath, const vk::PhysicalDeviceProperties& deviceProperties);
 
-        star::StarTexture::TextureCreateSettings getCreateArgs() const override;
+        star::StarTexture::RawTextureCreateSettings getCreateArgs() const override;
 
         void writeData(star::StarBuffer& stagingBuffer) const override;
 

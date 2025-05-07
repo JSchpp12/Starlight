@@ -9,8 +9,8 @@ star::TransferRequest::CompressedTextureFile::CompressedTextureFile(const vk::Ph
 {
 }
 
-star::StarTexture::TextureCreateSettings star::TransferRequest::CompressedTextureFile::getCreateArgs() const{
-    StarTexture::TextureCreateSettings createArgs;
+star::StarTexture::RawTextureCreateSettings star::TransferRequest::CompressedTextureFile::getCreateArgs() const{
+    StarTexture::RawTextureCreateSettings createArgs;
 
     {
         boost::unique_lock<boost::mutex> lock;
@@ -26,7 +26,7 @@ star::StarTexture::TextureCreateSettings star::TransferRequest::CompressedTextur
         createArgs.textureFilteringMode = StarTexture::SelectTextureFiltering(this->deviceProperties);
         createArgs.allocationName = star::FileHelpers::GetFileNameWithExtension(this->compressedTexture->getPathToFile());
         createArgs.createSampler = true; 
-        createArgs.mipMapLevels = texture->numLevels;
+        // createArgs.mipMapLevels = texture->numLevels;
     }
 
     
