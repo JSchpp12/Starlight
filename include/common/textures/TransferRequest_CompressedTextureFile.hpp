@@ -13,8 +13,6 @@ namespace star::TransferRequest{
     class CompressedTextureFile : public TransferRequest::Texture{
         public:
         CompressedTextureFile(const vk::PhysicalDeviceProperties& deviceProperties, std::shared_ptr<SharedCompressedTexture> compressedTexture, const uint8_t& mipMapIndex);
-
-        StarTexture::RawTextureCreateSettings getCreateArgs() const override;
         
         void writeData(StarBuffer& buffer) const override; 
 

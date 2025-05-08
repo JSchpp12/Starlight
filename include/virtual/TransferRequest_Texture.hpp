@@ -6,12 +6,12 @@
 #include <vulkan/vulkan.hpp>
 
 namespace star::TransferRequest{
-    class Texture : private Memory<star::StarTexture::RawTextureCreateSettings>{
+    class Texture : private Memory<star::StarTexture>{
         public:
         Texture() = default; 
         ~Texture() = default; 
 
-        virtual StarTexture::RawTextureCreateSettings getCreateArgs() const override = 0; 
+        virtual std::unique_ptr<star::StarTexture> create() const; 
 
         virtual void writeData(star::StarBuffer& stagingBuffer) const override = 0; 
 

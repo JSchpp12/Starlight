@@ -1,7 +1,7 @@
 #pragma once
 
 #include "StarBuffer.hpp"
-#include "StarCommandBuffer.hpp"
+#include "StarDevice.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -16,7 +16,7 @@ namespace star::TransferRequest{
     Memory() = default;
     ~Memory() = default; 
 
-    virtual T getCreateArgs() const = 0;
+    virtual std::unique_ptr<T> create(StarDevice& device); 
     
     virtual void writeData(StarBuffer& buffer) const = 0; 
 

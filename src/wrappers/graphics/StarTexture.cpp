@@ -1,257 +1,266 @@
 #include "StarTexture.hpp"
 
+
 #include "ConfigFile.hpp"
 
-float star::StarTexture::SelectAnisotropyLevel(const vk::PhysicalDeviceProperties& deviceProperties){
-	std::string anisotropySetting = star::ConfigFile::getSetting(star::Config_Settings::texture_anisotropy);
+#include <cassert>
+#include <stdexcept>
+
+
+float star::StarTexture::SelectAnisotropyLevel(const vk::PhysicalDeviceProperties &deviceProperties)
+{
+    std::string anisotropySetting = star::ConfigFile::getSetting(star::Config_Settings::texture_anisotropy);
     float anisotropyLevel = 1.0f;
 
     if (anisotropySetting == "max")
         anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
-    else{
+    else
+    {
         anisotropyLevel = std::stof(anisotropySetting);
 
-        if (anisotropyLevel > deviceProperties.limits.maxSamplerAnisotropy){
+        if (anisotropyLevel > deviceProperties.limits.maxSamplerAnisotropy)
+        {
             anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
-        }else if (anisotropyLevel < 1.0f){
-            anisotropyLevel = 1.0f; 
+        }
+        else if (anisotropyLevel < 1.0f)
+        {
+            anisotropyLevel = 1.0f;
         }
     }
 
     return anisotropyLevel;
 }
 
-vk::Filter star::StarTexture::SelectTextureFiltering(const vk::PhysicalDeviceProperties& deviceProperties){
-	auto textureFilteringSetting = ConfigFile::getSetting(Config_Settings::texture_filtering);
+vk::Filter star::StarTexture::SelectTextureFiltering(const vk::PhysicalDeviceProperties &deviceProperties)
+{
+    auto textureFilteringSetting = ConfigFile::getSetting(Config_Settings::texture_filtering);
 
     vk::Filter filterType;
-    if (textureFilteringSetting == "nearest"){
+    if (textureFilteringSetting == "nearest")
+    {
         filterType = vk::Filter::eNearest;
-    }else if (textureFilteringSetting == "linear"){
+    }
+    else if (textureFilteringSetting == "linear")
+    {
         filterType = vk::Filter::eLinear;
-    }else{
+    }
+    else
+    {
         throw std::runtime_error("Texture filtering setting must be 'nearest' or 'linear'");
     }
 
-    return filterType; 
+    return filterType;
 }
 
-star::StarTexture::~StarTexture(){
-	if (this->textureSampler)
-		this->device.destroySampler(this->textureSampler);
-		
-	for (auto& item : this->imageViews) {
-		this->device.destroyImageView(item.second);
-	}
+star::StarTexture::~StarTexture()
+{
+    if (this->sampler)
+        this->device.getDevice().destroySampler(this->sampler);
 
-    if (this->allocator && this->textureMemory){
-        vmaDestroyImage(*this->allocator, this->textureImage, this->textureMemory);
-	}
-}
-
-star::StarTexture::StarTexture(const RawTextureCreateSettings& createSettings, vk::Device& device, VmaAllocator& allocator) : createSettings(createSettings), allocator(&allocator), device(device){
-	assert(this->allocator != nullptr && "Allocator must always exist");
-	assert(createSettings.mipMapLevels == 1 || (createSettings.mipMapLevels != 1 && createSettings.overrideImageMemorySize.has_value()) && "If using mip maps, total size must be overriden");
-	
-	bool isMutable = false; 
-	if (this->createSettings.additionalViewFormats.size() > 0)
-		isMutable = true; 
-
-    this->createAllocation(this->createSettings, *this->allocator, this->textureMemory, this->textureImage, isMutable);
-	this->createTextureImageView(this->createSettings.baseFormat, this->createSettings.aspectFlags);
-	
-	for (const auto& viewFormat : this->createSettings.additionalViewFormats){
-		this->createTextureImageView(viewFormat, this->createSettings.aspectFlags);
-	}
-
-	if (this->createSettings.createSampler)
-		this->textureSampler = this->createImageSampler(device, this->createSettings);
-}
-
-star::StarTexture::StarTexture(const RawTextureCreateSettings& createSettings, vk::Device& device, const vk::Image& textureImage) : createSettings(createSettings), textureImage(textureImage), device(device){
-	this->createTextureImageView(this->createSettings.baseFormat, this->createSettings.aspectFlags);
-	for (const auto& viewFormat : this->createSettings.additionalViewFormats){
-		this->createTextureImageView(viewFormat, createSettings.aspectFlags); 
-	}
-}
-
-void star::StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, vk::ImageLayout newLayout, vk::AccessFlags srcFlags, vk::AccessFlags dstFlags, vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage){
-	vk::ImageMemoryBarrier barrier{};
-	barrier.sType = vk::StructureType::eImageMemoryBarrier;
-	barrier.oldLayout = this->layout;
-	barrier.newLayout = newLayout;
-	barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-	barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-
-	barrier.image = this->textureImage;
-	barrier.srcAccessMask = srcFlags;
-	barrier.dstAccessMask = dstFlags;
-
-	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-	barrier.subresourceRange.levelCount = 1;                            //image is not an array
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-
-	commandBuffer.pipelineBarrier(
-		sourceStage,                        //which pipeline stages should occurr before barrier 
-		dstStage,                   //pipeline stage in which operations will wait on the barrier 
-		{},
-		{},
-		nullptr,
-		barrier
-	);
-
-	this->layout = newLayout; 
-}
-
-vk::DeviceSize star::StarTexture::getImageMemorySize() const {
-	if (this->createSettings.overrideImageMemorySize.has_value()){
-		return this->createSettings.overrideImageMemorySize.value(); 
-	}else{
-		return vk::DeviceSize(this->createSettings.width * this->createSettings.height * this->createSettings.depth * this->createSettings.byteDepth);
-	}
-}
-
-void star::StarTexture::createAllocation(const RawTextureCreateSettings& createSettings, VmaAllocator& allocator, VmaAllocation& textureMemory, vk::Image& image, const bool& isMutable){
-    /* Create vulkan image */
-	vk::ImageCreateInfo imageInfo{};
-	imageInfo.sType = vk::StructureType::eImageCreateInfo;
-
-	if (createSettings.depth > 1) {
-		imageInfo.imageType = vk::ImageType::e3D;
-		imageInfo.flags = vk::ImageCreateFlagBits::e2DArrayCompatible;
-	}
-	else
-		imageInfo.imageType = vk::ImageType::e2D;
-
-	if (isMutable)
-		imageInfo.flags = vk::ImageCreateFlagBits::eMutableFormat; 
-
-	imageInfo.extent.width = createSettings.width;
-	imageInfo.extent.height = createSettings.height;
-	imageInfo.extent.depth = createSettings.depth;
-	imageInfo.mipLevels = 1 ? !createSettings.mipmapInfo.has_value() : createSettings.mipmapInfo.value().numLevels;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = createSettings.baseFormat;
-	imageInfo.tiling = vk::ImageTiling::eOptimal;
-	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.usage = createSettings.usage;
-	imageInfo.samples = vk::SampleCountFlagBits::e1;
-	imageInfo.sharingMode = vk::SharingMode::eExclusive;
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.flags = createSettings.allocationCreateFlags;
-    allocInfo.usage = createSettings.memoryUsage;
-
-    if (createSettings.requiredMemoryProperties.has_value()) {
-        allocInfo.requiredFlags = static_cast<VkMemoryPropertyFlags>(createSettings.requiredMemoryProperties.value());
+    for (auto &item : this->views)
+    {
+        this->device.getDevice().destroyImageView(item.second);
     }
 
-    auto result = vmaCreateImage(allocator, (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &textureMemory, nullptr);
+    if (this->allocator.has_value() && this->memory.has_value())
+    {
+        vmaDestroyImage(*this->allocator.value(), this->vulkanImage, this->memory.value());
+    }
+}
 
-    if (result != VK_SUCCESS){
+const vk::ImageView &star::StarTexture::getImageView(const vk::Format *requestedFormat) const
+{
+    if (requestedFormat != nullptr)
+    {
+        // make sure the image view actually exists for the requested format
+        assert(this->views.find(*requestedFormat) != this->views.end() &&
+               "The image must be created with the proper image view before being requested");
+        return this->views.at(*requestedFormat);
+    }
+
+    // just grab the first one
+    for (auto &view : this->views)
+    {
+        return view.second;
+    }
+}
+
+star::StarTexture::StarTexture(StarDevice &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+                               const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
+                               const vk::SamplerCreateInfo &samplerInfo)
+    : device(device), allocator(&allocator), memory(VmaAllocation())
+{
+    CreateAllocation(device.getDevice(), allocator, allocationCreateInfo, createInfo, this->memory.value(),
+                     this->vulkanImage, allocationName);
+
+    this->views = CreateImageViews(device.getDevice(), imageViewInfos);
+    this->sampler = CreateImageSampler(device.getDevice(), samplerInfo);
+}
+
+star::StarTexture::StarTexture(StarDevice &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+                               const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos)
+    : device(device), allocator(&allocator), memory(VmaAllocation())
+{
+    CreateAllocation(device.getDevice(), allocator, allocationCreateInfo, createInfo, this->memory.value(),
+                     this->vulkanImage, allocationName);
+
+    this->views = CreateImageViews(device.getDevice(), imageViewInfos);
+}
+
+star::StarTexture::StarTexture(StarDevice &device, vk::Image &vulkanImage,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
+                               const vk::SamplerCreateInfo &samplerInfo)
+    : device(device), vulkanImage(vulkanImage)
+{
+    this->views = CreateImageViews(device.getDevice(), imageViewInfos);
+    this->sampler = CreateImageSampler(device.getDevice(), samplerInfo);
+}
+
+star::StarTexture::StarTexture(StarDevice &device, vk::Image &vulkanImage,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos)
+    : device(device), vulkanImage(vulkanImage)
+{
+    this->views = CreateImageViews(device.getDevice(), imageViewInfos);
+}
+
+vk::Sampler star::StarTexture::CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo)
+{
+    vk::Sampler sampler = device.createSampler(samplerCreateInfo);
+
+    if (!sampler)
+    {
+        std::cerr << "Failed to create sampler" << std::endl;
+        throw std::runtime_error("Failed to create sampler");
+    }
+
+    return sampler;
+}
+
+void star::StarTexture::CreateAllocation(vk::Device &device, VmaAllocator &allocator,
+                                         const VmaAllocationCreateInfo &allocationCreateInfo,
+                                         const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
+                                         vk::Image &textureImage, const std::string &allocationName)
+{
+    auto result = vmaCreateImage(allocator, (VkImageCreateInfo *)&imageCreateInfo, &allocationCreateInfo,
+                                 (VkImage *)&textureImage, &allocation, nullptr);
+
+    if (result != VK_SUCCESS)
+    {
         throw std::runtime_error("Failed to create image: " + result);
     }
 
-	std::string fullAllocationName = std::string(createSettings.allocationName);
-	fullAllocationName += "_TEXTURE";
-	vmaSetAllocationName(allocator, textureMemory, fullAllocationName.c_str()); 
+    std::string fullAllocationName = std::string(allocationName) + "_TEXTURE";
+    vmaSetAllocationName(allocator, allocation, fullAllocationName.c_str());
 }
 
-vk::ImageView star::StarTexture::getImageView(const vk::Format* requestedFormat) const{
-	if (requestedFormat != nullptr){
-		//make sure the image view actually exists for the requested format
-		assert(this->imageViews.find(*requestedFormat) != this->imageViews.end() && "The image must be created with the proper image view before being requested");
-		return this->imageViews.at(*requestedFormat);
-	}
+std::unordered_map<vk::Format, vk::ImageView> star::StarTexture::CreateImageViews(
+    vk::Device &device, const std::vector<vk::ImageViewCreateInfo> &imageCreateInfos)
+{
+    assert(imageCreateInfos.size() > 0 && "An image view is required for every image");
 
-	//just grab the first one
-	for (auto& view : this->imageViews) {
-		return view.second; 
-	}
+    std::unordered_map<vk::Format, vk::ImageView> nViews = std::unordered_map<vk::Format, vk::ImageView>();
+
+    for (const auto &info : imageCreateInfos)
+    {
+        vk::Format nFormat = info.format;
+        vk::ImageView nView = CreateImageView(device, info);
+
+        nViews.insert(std::make_pair(nFormat, nView));
+    }
+
+    return nViews;
 }
 
-void star::StarTexture::createTextureImageView(const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
-	if (this->imageViews.find(viewFormat) == this->imageViews.end()){
-		int mipLevels = 0 ? !this->createSettings.mipmapInfo.has_value() : this->createSettings.mipmapInfo.value().numLevels; 
+vk::ImageView star::StarTexture::CreateImageView(vk::Device &device, const vk::ImageViewCreateInfo &imageCreateInfo)
+{
+    vk::ImageView imageView = device.createImageView(imageCreateInfo);
 
-		vk::ImageView imageView = createImageView(this->device, this->textureImage, viewFormat, aspectFlags, mipLevels);
-		this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
-	}
+    if (!imageView)
+    {
+        throw std::runtime_error("failed to create texture image view!");
+    }
+
+    return imageView;
 }
 
-vk::ImageView star::StarTexture::createImageView(vk::Device& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags, const int& mipMapLevels) {
-	vk::ImageViewCreateInfo viewInfo{};
-	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
-	viewInfo.image = image;
-	if (this->createSettings.depth > 1)
-		viewInfo.viewType = vk::ImageViewType::e3D;
-	else {
-		viewInfo.viewType = vk::ImageViewType::e2D;
-	}
-	viewInfo.format = format;
-
-	viewInfo.subresourceRange.aspectMask = aspectFlags;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = mipMapLevels;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
-
-	vk::ImageView imageView = device.createImageView(viewInfo);
-
-	if (!imageView) {
-		throw std::runtime_error("failed to create texture image view!");
-	}
-
-	return imageView;
+star::StarTexture::Builder::Builder(star::StarDevice &device, const vk::Image &vulkanImage)
+    : device(device), vulkanImage(vulkanImage)
+{
 }
 
-vk::Sampler star::StarTexture::createImageSampler(vk::Device& device, const star::StarTexture::RawTextureCreateSettings& createSettings){
-	vk::SamplerCreateInfo samplerInfo{}; 
-	samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
+star::StarTexture::Builder::Builder(StarDevice &device, VmaAllocator &allocator)
+    : device(device), createNewAllocationInfo{std::make_optional<Creators>(allocator)}
+{
+}
 
-	if (createSettings.anisotropyLevel != 0.0f){
-		samplerInfo.anisotropyEnable = VK_TRUE;
-		samplerInfo.maxAnisotropy = createSettings.anisotropyLevel;
-	}
+star::StarTexture::Builder &star::StarTexture::Builder::setCreateInfo(const VmaAllocationCreateInfo &nAllocInfo,
+                                                                      const vk::ImageCreateInfo &nCreateInfo,
+                                                                      const std::string &nAllocName)
+{
+    assert(this->createNewAllocationInfo.has_value() && "Must be a builder for a new allocation");
 
-	samplerInfo.magFilter = createSettings.textureFilteringMode;
-	samplerInfo.minFilter = createSettings.textureFilteringMode;
+    this->createNewAllocationInfo.value().createInfo = nCreateInfo;
+    this->createNewAllocationInfo.value().allocationCreateInfo = nAllocInfo;
+    this->createNewAllocationInfo.value().allocationName = nAllocName;
+    return *this;
+}
 
-	//repeat mode - repeat the texture when going beyond the image dimensions
-	samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
-	samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
-	samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
+star::StarTexture::Builder &star::StarTexture::Builder::setViewInfo(const vk::ImageViewCreateInfo &nCreateInfo)
+{
+    this->viewInfos.push_back(nCreateInfo);
+    return *this;
+}
 
-	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
-	//specifies coordinate system to use in addressing texels. 
-	//VK_TRUE - use coordinates [0, texWidth) and [0, texHeight]
-	//VK_FALSE - use [0, 1)
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+star::StarTexture::Builder &star::StarTexture::Builder::setSamplerInfo(const vk::SamplerCreateInfo &nCreateInfo)
+{
+    this->samplerInfo = nCreateInfo;
+    return *this;
+}
 
-	//if comparing, the texels will first compare to a value, the result of the comparison is used in filtering operations (percentage-closer filtering on shadow maps)
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = vk::CompareOp::eAlways;
+std::unique_ptr<star::StarTexture> star::StarTexture::Builder::build()
+{
+    if (this->createNewAllocationInfo.has_value())
+    {
+        // assert(this->createNewAllocationInfo.value().createInfo &&
+        // this->createNewAllocationInfo.value().allocationCreateInfo && "Other build info must be provided for
+        // allocation creation");
 
-	if (!createSettings.mipmapInfo.has_value()){
-		//not using mipmaps
-		samplerInfo.mipmapMode 	= vk::SamplerMipmapMode::eLinear;
-		samplerInfo.mipLodBias 	= 0.0f;
-		samplerInfo.minLod 		= 0.0f;
-		samplerInfo.maxLod 		= 0.0f;
-	}else{
-		assert(createSettings.mipmapInfo.value().samplerSettings.has_value() && "Sampler settings were not created for the mipmap info"); 
-		
-		samplerInfo.mipmapMode 	= createSettings.mipmapInfo.value().samplerSettings.value().samplerMode; 
-		samplerInfo.mipLodBias 	= createSettings.mipmapInfo.value().samplerSettings.value().samplerLodBias;
-		samplerInfo.minLod 		= createSettings.mipmapInfo.value().samplerSettings.value().samplerMinLod; 
-		samplerInfo.maxLod 		= createSettings.mipmapInfo.value().samplerSettings.value().samplerMaxLod;
-	}
-
-	vk::Sampler textureSampler = device.createSampler(samplerInfo);
-	if (!textureSampler)
-		throw std::runtime_error("failed to create texture sampler");
-
-	return textureSampler; 
+        if (this->samplerInfo.has_value())
+        {
+            return std::unique_ptr<StarTexture>(new StarTexture(
+                this->device, this->createNewAllocationInfo.value().allocator,
+                this->createNewAllocationInfo.value().createInfo,
+                this->createNewAllocationInfo.value().allocationCreateInfo,
+                this->createNewAllocationInfo.value().allocationName, this->viewInfos, this->samplerInfo.value()));
+        }
+        else
+        {
+            return std::unique_ptr<StarTexture>(
+                new StarTexture(this->device, this->createNewAllocationInfo.value().allocator,
+                                this->createNewAllocationInfo.value().createInfo,
+                                this->createNewAllocationInfo.value().allocationCreateInfo,
+                                this->createNewAllocationInfo.value().allocationName, this->viewInfos));
+        }
+    }
+    else if (this->vulkanImage.has_value())
+    {
+        if (this->samplerInfo.has_value())
+        {
+            return std::unique_ptr<StarTexture>(
+                new StarTexture(this->device, this->vulkanImage.value(), this->viewInfos));
+        }
+        else
+        {
+            return std::unique_ptr<StarTexture>(
+                new StarTexture(this->device, this->vulkanImage.value(), this->viewInfos, this->samplerInfo.value()));
+        }
+    }
+    else
+    {
+        std::cerr << "Invalid builder config" << std::endl;
+        throw std::runtime_error("Invalid builder config");
+    }
+    return nullptr;
 }
