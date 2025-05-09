@@ -29,25 +29,73 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
 {
 	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	auto imSetting = star::StarTexture::RawTextureCreateSettings{}; 
-	imSetting.width = static_cast<int>(this->swapChainExtent->width);
-	imSetting.height = static_cast<int>(this->swapChainExtent->height);
-	imSetting.channels = 4;
-	imSetting.byteDepth = 1;
-	imSetting.depth = 1;
-	imSetting.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-	imSetting.baseFormat = this->getCurrentRenderToImageFormat();
-	imSetting.aspectFlags = vk::ImageAspectFlagBits::eColor | vk::ImageAspectFlagBits::eDepth;
-	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY; 
-	imSetting.allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-	imSetting.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
-	imSetting.allocationName = "SceneRenderToImages";
+	auto builder = star::StarTexture::Builder(device.getDevice(), device.getAllocator().get())
+		.setCreateInfo(
+			Allocator::AllocationBuilder()
+				.setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+				.setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+				.build(),
+			vk::ImageCreateInfo()
+				.setExtent(
+					vk::Extent3D()
+						.setWidth(static_cast<int>(this->swapChainExtent->width))
+						.setHeight(static_cast<int>(this->swapChainExtent->height))
+						.setDepth(1)
+				)
+				.setUsage(vk::ImageUsageFlagBits::eColorAttachment)
+				.setImageType(vk::ImageType::e2D)
+				.setMipLevels(1)
+				.setTiling(vk::ImageTiling::eOptimal)
+				.setInitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
+				.setSamples(vk::SampleCountFlagBits::e1)
+				.setSharingMode(vk::SharingMode::eConcurrent),
+			"OffscreenRenderToImages"
+		)
+		.setBaseFormat(this->getCurrentRenderToImageFormat())
+		.addViewInfo(
+			vk::ImageViewCreateInfo()
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(this->getCurrentRenderToImageFormat())
+				.setSubresourceRange(
+					vk::ImageSubresourceRange()
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setBaseArrayLayer(0)
+						.setLayerCount(1)
+						.setBaseMipLevel(0)
+						.setLevelCount(1)
+				)
+		);
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<StarTexture>(imSetting, device.getDevice(), device.getAllocator().get()));
+		newRenderToImages.emplace_back(builder.build()); 
 
 		auto oneTimeSetup = device.beginSingleTimeCommands(); 
-		newRenderToImages.back()->transitionLayout(oneTimeSetup, vk::ImageLayout::eColorAttachmentOptimal, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput);
+		
+		vk::ImageMemoryBarrier barrier{};
+		barrier.sType = vk::StructureType::eImageMemoryBarrier;
+		barrier.oldLayout = vk::ImageLayout::eUndefined;
+		barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+		barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+		barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+
+		barrier.image = newRenderToImages.back()->getVulkanImage();
+		barrier.srcAccessMask = vk::AccessFlagBits::eNone;
+		barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		barrier.subresourceRange.baseMipLevel = 0; // image does not have any mipmap levels
+		barrier.subresourceRange.levelCount = 1;   // image is not an array
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+
+		oneTimeSetup.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,         // which pipeline stages should
+																					// occurr before barrier
+									vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
+																					// which operations will
+																					// wait on the barrier
+									{}, {}, nullptr, barrier);
+
+
 		device.endSingleTimeCommands(oneTimeSetup); 
 	}
 
@@ -60,20 +108,46 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 
 	const vk::Format depthFormat = this->findDepthFormat(device); 
 
-	auto imSetting = star::StarTexture::RawTextureCreateSettings{}; 
-	imSetting.width = static_cast<int>(this->swapChainExtent->width);
-	imSetting.height = static_cast<int>(this->swapChainExtent->height);
-	imSetting.depth = 1; 
-	imSetting.byteDepth = 1;
-	imSetting.baseFormat = depthFormat;
-	imSetting.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-	imSetting.aspectFlags = vk::ImageAspectFlagBits::eDepth;
-	imSetting.allocationCreateFlags = VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-	imSetting.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-	imSetting.allocationName = "SceneRenderToDepthImages";
+	
+	auto builder = star::StarTexture::Builder(device.getDevice(), device.getAllocator().get())
+		.setCreateInfo(
+			Allocator::AllocationBuilder()
+				.setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+				.setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+				.build(),
+			vk::ImageCreateInfo()
+				.setExtent(
+					vk::Extent3D()
+						.setWidth(static_cast<int>(this->swapChainExtent->width))
+						.setHeight(static_cast<int>(this->swapChainExtent->height))
+						.setDepth(1)
+				)
+				.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment)
+				.setImageType(vk::ImageType::e2D)
+				.setMipLevels(1)
+				.setTiling(vk::ImageTiling::eOptimal)
+				.setInitialLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+				.setSamples(vk::SampleCountFlagBits::e1)
+				.setSharingMode(vk::SharingMode::eConcurrent),
+			"OffscreenRenderToImagesDepth"
+		)
+		.setBaseFormat(depthFormat)
+		.addViewInfo(
+			vk::ImageViewCreateInfo()
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(depthFormat)
+				.setSubresourceRange(
+					vk::ImageSubresourceRange()
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setBaseArrayLayer(0)
+						.setLayerCount(1)
+						.setBaseMipLevel(0)
+						.setLevelCount(1)
+				)
+		);
 
 	for (int i = 0; i < numFramesInFlight; i++) {
-		newRenderToImages.push_back(std::make_unique<StarTexture>(imSetting, device.getDevice(), device.getAllocator().get()));
+		newRenderToImages.emplace_back(builder.build());
 
 		auto oneTimeSetup = device.beginSingleTimeCommands();
 
@@ -84,7 +158,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 		barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
 		barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
-		barrier.image = newRenderToImages.back()->getImage();
+		barrier.image = newRenderToImages.back()->getVulkanImage();
 		barrier.srcAccessMask = vk::AccessFlagBits::eNone;
 		barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 

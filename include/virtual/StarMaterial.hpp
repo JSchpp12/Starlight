@@ -1,6 +1,5 @@
 #pragma once
 
-#include "StarMaterialMesh.hpp"
 #include "StarShader.hpp"
 #include "StarDevice.hpp"
 #include "StarCommandBuffer.hpp"

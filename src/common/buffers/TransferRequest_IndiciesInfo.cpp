@@ -2,8 +2,21 @@
 
 #include "CastHelpers.hpp"
 
+std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const{
+    auto create = StarBuffer::BufferCreationArgs{
+        sizeof(uint32_t),
+        CastHelpers::size_t_to_unsigned_int(this->indices.size()),
+        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+        VMA_MEMORY_USAGE_AUTO, 
+        vk::BufferUsageFlagBits::eTransferSrc, 
+        vk::SharingMode::eConcurrent,
+        "IndiciesInfoBuffer"
+    };
 
-void star::TransferRequest::IndicesInfo::writeData(StarBuffer& buffer) const{
+    return std::make_unique<StarBuffer>(allocator, create); 
+}
+
+void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffer& buffer) const{
     buffer.map();
     
     vk::DeviceSize indSize = sizeof(uint32_t) * this->indices.size();
@@ -13,18 +26,16 @@ void star::TransferRequest::IndicesInfo::writeData(StarBuffer& buffer) const{
     buffer.unmap();
 }
 
-star::StarBuffer::BufferCreationArgs star::TransferRequest::IndicesInfo::getCreateArgs() const{
-    return StarBuffer::BufferCreationArgs{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createFinal(vk::Device &device, VmaAllocator &allocator) const{
+    auto createftest = StarBuffer::BufferCreationArgs{
         sizeof(uint32_t),
         CastHelpers::size_t_to_unsigned_int(this->indices.size()),
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         VMA_MEMORY_USAGE_AUTO, 
-        vk::BufferUsageFlagBits::eIndexBuffer, 
+        vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, 
         vk::SharingMode::eConcurrent,
         "IndiciesInfoBuffer"
     };
-}
 
-void star::TransferRequest::IndicesInfo::copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarBuffer& dstBuffer, vk::CommandBuffer& commandBuffer) const{
-    Buffer::defaultCopy(srcBuffer, dstBuffer, commandBuffer);
+    return std::make_unique<StarBuffer>(allocator, createftest); 
 }

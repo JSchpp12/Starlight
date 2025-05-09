@@ -9,45 +9,88 @@ star::TransferRequest::CompressedTextureFile::CompressedTextureFile(const vk::Ph
 {
 }
 
-star::StarTexture::RawTextureCreateSettings star::TransferRequest::CompressedTextureFile::getCreateArgs() const{
-    StarTexture::RawTextureCreateSettings createArgs;
-
-    {
-        boost::unique_lock<boost::mutex> lock;
-        ktxTexture2* texture = nullptr; 
-        this->compressedTexture->giveMeTranscodedImage(lock, texture); 
-
-        createArgs.width = texture->baseWidth; 
-        createArgs.height = texture->baseHeight; 
-        createArgs.depth = texture->baseDepth; 
-        createArgs.overrideImageMemorySize = texture->dataSize;
-        createArgs.baseFormat = (vk::Format)texture->vkFormat;
-        createArgs.anisotropyLevel = StarTexture::SelectAnisotropyLevel(this->deviceProperties); 
-        createArgs.textureFilteringMode = StarTexture::SelectTextureFiltering(this->deviceProperties);
-        createArgs.allocationName = star::FileHelpers::GetFileNameWithExtension(this->compressedTexture->getPathToFile());
-        createArgs.createSampler = true; 
-        // createArgs.mipMapLevels = texture->numLevels;
-    }
-
+std::unique_ptr<star::StarBuffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const{
+    boost::unique_lock<boost::mutex> lock;
+    ktxTexture2* texture = nullptr; 
+    this->compressedTexture->giveMeTranscodedImage(lock, texture);
     
-    return createArgs;
+    return std::make_unique<StarBuffer>(
+        allocator, 
+        texture->dataSize,
+        1,
+        VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        vk::BufferUsageFlagBits::eTransferSrc,
+        vk::SharingMode::eConcurrent,
+        "CompressedTexture_TransferSRCBuffer"
+    );
 }
 
-void star::TransferRequest::CompressedTextureFile::writeData(StarBuffer& buffer) const{
-    buffer.map();
+std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile::createFinal(vk::Device& device, VmaAllocator &allocator) const{
+    boost::unique_lock<boost::mutex> lock;
+    ktxTexture2* texture = nullptr; 
+    this->compressedTexture->giveMeTranscodedImage(lock, texture); 
 
-    {
-        boost::unique_lock<boost::mutex> lock;
-        ktxTexture2* texture = nullptr;
-        this->compressedTexture->giveMeTranscodedImage(lock, texture);
-
-        buffer.writeToBuffer(texture->pData, texture->dataSize); 
-    }
-
-    buffer.unmap(); 
+    return StarTexture::Builder(device, allocator)
+        .setCreateInfo(
+            Allocator::AllocationBuilder()
+                .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
+                .build(),
+            vk::ImageCreateInfo()
+                .setExtent(
+                    vk::Extent3D()
+                        .setWidth(texture->baseWidth)
+                        .setHeight(texture->baseHeight)
+                        .setDepth(1)
+                )
+                .setUsage(vk::ImageUsageFlagBits::eSampled)
+                .setImageType(vk::ImageType::e2D)
+                .setMipLevels(texture->numLevels)
+                .setTiling(vk::ImageTiling::eOptimal)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setUsage(vk::ImageUsageFlagBits::eSampled)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setSharingMode(vk::SharingMode::eConcurrent), 
+                "compresesd_texture"
+        )
+        .setBaseFormat(static_cast<vk::Format>(texture->vkFormat))
+        .addViewInfo(
+            vk::ImageViewCreateInfo()
+                .setViewType(vk::ImageViewType::e2D)
+                .setFormat(static_cast<vk::Format>(texture->vkFormat))
+                .setSubresourceRange(
+                    vk::ImageSubresourceRange()
+                        .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(1)
+                        .setBaseMipLevel(0)
+                        .setLevelCount(texture->numLevels)
+                )
+        )
+        .setSamplerInfo(
+            vk::SamplerCreateInfo()
+                .setAnisotropyEnable(true)
+                .setMaxAnisotropy(StarTexture::SelectAnisotropyLevel(this->deviceProperties))
+                .setMagFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
+                .setMinFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
+                .setMinFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
+                .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+                .setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+                .setUnnormalizedCoordinates(VK_FALSE)
+                .setCompareEnable(VK_FALSE)
+                .setCompareOp(vk::CompareOp::eAlways)
+                .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                .setMipLodBias(0.0f)
+                .setMinLod(0.0f)
+                .setMaxLod(0.0f)
+        )
+        .build();
 }
 
-void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarTexture& dstTexture, vk::CommandBuffer& commandBuffer) const{
+void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(star::StarBuffer& srcBuffer, star::StarTexture& dst, vk::CommandBuffer &commandBuffer) const{
     boost::unique_lock<boost::mutex> lock; 
     ktxTexture2* texture = nullptr; 
     this->compressedTexture->giveMeTranscodedImage(lock, texture);
@@ -71,5 +114,19 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
         bufferCopyRegions.push_back(copyRegion); 
     }
 
-    commandBuffer.copyBufferToImage(srcBuffer.getVulkanBuffer(), dstTexture.getImage(), vk::ImageLayout::eTransferDstOptimal, bufferCopyRegions); 
+    commandBuffer.copyBufferToImage(srcBuffer.getVulkanBuffer(), dst.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, bufferCopyRegions); 
+}
+
+void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBuffer& buffer) const{
+    buffer.map();
+
+    {
+        boost::unique_lock<boost::mutex> lock;
+        ktxTexture2* texture = nullptr;
+        this->compressedTexture->giveMeTranscodedImage(lock, texture);
+
+        buffer.writeToBuffer(texture->pData, texture->dataSize); 
+    }
+
+    buffer.unmap(); 
 }

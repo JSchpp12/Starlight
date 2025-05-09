@@ -2,19 +2,35 @@
 
 #include "CastHelpers.hpp"
 
-star::StarBuffer::BufferCreationArgs star::TransferRequest::VertInfo::getCreateArgs() const{
-    return StarBuffer::BufferCreationArgs{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::VertInfo::createFinal(vk::Device &device, VmaAllocator &allocator) const{
+    auto create = StarBuffer::BufferCreationArgs{
         sizeof(Vertex), 
         CastHelpers::size_t_to_unsigned_int(this->vertices.size()),
         VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         VMA_MEMORY_USAGE_AUTO,
-        vk::BufferUsageFlagBits::eVertexBuffer,
+        vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
         vk::SharingMode::eConcurrent,
         "VertInfoBuffer"
     };
+
+    return std::make_unique<StarBuffer>(allocator, create); 
 }
 
-void star::TransferRequest::VertInfo::writeData(StarBuffer &buffer) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::VertInfo::createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const{
+    auto create = StarBuffer::BufferCreationArgs{
+        sizeof(Vertex), 
+        CastHelpers::size_t_to_unsigned_int(this->vertices.size()),
+        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        vk::BufferUsageFlagBits::eTransferSrc,
+        vk::SharingMode::eConcurrent,
+        "VertInfoBuffer"
+    };
+
+    return std::make_unique<StarBuffer>(allocator, create); 
+}
+
+void star::TransferRequest::VertInfo::writeDataToStageBuffer(StarBuffer &buffer) const{
     buffer.map(); 
 
     auto data = this->getVertices();
@@ -25,16 +41,6 @@ void star::TransferRequest::VertInfo::writeData(StarBuffer &buffer) const{
 
     buffer.unmap();
 }
-
-void star::TransferRequest::VertInfo::copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarBuffer &dstBuffer, vk::CommandBuffer &commandBuffer) const{
-    vk::BufferCopy copyRegion{}; 
-    copyRegion.srcOffset = 0;
-    copyRegion.dstOffset = 0;
-    copyRegion.size = srcBuffer.getBufferSize(); 
-
-    commandBuffer.copyBuffer(srcBuffer.getVulkanBuffer(), dstBuffer.getVulkanBuffer(), copyRegion);
-}
-
 
 std::vector<star::Vertex> star::TransferRequest::VertInfo::getVertices() const{
     return this->vertices;

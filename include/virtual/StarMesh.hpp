@@ -7,7 +7,6 @@
 #include "StarCommandBuffer.hpp"
 #include "StarDevice.hpp"
 #include "StarDescriptorBuilders.hpp"
-#include "StarMaterialMesh.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
 

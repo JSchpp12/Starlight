@@ -14,19 +14,11 @@ namespace star::TransferRequest{
             }
         }
 
-        virtual StarBuffer::BufferCreationArgs getCreateArgs() const override{
-            return StarBuffer::BufferCreationArgs{
-                sizeof(glm::mat4),
-                static_cast<uint32_t>(this->normalMatrixInfo.size()),
-                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                VMA_MEMORY_USAGE_AUTO,
-                vk::BufferUsageFlagBits::eUniformBuffer,
-                vk::SharingMode::eConcurrent,
-                "InstanceNormalInfoBuffer"
-            };
-        }
+        std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override; 
 
-        void writeData(StarBuffer& buffer) const override;
+        std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator) const override; 
+        
+        void writeDataToStageBuffer(StarBuffer& buffer) const override; 
 
         protected:
             std::vector<glm::mat4> normalMatrixInfo = std::vector<glm::mat4>(); 

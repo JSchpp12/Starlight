@@ -15,6 +15,8 @@ namespace star
 class StarTexture
 {
   public:
+    static void TransitionImageLayout(StarTexture &image, vk::CommandBuffer &commandBuffer, const vk::Format &format, const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout); 
+    
     static float SelectAnisotropyLevel(const vk::PhysicalDeviceProperties &deviceProperties);
 
     static vk::Filter SelectTextureFiltering(const vk::PhysicalDeviceProperties &deviceProperties);
@@ -22,18 +24,20 @@ class StarTexture
     class Builder
     {
       public:
-        Builder(StarDevice &device, const vk::Image &vulkanImage);
+        Builder(vk::Device &device, const vk::Image &vulkanImage);
 
-        Builder(StarDevice &device, VmaAllocator &allocator);
+        Builder(vk::Device &device, VmaAllocator &allocator);
 
         Builder &setCreateInfo(const VmaAllocationCreateInfo &nAllocInfo, const vk::ImageCreateInfo &nCreateInfo,
                                const std::string &nAllocationName);
 
-        Builder &setViewInfo(const vk::ImageViewCreateInfo &nCreateInfo);
+        Builder &addViewInfo(const vk::ImageViewCreateInfo &nCreateInfo);
 
         Builder &setSamplerInfo(const vk::SamplerCreateInfo &nCreateInfo);
 
         Builder &setExtraInfo(const std::string &nAllocationName);
+
+        Builder& setBaseFormat(const vk::Format& nFormat); 
 
         std::unique_ptr<StarTexture> build();
 
@@ -50,7 +54,8 @@ class StarTexture
             std::string allocationName = "Default Texture Name";
         };
 
-        StarDevice &device;
+        vk::Device &device;
+        std::optional<vk::Format> format = std::nullopt;
         std::optional<Creators> createNewAllocationInfo = std::nullopt;
         std::optional<vk::Image> vulkanImage = std::nullopt;
 
@@ -60,10 +65,6 @@ class StarTexture
 
     virtual ~StarTexture();
 
-    void transitionLayout(vk::CommandBuffer &commandBuffer, vk::ImageLayout newLayout, vk::AccessFlags srcFlags,
-                          vk::AccessFlags dstFlags, vk::PipelineStageFlags sourceStage,
-                          vk::PipelineStageFlags dstStage);
-
     const vk::Image &getVulkanImage() const
     {
         return this->vulkanImage;
@@ -72,23 +73,34 @@ class StarTexture
     {
         return this->sampler;
     }
-    const vk::ImageView &getImageView(const vk::Format *requestedFormat = nullptr) const;
-
+    vk::ImageView getImageView(const vk::Format *requestedFormat = nullptr) const;
+    const vk::Format &getBaseFormat() const{
+        return this->baseFormat;
+    }
+    const uint32_t &getMipmapLevels() const{
+        return this->mipmapLevels;
+    }
   protected:
-    StarTexture(StarDevice &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos);
+    StarTexture(vk::Device& device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, 
+                const vk::Format& baseFormat);
 
-    StarTexture(StarDevice &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
+    StarTexture(vk::Device& device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
+                const vk::Format& baseFormat,
                 const vk::SamplerCreateInfo &samplerInfo);
 
-    StarTexture(StarDevice &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+    StarTexture(vk::Device& device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
                 const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
-                const std::vector<vk::ImageViewCreateInfo> &imageViewInfos);
+                const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format& baseFormat);
 
-    StarTexture(StarDevice &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+    StarTexture(vk::Device& device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
                 const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
-                const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::SamplerCreateInfo &samplerInfo);
+                const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format& baseFormat,
+                const vk::SamplerCreateInfo &samplerInfo);
 
-    StarDevice &device;
+    vk::Device &device;
+    const vk::Format baseFormat; 
+    const uint32_t mipmapLevels = 1;
+
     std::optional<VmaAllocator *> allocator = nullptr;
     std::optional<VmaAllocation> memory = std::nullopt;
 
@@ -100,7 +112,7 @@ class StarTexture
 
     void createTextureImageView(const vk::Format &viewFormat, const vk::ImageAspectFlags &aspectFlags);
 
-    static vk::ImageView CreateImageView(vk::Device &device, vk::Image image, vk::Format format,
+    void createImageView(vk::Device &device, vk::Image image, vk::Format format,
                                          const vk::ImageAspectFlags &aspectFlags, const int &mipMapLevels);
 
     static vk::Sampler CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo);
@@ -112,8 +124,10 @@ class StarTexture
 
     static vk::ImageView CreateImageView(vk::Device &device, const vk::ImageViewCreateInfo &imageCreateInfo);
 
+    static uint32_t ExtractMipmapLevels(const vk::ImageViewCreateInfo& imageViewInfo); 
+
     static std::unordered_map<vk::Format, vk::ImageView> CreateImageViews(
-        vk::Device &device, const std::vector<vk::ImageViewCreateInfo> &imageCreateInfos);
+        vk::Device &device, vk::Image vulkanImage, std::vector<vk::ImageViewCreateInfo> imageCreateInfos);
 
     friend class Builder;
 };

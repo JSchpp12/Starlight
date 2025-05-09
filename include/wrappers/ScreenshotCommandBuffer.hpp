@@ -3,7 +3,6 @@
 #include "CommandBufferModifier.hpp"
 #include "RenderResourceModifier.hpp"
 #include "StarDevice.hpp"
-#include "StarImage.hpp"
 
 #include <vulkan/vulkan.hpp>
 #include <vector>
@@ -37,7 +36,7 @@ namespace star {
 
 		static void saveImageToDisk(); 
 
-		static std::unique_ptr<StarImage> createNewCopyToImage(StarDevice& device, const vk::Extent2D& screensize); 
+		// static std::unique_ptr<StarImage> createNewCopyToImage(StarDevice& device, const vk::Extent2D& screensize); 
 
 	private:
 		StarDevice& device; 
@@ -45,7 +44,7 @@ namespace star {
 		vk::Extent2D swapChainExtent;
 		std::string screenshotSavePath; 
 
-		std::vector<std::unique_ptr<StarImage>> copyDstImages; 
+		// std::vector<std::unique_ptr<StarImage>> copyDstImages; 
 		//std::vector<vk::Image> copyDstImages;
 		//std::vector<VmaAllocation> copyDstImageMemories; 
 

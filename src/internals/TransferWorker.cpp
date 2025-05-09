@@ -132,106 +132,15 @@ std::vector<vk::Queue> star::TransferManagerThread::createTransferQueues(star::S
     return queues;
 }
 
-void star::TransferManagerThread::transitionImageLayout(StarTexture &image, vk::CommandBuffer &commandBuffer, const vk::Format &format, const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout)
-{
-	//create a barrier to prevent pipeline from moving forward until image transition is complete
-	vk::ImageMemoryBarrier barrier{};
-	barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
-	barrier.oldLayout = oldLayout;
-	barrier.newLayout = newLayout;
-
-	//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
-	barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-	barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-
-	barrier.image = image.getImage();
-	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = image.getMipMapLevels();
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-
-	//the operations that need to be completed before and after the barrier, need to be defined
-	barrier.srcAccessMask = {}; //TODO
-	barrier.dstAccessMask = {}; //TODO
-
-	vk::PipelineStageFlags sourceStage, destinationStage;
-
-	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-		//undefined transition state, dont need to wait for this to complete
-		barrier.srcAccessMask = {};
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-
-		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-		destinationStage = vk::PipelineStageFlagBits::eTransfer;
-	}
-	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal || newLayout == vk::ImageLayout::eGeneral)) {
-		//transfer destination shader reading, will need to wait for completion. Especially in the frag shader where reads will happen
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-		barrier.dstAccessMask = vk::AccessFlagBits::eNone;
-
-		sourceStage = vk::PipelineStageFlagBits::eTransfer;
-		destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
-	}
-	// else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-	// 	//preparing to update texture during runtime, need to wait for top of pipe
-	// 	//barrier.srcAccessMask = vk::AccessFlagBits::;
-	// 	barrier.srcAccessMask = {}; 
-	// 	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; 
-
-	// 	sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-	// 	destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-	// }
-	else{
-		throw std::invalid_argument("unsupported layout transition!");
-	}
-
-	//transfer writes must occurr during the pipeline transfer stage
-	commandBuffer.pipelineBarrier(
-		sourceStage,                        //which pipeline stages should occurr before barrier 
-		destinationStage,                   //pipeline stage in which operations will wait on the barrier 
-		{},
-		{},
-		nullptr,
-		barrier
-	);
-}
-
 void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Buffer* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
     assert(commandBufferFences[bufferIndexToUse] == nullptr && "Command buffer fence should have already been waited on and removed");
 
-    auto createArgs = newBufferRequest->getCreateArgs();
+    auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator); 
 
-    auto transferSrcBuffer = std::make_unique<StarBuffer>(
-        allocator, 
-        createArgs.instanceSize,
-        createArgs.instanceCount,
-        VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        vk::BufferUsageFlagBits::eTransferSrc,
-        vk::SharingMode::eConcurrent,
-        createArgs.allocationName + "_TransferSRCBuffer",
-        (createArgs.useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? deviceProperties.limits.minUniformBufferOffsetAlignment : 1
-    );
+    auto newResult = newBufferRequest->createFinal(device, allocator); 
+    resultingBuffer->swap(newResult); 
 
-    //check if the resulting buffer needs to be replaced or not 
-    vk::DeviceSize resultSize = createArgs.instanceSize * createArgs.instanceCount;
-    if (resultingBuffer->get() == nullptr || (resultingBuffer->get() != nullptr && resultSize > resultingBuffer->get()->getBufferSize())){ 
-        auto newBuffer = std::make_unique<StarBuffer>(
-            allocator, 
-            createArgs.instanceSize,
-            createArgs.instanceCount,
-            createArgs.creationFlags,
-            createArgs.memoryUsageFlags,
-            createArgs.useFlags | vk::BufferUsageFlagBits::eTransferDst,
-            vk::SharingMode::eConcurrent, 
-            createArgs.allocationName,
-            (createArgs.useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? deviceProperties.limits.minUniformBufferOffsetAlignment : 1
-        );   
-        resultingBuffer->swap(newBuffer);   
-    }
-
-    newBufferRequest->writeData(*transferSrcBuffer);
+    newBufferRequest->writeDataToStageBuffer(*transferSrcBuffer);
 
     //copy operations
     vk::CommandBuffer& commandBuffer = commandBuffers[bufferIndexToUse];
@@ -268,31 +177,16 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
 }
 
 void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Texture* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
-    StarTexture::RawTextureCreateSettings createArgs = newTextureRequest->getCreateArgs();
-    createArgs.usage |= vk::ImageUsageFlagBits::eTransferDst;
-
-    bool newImageCreated = false; 
     
-    {
-        newImageCreated = true; 
+    auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator); 
 
-        auto finalTexture = std::make_unique<StarTexture>(createArgs, device, allocator);
-        resultingTexture->swap(finalTexture);
-    }
-    vk::DeviceSize size = resultingTexture->get()->getImageMemorySize(); 
+    //should eventually implement option to jsut re-use existing image
+    bool newImageCreated = true; 
 
-    auto transferSrcBuffer = std::make_unique<StarBuffer>(
-        allocator,
-        size, 
-        1,
-        VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT | VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        vk::BufferUsageFlagBits::eTransferSrc,
-        vk::SharingMode::eConcurrent,
-        createArgs.allocationName + "_TransferSRCBuffer"
-    );
+    auto finalTexture = newTextureRequest->createFinal(device, allocator); 
+    resultingTexture->swap(finalTexture);
 
-    newTextureRequest->writeData(*transferSrcBuffer);
+    newTextureRequest->writeDataToStageBuffer(*transferSrcBuffer);
 
     //transition image layout
     if (!newImageCreated){
@@ -308,13 +202,8 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
     
         commandBuffer.begin(beginInfo);
     }
-    {
-        transitionImageLayout(*resultingTexture->get(), commandBuffer, createArgs.baseFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-    
-        newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(), commandBuffer);
-    
-        transitionImageLayout(*resultingTexture->get(), commandBuffer, createArgs.baseFormat, vk::ImageLayout::eTransferDstOptimal, createArgs.initialLayout);
-    }
+
+    newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(), commandBuffer); 
 
     commandBuffer.end();
 

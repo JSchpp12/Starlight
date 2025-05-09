@@ -1,6 +1,34 @@
 #include "TransferRequest_GlobalInfo.hpp"
 
-void star::TransferRequest::GlobalInfo::writeData(star::StarBuffer& buffer) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const{
+    auto createArgs = StarBuffer::BufferCreationArgs{
+        sizeof(GlobalUniformBufferObject),
+        1,
+        (VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT), 
+        VMA_MEMORY_USAGE_AUTO, 
+        vk::BufferUsageFlagBits::eTransferSrc, 
+        vk::SharingMode::eConcurrent, 
+        "GlobalInfoBuffer"
+    };
+
+    return std::make_unique<StarBuffer>(allocator, createArgs); 
+}
+
+std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createFinal(vk::Device &device, VmaAllocator &allocator) const{
+    auto createArgs = StarBuffer::BufferCreationArgs{
+        sizeof(GlobalUniformBufferObject),
+        1,
+        (VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT), 
+        VMA_MEMORY_USAGE_AUTO, 
+        vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst, 
+        vk::SharingMode::eConcurrent, 
+        "GlobalInfoBuffer"
+    };
+
+    return std::make_unique<StarBuffer>(allocator, createArgs); 
+}
+
+void star::TransferRequest::GlobalInfo::writeDataToStageBuffer(star::StarBuffer& buffer) const{
     buffer.map(); 
 
     //update global ubo 

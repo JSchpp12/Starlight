@@ -11,19 +11,11 @@ namespace star::TransferRequest{
         
         GlobalInfo(const StarCamera& camera, const int& numLights) : camera(camera), numLights(numLights){}
 
-        StarBuffer::BufferCreationArgs getCreateArgs() const override{
-            return StarBuffer::BufferCreationArgs{
-                sizeof(GlobalUniformBufferObject),
-                1,
-                (VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT), 
-                VMA_MEMORY_USAGE_AUTO, 
-                vk::BufferUsageFlagBits::eUniformBuffer, 
-                vk::SharingMode::eConcurrent, 
-                "GlobalInfoBuffer"
-            };
-        }
+        std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override; 
 
-        void writeData(StarBuffer& buffer) const override; 
+        std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator) const override; 
+        
+        void writeDataToStageBuffer(StarBuffer& buffer) const override; 
 
         private:
         const int numLights = 0;

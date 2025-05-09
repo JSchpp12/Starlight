@@ -1,6 +1,34 @@
 #include "TransferRequest_LightInfo.hpp"
 
-void star::TransferRequest::LightInfo::writeData(star::StarBuffer& buffer) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createStagingBuffer(vk::Device& device, VmaAllocator &allocator) const{
+	auto create = StarBuffer::BufferCreationArgs{
+		sizeof(LightBufferObject),
+		static_cast<uint32_t>(this->myLights.size()),
+		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+		VMA_MEMORY_USAGE_AUTO,
+		vk::BufferUsageFlagBits::eTransferSrc,
+		vk::SharingMode::eConcurrent,
+		"LightInfoBufferSRC"
+	};
+
+	return std::make_unique<StarBuffer>(allocator, create); 
+}
+
+std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createFinal(vk::Device &device, VmaAllocator &allocator) const{
+	auto create = StarBuffer::BufferCreationArgs{
+		sizeof(LightBufferObject),
+		static_cast<uint32_t>(this->myLights.size()),
+		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+		VMA_MEMORY_USAGE_AUTO,
+		vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+		vk::SharingMode::eConcurrent,
+		"LightInfoBuffer"
+	};
+
+	return std::make_unique<StarBuffer>(allocator, create); 
+}
+
+void star::TransferRequest::LightInfo::writeDataToStageBuffer(star::StarBuffer& buffer) const{
     buffer.map(); 
 
 	std::vector<LightBufferObject> lightInformation(this->myLights.size());

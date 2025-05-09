@@ -10,12 +10,11 @@ namespace star::TransferRequest{
         VertInfo(std::vector<Vertex> vertices) 
         : vertices(vertices){}
 
-        StarBuffer::BufferCreationArgs getCreateArgs() const override;
+        std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override; 
 
-        void writeData(StarBuffer& buffer) const override; 
-
-        void copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarBuffer& dstBuffer, vk::CommandBuffer& commandBuffer) const override; 
-
+        std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator) const override; 
+        
+        void writeDataToStageBuffer(StarBuffer& buffer) const override; 
         protected:
         std::vector<Vertex> vertices;
 

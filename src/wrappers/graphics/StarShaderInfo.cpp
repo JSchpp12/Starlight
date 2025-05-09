@@ -149,7 +149,7 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int & 
                 }else if (set->shaderInfos.at(i).textureInfo.has_value() && set->shaderInfos.at(i).textureInfo.value().handle.has_value()){
                     auto& info = set->shaderInfos.at(i).textureInfo.value();
 
-                    const auto& texture = ManagerRenderResource::getTexture(info.handle.value()).getImage();
+                    const auto& texture = ManagerRenderResource::getTexture(info.handle.value()).getVulkanImage();
                     if (!info.currentImage.has_value() || info.currentImage.value() != texture){
                         info.currentImage = texture;
                         set->buildIndex(i);

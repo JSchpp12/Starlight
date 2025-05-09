@@ -9,11 +9,13 @@ namespace star::TransferRequest{
         public:
         TextureFile(const std::string& imagePath, const vk::PhysicalDeviceProperties& deviceProperties);
 
-        star::StarTexture::RawTextureCreateSettings getCreateArgs() const override;
+        virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override; 
 
-        void writeData(star::StarBuffer& stagingBuffer) const override;
+        virtual std::unique_ptr<star::StarTexture> createFinal(vk::Device& device, VmaAllocator& allocator) const override; 
 
-        virtual void copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarTexture& dstTexture, vk::CommandBuffer& commandBuffer) const override; 
+        virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarTexture &dst, vk::CommandBuffer &commandBuffer) const override;
+
+        virtual void writeDataToStageBuffer(StarBuffer &stagingBuffer) const override; 
 
         protected:
         

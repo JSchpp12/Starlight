@@ -237,33 +237,80 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
 {
 	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	auto settings = StarTexture::RawTextureCreateSettings(
-		this->swapChainExtent->width,
-		this->swapChainExtent->height,
-		4,
-		1,
-		1,
-		vk::ImageUsageFlagBits::eColorAttachment,
-		*this->swapChainImageFormat,
-		{},
-		vk::ImageAspectFlagBits::eColor,
-		VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
-		VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
-		vk::ImageLayout::eUndefined,
-		false, true, 
-		{},
-		1.0f,
-		vk::Filter::eNearest, 
-		"SwapChainRendererToImage"
-	);
+	// auto settings = StarTexture::RawTextureCreateSettings(
+	// 	this->swapChainExtent->width,
+	// 	this->swapChainExtent->height,
+	// 	4,
+	// 	1,
+	// 	1,
+	// 	vk::ImageUsageFlagBits::eColorAttachment,
+	// 	*this->swapChainImageFormat,
+	// 	{},
+	// 	vk::ImageAspectFlagBits::eColor,
+	// 	VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
+	// 	VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+	// 	vk::ImageLayout::eUndefined,
+	// 	false, true, 
+	// 	{},
+	// 	1.0f,
+	// 	vk::Filter::eNearest, 
+	// 	"SwapChainRendererToImage"
+	// );
+
 
 	//get images in the newly created swapchain 
 	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
-		newRenderToImages.push_back(std::make_unique<StarTexture>(settings, device.getDevice(), image));
+		auto builder = star::StarTexture::Builder(device.getDevice(), image)
+		.setBaseFormat(*this->swapChainImageFormat)
+		.addViewInfo(
+			vk::ImageViewCreateInfo()
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(*this->swapChainImageFormat)
+				.setSubresourceRange(
+					vk::ImageSubresourceRange()
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setBaseArrayLayer(0)
+						.setLayerCount(1)
+						.setBaseMipLevel(0)
+						.setLevelCount(1)
+				)
+		);
 
-		auto buffer = device.beginSingleTimeCommands(); 
-		newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR, vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput); 
-		device.endSingleTimeCommands(buffer); 
+		newRenderToImages.emplace_back(builder.build()); 
+
+		// auto buffer = device.beginSingleTimeCommands(); 
+		// newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR, 
+		// vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite, 
+		// vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput); 
+		// device.endSingleTimeCommands(buffer); 
+		auto oneTimeSetup = device.beginSingleTimeCommands();
+
+        vk::ImageMemoryBarrier barrier{};
+        barrier.sType = vk::StructureType::eImageMemoryBarrier;
+        barrier.oldLayout = vk::ImageLayout::eUndefined;
+        barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+        barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+        barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+
+        barrier.image = newRenderToImages.back()->getVulkanImage();
+        barrier.srcAccessMask = vk::AccessFlagBits::eNone;
+        barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead;
+
+        barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+        barrier.subresourceRange.baseMipLevel = 0; // image does not have any mipmap levels
+        barrier.subresourceRange.levelCount = 1;   // image is not an array
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        oneTimeSetup.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,         // which pipeline stages should
+                                                                                    // occurr before barrier
+                                     vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
+                                                                                    // which operations will
+                                                                                    // wait on the barrier
+                                     {}, {}, nullptr, barrier);
+
+        device.endSingleTimeCommands(oneTimeSetup);
+
 	}
 
 	return newRenderToImages; 
@@ -297,7 +344,7 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuff
 	setupBarrier.subresourceRange.levelCount = 1;
 	setupBarrier.subresourceRange.baseArrayLayer = 0;
 	setupBarrier.subresourceRange.layerCount = 1;
-	setupBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getImage(); 
+	setupBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage(); 
 
 	commandBuffer.pipelineBarrier(
 		vk::PipelineStageFlagBits::eTopOfPipe,
@@ -312,7 +359,7 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuff
 	presentBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
 	presentBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
 	presentBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-	presentBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getImage();
+	presentBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage();
 	presentBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 	presentBarrier.subresourceRange.baseMipLevel = 0;
 	presentBarrier.subresourceRange.levelCount = 1;

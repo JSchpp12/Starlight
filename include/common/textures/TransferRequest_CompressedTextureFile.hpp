@@ -14,9 +14,13 @@ namespace star::TransferRequest{
         public:
         CompressedTextureFile(const vk::PhysicalDeviceProperties& deviceProperties, std::shared_ptr<SharedCompressedTexture> compressedTexture, const uint8_t& mipMapIndex);
         
-        void writeData(StarBuffer& buffer) const override; 
+        virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override; 
 
-        void copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarTexture& dstTexture, vk::CommandBuffer& commandBuffer) const override;
+        virtual std::unique_ptr<star::StarTexture> createFinal(vk::Device& device, VmaAllocator& allocator) const override; 
+
+        virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarTexture &dst, vk::CommandBuffer &commandBuffer) const override;
+
+        virtual void writeDataToStageBuffer(StarBuffer &stagingBuffer) const override; 
 
         private:
         std::shared_ptr<SharedCompressedTexture> compressedTexture = nullptr; 

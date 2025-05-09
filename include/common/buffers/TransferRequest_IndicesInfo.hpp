@@ -9,12 +9,11 @@ namespace star::TransferRequest{
         public:
         IndicesInfo(const std::vector<uint32_t>& indices) : indices(indices){}
 
-        void writeData(StarBuffer& buffer) const override;
+        std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override; 
 
-        StarBuffer::BufferCreationArgs getCreateArgs() const override;
-
-        void copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarBuffer& dstBuffer, vk::CommandBuffer& commandBuffer) const override; 
-
+        std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator) const override; 
+        
+        void writeDataToStageBuffer(StarBuffer& buffer) const override; 
         protected:
         const std::vector<uint32_t> indices;
         
