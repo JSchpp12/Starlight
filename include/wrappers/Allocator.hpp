@@ -15,37 +15,48 @@ namespace star {
 			public:
 			AllocationBuilder() = default;
 			AllocationBuilder& setFlags(const VmaAllocationCreateFlags& nFlags){
-				this->myInfo.flags = nFlags;
+				this->flags = nFlags;
 				return *this;
 			}; 
 			AllocationBuilder& setUsage(const VmaMemoryUsage& nUsage){
-				this->myInfo.usage = nUsage;
+				this->usage = nUsage;
 				return *this;
 			}
 			AllocationBuilder& setMemoryRequiredFlags(const vk::MemoryPropertyFlags& nRequiredFlags){
-				this->myInfo.requiredFlags = static_cast<VkMemoryPropertyFlags>(vk::MemoryPropertyFlags(nRequiredFlags)); 
+				this->requiredFlags = nRequiredFlags;
 				return *this;
 			}
 			AllocationBuilder& setMemoryPreferredFlags(const vk::MemoryPropertyFlags& nPreferredFlags){
-				this->myInfo.preferredFlags = static_cast<VkMemoryPropertyFlags>(vk::MemoryPropertyFlags(nPreferredFlags)); 
+				this->preferredFlags = nPreferredFlags; 
 				return *this;
 			}
 			AllocationBuilder& setMemoryTypeBits(const uint32_t& nMemoryTypeBits){
-				this->myInfo.memoryTypeBits = nMemoryTypeBits;
+				this->memoryTypeBits = nMemoryTypeBits;
 				return *this;
 			}
 			AllocationBuilder& setPriority(const float& nPriority){
-				this->myInfo.priority = nPriority; 
+				this->priority = nPriority; 
 				return *this;
 			}
 			VmaAllocationCreateInfo build(){
-				return this->myInfo; 
+				VmaAllocationCreateInfo info = VmaAllocationCreateInfo(); 
+				info.flags = this->flags; 
+				info.usage = this->usage; 
+				info.preferredFlags = static_cast<VkMemoryPropertyFlags>(this->preferredFlags); 
+				info.memoryTypeBits = this->memoryTypeBits;
+				info.priority = this->priority; 
+
+				return info; 
 			}
 
 			private:
-			VmaAllocationCreateInfo myInfo = VmaAllocationCreateInfo(); 
-
+			VmaAllocationCreateFlags flags; 
+			VmaMemoryUsage usage; 
+			vk::MemoryPropertyFlags requiredFlags, preferredFlags;
+			uint32_t memoryTypeBits; 
+			float priority; 
 		};
+		
 		Allocator() = default;
 		Allocator(vk::Device device, vk::PhysicalDevice physicalDevice, vk::Instance instance);
 		~Allocator();

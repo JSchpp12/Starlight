@@ -62,7 +62,7 @@ namespace star{
         bool isFenceInUse(const SharedFence& fence, const bool& clearIfFound = true); 
 
         static void mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, 
-            vk::CommandPool* transferCommandPool, vk::Queue* transferQueue, 
+            StarQueueFamily* transferQueue, 
             VmaAllocator* allocator, const vk::PhysicalDeviceProperties* physicalProperties,
             std::vector<SharedFence*>* commandBufferFences, 
             std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>*>* workingRequestQueues);
@@ -71,13 +71,13 @@ namespace star{
             const uint8_t& numToCreate);
 
         static void createBuffer(vk::Device& device, VmaAllocator& allocator, 
-            vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
+            StarQueueFamily& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
             std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, 
             std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences,
             TransferRequest::Buffer* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer);
 
         static void createTexture(vk::Device& device, VmaAllocator& allocator,
-            vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
+            StarQueueFamily& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, 
             std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, 
             std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences,
             TransferRequest::Texture* newTextureRequest, std::unique_ptr<StarTexture>* resultingTexture);

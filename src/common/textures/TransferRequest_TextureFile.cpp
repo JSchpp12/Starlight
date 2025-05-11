@@ -12,11 +12,13 @@
 
 #include <assert.h>
 
-star::TransferRequest::TextureFile::TextureFile(const std::string& imagePath, const vk::PhysicalDeviceProperties& deviceProperties) : imagePath(imagePath), deviceProperties(deviceProperties){
+star::TransferRequest::TextureFile::TextureFile(const std::string &imagePath, const uint32_t &graphicsQueueFamilyIndex, const vk::PhysicalDeviceProperties &deviceProperties) 
+: imagePath(imagePath), deviceProperties(deviceProperties), graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
+{
     assert(star::FileHelpers::FileExists(this->imagePath) && "Provided path does not exist");
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::TextureFile::createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const
+std::unique_ptr<star::StarBuffer> star::TransferRequest::TextureFile::createStagingBuffer(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const
 {
     int width, height, channels = 0;
     GetTextureInfo(this->imagePath, width, height, channels);
@@ -33,10 +35,12 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::TextureFile::createStag
     );
 }
 
-std::unique_ptr<star::StarTexture> star::TransferRequest::TextureFile::createFinal(vk::Device& device, VmaAllocator& allocator) const
+std::unique_ptr<star::StarTexture> star::TransferRequest::TextureFile::createFinal(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const
 {
     int width, height, channels = 0;
     GetTextureInfo(this->imagePath, width, height, channels);
+
+    uint32_t indices[] = {this->graphicsQueueFamilyIndex, transferQueueFamilyIndex};
 
     return star::StarTexture::Builder(device, allocator)
         .setCreateInfo(
@@ -51,13 +55,16 @@ std::unique_ptr<star::StarTexture> star::TransferRequest::TextureFile::createFin
                         .setHeight(height)
                         .setDepth(1)
                 )
-                .setUsage(vk::ImageUsageFlagBits::eSampled)
+                .setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
                 .setImageType(vk::ImageType::e2D)
                 .setMipLevels(1)
+                .setArrayLayers(1)
                 .setTiling(vk::ImageTiling::eOptimal)
                 .setInitialLayout(vk::ImageLayout::eUndefined)
                 .setSamples(vk::SampleCountFlagBits::e1)
-                .setSharingMode(vk::SharingMode::eConcurrent),
+                .setSharingMode(vk::SharingMode::eConcurrent)
+                .setPQueueFamilyIndices(&indices[0])
+                .setQueueFamilyIndexCount(2),
             this->imagePath
         )
         .setBaseFormat(vk::Format::eR8G8B8A8Srgb)

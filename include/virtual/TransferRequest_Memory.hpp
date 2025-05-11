@@ -16,9 +16,9 @@ namespace star::TransferRequest{
     Memory() = default;
     ~Memory() = default; 
 
-    virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const = 0; 
+    virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const = 0; 
 
-    virtual std::unique_ptr<T> createFinal(vk::Device& device, VmaAllocator& allocator) const = 0; 
+    virtual std::unique_ptr<T> createFinal(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const = 0; 
 
     virtual void copyFromTransferSRCToDST(StarBuffer& srcBuffer, T& dst, vk::CommandBuffer& commandBuffer) const = 0; 
     

@@ -108,16 +108,9 @@ class StarTexture
     vk::Sampler sampler = vk::Sampler();
     std::unordered_map<vk::Format, vk::ImageView> views = std::unordered_map<vk::Format, vk::ImageView>();
 
-    void extractImageInfo();
-
-    void createTextureImageView(const vk::Format &viewFormat, const vk::ImageAspectFlags &aspectFlags);
-
-    void createImageView(vk::Device &device, vk::Image image, vk::Format format,
-                                         const vk::ImageAspectFlags &aspectFlags, const int &mipMapLevels);
-
     static vk::Sampler CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo);
 
-    static void CreateAllocation(vk::Device &device, VmaAllocator &allocator,
+    static void CreateAllocation(vk::Device &device, const vk::Format& baseFormat, VmaAllocator &allocator,
                                  const VmaAllocationCreateInfo &allocationCreateInfo,
                                  const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
                                  vk::Image &textureImage, const std::string &allocationName);
@@ -128,6 +121,8 @@ class StarTexture
 
     static std::unordered_map<vk::Format, vk::ImageView> CreateImageViews(
         vk::Device &device, vk::Image vulkanImage, std::vector<vk::ImageViewCreateInfo> imageCreateInfos);
+
+    static void VerifyImageCreateInfo(const vk::ImageCreateInfo& createInfo); 
 
     friend class Builder;
 };

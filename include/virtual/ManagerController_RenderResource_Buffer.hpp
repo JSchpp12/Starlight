@@ -12,7 +12,7 @@ namespace star::ManagerController::RenderResource{
     Buffer(const uint8_t& frameInFlightIndexToUpdateOn) 
     : star::ManagerController::Controller<TransferRequest::Buffer>(frameInFlightIndexToUpdateOn){}; 
 
-    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(const vk::PhysicalDevice& physicalDevice) override = 0;
+    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(StarDevice &device) override = 0;
 
     protected:
 

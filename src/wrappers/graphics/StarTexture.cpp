@@ -154,7 +154,9 @@ star::StarTexture::StarTexture(vk::Device &device, VmaAllocator &allocator, cons
                                const vk::SamplerCreateInfo &samplerInfo)
     : device(device), allocator(&allocator), memory(VmaAllocation()), baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
 {
-    CreateAllocation(device, allocator, allocationCreateInfo, createInfo, this->memory.value(),
+    VerifyImageCreateInfo(createInfo); 
+
+    CreateAllocation(device, this->baseFormat, allocator, allocationCreateInfo, createInfo, this->memory.value(),
                      this->vulkanImage, allocationName);
 
     this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
@@ -166,7 +168,9 @@ star::StarTexture::StarTexture(vk::Device &device, VmaAllocator &allocator, cons
                                const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format& baseFormat)
     : device(device), allocator(&allocator), memory(VmaAllocation()), baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
 {
-    CreateAllocation(device, allocator, allocationCreateInfo, createInfo, this->memory.value(),
+    VerifyImageCreateInfo(createInfo); 
+
+    CreateAllocation(device, this->baseFormat, allocator, allocationCreateInfo, createInfo, this->memory.value(),
                      this->vulkanImage, allocationName);
 
     this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
@@ -203,12 +207,16 @@ vk::Sampler star::StarTexture::CreateImageSampler(vk::Device &device, const vk::
     return sampler;
 }
 
-void star::StarTexture::CreateAllocation(vk::Device &device, VmaAllocator &allocator,
+void star::StarTexture::CreateAllocation(vk::Device &device, const vk::Format& baseFormat, 
+                                         VmaAllocator &allocator,
                                          const VmaAllocationCreateInfo &allocationCreateInfo,
                                          const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
                                          vk::Image &textureImage, const std::string &allocationName)
 {
-    auto result = vmaCreateImage(allocator, (VkImageCreateInfo *)&imageCreateInfo, &allocationCreateInfo,
+    vk::ImageCreateInfo addFormat = vk::ImageCreateInfo(imageCreateInfo)
+        .setFormat(baseFormat);
+
+    auto result = vmaCreateImage(allocator, (VkImageCreateInfo *)&addFormat, &allocationCreateInfo,
                                  (VkImage *)&textureImage, &allocation, nullptr);
 
     if (result != VK_SUCCESS)
@@ -238,6 +246,17 @@ std::unordered_map<vk::Format, vk::ImageView> star::StarTexture::CreateImageView
     }
 
     return nViews;
+}
+
+void star::StarTexture::VerifyImageCreateInfo(const vk::ImageCreateInfo &createInfo)
+{
+    assert(createInfo.extent.width != 0 && "width cannot be 0");
+    assert(createInfo.extent.height != 0 && "height cannot be 0"); 
+    assert(createInfo.extent.depth != 0 && "depth cannot be 0");
+    assert(createInfo.mipLevels != 0 && "mip levels cannnot be 0");
+    assert(createInfo.arrayLayers != 0 && "array layers cannot be 0");
+    assert(createInfo.initialLayout == vk::ImageLayout::eUndefined || createInfo.initialLayout == vk::ImageLayout::ePreinitialized && "Invalid initial layout according to vulkan specs"); 
+    assert(createInfo.sharingMode == vk::SharingMode::eExclusive || (createInfo.sharingMode == vk::SharingMode::eConcurrent && createInfo.queueFamilyIndexCount > 1) && "Must have indices defined for shared resource");
 }
 
 vk::ImageView star::StarTexture::CreateImageView(vk::Device &device, const vk::ImageViewCreateInfo &imageCreateInfo)
@@ -274,7 +293,7 @@ star::StarTexture::Builder &star::StarTexture::Builder::setCreateInfo(const VmaA
     assert(this->createNewAllocationInfo.has_value() && "Must be a builder for a new allocation");
 
     this->createNewAllocationInfo.value().createInfo = nCreateInfo;
-    this->createNewAllocationInfo.value().allocationCreateInfo = nAllocInfo;
+    this->createNewAllocationInfo.value().allocationCreateInfo = nAllocInfo; 
     this->createNewAllocationInfo.value().allocationName = nAllocName;
     return *this;
 }
@@ -333,12 +352,12 @@ std::unique_ptr<star::StarTexture> star::StarTexture::Builder::build()
         if (this->samplerInfo.has_value())
         {
             return std::unique_ptr<StarTexture>(
-                new StarTexture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()));
+                new StarTexture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value(), this->samplerInfo.value()));
         }
         else
         {
             return std::unique_ptr<StarTexture>(
-                new StarTexture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value(), this->samplerInfo.value()));
+                new StarTexture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()));
         }
     }
     else

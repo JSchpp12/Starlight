@@ -12,14 +12,14 @@ star::ManagerController::RenderResource::TextureFile::TextureFile(const std::str
     this->isCompressedTexture = IsCompressedFileType(this->filePath);
 }
 
-std::unique_ptr<star::TransferRequest::Texture> star::ManagerController::RenderResource::TextureFile::createTransferRequest(const vk::PhysicalDevice& physicalDevice){
+std::unique_ptr<star::TransferRequest::Texture> star::ManagerController::RenderResource::TextureFile::createTransferRequest(star::StarDevice &device){
 
-    std::shared_ptr<star::SharedCompressedTexture> compressedTexture = std::make_shared<star::SharedCompressedTexture>(this->filePath, physicalDevice); 
+    std::shared_ptr<star::SharedCompressedTexture> compressedTexture = std::make_shared<star::SharedCompressedTexture>(this->filePath, device.getPhysicalDevice()); 
 
     if (this->isCompressedTexture){
-        return std::make_unique<TransferRequest::CompressedTextureFile>(physicalDevice.getProperties(), compressedTexture, 0);
+        return std::make_unique<TransferRequest::CompressedTextureFile>(device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex(), device.getPhysicalDevice().getProperties(), compressedTexture, 0);
     }else{
-        return std::make_unique<TransferRequest::TextureFile>(this->filePath, physicalDevice.getProperties());
+        return std::make_unique<TransferRequest::TextureFile>(this->filePath, device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex(), device.getPhysicalDevice().getProperties());
     }
 }
 

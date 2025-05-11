@@ -1,6 +1,6 @@
 #include "TransferRequest_LightInfo.hpp"
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createStagingBuffer(vk::Device& device, VmaAllocator &allocator) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createStagingBuffer(vk::Device& device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
 	auto create = StarBuffer::BufferCreationArgs{
 		sizeof(LightBufferObject),
 		static_cast<uint32_t>(this->myLights.size()),
@@ -14,11 +14,11 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createStagin
 	return std::make_unique<StarBuffer>(allocator, create); 
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createFinal(vk::Device &device, VmaAllocator &allocator) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
 	auto create = StarBuffer::BufferCreationArgs{
 		sizeof(LightBufferObject),
 		static_cast<uint32_t>(this->myLights.size()),
-		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+		VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
 		VMA_MEMORY_USAGE_AUTO,
 		vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
 		vk::SharingMode::eConcurrent,

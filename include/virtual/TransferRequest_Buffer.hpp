@@ -8,9 +8,9 @@ namespace star::TransferRequest{
         Buffer() = default;
         ~Buffer() = default;
         
-        virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override = 0; 
+        virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override = 0; 
 
-        virtual std::unique_ptr<StarBuffer> createFinal(vk::Device& device, VmaAllocator& allocator) const override = 0; 
+        virtual std::unique_ptr<StarBuffer> createFinal(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override = 0; 
 
         virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarBuffer &dst, vk::CommandBuffer &commandBuffer) const override; 
 

@@ -1,6 +1,6 @@
 #include "TransferRequest_GlobalInfo.hpp"
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const{
     auto createArgs = StarBuffer::BufferCreationArgs{
         sizeof(GlobalUniformBufferObject),
         1,
@@ -14,7 +14,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createStagi
     return std::make_unique<StarBuffer>(allocator, createArgs); 
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createFinal(vk::Device &device, VmaAllocator &allocator) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
     auto createArgs = StarBuffer::BufferCreationArgs{
         sizeof(GlobalUniformBufferObject),
         1,

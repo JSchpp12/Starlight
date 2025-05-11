@@ -7,11 +7,11 @@
 namespace star::TransferRequest{
     class TextureFile : public Texture{
         public:
-        TextureFile(const std::string& imagePath, const vk::PhysicalDeviceProperties& deviceProperties);
+        TextureFile(const std::string& imagePath, const uint32_t& graphicsQueueFamilyIndex, const vk::PhysicalDeviceProperties& deviceProperties);
 
-        virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override; 
+        virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
 
-        virtual std::unique_ptr<star::StarTexture> createFinal(vk::Device& device, VmaAllocator& allocator) const override; 
+        virtual std::unique_ptr<star::StarTexture> createFinal(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
 
         virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarTexture &dst, vk::CommandBuffer &commandBuffer) const override;
 
@@ -20,6 +20,7 @@ namespace star::TransferRequest{
         protected:
         
         private:
+        const uint32_t graphicsQueueFamilyIndex; 
         const std::string imagePath; 
         const vk::PhysicalDeviceProperties deviceProperties; 
 

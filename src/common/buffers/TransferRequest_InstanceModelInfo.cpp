@@ -1,6 +1,6 @@
 #include "TransferRequest_InstanceModelInfo.hpp"
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::createStagingBuffer(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
 	auto create = StarBuffer::BufferCreationArgs{
 		sizeof(glm::mat4),
 		static_cast<uint32_t>(this->displayMatrixInfo.size()),
@@ -14,7 +14,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::crea
 	return std::make_unique<StarBuffer>(allocator, create); 
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::createFinal(vk::Device &device, VmaAllocator &allocator) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
 	auto create = StarBuffer::BufferCreationArgs{
 		sizeof(glm::mat4),
 		static_cast<uint32_t>(this->displayMatrixInfo.size()),

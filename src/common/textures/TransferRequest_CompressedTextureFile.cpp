@@ -4,12 +4,12 @@
 
 #include <assert.h>
 
-star::TransferRequest::CompressedTextureFile::CompressedTextureFile(const vk::PhysicalDeviceProperties& deviceProperties, std::shared_ptr<SharedCompressedTexture> compressedTexture, const uint8_t& mipMapIndex) 
-: compressedTexture(compressedTexture), mipMapIndex(mipMapIndex), deviceProperties(deviceProperties)
+star::TransferRequest::CompressedTextureFile::CompressedTextureFile(const uint32_t& graphicsQueueFamilyIndex, const vk::PhysicalDeviceProperties& deviceProperties, std::shared_ptr<SharedCompressedTexture> compressedTexture, const uint8_t& mipMapIndex) 
+: compressedTexture(compressedTexture), mipMapIndex(mipMapIndex), deviceProperties(deviceProperties), graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
 {
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const{
     boost::unique_lock<boost::mutex> lock;
     ktxTexture2* texture = nullptr; 
     this->compressedTexture->giveMeTranscodedImage(lock, texture);
@@ -26,10 +26,12 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::CompressedTextureFile::
     );
 }
 
-std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile::createFinal(vk::Device& device, VmaAllocator &allocator) const{
+std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile::createFinal(vk::Device& device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
     boost::unique_lock<boost::mutex> lock;
     ktxTexture2* texture = nullptr; 
     this->compressedTexture->giveMeTranscodedImage(lock, texture); 
+
+    uint32_t indices[] = {this->graphicsQueueFamilyIndex, transferQueueFamilyIndex}; 
 
     return StarTexture::Builder(device, allocator)
         .setCreateInfo(
@@ -44,12 +46,14 @@ std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile:
                         .setHeight(texture->baseHeight)
                         .setDepth(1)
                 )
-                .setUsage(vk::ImageUsageFlagBits::eSampled)
+                .setQueueFamilyIndexCount(2)
+                .setPQueueFamilyIndices(&indices[0])
+                .setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
                 .setImageType(vk::ImageType::e2D)
                 .setMipLevels(texture->numLevels)
+                .setArrayLayers(1)
                 .setTiling(vk::ImageTiling::eOptimal)
                 .setInitialLayout(vk::ImageLayout::eUndefined)
-                .setUsage(vk::ImageUsageFlagBits::eSampled)
                 .setSamples(vk::SampleCountFlagBits::e1)
                 .setSharingMode(vk::SharingMode::eConcurrent), 
                 "compresesd_texture"
@@ -95,6 +99,32 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(star
     ktxTexture2* texture = nullptr; 
     this->compressedTexture->giveMeTranscodedImage(lock, texture);
 
+    {
+        vk::ImageMemoryBarrier barrier{};
+        barrier.sType = vk::StructureType::eImageMemoryBarrier;
+        barrier.oldLayout = vk::ImageLayout::eUndefined;
+        barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+        barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+        barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+
+        barrier.image = dst.getVulkanImage();
+        barrier.srcAccessMask = vk::AccessFlagBits::eNone;
+        barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+        barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = texture->numLevels;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,         // which pipeline stages should
+                                                                                    // occurr before barrier
+                                    vk::PipelineStageFlagBits::eTransfer, // pipeline stage in
+                                                                                    // which operations will
+                                                                                    // wait on the barrier
+                                    {}, {}, nullptr, barrier);
+    }
+
     std::vector<vk::BufferImageCopy> bufferCopyRegions; 
 
     for (int i = 0; i < texture->numLevels; i++){
@@ -115,6 +145,33 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(star
     }
 
     commandBuffer.copyBufferToImage(srcBuffer.getVulkanBuffer(), dst.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, bufferCopyRegions); 
+
+    {
+        vk::ImageMemoryBarrier barrier{};
+        barrier.sType = vk::StructureType::eImageMemoryBarrier;
+        barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+        barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+        barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+
+        barrier.image = dst.getVulkanImage();
+        barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+        barrier.dstAccessMask = vk::AccessFlagBits::eNone;
+
+        barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = texture->numLevels;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,         // which pipeline stages should
+                                                                                    // occurr before barrier
+                                    vk::PipelineStageFlagBits::eBottomOfPipe, // pipeline stage in
+                                                                                    // which operations will
+                                                                                    // wait on the barrier
+                                    {}, {}, nullptr, barrier);
+    }
+
 }
 
 void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBuffer& buffer) const{

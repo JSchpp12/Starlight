@@ -11,9 +11,9 @@ namespace star::TransferRequest{
         Texture() = default; 
         ~Texture() = default; 
 
-        virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator) const override = 0; 
+        virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override = 0; 
 
-        virtual std::unique_ptr<star::StarTexture> createFinal(vk::Device& device, VmaAllocator& allocator) const override = 0; 
+        virtual std::unique_ptr<star::StarTexture> createFinal(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override = 0; 
 
         virtual void copyFromTransferSRCToDST(StarBuffer& srcBuffer, StarTexture& dst, vk::CommandBuffer& commandBuffer) const = 0; 
 

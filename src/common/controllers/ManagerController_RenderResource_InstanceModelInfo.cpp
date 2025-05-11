@@ -2,6 +2,6 @@
 
 #include "TransferRequest_InstanceModelInfo.hpp"
 
-std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceModelInfo::createTransferRequest(const vk::PhysicalDevice& physicalDevice){
+std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceModelInfo::createTransferRequest(star::StarDevice &device){
     return std::make_unique<TransferRequest::InstanceModelInfo>(this->objectInstances);
 }

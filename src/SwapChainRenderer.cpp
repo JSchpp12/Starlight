@@ -237,27 +237,6 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
 {
 	std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-	// auto settings = StarTexture::RawTextureCreateSettings(
-	// 	this->swapChainExtent->width,
-	// 	this->swapChainExtent->height,
-	// 	4,
-	// 	1,
-	// 	1,
-	// 	vk::ImageUsageFlagBits::eColorAttachment,
-	// 	*this->swapChainImageFormat,
-	// 	{},
-	// 	vk::ImageAspectFlagBits::eColor,
-	// 	VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
-	// 	VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
-	// 	vk::ImageLayout::eUndefined,
-	// 	false, true, 
-	// 	{},
-	// 	1.0f,
-	// 	vk::Filter::eNearest, 
-	// 	"SwapChainRendererToImage"
-	// );
-
-
 	//get images in the newly created swapchain 
 	for (vk::Image& image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain)) {
 		auto builder = star::StarTexture::Builder(device.getDevice(), image)
@@ -296,7 +275,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
         barrier.srcAccessMask = vk::AccessFlagBits::eNone;
         barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead;
 
-        barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+        barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
         barrier.subresourceRange.baseMipLevel = 0; // image does not have any mipmap levels
         barrier.subresourceRange.levelCount = 1;   // image is not an array
         barrier.subresourceRange.baseArrayLayer = 0;

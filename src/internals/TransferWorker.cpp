@@ -15,8 +15,7 @@ void star::TransferManagerThread::startAsync(){
     this->thread = boost::thread(TransferManagerThread::mainLoop, 
         &this->shouldRun, 
         &this->device.getDevice(),
-        &this->transferQueue->getCommandPool(),
-        &this->transferQueue->getQueue(), 
+        this->transferQueue.get(), 
         &this->allocator.get(), 
         &this->deviceProperties,
         &this->commandBufferFences,
@@ -34,11 +33,11 @@ void star::TransferManagerThread::stopAsync(){
     this->thread.join();
 }
 
-void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, vk::CommandPool* transferPool, vk::Queue* transferQueue, VmaAllocator* allocator, const vk::PhysicalDeviceProperties* deviceProperties, std::vector<SharedFence*>* commandBufferFences, std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>*>* workingRequestQueues){
+void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, star::StarQueueFamily* transferQueue, VmaAllocator* allocator, const vk::PhysicalDeviceProperties* deviceProperties, std::vector<SharedFence*>* commandBufferFences, std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>*>* workingRequestQueues){
     std::cout << "Transfer thread started..." << std::endl;
     size_t targetBufferIndex = 0;
     size_t previousBufferIndexUsed = 0;
-    std::vector<vk::CommandBuffer> commandBuffers = createCommandBuffers(*device, *transferPool, 5);
+    std::vector<vk::CommandBuffer> commandBuffers = createCommandBuffers(*device, transferQueue->getCommandPool(), 5);
     std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>> inProcessRequests = std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>>();
 
     while(shouldRun->load()){
@@ -132,12 +131,12 @@ std::vector<vk::Queue> star::TransferManagerThread::createTransferQueues(star::S
     return queues;
 }
 
-void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Buffer* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
+void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, StarQueueFamily& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Buffer* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
     assert(commandBufferFences[bufferIndexToUse] == nullptr && "Command buffer fence should have already been waited on and removed");
 
-    auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator); 
+    auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator, transferQueue.getQueueFamilyIndex()); 
 
-    auto newResult = newBufferRequest->createFinal(device, allocator); 
+    auto newResult = newBufferRequest->createFinal(device, allocator, transferQueue.getQueueFamilyIndex()); 
     resultingBuffer->swap(newResult); 
 
     newBufferRequest->writeDataToStageBuffer(*transferSrcBuffer);
@@ -164,7 +163,7 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
         vk::Fence* fence = nullptr; 
         workCompleteFence.giveMeResource(lock, fence);
 
-        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, *fence)); 
+        auto commandResult = std::make_unique<vk::Result>(transferQueue.getQueue().submit(1, &submitInfo, *fence)); 
 
         if (*commandResult != vk::Result::eSuccess){
             //handle error
@@ -176,14 +175,14 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
     commandBufferFences[bufferIndexToUse] = &workCompleteFence; 
 }
 
-void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Texture* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
+void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, StarQueueFamily& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Texture* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
     
-    auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator); 
+    auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator, transferQueue.getQueueFamilyIndex()); 
 
     //should eventually implement option to jsut re-use existing image
     bool newImageCreated = true; 
 
-    auto finalTexture = newTextureRequest->createFinal(device, allocator); 
+    auto finalTexture = newTextureRequest->createFinal(device, allocator, transferQueue.getQueueFamilyIndex()); 
     resultingTexture->swap(finalTexture);
 
     newTextureRequest->writeDataToStageBuffer(*transferSrcBuffer);
@@ -216,7 +215,7 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
         vk::Fence* fence = nullptr; 
         workCompleteFence.giveMeResource(lock, fence);
 
-        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, *fence)); 
+        auto commandResult = std::make_unique<vk::Result>(transferQueue.getQueue().submit(1, &submitInfo, *fence)); 
 
         if (*commandResult != vk::Result::eSuccess){
             //handle error
