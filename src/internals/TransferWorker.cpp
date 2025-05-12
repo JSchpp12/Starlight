@@ -136,8 +136,12 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
 
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator, transferQueue.getQueueFamilyIndex()); 
 
-    auto newResult = newBufferRequest->createFinal(device, allocator, transferQueue.getQueueFamilyIndex()); 
-    resultingBuffer->swap(newResult); 
+    {
+        auto newResult = newBufferRequest->createFinal(device, allocator, transferQueue.getQueueFamilyIndex()); 
+        if (!*resultingBuffer || (resultingBuffer->get() && newResult->getBufferSize() > resultingBuffer->get()->getBufferSize())){
+            resultingBuffer->swap(newResult); 
+        }
+    }
 
     newBufferRequest->writeDataToStageBuffer(*transferSrcBuffer);
 
