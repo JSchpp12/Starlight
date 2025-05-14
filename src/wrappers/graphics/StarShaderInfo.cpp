@@ -67,12 +67,12 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const int& index){
                 shaderInfos[index].textureInfo.value().expectedLayout
             };
         }else{
-            textureInfo = vk::DescriptorImageInfo{
-                texture->getSampler(),
-                texture->getImageView(),
-                shaderInfos[index].textureInfo.value().expectedLayout
-            };
-        }
+                textureInfo = vk::DescriptorImageInfo{
+                    texture->getSampler(),
+                    texture->getImageView(),
+                    shaderInfos[index].textureInfo.value().expectedLayout
+                };
+            }
 
         this->descriptorWriter->writeImage(index, textureInfo);
     }

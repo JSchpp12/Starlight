@@ -9,7 +9,14 @@ namespace star::TransferRequest{
     class GlobalInfo : public Buffer{
         public:
         
-        GlobalInfo(const StarCamera& camera, const int& numLights) : camera(camera), numLights(numLights){}
+        GlobalInfo(const StarCamera& camera, 
+            const int& numLights, 
+            const uint32_t &graphicsQueueIndex, 
+        const vk::DeviceSize &minUniformBufferOffsetAlignment) 
+        : camera(camera), 
+        numLights(numLights), 
+        graphicsQueueIndex(graphicsQueueIndex),
+        minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment){}
 
         std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
 
@@ -18,6 +25,8 @@ namespace star::TransferRequest{
         void writeDataToStageBuffer(StarBuffer& buffer) const override; 
 
         private:
+        const vk::DeviceSize minUniformBufferOffsetAlignment;
+        const uint32_t graphicsQueueIndex; 
         const int numLights = 0;
         const StarCamera camera; 
 

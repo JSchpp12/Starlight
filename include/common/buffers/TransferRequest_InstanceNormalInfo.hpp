@@ -8,7 +8,10 @@
 namespace star::TransferRequest{
     class InstanceNormalInfo : public Buffer{
         public:
-        InstanceNormalInfo(const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances) {
+        InstanceNormalInfo(const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances, 
+            const uint32_t &graphicsQueueFamilyIndex, const vk::DeviceSize &minUniformBufferOffsetAlignment)
+            : graphicsQueueFamilyIndex(graphicsQueueFamilyIndex), 
+            minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment) {
             for (auto& instance : objectInstances) {
                 this->normalMatrixInfo.push_back(instance->getDisplayMatrix());
             }
@@ -21,8 +24,8 @@ namespace star::TransferRequest{
         void writeDataToStageBuffer(StarBuffer& buffer) const override; 
 
         protected:
-            std::vector<glm::mat4> normalMatrixInfo = std::vector<glm::mat4>(); 
-
-
+        const uint32_t graphicsQueueFamilyIndex; 
+        const vk::DeviceSize minUniformBufferOffsetAlignment;
+        std::vector<glm::mat4> normalMatrixInfo = std::vector<glm::mat4>(); 
     };
 }

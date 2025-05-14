@@ -3,17 +3,21 @@
 #include "CastHelpers.hpp"
 
 std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const{
-    auto create = StarBuffer::BufferCreationArgs{
-        sizeof(uint32_t),
-        CastHelpers::size_t_to_unsigned_int(this->indices.size()),
-        VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-        VMA_MEMORY_USAGE_AUTO, 
-        vk::BufferUsageFlagBits::eTransferSrc, 
-        vk::SharingMode::eConcurrent,
-        "IndiciesInfoBuffer"
-    };
-
-    return std::make_unique<StarBuffer>(allocator, create); 
+    return StarBuffer::Builder(allocator)
+        .setAllocationCreateInfo(
+            Allocator::AllocationBuilder()
+                .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
+                .setUsage(VMA_MEMORY_USAGE_AUTO)
+                .build(),
+            vk::BufferCreateInfo()
+                .setSharingMode(vk::SharingMode::eExclusive)
+                .setSize(sizeof(uint32_t) * CastHelpers::size_t_to_unsigned_int(this->indices.size()))
+                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+            "IndicesInfoBuffer_Src"
+        )
+        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->indices.size()))
+        .setInstanceSize(sizeof(uint32_t))
+        .build();
 }
 
 void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffer& buffer) const{
@@ -27,15 +31,26 @@ void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffer& buff
 }
 
 std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
-    auto createftest = StarBuffer::BufferCreationArgs{
-        sizeof(uint32_t),
-        CastHelpers::size_t_to_unsigned_int(this->indices.size()),
-        VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
-        VMA_MEMORY_USAGE_AUTO, 
-        vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, 
-        vk::SharingMode::eConcurrent,
-        "IndiciesInfoBuffer"
+    std::vector<uint32_t> indices = {
+        this->graphicsQueueFamilyIndex, 
+        transferQueueFamilyIndex
     };
 
-    return std::make_unique<StarBuffer>(allocator, createftest); 
+    return StarBuffer::Builder(allocator)
+        .setAllocationCreateInfo(
+            Allocator::AllocationBuilder()
+                .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                .setUsage(VMA_MEMORY_USAGE_AUTO)
+                .build(),
+            vk::BufferCreateInfo()
+                .setSharingMode(vk::SharingMode::eConcurrent)
+                .setQueueFamilyIndexCount(2)
+                .setQueueFamilyIndices(indices)
+                .setSize(sizeof(uint32_t) * CastHelpers::size_t_to_unsigned_int(this->indices.size()))
+                .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer),
+            "IndicesInfoBuffer_Src"
+        )
+        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->indices.size()))
+        .setInstanceSize(sizeof(uint32_t))
+        .build();
 }

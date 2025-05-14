@@ -1,31 +1,54 @@
 #include "TransferRequest_InstanceNormalInfo.hpp"
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceNormalInfo::createStagingBuffer(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
-	auto create = StarBuffer::BufferCreationArgs{
-		sizeof(glm::mat4),
-		static_cast<uint32_t>(this->normalMatrixInfo.size()),
-		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-		VMA_MEMORY_USAGE_AUTO,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::SharingMode::eConcurrent,
-		"InstanceNormalInfoBuffer"
-	};
+#include "CastHelpers.hpp"
 
-	return std::make_unique<StarBuffer>(allocator, create); 
+std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceNormalInfo::createStagingBuffer(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
+	const vk::DeviceSize alignmentSize = StarBuffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment); 
+
+	return StarBuffer::Builder(allocator)
+		.setAllocationCreateInfo(
+			Allocator::AllocationBuilder()
+				.setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
+				.setUsage(VMA_MEMORY_USAGE_AUTO)
+				.build(),
+			vk::BufferCreateInfo()
+				.setSharingMode(vk::SharingMode::eExclusive)
+				.setSize(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
+				.setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+			"InstanceNormalInfo_SRC"
+		)
+		.setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
+		.setInstanceSize(sizeof(glm::mat4))
+		.setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
+		.build();
 }
 
 std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceNormalInfo::createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
-		auto create = StarBuffer::BufferCreationArgs{
-		sizeof(glm::mat4),
-		static_cast<uint32_t>(this->normalMatrixInfo.size()),
-		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-		VMA_MEMORY_USAGE_AUTO,
-		vk::BufferUsageFlagBits::eUniformBuffer |vk::BufferUsageFlagBits::eTransferDst,
-		vk::SharingMode::eConcurrent,
-		"InstanceNormalInfoBuffer"
+	const std::vector<uint32_t> indices = {
+		transferQueueFamilyIndex,
+		this->graphicsQueueFamilyIndex
 	};
 
-	return std::make_unique<StarBuffer>(allocator, create); 
+	const vk::DeviceSize alignmentSize = StarBuffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment); 
+
+	return StarBuffer::Builder(allocator)
+		.setAllocationCreateInfo(
+			Allocator::AllocationBuilder()
+				.setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+				.setUsage(VMA_MEMORY_USAGE_AUTO)
+				.build(),
+			vk::BufferCreateInfo()
+				.setSharingMode(vk::SharingMode::eConcurrent)
+				.setQueueFamilyIndexCount(2)
+				.setQueueFamilyIndices(indices)
+				.setSize(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
+				.setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
+			"InstanceNormalInfo"
+		)
+		.setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
+		.setInstanceSize(sizeof(glm::mat4))
+		.setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
+		.build();
 }
 
 void star::TransferRequest::InstanceNormalInfo::writeDataToStageBuffer(star::StarBuffer& buffer) const{

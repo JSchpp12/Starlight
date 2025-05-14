@@ -35,8 +35,6 @@ class StarTexture
 
         Builder &setSamplerInfo(const vk::SamplerCreateInfo &nCreateInfo);
 
-        Builder &setExtraInfo(const std::string &nAllocationName);
-
         Builder& setBaseFormat(const vk::Format& nFormat); 
 
         std::unique_ptr<StarTexture> build();

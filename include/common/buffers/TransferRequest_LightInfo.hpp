@@ -23,7 +23,8 @@ namespace star::TransferRequest{
             glm::uvec4 settings = glm::uvec4(0);    //container for single uint values
         };
     
-        LightInfo(const std::vector<std::unique_ptr<Light>>& lights)
+        LightInfo(const std::vector<std::unique_ptr<Light>>& lights, const uint32_t &graphicsQueueFamilyIndex)
+        : graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
         {
             for (int i = 0; i < lights.size(); ++i)
             {
@@ -38,6 +39,7 @@ namespace star::TransferRequest{
         void writeDataToStageBuffer(StarBuffer& buffer) const override; 
     
         protected:
+        const uint32_t graphicsQueueFamilyIndex; 
         std::vector<Light> myLights; 
     
     };
