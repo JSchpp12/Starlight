@@ -28,7 +28,7 @@ namespace star {
 		};
 
 		vk::Extent2D getMainExtent() const { return *this->swapChainExtent; }
-		int getFrameToBeDrawn() const { return this->currentFrame; }
+		int getFrameToBeDrawn() const { return this->currentFrameInFlightCounter; }
 
 		vk::Fence getframeStatusFlag(const uint8_t frameIndex){
 			assert(frameIndex < this->imagesInFlight.size() && "Out of range.");
@@ -40,13 +40,28 @@ namespace star {
 		StarDevice& device; 
 
 		//tracker for which frame is being processed of the available permitted frames
-		int currentFrame = 0;
+		uint32_t currentFrameInFlightCounter = 0;
 		int previousFrame = 0;
 		int numFramesInFlight; 
 
 		uint32_t currentSwapChainImageIndex = 0;
 
 		bool frameBufferResized = false; //explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
+
+				//more swapchain info 
+		vk::SwapchainKHR swapChain;
+
+		std::unique_ptr<vk::Format> swapChainImageFormat = std::unique_ptr<vk::Format>();
+		std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>(); 
+
+		//Sync obj storage 
+		std::vector<vk::Fence> inFlightFences;
+		std::vector<vk::Fence> imagesInFlight;
+		std::vector<vk::Semaphore> imageAvailableSemaphores;
+		std::vector<vk::Semaphore> imageAcquireSemaphores; 
+
+		std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer;
+		std::unique_ptr<std::string> screenshotPath = nullptr;
 
 		vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
 
@@ -57,28 +72,15 @@ namespace star {
 		
 		virtual void prepareForSubmission(const int& frameIndexToBeDrawn) override;
 
-		void submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor);
+		vk::Semaphore submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor);
 
-		std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> getOverrideBufferSubmissionCallback() override;
+		std::optional<std::function<vk::Semaphore(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> getOverrideBufferSubmissionCallback() override;
 		
 		virtual std::vector<std::unique_ptr<StarTexture>> createRenderToImages(StarDevice& device, const int& numFramesInFlight) override;
 
 		virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int& frameInFlightIndex) override;
 
 		virtual void recordCommandBuffer(vk::CommandBuffer& buffer, const int& frameIndexToBeDrawn) override;
-	private:
-		//more swapchain info 
-		vk::SwapchainKHR swapChain;
-
-		std::unique_ptr<vk::Format> swapChainImageFormat = std::unique_ptr<vk::Format>();
-		std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>(); 
-
-		std::vector<vk::Fence> inFlightFences;
-		std::vector<vk::Fence> imagesInFlight;
-
-		std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer;
-
-		std::unique_ptr<std::string> screenshotPath = nullptr;
 
 		/// <summary>
 		/// If the swapchain is no longer compatible, it must be recreated.
@@ -90,7 +92,7 @@ namespace star {
 		/// <summary>
 		/// Create semaphores that are going to be used to sync rendering and presentation queues
 		/// </summary>
-		void createSemaphores();
+		static std::vector<vk::Semaphore> CreateSemaphores(StarDevice &device, const int &numToCreate); 
 
 		/// <summary>
 		/// Fences are needed for CPU-GPU sync. Creates these required objects

@@ -58,10 +58,7 @@ protected:
 
 	//depth testing storage 
 	std::vector<std::unique_ptr<StarTexture>> renderToDepthImages = std::vector<std::unique_ptr<StarTexture>>();
-
-	//Sync obj storage 
-	std::vector<vk::Semaphore> imageAvailableSemaphores;
-
+	
 	//storage for multiple buffers for each swap chain image  
 	//std::vector<vk::DescriptorSet> globalDescriptorSets;
 	std::unique_ptr<StarShaderInfo> globalShaderInfo; 

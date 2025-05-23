@@ -421,7 +421,6 @@ void SceneRenderer::prepareForSubmission(const int& frameIndexToBeDrawn)
 	for (StarObject& obj : this->scene.getObjects()) {
 		obj.prepDraw(frameIndexToBeDrawn); 
 	}
-
 }
 
 std::optional<std::function<void(const int&)>> SceneRenderer::getBeforeBufferSubmissionCallback()

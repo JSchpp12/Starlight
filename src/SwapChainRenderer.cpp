@@ -14,18 +14,27 @@ star::SwapChainRenderer::~SwapChainRenderer()
 {
 	cleanupSwapChain();
 
+	for (auto &semaphore : this->imageAvailableSemaphores){
+		this->device.getDevice().destroySemaphore(semaphore); 
+	}
+
+	for (auto &semaphore : this->imageAcquireSemaphores){
+		this->device.getDevice().destroySemaphore(semaphore); 
+	}
+
 	for (size_t i = 0; i < this->numFramesInFlight; i++) {
-		this->device.getDevice().destroySemaphore(imageAvailableSemaphores[i]);
 		this->device.getDevice().destroyFence(inFlightFences[i]);
 	}
 }
 
 void star::SwapChainRenderer::prepare(StarDevice& device, const vk::Extent2D& swapChainExtent, const int& numFramesInFlight)
 {
-	auto numSwapChainImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain).size(); 
+	const size_t numSwapChainImages = this->device.getDevice().getSwapchainImagesKHR(this->swapChain).size(); 
 	this->SceneRenderer::prepare(this->device, *this->swapChainExtent, numFramesInFlight);
 
-	this->createSemaphores(); 
+	this->imageAcquireSemaphores = CreateSemaphores(this->device, numFramesInFlight); 
+	this->imageAvailableSemaphores = CreateSemaphores(this->device, numSwapChainImages); 
+
 	this->createFences();
 	this->createFenceImageTracking(); 
 }
@@ -44,6 +53,7 @@ void star::SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn,
 	vk::SwapchainKHR swapChains[] = { swapChain };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
+
 	presentInfo.pImageIndices = &this->currentSwapChainImageIndex;
 
 	//can use this to get results from swap chain to check if presentation was successful
@@ -61,8 +71,8 @@ void star::SwapChainRenderer::submitPresentation(const int& frameIndexToBeDrawn,
 	}
 
 	//advance to next frame
-	previousFrame = currentFrame;
-	currentFrame = (currentFrame + 1) % this->numFramesInFlight;
+	previousFrame = this->currentFrameInFlightCounter;
+	this->currentFrameInFlightCounter = (this->currentFrameInFlightCounter + 1) % this->numFramesInFlight;
 }
 
 void star::SwapChainRenderer::pollEvents() {
@@ -171,7 +181,7 @@ void star::SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDraw
 		// 1. VK_ERROR_OUT_OF_DATE_KHR: swap chain has become incompatible with the surface and cant be used for rendering. (Window resize)
 		// 2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no longer match
 	{
-		auto result = this->device.getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[frameIndexToBeDrawn]);
+		auto result = this->device.getDevice().acquireNextImageKHR(swapChain, UINT64_MAX, this->imageAcquireSemaphores[frameIndexToBeDrawn]);
 
 		if (result.result == vk::Result::eErrorOutOfDateKHR) {
 			//the swapchain is no longer optimal according to vulkan. Must recreate a more efficient swap chain
@@ -188,7 +198,9 @@ void star::SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDraw
 
 	//check if a previous frame is using the current image
 	if (imagesInFlight[this->currentSwapChainImageIndex]) {
-		this->device.getDevice().waitForFences(1, &imagesInFlight[this->currentSwapChainImageIndex], VK_TRUE, UINT64_MAX);
+		const vk::Result result = this->device.getDevice().waitForFences(1, &imagesInFlight[this->currentSwapChainImageIndex], VK_TRUE, UINT64_MAX);
+		if (result != vk::Result::eSuccess)
+			throw std::runtime_error("Failed to wait for fences");
 	}
 	//mark image as now being in use by this frame by assigning the fence to it 
 	imagesInFlight[this->currentSwapChainImageIndex] = inFlightFences[frameIndexToBeDrawn];
@@ -196,15 +208,15 @@ void star::SwapChainRenderer::prepareForSubmission(const int& frameIndexToBeDraw
 	this->SceneRenderer::prepareForSubmission(frameIndexToBeDrawn); 
 
 	//set fence to unsignaled state
-	vk::Result resetResult = this->device.getDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
+	const vk::Result resetResult = this->device.getDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
 	if (resetResult != vk::Result::eSuccess)
 		throw std::runtime_error("Failed to reset fences"); 
 }
 
-void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor)
+vk::Semaphore star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int& frameIndexToBeDrawn, std::vector<vk::Semaphore> mustWaitFor)
 {
 	vk::SubmitInfo submitInfo{}; 
-	std::vector<vk::Semaphore> waitSemaphores = { imageAvailableSemaphores[this->currentFrame] }; 
+	std::vector<vk::Semaphore> waitSemaphores = { this->imageAcquireSemaphores[frameIndexToBeDrawn] }; 
 	std::vector<vk::PipelineStageFlags> waitStages = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
 
 	for (auto& semaphore : mustWaitFor) {
@@ -216,7 +228,7 @@ void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int&
 	submitInfo.pWaitSemaphores = waitSemaphores.data();
 	submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size()); 
 	submitInfo.signalSemaphoreCount = 1; 
-	submitInfo.pSignalSemaphores = &buffer.getCompleteSemaphores()[frameIndexToBeDrawn]; 
+	submitInfo.pSignalSemaphores = &this->imageAvailableSemaphores[this->currentSwapChainImageIndex]; 
 	submitInfo.pWaitDstStageMask = waitStages.data(); 
 	submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
 	submitInfo.commandBufferCount = 1; 
@@ -226,11 +238,13 @@ void star::SwapChainRenderer::submitBuffer(StarCommandBuffer& buffer, const int&
 	if (*commandResult != vk::Result::eSuccess) {
 		throw std::runtime_error("Failed to submit command buffer");
 	}
+
+	return this->imageAvailableSemaphores[this->currentSwapChainImageIndex];
 }
 
-std::optional<std::function<void(star::StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
+std::optional<std::function<vk::Semaphore(star::StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> star::SwapChainRenderer::getOverrideBufferSubmissionCallback()
 {
-	return std::optional<std::function<void(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+	return std::optional<std::function<vk::Semaphore(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>>(std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createRenderToImages(star::StarDevice& device, const int& numFramesInFlight)
@@ -354,20 +368,21 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer& commandBuff
 	this->SceneRenderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
 }
 
-void star::SwapChainRenderer::createSemaphores()
-{
-	imageAvailableSemaphores.resize(this->numFramesInFlight);
+std::vector<vk::Semaphore> star::SwapChainRenderer::CreateSemaphores(star::StarDevice &device, const int &numToCreate){
+	std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>(numToCreate); 
 
 	vk::SemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
-	for (size_t i = 0; i < this->numFramesInFlight; i++) {
-		this->imageAvailableSemaphores[i] = this->device.getDevice().createSemaphore(semaphoreInfo);
+	for (int i = 0; i < numToCreate; i++){
+		semaphores[i] = device.getDevice().createSemaphore(semaphoreInfo);
 
-		if (!this->imageAvailableSemaphores[i]) {
+		if (!semaphores[i]) {
 			throw std::runtime_error("failed to create semaphores for a frame");
 		}
 	}
+
+	return semaphores;
 }
 
 void star::SwapChainRenderer::createFences()

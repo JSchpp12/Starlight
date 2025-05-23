@@ -69,11 +69,8 @@ void star::ManagerCommandBuffer::handleNewRequests()
 void star::ManagerCommandBuffer::callPreRecordFunctions(const uint8_t& frameInFlightIndex){
 	
 }
-void star::ManagerCommandBuffer::recordCommandBuffers(const uint8_t& frameInFlightIndex){
 
-}
-
-vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapChainIndex)
+vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const uint32_t& swapChainIndex)
 {
 	//determine the order of buffers to execute
 	assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- cannot happen");
@@ -94,20 +91,22 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const int& swapCh
 		mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex).end();
 	}
 
+	vk::Semaphore mainGraphicsSemaphore = vk::Semaphore();
 	if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value()) {
-		mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, beforeSemaphores);
+		mainGraphicsSemaphore = mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(*mainGraphicsBuffer.commandBuffer, swapChainIndex, beforeSemaphores);
 	} else {
 		mainGraphicsBuffer.commandBuffer->submit(swapChainIndex);
+		mainGraphicsSemaphore = mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex); 
 	}
 
-	vk::Semaphore* mainGraphicsSemaphore = &mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
+	assert(mainGraphicsSemaphore && "The main graphics complete semaphore is not valid. This might happen if the override function does not return a valid semaphore"); 
 	
-	std::vector<vk::Semaphore> waitSemaphores = { *mainGraphicsSemaphore };
+	std::vector<vk::Semaphore> waitSemaphores = { mainGraphicsSemaphore };
 
 	std::vector<vk::Semaphore> finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(Command_Buffer_Order::end_of_frame, swapChainIndex, &waitSemaphores);
 
 	if (finalSubmissionSemaphores.empty())
-		return mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
+		return mainGraphicsSemaphore;
 	else
 		return finalSubmissionSemaphores[0];
 }
