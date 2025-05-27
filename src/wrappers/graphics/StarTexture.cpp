@@ -5,69 +5,73 @@
 #include <cassert>
 #include <stdexcept>
 
-void star::StarTexture::TransitionImageLayout(StarTexture &image, vk::CommandBuffer &commandBuffer, const vk::Format &format, const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout)
+void star::StarTexture::TransitionImageLayout(StarTexture &image, vk::CommandBuffer &commandBuffer,
+                                              const vk::Format &format, const vk::ImageLayout &oldLayout,
+                                              const vk::ImageLayout &newLayout)
 {
-	//create a barrier to prevent pipeline from moving forward until image transition is complete
-	vk::ImageMemoryBarrier barrier{};
-	barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
-	barrier.oldLayout = oldLayout;
-	barrier.newLayout = newLayout;
+    // create a barrier to prevent pipeline from moving forward until image transition is complete
+    vk::ImageMemoryBarrier barrier{};
+    barrier.sType = vk::StructureType::eImageMemoryBarrier; // specific flag for image operations
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
 
-	//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
-	barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-	barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+    // if barrier is used for transferring ownership between queue families, this would be important -- set to ignore
+    // since we are not doing this
+    barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+    barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
-	barrier.image = image.getVulkanImage();
-	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = image.getMipmapLevels();
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
+    barrier.image = image.getVulkanImage();
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = image.getMipmapLevels();
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
 
-	//the operations that need to be completed before and after the barrier, need to be defined
-	barrier.srcAccessMask = {}; //TODO
-	barrier.dstAccessMask = {}; //TODO
+    // the operations that need to be completed before and after the barrier, need to be defined
+    barrier.srcAccessMask = {}; // TODO
+    barrier.dstAccessMask = {}; // TODO
 
-	vk::PipelineStageFlags sourceStage, destinationStage;
+    vk::PipelineStageFlags sourceStage, destinationStage;
 
-	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-		//undefined transition state, dont need to wait for this to complete
-		barrier.srcAccessMask = {};
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+    if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+    {
+        // undefined transition state, dont need to wait for this to complete
+        barrier.srcAccessMask = {};
+        barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
 
-		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-		destinationStage = vk::PipelineStageFlagBits::eTransfer;
-	}
-	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal || newLayout == vk::ImageLayout::eGeneral)) {
-		//transfer destination shader reading, will need to wait for completion. Especially in the frag shader where reads will happen
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-		barrier.dstAccessMask = vk::AccessFlagBits::eNone;
+        sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        destinationStage = vk::PipelineStageFlagBits::eTransfer;
+    }
+    else if (oldLayout == vk::ImageLayout::eTransferDstOptimal &&
+             (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal || newLayout == vk::ImageLayout::eGeneral))
+    {
+        // transfer destination shader reading, will need to wait for completion. Especially in the frag shader where
+        // reads will happen
+        barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+        barrier.dstAccessMask = vk::AccessFlagBits::eNone;
 
-		sourceStage = vk::PipelineStageFlagBits::eTransfer;
-		destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
-	}
-	// else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-	// 	//preparing to update texture during runtime, need to wait for top of pipe
-	// 	//barrier.srcAccessMask = vk::AccessFlagBits::;
-	// 	barrier.srcAccessMask = {}; 
-	// 	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; 
+        sourceStage = vk::PipelineStageFlagBits::eTransfer;
+        destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
+    }
+    // else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout ==
+    // vk::ImageLayout::eTransferDstOptimal) {
+    // 	//preparing to update texture during runtime, need to wait for top of pipe
+    // 	//barrier.srcAccessMask = vk::AccessFlagBits::;
+    // 	barrier.srcAccessMask = {};
+    // 	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
-	// 	sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-	// 	destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-	// }
-	else{
-		throw std::invalid_argument("unsupported layout transition!");
-	}
+    // 	sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    // 	destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    // }
+    else
+    {
+        throw std::invalid_argument("unsupported layout transition!");
+    }
 
-	//transfer writes must occurr during the pipeline transfer stage
-	commandBuffer.pipelineBarrier(
-		sourceStage,                        //which pipeline stages should occurr before barrier 
-		destinationStage,                   //pipeline stage in which operations will wait on the barrier 
-		{},
-		{},
-		nullptr,
-		barrier
-	);
+    // transfer writes must occurr during the pipeline transfer stage
+    commandBuffer.pipelineBarrier(sourceStage,      // which pipeline stages should occurr before barrier
+                                  destinationStage, // pipeline stage in which operations will wait on the barrier
+                                  {}, {}, nullptr, barrier);
 }
 
 float star::StarTexture::SelectAnisotropyLevel(const vk::PhysicalDeviceProperties &deviceProperties)
@@ -117,8 +121,8 @@ vk::Filter star::StarTexture::SelectTextureFiltering(const vk::PhysicalDevicePro
 
 star::StarTexture::~StarTexture()
 {
-    if (this->sampler)
-        this->device.destroySampler(this->sampler);
+    if (this->sampler.has_value())
+        this->device.destroySampler(this->sampler.value());
 
     for (auto &item : this->views)
     {
@@ -146,29 +150,33 @@ vk::ImageView star::StarTexture::getImageView(const vk::Format *requestedFormat)
     {
         return view.second;
     }
+
+    throw std::runtime_error("Failed to find an image view");
 }
 
 star::StarTexture::StarTexture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
                                const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
-                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format& baseFormat,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat,
                                const vk::SamplerCreateInfo &samplerInfo)
-    : device(device), allocator(&allocator), memory(VmaAllocation()), baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+    : device(device), allocator(&allocator), memory(VmaAllocation()), baseFormat(baseFormat),
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
 {
-    VerifyImageCreateInfo(createInfo); 
+    VerifyImageCreateInfo(createInfo);
 
     CreateAllocation(device, this->baseFormat, allocator, allocationCreateInfo, createInfo, this->memory.value(),
                      this->vulkanImage, allocationName);
 
     this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
-    this->sampler = CreateImageSampler(device, samplerInfo);
+    this->sampler = std::make_optional(CreateImageSampler(device, samplerInfo));
 }
 
 star::StarTexture::StarTexture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
                                const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
-                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format& baseFormat)
-    : device(device), allocator(&allocator), memory(VmaAllocation()), baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat)
+    : device(device), allocator(&allocator), memory(VmaAllocation()), baseFormat(baseFormat),
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
 {
-    VerifyImageCreateInfo(createInfo); 
+    VerifyImageCreateInfo(createInfo);
 
     CreateAllocation(device, this->baseFormat, allocator, allocationCreateInfo, createInfo, this->memory.value(),
                      this->vulkanImage, allocationName);
@@ -177,19 +185,19 @@ star::StarTexture::StarTexture(vk::Device &device, VmaAllocator &allocator, cons
 }
 
 star::StarTexture::StarTexture(vk::Device &device, vk::Image &vulkanImage,
-                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-							   const vk::Format& baseFormat,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat,
                                const vk::SamplerCreateInfo &samplerInfo)
-    : device(device), vulkanImage(vulkanImage), baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+    : device(device), vulkanImage(vulkanImage), baseFormat(baseFormat),
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
 {
     this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
     this->sampler = CreateImageSampler(device, samplerInfo);
 }
 
 star::StarTexture::StarTexture(vk::Device &device, vk::Image &vulkanImage,
-                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, 
-							   const vk::Format& baseFormat)
-    : device(device), vulkanImage(vulkanImage), baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat)
+    : device(device), vulkanImage(vulkanImage), baseFormat(baseFormat),
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
 {
     this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
 }
@@ -207,14 +215,12 @@ vk::Sampler star::StarTexture::CreateImageSampler(vk::Device &device, const vk::
     return sampler;
 }
 
-void star::StarTexture::CreateAllocation(vk::Device &device, const vk::Format& baseFormat, 
-                                         VmaAllocator &allocator,
+void star::StarTexture::CreateAllocation(vk::Device &device, const vk::Format &baseFormat, VmaAllocator &allocator,
                                          const VmaAllocationCreateInfo &allocationCreateInfo,
                                          const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
                                          vk::Image &textureImage, const std::string &allocationName)
 {
-    vk::ImageCreateInfo addFormat = vk::ImageCreateInfo(imageCreateInfo)
-        .setFormat(baseFormat);
+    vk::ImageCreateInfo addFormat = vk::ImageCreateInfo(imageCreateInfo).setFormat(baseFormat);
 
     auto result = vmaCreateImage(allocator, (VkImageCreateInfo *)&addFormat, &allocationCreateInfo,
                                  (VkImage *)&textureImage, &allocation, nullptr);
@@ -238,7 +244,7 @@ std::unordered_map<vk::Format, vk::ImageView> star::StarTexture::CreateImageView
     for (auto &info : imageCreateInfos)
     {
         vk::Format nFormat = info.format;
-		info.image = vulkanImage; 
+        info.image = vulkanImage;
 
         vk::ImageView nView = CreateImageView(device, info);
 
@@ -251,12 +257,16 @@ std::unordered_map<vk::Format, vk::ImageView> star::StarTexture::CreateImageView
 void star::StarTexture::VerifyImageCreateInfo(const vk::ImageCreateInfo &createInfo)
 {
     assert(createInfo.extent.width != 0 && "width cannot be 0");
-    assert(createInfo.extent.height != 0 && "height cannot be 0"); 
+    assert(createInfo.extent.height != 0 && "height cannot be 0");
     assert(createInfo.extent.depth != 0 && "depth cannot be 0");
     assert(createInfo.mipLevels != 0 && "mip levels cannnot be 0");
     assert(createInfo.arrayLayers != 0 && "array layers cannot be 0");
-    assert(createInfo.initialLayout == vk::ImageLayout::eUndefined || createInfo.initialLayout == vk::ImageLayout::ePreinitialized && "Invalid initial layout according to vulkan specs"); 
-    assert(createInfo.sharingMode == vk::SharingMode::eExclusive || (createInfo.sharingMode == vk::SharingMode::eConcurrent && createInfo.queueFamilyIndexCount > 1) && "Must have indices defined for shared resource");
+    assert(createInfo.initialLayout == vk::ImageLayout::eUndefined ||
+           createInfo.initialLayout == vk::ImageLayout::ePreinitialized &&
+               "Invalid initial layout according to vulkan specs");
+    assert(createInfo.sharingMode == vk::SharingMode::eExclusive ||
+           (createInfo.sharingMode == vk::SharingMode::eConcurrent && createInfo.queueFamilyIndexCount > 1) &&
+               "Must have indices defined for shared resource");
 }
 
 vk::ImageView star::StarTexture::CreateImageView(vk::Device &device, const vk::ImageViewCreateInfo &imageCreateInfo)
@@ -273,7 +283,7 @@ vk::ImageView star::StarTexture::CreateImageView(vk::Device &device, const vk::I
 
 uint32_t star::StarTexture::ExtractMipmapLevels(const vk::ImageViewCreateInfo &imageViewInfo)
 {
-	return imageViewInfo.subresourceRange.levelCount; 
+    return imageViewInfo.subresourceRange.levelCount;
 }
 
 star::StarTexture::Builder::Builder(vk::Device &device, const vk::Image &vulkanImage)
@@ -293,7 +303,7 @@ star::StarTexture::Builder &star::StarTexture::Builder::setCreateInfo(const VmaA
     assert(this->createNewAllocationInfo.has_value() && "Must be a builder for a new allocation");
 
     this->createNewAllocationInfo.value().createInfo = nCreateInfo;
-    this->createNewAllocationInfo.value().allocationCreateInfo = nAllocInfo; 
+    this->createNewAllocationInfo.value().allocationCreateInfo = nAllocInfo;
     this->createNewAllocationInfo.value().allocationName = nAllocName;
     return *this;
 }
@@ -312,13 +322,13 @@ star::StarTexture::Builder &star::StarTexture::Builder::setSamplerInfo(const vk:
 
 star::StarTexture::Builder &star::StarTexture::Builder::setBaseFormat(const vk::Format &nFormat)
 {
-	this->format = nFormat; 
-	return *this;
+    this->format = nFormat;
+    return *this;
 }
 
 std::unique_ptr<star::StarTexture> star::StarTexture::Builder::build()
 {
-	assert(this->format.has_value()); 
+    assert(this->format.has_value());
 
     if (this->createNewAllocationInfo.has_value())
     {
@@ -330,29 +340,25 @@ std::unique_ptr<star::StarTexture> star::StarTexture::Builder::build()
         {
             return std::unique_ptr<StarTexture>(new StarTexture(
                 this->device, this->createNewAllocationInfo.value().allocator,
-                this->createNewAllocationInfo.value().createInfo,
-                this->createNewAllocationInfo.value().allocationName, 
-                this->createNewAllocationInfo.value().allocationCreateInfo,
-				this->viewInfos, 
-				this->format.value(), 
-				this->samplerInfo.value()));
+                this->createNewAllocationInfo.value().createInfo, this->createNewAllocationInfo.value().allocationName,
+                this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos, this->format.value(),
+                this->samplerInfo.value()));
         }
         else
         {
-            return std::unique_ptr<StarTexture>(
-                new StarTexture(this->device, this->createNewAllocationInfo.value().allocator,
-                                this->createNewAllocationInfo.value().createInfo,
-                                this->createNewAllocationInfo.value().allocationName,
-                                this->createNewAllocationInfo.value().allocationCreateInfo,
-                                 this->viewInfos, this->format.value()));
+            return std::unique_ptr<StarTexture>(new StarTexture(
+                this->device, this->createNewAllocationInfo.value().allocator,
+                this->createNewAllocationInfo.value().createInfo, this->createNewAllocationInfo.value().allocationName,
+                this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos, this->format.value()));
         }
     }
     else if (this->vulkanImage.has_value())
     {
         if (this->samplerInfo.has_value())
         {
-            return std::unique_ptr<StarTexture>(
-                new StarTexture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value(), this->samplerInfo.value()));
+            return std::unique_ptr<StarTexture>(new StarTexture(this->device, this->vulkanImage.value(),
+                                                                this->viewInfos, this->format.value(),
+                                                                this->samplerInfo.value()));
         }
         else
         {

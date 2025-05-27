@@ -67,7 +67,7 @@ class StarTexture
     {
         return this->vulkanImage;
     }
-    const vk::Sampler &getSampler() const
+    const std::optional<vk::Sampler> &getSampler() const
     {
         return this->sampler;
     }
@@ -103,7 +103,7 @@ class StarTexture
     std::optional<VmaAllocation> memory = std::nullopt;
 
     vk::Image vulkanImage = vk::Image();
-    vk::Sampler sampler = vk::Sampler();
+    std::optional<vk::Sampler> sampler = std::nullopt;
     std::unordered_map<vk::Format, vk::ImageView> views = std::unordered_map<vk::Format, vk::ImageView>();
 
     static vk::Sampler CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo);
