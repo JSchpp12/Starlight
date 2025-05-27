@@ -205,8 +205,12 @@ void StarDevice::createLogicalDevice() {
 		}
 	}
 
-	vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures{}; 
-	dynamicRenderingFeatures.dynamicRendering = VK_TRUE; 
+	auto dynamicRenderingFeatures = vk::PhysicalDeviceDynamicRenderingFeatures()
+		.setDynamicRendering(true);
+
+	auto syncFeatures = vk::PhysicalDeviceSynchronization2Features()
+		.setSynchronization2(true)
+		.setPNext(&dynamicRenderingFeatures);
 
 	//Create actual logical device
 	const vk::DeviceCreateInfo createInfo{
@@ -218,7 +222,7 @@ void StarDevice::createLogicalDevice() {
 		static_cast<uint32_t>(requiredDeviceExtensions.size()),                                 //enabled extension coun 
 		requiredDeviceExtensions.data(),                                                        //enabled extension names 
 		&this->requiredDeviceFeatures,                                                                 //enabled features
-		&dynamicRenderingFeatures
+		&syncFeatures
 	};
 
 	//call to create the logical device 
