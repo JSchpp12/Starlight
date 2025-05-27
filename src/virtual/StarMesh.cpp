@@ -27,8 +27,5 @@ void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer& commandBuffer, 
 	auto& iBuff = ManagerRenderResource::getBuffer(this->indBuffer);
 	commandBuffer.bindVertexBuffers(0,vBuff.getVulkanBuffer(), offset);
 	commandBuffer.bindIndexBuffer(iBuff.getVulkanBuffer(), offset, vk::IndexType::eUint32);
-
-	this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex);
-
 	commandBuffer.drawIndexed(this->numInds, instanceCount, 0, 0, 0);
 }
