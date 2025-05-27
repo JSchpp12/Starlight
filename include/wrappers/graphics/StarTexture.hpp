@@ -1,96 +1,127 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
+#include "StarDevice.hpp"
+
 #include <vk_mem_alloc.h>
+#include <vulkan/vulkan.hpp>
 
-#include <unordered_map>
+
 #include <optional>
-#include <vector> 
+#include <unordered_map>
+#include <vector>
 
-namespace star{
-    class StarTexture{
-        public:
-        /// <summary>
-        /// Options to be used when creating a new texture
-        /// </summary>
-        /// <returns></returns>
-        struct TextureCreateSettings {
-            TextureCreateSettings() = default;
-            TextureCreateSettings(const int& width, 
-                const int& height, const int& channels, 
-                const int& depth, const int& byteDepth,
-                const vk::ImageUsageFlags& imageUsage, const vk::Format& imageFormat, const std::vector<vk::Format>& additionalViewFormats,
-                const vk::ImageAspectFlags& imageAspectFlags, const VmaMemoryUsage& memoryUsage,
-                const VmaAllocationCreateFlags& allocationCreateFlags, const vk::ImageLayout& initialLayout, 
-                const bool& isMutable, const bool& createSampler, const vk::MemoryPropertyFlags& requiredMemoryProperties, 
-                const float& anisotropyLevel, const vk::Filter& textureFilteringMode, const std::string& allocationName) 
-                : width(width), height(height), channels(channels), depth(depth), byteDepth(byteDepth),
-                usage(imageUsage), baseFormat(imageFormat), additionalViewFormats(additionalViewFormats),
-                allocationCreateFlags(allocationCreateFlags), memoryUsage(memoryUsage), 
-                isMutable(isMutable), createSampler(createSampler), initialLayout(initialLayout), 
-                aspectFlags(imageAspectFlags), requiredMemoryProperties(requiredMemoryProperties), 
-                anisotropyLevel(anisotropyLevel), textureFilteringMode(textureFilteringMode), allocationName(allocationName){ }
+namespace star
+{
+class StarTexture
+{
+  public:
+    static void TransitionImageLayout(StarTexture &image, vk::CommandBuffer &commandBuffer, const vk::Format &format, const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout); 
+    
+    static float SelectAnisotropyLevel(const vk::PhysicalDeviceProperties &deviceProperties);
 
-            ~TextureCreateSettings() = default; 
+    static vk::Filter SelectTextureFiltering(const vk::PhysicalDeviceProperties &deviceProperties);
 
-            TextureCreateSettings(const TextureCreateSettings& creatSettings) = default;
+    class Builder
+    {
+      public:
+        Builder(vk::Device &device, const vk::Image &vulkanImage);
 
-            bool createSampler = false; 
-            bool isMutable = false;
-            int height, width, channels, depth, byteDepth = 0; 
-            vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-            std::vector<vk::Format> additionalViewFormats = std::vector<vk::Format>{};
-            vk::Format baseFormat = vk::Format::eR8G8B8A8Srgb;
-            VmaMemoryUsage memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY;
-            VmaAllocationCreateFlags allocationCreateFlags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT & VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
-            vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eColor;
-            vk::ImageLayout initialLayout = vk::ImageLayout::eShaderReadOnlyOptimal; 
-            std::optional<vk::MemoryPropertyFlags> requiredMemoryProperties = std::nullopt; 
-            float anisotropyLevel = 1.0f;
-            vk::Filter textureFilteringMode = vk::Filter::eNearest;
-            std::string allocationName = "TextureDefaultName";
-        }; 
+        Builder(vk::Device &device, VmaAllocator &allocator);
 
-        virtual ~StarTexture();
-        StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, VmaAllocator& allocator); 
-        StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, const vk::Image& textureImage);
+        Builder &setCreateInfo(const VmaAllocationCreateInfo &nAllocInfo, const vk::ImageCreateInfo &nCreateInfo,
+                               const std::string &nAllocationName);
 
-        void transitionLayout(vk::CommandBuffer& commandBuffer, vk::ImageLayout newLayout, vk::AccessFlags srcFlags, 
-            vk::AccessFlags dstFlags, vk::PipelineStageFlags sourceStage,
-            vk::PipelineStageFlags dstStage);
+        Builder &addViewInfo(const vk::ImageViewCreateInfo &nCreateInfo);
 
-        //TODO: might want to remove the image layout stuff
-        vk::ImageLayout getCurrentLayout() const {return this->layout;}
-        void overrideImageLayout(vk::ImageLayout newLayout) {this->layout = newLayout;}
+        Builder &setSamplerInfo(const vk::SamplerCreateInfo &nCreateInfo);
 
-        vk::Sampler getSampler() const {return this->textureSampler;}
-        vk::ImageView getImageView(const vk::Format* requestedFormat = nullptr) const; 
-        const TextureCreateSettings& getCreationSettings() const { return this->createSettings; }
+        Builder& setBaseFormat(const vk::Format& nFormat); 
 
-        vk::Image getImage() const {return this->textureImage;}
-        const int getWidth() const { return this->createSettings.width; };
-        const int getHeight() const { return this->createSettings.height; };
-        const int getChannels() const { return this->createSettings.channels; }
-        const int getDepth() const { return this->createSettings.depth; }
-        const bool isVulkanImageReady() const {return this->textureImage;}
+        std::unique_ptr<StarTexture> build();
 
-        protected:
-        const TextureCreateSettings createSettings;
-        vk::Device& device; 
-        VmaAllocator* allocator = nullptr;
-        VmaAllocation textureMemory = VmaAllocation();
-        vk::Image textureImage = vk::Image();
-        vk::Sampler textureSampler = vk::Sampler();
-        std::unordered_map<vk::Format, vk::ImageView> imageViews = std::unordered_map<vk::Format, vk::ImageView>(); 
-        vk::ImageLayout layout = vk::ImageLayout::eUndefined;
+      private:
+        struct Creators
+        {
+            Creators(VmaAllocator &allocator) : allocator(allocator)
+            {
+            }
 
-        static void createAllocation(const TextureCreateSettings& createSettings, VmaAllocator& allocator, 
-            VmaAllocation& textureMemory, vk::Image& texture, const bool& isMutable);
+            VmaAllocator &allocator;
+            vk::ImageCreateInfo createInfo = vk::ImageCreateInfo();
+            VmaAllocationCreateInfo allocationCreateInfo = VmaAllocationCreateInfo();
+            std::string allocationName = "Default Texture Name";
+        };
 
-        void createTextureImageView(const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags);
+        vk::Device &device;
+        std::optional<vk::Format> format = std::nullopt;
+        std::optional<Creators> createNewAllocationInfo = std::nullopt;
+        std::optional<vk::Image> vulkanImage = std::nullopt;
 
-        vk::ImageView createImageView(vk::Device& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags); 
-
-        static vk::Sampler createImageSampler(vk::Device& device, const TextureCreateSettings& createSettings); 
+        std::vector<vk::ImageViewCreateInfo> viewInfos = std::vector<vk::ImageViewCreateInfo>();
+        std::optional<vk::SamplerCreateInfo> samplerInfo = std::nullopt;
     };
-}
+
+    virtual ~StarTexture();
+
+    const vk::Image &getVulkanImage() const
+    {
+        return this->vulkanImage;
+    }
+    const std::optional<vk::Sampler> &getSampler() const
+    {
+        return this->sampler;
+    }
+    vk::ImageView getImageView(const vk::Format *requestedFormat = nullptr) const;
+    const vk::Format &getBaseFormat() const{
+        return this->baseFormat;
+    }
+    const uint32_t &getMipmapLevels() const{
+        return this->mipmapLevels;
+    }
+  protected:
+    StarTexture(vk::Device& device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, 
+                const vk::Format& baseFormat);
+
+    StarTexture(vk::Device& device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
+                const vk::Format& baseFormat,
+                const vk::SamplerCreateInfo &samplerInfo);
+
+    StarTexture(vk::Device& device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+                const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
+                const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format& baseFormat);
+
+    StarTexture(vk::Device& device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+                const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
+                const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format& baseFormat,
+                const vk::SamplerCreateInfo &samplerInfo);
+
+    vk::Device &device;
+    const vk::Format baseFormat; 
+    const uint32_t mipmapLevels = 1;
+
+    std::optional<VmaAllocator *> allocator = nullptr;
+    std::optional<VmaAllocation> memory = std::nullopt;
+
+    vk::Image vulkanImage = vk::Image();
+    std::optional<vk::Sampler> sampler = std::nullopt;
+    std::unordered_map<vk::Format, vk::ImageView> views = std::unordered_map<vk::Format, vk::ImageView>();
+
+    static vk::Sampler CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo);
+
+    static void CreateAllocation(vk::Device &device, const vk::Format& baseFormat, VmaAllocator &allocator,
+                                 const VmaAllocationCreateInfo &allocationCreateInfo,
+                                 const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
+                                 vk::Image &textureImage, const std::string &allocationName);
+
+    static vk::ImageView CreateImageView(vk::Device &device, const vk::ImageViewCreateInfo &imageCreateInfo);
+
+    static uint32_t ExtractMipmapLevels(const vk::ImageViewCreateInfo& imageViewInfo); 
+
+    static std::unordered_map<vk::Format, vk::ImageView> CreateImageViews(
+        vk::Device &device, vk::Image vulkanImage, std::vector<vk::ImageViewCreateInfo> imageCreateInfos);
+
+    static void VerifyImageCreateInfo(const vk::ImageCreateInfo& createInfo); 
+
+    friend class Builder;
+};
+} // namespace star

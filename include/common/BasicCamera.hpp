@@ -65,6 +65,7 @@ namespace star {
 		Time time = Time();
 
 		const float sensitivity = 0.1f;
+		const float movementSpeed = 10.0f;
 		bool init = false;
 
 		//previous mouse coordinates from GLFW

@@ -15,8 +15,7 @@ void star::TransferManagerThread::startAsync(){
     this->thread = boost::thread(TransferManagerThread::mainLoop, 
         &this->shouldRun, 
         &this->device.getDevice(),
-        &this->transferQueue->getCommandPool(),
-        &this->transferQueue->getQueue(), 
+        this->transferQueue.get(), 
         &this->allocator.get(), 
         &this->deviceProperties,
         &this->commandBufferFences,
@@ -34,11 +33,11 @@ void star::TransferManagerThread::stopAsync(){
     this->thread.join();
 }
 
-void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, vk::CommandPool* transferPool, vk::Queue* transferQueue, VmaAllocator* allocator, const vk::PhysicalDeviceProperties* deviceProperties, std::vector<SharedFence*>* commandBufferFences, std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>*>* workingRequestQueues){
+void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::Device* device, star::StarQueueFamily* transferQueue, VmaAllocator* allocator, const vk::PhysicalDeviceProperties* deviceProperties, std::vector<SharedFence*>* commandBufferFences, std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest*>*>* workingRequestQueues){
     std::cout << "Transfer thread started..." << std::endl;
     size_t targetBufferIndex = 0;
     size_t previousBufferIndexUsed = 0;
-    std::vector<vk::CommandBuffer> commandBuffers = createCommandBuffers(*device, *transferPool, 5);
+    std::vector<vk::CommandBuffer> commandBuffers = createCommandBuffers(*device, transferQueue->getCommandPool(), 5);
     std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>> inProcessRequests = std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>>();
 
     while(shouldRun->load()){
@@ -82,8 +81,6 @@ void star::TransferManagerThread::mainLoop(boost::atomic<bool>* shouldRun, vk::D
                     *commandBufferFences, 
                     request->bufferTransferRequest.get(),
                     request->resultingBuffer.value());   
-
-                request->bufferTransferRequest.get()->afterWriteData();
             }else if (request->textureTransferRequest){
                 assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr && "Texture request must contain both a request and a resulting address");
                 
@@ -134,106 +131,19 @@ std::vector<vk::Queue> star::TransferManagerThread::createTransferQueues(star::S
     return queues;
 }
 
-void star::TransferManagerThread::transitionImageLayout(vk::Image &image, vk::CommandBuffer &commandBuffer, const vk::Format &format, const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout)
-{
-	//create a barrier to prevent pipeline from moving forward until image transition is complete
-	vk::ImageMemoryBarrier barrier{};
-	barrier.sType = vk::StructureType::eImageMemoryBarrier;     //specific flag for image operations
-	barrier.oldLayout = oldLayout;
-	barrier.newLayout = newLayout;
-
-	//if barrier is used for transferring ownership between queue families, this would be important -- set to ignore since we are not doing this
-	barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-	barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-
-	barrier.image = image;
-	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-	barrier.subresourceRange.levelCount = 1;                            //image is not an array
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-
-	//the operations that need to be completed before and after the barrier, need to be defined
-	barrier.srcAccessMask = {}; //TODO
-	barrier.dstAccessMask = {}; //TODO
-
-	vk::PipelineStageFlags sourceStage, destinationStage;
-
-	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-		//undefined transition state, dont need to wait for this to complete
-		barrier.srcAccessMask = {};
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-
-		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-		destinationStage = vk::PipelineStageFlagBits::eTransfer;
-	}
-	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal || newLayout == vk::ImageLayout::eGeneral)) {
-		//transfer destination shader reading, will need to wait for completion. Especially in the frag shader where reads will happen
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-		barrier.dstAccessMask = vk::AccessFlagBits::eNone;
-
-		sourceStage = vk::PipelineStageFlagBits::eTransfer;
-		destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
-	}
-	// else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout == vk::ImageLayout::eTransferDstOptimal) {
-	// 	//preparing to update texture during runtime, need to wait for top of pipe
-	// 	//barrier.srcAccessMask = vk::AccessFlagBits::;
-	// 	barrier.srcAccessMask = {}; 
-	// 	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead; 
-
-	// 	sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-	// 	destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-	// }
-	else{
-		throw std::invalid_argument("unsupported layout transition!");
-	}
-
-	//transfer writes must occurr during the pipeline transfer stage
-	commandBuffer.pipelineBarrier(
-		sourceStage,                        //which pipeline stages should occurr before barrier 
-		destinationStage,                   //pipeline stage in which operations will wait on the barrier 
-		{},
-		{},
-		nullptr,
-		barrier
-	);
-}
-
-void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Memory<StarBuffer::BufferCreationArgs>* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
+void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator& allocator, StarQueueFamily& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, TransferRequest::Buffer* newBufferRequest, std::unique_ptr<StarBuffer>* resultingBuffer) {
     assert(commandBufferFences[bufferIndexToUse] == nullptr && "Command buffer fence should have already been waited on and removed");
-    
-    auto createArgs = newBufferRequest->getCreateArgs(deviceProperties);
 
-    auto transferSrcBuffer = std::make_unique<StarBuffer>(
-        allocator, 
-        createArgs.instanceSize,
-        createArgs.instanceCount,
-        VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        vk::BufferUsageFlagBits::eTransferSrc,
-        vk::SharingMode::eConcurrent,
-        createArgs.allocationName + "_TransferSRCBuffer",
-        (createArgs.useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? deviceProperties.limits.minUniformBufferOffsetAlignment : 1
-    );
+    auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator, transferQueue.getQueueFamilyIndex()); 
 
-    //check if the resulting buffer needs to be replaced or not 
-    vk::DeviceSize resultSize = createArgs.instanceSize * createArgs.instanceCount;
-    if (resultingBuffer->get() == nullptr || (resultingBuffer->get() != nullptr && resultSize > resultingBuffer->get()->getBufferSize())){ 
-        auto newBuffer = std::make_unique<StarBuffer>(
-            allocator, 
-            createArgs.instanceSize,
-            createArgs.instanceCount,
-            createArgs.creationFlags,
-            createArgs.memoryUsageFlags,
-            createArgs.useFlags | vk::BufferUsageFlagBits::eTransferDst,
-            vk::SharingMode::eConcurrent, 
-            createArgs.allocationName,
-            (createArgs.useFlags & vk::BufferUsageFlagBits::eUniformBuffer) ? deviceProperties.limits.minUniformBufferOffsetAlignment : 1
-        );   
-        resultingBuffer->swap(newBuffer);   
+    {
+        auto newResult = newBufferRequest->createFinal(device, allocator, transferQueue.getQueueFamilyIndex()); 
+        if (!*resultingBuffer || (resultingBuffer->get() && newResult->getBufferSize() > resultingBuffer->get()->getBufferSize())){
+            resultingBuffer->swap(newResult); 
+        }
     }
 
-    newBufferRequest->writeData(*transferSrcBuffer);
+    newBufferRequest->writeDataToStageBuffer(*transferSrcBuffer);
 
     //copy operations
     vk::CommandBuffer& commandBuffer = commandBuffers[bufferIndexToUse];
@@ -244,14 +154,7 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
         commandBuffer.begin(beginInfo);
     }
 
-    {
-        vk::BufferCopy copyRegion{}; 
-        copyRegion.srcOffset = 0;
-        copyRegion.dstOffset = 0;
-        copyRegion.size = transferSrcBuffer->getBufferSize(); 
-    
-        commandBuffer.copyBuffer(transferSrcBuffer->getVulkanBuffer(), resultingBuffer->get()->getVulkanBuffer(), copyRegion);
-    }
+    newBufferRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingBuffer->get(), commandBuffer);
 
     commandBuffer.end();
 
@@ -261,10 +164,10 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
         submitInfo.commandBufferCount = 1;
 
         boost::unique_lock<boost::mutex> lock; 
-        vk::Fence fence; 
-        workCompleteFence.giveMeFence(lock, fence);
+        vk::Fence* fence = nullptr; 
+        workCompleteFence.giveMeResource(lock, fence);
 
-        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, fence)); 
+        auto commandResult = std::make_unique<vk::Result>(transferQueue.getQueue().submit(1, &submitInfo, *fence)); 
 
         if (*commandResult != vk::Result::eSuccess){
             //handle error
@@ -276,32 +179,17 @@ void star::TransferManagerThread::createBuffer(vk::Device& device, VmaAllocator&
     commandBufferFences[bufferIndexToUse] = &workCompleteFence; 
 }
 
-void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, vk::Queue& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
-    StarTexture::TextureCreateSettings createArgs = newTextureRequest->getCreateArgs(deviceProperties);
-    createArgs.usage |= vk::ImageUsageFlagBits::eTransferDst;
-
-    bool newImageCreated = false; 
+void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator& allocator, StarQueueFamily& transferQueue, const vk::PhysicalDeviceProperties& deviceProperties, SharedFence& workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>>& inProcessRequests, const size_t& bufferIndexToUse, std::vector<vk::CommandBuffer>& commandBuffers, std::vector<SharedFence*>& commandBufferFences, star::TransferRequest::Texture* newTextureRequest, std::unique_ptr<star::StarTexture>* resultingTexture){
     
-    vk::DeviceSize size = createArgs.height * createArgs.width * createArgs.channels * createArgs.depth * createArgs.byteDepth;
-    {
-        newImageCreated = true; 
+    auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator, transferQueue.getQueueFamilyIndex()); 
 
-        auto finalTexture = std::make_unique<StarTexture>(createArgs, device, allocator);
-        resultingTexture->swap(finalTexture);
-    }
+    //should eventually implement option to jsut re-use existing image
+    bool newImageCreated = true; 
 
-    auto transferSrcBuffer = std::make_unique<StarBuffer>(
-        allocator,
-        size, 
-        1,
-        VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_MAPPED_BIT | VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        vk::BufferUsageFlagBits::eTransferSrc,
-        vk::SharingMode::eConcurrent,
-        createArgs.allocationName + "_TransferSRCBuffer"
-    );
+    auto finalTexture = newTextureRequest->createFinal(device, allocator, transferQueue.getQueueFamilyIndex()); 
+    resultingTexture->swap(finalTexture);
 
-    newTextureRequest->writeData(*transferSrcBuffer);
+    newTextureRequest->writeDataToStageBuffer(*transferSrcBuffer);
 
     //transition image layout
     if (!newImageCreated){
@@ -317,33 +205,8 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
     
         commandBuffer.begin(beginInfo);
     }
-    {
-        auto vulkanImage = resultingTexture->get()->getImage();
-    
-        transitionImageLayout(vulkanImage, commandBuffer, createArgs.baseFormat, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-    
-        {
-            vk::BufferImageCopy region{}; 
-            region.bufferOffset = 0; 
-            region.bufferRowLength = 0; 
-            region.bufferImageHeight = 0; 
-    
-            region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor; 
-            region.imageSubresource.mipLevel = 0;
-            region.imageSubresource.baseArrayLayer = 0;
-            region.imageSubresource.layerCount = 1;
-            region.imageOffset = vk::Offset3D{}; 
-            region.imageExtent = vk::Extent3D{
-                CastHelpers::int_to_unsigned_int(createArgs.width),
-                CastHelpers::int_to_unsigned_int(createArgs.height), 
-                1
-            };
-    
-            commandBuffer.copyBufferToImage(transferSrcBuffer->getVulkanBuffer(), resultingTexture->get()->getImage(), vk::ImageLayout::eTransferDstOptimal, region);
-        }
-    
-        transitionImageLayout(vulkanImage, commandBuffer, createArgs.baseFormat, vk::ImageLayout::eTransferDstOptimal, createArgs.initialLayout);
-    }
+
+    newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(), commandBuffer); 
 
     commandBuffer.end();
 
@@ -353,10 +216,10 @@ void star::TransferManagerThread::createTexture(vk::Device& device, VmaAllocator
         submitInfo.commandBufferCount = 1;
 
         boost::unique_lock<boost::mutex> lock; 
-        vk::Fence fence; 
-        workCompleteFence.giveMeFence(lock, fence);
+        vk::Fence* fence = nullptr; 
+        workCompleteFence.giveMeResource(lock, fence);
 
-        auto commandResult = std::make_unique<vk::Result>(transferQueue.submit(1, &submitInfo, fence)); 
+        auto commandResult = std::make_unique<vk::Result>(transferQueue.getQueue().submit(1, &submitInfo, *fence)); 
 
         if (*commandResult != vk::Result::eSuccess){
             //handle error
@@ -376,10 +239,10 @@ void star::TransferManagerThread::checkForCleanups(vk::Device& device, std::queu
         std::unique_ptr<InProcessRequestDependencies>& deps = inProcessRequests.front();
         {
             boost::unique_lock<boost::mutex> lock; 
-            vk::Fence fence;
-            deps->completeFence->giveMeFence(lock, fence);
+            vk::Fence* fence = nullptr;
+            deps->completeFence->giveMeResource(lock, fence);
 
-            auto fenceResult = device.getFenceStatus(fence);
+            auto fenceResult = device.getFenceStatus(*fence);
             if(fenceResult != vk::Result::eSuccess){
                 stillInProcess.push(std::move(deps));
             }
@@ -402,10 +265,10 @@ void star::TransferManagerThread::readyCommandBuffer(vk::Device& device, const s
     if (commandBufferFences[indexSelected] != nullptr){
         {
             boost::unique_lock<boost::mutex> lock;
-            vk::Fence fence; 
-            commandBufferFences[indexSelected]->giveMeFence(lock, fence);
+            vk::Fence* fence = nullptr; 
+            commandBufferFences[indexSelected]->giveMeResource(lock, fence);
     
-            auto result = device.waitForFences(fence, true, UINT64_MAX);
+            auto result = device.waitForFences(*fence, true, UINT64_MAX);
            
             if (result != vk::Result::eSuccess)
                 throw std::runtime_error("Failed to wait for fence"); 
@@ -496,7 +359,7 @@ star::TransferWorker::TransferWorker(star::StarDevice& device, bool overrideToSi
         thread->startAsync(); 
 }
 
-void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, std::unique_ptr<TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> newBufferRequest, std::unique_ptr<star::StarBuffer>& resultingBuffer, const bool& isHighPriority){
+void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, std::unique_ptr<TransferRequest::Buffer> newBufferRequest, std::unique_ptr<star::StarBuffer>& resultingBuffer, const bool& isHighPriority){
     
     auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(&isBeingWorkedOnByTransferThread, &workCompleteFence, std::move(newBufferRequest), resultingBuffer);
     
@@ -504,7 +367,7 @@ void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<boo
     insertRequest(std::move(newRequest), isHighPriority); 
 }
 
-void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, std::unique_ptr<star::TransferRequest::Memory<star::StarTexture::TextureCreateSettings>> newTextureRequest, std::unique_ptr<StarTexture>& resultingTexture, const bool& isHighPriority){
+void star::TransferWorker::add(SharedFence& workCompleteFence, boost::atomic<bool>& isBeingWorkedOnByTransferThread, std::unique_ptr<star::TransferRequest::Texture> newTextureRequest, std::unique_ptr<StarTexture>& resultingTexture, const bool& isHighPriority){
     auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(&isBeingWorkedOnByTransferThread, &workCompleteFence, std::move(newTextureRequest), resultingTexture);
     
     checkFenceStatus(*newRequest); 
@@ -519,10 +382,10 @@ void star::TransferWorker::update(){
 void star::TransferWorker::checkFenceStatus(TransferManagerThread::InterThreadRequest& request){
     {
         boost::unique_lock<boost::mutex> lock;
-        vk::Fence fence; 
-        request.completeFence->giveMeFence(lock, fence);
+        vk::Fence* fence = nullptr; 
+        request.completeFence->giveMeResource(lock, fence);
 
-        assert(this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess && "Fences MUST be submitting in a signaled state to the worker");
+        assert(this->device.getDevice().getFenceStatus(*fence) == vk::Result::eSuccess && "Fences MUST be submitting in a signaled state to the worker");
     }
 
     for(auto& thread : this->threads){
@@ -533,9 +396,9 @@ void star::TransferWorker::checkFenceStatus(TransferManagerThread::InterThreadRe
     //check if in use by threads
     {
         boost::unique_lock<boost::mutex> lock;
-        vk::Fence fence;
-        request.completeFence->giveMeFence(lock, fence);
-        this->device.getDevice().resetFences(std::vector<vk::Fence>{fence});
+        vk::Fence* fence = nullptr;
+        request.completeFence->giveMeResource(lock, fence);
+        this->device.getDevice().resetFences(std::vector<vk::Fence>{*fence});
     }
 }
 
@@ -557,10 +420,10 @@ void star::TransferWorker::checkForCleanups(){
 
             {
                 boost::unique_lock<boost::mutex> lock;
-                vk::Fence fence; 
-                this->requests[i]->completeFence->giveMeFence(lock, fence);
+                vk::Fence* fence = nullptr; 
+                this->requests[i]->completeFence->giveMeResource(lock, fence);
 
-                if (this->device.getDevice().getFenceStatus(fence) == vk::Result::eSuccess){
+                if (this->device.getDevice().getFenceStatus(*fence) == vk::Result::eSuccess){
                     this->requests[i].reset();
                 }
             }

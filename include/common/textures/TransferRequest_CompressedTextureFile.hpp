@@ -1,14 +1,22 @@
 #pragma once
 
 #include "TransferRequest_Texture.hpp"
+#include "StarTexture.hpp"
+#include "SharedCompressedTexture.hpp"
 
-#include <string>
+#include <ktx.h>
+
+#include <vector>
+#include <memory>
 
 namespace star::TransferRequest{
-    class TextureFile : public Texture{
+    class CompressedTextureFile : public TransferRequest::Texture{
         public:
-        TextureFile(const std::string& imagePath, const uint32_t& graphicsQueueFamilyIndex, const vk::PhysicalDeviceProperties& deviceProperties);
-
+        CompressedTextureFile(const uint32_t& graphicsQueueFamilyIndex, 
+            const vk::PhysicalDeviceProperties& deviceProperties, 
+            std::shared_ptr<SharedCompressedTexture> compressedTexture, 
+            const uint8_t& mipMapIndex);
+        
         virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
 
         virtual std::unique_ptr<star::StarTexture> createFinal(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
@@ -17,13 +25,12 @@ namespace star::TransferRequest{
 
         virtual void writeDataToStageBuffer(StarBuffer &stagingBuffer) const override; 
 
-        protected:
-        
         private:
+        std::shared_ptr<SharedCompressedTexture> compressedTexture = nullptr; 
+        const uint8_t mipMapIndex;
         const uint32_t graphicsQueueFamilyIndex; 
-        const std::string imagePath; 
         const vk::PhysicalDeviceProperties deviceProperties; 
 
-        static void GetTextureInfo(const std::string& imagePath, int& width, int& height, int& channels);
+        static void getTextureInfo(const std::string& imagePath, int& width, int& height, int& channels);
     };
 }

@@ -1,37 +1,34 @@
 #pragma once
 
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Buffer.hpp"
 #include "StarBuffer.hpp"
 #include "StarObjectInstance.hpp"
 
 #include <glm/glm.hpp>
 
 namespace star::TransferRequest{
-    class InstanceModelInfo : public star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>{
+    class InstanceModelInfo : public star::TransferRequest::Buffer{
         public:
-        InstanceModelInfo(const std::vector<std::unique_ptr<star::StarObjectInstance>>& objectInstances)
-            : displayMatrixInfo(std::vector<glm::mat4>(objectInstances.size()))
+        InstanceModelInfo(const std::vector<std::unique_ptr<star::StarObjectInstance>>& objectInstances, const uint32_t &graphicsQueueFamilyIndex, 
+            const vk::DeviceSize &minUniformBufferOffsetAlignment)
+            : displayMatrixInfo(std::vector<glm::mat4>(objectInstances.size())), 
+            graphicsQueueFamilyIndex(graphicsQueueFamilyIndex), 
+            minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment)
             {
                 for (int i = 0; i < objectInstances.size(); i++){
                     displayMatrixInfo[i] = objectInstances[i]->getDisplayMatrix();
                 }
             }
-    
-        StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
-            return StarBuffer::BufferCreationArgs{
-                sizeof(glm::mat4),
-                static_cast<uint32_t>(this->displayMatrixInfo.size()),
-                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                VMA_MEMORY_USAGE_AUTO,
-                vk::BufferUsageFlagBits::eUniformBuffer,
-                vk::SharingMode::eConcurrent,
-                "InstanceModelInfoBuffer"
-            };
-        }
+
+        std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
+
+        std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const override; 
         
-        void writeData(StarBuffer& buffer) const override;
+        void writeDataToStageBuffer(StarBuffer& buffer) const override; 
     
         protected:
+        const uint32_t graphicsQueueFamilyIndex;
+        const vk::DeviceSize minUniformBufferOffsetAlignment; 
         std::vector<glm::mat4> displayMatrixInfo;
     };
 }

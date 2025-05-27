@@ -2,6 +2,10 @@
 
 #include "TransferRequest_InstanceNormalInfo.hpp"
 
-std::unique_ptr<star::TransferRequest::Memory<star::StarBuffer::BufferCreationArgs>> star::ManagerController::RenderResource::InstanceNormalInfo::createTransferRequest() {
-	return std::make_unique<star::TransferRequest::InstanceNormalInfo>(this->objectInstances);
+std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceNormalInfo::createTransferRequest(star::StarDevice &device) {
+	return std::make_unique<star::TransferRequest::InstanceNormalInfo>(
+		this->objectInstances, 
+		device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex(),
+		device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment
+	);
 }

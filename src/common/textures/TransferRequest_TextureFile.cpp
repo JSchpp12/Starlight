@@ -3,40 +3,107 @@
 #include "Enums.hpp"
 #include "FileHelpers.hpp"
 #include "ConfigFile.hpp"
+#include "CastHelpers.hpp"
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
+#include "Allocator.hpp"
 
 #include <assert.h>
 
-star::TransferRequest::TextureFile::TextureFile(const std::string& imagePath) : imagePath(imagePath){
+star::TransferRequest::TextureFile::TextureFile(const std::string &imagePath, const uint32_t &graphicsQueueFamilyIndex, const vk::PhysicalDeviceProperties &deviceProperties) 
+: imagePath(imagePath), deviceProperties(deviceProperties), graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
+{
     assert(star::FileHelpers::FileExists(this->imagePath) && "Provided path does not exist");
 }
 
-star::StarTexture::TextureCreateSettings star::TransferRequest::TextureFile::getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::TextureFile::createStagingBuffer(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const
+{
     int width, height, channels = 0;
-    getTextureInfo(this->imagePath, width, height, channels);
+    GetTextureInfo(this->imagePath, width, height, channels);
 
-    auto iSet = star::StarTexture::TextureCreateSettings{};
-    iSet.width = width;
-    iSet.height = height; 
-    iSet.channels = 4;      //overriding the channels to 4 for simplicity
-    iSet.byteDepth = 1;
-    iSet.depth = 1;
-    iSet.usage = vk::ImageUsageFlagBits::eSampled;
-    iSet.baseFormat = vk::Format::eR8G8B8A8Srgb;
-    iSet.aspectFlags = vk::ImageAspectFlagBits::eColor;
-    iSet.memoryUsage = VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO;
-    iSet.allocationCreateFlags = VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-    iSet.initialLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    iSet.isMutable = false; 
-    iSet.createSampler = true; 
-    iSet.anisotropyLevel = this->selectAnisotropyLevel(deviceProperties);
-    iSet.textureFilteringMode = this->selectTextureFiltering(deviceProperties);
-    iSet.allocationName = this->imagePath; 
-    return iSet;
+    return std::make_unique<StarBuffer>(
+        allocator, 
+        (width * height * channels * 4),
+        1,
+        VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        vk::BufferUsageFlagBits::eTransferSrc,
+        vk::SharingMode::eConcurrent,
+        this->imagePath + "_TransferSRCBuffer"
+    );
 }
 
-void star::TransferRequest::TextureFile::writeData(star::StarBuffer& stagingBuffer) const{
+std::unique_ptr<star::StarTexture> star::TransferRequest::TextureFile::createFinal(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const
+{
+    int width, height, channels = 0;
+    GetTextureInfo(this->imagePath, width, height, channels);
+
+    uint32_t indices[] = {this->graphicsQueueFamilyIndex, transferQueueFamilyIndex};
+
+    return star::StarTexture::Builder(device, allocator)
+        .setCreateInfo(
+            Allocator::AllocationBuilder()
+                .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
+                .build(),
+            vk::ImageCreateInfo()
+                .setExtent(
+                    vk::Extent3D()
+                        .setWidth(width)
+                        .setHeight(height)
+                        .setDepth(1)
+                )
+                .setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
+                .setImageType(vk::ImageType::e2D)
+                .setMipLevels(1)
+                .setArrayLayers(1)
+                .setTiling(vk::ImageTiling::eOptimal)
+                .setInitialLayout(vk::ImageLayout::eUndefined)
+                .setSamples(vk::SampleCountFlagBits::e1)
+                .setSharingMode(vk::SharingMode::eConcurrent)
+                .setPQueueFamilyIndices(&indices[0])
+                .setQueueFamilyIndexCount(2),
+            this->imagePath
+        )
+        .setBaseFormat(vk::Format::eR8G8B8A8Srgb)
+        .addViewInfo(
+            vk::ImageViewCreateInfo()
+                .setViewType(vk::ImageViewType::e2D)
+                .setFormat(vk::Format::eR8G8B8A8Srgb)
+                .setSubresourceRange(
+                    vk::ImageSubresourceRange()
+                        .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                        .setBaseArrayLayer(0)
+                        .setLayerCount(1)
+                        .setBaseMipLevel(0)
+                        .setLevelCount(1)
+                )
+        )
+        .setSamplerInfo(
+            vk::SamplerCreateInfo()
+                .setAnisotropyEnable(true)
+                .setMaxAnisotropy(StarTexture::SelectAnisotropyLevel(this->deviceProperties))
+                .setMagFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
+                .setMinFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
+                .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+                .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+                .setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+                .setUnnormalizedCoordinates(VK_FALSE)
+                .setCompareEnable(VK_FALSE)
+                .setCompareOp(vk::CompareOp::eAlways)
+                .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                .setMipLodBias(0.0f)
+                .setMinLod(0.0f)
+                .setMaxLod(0.0f)
+        )
+        .build();
+
+}
+
+void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffer& stagingBuffer) const{
     int l_width, l_height, l_channels = 0;
     unsigned char* pixelData(stbi_load(this->imagePath.c_str(), &l_width, &l_height, &l_channels, STBI_rgb_alpha));
 
@@ -62,40 +129,35 @@ void star::TransferRequest::TextureFile::writeData(star::StarBuffer& stagingBuff
     stbi_image_free(pixelData);
 }
 
-float star::TransferRequest::TextureFile::selectAnisotropyLevel(const vk::PhysicalDeviceProperties& deviceProperties) const{
-    std::string anisotropySetting = star::ConfigFile::getSetting(star::Config_Settings::texture_anisotropy);
-    float anisotropyLevel = 1.0f;
+void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuffer& srcBuffer, star::StarTexture& dstTexture, vk::CommandBuffer& commandBuffer) const{
 
-    if (anisotropySetting == "max")
-        anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
-    else{
-        anisotropyLevel = std::stof(anisotropySetting);
+    //transfer to transferdst
+    StarTexture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-        if (anisotropyLevel > deviceProperties.limits.maxSamplerAnisotropy){
-            anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
-        }else if (anisotropyLevel < 1.0f){
-            anisotropyLevel = 1.0f; 
-        }
-    }
+    int width, height, channels; 
+    GetTextureInfo(this->imagePath, width, height, channels); 
 
-    return anisotropyLevel;
+    vk::BufferImageCopy region{}; 
+    region.bufferOffset = 0; 
+    region.bufferRowLength = 0; 
+    region.bufferImageHeight = 0; 
+
+    region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor; 
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = vk::Offset3D{}; 
+    region.imageExtent = vk::Extent3D{
+        CastHelpers::int_to_unsigned_int(width),
+        CastHelpers::int_to_unsigned_int(height), 
+        1
+    };
+
+    commandBuffer.copyBufferToImage(srcBuffer.getVulkanBuffer(), dstTexture.getVulkanImage(), vk::ImageLayout::eTransferDstOptimal, region);
+
+    StarTexture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(), vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 
-vk::Filter star::TransferRequest::TextureFile::selectTextureFiltering(const vk::PhysicalDeviceProperties& deviceProperties) const{
-    auto textureFilteringSetting = ConfigFile::getSetting(Config_Settings::texture_filtering);
-
-    vk::Filter filterType;
-    if (textureFilteringSetting == "nearest"){
-        filterType = vk::Filter::eNearest;
-    }else if (textureFilteringSetting == "linear"){
-        filterType = vk::Filter::eLinear;
-    }else{
-        throw std::runtime_error("Texture filtering setting must be 'nearest' or 'linear'");
-    }
-
-    return filterType; 
-}
-
-void star::TransferRequest::TextureFile::getTextureInfo(const std::string& imagePath, int& width, int& height, int& channels){
+void star::TransferRequest::TextureFile::GetTextureInfo(const std::string& imagePath, int& width, int& height, int& channels){
     stbi_info(imagePath.c_str(), &width, &height, &channels);
 }

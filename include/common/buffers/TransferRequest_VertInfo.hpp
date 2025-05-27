@@ -1,20 +1,22 @@
 #pragma once
 
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Buffer.hpp"
 
 #include "Vertex.hpp"
 
 namespace star::TransferRequest{
-    class VertInfo : public Memory<StarBuffer::BufferCreationArgs>{
+    class VertInfo : public Buffer{
         public:
-        VertInfo(std::vector<Vertex> vertices) 
-        : vertices(vertices){}
+        VertInfo(const uint32_t &graphicsQueueIndex, std::vector<Vertex> vertices) 
+        : vertices(vertices), graphicsQueueIndex(graphicsQueueIndex){}
 
-        StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override;
+        std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
 
-        void writeData(StarBuffer& buffer) const override; 
-
+        std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const override; 
+        
+        void writeDataToStageBuffer(StarBuffer& buffer) const override; 
         protected:
+        const uint32_t graphicsQueueIndex; 
         std::vector<Vertex> vertices;
 
         virtual std::vector<Vertex> getVertices() const; 

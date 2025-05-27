@@ -18,7 +18,7 @@ star::Handle star::ManagerRenderResource::addRequest(std::unique_ptr<star::Manag
 	auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
 	if (isStatic){
 		newFull->cpuWorkDoneByTransferThread.store(false);
-		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, newFull->bufferRequest->createTransferRequest(), newFull->buffer, isHighPriority);
+		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, std::move(newFull->bufferRequest->createTransferRequest(*managerDevice)), newFull->buffer, isHighPriority);
 		newFull->bufferRequest.release(); 
 	}
 
@@ -38,7 +38,8 @@ star::Handle star::ManagerRenderResource::addRequest(std::unique_ptr<star::Manag
 	auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest), std::make_unique<SharedFence>(*managerDevice, true));
 	if (isStatic){
 		newFull->cpuWorkDoneByTransferThread.store(false);
-		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, newFull->textureRequest->createTransferRequest(), newFull->texture, isHighPriority);
+		managerWorker->add(*newFull->workingFence, newFull->cpuWorkDoneByTransferThread, std::move(newFull->textureRequest->createTransferRequest(*managerDevice)), newFull->texture, isHighPriority);
+
 		newFull->textureRequest.release();
 	}
 
@@ -69,9 +70,9 @@ void star::ManagerRenderResource::update(const int& frameInFlightIndex){
 					container->get()->cpuWorkDoneByTransferThread.wait(false);
 
 				std::unique_ptr<boost::unique_lock<boost::mutex>> lock = std::unique_ptr<boost::unique_lock<boost::mutex>>(new boost::unique_lock<boost::mutex>());
-				vk::Fence fence; 
-				container->get()->workingFence->giveMeFence(*lock, fence);
-				waits.push_back(fence);
+				vk::Fence* fence = nullptr; 
+				container->get()->workingFence->giveMeResource(*lock, fence);
+				waits.push_back(*fence);
 				locks.push_back(std::move(lock));
 				
 				requestsToUpdate.push_back(container->get());
@@ -85,11 +86,13 @@ void star::ManagerRenderResource::update(const int& frameInFlightIndex){
 
 	for (int i = 0; i < requestsToUpdate.size(); i++){
 		requestsToUpdate[i]->cpuWorkDoneByTransferThread.store(false);
-		if (requestsToUpdate[i]->bufferRequest)
-			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->bufferRequest->createTransferRequest(), requestsToUpdate[i]->buffer, true);
-		else if (requestsToUpdate[i]->textureRequest){
-			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->textureRequest->createTransferRequest(), requestsToUpdate[i]->texture, true);
+		if (requestsToUpdate[i]->bufferRequest){
+			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, std::move(requestsToUpdate[i]->bufferRequest->createTransferRequest(*managerDevice)), requestsToUpdate[i]->buffer, true);
 		}
+		else if (requestsToUpdate[i]->textureRequest){
+			managerWorker->add(*requestsToUpdate[i]->workingFence, requestsToUpdate[i]->cpuWorkDoneByTransferThread, std::move(requestsToUpdate[i]->textureRequest->createTransferRequest(*managerDevice)), requestsToUpdate[i]->texture, true);
+		}
+
 	}
 }
 
@@ -105,15 +108,15 @@ void star::ManagerRenderResource::updateRequest(std::unique_ptr<ManagerControlle
 		std::cout << "Update request submitted before previous complete. Waiting..." << std::endl;
 
 		boost::unique_lock<boost::mutex> lock; 
-		vk::Fence fence; 
-		container->workingFence->giveMeFence(lock, fence);
-		auto wait = std::vector<vk::Fence>{fence};
+		vk::Fence* fence = nullptr; 
+		container->workingFence->giveMeResource(lock, fence);
+		auto wait = std::vector<vk::Fence>{*fence};
 		waitForFences(wait); 
 	}
 	
 	container->bufferRequest = std::move(newRequest); 
 
-	managerWorker->add(*container->workingFence, container->cpuWorkDoneByTransferThread, container->bufferRequest->createTransferRequest(), container->buffer, isHighPriority);
+	managerWorker->add(*container->workingFence, container->cpuWorkDoneByTransferThread, std::move(container->bufferRequest->createTransferRequest(*managerDevice)), container->buffer, isHighPriority);
 
 	highPriorityRequestCompleteFlags.insert(container->workingFence.get());
 }
@@ -125,9 +128,9 @@ bool star::ManagerRenderResource::isReady(const star::Handle& handle){
 	if (container->cpuWorkDoneByTransferThread.load())
 	{
 		boost::unique_lock<boost::mutex> lock; 
-		vk::Fence fence; 
-		container->workingFence->giveMeFence(lock, fence);
-		auto fenceResult = managerDevice->getDevice().getFenceStatus(fence);
+		vk::Fence* fence = nullptr; 
+		container->workingFence->giveMeResource(lock, fence);
+		auto fenceResult = managerDevice->getDevice().getFenceStatus(*fence);
 
 		//if it is ready and the request has not been destroyed, can remove safely becuase the secondary thread should be done with it
 		if (fenceResult == vk::Result::eSuccess){
@@ -148,9 +151,9 @@ void star::ManagerRenderResource::waitForReady(const Handle& handle){
 
 	{
 		boost::unique_lock<boost::mutex> lock;
-		vk::Fence fence; 
-		container->workingFence->giveMeFence(lock, fence);
-		auto wait = std::vector<vk::Fence>{fence};
+		vk::Fence* fence = nullptr; 
+		container->workingFence->giveMeResource(lock, fence);
+		auto wait = std::vector<vk::Fence>{*fence};
 		waitForFences(wait); 
 	}
 }
@@ -161,10 +164,10 @@ star::StarBuffer& star::ManagerRenderResource::getBuffer(const star::Handle& han
 	std::unique_ptr<FinalizedRenderRequest>& container = bufferStorage->get(handle);
 	{
 		boost::unique_lock<boost::mutex> lock;
-		vk::Fence fence;
-		container->workingFence->giveMeFence(lock, fence);
+		vk::Fence* fence = nullptr;
+		container->workingFence->giveMeResource(lock, fence);
 
-		if (managerDevice->getDevice().getFenceStatus(fence) != vk::Result::eSuccess){
+		if (managerDevice->getDevice().getFenceStatus(*fence) != vk::Result::eSuccess){
 			throw std::runtime_error("Requester must call the isReady function to make sure the resource is ready before requesting it.");
 		}
 	}
@@ -178,10 +181,10 @@ star::StarTexture& star::ManagerRenderResource::getTexture(const star::Handle& h
 	std::unique_ptr<FinalizedRenderRequest>& container = bufferStorage->get(handle);
 	{
 		boost::unique_lock<boost::mutex> lock;
-		vk::Fence fence; 
-		container->workingFence->giveMeFence(lock, fence);
+		vk::Fence* fence = nullptr; 
+		container->workingFence->giveMeResource(lock, fence);
 
-		if (managerDevice->getDevice().getFenceStatus(fence) != vk::Result::eSuccess){
+		if (managerDevice->getDevice().getFenceStatus(*fence) != vk::Result::eSuccess){
 			throw std::runtime_error("Requester must call the isReady function to make sure the resource is ready before requesting it.");
 		}
 	}

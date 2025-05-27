@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StarBuffer.hpp"
+#include "StarDevice.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -13,12 +14,15 @@ namespace star::TransferRequest{
     public:
 
     Memory() = default;
+    ~Memory() = default; 
 
-    virtual T getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const = 0;
+    virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const = 0; 
+
+    virtual std::unique_ptr<T> createFinal(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const = 0; 
+
+    virtual void copyFromTransferSRCToDST(StarBuffer& srcBuffer, T& dst, vk::CommandBuffer& commandBuffer) const = 0; 
     
-    virtual void writeData(StarBuffer& buffer) const = 0; 
-
-    virtual void afterWriteData(){}
+    virtual void writeDataToStageBuffer(StarBuffer& buffer) const = 0; 
 
     protected:
 

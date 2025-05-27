@@ -1,203 +1,375 @@
 #include "StarTexture.hpp"
 
-star::StarTexture::~StarTexture(){
-	if (this->textureSampler)
-		this->device.destroySampler(this->textureSampler);
-		
-	for (auto& item : this->imageViews) {
-		this->device.destroyImageView(item.second);
-	}
+#include "ConfigFile.hpp"
 
-    if (this->allocator && this->textureMemory){
-        vmaDestroyImage(*this->allocator, this->textureImage, this->textureMemory);
-	}
-}
+#include <cassert>
+#include <stdexcept>
 
-star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, VmaAllocator& allocator) : createSettings(createSettings), allocator(&allocator), device(device){
-	assert(this->allocator != nullptr && "Allocator must always exist");
+void star::StarTexture::TransitionImageLayout(StarTexture &image, vk::CommandBuffer &commandBuffer,
+                                              const vk::Format &format, const vk::ImageLayout &oldLayout,
+                                              const vk::ImageLayout &newLayout)
+{
+    // create a barrier to prevent pipeline from moving forward until image transition is complete
+    vk::ImageMemoryBarrier barrier{};
+    barrier.sType = vk::StructureType::eImageMemoryBarrier; // specific flag for image operations
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
 
-	bool isMutable = false; 
-	if (this->createSettings.additionalViewFormats.size() > 0)
-		isMutable = true; 
+    // if barrier is used for transferring ownership between queue families, this would be important -- set to ignore
+    // since we are not doing this
+    barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+    barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
-    this->createAllocation(this->createSettings, *this->allocator, this->textureMemory, this->textureImage, isMutable);
-	this->createTextureImageView(this->createSettings.baseFormat, this->createSettings.aspectFlags);
-	
-	for (const auto& viewFormat : this->createSettings.additionalViewFormats){
-		this->createTextureImageView(viewFormat, this->createSettings.aspectFlags);
-	}
+    barrier.image = image.getVulkanImage();
+    barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = image.getMipmapLevels();
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
 
-	if (this->createSettings.createSampler)
-		this->textureSampler = this->createImageSampler(device, this->createSettings);
-}
+    // the operations that need to be completed before and after the barrier, need to be defined
+    barrier.srcAccessMask = {}; // TODO
+    barrier.dstAccessMask = {}; // TODO
 
-star::StarTexture::StarTexture(const TextureCreateSettings& createSettings, vk::Device& device, const vk::Image& textureImage) : createSettings(createSettings), textureImage(textureImage), device(device){
-	this->createTextureImageView(this->createSettings.baseFormat, this->createSettings.aspectFlags);
-	for (const auto& viewFormat : this->createSettings.additionalViewFormats){
-		this->createTextureImageView(viewFormat, createSettings.aspectFlags); 
-	}
-}
+    vk::PipelineStageFlags sourceStage, destinationStage;
 
-void star::StarTexture::transitionLayout(vk::CommandBuffer& commandBuffer, vk::ImageLayout newLayout, vk::AccessFlags srcFlags, vk::AccessFlags dstFlags, vk::PipelineStageFlags sourceStage, vk::PipelineStageFlags dstStage){
-	vk::ImageMemoryBarrier barrier{};
-	barrier.sType = vk::StructureType::eImageMemoryBarrier;
-	barrier.oldLayout = this->layout;
-	barrier.newLayout = newLayout;
-	barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-	barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+    if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+    {
+        // undefined transition state, dont need to wait for this to complete
+        barrier.srcAccessMask = {};
+        barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
 
-	barrier.image = this->textureImage;
-	barrier.srcAccessMask = srcFlags;
-	barrier.dstAccessMask = dstFlags;
+        sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+        destinationStage = vk::PipelineStageFlagBits::eTransfer;
+    }
+    else if (oldLayout == vk::ImageLayout::eTransferDstOptimal &&
+             (newLayout == vk::ImageLayout::eShaderReadOnlyOptimal || newLayout == vk::ImageLayout::eGeneral))
+    {
+        // transfer destination shader reading, will need to wait for completion. Especially in the frag shader where
+        // reads will happen
+        barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+        barrier.dstAccessMask = vk::AccessFlagBits::eNone;
 
-	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;                          //image does not have any mipmap levels
-	barrier.subresourceRange.levelCount = 1;                            //image is not an array
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
+        sourceStage = vk::PipelineStageFlagBits::eTransfer;
+        destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
+    }
+    // else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout ==
+    // vk::ImageLayout::eTransferDstOptimal) {
+    // 	//preparing to update texture during runtime, need to wait for top of pipe
+    // 	//barrier.srcAccessMask = vk::AccessFlagBits::;
+    // 	barrier.srcAccessMask = {};
+    // 	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
-	commandBuffer.pipelineBarrier(
-		sourceStage,                        //which pipeline stages should occurr before barrier 
-		dstStage,                   //pipeline stage in which operations will wait on the barrier 
-		{},
-		{},
-		nullptr,
-		barrier
-	);
-
-	this->layout = newLayout; 
-}
-
-void star::StarTexture::createAllocation(const TextureCreateSettings& createSettings, VmaAllocator& allocator, VmaAllocation& textureMemory, vk::Image& image, const bool& isMutable){
-    /* Create vulkan image */
-	vk::ImageCreateInfo imageInfo{};
-	imageInfo.sType = vk::StructureType::eImageCreateInfo;
-
-	if (createSettings.depth > 1) {
-		imageInfo.imageType = vk::ImageType::e3D;
-		imageInfo.flags = vk::ImageCreateFlagBits::e2DArrayCompatible;
-	}
-	else
-		imageInfo.imageType = vk::ImageType::e2D;
-
-	if (isMutable)
-		imageInfo.flags = vk::ImageCreateFlagBits::eMutableFormat; 
-
-	imageInfo.extent.width = createSettings.width;
-	imageInfo.extent.height = createSettings.height;
-	imageInfo.extent.depth = createSettings.depth;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = createSettings.baseFormat;
-	imageInfo.tiling = vk::ImageTiling::eOptimal;
-	imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-	imageInfo.usage = createSettings.usage;
-	imageInfo.samples = vk::SampleCountFlagBits::e1;
-	imageInfo.sharingMode = vk::SharingMode::eExclusive;
-
-
-    VmaAllocationCreateInfo allocInfo{};
-    allocInfo.flags = createSettings.allocationCreateFlags;
-    allocInfo.usage = createSettings.memoryUsage;
-
-    if (createSettings.requiredMemoryProperties.has_value()) {
-        allocInfo.requiredFlags = static_cast<VkMemoryPropertyFlags>(createSettings.requiredMemoryProperties.value());
+    // 	sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+    // 	destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+    // }
+    else
+    {
+        throw std::invalid_argument("unsupported layout transition!");
     }
 
-    auto result = vmaCreateImage(allocator, (VkImageCreateInfo*)&imageInfo, &allocInfo, (VkImage*)&image, &textureMemory, nullptr);
+    // transfer writes must occurr during the pipeline transfer stage
+    commandBuffer.pipelineBarrier(sourceStage,      // which pipeline stages should occurr before barrier
+                                  destinationStage, // pipeline stage in which operations will wait on the barrier
+                                  {}, {}, nullptr, barrier);
+}
 
-    if (result != VK_SUCCESS){
+float star::StarTexture::SelectAnisotropyLevel(const vk::PhysicalDeviceProperties &deviceProperties)
+{
+    std::string anisotropySetting = star::ConfigFile::getSetting(star::Config_Settings::texture_anisotropy);
+    float anisotropyLevel = 1.0f;
+
+    if (anisotropySetting == "max")
+        anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
+    else
+    {
+        anisotropyLevel = std::stof(anisotropySetting);
+
+        if (anisotropyLevel > deviceProperties.limits.maxSamplerAnisotropy)
+        {
+            anisotropyLevel = deviceProperties.limits.maxSamplerAnisotropy;
+        }
+        else if (anisotropyLevel < 1.0f)
+        {
+            anisotropyLevel = 1.0f;
+        }
+    }
+
+    return anisotropyLevel;
+}
+
+vk::Filter star::StarTexture::SelectTextureFiltering(const vk::PhysicalDeviceProperties &deviceProperties)
+{
+    auto textureFilteringSetting = ConfigFile::getSetting(Config_Settings::texture_filtering);
+
+    vk::Filter filterType;
+    if (textureFilteringSetting == "nearest")
+    {
+        filterType = vk::Filter::eNearest;
+    }
+    else if (textureFilteringSetting == "linear")
+    {
+        filterType = vk::Filter::eLinear;
+    }
+    else
+    {
+        throw std::runtime_error("Texture filtering setting must be 'nearest' or 'linear'");
+    }
+
+    return filterType;
+}
+
+star::StarTexture::~StarTexture()
+{
+    if (this->sampler.has_value())
+        this->device.destroySampler(this->sampler.value());
+
+    for (auto &item : this->views)
+    {
+        this->device.destroyImageView(item.second);
+    }
+
+    if (this->allocator.has_value() && this->memory.has_value())
+    {
+        vmaDestroyImage(*this->allocator.value(), this->vulkanImage, this->memory.value());
+    }
+}
+
+vk::ImageView star::StarTexture::getImageView(const vk::Format *requestedFormat) const
+{
+    if (requestedFormat != nullptr)
+    {
+        // make sure the image view actually exists for the requested format
+        assert(this->views.find(*requestedFormat) != this->views.end() &&
+               "The image must be created with the proper image view before being requested");
+        return this->views.at(*requestedFormat);
+    }
+
+    // just grab the first one
+    for (auto &view : this->views)
+    {
+        return view.second;
+    }
+
+    throw std::runtime_error("Failed to find an image view");
+}
+
+star::StarTexture::StarTexture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+                               const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat,
+                               const vk::SamplerCreateInfo &samplerInfo)
+    : device(device), allocator(&allocator), memory(VmaAllocation()), baseFormat(baseFormat),
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+{
+    VerifyImageCreateInfo(createInfo);
+
+    CreateAllocation(device, this->baseFormat, allocator, allocationCreateInfo, createInfo, this->memory.value(),
+                     this->vulkanImage, allocationName);
+
+    this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
+    this->sampler = std::make_optional(CreateImageSampler(device, samplerInfo));
+}
+
+star::StarTexture::StarTexture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+                               const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat)
+    : device(device), allocator(&allocator), memory(VmaAllocation()), baseFormat(baseFormat),
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+{
+    VerifyImageCreateInfo(createInfo);
+
+    CreateAllocation(device, this->baseFormat, allocator, allocationCreateInfo, createInfo, this->memory.value(),
+                     this->vulkanImage, allocationName);
+
+    this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
+}
+
+star::StarTexture::StarTexture(vk::Device &device, vk::Image &vulkanImage,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat,
+                               const vk::SamplerCreateInfo &samplerInfo)
+    : device(device), vulkanImage(vulkanImage), baseFormat(baseFormat),
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+{
+    this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
+    this->sampler = CreateImageSampler(device, samplerInfo);
+}
+
+star::StarTexture::StarTexture(vk::Device &device, vk::Image &vulkanImage,
+                               const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat)
+    : device(device), vulkanImage(vulkanImage), baseFormat(baseFormat),
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+{
+    this->views = CreateImageViews(device, this->vulkanImage, imageViewInfos);
+}
+
+vk::Sampler star::StarTexture::CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo)
+{
+    vk::Sampler sampler = device.createSampler(samplerCreateInfo);
+
+    if (!sampler)
+    {
+        std::cerr << "Failed to create sampler" << std::endl;
+        throw std::runtime_error("Failed to create sampler");
+    }
+
+    return sampler;
+}
+
+void star::StarTexture::CreateAllocation(vk::Device &device, const vk::Format &baseFormat, VmaAllocator &allocator,
+                                         const VmaAllocationCreateInfo &allocationCreateInfo,
+                                         const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
+                                         vk::Image &textureImage, const std::string &allocationName)
+{
+    vk::ImageCreateInfo addFormat = vk::ImageCreateInfo(imageCreateInfo).setFormat(baseFormat);
+
+    auto result = vmaCreateImage(allocator, (VkImageCreateInfo *)&addFormat, &allocationCreateInfo,
+                                 (VkImage *)&textureImage, &allocation, nullptr);
+
+    if (result != VK_SUCCESS)
+    {
         throw std::runtime_error("Failed to create image: " + result);
     }
 
-	std::string fullAllocationName = std::string(createSettings.allocationName);
-	fullAllocationName += "_TEXTURE";
-	vmaSetAllocationName(allocator, textureMemory, fullAllocationName.c_str()); 
+    std::string fullAllocationName = std::string(allocationName) + "_TEXTURE";
+    vmaSetAllocationName(allocator, allocation, fullAllocationName.c_str());
 }
 
-vk::ImageView star::StarTexture::getImageView(const vk::Format* requestedFormat) const{
-	if (requestedFormat != nullptr){
-		//make sure the image view actually exists for the requested format
-		assert(this->imageViews.find(*requestedFormat) != this->imageViews.end() && "The image must be created with the proper image view before being requested");
-		return this->imageViews.at(*requestedFormat);
-	}
+std::unordered_map<vk::Format, vk::ImageView> star::StarTexture::CreateImageViews(
+    vk::Device &device, vk::Image vulkanImage, std::vector<vk::ImageViewCreateInfo> imageCreateInfos)
+{
+    assert(imageCreateInfos.size() > 0 && "An image view is required for every image");
 
-	//just grab the first one
-	for (auto& view : this->imageViews) {
-		return view.second; 
-	}
+    std::unordered_map<vk::Format, vk::ImageView> nViews = std::unordered_map<vk::Format, vk::ImageView>();
+
+    for (auto &info : imageCreateInfos)
+    {
+        vk::Format nFormat = info.format;
+        info.image = vulkanImage;
+
+        vk::ImageView nView = CreateImageView(device, info);
+
+        nViews.insert(std::make_pair(nFormat, nView));
+    }
+
+    return nViews;
 }
 
-void star::StarTexture::createTextureImageView(const vk::Format& viewFormat, const vk::ImageAspectFlags& aspectFlags) {
-	if (this->imageViews.find(viewFormat) == this->imageViews.end()){
-		vk::ImageView imageView = createImageView(this->device, this->textureImage, viewFormat, aspectFlags);
-		this->imageViews.insert(std::pair<vk::Format, vk::ImageView>(viewFormat, imageView)); 
-	}
+void star::StarTexture::VerifyImageCreateInfo(const vk::ImageCreateInfo &createInfo)
+{
+    assert(createInfo.extent.width != 0 && "width cannot be 0");
+    assert(createInfo.extent.height != 0 && "height cannot be 0");
+    assert(createInfo.extent.depth != 0 && "depth cannot be 0");
+    assert(createInfo.mipLevels != 0 && "mip levels cannnot be 0");
+    assert(createInfo.arrayLayers != 0 && "array layers cannot be 0");
+    assert(createInfo.initialLayout == vk::ImageLayout::eUndefined ||
+           createInfo.initialLayout == vk::ImageLayout::ePreinitialized &&
+               "Invalid initial layout according to vulkan specs");
+    assert(createInfo.sharingMode == vk::SharingMode::eExclusive ||
+           (createInfo.sharingMode == vk::SharingMode::eConcurrent && createInfo.queueFamilyIndexCount > 1) &&
+               "Must have indices defined for shared resource");
 }
 
-vk::ImageView star::StarTexture::createImageView(vk::Device& device, vk::Image image, vk::Format format, const vk::ImageAspectFlags& aspectFlags) {
-	vk::ImageViewCreateInfo viewInfo{};
-	viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
-	viewInfo.image = image;
-	if (this->createSettings.depth > 1)
-		viewInfo.viewType = vk::ImageViewType::e3D;
-	else {
-		viewInfo.viewType = vk::ImageViewType::e2D;
-	}
-	viewInfo.format = format;
+vk::ImageView star::StarTexture::CreateImageView(vk::Device &device, const vk::ImageViewCreateInfo &imageCreateInfo)
+{
+    vk::ImageView imageView = device.createImageView(imageCreateInfo);
 
-	viewInfo.subresourceRange.aspectMask = aspectFlags;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = 1;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
+    if (!imageView)
+    {
+        throw std::runtime_error("failed to create texture image view!");
+    }
 
-	vk::ImageView imageView = device.createImageView(viewInfo);
-
-	if (!imageView) {
-		throw std::runtime_error("failed to create texture image view!");
-	}
-
-	return imageView;
+    return imageView;
 }
 
-vk::Sampler star::StarTexture::createImageSampler(vk::Device& device, const star::StarTexture::TextureCreateSettings& createSettings){
-	vk::SamplerCreateInfo samplerInfo{}; 
-	samplerInfo.sType = vk::StructureType::eSamplerCreateInfo;
+uint32_t star::StarTexture::ExtractMipmapLevels(const vk::ImageViewCreateInfo &imageViewInfo)
+{
+    return imageViewInfo.subresourceRange.levelCount;
+}
 
-	if (createSettings.anisotropyLevel != 0.0f){
-		samplerInfo.anisotropyEnable = VK_TRUE;
-		samplerInfo.maxAnisotropy = createSettings.anisotropyLevel;
-	}
+star::StarTexture::Builder::Builder(vk::Device &device, const vk::Image &vulkanImage)
+    : device(device), vulkanImage(vulkanImage)
+{
+}
 
-	samplerInfo.magFilter = createSettings.textureFilteringMode;
-	samplerInfo.minFilter = createSettings.textureFilteringMode;
+star::StarTexture::Builder::Builder(vk::Device &device, VmaAllocator &allocator)
+    : device(device), createNewAllocationInfo{std::make_optional<Creators>(allocator)}
+{
+}
 
-	//repeat mode - repeat the texture when going beyond the image dimensions
-	samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
-	samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
-	samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
+star::StarTexture::Builder &star::StarTexture::Builder::setCreateInfo(const VmaAllocationCreateInfo &nAllocInfo,
+                                                                      const vk::ImageCreateInfo &nCreateInfo,
+                                                                      const std::string &nAllocName)
+{
+    assert(this->createNewAllocationInfo.has_value() && "Must be a builder for a new allocation");
 
-	
-	samplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
-	//specifies coordinate system to use in addressing texels. 
-	//VK_TRUE - use coordinates [0, texWidth) and [0, texHeight]
-	//VK_FALSE - use [0, 1)
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    this->createNewAllocationInfo.value().createInfo = nCreateInfo;
+    this->createNewAllocationInfo.value().allocationCreateInfo = nAllocInfo;
+    this->createNewAllocationInfo.value().allocationName = nAllocName;
+    return *this;
+}
 
-	//if comparing, the texels will first compare to a value, the result of the comparison is used in filtering operations (percentage-closer filtering on shadow maps)
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = vk::CompareOp::eAlways;
-	
-	//following apply to mipmapping -- not using here
-	samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
+star::StarTexture::Builder &star::StarTexture::Builder::addViewInfo(const vk::ImageViewCreateInfo &nCreateInfo)
+{
+    this->viewInfos.push_back(nCreateInfo);
+    return *this;
+}
 
-	vk::Sampler textureSampler = device.createSampler(samplerInfo);
-	if (!textureSampler)
-		throw std::runtime_error("failed to create texture sampler");
+star::StarTexture::Builder &star::StarTexture::Builder::setSamplerInfo(const vk::SamplerCreateInfo &nCreateInfo)
+{
+    this->samplerInfo = nCreateInfo;
+    return *this;
+}
 
-	return textureSampler; 
+star::StarTexture::Builder &star::StarTexture::Builder::setBaseFormat(const vk::Format &nFormat)
+{
+    this->format = nFormat;
+    return *this;
+}
+
+std::unique_ptr<star::StarTexture> star::StarTexture::Builder::build()
+{
+    assert(this->format.has_value());
+
+    if (this->createNewAllocationInfo.has_value())
+    {
+        // assert(this->createNewAllocationInfo.value().createInfo &&
+        // this->createNewAllocationInfo.value().allocationCreateInfo && "Other build info must be provided for
+        // allocation creation");
+
+        if (this->samplerInfo.has_value())
+        {
+            return std::unique_ptr<StarTexture>(new StarTexture(
+                this->device, this->createNewAllocationInfo.value().allocator,
+                this->createNewAllocationInfo.value().createInfo, this->createNewAllocationInfo.value().allocationName,
+                this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos, this->format.value(),
+                this->samplerInfo.value()));
+        }
+        else
+        {
+            return std::unique_ptr<StarTexture>(new StarTexture(
+                this->device, this->createNewAllocationInfo.value().allocator,
+                this->createNewAllocationInfo.value().createInfo, this->createNewAllocationInfo.value().allocationName,
+                this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos, this->format.value()));
+        }
+    }
+    else if (this->vulkanImage.has_value())
+    {
+        if (this->samplerInfo.has_value())
+        {
+            return std::unique_ptr<StarTexture>(new StarTexture(this->device, this->vulkanImage.value(),
+                                                                this->viewInfos, this->format.value(),
+                                                                this->samplerInfo.value()));
+        }
+        else
+        {
+            return std::unique_ptr<StarTexture>(
+                new StarTexture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()));
+        }
+    }
+    else
+    {
+        std::cerr << "Invalid builder config" << std::endl;
+        throw std::runtime_error("Invalid builder config");
+    }
+    return nullptr;
 }

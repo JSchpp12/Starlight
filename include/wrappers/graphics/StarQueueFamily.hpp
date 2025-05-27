@@ -34,6 +34,10 @@ namespace star{
             return this->queueCount;
         }
 
+        uint32_t getQueueFamilyIndex(){
+            return this->queueFamilyIndex;
+        }
+
         private:
         const uint32_t queueFamilyIndex;  
         const uint32_t queueCount; 

@@ -1,34 +1,31 @@
 #pragma once
 
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Buffer.hpp"
 #include "StarObjectInstance.hpp"
 
 #include <glm/glm.hpp>
 
 namespace star::TransferRequest{
-    class InstanceNormalInfo : public Memory<star::StarBuffer::BufferCreationArgs>{
+    class InstanceNormalInfo : public Buffer{
         public:
-        InstanceNormalInfo(const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances) {
+        InstanceNormalInfo(const std::vector<std::unique_ptr<StarObjectInstance>>& objectInstances, 
+            const uint32_t &graphicsQueueFamilyIndex, const vk::DeviceSize &minUniformBufferOffsetAlignment)
+            : graphicsQueueFamilyIndex(graphicsQueueFamilyIndex), 
+            minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment) {
             for (auto& instance : objectInstances) {
                 this->normalMatrixInfo.push_back(instance->getDisplayMatrix());
             }
         }
 
-        virtual StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
-            return StarBuffer::BufferCreationArgs{
-                sizeof(glm::mat4),
-                static_cast<uint32_t>(this->normalMatrixInfo.size()),
-                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-                VMA_MEMORY_USAGE_AUTO,
-                vk::BufferUsageFlagBits::eUniformBuffer,
-                vk::SharingMode::eConcurrent,
-                "InstanceNormalInfoBuffer"
-            };
-        }
+        std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
+
+        std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const override; 
+        
+        void writeDataToStageBuffer(StarBuffer& buffer) const override; 
 
         protected:
-            std::vector<glm::mat4> normalMatrixInfo = std::vector<glm::mat4>(); 
-
-            void writeData(StarBuffer& buffer) const override;
+        const uint32_t graphicsQueueFamilyIndex; 
+        const vk::DeviceSize minUniformBufferOffsetAlignment;
+        std::vector<glm::mat4> normalMatrixInfo = std::vector<glm::mat4>(); 
     };
 }

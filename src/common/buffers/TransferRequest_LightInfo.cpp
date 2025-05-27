@@ -1,6 +1,51 @@
 #include "TransferRequest_LightInfo.hpp"
 
-void star::TransferRequest::LightInfo::writeData(star::StarBuffer& buffer) const{
+#include "CastHelpers.hpp"
+
+std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createStagingBuffer(vk::Device& device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
+	return StarBuffer::Builder(allocator)
+		.setAllocationCreateInfo(
+			Allocator::AllocationBuilder()
+				.setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
+				.setUsage(VMA_MEMORY_USAGE_AUTO)
+				.build(),
+			vk::BufferCreateInfo()
+				.setSharingMode(vk::SharingMode::eExclusive)
+				.setSize(sizeof(LightBufferObject) * CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+				.setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+			"LightInfo_Stage"
+		)
+		.setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+		.setInstanceSize(sizeof(LightBufferObject))
+		.build();
+}
+
+std::unique_ptr<star::StarBuffer> star::TransferRequest::LightInfo::createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
+	std::vector<uint32_t> indices = {
+		this->graphicsQueueFamilyIndex,
+		transferQueueFamilyIndex
+	};
+
+	return StarBuffer::Builder(allocator)
+		.setAllocationCreateInfo(
+			Allocator::AllocationBuilder()
+				.setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+				.setUsage(VMA_MEMORY_USAGE_AUTO)
+				.build(),
+			vk::BufferCreateInfo()
+				.setSharingMode(vk::SharingMode::eConcurrent)
+				.setQueueFamilyIndices(indices)
+				.setQueueFamilyIndexCount(2)
+				.setSize(sizeof(LightBufferObject) * CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+				.setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer),
+			"LightInfo_Src"
+		)
+		.setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+		.setInstanceSize(sizeof(LightBufferObject))
+		.build();
+}
+
+void star::TransferRequest::LightInfo::writeDataToStageBuffer(star::StarBuffer& buffer) const{
     buffer.map(); 
 
 	std::vector<LightBufferObject> lightInformation(this->myLights.size());

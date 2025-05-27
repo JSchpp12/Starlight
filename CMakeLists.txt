@@ -30,15 +30,13 @@ add_subdirectory("extern/glslang")
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
+find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS container thread)
+find_package(Boost REQUIRED COMPONENTS container thread filesystem)
+find_package(ktx CONFIG REQUIRED COMPONENTS vulkan)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
-
-
-
 
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -59,6 +57,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/BasicWindow.cpp" 
     "src/SceneRenderer.cpp"
     "src/SwapChainRenderer.cpp"
+    "src/virtual/StarSystemPipeline.cpp"
     "src/virtual/StarObject.cpp"
     "src/virtual/ModulePlug/RenderResourceModifier.cpp"
     "src/virtual/ModulePlug/CommandBufferModifier.cpp"
@@ -75,7 +74,9 @@ set(${PROJECT_NAME}_SOURCE
     "src/virtual/StarCamera.cpp"
     "src/virtual/StarPipeline.cpp"
     "src/virtual/StarEntity.cpp"
+    "src/virtual/TransferRequest_Texture.cpp"
     "src/virtual/TransferRequest_Memory.cpp"
+    "src/virtual/TransferRequest_Buffer.cpp"
     "src/virtual/ManagerController_Controller.cpp"
     "src/virtual/ManagerController_RenderResource_Buffer.cpp"
     "src/virtual/ManagerController_RenderResource_Texture.cpp"
@@ -83,7 +84,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/wrappers/graphics/StarBuffer.cpp"  
     "src/wrappers/graphics/StarGraphicsPipeline.cpp"  
     "src/wrappers/graphics/StarComputePipeline.cpp"
-    "src/wrappers/graphics/StarImage.cpp"  
     "src/wrappers/graphics/StarRenderPass.cpp"
     "src/wrappers/graphics/StarCommandBuffer.cpp"
     "src/wrappers/graphics/StarShaderInfo.cpp"
@@ -102,11 +102,11 @@ set(${PROJECT_NAME}_SOURCE
     "src/modules/InteractionSystem.cpp"
     "src/modules/RenderResourceSystem.cpp"
     "src/systems/StarRenderGroup.cpp" 
-    "src/common/GeneratedTexture.cpp"
     "src/common/Compiler.cpp"
     "src/common/Interactivity.cpp" 
     "src/common/KeyStates.cpp"
     "src/common/RuntimeUpdateTexture.cpp"
+    "src/common/ThreadSharedResource.cpp"
     "src/common/materials/BumpMaterial.cpp"
     "src/common/materials/VertColorMaterial.cpp"
     "src/common/materials/HeightDisplacementMaterial.cpp"
@@ -116,7 +116,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/objects/StarObjectInstance.cpp"
     "src/common/ConfigFile.cpp"
     "src/common/BasicCamera.cpp"
-    "src/common/FileTexture.cpp"
     "src/common/Handle.cpp"
     "src/common/buffers/TransferRequest_GlobalInfo.cpp"
     "src/common/buffers/TransferRequest_InstanceModelInfo.cpp"
@@ -125,6 +124,8 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/buffers/TransferRequest_IndiciesInfo.cpp"
     "src/common/buffers/TransferRequest_VertInfo.cpp"
     "src/common/textures/TransferRequest_TextureFile.cpp"
+    "src/common/textures/TransferRequest_CompressedTextureFile.cpp"
+    "src/common/textures/SharedCompressedTexture.cpp"
     "src/common/controllers/ManagerController_RenderResource_TextureFile.cpp"
     "src/common/controllers/ManagerController_RenderResource_GlobalInfo.cpp"
     "src/common/controllers/ManagerController_RenderResource_InstanceModelInfo.cpp"
@@ -132,9 +133,9 @@ set(${PROJECT_NAME}_SOURCE
     "src/common/controllers/ManagerController_RenderResource_LightInfo.cpp"
     "src/common/controllers/ManagerController_RenderResource_IndicesInfo.cpp"
     "src/common/controllers/ManagerController_RenderResource_VertInfo.cpp"
-    "src/virtual/StarSystemPipeline.cpp"
     "src/common/materials/TextureMaterial.cpp"
     "src/common/helpers/GeometryHelpers.cpp"
+    "src/common/helpers/FileHelpers.cpp"
     "src/internals/CommandBufferContainer.cpp"
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
@@ -145,11 +146,10 @@ set(${PROJECT_NAME}_HEADERS
     "include/BasicWindow.hpp" 
     "include/SceneRenderer.hpp"
     "include/SwapChainRenderer.hpp"
-    "include/common/GeneratedTexture.hpp"
+    "include/common/ThreadSharedResource.hpp"
     "include/common/Compiler.hpp"
     "include/common/Interactivity.hpp"
     "include/common/KeyStates.hpp"
-    "include/common/FileTexture.hpp"
     "include/common/materials/BumpMaterial.hpp"
     "include/common/materials/VertColorMaterial.hpp"
     "include/common/materials/TextureMaterial.hpp"
@@ -164,6 +164,8 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/buffers/TransferRequest_IndicesInfo.hpp"
     "include/common/buffers/TransferRequest_VertInfo.hpp"
     "include/common/textures/TransferRequest_TextureFile.hpp"
+    "include/common/textures/TransferRequest_CompressedTextureFile.hpp"
+    "include/common/textures/SharedCompressedTexture.hpp"
     "include/common/controllers/ManagerController_RenderResource_TextureFile.hpp"
     "include/common/controllers/ManagerController_RenderResource_GlobalInfo.hpp"
     "include/common/controllers/ManagerController_RenderResource_InstanceModelInfo.hpp"
@@ -186,14 +188,14 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarMaterial.hpp"
     "include/virtual/StarSystemPipeline.hpp"
     "include/virtual/StarPipeline.hpp"
+    "include/virtual/TransferRequest_Texture.hpp"
+    "include/virtual/TransferRequest_Buffer.hpp"
     "include/virtual/TransferRequest_Memory.hpp"
     "include/virtual/ManagerController_Controller.hpp"
     "include/virtual/ManagerController_RenderResource_Buffer.hpp"
     "include/virtual/ManagerController_RenderResource_Texture.hpp"
-    "include/common/StarMaterialMesh.hpp"
     "include/wrappers/graphics/StarDescriptorBuilders.hpp"
     "include/wrappers/graphics/StarBuffer.hpp"
-    "include/wrappers/graphics/StarImage.hpp"
     "include/wrappers/graphics/StarGraphicsPipeline.hpp"
     "include/wrappers/graphics/StarComputePipeline.hpp"
     "include/wrappers/graphics/StarRenderPass.hpp"
@@ -254,6 +256,8 @@ target_link_libraries(${PROJECT_NAME}
         nlohmann_json::nlohmann_json
         Boost::thread
         Boost::container
+        Boost::filesystem
+        KTX::ktx
     )
 
 set(INCLUDE_DIRS

@@ -55,14 +55,14 @@ namespace star {
         shaderc::CompileOptions options;
 
         // Like -DMY_DEFINE=1
-        options.AddMacroDefinition("MY_DEFINE", "1");
+        // options.AddMacroDefinition("MY_DEFINE", "1");
 
         shaderc::PreprocessedSourceCompilationResult result =
             compiler.PreprocessGlsl(source, stage, sourceName.c_str(), options);
 
         if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
             std::cerr << result.GetErrorMessage();
-            return "";
+            throw std::runtime_error("Failed to preprocess shader"); 
         }
 
         return { result.cbegin(), result.cend() };

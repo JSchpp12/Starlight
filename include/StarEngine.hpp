@@ -1,45 +1,53 @@
 #pragma once
 
-#include "StarWindow.hpp"
+#include "StarApplication.hpp"
 #include "StarBuffer.hpp"
 #include "StarScene.hpp"
-#include "StarApplication.hpp"
+#include "StarWindow.hpp"
 #include "TransferWorker.hpp"
 
+
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
-namespace star {
-class StarEngine {
-public:
-	static void takeScreenshot(const std::string& path) { 
-		screenshotPath = std::make_unique<std::string>(path); 
-	}
 
-	StarEngine();
+namespace star
+{
+class StarEngine
+{
+  public:
+    static void takeScreenshot(const std::string &path)
+    {
+        screenshotPath = std::make_unique<std::string>(path);
+    }
 
-	virtual ~StarEngine();
+    StarEngine();
 
-	void Run();
+    virtual ~StarEngine();
 
-	void init(StarApplication& application);
+    void run();
 
-	StarScene& getScene() { return *this->currentScene; }
-protected:
-	std::unique_ptr<StarWindow> window;
-	std::unique_ptr<StarDevice> renderingDevice;
-	std::unique_ptr<StarScene> currentScene;
-	std::unique_ptr<SwapChainRenderer> mainRenderer; 
-	std::unique_ptr<TransferWorker> transferWorker;
+    void init(StarApplication &application);
 
-	std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
-	std::vector<StarRenderGroup> renderGroups;  
+    StarScene &getScene()
+    {
+        return *this->currentScene;
+    }
 
-private: 
-	static std::unique_ptr<std::string> screenshotPath;
+  protected:
+    std::unique_ptr<StarWindow> window;
+    std::unique_ptr<StarDevice> renderingDevice;
+    std::unique_ptr<StarScene> currentScene;
+    std::unique_ptr<SwapChainRenderer> mainRenderer;
+    std::unique_ptr<TransferWorker> transferWorker;
 
-	const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
+    std::unique_ptr<StarBuffer> vertexBuffer, indexBuffer;
+    std::vector<StarRenderGroup> renderGroups;
 
+  private:
+    static std::unique_ptr<std::string> screenshotPath;
+
+    const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
 };
-}
+} // namespace star

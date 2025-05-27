@@ -1,31 +1,32 @@
 #pragma once 
 
-#include "TransferRequest_Memory.hpp"
+#include "TransferRequest_Buffer.hpp"
 #include "StarCamera.hpp"
 
 #include <glm/glm.hpp>
 
 namespace star::TransferRequest{
-    class GlobalInfo : public Memory<star::StarBuffer::BufferCreationArgs>{
+    class GlobalInfo : public Buffer{
         public:
         
-        GlobalInfo(const StarCamera& camera, const int& numLights) : camera(camera), numLights(numLights){}
+        GlobalInfo(const StarCamera& camera, 
+            const int& numLights, 
+            const uint32_t &graphicsQueueIndex, 
+        const vk::DeviceSize &minUniformBufferOffsetAlignment) 
+        : camera(camera), 
+        numLights(numLights), 
+        graphicsQueueIndex(graphicsQueueIndex),
+        minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment){}
 
-        StarBuffer::BufferCreationArgs getCreateArgs(const vk::PhysicalDeviceProperties& deviceProperties) const override{
-            return StarBuffer::BufferCreationArgs{
-                sizeof(GlobalUniformBufferObject),
-                1,
-                (VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT), 
-                VMA_MEMORY_USAGE_AUTO, 
-                vk::BufferUsageFlagBits::eUniformBuffer, 
-                vk::SharingMode::eConcurrent, 
-                "GlobalInfoBuffer"
-            };
-        }
+        std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const override; 
 
-        void writeData(StarBuffer& buffer) const override; 
+        std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const override; 
+        
+        void writeDataToStageBuffer(StarBuffer& buffer) const override; 
 
         private:
+        const vk::DeviceSize minUniformBufferOffsetAlignment;
+        const uint32_t graphicsQueueIndex; 
         const int numLights = 0;
         const StarCamera camera; 
 

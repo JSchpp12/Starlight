@@ -1,7 +1,12 @@
 #pragma once
 
+#include "StarDevice.hpp"
+
+#include <vulkan/vulkan.hpp>
+
 #include <optional>
 #include <memory>
+#include <vector>
 
 namespace star::ManagerController{
     template <typename T>
@@ -16,9 +21,9 @@ namespace star::ManagerController{
             return true;
         };
 
-        virtual std::unique_ptr<T> createTransferRequest() = 0;
-
+        virtual std::unique_ptr<T> createTransferRequest(StarDevice &device) = 0;
         const std::optional<uint8_t>& getFrameInFlightIndexToUpdateOn() const { return frameInFlightIndexToUpdateOn; }
+        
         private:
         std::optional<uint8_t> frameInFlightIndexToUpdateOn = std::nullopt;
     };
