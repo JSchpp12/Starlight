@@ -1,7 +1,7 @@
 #include "SharedFence.hpp"
 
 star::SharedFence::SharedFence(star::StarDevice& device, const bool& createInSignaledState) 
-: device(device), star::ThreadSharedResource<vk::Fence>(new vk::Fence(createFence(device, createInSignaledState))){
+: device(device), star::ThreadSharedResource<vk::Fence>(new vk::Fence(CreateFence(device, createInSignaledState))){
 
 }
 
@@ -10,7 +10,7 @@ star::SharedFence::~SharedFence(){
     this->device.getDevice().destroyFence(*this->resource);
 }
 
-vk::Fence star::SharedFence::createFence(StarDevice& device, const bool& createInSignaledState){
+vk::Fence star::SharedFence::CreateFence(StarDevice& device, const bool& createInSignaledState){
     vk::FenceCreateInfo info{};
     info.sType = vk::StructureType::eFenceCreateInfo;
     if (createInSignaledState)

@@ -1,25 +1,19 @@
 #include "StarCommandBuffer.hpp"
 
-star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToCreate, 
-	star::Queue_Type type, bool initFences, bool initSemaphores)
-	: device(device), targetQueue(device.getQueueFamily(type).getQueue())
+star::StarCommandBuffer::StarCommandBuffer(vk::Device& vulkanDevice, int numBuffersToCreate, 
+	std::shared_ptr<StarCommandPool> parentPool, const star::Queue_Type type, bool initFences, bool initSemaphores)
+	: vulkanDevice(vulkanDevice), parentPool(parentPool), type(type)
 {
-	// this->recordedImageTransitions.resize(numBuffersToCreate); 
-	// for (auto& empty : this->recordedImageTransitions) {
-	// 	empty = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
-	// }
 	this->waitSemaphores.resize(numBuffersToCreate); 
-
-	vk::CommandPool& pool = device.getQueueFamily(type).getCommandPool(); 
-
 	//allocate this from the pool
 	vk::CommandBufferAllocateInfo allocateInfo = vk::CommandBufferAllocateInfo{}; 
 	allocateInfo.sType = vk::StructureType::eCommandBufferAllocateInfo; 
-	allocateInfo.commandPool = pool; 
+	allocateInfo.commandPool = this->parentPool->getVulkanCommandPool(); 
 	allocateInfo.level = vk::CommandBufferLevel::ePrimary; 
 	allocateInfo.commandBufferCount = (uint32_t)numBuffersToCreate; 
 	
-	this->commandBuffers = this->device.getDevice().allocateCommandBuffers(allocateInfo);  
+	this->commandBuffers = this->vulkanDevice.allocateCommandBuffers(allocateInfo);  
+
 
 	if (initFences) 
 		createFences(); 
@@ -31,22 +25,22 @@ star::StarCommandBuffer::StarCommandBuffer(StarDevice& device, int numBuffersToC
 star::StarCommandBuffer::~StarCommandBuffer()
 {
 	for (auto& fence : this->readyFence) {
-		if (fence)
-			this->device.getDevice().destroyFence(fence);
+		this->vulkanDevice.destroyFence(fence);
 	}
 	for (auto& semaphore : this->completeSemaphores) {
-		if (semaphore)
-			this->device.getDevice().destroySemaphore(semaphore); 
+		this->vulkanDevice.destroySemaphore(semaphore); 
 	}
+	this->vulkanDevice.freeCommandBuffers(this->parentPool->getVulkanCommandPool(), this->commandBuffers); 
 }
 
 void star::StarCommandBuffer::begin(int buffIndex)
 {
+	assert(buffIndex < this->commandBuffers.size() && "Requested buffer does not exist");
+
 	if (this->readyFence.size() > 0)
 		wait(buffIndex);
 
 	vk::CommandBufferBeginInfo beginInfo{};
-	//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
 
 	//flags parameter specifies command buffer use 
@@ -58,34 +52,40 @@ void star::StarCommandBuffer::begin(int buffIndex)
 	//only relevant for secondary command buffers -- which state to inherit from the calling primary command buffers 
 	beginInfo.pInheritanceInfo = nullptr;
 
-	/* NOTE:
-		if the command buffer has already been recorded once, simply call vkBeginCommandBuffer->implicitly reset.
-		commands cannot be added after creation
-	*/
+	this->commandBuffers[buffIndex].begin(beginInfo); 
 
-	this->begin(buffIndex, beginInfo); 
+	if (!this->commandBuffers[buffIndex]){
+		throw std::runtime_error("Failed to begin recording command buffer");
+	}
 }
 
-void star::StarCommandBuffer::begin(int buffIndex, vk::CommandBufferBeginInfo beginInfo)
+void star::StarCommandBuffer::begin(const int buffIndex, const vk::CommandBufferBeginInfo &beginInfo)
 {
-	assert(buffIndex < this->commandBuffers.size() && "Requested swap chain index is too high");
+	assert(buffIndex < this->commandBuffers.size() && "Requested buffer does not exist");
+
+	if (this->readyFence.size() > 0)
+		wait(buffIndex); 
+
 	this->recorded = true;
 
 	//create begin 
 	this->commandBuffers[buffIndex].begin(beginInfo);
 
 	if (!this->commandBuffers[buffIndex]) {
-		throw std::runtime_error("failed to begin recording command buffer");
+		throw std::runtime_error("Failed to begin recording command buffer");
 	}
 }
 
-void star::StarCommandBuffer::submit(int bufferIndex){
-	assert(this->recorded && "Buffer should be recorded before submission");
+star::StarCommandBuffer::FinalizedSubmitInfo star::StarCommandBuffer::getFinalizedSubmitInfo(int bufferIndex, std::pair<vk::Semaphore, vk::PipelineStageFlags> *overrideWait){
+	assert(bufferIndex < this->commandBuffers.size());
+	
+	std::vector<vk::Semaphore> waits = std::vector<vk::Semaphore>(); 
+	std::vector<vk::PipelineStageFlags> waitPoints = std::vector<vk::PipelineStageFlags>(); 
 
-	vk::SubmitInfo submitInfo{}; 
-
-	std::vector<vk::Semaphore> waits; 
-	std::vector<vk::PipelineStageFlags> waitPoints; 
+	if (overrideWait != nullptr){
+		waits.push_back(overrideWait->first); 
+		waitPoints.push_back(overrideWait->second); 
+	}
 
 	if (this->waitSemaphores.at(bufferIndex).size() > 0) {
 		//there are some semaphores which must be waited on before execution
@@ -95,99 +95,17 @@ void star::StarCommandBuffer::submit(int bufferIndex){
 		}
 	}
 
-	if (waits.size() > 0){
-		submitInfo.waitSemaphoreCount = (uint32_t)waits.size();
-		submitInfo.pWaitSemaphores = waits.data(); 
-		submitInfo.pWaitDstStageMask = waitPoints.data(); 
+	std::vector<vk::Semaphore> signalSemaphores = std::vector<vk::Semaphore>();
+	if (this->completeSemaphores.size() > 0){
+		signalSemaphores.push_back(this->completeSemaphores.at(bufferIndex));
 	}
 
-	//check if need to signal complete semaphore
-	if (this->completeSemaphores.size() > 0) {
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &this->completeSemaphores.at(bufferIndex);
+	if (this->readyFence.size() != 0 && this->readyFence[bufferIndex] != nullptr){
+		return FinalizedSubmitInfo(this->commandBuffers.at(bufferIndex), waits, waitPoints, signalSemaphores, this->readyFence.at(bufferIndex));
+	}else{
+		return FinalizedSubmitInfo(this->commandBuffers.at(bufferIndex), waits, waitPoints, signalSemaphores);
 	}
 
-	submitInfo.pCommandBuffers = &this->commandBuffers.at(bufferIndex);
-	submitInfo.commandBufferCount = 1;
-
-	auto commandResult = this->targetQueue.submit(1, &submitInfo, this->readyFence[bufferIndex]);
-	if (commandResult != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to submit draw command buffer");
-	}
-}
-
-void star::StarCommandBuffer::submit(int bufferIndex, vk::Fence& fence)
-{
-	assert(this->recorded && "Buffer should be recorded before submission"); 
-
-	vk::SubmitInfo submitInfo{}; 
-
-	std::vector<vk::Semaphore> waits; 
-	std::vector<vk::PipelineStageFlags> waitPoints; 
-
-	if (this->waitSemaphores.at(bufferIndex).size() > 0) {
-		//there are some semaphores which must be waited on before execution
-		for (auto& waitInfos : this->waitSemaphores.at(bufferIndex)) {
-			waits.push_back(waitInfos.first);
-			waitPoints.push_back(waitInfos.second);
-		}
-	}
-
-	if (waits.size() > 0){
-		submitInfo.waitSemaphoreCount = (uint32_t)waits.size();
-		submitInfo.pWaitSemaphores = waits.data(); 
-		submitInfo.pWaitDstStageMask = waitPoints.data(); 
-	}
-
-	//check if need to signal complete semaphore
-	if (this->completeSemaphores.size() > 0) {
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &this->completeSemaphores.at(bufferIndex);
-	}
-
-	submitInfo.pCommandBuffers = &this->commandBuffers.at(bufferIndex);
-	submitInfo.commandBufferCount = 1;
-	auto commandResult = this->targetQueue.submit(1, &submitInfo, fence); 
-	if (commandResult != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to submit draw command buffer");
-	}
-}
-
-void star::StarCommandBuffer::submit(int bufferIndex, vk::Fence& fence, std::pair<vk::Semaphore, vk::PipelineStageFlags> overrideWait)
-{
-	assert(this->recorded && "Buffer should be recorded before submission");
-
-	std::vector<vk::Semaphore> waits{overrideWait.first}; 
-	std::vector<vk::PipelineStageFlags> waitPoints{overrideWait.second}; 
-
-	vk::SubmitInfo submitInfo{};
-
-	if (this->waitSemaphores.at(bufferIndex).size() > 0) {
-		//there are some semaphores which must be waited on before execution
-		for (auto& waitInfos : this->waitSemaphores.at(bufferIndex)) {
-			waits.push_back(waitInfos.first);
-			waitPoints.push_back(waitInfos.second);
-		}
-	}
-
-	if (waits.size() > 0){
-		submitInfo.waitSemaphoreCount = (uint32_t)waits.size();
-		submitInfo.pWaitSemaphores = waits.data(); 
-		submitInfo.pWaitDstStageMask = waitPoints.data(); 
-	}
-
-	//check if need to signal complete semaphore
-	if (this->completeSemaphores.size() > 0) {
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &this->completeSemaphores.at(bufferIndex);
-	}
-
-	submitInfo.pCommandBuffers = &this->commandBuffers.at(bufferIndex);
-	submitInfo.commandBufferCount = 1;
-	auto commandResult = this->targetQueue.submit(1, &submitInfo, fence);
-	if (commandResult != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to submit draw command buffer");
-	}
 }
 
 void star::StarCommandBuffer::waitFor(std::vector<vk::Semaphore> semaphores, vk::PipelineStageFlags whereWait)
@@ -195,7 +113,6 @@ void star::StarCommandBuffer::waitFor(std::vector<vk::Semaphore> semaphores, vk:
 	//check for double record 
 	for (auto& waits : this->waitSemaphores.at(0)) {
 		if (waits.first == semaphores.at(0)) {
-			std::cout << "Duplicate request for wait semaphore detected...skipping" << std::endl;
 			return; 
 		}
 	}
@@ -212,12 +129,15 @@ void star::StarCommandBuffer::waitFor(StarCommandBuffer& otherBuffer, vk::Pipeli
 
 void star::StarCommandBuffer::reset(int bufferIndex)
 {
-	//wait for fence before reset
-	this->device.getDevice().waitForFences(this->readyFence[bufferIndex], VK_TRUE, UINT64_MAX);
+	assert(bufferIndex < this->commandBuffers.size() && "Requested buffer does not exist"); 
 
-	//reset image transitions
-	// this->recordedImageTransitions.at(bufferIndex).reset();
-	// this->recordedImageTransitions.at(bufferIndex) = std::make_unique<std::unordered_map<StarImage*, std::pair<vk::ImageLayout, vk::ImageLayout>>>();
+	//wait for fence before reset
+	{
+		auto result = this->vulkanDevice.waitForFences(this->readyFence[bufferIndex], VK_TRUE, UINT64_MAX);
+		if (result != vk::Result::eSuccess){
+			throw std::runtime_error("Failed to wait for fence");
+		}
+	}
 
 	//reset vulkan buffers
 	this->commandBuffers.at(bufferIndex).reset();
@@ -236,23 +156,15 @@ std::vector<vk::Semaphore>& star::StarCommandBuffer::getCompleteSemaphores()
 
 void star::StarCommandBuffer::wait(int bufferIndex)
 {
-	this->device.getDevice().waitForFences(this->readyFence.at(bufferIndex), VK_TRUE, UINT64_MAX); 
+	if (this->readyFence.size() > 0){
+		auto result = this->vulkanDevice.waitForFences(this->readyFence.at(bufferIndex), VK_TRUE, UINT64_MAX); 
 
-	this->device.getDevice().resetFences(this->readyFence[bufferIndex]); 
-}
+		if (result != vk::Result::eSuccess){
+			throw std::runtime_error("Failed to wait for fence"); 
+		}
 
-void star::StarCommandBuffer::checkForImageTransitions(int bufferIndex)
-{
-	//crude - update images with the transforms that this queue will enforce -- just in case the buffer is not re-recorded each frame 
-	//WARNING: if multithreading is used, this tracking system will NOT work
-
-	//for the images that have transitions, manually update their layout in the event this buffer is not recorded each frame
-	// for (auto& transitions : *this->recordedImageTransitions.at(bufferIndex).get()) {
-	// 	if (transitions.first->getCurrentLayout() != transitions.second.first)
-	// 		std::cout << "Warning: iamge not in expected format. This might cause undefined behavior from renderer" << std::endl;
-
-	// 	transitions.first->overrideImageLayout(transitions.second.second); 
-	// }
+		this->vulkanDevice.resetFences(this->readyFence[bufferIndex]); 
+	}
 }
 
 void star::StarCommandBuffer::createSemaphores()
@@ -263,7 +175,7 @@ void star::StarCommandBuffer::createSemaphores()
 	semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
 	for (int i = 0; i < this->commandBuffers.size(); i++) {
-		this->completeSemaphores.at(i) = this->device.getDevice().createSemaphore(semaphoreInfo);
+		this->completeSemaphores.at(i) = this->vulkanDevice.createSemaphore(semaphoreInfo);
 	}
 }
 
@@ -281,6 +193,16 @@ void star::StarCommandBuffer::createFences() {
 	fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
 	for (int i = 0; i < this->readyFence.size(); i++) {
-		this->readyFence[i] = this->device.getDevice().createFence(fenceInfo);
+		this->readyFence[i] = this->vulkanDevice.createFence(fenceInfo);
 	}
+}
+
+std::vector<vk::CommandBuffer> star::StarCommandBuffer::CreateCommandBuffers(vk::Device &vulkanDevice, vk::CommandPool &commandPool, const uint32_t &numToCreate){
+	//allocate this from the pool
+	vk::CommandBufferAllocateInfo allocateInfo = vk::CommandBufferAllocateInfo()
+		.setCommandPool(commandPool)
+		.setLevel(vk::CommandBufferLevel::ePrimary)
+		.setCommandBufferCount(numToCreate); 
+	
+	return vulkanDevice.allocateCommandBuffers(allocateInfo);  
 }

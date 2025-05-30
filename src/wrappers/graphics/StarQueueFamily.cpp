@@ -1,79 +1,82 @@
 #include "StarQueueFamily.hpp"
 
-star::StarQueueFamily::~StarQueueFamily(){
-    if (this->vulkanDevice != nullptr){
-        this->vulkanDevice->destroyCommandPool(this->commandPool); 
-    }
+star::StarQueueFamily::~StarQueueFamily()
+{
 }
 
-vk::DeviceQueueCreateInfo star::StarQueueFamily::getDeviceCreateInfo(){
-    vk::DeviceQueueCreateInfo createInfo{}; 
-    createInfo.sType = vk::StructureType::eDeviceQueueCreateInfo; 
+star::StarQueueFamily::StarQueueFamily(const uint32_t &queueFamilyIndex, const uint32_t &queueCount,
+                                       const vk::QueueFlags &support, const bool &supportsPresentation)
+    : queueFamilyIndex(queueFamilyIndex), queueCount(queueCount), support(support), presentSupport(presentSupport)
+{
+    this->queuePriority.push_back(1.0f);
+    for (int i = 1; i < queueCount; i++)
+    {
+        this->queuePriority.push_back(0.0f);
+    }
+};
+
+vk::DeviceQueueCreateInfo star::StarQueueFamily::getDeviceCreateInfo()
+{
+    vk::DeviceQueueCreateInfo createInfo{};
+    createInfo.sType = vk::StructureType::eDeviceQueueCreateInfo;
     createInfo.queueFamilyIndex = this->queueFamilyIndex;
     createInfo.queueCount = this->queueCount;
     createInfo.pQueuePriorities = this->queuePriority.data();
     return createInfo;
 }
 
-void star::StarQueueFamily::init(vk::Device& vulkanDeviceToUse){
+void star::StarQueueFamily::init(vk::Device &vulkanDeviceToUse)
+{
     assert(this->vulkanDevice == nullptr && "Init should only be called once");
 
     this->vulkanDevice = &vulkanDeviceToUse;
 
-    this->commandPool = createCommandPool(this->vulkanDevice, this->queueFamilyIndex);
-    this->queues = createQueues(this->vulkanDevice, this->queueFamilyIndex, this->queueCount);
+    this->queues = CreateQueues(this->vulkanDevice, this->queueFamilyIndex, this->queueCount);
 }
 
-vk::Queue& star::StarQueueFamily::getQueue(const uint32_t& index){
-    assert(this->vulkanDevice != nullptr && "Must be initialized first"); 
-    assert(index < this->queues.size() && "Beyond range of queues");
-
-    return this->queues[index];
-}
-
-vk::CommandPool& star::StarQueueFamily::getCommandPool(){
+std::shared_ptr<star::StarCommandPool> star::StarQueueFamily::createCommandPool(const bool &setAutoReset)
+{
     assert(this->vulkanDevice != nullptr && "Must be initialized first");
 
-    return this->commandPool;
+    return std::make_shared<StarCommandPool>(*this->vulkanDevice, this->queueFamilyIndex, setAutoReset);
 }
 
-const bool star::StarQueueFamily::doesSupport(const star::Queue_Type& type){
-    if (star::Queue_Type::Tpresent == type && this->presentSupport){
+bool star::StarQueueFamily::doesSupport(const star::Queue_Type &type) const
+{
+    if (star::Queue_Type::Tpresent == type && this->presentSupport)
+    {
         return true;
-    }else if (star::Queue_Type::Tgraphics == type && this->support & vk::QueueFlagBits::eGraphics){
+    }
+    else if (star::Queue_Type::Tgraphics == type && this->support & vk::QueueFlagBits::eGraphics)
+    {
         return true;
-    }else if (star::Queue_Type::Ttransfer == type && this->support & vk::QueueFlagBits::eTransfer){
+    }
+    else if (star::Queue_Type::Ttransfer == type && this->support & vk::QueueFlagBits::eTransfer)
+    {
         return true;
-    }else if (star::Queue_Type::Tcompute == type && this->support & vk::QueueFlagBits::eCompute){
+    }
+    else if (star::Queue_Type::Tcompute == type && this->support & vk::QueueFlagBits::eCompute)
+    {
         return true;
     }
 
     return false;
 }
 
-vk::CommandPool star::StarQueueFamily::createCommandPool(vk::Device* device, const uint32_t& familyIndex){
-    assert(device != nullptr && "Device should not be null");
-
-	vk::CommandPoolCreateInfo commandPoolInfo{};
-	commandPoolInfo.sType = vk::StructureType::eCommandPoolCreateInfo;
-	commandPoolInfo.queueFamilyIndex = familyIndex;
-	commandPoolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-
-	vk::CommandPool pool = device->createCommandPool(commandPoolInfo);
-
-	if (!pool) {
-		throw std::runtime_error("unable to create pool");
-	}
-
-    return pool;
-}
-
-std::vector<vk::Queue> star::StarQueueFamily::createQueues(vk::Device* device, const uint32_t& familyIndex, const uint32_t& numToCreate){
+std::vector<star::StarQueue> star::StarQueueFamily::CreateQueues(vk::Device *device, const uint32_t &familyIndex,
+                                                           const uint32_t &numToCreate)
+{
     std::vector<vk::Queue> newQueues = std::vector<vk::Queue>(numToCreate);
 
-    for (int i = 0; i < numToCreate; i++){
+    for (int i = 0; i < numToCreate; i++)
+    {
         newQueues[i] = device->getQueue(familyIndex, i);
     }
 
-    return newQueues;
+    std::vector<StarQueue> finalQueues = std::vector<StarQueue>(numToCreate);
+    for (int i = 0; i < numToCreate; i++){
+        finalQueues[i] = StarQueue(newQueues[i], familyIndex); 
+    }
+
+    return finalQueues;
 }

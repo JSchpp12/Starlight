@@ -66,7 +66,7 @@ void star::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
     presentInfo.pResults = nullptr; // Optional
 
     // make call to present image
-    auto presentResult = this->device.getQueueFamily(star::Queue_Type::Tpresent).getQueue().presentKHR(presentInfo);
+    auto presentResult = this->device.getQueueFamily(star::Queue_Type::Tpresent).getQueues().at(0).getVulkanQueue().presentKHR(presentInfo);
 
     if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR ||
         frameBufferResized)
@@ -267,7 +267,7 @@ vk::Semaphore star::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, c
     submitInfo.commandBufferCount = 1;
 
     auto commandResult = std::make_unique<vk::Result>(this->device.getQueueFamily(star::Queue_Type::Tpresent)
-                                                          .getQueue()
+                                                          .getQueues().at(0).getVulkanQueue()
                                                           .submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
 
     if (*commandResult != vk::Result::eSuccess)
@@ -332,14 +332,14 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
+        oneTimeSetup->buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
                                                                                         // occurr before barrier
                                      vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
                                                                                         // which operations will
                                                                                         // wait on the barrier
                                      {}, {}, nullptr, barrier);
 
-        device.endSingleTimeCommands(oneTimeSetup);
+        device.endSingleTimeCommands(std::move(oneTimeSetup));
     }
 
     return newRenderToImages;

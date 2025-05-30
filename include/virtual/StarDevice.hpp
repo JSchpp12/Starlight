@@ -3,9 +3,10 @@
 #include "Allocator.hpp"
 #include "CastHelpers.hpp"
 #include "Enums.hpp"
+#include "StarCommandBuffer.hpp"
+#include "StarCommandPool.hpp"
 #include "StarQueueFamily.hpp"
 #include "StarWindow.hpp"
-
 
 #include <vulkan/vulkan.hpp>
 
@@ -15,7 +16,6 @@
 #include <set>
 #include <unordered_set>
 #include <vector>
-
 
 namespace star
 {
@@ -29,38 +29,6 @@ struct SwapChainSupportDetails
 class QueueFamilyIndicies
 {
   public:
-    // struct UniqueIndices{
-    // 	std::set<uint32_t> uniqueGraphics;
-    // 	std::optional<std::set<uint32_t>> uniquePresents, uniqueTransfers, uniqueComputes;
-
-    // 	UniqueIndices(const std::set<uint32_t>& uniqueGraphics) : uniqueGraphics(uniqueGraphics){}
-    // 	UniqueIndices(const std::set<uint32_t>& uniqueGraphics, const std::set<uint32_t>& uniquePresents) :
-    // uniqueGraphics(uniqueGraphics), uniquePresents(uniquePresents){} 	UniqueIndices(const std::set<uint32_t>&
-    // uniqueGraphics, const std::set<uint32_t>& uniquePresents, const std::set<uint32_t>& uniqueTransfer) :
-    // uniquePresents(uniquePresents), uniqueGraphics(uniqueGraphics), uniqueTransfers(uniqueTransfer){}
-    // 	UniqueIndices(const std::set<uint32_t>& uniqueGraphics, const std::set<uint32_t>& uniquePresents, const
-    // std::set<uint32_t>& uniqueTransfer, const std::set<uint32_t>& uniqueCompute) : uniqueGraphics(uniqueGraphics),
-    // uniquePresents(uniquePresents), uniqueTransfers(uniqueTransfers), uniqueComputes(uniqueComputes){}
-
-    // 	std::set<uint32_t> getAllQueues(){
-    // 		std::set<uint32_t> uniques = this->uniqueGraphics;
-
-    // 		if (this->uniquePresents.has_value())
-    // 			std::set_intersection(uniques.begin(), uniques.end(), this->uniquePresents.value().begin(),
-    // this->uniquePresents.value().end(), std::back_inserter(uniques));
-
-    // 		if (this->uniqueTransfers.has_value())
-    // 			std::set_intersection(uniques.begin(), uniques.end(), this->uniqueTransfers.value().begin(),
-    // this->uniqueTransfers.value().end(), std::back_inserter(uniques));
-
-    // 		if (this->uniqueComputes.has_value())
-    // 			std::set_intersection(uniques.begin(), uniques.end(), this->uniqueComputes.value().begin(),
-    // this->uniqueComputes.value().end(), std::back_inserter(uniques));
-
-    // 		return uniques;
-    // 	}
-    // };
-
     void registerFamily(const uint32_t &familyIndex, const vk::QueueFlags &queueSupport,
                         const vk::Bool32 &presentSupport, const uint32_t &familyQueueCount)
     {
@@ -205,6 +173,8 @@ class StarDevice
 
     StarQueueFamily &getQueueFamily(const star::Queue_Type &type);
 
+    std::shared_ptr<StarCommandPool> getCommandPool(const star::Queue_Type &type);
+
     bool doesHaveDedicatedFamily(const star::Queue_Type &type);
 
     std::unique_ptr<StarQueueFamily> giveMeQueueFamily(const star::Queue_Type &type);
@@ -250,7 +220,7 @@ class StarDevice
     /// </summary>
     /// <param name="useTransferPool">Should command be submitted to the transfer command pool. Will be submitted to the
     /// graphics pool otherwise.</param> <returns></returns>
-    vk::CommandBuffer beginSingleTimeCommands();
+    std::unique_ptr<StarCommandBuffer> beginSingleTimeCommands();
 
     /// <summary>
     /// Helper function to end execution of single time use command buffer
@@ -258,7 +228,8 @@ class StarDevice
     /// <param name="commandBuffer"></param>
     /// <param name="useTransferPool">Was command buffer submitted to the transfer pool. Assumed graphics pool
     /// otherwise.</param>
-    void endSingleTimeCommands(vk::CommandBuffer commandBuffer, vk::Semaphore *signalFinishSemaphore = nullptr);
+    void endSingleTimeCommands(std::unique_ptr<StarCommandBuffer> commandBuffer,
+                               vk::Semaphore *signalFinishSemaphore = nullptr);
 
     void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size,
                     const vk::DeviceSize dstOffset = 0);
@@ -307,17 +278,18 @@ class StarDevice
     std::unique_ptr<StarQueueFamily> preferredTransferFamily = nullptr;
     std::unique_ptr<StarQueueFamily> preferredComputeFamily = nullptr;
 
+    std::shared_ptr<StarCommandPool> defaultCommandPool = nullptr;
+    std::shared_ptr<StarCommandPool> transferCommandPool = nullptr;
+    std::shared_ptr<StarCommandPool> computeCommandPool = nullptr;
+
     const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 
     std::vector<const char *> requiredDeviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME, // image presentation is not built into the vulkan core...need to enable it
                                          // through an extension
-        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
-        VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
-        VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
-        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-        VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
-        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
+        VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+        VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
 
     vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
 

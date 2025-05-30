@@ -2,7 +2,9 @@
 
 #include "CastHelpers.hpp"
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createStagingBuffer(vk::Device& device, VmaAllocator& allocator, const uint32_t& transferQueueFamilyIndex) const{
+std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createStagingBuffer(vk::Device &device,
+                                                                                          VmaAllocator &allocator) const
+{
     return StarBuffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -13,16 +15,16 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createStag
                 .setSharingMode(vk::SharingMode::eExclusive)
                 .setSize(sizeof(uint32_t) * CastHelpers::size_t_to_unsigned_int(this->indices.size()))
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            "IndicesInfoBuffer_Src"
-        )
+            "IndicesInfoBuffer_Src")
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->indices.size()))
         .setInstanceSize(sizeof(uint32_t))
         .build();
 }
 
-void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffer& buffer) const{
+void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffer &buffer) const
+{
     buffer.map();
-    
+
     vk::DeviceSize indSize = sizeof(uint32_t) * this->indices.size();
     std::vector<uint32_t> cpInd{this->indices};
     buffer.writeToBuffer(cpInd.data(), indSize);
@@ -30,11 +32,12 @@ void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffer& buff
     buffer.unmap();
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createFinal(vk::Device &device, VmaAllocator &allocator, const uint32_t& transferQueueFamilyIndex) const{
-    std::vector<uint32_t> indices = {
-        this->graphicsQueueFamilyIndex, 
-        transferQueueFamilyIndex
-    };
+std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createFinal(
+    vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
+{
+    std::vector<uint32_t> indices = {this->graphicsQueueFamilyIndex};
+    for (const auto &index : transferQueueFamilyIndex)
+        indices.push_back(index);
 
     return StarBuffer::Builder(allocator)
         .setAllocationCreateInfo(
@@ -44,12 +47,11 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::IndicesInfo::createFina
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eConcurrent)
-                .setQueueFamilyIndexCount(2)
-                .setQueueFamilyIndices(indices)
+                .setQueueFamilyIndexCount(indices.size())
+                .setPQueueFamilyIndices(indices.data())
                 .setSize(sizeof(uint32_t) * CastHelpers::size_t_to_unsigned_int(this->indices.size()))
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer),
-            "IndicesInfoBuffer_Src"
-        )
+            "IndicesInfoBuffer_Src")
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->indices.size()))
         .setInstanceSize(sizeof(uint32_t))
         .build();

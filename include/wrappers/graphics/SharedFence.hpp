@@ -28,6 +28,6 @@ namespace star{
         protected:
         StarDevice& device; 
 
-        vk::Fence createFence(StarDevice& device, const bool& createInSignaledState); 
+        static vk::Fence CreateFence(StarDevice& device, const bool& createInSignaledState); 
     };
 }

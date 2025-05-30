@@ -39,7 +39,7 @@ namespace star {
 
 		~CommandBufferContainer() = default;
 
-		std::vector<vk::Semaphore> submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& swapChainIndex, std::vector<vk::Semaphore>* waitSemaphores = nullptr);
+		std::vector<vk::Semaphore> submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& frameInFlightIndex, std::vector<vk::Semaphore>* waitSemaphores = nullptr);
 
 		star::Handle add(std::unique_ptr<CompleteRequest> newRequest, const bool& willBeSubmittedEachFrame, 
 			const star::Queue_Type& type, const star::Command_Buffer_Order& order, 

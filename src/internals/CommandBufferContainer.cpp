@@ -14,7 +14,7 @@ star::CommandBufferContainer::CommandBufferContainer(StarDevice& device, const i
 	}
 }
 
-std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& swapChainIndex, std::vector<vk::Semaphore>* waitSemaphores)
+std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& frameInFlightIndex, std::vector<vk::Semaphore>* waitSemaphores)
 {
 	if (!this->subOrderSemaphoresUpToDate) {
 		this->updateSemaphores(); 
@@ -27,8 +27,8 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 	for (int i = star::Command_Buffer_Order_Index::first; i != star::Command_Buffer_Order_Index::fifth; i++) {
 		if (this->bufferGroupsWithSubOrders[order][i - 1] == nullptr) {
 			//if (i >= 2) {
-			//	semaphores.push_back(this->bufferGroupsWithSubOrders[order][i - 2]->commandBuffer->getCompleteSemaphores().at(swapChainIndex));
-			//	buffersToSubmitWithFences.push_back(std::make_pair(this->bufferGroupsWithSubOrders[order][i - 2], this->bufferGroupsWithSubOrders[order][i - 2]->commandBuffer->getFence(swapChainIndex)));
+			//	semaphores.push_back(this->bufferGroupsWithSubOrders[order][i - 2]->commandBuffer->getCompleteSemaphores().at(frameInFlightIndex));
+			//	buffersToSubmitWithFences.push_back(std::make_pair(this->bufferGroupsWithSubOrders[order][i - 2], this->bufferGroupsWithSubOrders[order][i - 2]->commandBuffer->getFence(frameInFlightIndex)));
 			//}
 
 			//grab the last semaphore and add to wait list
@@ -38,15 +38,15 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 		CompleteRequest* buffer = this->bufferGroupsWithSubOrders[order][i-1];
 
 		if (buffer->beforeBufferSubmissionCallback.has_value())
-			buffer->beforeBufferSubmissionCallback.value()(swapChainIndex);
+			buffer->beforeBufferSubmissionCallback.value()(frameInFlightIndex);
 
 		if (!buffer->recordOnce) {
-			buffer->commandBuffer->begin(swapChainIndex); 
-			buffer->recordBufferCallback(buffer->commandBuffer->buffer(swapChainIndex), swapChainIndex);
-			buffer->commandBuffer->buffer(swapChainIndex).end();
+			buffer->commandBuffer->begin(frameInFlightIndex); 
+			buffer->recordBufferCallback(buffer->commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex);
+			buffer->commandBuffer->buffer(frameInFlightIndex).end();
 		}
 
-		buffer->commandBuffer->submit(swapChainIndex);
+		buffer->commandBuffer->getFinalizedSubmitInfo(frameInFlightIndex).submit(this->device.getQueueFamily(buffer->commandBuffer->getType()).getQueues().at(0).getVulkanQueue());
 	}
 
 	//submit all other buffers second
@@ -54,7 +54,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 		std::vector<std::reference_wrapper<CompleteRequest>> buffersToSubmit = this->getAllBuffersOfTypeAndOrderReadyToSubmit(order, static_cast<star::Queue_Type>(type), true);
 
 		if (!buffersToSubmit.empty()) {
-			waitUntilOrderGroupReady(swapChainIndex, order, static_cast<Queue_Type>(type));
+			waitUntilOrderGroupReady(frameInFlightIndex, order, static_cast<Queue_Type>(type));
 
 			auto waitPoints = std::vector<vk::PipelineStageFlags>();
 			for (auto& buffer : buffersToSubmit) {
@@ -64,12 +64,12 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 			//before submission
 			for (CompleteRequest& buffer : buffersToSubmit) {
 				if (buffer.beforeBufferSubmissionCallback.has_value())
-					buffer.beforeBufferSubmissionCallback.value()(swapChainIndex);
+					buffer.beforeBufferSubmissionCallback.value()(frameInFlightIndex);
 
 				if (!buffer.recordOnce) {
-					buffer.commandBuffer->begin(swapChainIndex);
-					buffer.recordBufferCallback(buffer.commandBuffer->buffer(swapChainIndex), swapChainIndex);
-					buffer.commandBuffer->buffer(swapChainIndex).end();
+					buffer.commandBuffer->begin(frameInFlightIndex);
+					buffer.recordBufferCallback(buffer.commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex);
+					buffer.commandBuffer->buffer(frameInFlightIndex).end();
 				}
 			}
 
@@ -77,7 +77,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 			{
 				std::vector<vk::CommandBuffer> buffers = std::vector<vk::CommandBuffer>();
 				for (CompleteRequest& buffer : buffersToSubmit) {
-					buffers.push_back(buffer.commandBuffer->buffer(swapChainIndex));
+					buffers.push_back(buffer.commandBuffer->buffer(frameInFlightIndex));
 				}
 
 				vk::SubmitInfo submitInfo{};
@@ -89,17 +89,17 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 				}
 
 				submitInfo.signalSemaphoreCount = 1;
-				submitInfo.pSignalSemaphores = &this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(swapChainIndex);
+				submitInfo.pSignalSemaphores = &this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(frameInFlightIndex);
 
 				//record for later
-				semaphores.push_back(this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(swapChainIndex));
+				semaphores.push_back(this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(frameInFlightIndex));
 
 				submitInfo.pCommandBuffers = buffers.data();
 				submitInfo.commandBufferCount = buffers.size();
 
 				std::unique_ptr<vk::Result> commandResult = std::unique_ptr<vk::Result>();
-				vk::Fence workingFence = this->bufferGroupsWithNoSubOrder[order]->fences[static_cast<Queue_Type>(type)].at(swapChainIndex);
-				commandResult = std::make_unique<vk::Result>(this->device.getQueueFamily(static_cast<Queue_Type>(type)).getQueue().submit(1, &submitInfo, workingFence));
+				vk::Fence workingFence = this->bufferGroupsWithNoSubOrder[order]->fences[static_cast<Queue_Type>(type)].at(frameInFlightIndex);
+				commandResult = std::make_unique<vk::Result>(this->device.getQueueFamily(static_cast<Queue_Type>(type)).getQueues().at(0).getVulkanQueue().submit(1, &submitInfo, workingFence));
 
 				assert(commandResult != nullptr && "Invalid command buffer type");
 

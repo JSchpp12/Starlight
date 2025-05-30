@@ -1,57 +1,57 @@
 #pragma once
 
 #include "Enums.hpp"
+#include "StarQueue.hpp"
+#include "StarCommandPool.hpp"
 
 #include <vulkan/vulkan.hpp>
 
 #include <vector>
+#include <memory>
 
-namespace star{
-    class StarQueueFamily{
-        public:
-        const float priority = 1.0f;
+namespace star
+{
+class StarQueueFamily
+{
+  public:
+    ~StarQueueFamily();
+    StarQueueFamily(const uint32_t &queueFamilyIndex, const uint32_t &queueCount, const vk::QueueFlags &support,
+                    const bool &supportsPresentation);
 
-        ~StarQueueFamily(); 
-        StarQueueFamily(const uint32_t& queueFamilyIndex, const uint32_t& queueCount, const vk::QueueFlags& support, const bool& supportsPresentation) 
-        : queueFamilyIndex(queueFamilyIndex), queueCount(queueCount), support(support), presentSupport(presentSupport){
-            this->queuePriority.push_back(1.0f);
-            for (int i = 1; i < queueCount; i++){
-                this->queuePriority.push_back(0.0f);
-            }
-        }; 
+    vk::DeviceQueueCreateInfo getDeviceCreateInfo();
 
-        vk::DeviceQueueCreateInfo getDeviceCreateInfo(); 
+    void init(vk::Device &vulkanDeviceToUse);
 
-        void init(vk::Device& vulkanDeviceToUse); 
+    std::vector<StarQueue> &getQueues(){
+        return this->queues;
+    }
 
-        vk::Queue& getQueue(const uint32_t& index = 0);
+    std::shared_ptr<StarCommandPool> createCommandPool(const bool &setAutoReset);
 
-        vk::CommandPool& getCommandPool();
+    bool doesSupport(const star::Queue_Type &type) const;
 
-        const bool doesSupport(const star::Queue_Type& type); 
+    uint32_t getQueueCount() const
+    {
+        return this->queueCount;
+    }
 
-        const uint32_t& getQueueCount(){
-            return this->queueCount;
-        }
+    uint32_t getQueueFamilyIndex() const
+    {
+        return this->queueFamilyIndex;
+    }
 
-        uint32_t getQueueFamilyIndex(){
-            return this->queueFamilyIndex;
-        }
+  private:
+    const uint32_t queueFamilyIndex;
+    const uint32_t queueCount;
+    const vk::QueueFlags support;
+    const bool presentSupport;
+    std::vector<float> queuePriority = std::vector<float>();
 
-        private:
-        const uint32_t queueFamilyIndex;  
-        const uint32_t queueCount; 
-        const vk::QueueFlags support;
-        const bool presentSupport; 
-        std::vector<float> queuePriority = std::vector<float>(); 
+    vk::Device *vulkanDevice = nullptr;
 
-        vk::Device* vulkanDevice = nullptr;
+    std::vector<StarQueue> queues;
 
-        std::vector<vk::Queue> queues;
-        vk::CommandPool commandPool; 
-
-        static vk::CommandPool createCommandPool(vk::Device* device, const uint32_t& familyIndex); 
-
-        static std::vector<vk::Queue> createQueues(vk::Device* device, const uint32_t& familyIndex, const uint32_t& numToCreate);
-    };
-}
+    static std::vector<StarQueue> CreateQueues(vk::Device *device, const uint32_t &familyIndex,
+                                               const uint32_t &numToCreate);
+};
+} // namespace star

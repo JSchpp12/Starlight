@@ -29,10 +29,12 @@ std::unique_ptr<StarDevice> StarDevice::New(StarWindow &window, std::set<star::R
 StarDevice::~StarDevice()
 {
     this->defaultFamily.reset();
-    if (this->preferredTransferFamily)
-        this->preferredTransferFamily.reset();
-    if (this->preferredComputeFamily)
-        this->preferredComputeFamily.reset();
+    this->defaultCommandPool.reset();
+    this->preferredTransferFamily.reset();
+    this->transferCommandPool.reset();
+    this->preferredComputeFamily.reset();
+    this->computeCommandPool.reset();
+
     for (auto &buffer : this->extraFamilies)
     {
         buffer.reset();
@@ -62,6 +64,7 @@ void StarDevice::updatePreferredFamilies(const star::Queue_Type &type)
                 {
                     found = true;
                     this->preferredComputeFamily = std::move(queue);
+                    this->computeCommandPool = this->preferredComputeFamily->createCommandPool(true);
                 }
                 break;
             case (star::Queue_Type::Ttransfer):
@@ -69,6 +72,7 @@ void StarDevice::updatePreferredFamilies(const star::Queue_Type &type)
                 {
                     found = true;
                     this->preferredTransferFamily = std::move(queue);
+                    this->transferCommandPool = this->preferredTransferFamily->createCommandPool(true);
                 }
                 break;
             default:
@@ -262,6 +266,9 @@ void StarDevice::createLogicalDevice()
     // call to create the logical device
     this->vulkanDevice = physicalDevice.createDevice(createInfo);
 
+    this->defaultCommandPool =
+        std::make_shared<StarCommandPool>(this->vulkanDevice, this->defaultFamily->getQueueFamilyIndex(), true);
+
     // select preferred default
     this->defaultFamily->init(this->vulkanDevice);
     for (auto &queue : this->extraFamilies)
@@ -386,9 +393,18 @@ void StarDevice::hasGlfwRequiredInstanceExtensions()
 bool StarDevice::checkDeviceExtensionSupport(vk::PhysicalDevice device)
 {
     uint32_t extensionCount;
-    device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, nullptr);
+    {
+        auto result = device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, nullptr);
+        if (result != vk::Result::eSuccess)
+            throw std::runtime_error("Failed to get number of device extension properties");
+    }
+
     std::vector<vk::ExtensionProperties> availableExtensions(extensionCount);
-    device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+    {
+        auto result = device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+        if (result != vk::Result::eSuccess)
+            throw std::runtime_error("Failed to get all available device extensions");
+    }
 
     std::set<std::string> requiredExtensions(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end());
 
@@ -497,6 +513,16 @@ star::StarQueueFamily &StarDevice::getQueueFamily(const star::Queue_Type &type)
     return *this->defaultFamily;
 }
 
+std::shared_ptr<star::StarCommandPool> StarDevice::getCommandPool(const star::Queue_Type &type)
+{
+    if (type == star::Queue_Type::Tcompute && this->computeCommandPool)
+        return this->computeCommandPool;
+    else if (type == star::Queue_Type::Ttransfer && this->transferCommandPool)
+        return this->transferCommandPool;
+
+    return this->defaultCommandPool;
+}
+
 bool StarDevice::doesHaveDedicatedFamily(const star::Queue_Type &type)
 {
     switch (type)
@@ -578,60 +604,36 @@ void StarDevice::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFla
     this->vulkanDevice.bindBufferMemory(buffer, bufferMemory, 0);
 }
 
-vk::CommandBuffer StarDevice::beginSingleTimeCommands()
+std::unique_ptr<star::StarCommandBuffer> StarDevice::beginSingleTimeCommands()
 {
-    // allocate using temporary command pool
-    vk::CommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
-    allocInfo.level = vk::CommandBufferLevel::ePrimary;
-    allocInfo.commandPool = this->defaultFamily->getCommandPool();
-    allocInfo.commandBufferCount = 1;
+    assert(this->defaultCommandPool != nullptr);
 
-    // TODO: this returns a vector -- need to make only return one
-    vk::CommandBuffer tmpCommandBuffer = this->vulkanDevice.allocateCommandBuffers(allocInfo).at(0);
+    std::unique_ptr<StarCommandBuffer> tmpBuffer = std::make_unique<StarCommandBuffer>(
+        this->getDevice(), 1, this->defaultCommandPool, Queue_Type::Tgraphics, true, false);
 
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
     beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit; // only planning on using this command buffer once
 
-    tmpCommandBuffer.begin(beginInfo);
+    tmpBuffer->begin(0, beginInfo);
 
-    return tmpCommandBuffer;
+    return tmpBuffer;
 }
 
-void StarDevice::endSingleTimeCommands(vk::CommandBuffer commandBuff, vk::Semaphore *signalFinishSemaphore)
+void StarDevice::endSingleTimeCommands(std::unique_ptr<StarCommandBuffer> commandBuff,
+                                       vk::Semaphore *signalFinishSemaphore)
 {
-    commandBuff.end();
+    commandBuff->buffer().end();
 
-    vk::FenceCreateInfo fenceInfo{};
-    fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
-
-    vk::Fence oneTimeFence = this->vulkanDevice.createFence(fenceInfo);
-
-    // submit the buffer for execution
-    vk::SubmitInfo submitInfo{};
-    submitInfo.sType = vk::StructureType::eSubmitInfo;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuff;
-
-    if (signalFinishSemaphore != nullptr)
-    {
-        submitInfo.pSignalSemaphores = signalFinishSemaphore;
-        submitInfo.signalSemaphoreCount = 1;
-    }
-
-    this->defaultFamily->getQueue().submit(submitInfo, oneTimeFence);
-    this->vulkanDevice.waitForFences(oneTimeFence, VK_TRUE, UINT64_MAX);
-    this->defaultFamily->getQueue().waitIdle();
-    this->vulkanDevice.freeCommandBuffers(this->defaultFamily->getCommandPool(), 1, &commandBuff);
-
-    this->vulkanDevice.destroyFence(oneTimeFence);
+    commandBuff->getFinalizedSubmitInfo().submit(this->defaultFamily->getQueues().at(0).getVulkanQueue());
+    commandBuff->wait();
+    this->defaultFamily->getQueues().at(0).getVulkanQueue().waitIdle();
 }
 
 void StarDevice::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size,
                             const vk::DeviceSize dstOffset)
 {
-    vk::CommandBuffer commandBuffer = beginSingleTimeCommands();
+    std::unique_ptr<StarCommandBuffer> commandBuffer = beginSingleTimeCommands();
 
     vk::BufferCopy copyRegion{};
     copyRegion.srcOffset = 0;
@@ -639,14 +641,14 @@ void StarDevice::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::Devi
     copyRegion.size = size;
 
     // note: cannot specify VK_WHOLE_SIZE as before
-    commandBuffer.copyBuffer(srcBuffer, dstBuffer, copyRegion);
+    commandBuffer->buffer().copyBuffer(srcBuffer, dstBuffer, copyRegion);
 
-    endSingleTimeCommands(commandBuffer);
+    endSingleTimeCommands(std::move(commandBuffer));
 }
 
 void StarDevice::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height)
 {
-    vk::CommandBuffer commandBuffer = beginSingleTimeCommands();
+    std::unique_ptr<StarCommandBuffer> commandBuffer = beginSingleTimeCommands();
 
     // specify which region of the buffer will be copied to the image
     vk::BufferImageCopy region{};
@@ -664,12 +666,12 @@ void StarDevice::copyBufferToImage(vk::Buffer buffer, vk::Image image, uint32_t 
     region.imageExtent = vk::Extent3D{width, height, 1};
 
     // enque copy operation
-    commandBuffer.copyBufferToImage(
+    commandBuffer->buffer().copyBufferToImage(
         buffer, image,
         vk::ImageLayout::eTransferDstOptimal, // assuming image is already in optimal format for copy operations
         region);
 
-    endSingleTimeCommands(commandBuffer);
+    endSingleTimeCommands(std::move(commandBuffer));
 }
 
 void StarDevice::createImageWithInfo(const vk::ImageCreateInfo &imageInfo, vk::MemoryPropertyFlags properties,
@@ -707,22 +709,40 @@ SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice dev
     // get surface capabilities
     details.capabilities = device.getSurfaceCapabilitiesKHR(this->surface.get());
 
-    device.getSurfaceFormatsKHR(this->surface.get(), &formatCount, nullptr);
+    {
+        const auto result = device.getSurfaceFormatsKHR(this->surface.get(), &formatCount, nullptr);
+        if (result != vk::Result::eSuccess){
+            throw std::runtime_error("Failed to get any surface formats from device"); 
+        }
+    }
 
-    device.getSurfacePresentModesKHR(this->surface.get(), &presentModeCount, nullptr);
+    {
+        const auto result = device.getSurfacePresentModesKHR(this->surface.get(), &presentModeCount, nullptr);  
+        if (result != vk::Result::eSuccess){
+            throw std::runtime_error("Failed to get surface present modes from device");
+        }
+    }
 
     if (formatCount != 0)
     {
         // resize vector in order to hold all available formats
         details.formats.resize(formatCount);
-        device.getSurfaceFormatsKHR(this->surface.get(), &formatCount, details.formats.data());
+
+        const auto result = device.getSurfaceFormatsKHR(this->surface.get(), &formatCount, details.formats.data());
+        if (result != vk::Result::eSuccess){
+            throw std::runtime_error("Failed to get surface present modes from device"); 
+        }
     }
 
     if (presentModeCount != 0)
     {
         // resize for same reasons as format
         details.presentModes.resize(presentModeCount);
-        device.getSurfacePresentModesKHR(this->surface.get(), &presentModeCount, details.presentModes.data());
+
+        const auto result = device.getSurfacePresentModesKHR(this->surface.get(), &presentModeCount, details.presentModes.data());
+        if (result != vk::Result::eSuccess){
+            throw std::runtime_error("Failed to get surface present modes from device");
+        }
     }
 
     return details;

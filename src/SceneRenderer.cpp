@@ -92,14 +92,14 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
+        oneTimeSetup->buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
                                                                                         // occurr before barrier
                                      vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
                                                                                         // which operations will
                                                                                         // wait on the barrier
                                      {}, {}, nullptr, barrier);
 
-        device.endSingleTimeCommands(oneTimeSetup);
+        device.endSingleTimeCommands(std::move(oneTimeSetup));
     }
 
     return newRenderToImages;
@@ -177,13 +177,13 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup.pipelineBarrier(
+        oneTimeSetup->buffer().pipelineBarrier(
             vk::PipelineStageFlagBits::eTopOfPipe,         // which pipeline stages should occurr before barrier
             vk::PipelineStageFlagBits::eLateFragmentTests, // pipeline stage in which operations will wait on the
                                                            // barrier
             {}, {}, nullptr, barrier);
 
-        device.endSingleTimeCommands(oneTimeSetup);
+        device.endSingleTimeCommands(std::move(oneTimeSetup));
     }
 
     return newRenderToImages;
