@@ -129,8 +129,14 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     StarTexture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
                                        vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-    int width, height, channels;
-    GetTextureInfo(this->imagePath, width, height, channels);
+    uint32_t width, height, channels; 
+    {
+        int rWidth, rHeight, rChannels;
+        GetTextureInfo(this->imagePath, rWidth, rHeight, rChannels);
+        if (!CastHelpers::SafeCast<int, uint32_t>(rWidth, width) || !CastHelpers::SafeCast<int, uint32_t>(rHeight, height) || !CastHelpers::SafeCast<int, uint32_t>(rChannels, channels)){
+            throw std::runtime_error("Invalid values read from texture");
+        }
+    }
 
     vk::BufferImageCopy region{};
     region.bufferOffset = 0;
@@ -143,7 +149,7 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     region.imageSubresource.layerCount = 1;
     region.imageOffset = vk::Offset3D{};
     region.imageExtent =
-        vk::Extent3D{CastHelpers::int_to_unsigned_int(width), CastHelpers::int_to_unsigned_int(height), 1};
+        vk::Extent3D{width, height, 1};
 
     commandBuffer.copyBufferToImage(srcBuffer.getVulkanBuffer(), dstTexture.getVulkanImage(),
                                     vk::ImageLayout::eTransferDstOptimal, region);

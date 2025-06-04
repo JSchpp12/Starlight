@@ -25,7 +25,7 @@ template <typename T> class Memory
 
     virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, T &dst, vk::CommandBuffer &commandBuffer) const = 0;
 
-    virtual void writeDataToStageBuffer(StarBuffer &buffer) const = 0;
+    virtual void writeDataToStageBuffer(StarBuffer &buffer) const = 0; 
 
   protected:
 };

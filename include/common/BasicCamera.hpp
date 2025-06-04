@@ -6,7 +6,6 @@
 
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-
 #include <iostream>
 
 namespace star {
@@ -18,7 +17,8 @@ namespace star {
 		public Interactivity
 	{
 	public:
-		BasicCamera(const float& width, const float& height);
+		BasicCamera(const uint32_t& width, const uint32_t& height); 
+		BasicCamera(const uint32_t& width, const uint32_t& height, const float &movementSpeed, const float &sensitivity);
 
 		~BasicCamera() = default;
 
@@ -65,7 +65,7 @@ namespace star {
 		Time time = Time();
 
 		const float sensitivity = 0.1f;
-		const float movementSpeed = 10.0f;
+		const float movementSpeed = 1000.0f;
 		bool init = false;
 
 		//previous mouse coordinates from GLFW

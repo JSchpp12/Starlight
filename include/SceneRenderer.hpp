@@ -1,19 +1,10 @@
 #pragma once
 
-#include "InteractionSystem.hpp"
-#include "LightBufferObject.hpp"
-#include "StarCamera.hpp"
-#include "StarCommandBuffer.hpp"
-#include "StarDescriptorBuilders.hpp"
-#include "StarObject.hpp"
-#include "StarRenderer.hpp"
-#include "StarScene.hpp"
-#include "StarShaderInfo.hpp"
-#include "StarWindow.hpp"
-
-
 #include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
+#include "InteractionSystem.hpp"
+#include "Light.hpp"
+#include "LightBufferObject.hpp"
 #include "LightManager.hpp"
 #include "ManagerCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
@@ -21,11 +12,16 @@
 #include "MapManager.hpp"
 #include "RenderResourceModifier.hpp"
 #include "ShaderManager.hpp"
+#include "StarCamera.hpp"
+#include "StarCommandBuffer.hpp"
+#include "StarDescriptorBuilders.hpp"
+#include "StarObject.hpp"
 #include "StarRenderGroup.hpp"
+#include "StarRenderer.hpp"
+#include "StarScene.hpp"
+#include "StarShaderInfo.hpp"
 #include "StarTexture.hpp"
-
-
-#include "Light.hpp"
+#include "StarWindow.hpp"
 
 #include <chrono>
 #include <memory>
@@ -40,9 +36,7 @@ class SceneRenderer : public StarRenderer,
                       private DescriptorModifier
 {
   public:
-    SceneRenderer(StarScene &scene);
-
-    virtual ~SceneRenderer() = default;
+    SceneRenderer(std::shared_ptr<StarScene> scene);
 
     virtual void prepare(StarDevice &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight);
 
@@ -66,7 +60,7 @@ class SceneRenderer : public StarRenderer,
     }
 
   protected:
-    StarScene &scene;
+    std::shared_ptr<StarScene> scene = nullptr;
 
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
 
@@ -122,10 +116,10 @@ class SceneRenderer : public StarRenderer,
 
     // Inherited via CommandBufferModifier
     Queue_Type getCommandBufferType() override;
-    virtual Command_Buffer_Order getCommandBufferOrder() = 0;
-    virtual vk::PipelineStageFlags getWaitStages() = 0;
-    virtual bool getWillBeSubmittedEachFrame() = 0;
-    virtual bool getWillBeRecordedOnce() = 0;
+    virtual Command_Buffer_Order getCommandBufferOrder() override = 0;
+    virtual vk::PipelineStageFlags getWaitStages() override = 0;
+    virtual bool getWillBeSubmittedEachFrame() override = 0;
+    virtual bool getWillBeRecordedOnce() override = 0;
     virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) override;
 
     virtual void prepareForSubmission(const int &frameIndexToBeDrawn);

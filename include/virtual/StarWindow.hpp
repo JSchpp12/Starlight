@@ -10,37 +10,65 @@
 #include <memory>
 #include <string>
 
-namespace star {
-class StarWindow {
-public:
-	virtual ~StarWindow() {
-		glfwDestroyWindow(this->window); 
-		glfwTerminate(); 
-	};
+namespace star
+{
+class StarWindow
+{
+  public:
+    class Builder
+    {
+      public:
+        Builder() = default;
+        ~Builder() = default;
+        Builder &setWidth(const int &nWidth);
+        Builder &setHeight(const int &nHeight);
+        Builder &setTitle(const std::string &nTitle);
+        std::unique_ptr<StarWindow> build();
 
-	void createWindowSurface(vk::Instance instance, vk::UniqueSurfaceKHR& surface);
+      private:
+        int width = 0, height = 0;
+        std::string title = std::string();
+    };
 
-	bool shouldClose() { return glfwWindowShouldClose(this->window); }
-	vk::Extent2D getExtent() { return { static_cast<uint32_t>(this->width), static_cast<uint32_t>(this->height) }; }
-	bool wasWindowResized() { return this->frambufferResized; }
-	void resetWindowResizedFlag() { this->frambufferResized = false; }
-	GLFWwindow* getGLFWwindow() const { return this->window; }
+    ~StarWindow();
 
-protected:
-	StarWindow(int width, int height, std::string title) : width(width), height(height), title(title) {};
+    void createWindowSurface(vk::Instance instance, vk::UniqueSurfaceKHR &surface);
 
-	void onCreate();
+    void resetWindowResizedFlag()
+    {
+        this->frambufferResized = false;
+    }
+    bool shouldClose() const
+    {
+        return glfwWindowShouldClose(this->window);
+    }
+    vk::Extent2D getExtent() const
+    {
+        return {static_cast<uint32_t>(this->width), static_cast<uint32_t>(this->height)};
+    }
+    bool wasWindowResized() const
+    {
+        return this->frambufferResized;
+    }
+    GLFWwindow *getGLFWwindow() const
+    {
+        return this->window;
+    }
 
-	virtual void init() = 0;
+  protected:
+    StarWindow(const int &width, const int &height, const std::string &title);
 
-	virtual void createWindow();
+    void initWindowInfo();
 
-private: 
-	bool frambufferResized = false;
-	int width, height;
-	std::string title;
-	GLFWwindow* window = nullptr;
+    static GLFWwindow *CreateGLFWWindow(const int &width, const int &height, const std::string &title);
 
+    static void DestroyWindow(GLFWwindow *window); 
 
+  private:
+    bool frambufferResized = false;
+    int width, height;
+    GLFWwindow *window = nullptr;
+
+    friend class Builder;
 };
-}
+} // namespace star

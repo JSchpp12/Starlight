@@ -1,48 +1,62 @@
 #pragma once
 
-#include "BasicCamera.hpp"
-#include "Handle.hpp"
-#include "Time.hpp"
 #include "Interactivity.hpp"
-#include "StarObject.hpp"
 #include "StarScene.hpp"
-#include "StarShader.hpp"
 #include "SwapChainRenderer.hpp"
-#include "ConfigFile.hpp"
+#include "Time.hpp"
 
 #include <GLFW/glfw3.h>
-
-#include <memory> 
-#include <string> 
+#include <memory>
+#include <string>
 #include <vector>
 
+namespace star
+{
+class StarApplication : public Interactivity
+{
+  public:
+    StarApplication()
+    {
+        this->registerInteractions();
+    }
+    virtual ~StarApplication() = default;
 
-namespace star {
-    class StarApplication : public Interactivity {
-    public:
-        StarApplication(StarScene& scene)
-            : scene(scene) { 
-            this->registerInteractions();
-        }
+    void init(StarDevice &device, const StarWindow &window, const uint8_t &numFramesInFlight);
 
-        virtual ~StarApplication() {};
+    void cleanup();
 
-        virtual void onWorldUpdate(const uint32_t& frameInFlightIndex) = 0;
+    virtual void onWorldUpdate(const uint32_t &frameInFlightIndex) = 0;
 
-        virtual void onKeyPress(int key, int scancode, int mods) override {};
+    virtual void onKeyPress(int key, int scancode, int mods) override {};
 
-        virtual void onKeyRelease(int key, int scancode, int mods) override {};
+    virtual void onKeyRelease(int key, int scancode, int mods) override {};
 
-        virtual void onMouseMovement(double xpos, double ypos) override {};
+    virtual void onMouseMovement(double xpos, double ypos) override {};
 
-        virtual void onMouseButtonAction(int button, int action, int mods) override {};
+    virtual void onMouseButtonAction(int button, int action, int mods) override {};
 
-        virtual void onScroll(double xoffset, double yoffset) override {};
+    virtual void onScroll(double xoffset, double yoffset) override {};
 
-        virtual std::unique_ptr<SwapChainRenderer> getMainRenderer(StarDevice& device, StarWindow& window);
+    std::shared_ptr<SwapChainRenderer> getPresentationRenderer()
+    {
+        return this->swapChainRenderer;
+    }
 
-    protected:
-        StarScene& scene; 
-        Time time = Time();
-    };
-}
+    std::shared_ptr<StarScene> getInitialScene()
+    {
+        return this->scene;
+    }
+
+  protected:
+    std::shared_ptr<StarScene> scene = nullptr;
+    std::shared_ptr<SwapChainRenderer> swapChainRenderer = nullptr;
+
+    virtual std::shared_ptr<StarScene> createInitialScene(StarDevice &device, const StarWindow &window,
+                                                          const uint8_t &numFramesInFlight) = 0;
+
+    virtual std::shared_ptr<SwapChainRenderer> createPresentationRenderer(StarDevice &device, const StarWindow &window,
+                                                                          const uint8_t &numFramesInFlight);
+
+    virtual void startup(StarDevice &device, const StarWindow &window, const uint8_t &numFramesInFlight) = 0; 
+};
+} // namespace star

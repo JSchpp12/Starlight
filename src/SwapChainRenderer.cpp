@@ -4,7 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-star::SwapChainRenderer::SwapChainRenderer(StarWindow &window, StarScene &scene, StarDevice &device,
+star::SwapChainRenderer::SwapChainRenderer(const StarWindow &window, std::shared_ptr<StarScene> scene, StarDevice &device,
                                            const int &numFramesInFlight)
     : device(device), window(window), SceneRenderer(scene), numFramesInFlight(numFramesInFlight)
 {

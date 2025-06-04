@@ -5,7 +5,6 @@
 #include "ScreenshotCommandBuffer.hpp"
 
 #include <vulkan/vulkan.hpp>
-
 #include <memory>
 
 namespace star
@@ -13,7 +12,7 @@ namespace star
 class SwapChainRenderer : public SceneRenderer
 {
   public:
-    SwapChainRenderer(StarWindow &window, StarScene &scene, StarDevice &device, const int &numFramesInFlight);
+    SwapChainRenderer(const StarWindow &window, std::shared_ptr<StarScene> scene, StarDevice &device, const int &numFramesInFlight);
 
     virtual ~SwapChainRenderer();
 
@@ -45,7 +44,7 @@ class SwapChainRenderer : public SceneRenderer
     }
 
   protected:
-    StarWindow &window;
+    const StarWindow &window;
     StarDevice &device;
 
     // tracker for which frame is being processed of the available permitted frames
@@ -128,8 +127,6 @@ class SwapChainRenderer : public SceneRenderer
     vk::PipelineStageFlags getWaitStages() override;
     bool getWillBeSubmittedEachFrame() override;
     bool getWillBeRecordedOnce() override;
-
-    // Inherited via SceneRenderer
     vk::Format getCurrentRenderToImageFormat() override;
 };
 } // namespace star

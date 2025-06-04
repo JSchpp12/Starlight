@@ -1,59 +1,40 @@
 #include "StarEngine.hpp"
-
-#include "BasicWindow.hpp"
 #include "ConfigFile.hpp"
 #include "Enums.hpp"
 #include "ManagerRenderResource.hpp"
 #include "SwapChainRenderer.hpp"
-
-
 #include "ManagerCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
-
-
 #include "RenderResourceSystem.hpp"
 
 #include <vulkan/vulkan.hpp>
-
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
+#include <stdexcept>
 
 namespace star
 {
-
-std::unique_ptr<std::string> StarEngine::screenshotPath = nullptr;
-
-StarEngine::StarEngine()
+StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
+    : application(std::move(nApplication)), window(CreateStarWindow()), renderingDevice(CreateStarDevice(*this->window))
 {
-    ConfigFile::load("./StarEngine.cfg");
-
-    this->window = BasicWindow::New(std::stoi(ConfigFile::getSetting(star::Config_Settings::resolution_x)),
-                                    std::stoi(ConfigFile::getSetting(star::Config_Settings::resolution_y)),
-                                    ConfigFile::getSetting(star::Config_Settings::app_name));
-
-    std::set<star::Rendering_Features> features;
-    {
-        bool setting = false;
-        std::istringstream(ConfigFile::getSetting(star::Config_Settings::required_device_feature_shader_float64)) >>
-            std::boolalpha >> setting;
-
-        if (setting)
-        {
-            features.insert(star::Rendering_Features::shader_float64);
-        }
-    }
-
-    this->renderingDevice = StarDevice::New(*window, features);
-
     this->transferWorker =
         std::make_unique<TransferWorker>(*this->renderingDevice, this->OVERRIDE_APPLY_SINGLE_THREAD_MODE);
 
-    int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
+    uint8_t framesInFlight; 
+    {
+        int readFramesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
+        if (!CastHelpers::SafeCast<int, uint8_t>(readFramesInFlight, framesInFlight)){
+            throw std::runtime_error("Invalid number of frames in flight in config file"); 
+        }
+    }
+
     StarManager::init(*this->renderingDevice, *this->transferWorker);
 
-    this->currentScene = std::unique_ptr<StarScene>(new StarScene(framesInFlight));
+    this->application->init(*this->renderingDevice, *this->window, framesInFlight);
+
+    this->mainRenderer = application->getPresentationRenderer();
 }
 
 StarEngine::~StarEngine()
@@ -66,36 +47,27 @@ void StarEngine::run()
     int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
     ManagerDescriptorPool descriptorManager(*this->renderingDevice, framesInFlight);
-    RenderResourceSystem::init(*this->renderingDevice, framesInFlight, mainRenderer->getMainExtent());
+    RenderResourceSystem::init(*this->renderingDevice, framesInFlight, this->window->getExtent());
     ManagerCommandBuffer commandBufferManager(*this->renderingDevice, framesInFlight);
 
     // prepare any shared resources
-    StarObject::initSharedResources(*this->renderingDevice, this->mainRenderer->getMainExtent(), framesInFlight,
+    StarObject::initSharedResources(*this->renderingDevice, this->window->getExtent(), framesInFlight,
                                     this->mainRenderer->getGlobalShaderInfo(), this->mainRenderer->getRenderingInfo());
 
-    uint8_t previousFrame = 0;
     uint8_t currentFrame = 0;
     while (!window->shouldClose())
     {
+        currentFrame = this->mainRenderer->getFrameToBeDrawn();
+
         // check if any new objects have been added
-        RenderResourceSystem::runInits(*this->renderingDevice, framesInFlight, this->mainRenderer->getMainExtent());
+        RenderResourceSystem::runInits(*this->renderingDevice, framesInFlight, this->window->getExtent());
         descriptorManager.update(framesInFlight);
 
-        if (screenshotPath)
-        {
-            this->mainRenderer->triggerScreenshot(*screenshotPath);
-            screenshotPath = nullptr;
-        }
-
-        previousFrame = currentFrame;
-        currentFrame = mainRenderer->getFrameToBeDrawn();
-
-        mainRenderer->pollEvents();
+        this->mainRenderer->pollEvents();
         InteractionSystem::callWorldUpdates(currentFrame);
         ManagerRenderResource::update(currentFrame);
         vk::Semaphore allBuffersSubmitted = commandBufferManager.update(currentFrame);
-        mainRenderer->submitPresentation(currentFrame, &allBuffersSubmitted);
-
+        this->mainRenderer->submitPresentation(currentFrame, &allBuffersSubmitted);
         this->transferWorker->update();
     }
 
@@ -105,8 +77,29 @@ void StarEngine::run()
     StarObject::cleanupSharedResources(*this->renderingDevice);
 }
 
-void StarEngine::init(StarApplication &app)
+std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()
 {
-    this->mainRenderer = app.getMainRenderer(*this->renderingDevice, *this->window);
+    return StarWindow::Builder()
+        .setWidth(std::stoi(ConfigFile::getSetting(star::Config_Settings::resolution_x)))
+        .setHeight(std::stoi(ConfigFile::getSetting(star::Config_Settings::resolution_y)))
+        .setTitle(ConfigFile::getSetting(star::Config_Settings::app_name))
+        .build();
+}
+
+std::unique_ptr<star::StarDevice> star::StarEngine::CreateStarDevice(StarWindow &window)
+{
+    std::set<star::Rendering_Features> features;
+    {
+        bool setting = false;
+        std::istringstream(ConfigFile::getSetting(star::Config_Settings::required_device_feature_shader_float64)) >>
+            std::boolalpha >> setting;
+
+        if (setting)
+        {
+            features.insert(star::Rendering_Features::shader_float64);
+        }
+    }
+
+    return StarDevice::New(window, features);
 }
 } // namespace star

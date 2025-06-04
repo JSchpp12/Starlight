@@ -41,9 +41,9 @@ void star::TransferManagerThread::mainLoop(TransferManagerThread::SubThreadInfo 
         std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>>();
 
     // need to make command buffers
-    std::vector<SharedFence *> commandBufferFences = std::vector<SharedFence *>(5);
+    std::vector<SharedFence *> commandBufferFences = std::vector<SharedFence *>(20);
     StarCommandBuffer commandBuffers =
-        StarCommandBuffer(myInfo.device, 5, myInfo.commandPool, star::Queue_Type::Ttransfer, false, false);
+        StarCommandBuffer(myInfo.device, 20, myInfo.commandPool, star::Queue_Type::Ttransfer, false, false);
 
     while (myInfo.shouldRun->load())
     {

@@ -3,7 +3,7 @@
 namespace star
 {
 
-SceneRenderer::SceneRenderer(star::StarScene &scene) : StarRenderer(scene.getCamera()), scene(scene)
+SceneRenderer::SceneRenderer(std::shared_ptr<StarScene> scene) : StarRenderer(scene->getCamera()), scene(scene)
 {
 }
 
@@ -192,7 +192,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 void SceneRenderer::createRenderingGroups(StarDevice &device, const vk::Extent2D &swapChainExtent,
                                           const int &numFramesInFlight, star::StarShaderInfo::Builder builder)
 {
-    for (StarObject &object : this->scene.getObjects())
+    for (StarObject &object : this->scene->getObjects())
     {
         // check if the object is compatible with any render groups
         StarRenderGroup *match = nullptr;
@@ -265,8 +265,8 @@ star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarD
     {
         globalBuilder.startOnFrameIndex(i)
             .startSet()
-            .add(this->scene.getGlobalInfoBuffer(i), false)
-            .add(this->scene.getLightInfoBuffer(i), false);
+            .add(this->scene->getGlobalInfoBuffer(i), false)
+            .add(this->scene->getLightInfoBuffer(i), false);
     }
 
     return globalBuilder;
@@ -430,7 +430,7 @@ Queue_Type SceneRenderer::getCommandBufferType()
 
 void SceneRenderer::prepareForSubmission(const int &frameIndexToBeDrawn)
 {
-    for (StarObject &obj : this->scene.getObjects())
+    for (StarObject &obj : this->scene->getObjects())
     {
         obj.prepDraw(frameIndexToBeDrawn);
     }

@@ -1,7 +1,14 @@
 #include "BasicCamera.hpp"
 
-star::BasicCamera::BasicCamera(const float& width, const float& height)
+
+star::BasicCamera::BasicCamera(const uint32_t& width, const uint32_t& height)
 	: star::StarCamera(width, height)
+{
+	this->registerInteractions();
+}
+
+star::BasicCamera::BasicCamera(const uint32_t & width, const uint32_t& height, const float &movementSpeed, const float &sensitivity)
+	: star::StarCamera(width, height), movementSpeed(movementSpeed), sensitivity(sensitivity)
 {
 	this->registerInteractions();
 }

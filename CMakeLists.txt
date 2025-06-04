@@ -54,7 +54,6 @@ add_subdirectory("extern/googletest")
 set(${PROJECT_NAME}_SOURCE 
     "src/StarEngine.cpp" 
     "src/Renderer.cpp"
-    "src/BasicWindow.cpp" 
     "src/SceneRenderer.cpp"
     "src/SwapChainRenderer.cpp"
     "src/virtual/StarSystemPipeline.cpp"
@@ -145,7 +144,6 @@ set(${PROJECT_NAME}_SOURCE
 
 set(${PROJECT_NAME}_HEADERS
     "include/StarEngine.hpp"
-    "include/BasicWindow.hpp" 
     "include/SceneRenderer.hpp"
     "include/SwapChainRenderer.hpp"
     "include/common/ThreadSharedResource.hpp"

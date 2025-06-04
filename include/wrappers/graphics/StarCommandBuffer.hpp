@@ -1,14 +1,16 @@
 #pragma once
 
+#include "Enums.hpp"
 #include "StarCommandPool.hpp"
 #include "StarQueue.hpp"
-#include "Enums.hpp"
+
 
 #include "vulkan/vulkan.hpp"
 
 #include <memory>
-#include <vector>
 #include <optional>
+#include <vector>
+
 
 namespace star
 {
@@ -28,7 +30,8 @@ class StarCommandBuffer
         FinalizedSubmitInfo(vk::CommandBuffer commandBuffer, std::vector<vk::Semaphore> waits,
                             std::vector<vk::PipelineStageFlags> waitPoints, std::vector<vk::Semaphore> signalSemaphores,
                             vk::Fence doneFence)
-            : commandBuffer(commandBuffer), waits(waits), waitPoints(waitPoints), signalSemaphores(signalSemaphores), doneFence(doneFence) {};
+            : commandBuffer(commandBuffer), waits(waits), waitPoints(waitPoints), signalSemaphores(signalSemaphores),
+              doneFence(doneFence) {};
 
         vk::SubmitInfo getVulkanSubmitInfo()
         {
@@ -44,7 +47,8 @@ class StarCommandBuffer
 
         void submit(vk::Queue &targetQueue)
         {
-			targetQueue.submit(this->getVulkanSubmitInfo(), this->doneFence.has_value() ? this->doneFence.value() : VK_NULL_HANDLE);
+            targetQueue.submit(this->getVulkanSubmitInfo(),
+                               this->doneFence.has_value() ? this->doneFence.value() : VK_NULL_HANDLE);
         }
 
       private:
@@ -54,8 +58,8 @@ class StarCommandBuffer
         const std::vector<vk::Semaphore> signalSemaphores = std::vector<vk::Semaphore>();
         std::optional<vk::Fence> doneFence = std::nullopt;
     };
-	StarCommandBuffer(const StarCommandBuffer&) = delete;
-	StarCommandBuffer& operator= (const StarCommandBuffer&) = delete;
+    StarCommandBuffer(const StarCommandBuffer &) = delete;
+    StarCommandBuffer &operator=(const StarCommandBuffer &) = delete;
 
     StarCommandBuffer(vk::Device &device, int numBuffersToCreate, std::shared_ptr<StarCommandPool> parentPool,
                       const Queue_Type type, bool initFences, bool initSemaphores);
@@ -114,13 +118,19 @@ class StarCommandBuffer
 
     void wait(int bufferIndex = 0);
 
-	Queue_Type getType(){return this->type;}
+    Queue_Type getType()
+    {
+        return this->type;
+    }
 
-	size_t getNumBuffers() {return this->commandBuffers.size();}
+    size_t getNumBuffers()
+    {
+        return this->commandBuffers.size();
+    }
 
   protected:
     vk::Device vulkanDevice;
-	Queue_Type type; 
+    Queue_Type type;
     std::shared_ptr<StarCommandPool> parentPool = nullptr;
     StarCommandBuffer *mustWaitFor = nullptr;
 

@@ -36,10 +36,11 @@ class TransferManagerThread
         std::optional<std::unique_ptr<StarBuffer> *> resultingBuffer = std::nullopt;
         std::optional<std::unique_ptr<StarTexture> *> resultingTexture = std::nullopt;
         SharedFence *completeFence = nullptr;
+        bool isUpdateable = false; 
         boost::atomic<bool> *cpuWorkDoneByTransferThread = nullptr;
 
         InterThreadRequest(boost::atomic<bool> *cpuWorkDoneByTransferThread, SharedFence *completeFence,
-                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
+                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest, const bool &isUpdateable,
                            std::unique_ptr<StarBuffer> &resultingBufferAddress)
             : bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBufferAddress),
               completeFence(completeFence), cpuWorkDoneByTransferThread(cpuWorkDoneByTransferThread)
@@ -47,7 +48,7 @@ class TransferManagerThread
         }
 
         InterThreadRequest(boost::atomic<bool> *cpuWorkDoneByTransferThread, SharedFence *completeFence,
-                           std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
+                           std::unique_ptr<TransferRequest::Texture> textureTransferRequest, const bool &isUpdateable,
                            std::unique_ptr<StarTexture> &resultingTextureAddress)
             : cpuWorkDoneByTransferThread(cpuWorkDoneByTransferThread), completeFence(completeFence),
               resultingTexture(&resultingTextureAddress), textureTransferRequest(std::move(textureTransferRequest))

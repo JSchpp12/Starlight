@@ -1,72 +1,83 @@
 #pragma once
 
-#include "Interactivity.hpp"
-#include "ManagerRenderResource.hpp"
+#include "StarCamera.hpp"
 #include "Handle.hpp"
-#include "StarObject.hpp"
+#include "Interactivity.hpp"
 #include "Light.hpp"
-#include "StarWindow.hpp"
+#include "ManagerRenderResource.hpp"
+#include "StarObject.hpp"
 #include "StarRenderObject.hpp"
-#include "BasicCamera.hpp"
+#include "StarWindow.hpp"
+
 
 #include <map>
 #include <memory>
-#include <vector>
 #include <optional>
+#include <vector>
 
-namespace star {
-	/// <summary>
-	/// Container for all objects in a scene. 
-	/// </summary>
-	class StarScene {
-	public:
-		StarScene(const uint8_t& numFramesInFlight);
 
-		StarScene(const uint8_t& numFramesInFlight, StarCamera* camera, std::vector<Handle> globalInfoBuffers, std::vector<Handle> lightInfoBuffers);
+namespace star
+{
+/// <summary>
+/// Container for all objects in a scene.
+/// </summary>
+class StarScene
+{
+  public:
+    StarScene(const uint8_t &numFramesInFlight, std::shared_ptr<StarCamera> camera);
 
-		virtual ~StarScene() = default;
+    StarScene(const uint8_t &numFramesInFlight, std::shared_ptr<StarCamera> camera,
+              std::vector<Handle> globalInfoBuffers, std::vector<Handle> lightInfoBuffers);
 
-		int add(std::unique_ptr<Light> newLight);
+    virtual ~StarScene() = default;
 
-		int add(std::unique_ptr<StarObject> newObject);
+    int add(std::unique_ptr<Light> newLight);
 
-		StarCamera* getCamera() { 
-			if (this->myCamera.has_value()) {
-				return this->myCamera.value().get();
-			}
-			else {
-				assert(this->externalCamera.has_value());
-				assert(this->externalCamera.value() && "The external camera must be valid throughout the lifetime of this obejct");
-				return this->externalCamera.value();
-			}
-		}
+    int add(std::unique_ptr<StarObject> newObject);
 
-		StarObject& getObject(int objHandle) {
-			return *this->objects.at(objHandle);
-		}
+    std::shared_ptr<StarCamera> getCamera()
+    {
+        return this->camera;
+    }
 
-		Light& getLight(int light) {
-			return *this->lightList.at(light); 
-		}
+    StarObject &getObject(int objHandle)
+    {
+        return *this->objects.at(objHandle);
+    }
 
-		std::vector<std::unique_ptr<Light>>& getLights() { return this->lightList; }
-		std::vector<std::reference_wrapper<StarObject>> getObjects(); 
-		Handle getGlobalInfoBuffer(const int& index) {return this->globalInfoBuffers.at(index); }
-		Handle getLightInfoBuffer(const int& index) { return this->lightInfoBuffers.at(index); }
-	protected:
-		std::optional<StarCamera*> externalCamera = std::nullopt;
-		std::optional<std::unique_ptr<StarCamera>> myCamera = std::nullopt; 
+    Light &getLight(int light)
+    {
+        return *this->lightList.at(light);
+    }
 
-		std::vector<Handle> globalInfoBuffers = std::vector<Handle>(); 
-		std::vector<Handle> lightInfoBuffers = std::vector<Handle>();
+    std::vector<std::unique_ptr<Light>> &getLights()
+    {
+        return this->lightList;
+    }
+    std::vector<std::reference_wrapper<StarObject>> getObjects();
+    Handle getGlobalInfoBuffer(const int &index)
+    {
+        return this->globalInfoBuffers.at(index);
+    }
+    Handle getLightInfoBuffer(const int &index)
+    {
+        return this->lightInfoBuffers.at(index);
+    }
 
-		int objCounter = 0; 
-		int rObjCounter = 0; 
-		int lightCounter = 0;  
+  protected:
+    std::shared_ptr<StarCamera> camera = std::shared_ptr<StarCamera>();
 
-		std::unordered_map<int, std::unique_ptr<StarObject>> objects = std::unordered_map<int, std::unique_ptr<StarObject>>(); 
-		std::vector<std::unique_ptr<Light>> lightList = std::vector<std::unique_ptr<Light>>();
+    std::vector<Handle> globalInfoBuffers = std::vector<Handle>();
+    std::vector<Handle> lightInfoBuffers = std::vector<Handle>();
 
-		void initBuffers(const uint8_t& numFramesInFlight); 
-	};
-}
+    int objCounter = 0;
+    int rObjCounter = 0;
+    int lightCounter = 0;
+
+    std::unordered_map<int, std::unique_ptr<StarObject>> objects =
+        std::unordered_map<int, std::unique_ptr<StarObject>>();
+    std::vector<std::unique_ptr<Light>> lightList = std::vector<std::unique_ptr<Light>>();
+
+    void initBuffers(const uint8_t &numFramesInFlight);
+};
+} // namespace star
