@@ -82,7 +82,7 @@ std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile:
                             .setMipmapMode(vk::SamplerMipmapMode::eLinear)
                             .setMipLodBias(0.0f)
                             .setMinLod(0.0f)
-                            .setMaxLod(0.0f))
+                            .setMaxLod(static_cast<float>(texture->numLevels)))
         .build();
 }
 
