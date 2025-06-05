@@ -13,7 +13,9 @@ namespace star
 class StarCamera : public StarEntity
 {
   public:
-    StarCamera(const uint32_t &width, const uint32_t &height);
+    StarCamera(const uint32_t &width, const uint32_t &height); 
+    StarCamera(const uint32_t &width, const uint32_t &height, const float &horizontalFieldOfView,
+               const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance);
 
     ~StarCamera() = default;
 
@@ -36,9 +38,10 @@ class StarCamera : public StarEntity
     {
         return this->farClippingPlaneDistance;
     }
+
   protected:
     const glm::ivec2 resolution;
 
-    float horizontalFieldOfView = 90.0f, nearClippingPlaneDistance = 0.1f, farClippingPlaneDistance = 10000000.0f;
+    float horizontalFieldOfView = 90.0f, nearClippingPlaneDistance = 0.1f, farClippingPlaneDistance = 10000.0f;
 };
 } // namespace star

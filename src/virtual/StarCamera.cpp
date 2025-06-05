@@ -8,6 +8,13 @@
 
 star::StarCamera::StarCamera(const uint32_t &width, const uint32_t &height) : resolution(glm::ivec2{width, height})
 {
+    
+}
+star::StarCamera::StarCamera(const uint32_t &width, const uint32_t &height, const float &horizontalFieldOfView,
+                             const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance)
+    : resolution(glm::ivec2{width, height}), horizontalFieldOfView(horizontalFieldOfView),
+      nearClippingPlaneDistance(nearClippingPlaneDistance), farClippingPlaneDistance(farClippingPlaneDistance)
+{
 }
 
 glm::mat4 star::StarCamera::getViewMatrix() const
@@ -18,8 +25,10 @@ glm::mat4 star::StarCamera::getViewMatrix() const
                        glm::vec3(this->getUpVector()));
 }
 
-glm::mat4 star::StarCamera::getProjectionMatrix() const{
-    return glm::perspective(getVerticalFieldOfView(true), (float)this->resolution.x / (float)this->resolution.y, this->nearClippingPlaneDistance, this->farClippingPlaneDistance);
+glm::mat4 star::StarCamera::getProjectionMatrix() const
+{
+    return glm::perspective(getVerticalFieldOfView(true), (float)this->resolution.x / (float)this->resolution.y,
+                            this->nearClippingPlaneDistance, this->farClippingPlaneDistance);
 }
 
 float star::StarCamera::getHorizontalFieldOfView(const bool &inRadians) const
@@ -33,7 +42,8 @@ float star::StarCamera::getHorizontalFieldOfView(const bool &inRadians) const
 float star::StarCamera::getVerticalFieldOfView(const bool &inRadians) const
 {
     const float verticalRadians = glm::radians(this->horizontalFieldOfView);
-    const float resultRadians = 2.0f * glm::atan(glm::tan(verticalRadians / 2.0f) / (float)(this->resolution.x / (float)this->resolution.y));
+    const float resultRadians =
+        2.0f * glm::atan(glm::tan(verticalRadians / 2.0f) / (float)(this->resolution.x / (float)this->resolution.y));
 
     if (inRadians)
         return resultRadians;
