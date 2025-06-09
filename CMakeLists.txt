@@ -14,7 +14,7 @@ project("starlight")
 
 enable_language(C CXX)
 
-find_package(Vulkan REQUIRED)
+find_package(Vulkan 1.4.313 REQUIRED)
 find_package(Stb REQUIRED)
 
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
@@ -49,9 +49,7 @@ set(SHADERC_ENABLE_SHARED_CRT ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
-add_subdirectory("extern/googletest") 
-
-set(${PROJECT_NAME}_SOURCE 
+set(${PROJECT_NAME}_SOURCE
     "src/StarEngine.cpp" 
     "src/Renderer.cpp"
     "src/SceneRenderer.cpp"
@@ -141,6 +139,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
 )
+set(${PROJECT_NAME}_TARGET_SOURCE ${PROJECT_NAME}_SOURCE PARENT_SCOPE)
 
 set(${PROJECT_NAME}_HEADERS
     "include/StarEngine.hpp"
@@ -244,6 +243,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
 )
+set(${PROJECT_NAME}_TARGET_HEADERS ${PROJECT_NAME}_HEADERS PARENT_SCOPE)
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
 
@@ -262,7 +262,7 @@ target_link_libraries(${PROJECT_NAME}
         KTX::ktx
     )
 
-set(INCLUDE_DIRS
+set(${PROJECT_NAME}_INCLUDE_DIRS
     "include/"
     "include/virtual/"
     "include/internals"
@@ -289,9 +289,11 @@ set(INCLUDE_DIRS
     "include/renderers/" 
 )
 
+set(${PROJECT_NAME}_TARGET_INCLUDE_DIRS ${${PROJECT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)
+
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ${INCLUDE_DIRS}
+        ${${PROJECT_NAME}_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
         ${Stb_INCLUDE_DIR}
@@ -315,10 +317,10 @@ if (CPPCHECK_EXECUTABLE)
 
 	foreach(FILE "${${PROJECT_NAME}_SOURCE}")
 		file(TO_CMAKE_PATH "${FILE}" UNIX_PATH)
-		list(APPEND CPPCHECK_FILES "${UNIX_PATH}")
+    list(APPEND CPPCHECK_FILES "${UNIX_PATH}")
 	endforeach()
 
-    foreach(DIR ${INCLUDE_DIRS})
+    foreach(DIR ${${PROJECT_NAME}_INCLUDE_DIRS})
         list(APPEND CPPCHECK_INCLUDES "-I" "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
     endforeach()
 
