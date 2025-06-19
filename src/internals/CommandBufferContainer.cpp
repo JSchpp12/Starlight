@@ -46,7 +46,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 			buffer->commandBuffer->buffer(frameInFlightIndex).end();
 		}
 
-		buffer->commandBuffer->getFinalizedSubmitInfo(frameInFlightIndex).submit(this->device.getQueueFamily(buffer->commandBuffer->getType()).getQueues().at(0).getVulkanQueue());
+		buffer->commandBuffer->submit(frameInFlightIndex, this->device.getQueueFamily(buffer->commandBuffer->getType()).getQueues().at(0).getVulkanQueue()); 
 	}
 
 	//submit all other buffers second

@@ -61,7 +61,7 @@ class StarTexture
         std::optional<vk::SamplerCreateInfo> samplerInfo = std::nullopt;
     };
 
-    virtual ~StarTexture();
+    ~StarTexture();
 
     const vk::Image &getVulkanImage() const
     {

@@ -557,11 +557,6 @@ bool star::SwapChainRenderer::getWillBeRecordedOnce()
     return false;
 }
 
-vk::Format star::SwapChainRenderer::getCurrentRenderToImageFormat()
-{
-    return *this->swapChainImageFormat;
-}
-
 void star::SwapChainRenderer::recreateSwapChain()
 {
     int width = 0, height = 0;

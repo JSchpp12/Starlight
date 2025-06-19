@@ -127,6 +127,5 @@ class SwapChainRenderer : public SceneRenderer
     vk::PipelineStageFlags getWaitStages() override;
     bool getWillBeSubmittedEachFrame() override;
     bool getWillBeRecordedOnce() override;
-    vk::Format getCurrentRenderToImageFormat() override;
 };
 } // namespace star

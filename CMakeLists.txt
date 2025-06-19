@@ -1,16 +1,16 @@
 cmake_minimum_required (VERSION 3.27)
-find_package(Git)
-
-set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
-if (WIN32)
-    set(CMAKE_FIND_LIBRARY_PREFIXES "")
-    set(CMAKE_CXX_STANDARD 20)
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-elseif(APPLE)
-    set(CMAKE_MACOSX_RPATH 1)
-endif()
 
 project("starlight")
+
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if (APPLE)
+    set(CMAKE_MACOSX_RPATH 1)
+elseif(WIN32)
+    set(CMAKE_FIND_LIBRARY_PREFIXES "")
+endif()
 
 enable_language(C CXX)
 
@@ -33,7 +33,7 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS container thread filesystem)
-find_package(ktx CONFIG REQUIRED COMPONENTS vulkan)
+find_package(Ktx CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)

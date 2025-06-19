@@ -81,47 +81,6 @@ void star::StarCommandBuffer::begin(const int buffIndex, const vk::CommandBuffer
     }
 }
 
-star::StarCommandBuffer::FinalizedSubmitInfo star::StarCommandBuffer::getFinalizedSubmitInfo(
-    int bufferIndex, std::pair<vk::Semaphore, vk::PipelineStageFlags> *overrideWait)
-{
-    assert(bufferIndex < this->commandBuffers.size());
-
-    std::vector<vk::Semaphore> waits = std::vector<vk::Semaphore>();
-    std::vector<vk::PipelineStageFlags> waitPoints = std::vector<vk::PipelineStageFlags>();
-
-    if (overrideWait != nullptr)
-    {
-        waits.push_back(overrideWait->first);
-        waitPoints.push_back(overrideWait->second);
-    }
-
-    if (this->waitSemaphores.at(bufferIndex).size() > 0)
-    {
-        // there are some semaphores which must be waited on before execution
-        for (auto &waitInfos : this->waitSemaphores.at(bufferIndex))
-        {
-            waits.push_back(waitInfos.first);
-            waitPoints.push_back(waitInfos.second);
-        }
-    }
-
-    std::vector<vk::Semaphore> signalSemaphores = std::vector<vk::Semaphore>();
-    if (this->completeSemaphores.size() > 0)
-    {
-        signalSemaphores.push_back(this->completeSemaphores.at(bufferIndex));
-    }
-
-    if (this->readyFence.size() != 0 && this->readyFence[bufferIndex] != nullptr)
-    {
-        return FinalizedSubmitInfo(this->commandBuffers.at(bufferIndex), waits, waitPoints, signalSemaphores,
-                                   this->readyFence.at(bufferIndex));
-    }
-    else
-    {
-        return FinalizedSubmitInfo(this->commandBuffers.at(bufferIndex), waits, waitPoints, signalSemaphores);
-    }
-}
-
 void star::StarCommandBuffer::waitFor(std::vector<vk::Semaphore> semaphores, vk::PipelineStageFlags whereWait)
 {
     // check for double record
@@ -162,6 +121,58 @@ void star::StarCommandBuffer::reset(int bufferIndex)
     this->commandBuffers.at(bufferIndex).reset();
 
     this->recorded = false;
+}
+
+void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue, std::pair<vk::Semaphore, vk::PipelineStageFlags> *overrideWait, vk::Fence *overrideFence)
+{
+    std::vector<vk::Semaphore> waits = std::vector<vk::Semaphore>();
+    std::vector<vk::PipelineStageFlags> waitPoints = std::vector<vk::PipelineStageFlags>();
+
+    if (overrideWait != nullptr)
+    {
+        waits.push_back(overrideWait->first);
+        waitPoints.push_back(overrideWait->second);
+    }
+
+    if (this->waitSemaphores.at(bufferIndex).size() > 0)
+    {
+        // there are some semaphores which must be waited on before execution
+        for (auto &waitInfos : this->waitSemaphores.at(bufferIndex))
+        {
+            waits.push_back(waitInfos.first);
+            waitPoints.push_back(waitInfos.second);
+        }
+    }
+
+    std::vector<vk::Semaphore> signalSemaphores = std::vector<vk::Semaphore>();
+    if (this->completeSemaphores.size() > 0)
+    {
+        signalSemaphores.push_back(this->completeSemaphores.at(bufferIndex));
+    }
+
+    vk::SubmitInfo submitInfo = vk::SubmitInfo()
+        .setCommandBufferCount(1)
+        .setPCommandBuffers(&this->commandBuffers.at(bufferIndex))
+        .setWaitSemaphoreCount(waits.size() > 0 ? waits.size() : 0)
+        .setPWaitSemaphores(waits.size() > 0 ? waits.data() : nullptr)
+        .setPWaitDstStageMask(waitPoints.size() > 0 ? waitPoints.data() : nullptr)
+        .setSignalSemaphoreCount(signalSemaphores.size() > 0 ? signalSemaphores.size() : 0)
+        .setPSignalSemaphores(signalSemaphores.size() > 0 ? signalSemaphores.data() : 0);
+
+    if (overrideFence != nullptr){
+        targetQueue.submit(submitInfo, *overrideFence); 
+    }else{
+        targetQueue.submit(submitInfo, this->readyFence.at(bufferIndex)); 
+    }
+
+}
+
+bool star::StarCommandBuffer::isFenceReady(const int &bufferIndex)
+{
+    assert(this->readyFence.size() > 0 && "No fences created");
+
+    const auto result = this->vulkanDevice.getFenceStatus(this->readyFence.at(bufferIndex));
+    return result == vk::Result::eSuccess;
 }
 
 std::vector<vk::Semaphore> &star::StarCommandBuffer::getCompleteSemaphores()

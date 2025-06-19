@@ -243,6 +243,8 @@ std::unordered_map<vk::Format, vk::ImageView> star::StarTexture::CreateImageView
 
     for (auto &info : imageCreateInfos)
     {
+        assert(nViews.find(info.format) == nViews.end() && "Duplicate format requested for view. Only one view per format is supported"); 
+
         vk::Format nFormat = info.format;
         info.image = vulkanImage;
 

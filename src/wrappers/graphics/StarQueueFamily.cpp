@@ -5,8 +5,8 @@ star::StarQueueFamily::~StarQueueFamily()
 }
 
 star::StarQueueFamily::StarQueueFamily(const uint32_t &queueFamilyIndex, const uint32_t &queueCount,
-                                       const vk::QueueFlags &support, const bool &supportsPresentation)
-    : queueFamilyIndex(queueFamilyIndex), queueCount(queueCount), support(support), presentSupport(presentSupport)
+                                       const vk::QueueFlags &support, const bool &presentationSupport)
+    : queueFamilyIndex(queueFamilyIndex), queueCount(queueCount), support(support), presentationSupport(presentationSupport)
 {
     this->queuePriority.push_back(1.0f);
     for (int i = 1; i < queueCount; i++)
@@ -43,7 +43,7 @@ std::shared_ptr<star::StarCommandPool> star::StarQueueFamily::createCommandPool(
 
 bool star::StarQueueFamily::doesSupport(const star::Queue_Type &type) const
 {
-    if (star::Queue_Type::Tpresent == type && this->presentSupport)
+    if (star::Queue_Type::Tpresent == type && this->presentationSupport)
     {
         return true;
     }

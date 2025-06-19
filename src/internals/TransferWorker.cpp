@@ -37,13 +37,11 @@ void star::TransferManagerThread::mainLoop(TransferManagerThread::SubThreadInfo 
     std::cout << "Transfer thread started..." << std::endl;
     size_t targetBufferIndex = 0;
     size_t previousBufferIndexUsed = 0;
-    std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>> inProcessRequests =
-        std::queue<std::unique_ptr<TransferManagerThread::InProcessRequestDependencies>>();
+    std::queue<std::unique_ptr<ProcessRequestInfo>> processRequestInfos = std::queue<std::unique_ptr<ProcessRequestInfo>>(); 
 
-    // need to make command buffers
-    std::vector<SharedFence *> commandBufferFences = std::vector<SharedFence *>(20);
-    StarCommandBuffer commandBuffers =
-        StarCommandBuffer(myInfo.device, 20, myInfo.commandPool, star::Queue_Type::Ttransfer, false, false);
+    for (int i = 0; i < 5; i++){
+        processRequestInfos.push(CreateProcessingInfo(myInfo.device, myInfo.commandPool)); 
+    }
 
     while (myInfo.shouldRun->load())
     {
@@ -63,70 +61,62 @@ void star::TransferManagerThread::mainLoop(TransferManagerThread::SubThreadInfo 
 
         if (request == nullptr && allEmpty)
         {
-            if (!inProcessRequests.empty())
-            {
-                checkForCleanups(myInfo.device, inProcessRequests);
-            }
+            CheckForCleanups(myInfo.device, processRequestInfos);
 
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
         else
         {
-            if (previousBufferIndexUsed != commandBuffers.getNumBuffers() - 1)
-            {
-                targetBufferIndex = previousBufferIndexUsed + 1;
-                previousBufferIndexUsed++;
-            }
+            std::unique_ptr<ProcessRequestInfo> workingInfo = std::move(processRequestInfos.front()); 
+            processRequestInfos.pop(); 
 
-            readyCommandBuffer(myInfo.device, targetBufferIndex, commandBufferFences);
+            EnsureInfoReady(myInfo.device, *workingInfo);
 
             if (request->bufferTransferRequest)
             {
                 assert(request->resultingBuffer.has_value() && request->resultingBuffer.value() != nullptr &&
                        "Buffer request must contain both a request and a resulting address");
 
-                createBuffer(myInfo.device, myInfo.allocator, myInfo.queues.at(0), myInfo.deviceProperties,
-                             *request->completeFence, inProcessRequests, targetBufferIndex,
-                             myInfo.allTransferQueueFamilyIndicesInUse, commandBuffers, commandBufferFences,
-                             request->bufferTransferRequest.get(), request->resultingBuffer.value());
+                CreateBuffer(myInfo.device, myInfo.allocator, myInfo.queues.at(0), myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo, request->bufferTransferRequest.get(), request->resultingBuffer.value(), request->gpuDoneNotificationToMain);
             }
             else if (request->textureTransferRequest)
             {
                 assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr &&
                        "Texture request must contain both a request and a resulting address");
 
-                createTexture(myInfo.device, myInfo.allocator, myInfo.queues.at(0), myInfo.deviceProperties,
-                              *request->completeFence, inProcessRequests, targetBufferIndex,
-                              myInfo.allTransferQueueFamilyIndicesInUse, commandBuffers, commandBufferFences,
-                              request->textureTransferRequest.get(), request->resultingTexture.value());
+                CreateTexture(myInfo.device, myInfo.allocator, myInfo.queues.at(0), myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo, request->textureTransferRequest.get(), request->resultingTexture.value(), request->gpuDoneNotificationToMain);
             }
 
-            request->cpuWorkDoneByTransferThread->store(true);
-            request->cpuWorkDoneByTransferThread->notify_all();
+            processRequestInfos.push(std::move(workingInfo)); 
         }
     }
 
     std::cout << "Transfer Thread exiting..." << std::endl;
+
+    while(!processRequestInfos.empty()){
+        std::unique_ptr<ProcessRequestInfo> workingInfo = std::move(processRequestInfos.front()); 
+        processRequestInfos.pop(); 
+
+        if (!workingInfo->isMarkedAsAvailable()){
+            workingInfo->commandBuffer->wait(0); 
+            workingInfo->markAsAvailble(); 
+        }
+    }
 }
 
-std::unique_ptr<star::StarCommandBuffer> star::TransferManagerThread::CreateCommandBuffers(
-    vk::Device &device, std::shared_ptr<star::StarCommandPool> commandPool, const uint8_t &numToCreate)
+std::unique_ptr<star::TransferManagerThread::ProcessRequestInfo> star::TransferManagerThread::CreateProcessingInfo(
+    vk::Device &device, std::shared_ptr<star::StarCommandPool> commandPool)
 {
-    return std::make_unique<StarCommandBuffer>(device, numToCreate, commandPool, star::Queue_Type::Ttransfer, false,
-                                               false);
+    return std::make_unique<ProcessRequestInfo>(std::make_unique<StarCommandBuffer>(device, 1, commandPool, star::Queue_Type::Ttransfer, true,
+                                               false));
 }
 
-void star::TransferManagerThread::createBuffer(
-    vk::Device &device, VmaAllocator &allocator, StarQueue &transferQueue,
-    const vk::PhysicalDeviceProperties &deviceProperties, SharedFence &workCompleteFence,
-    std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>> &inProcessRequests,
-    const size_t &bufferIndexToUse, const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-    StarCommandBuffer &commandBuffers, std::vector<SharedFence *> &commandBufferFences,
-    TransferRequest::Buffer *newBufferRequest, std::unique_ptr<StarBuffer> *resultingBuffer)
+void star::TransferManagerThread::CreateBuffer(
+    vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+                             const vk::PhysicalDeviceProperties &deviceProperties,
+                             const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                             ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest, std::unique_ptr<StarBuffer> *resultingBuffer, boost::atomic<bool> *gpuDoneSignalMain)
 {
-    assert(commandBufferFences[bufferIndexToUse] == nullptr &&
-           "Command buffer fence should have already been waited on and removed");
-
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
 
     {
@@ -140,46 +130,20 @@ void star::TransferManagerThread::createBuffer(
 
     newBufferRequest->writeDataToStageBuffer(*transferSrcBuffer);
 
-    // copy operations
-    {
-        vk::CommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
-
-        commandBuffers.begin(bufferIndexToUse, beginInfo);
-    }
-
     newBufferRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingBuffer->get(),
-                                               commandBuffers.buffer(bufferIndexToUse));
+                                               processInfo.commandBuffer->buffer(0));
 
-    commandBuffers.buffer(bufferIndexToUse).end();
+    processInfo.commandBuffer->buffer(0).end();
+    processInfo.commandBuffer->submit(0, queue.getVulkanQueue());
 
-    {
-        boost::unique_lock<boost::mutex> lock;
-        vk::Fence *fence = nullptr;
-        workCompleteFence.giveMeResource(lock, fence);
-
-        auto submitInfo = commandBuffers.getFinalizedSubmitInfo(bufferIndexToUse).getVulkanSubmitInfo();
-        auto commandResult =
-            std::make_unique<vk::Result>(transferQueue.getVulkanQueue().submit(1, &submitInfo, *fence));
-
-        if (*commandResult != vk::Result::eSuccess)
-        {
-            // handle error
-            std::runtime_error("Failed to submit transfer request");
-        }
-    }
-
-    inProcessRequests.push(
-        std::make_unique<InProcessRequestDependencies>(std::move(transferSrcBuffer), &workCompleteFence));
-    commandBufferFences[bufferIndexToUse] = &workCompleteFence;
+    processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain); 
 }
 
-void star::TransferManagerThread::createTexture(
-    vk::Device &device, VmaAllocator &allocator, StarQueue &queue, const vk::PhysicalDeviceProperties &deviceProperties,
-    SharedFence &workCompleteFence, std::queue<std::unique_ptr<InProcessRequestDependencies>> &inProcessRequests,
-    const size_t &bufferIndexToUse, const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-    StarCommandBuffer &commandBuffers, std::vector<SharedFence *> &commandBufferFences,
-    star::TransferRequest::Texture *newTextureRequest, std::unique_ptr<star::StarTexture> *resultingTexture)
+void star::TransferManagerThread::CreateTexture(
+vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+                             const vk::PhysicalDeviceProperties &deviceProperties,
+                             const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                             ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest, std::unique_ptr<StarTexture> *resultingTexture, boost::atomic<bool> *gpuDoneSignalMain)
 {
 
     auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator);
@@ -199,95 +163,52 @@ void star::TransferManagerThread::createTexture(
         throw std::runtime_error("unsupported image operation in transfer manager");
     }
 
-    // copy operations
-    {
-        vk::CommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
-
-        commandBuffers.begin(bufferIndexToUse, beginInfo);
-    }
-
     newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(),
-                                                commandBuffers.buffer(bufferIndexToUse));
+                                                processInfo.commandBuffer->buffer(0));
 
-    commandBuffers.buffer(bufferIndexToUse).end();
+    processInfo.commandBuffer->buffer(0).end();
+    processInfo.commandBuffer->submit(0, queue.getVulkanQueue());
 
-    {
-        auto submitInfo = commandBuffers.getFinalizedSubmitInfo(bufferIndexToUse).getVulkanSubmitInfo();
-
-        boost::unique_lock<boost::mutex> lock;
-        vk::Fence *fence = nullptr;
-        workCompleteFence.giveMeResource(lock, fence);
-
-        auto commandResult = std::make_unique<vk::Result>(queue.getVulkanQueue().submit(1, &submitInfo, *fence));
-
-        if (*commandResult != vk::Result::eSuccess)
-        {
-            // handle error
-            std::runtime_error("Failed to submit transfer request");
-        }
-    }
-
-    inProcessRequests.push(
-        std::make_unique<InProcessRequestDependencies>(std::move(transferSrcBuffer), &workCompleteFence));
-    commandBufferFences[bufferIndexToUse] = &workCompleteFence;
+    processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain);
 }
 
-void star::TransferManagerThread::checkForCleanups(
+void star::TransferManagerThread::CheckForCleanups(
     vk::Device &device,
-    std::queue<std::unique_ptr<star::TransferManagerThread::InProcessRequestDependencies>> &inProcessRequests)
+    std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos)
 {
+    std::queue<std::unique_ptr<ProcessRequestInfo>> readyInfos = std::queue<std::unique_ptr<ProcessRequestInfo>>();
+    std::queue<std::unique_ptr<ProcessRequestInfo>> notReadyInfos = std::queue<std::unique_ptr<ProcessRequestInfo>>(); 
 
-    std::queue<std::unique_ptr<InProcessRequestDependencies>> stillInProcess =
-        std::queue<std::unique_ptr<InProcessRequestDependencies>>();
+    while (!processingInfos.empty()){
+        std::unique_ptr<ProcessRequestInfo> workingInfo = std::move(processingInfos.front());
+        processingInfos.pop(); 
 
-    while (!inProcessRequests.empty())
-    {
-        std::unique_ptr<InProcessRequestDependencies> &deps = inProcessRequests.front();
-        {
-            boost::unique_lock<boost::mutex> lock;
-            vk::Fence *fence = nullptr;
-            deps->completeFence->giveMeResource(lock, fence);
-
-            auto fenceResult = device.getFenceStatus(*fence);
-            if (fenceResult != vk::Result::eSuccess)
-            {
-                stillInProcess.push(std::move(deps));
-            }
+        if (!workingInfo->isMarkedAsAvailable() && workingInfo->commandBuffer->isFenceReady(0)){
+            workingInfo->markAsAvailble(); 
+            readyInfos.push(std::move(workingInfo));
+        }else{
+            notReadyInfos.push(std::move(workingInfo)); 
         }
-
-        inProcessRequests.pop();
     }
 
-    if (stillInProcess.size() > 0)
-    {
-        while (!stillInProcess.empty())
-        {
-            inProcessRequests.push(std::move(stillInProcess.front()));
-            stillInProcess.pop();
-        }
+    while (!readyInfos.empty()){
+        processingInfos.push(std::move(readyInfos.front()));
+        readyInfos.pop(); 
+    }
+
+    while(!notReadyInfos.empty()){
+        processingInfos.push(std::move(notReadyInfos.front()));
+        notReadyInfos.pop();
     }
 }
 
-void star::TransferManagerThread::readyCommandBuffer(vk::Device &device, const size_t &indexSelected,
-                                                     std::vector<SharedFence *> &commandBufferFences)
+void star::TransferManagerThread::EnsureInfoReady(vk::Device &device, ProcessRequestInfo &info)
 {
-    // sometimes multiple updates can be called on a buffer which shares a fence with the commandBuffers, if this
-    // happens, the manager is expected to reset the fence
-    if (commandBufferFences[indexSelected] != nullptr)
-    {
-        {
-            boost::unique_lock<boost::mutex> lock;
-            vk::Fence *fence = nullptr;
-            commandBufferFences[indexSelected]->giveMeResource(lock, fence);
-
-            auto result = device.waitForFences(*fence, true, UINT64_MAX);
-
-            if (result != vk::Result::eSuccess)
-                throw std::runtime_error("Failed to wait for fence");
-        }
-
-        commandBufferFences[indexSelected] = nullptr;
+    if (!info.isMarkedAsAvailable()){
+        info.commandBuffer->begin(0); 
+        info.markAsAvailble(); 
+    }else{
+        info.commandBuffer->begin(0);
     }
 }
 
@@ -305,12 +226,15 @@ star::TransferManagerThread::TransferManagerThread(
 
 void star::TransferManagerThread::cleanup()
 {
-    if (this->thread.joinable())
-        checkForCleanups(this->device.getDevice(), this->inProcessRequests);
+    // if (this->thread.joinable())
+    //     checkForCleanups(this->device.getDevice(), this->inProcessRequests);
 }
 
 star::TransferWorker::~TransferWorker()
 {
+    // for (auto &thread : this->threads ){
+    //     thread->stopAsync(); 
+    // }
 }
 
 star::TransferWorker::TransferWorker(star::StarDevice &device, bool overrideToSingleThreadMode) : device(device)
@@ -345,25 +269,23 @@ star::TransferWorker::TransferWorker(star::StarDevice &device, bool overrideToSi
         thread->startAsync();
 }
 
-void star::TransferWorker::add(SharedFence &workCompleteFence, boost::atomic<bool> &isBeingWorkedOnByTransferThread,
+void star::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
                                std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
                                std::unique_ptr<star::StarBuffer> &resultingBuffer, const bool &isHighPriority)
 {
     auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(
-        &isBeingWorkedOnByTransferThread, &workCompleteFence, std::move(newBufferRequest), resultingBuffer);
+        &isBeingWorkedOnByTransferThread, std::move(newBufferRequest), resultingBuffer);
 
-    checkFenceStatus(*newRequest);
     insertRequest(std::move(newRequest), isHighPriority);
 }
 
-void star::TransferWorker::add(SharedFence &workCompleteFence, boost::atomic<bool> &isBeingWorkedOnByTransferThread,
+void star::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
                                std::unique_ptr<star::TransferRequest::Texture> newTextureRequest,
                                std::unique_ptr<StarTexture> &resultingTexture, const bool &isHighPriority)
 {
     auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(
-        &isBeingWorkedOnByTransferThread, &workCompleteFence, std::move(newTextureRequest), resultingTexture);
+        &isBeingWorkedOnByTransferThread, std::move(newTextureRequest), resultingTexture);
 
-    checkFenceStatus(*newRequest);
     insertRequest(std::move(newRequest), isHighPriority);
 }
 
@@ -372,26 +294,6 @@ void star::TransferWorker::update()
     for (auto &thread : this->threads)
     {
         thread->cleanup();
-    }
-}
-
-void star::TransferWorker::checkFenceStatus(TransferManagerThread::InterThreadRequest &request)
-{
-    {
-        boost::unique_lock<boost::mutex> lock;
-        vk::Fence *fence = nullptr;
-        request.completeFence->giveMeResource(lock, fence);
-
-        assert(this->device.getDevice().getFenceStatus(*fence) == vk::Result::eSuccess &&
-               "Fences MUST be submitting in a signaled state to the worker");
-    }
-
-    // check if in use by threads
-    {
-        boost::unique_lock<boost::mutex> lock;
-        vk::Fence *fence = nullptr;
-        request.completeFence->giveMeResource(lock, fence);
-        this->device.getDevice().resetFences(std::vector<vk::Fence>{*fence});
     }
 }
 
@@ -410,33 +312,33 @@ void star::TransferWorker::insertRequest(std::unique_ptr<TransferManagerThread::
     }
 }
 
-void star::TransferWorker::checkForCleanups()
-{
-    bool fullCleanupAvailable = true;
-    for (int i = 0; i < this->requests.size(); i++)
-    {
-        if (this->requests[i])
-        {
-            fullCleanupAvailable = false;
+// void star::TransferWorker::checkForCleanups()
+// {
+//     bool fullCleanupAvailable = true;
+//     for (int i = 0; i < this->requests.size(); i++)
+//     {
+//         if (this->requests[i])
+//         {
+//             fullCleanupAvailable = false;
 
-            {
-                boost::unique_lock<boost::mutex> lock;
-                vk::Fence *fence = nullptr;
-                this->requests[i]->completeFence->giveMeResource(lock, fence);
+//             {
+//                 boost::unique_lock<boost::mutex> lock;
+//                 vk::Fence *fence = nullptr;
+//                 this->requests[i]->completeFence->giveMeResource(lock, fence);
 
-                if (this->device.getDevice().getFenceStatus(*fence) == vk::Result::eSuccess)
-                {
-                    this->requests[i].reset();
-                }
-            }
-        }
-    }
+//                 if (this->device.getDevice().getFenceStatus(*fence) == vk::Result::eSuccess)
+//                 {
+//                     this->requests[i].reset();
+//                 }
+//             }
+//         }
+//     }
 
-    if (fullCleanupAvailable)
-    {
-        this->requests = std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>>();
-    }
-}
+//     if (fullCleanupAvailable)
+//     {
+//         this->requests = std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>>();
+//     }
+// }
 
 std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::CreateThreads(
     StarDevice &device, const std::vector<std::unique_ptr<StarQueueFamily>> &queueFamilies,

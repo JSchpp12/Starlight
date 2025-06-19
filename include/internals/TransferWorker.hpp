@@ -35,35 +35,58 @@ class TransferManagerThread
         std::unique_ptr<TransferRequest::Texture> textureTransferRequest = nullptr;
         std::optional<std::unique_ptr<StarBuffer> *> resultingBuffer = std::nullopt;
         std::optional<std::unique_ptr<StarTexture> *> resultingTexture = std::nullopt;
-        SharedFence *completeFence = nullptr;
-        boost::atomic<bool> *cpuWorkDoneByTransferThread = nullptr;
+        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
 
-        InterThreadRequest(boost::atomic<bool> *cpuWorkDoneByTransferThread, SharedFence *completeFence,
+        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
                            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
                            std::unique_ptr<StarBuffer> &resultingBufferAddress)
             : bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBufferAddress),
-              completeFence(completeFence), cpuWorkDoneByTransferThread(cpuWorkDoneByTransferThread)
+              gpuDoneNotificationToMain(gpuDoneNotificationToMain)
         {
         }
 
-        InterThreadRequest(boost::atomic<bool> *cpuWorkDoneByTransferThread, SharedFence *completeFence,
+        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
                            std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
                            std::unique_ptr<StarTexture> &resultingTextureAddress)
-            : cpuWorkDoneByTransferThread(cpuWorkDoneByTransferThread), completeFence(completeFence),
-              resultingTexture(&resultingTextureAddress), textureTransferRequest(std::move(textureTransferRequest))
+            : gpuDoneNotificationToMain(gpuDoneNotificationToMain), resultingTexture(&resultingTextureAddress),
+              textureTransferRequest(std::move(textureTransferRequest))
         {
         }
     };
 
-    struct InProcessRequestDependencies
+    class ProcessRequestInfo
     {
-        std::optional<std::unique_ptr<StarBuffer>> transferSourceBuffer = std::nullopt;
-        SharedFence *completeFence;
+      public:
+        std::unique_ptr<StarCommandBuffer> commandBuffer = nullptr;
 
-        InProcessRequestDependencies(std::unique_ptr<StarBuffer> transferSourceBuffer, SharedFence *completeFence)
-            : transferSourceBuffer(std::move(transferSourceBuffer)), completeFence(completeFence)
+        ProcessRequestInfo(std::unique_ptr<StarCommandBuffer> commandBuffer)
+            : commandBuffer(std::move(commandBuffer)) {};
+
+        void setInProcessDeps(std::unique_ptr<StarBuffer> nInProcessTransferSrcBuffer,
+                              boost::atomic<bool> *nGpuDoneNotificationToMain)
         {
+            this->inProcessTransferSrcBuffer = std::move(nInProcessTransferSrcBuffer);
+            this->gpuDoneNotificationToMain = nGpuDoneNotificationToMain;
         }
+
+        void markAsAvailble()
+        {
+            this->inProcessTransferSrcBuffer.reset();
+
+            this->gpuDoneNotificationToMain->store(true);
+            this->gpuDoneNotificationToMain->notify_one();
+
+            this->gpuDoneNotificationToMain = nullptr;
+        }
+
+        bool isMarkedAsAvailable() const
+        {
+            return this->gpuDoneNotificationToMain == nullptr;
+        }
+
+      private:
+        std::unique_ptr<StarBuffer> inProcessTransferSrcBuffer = nullptr;
+        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
     };
 
     struct SubThreadInfo
@@ -72,9 +95,10 @@ class TransferManagerThread
                       std::vector<StarQueue> queues, VmaAllocator allocator,
                       vk::PhysicalDeviceProperties deviceProperties,
                       std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest *> *>
-                          *workingRequestQueues, std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
+                          *workingRequestQueues,
+                      std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
             : shouldRun(shouldRun), device(device), commandPool(commandPool), queues(queues), allocator(allocator),
-              deviceProperties(deviceProperties), workingRequestQueues(workingRequestQueues), 
+              deviceProperties(deviceProperties), workingRequestQueues(workingRequestQueues),
               allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse)
         {
         }
@@ -95,7 +119,8 @@ class TransferManagerThread
     TransferManagerThread(StarDevice &device, VmaAllocator &allocator,
                           std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
                           const vk::PhysicalDeviceProperties &deviceLimits, std::vector<StarQueue> myQueues,
-                          StarQueueFamily &queueFamilyToUse, const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
+                          StarQueueFamily &queueFamilyToUse,
+                          const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
 
     TransferManagerThread(const TransferManagerThread &) = delete;
     TransferManagerThread &operator=(const TransferManagerThread &) = delete;
@@ -110,38 +135,28 @@ class TransferManagerThread
 
     static void mainLoop(SubThreadInfo myInfo);
 
-    static std::unique_ptr<StarCommandBuffer> CreateCommandBuffers(vk::Device &device,
-                                                                   std::shared_ptr<StarCommandPool> commandPool,
-                                                                   const uint8_t &numToCreate);
+    static std::unique_ptr<ProcessRequestInfo> CreateProcessingInfo(vk::Device &device,
+                                                                    std::shared_ptr<StarCommandPool> commandPool);
 
-    static void createBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
-                             const vk::PhysicalDeviceProperties &deviceProperties, SharedFence &workCompleteFence,
-                             std::queue<std::unique_ptr<InProcessRequestDependencies>> &inProcessRequests,
-                             const size_t &bufferIndexToUse, const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse, 
-                             StarCommandBuffer &commandBuffers,
-                             std::vector<SharedFence *> &commandBufferFences, TransferRequest::Buffer *newBufferRequest,
-                             std::unique_ptr<StarBuffer> *resultingBuffer);
+    static void CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+                             const vk::PhysicalDeviceProperties &deviceProperties,
+                             const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                             ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
+                             std::unique_ptr<StarBuffer> *resultingBuffer, boost::atomic<bool> *gpuDoneSignalToMain);
 
-    static void createTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
-                              const vk::PhysicalDeviceProperties &deviceProperties, SharedFence &workCompleteFence,
-                              std::queue<std::unique_ptr<InProcessRequestDependencies>> &inProcessRequests,
-                              const size_t &bufferIndexToUse, const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse, 
-                              StarCommandBuffer &commandBuffers,
-                              std::vector<SharedFence *> &commandBufferFences,
-                              TransferRequest::Texture *newTextureRequest,
-                              std::unique_ptr<StarTexture> *resultingTexture);
+    static void CreateTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+                              const vk::PhysicalDeviceProperties &deviceProperties,
+                              const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                              ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
+                              std::unique_ptr<StarTexture> *resultingTexture, boost::atomic<bool> *gpuDoneSignalToMain);
 
-    static void checkForCleanups(vk::Device &device,
-                                 std::queue<std::unique_ptr<InProcessRequestDependencies>> &inProcessRequests);
+    static void CheckForCleanups(vk::Device &device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
 
-    static void readyCommandBuffer(vk::Device &device, const size_t &indexSelected,
-                                   std::vector<SharedFence *> &commandBufferFences);
+    static void EnsureInfoReady(vk::Device &device, ProcessRequestInfo &processInfo);
 
   protected:
     StarQueueFamily &familyToUse;
     bool ownsVulkanResources = false;
-    std::queue<std::unique_ptr<InProcessRequestDependencies>> inProcessRequests =
-        std::queue<std::unique_ptr<InProcessRequestDependencies>>();
 
     StarDevice &device;
     std::vector<StarQueue> myQueues;
@@ -168,11 +183,11 @@ class TransferWorker
     /// @param device Created star device from which vulkan objects can be made
     TransferWorker(StarDevice &device, bool overrideRunAsync);
 
-    void add(SharedFence &workCompleteFence, boost::atomic<bool> &isBeingWorkedOnByTransferThread,
+    void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
              std::unique_ptr<TransferRequest::Buffer> newBufferRequest, std::unique_ptr<StarBuffer> &resultingBuffer,
              const bool &isHighPriority);
 
-    void add(SharedFence &workCompleteFence, boost::atomic<bool> &isBeingWorkedOnByTransferThread,
+    void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
              std::unique_ptr<TransferRequest::Texture> newTextureRequest,
              std::unique_ptr<StarTexture> &resultingTexture, const bool &isHighPriority);
 
@@ -193,12 +208,10 @@ class TransferWorker
 
     std::vector<std::unique_ptr<TransferManagerThread>> threads = std::vector<std::unique_ptr<TransferManagerThread>>();
 
-    void checkFenceStatus(TransferManagerThread::InterThreadRequest &newRequest);
-
     void insertRequest(std::unique_ptr<TransferManagerThread::InterThreadRequest> newRequest,
                        const bool &isHighPriority);
 
-    void checkForCleanups();
+    // void checkForCleanups();
 
     static std::vector<std::unique_ptr<TransferManagerThread>> CreateThreads(
         StarDevice &device, const std::vector<std::unique_ptr<StarQueueFamily>> &queueFamilies,

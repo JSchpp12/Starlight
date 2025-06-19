@@ -153,9 +153,6 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int &f
                     // check if buffer has changed
                     auto &info = set->shaderInfos.at(i).bufferInfo.value();
                     auto &handle = set->shaderInfos.at(i).bufferInfo.value().handle.value();
-                    ManagerRenderResource::waitForReady(handle);
-                    if (!ManagerRenderResource::isReady(handle))
-                        ManagerRenderResource::waitForReady(handle);
 
                     const auto &buffer = ManagerRenderResource::getBuffer(handle).getVulkanBuffer();
                     if (!info.currentBuffer.has_value() || info.currentBuffer.value() != buffer)
