@@ -31,7 +31,7 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
         indices.push_back(device.getQueueFamily(star::Queue_Type::Tpresent).getQueueFamilyIndex());
     }
 
-    vk::Format format = findColorAttachmentFormat(device); 
+    vk::Format format = findColorAttachmentFormat(device);
 
     auto builder =
         star::StarTexture::Builder(device.getDevice(), device.getAllocator().get())
@@ -89,12 +89,13 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup->buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
-                                                                                        // occurr before barrier
-                                     vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
-                                                                                        // which operations will
-                                                                                        // wait on the barrier
-                                     {}, {}, nullptr, barrier);
+        oneTimeSetup->buffer().pipelineBarrier(
+            vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
+                                                               // occurr before barrier
+            vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
+                                                               // which operations will
+                                                               // wait on the barrier
+            {}, {}, nullptr, barrier);
 
         device.endSingleTimeCommands(std::move(oneTimeSetup));
     }
@@ -219,7 +220,8 @@ void SceneRenderer::createRenderingGroups(StarDevice &device, const vk::Extent2D
     // init all groups
     for (auto &group : this->renderGroups)
     {
-        RenderingTargetInfo renderInfo = RenderingTargetInfo({this->findColorAttachmentFormat(device)}, {this->findDepthAttachmentFormat(device)});
+        RenderingTargetInfo renderInfo =
+            RenderingTargetInfo({this->findColorAttachmentFormat(device)}, {this->findDepthAttachmentFormat(device)});
         group->init(builder, renderInfo);
     }
 }
@@ -320,14 +322,12 @@ void SceneRenderer::destroyResources(StarDevice &device)
 
 vk::Format SceneRenderer::findColorAttachmentFormat(star::StarDevice &device) const
 {
-    return device.findSupportedFormat(
-        {vk::Format::eR8G8B8A8Unorm},
-        vk::ImageTiling::eOptimal, 
-        vk::FormatFeatureFlagBits::eColorAttachment
-    );
+    return device.findSupportedFormat({vk::Format::eR8G8B8A8Unorm}, vk::ImageTiling::eOptimal,
+                                      vk::FormatFeatureFlagBits::eColorAttachment);
 }
 
-vk::Format SceneRenderer::findDepthAttachmentFormat(star::StarDevice &device) const{
+vk::Format SceneRenderer::findDepthAttachmentFormat(star::StarDevice &device) const
+{
     return device.findSupportedFormat(
         {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint}, vk::ImageTiling::eOptimal,
         vk::FormatFeatureFlagBits::eDepthStencilAttachment);
@@ -349,7 +349,7 @@ void SceneRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const 
     vk::Viewport viewport = this->prepareRenderingViewport();
     commandBuffer.setViewport(0, viewport);
 
-    this->recordPreRenderingCalls(commandBuffer, frameInFlightIndex);
+    recordPreRenderingCalls(commandBuffer, frameInFlightIndex);
 
     {
         // dynamic rendering used...so dont need all that extra stuff
@@ -368,9 +368,11 @@ void SceneRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const 
         commandBuffer.beginRendering(renderInfo);
     }
 
-    this->recordRenderingCalls(commandBuffer, frameInFlightIndex);
+    recordRenderingCalls(commandBuffer, frameInFlightIndex);
 
     commandBuffer.endRendering();
+
+    recordPostRenderingCalls(commandBuffer, frameInFlightIndex);
 }
 
 vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColorAttachment(
@@ -417,6 +419,14 @@ void SceneRenderer::recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, co
     for (auto &group : this->renderGroups)
     {
         group->recordPreRenderPassCommands(commandBuffer, frameInFlightIndex);
+    }
+}
+
+void SceneRenderer::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+{
+    for (auto &group : this->renderGroups)
+    {
+        group->recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
     }
 }
 

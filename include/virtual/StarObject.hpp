@@ -82,7 +82,11 @@ namespace star {
 		virtual void prepRender(star::StarDevice& device, int numSwapChainImages, 
 			StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder);
 
-		virtual void recordPreRenderPassCommands(vk::CommandBuffer& commandBuffer, int swapChainIndexNum) {};
+		///Function to contain any commands to be submitted before the start of the rendering pass this object is contained in begins
+		virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) {};
+
+		///Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
+		virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) {}; 
 
 		/// <summary>
 		/// Create render call

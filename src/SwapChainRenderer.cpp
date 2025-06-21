@@ -544,7 +544,7 @@ star::Command_Buffer_Order star::SwapChainRenderer::getCommandBufferOrder()
 
 vk::PipelineStageFlags star::SwapChainRenderer::getWaitStages()
 {
-    return vk::PipelineStageFlagBits::eVertexShader;
+    return vk::PipelineStageFlagBits::eFragmentShader;
 }
 
 bool star::SwapChainRenderer::getWillBeSubmittedEachFrame()

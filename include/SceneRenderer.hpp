@@ -144,6 +144,8 @@ class SceneRenderer : public StarRenderer,
     void recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
     void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+
+    void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
 #pragma endregion
   private:
     // Inherited via DescriptorModifier

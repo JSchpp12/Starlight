@@ -46,7 +46,7 @@ void star::ManagerCommandBuffer::handleNewRequests()
             std::make_unique<CommandBufferContainer::CompleteRequest>(
                 request.recordBufferCallback,
                 std::make_unique<StarCommandBuffer>(this->device.getDevice(), this->numFramesInFlight, this->device.getCommandPool(request.type), request.type,
-                                                    !request.overrideBufferSubmissionCallback.has_value(), false),
+                                                    !request.overrideBufferSubmissionCallback.has_value(), true),
                 request.type, request.recordOnce, request.waitStage, request.order,
                 request.beforeBufferSubmissionCallback, request.overrideBufferSubmissionCallback),
             request.willBeSubmittedEachFrame, request.type, request.order,

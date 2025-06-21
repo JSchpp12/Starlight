@@ -25,16 +25,9 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 
 	//submit buffers which have a suborder first
 	for (int i = star::Command_Buffer_Order_Index::first; i != star::Command_Buffer_Order_Index::fifth; i++) {
-		if (this->bufferGroupsWithSubOrders[order][i - 1] == nullptr) {
-			//if (i >= 2) {
-			//	semaphores.push_back(this->bufferGroupsWithSubOrders[order][i - 2]->commandBuffer->getCompleteSemaphores().at(frameInFlightIndex));
-			//	buffersToSubmitWithFences.push_back(std::make_pair(this->bufferGroupsWithSubOrders[order][i - 2], this->bufferGroupsWithSubOrders[order][i - 2]->commandBuffer->getFence(frameInFlightIndex)));
-			//}
-
-			//grab the last semaphore and add to wait list
+		if (this->bufferGroupsWithSubOrders[order][i-1] == nullptr)
 			break;
-		}
-
+			
 		CompleteRequest* buffer = this->bufferGroupsWithSubOrders[order][i-1];
 
 		if (buffer->beforeBufferSubmissionCallback.has_value())
@@ -47,6 +40,10 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 		}
 
 		buffer->commandBuffer->submit(frameInFlightIndex, this->device.getQueueFamily(buffer->commandBuffer->getType()).getQueues().at(0).getVulkanQueue()); 
+
+		if (i == star::Command_Buffer_Order_Index::fifth || this->bufferGroupsWithSubOrders[order][i] == nullptr ){
+			semaphores.push_back(this->bufferGroupsWithSubOrders[order][i-1]->commandBuffer->getCompleteSemaphores().at(frameInFlightIndex)); 
+		}
 	}
 
 	//submit all other buffers second

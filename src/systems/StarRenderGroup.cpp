@@ -97,22 +97,31 @@ void StarRenderGroup::addObject(StarObject& newObject) {
 	this->numMeshes += newObject.getMeshes().size();
 }
 
-void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
+void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, const int &frameInFlightIndex) {
 	for (auto& group : this->groups) {
-		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, swapChainImageIndex);
+		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, frameInFlightIndex);
 		for (auto& obj : group.objects) {
 			//record commands for each object
-			obj.object.recordRenderPassCommands(mainDrawBuffer, this->pipelineLayout, swapChainImageIndex);
+			obj.object.recordRenderPassCommands(mainDrawBuffer, this->pipelineLayout, frameInFlightIndex);
 		}
 	}
 }
 
-void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex)
+void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, const int &frameInFlightIndex)
 {
 	for (auto& group : this->groups) {
-		group.baseObject.object.recordPreRenderPassCommands(mainDrawBuffer, swapChainImageIndex); 
+		group.baseObject.object.recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex); 
 		for (auto& obj : group.objects) {
-			obj.object.recordPreRenderPassCommands(mainDrawBuffer, swapChainImageIndex);
+			obj.object.recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex);
+		}
+	}
+}
+
+void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex){
+	for (auto &group : this->groups){
+		group.baseObject.object.recordPostRenderPassCommands(commandBuffer, frameInFlightIndex); 
+		for (auto &obj : group.objects){
+			obj.object.recordPostRenderPassCommands(commandBuffer, frameInFlightIndex); 
 		}
 	}
 }
