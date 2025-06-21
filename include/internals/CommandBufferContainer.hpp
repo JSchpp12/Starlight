@@ -1,117 +1,137 @@
 #pragma once
 
-#include "StarDevice.hpp"
-#include "StarCommandBuffer.hpp"
 #include "Handle.hpp"
+#include "StarCommandBuffer.hpp"
+#include "StarDevice.hpp"
 
-#include <unordered_map>
-#include <memory>
-#include <vector>
 #include <functional>
+#include <memory>
+#include <unordered_map>
+#include <vector>
 
-namespace star {
-	class CommandBufferContainer {
-	public:
-		struct CompleteRequest {
-			std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback;
-			std::unique_ptr<StarCommandBuffer> commandBuffer;
-			Queue_Type type;
-			Command_Buffer_Order order;
-			vk::PipelineStageFlags waitStage;
-			bool recordOnce;
+namespace star
+{
+class CommandBufferContainer
+{
+  public:
+    struct CompleteRequest
+    {
+        std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback;
+        std::unique_ptr<StarCommandBuffer> commandBuffer;
+        Queue_Type type;
+        Command_Buffer_Order order;
+        vk::PipelineStageFlags waitStage;
+        bool recordOnce;
 
-			std::optional<std::function<void(const int&)>> beforeBufferSubmissionCallback;
-			std::optional<std::function<vk::Semaphore(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback;
+        std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
+        std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
+            overrideBufferSubmissionCallback;
 
-			CompleteRequest(std::function<void(vk::CommandBuffer&, const int&)> recordBufferCallback, std::unique_ptr<StarCommandBuffer> commandBuffer,
-				const Queue_Type& type, const bool& recordOnce, const vk::PipelineStageFlags& waitStage,
-				const Command_Buffer_Order& order,
-				std::optional<std::function<void(const int&)>> beforeSubmissionCallback = std::optional<std::function<void(const int&)>>(),
-				std::optional<std::function<vk::Semaphore(StarCommandBuffer&, const int&, std::vector<vk::Semaphore>)>> overrideBufferSubmissionCallback = std::nullopt)
-				: recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)),
-				order(order), waitStage(waitStage),
-				beforeBufferSubmissionCallback(beforeSubmissionCallback),
-				overrideBufferSubmissionCallback(overrideBufferSubmissionCallback),
-				type(type), recordOnce(recordOnce) {};
-		};
-		
-		CommandBufferContainer(StarDevice& device, const int& numImagesInFlight);
+        CompleteRequest(
+            std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback,
+            std::unique_ptr<StarCommandBuffer> commandBuffer, const Queue_Type &type, const bool &recordOnce,
+            const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order,
+            std::optional<std::function<void(const int &)>> beforeSubmissionCallback =
+                std::optional<std::function<void(const int &)>>(),
+            std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
+                overrideBufferSubmissionCallback = std::nullopt)
+            : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), order(order),
+              waitStage(waitStage), beforeBufferSubmissionCallback(beforeSubmissionCallback),
+              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback), type(type), recordOnce(recordOnce) {};
+    };
 
-		~CommandBufferContainer() = default;
+    CommandBufferContainer(StarDevice &device, const int &numImagesInFlight);
 
-		std::vector<vk::Semaphore> submitGroupWhenReady(const star::Command_Buffer_Order& order, const int& frameInFlightIndex, std::vector<vk::Semaphore>* waitSemaphores = nullptr);
+    ~CommandBufferContainer() = default;
 
-		star::Handle add(std::unique_ptr<CompleteRequest> newRequest, const bool& willBeSubmittedEachFrame, 
-			const star::Queue_Type& type, const star::Command_Buffer_Order& order, 
-			const star::Command_Buffer_Order_Index& subOrder);
+    std::vector<vk::Semaphore> submitGroupWhenReady(const star::Command_Buffer_Order &order,
+                                                    const int &frameInFlightIndex,
+                                                    std::vector<vk::Semaphore> *waitSemaphores = nullptr);
 
-		bool shouldSubmitThisBuffer(const size_t& bufferIndex);
+    star::Handle add(std::unique_ptr<CompleteRequest> newRequest, const bool &willBeSubmittedEachFrame,
+                     const star::Queue_Type &type, const star::Command_Buffer_Order &order,
+                     const star::Command_Buffer_Order_Index &subOrder);
 
-		void resetThisBufferStatus(const size_t& bufferIndex);
+    bool shouldSubmitThisBuffer(const size_t &bufferIndex);
 
-		void setToSubmitThisBuffer(const size_t& bufferIndex);
+    void resetThisBufferStatus(const size_t &bufferIndex);
 
-		CompleteRequest& getBuffer(const star::Handle& bufferHandle);
+    void setToSubmitThisBuffer(const size_t &bufferIndex);
 
-		size_t size() {
-			return this->allBuffers.size();
-		}
+    CompleteRequest &getBuffer(const star::Handle &bufferHandle);
 
-	private:
-		struct GenericBufferGroupInfo {
-			std::unordered_map<star::Queue_Type, std::vector<size_t>> bufferOrderGroupsIndices = std::unordered_map<star::Queue_Type, std::vector<size_t>>();
-			std::unordered_map<star::Queue_Type, std::vector<vk::Semaphore>> semaphores = std::unordered_map<star::Queue_Type, std::vector<vk::Semaphore>>();
-			std::unordered_map<star::Queue_Type, std::vector<vk::Fence>> fences = std::unordered_map<star::Queue_Type, std::vector<vk::Fence>>();
+    size_t size()
+    {
+        return this->allBuffers.size();
+    }
 
-			GenericBufferGroupInfo(StarDevice& device, const int& numFramesInFlight)
-				: device(device) {
-				vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
-				semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
+  private:
+    struct GenericBufferGroupInfo
+    {
+        std::unordered_map<star::Queue_Type, std::vector<size_t>> bufferOrderGroupsIndices =
+            std::unordered_map<star::Queue_Type, std::vector<size_t>>();
+        std::unordered_map<star::Queue_Type, std::vector<vk::Semaphore>> semaphores =
+            std::unordered_map<star::Queue_Type, std::vector<vk::Semaphore>>();
+        std::unordered_map<star::Queue_Type, std::vector<vk::Fence>> fences =
+            std::unordered_map<star::Queue_Type, std::vector<vk::Fence>>();
 
-				vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo();
-				fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
-				fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
-				for (int j = 0; j < numFramesInFlight; j++) {
-					for (int i = star::Queue_Type::Tgraphics; i != star::Queue_Type::Tcompute; i++) {
-						vk::Fence newFence = device.getDevice().createFence(fenceInfo);
-						this->fences[static_cast<star::Queue_Type>(i)].push_back(newFence);
+        GenericBufferGroupInfo(StarDevice &device, const int &numFramesInFlight) : device(device)
+        {
+            vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
+            semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
-						this->semaphores[static_cast<star::Queue_Type>(i)].push_back(device.getDevice().createSemaphore(semaphoreInfo));
-					}
-				}
-			};
+            vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo();
+            fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
+            fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+            for (int j = 0; j < numFramesInFlight; j++)
+            {
+                for (int i = star::Queue_Type::Tgraphics; i != star::Queue_Type::Tcompute; i++)
+                {
+                    vk::Fence newFence = device.getDevice().createFence(fenceInfo);
+                    this->fences[static_cast<star::Queue_Type>(i)].push_back(newFence);
 
-			~GenericBufferGroupInfo() {
-				for (auto& typeSemaphore : this->semaphores)
-					for (auto& semaphore : typeSemaphore.second)
-						this->device.getDevice().destroySemaphore(semaphore);
+                    this->semaphores[static_cast<star::Queue_Type>(i)].push_back(
+                        device.getDevice().createSemaphore(semaphoreInfo));
+                }
+            }
+        };
 
-				for (auto& typeFence : this->fences)
-					for (auto& fence : typeFence.second)
-						this->device.getDevice().destroyFence(fence);
-			};
+        ~GenericBufferGroupInfo()
+        {
+            for (auto &typeSemaphore : this->semaphores)
+                for (auto &semaphore : typeSemaphore.second)
+                    this->device.getDevice().destroySemaphore(semaphore);
 
-		private:
-			StarDevice& device;
-		};
+            for (auto &typeFence : this->fences)
+                for (auto &fence : typeFence.second)
+                    this->device.getDevice().destroyFence(fence);
+        };
 
-		StarDevice& device;
-		std::vector<std::unique_ptr<CompleteRequest>> allBuffers																		= std::vector<std::unique_ptr<CompleteRequest>>();
-		std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>> bufferGroupsWithNoSubOrder				= std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>>();
-		std::unordered_map<star::Command_Buffer_Order, std::vector<CompleteRequest*>> bufferGroupsWithSubOrders	= std::unordered_map<star::Command_Buffer_Order, std::vector<CompleteRequest*>>();
+      private:
+        StarDevice &device;
+    };
 
-		//0 - no
-		//1 - dynamic submit
-		//2 - standard always submit
-		std::vector<unsigned char> bufferSubmissionStatus = std::vector<unsigned char>();
+    StarDevice &device;
+    std::vector<std::unique_ptr<CompleteRequest>> allBuffers = std::vector<std::unique_ptr<CompleteRequest>>();
+    std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>> bufferGroupsWithNoSubOrder =
+        std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>>();
+    std::unordered_map<star::Command_Buffer_Order, std::vector<CompleteRequest *>> bufferGroupsWithSubOrders =
+        std::unordered_map<star::Command_Buffer_Order, std::vector<CompleteRequest *>>();
 
-		//Indicates if all semaphores are updated with the proper order of execution
-		bool subOrderSemaphoresUpToDate = false; 
+    // 0 - no
+    // 1 - dynamic submit
+    // 2 - standard always submit
+    std::vector<unsigned char> bufferSubmissionStatus = std::vector<unsigned char>();
 
-		void waitUntilOrderGroupReady(const int& frameIndex, const star::Command_Buffer_Order& order, const star::Queue_Type& type);
+    // Indicates if all semaphores are updated with the proper order of execution
+    bool subOrderSemaphoresUpToDate = false;
 
-		std::vector<std::reference_wrapper<CompleteRequest>> getAllBuffersOfTypeAndOrderReadyToSubmit(const star::Command_Buffer_Order& order, const star::Queue_Type& type, bool triggerReset = false);
+    void waitUntilOrderGroupReady(const int &frameIndex, const star::Command_Buffer_Order &order,
+                                  const star::Queue_Type &type);
 
-		void updateSemaphores(); 
-	};
-}
+    std::vector<std::reference_wrapper<CompleteRequest>> getAllBuffersOfTypeAndOrderReadyToSubmit(
+        const star::Command_Buffer_Order &order, const star::Queue_Type &type, bool triggerReset = false);
+
+    void updateSemaphores();
+};
+} // namespace star

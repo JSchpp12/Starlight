@@ -31,7 +31,7 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
         indices.push_back(device.getQueueFamily(star::Queue_Type::Tpresent).getQueueFamilyIndex());
     }
 
-    vk::Format format = findColorAttachmentFormat(device);
+    vk::Format format = getColorAttachmentFormat(device);
 
     auto builder =
         star::StarTexture::Builder(device.getDevice(), device.getAllocator().get())
@@ -108,7 +108,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 {
     std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-    const vk::Format depthFormat = this->findDepthAttachmentFormat(device);
+    const vk::Format depthFormat = getDepthAttachmentFormat(device);
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
     indices.push_back(device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex());
@@ -221,7 +221,7 @@ void SceneRenderer::createRenderingGroups(StarDevice &device, const vk::Extent2D
     for (auto &group : this->renderGroups)
     {
         RenderingTargetInfo renderInfo =
-            RenderingTargetInfo({this->findColorAttachmentFormat(device)}, {this->findDepthAttachmentFormat(device)});
+            RenderingTargetInfo({this->getColorAttachmentFormat(device)}, {this->getDepthAttachmentFormat(device)});
         group->init(builder, renderInfo);
     }
 }
@@ -320,17 +320,29 @@ void SceneRenderer::destroyResources(StarDevice &device)
     }
 }
 
-vk::Format SceneRenderer::findColorAttachmentFormat(star::StarDevice &device) const
+vk::Format SceneRenderer::getColorAttachmentFormat(star::StarDevice &device) const
 {
-    return device.findSupportedFormat({vk::Format::eR8G8B8A8Unorm}, vk::ImageTiling::eOptimal,
-                                      vk::FormatFeatureFlagBits::eColorAttachment);
+    vk::Format selectedFormat = vk::Format();
+
+    if (!device.findSupportedFormat({vk::Format::eR8G8B8A8Srgb}, vk::ImageTiling::eOptimal,
+                                    vk::FormatFeatureFlagBits::eColorAttachment, selectedFormat))
+    {
+        throw std::runtime_error("Failed to find supported color format");
+    }
+    return selectedFormat;
 }
 
-vk::Format SceneRenderer::findDepthAttachmentFormat(star::StarDevice &device) const
+vk::Format SceneRenderer::getDepthAttachmentFormat(star::StarDevice &device) const
 {
-    return device.findSupportedFormat(
-        {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint}, vk::ImageTiling::eOptimal,
-        vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+    vk::Format selectedFormat = vk::Format();
+    if (!device.findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+                                    vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment,
+                                    selectedFormat))
+    {
+        throw std::runtime_error("Failed to find supported depth format");
+    }
+
+    return selectedFormat;
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescriptorRequests(const int &numFramesInFlight)

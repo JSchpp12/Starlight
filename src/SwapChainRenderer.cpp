@@ -4,8 +4,8 @@
 
 #include <GLFW/glfw3.h>
 
-star::SwapChainRenderer::SwapChainRenderer(const StarWindow &window, std::shared_ptr<StarScene> scene, StarDevice &device,
-                                           const int &numFramesInFlight)
+star::SwapChainRenderer::SwapChainRenderer(const StarWindow &window, std::shared_ptr<StarScene> scene,
+                                           StarDevice &device, const int &numFramesInFlight)
     : device(device), window(window), SceneRenderer(scene), numFramesInFlight(numFramesInFlight)
 {
     createSwapChain();
@@ -66,7 +66,11 @@ void star::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
     presentInfo.pResults = nullptr; // Optional
 
     // make call to present image
-    auto presentResult = this->device.getQueueFamily(star::Queue_Type::Tpresent).getQueues().at(0).getVulkanQueue().presentKHR(presentInfo);
+    auto presentResult = this->device.getQueueFamily(star::Queue_Type::Tpresent)
+                             .getQueues()
+                             .at(0)
+                             .getVulkanQueue()
+                             .presentKHR(presentInfo);
 
     if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR ||
         frameBufferResized)
@@ -90,7 +94,7 @@ void star::SwapChainRenderer::pollEvents()
 }
 
 vk::SurfaceFormatKHR star::SwapChainRenderer::chooseSwapSurfaceFormat(
-    const std::vector<vk::SurfaceFormatKHR> &availableFormats)
+    const std::vector<vk::SurfaceFormatKHR> &availableFormats) const
 {
     for (const auto &availableFormat : availableFormats)
     {
@@ -106,6 +110,15 @@ vk::SurfaceFormatKHR star::SwapChainRenderer::chooseSwapSurfaceFormat(
 
     // if nothing matches what we are looking for, just take what is available
     return availableFormats[0];
+}
+
+vk::Format star::SwapChainRenderer::getColorAttachmentFormat(star::StarDevice & device) const
+{
+    //   in order to prevent this and allow rendering to continue
+    SwapChainSupportDetails swapChainSupport = this->device.getSwapChainSupportDetails();
+
+    vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+    return surfaceFormat.format; 
 }
 
 vk::PresentModeKHR star::SwapChainRenderer::chooseSwapPresentMode(
@@ -267,7 +280,9 @@ vk::Semaphore star::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, c
     submitInfo.commandBufferCount = 1;
 
     auto commandResult = std::make_unique<vk::Result>(this->device.getQueueFamily(star::Queue_Type::Tpresent)
-                                                          .getQueues().at(0).getVulkanQueue()
+                                                          .getQueues()
+                                                          .at(0)
+                                                          .getVulkanQueue()
                                                           .submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
 
     if (*commandResult != vk::Result::eSuccess)
@@ -291,14 +306,16 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
 {
     std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
+    vk::Format format = getColorAttachmentFormat(device); 
+
     // get images in the newly created swapchain
     for (vk::Image &image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain))
     {
         auto builder = star::StarTexture::Builder(device.getDevice(), image)
-                           .setBaseFormat(*this->swapChainImageFormat)
+                           .setBaseFormat(format)
                            .addViewInfo(vk::ImageViewCreateInfo()
                                             .setViewType(vk::ImageViewType::e2D)
-                                            .setFormat(*this->swapChainImageFormat)
+                                            .setFormat(format)
                                             .setSubresourceRange(vk::ImageSubresourceRange()
                                                                      .setAspectMask(vk::ImageAspectFlagBits::eColor)
                                                                      .setBaseArrayLayer(0)
@@ -332,12 +349,13 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup->buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
-                                                                                        // occurr before barrier
-                                     vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
-                                                                                        // which operations will
-                                                                                        // wait on the barrier
-                                     {}, {}, nullptr, barrier);
+        oneTimeSetup->buffer().pipelineBarrier(
+            vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
+                                                               // occurr before barrier
+            vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
+                                                               // which operations will
+                                                               // wait on the barrier
+            {}, {}, nullptr, barrier);
 
         device.endSingleTimeCommands(std::move(oneTimeSetup));
     }
@@ -457,7 +475,6 @@ void star::SwapChainRenderer::createSwapChain()
     // chain in oldSwapChain field
     //   in order to prevent this and allow rendering to continue
     SwapChainSupportDetails swapChainSupport = this->device.getSwapChainSupportDetails();
-
     vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
     vk::Extent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
@@ -532,8 +549,6 @@ void star::SwapChainRenderer::createSwapChain()
 
     this->swapChain = this->device.getDevice().createSwapchainKHR(createInfo);
 
-    // save swapChain information for later use
-    this->swapChainImageFormat = std::make_unique<vk::Format>(surfaceFormat.format);
     this->swapChainExtent = std::make_unique<vk::Extent2D>(extent);
 }
 

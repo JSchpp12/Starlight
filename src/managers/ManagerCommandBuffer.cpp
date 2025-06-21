@@ -45,7 +45,8 @@ void star::ManagerCommandBuffer::handleNewRequests()
         star::Handle newHandle = this->buffers.add(
             std::make_unique<CommandBufferContainer::CompleteRequest>(
                 request.recordBufferCallback,
-                std::make_unique<StarCommandBuffer>(this->device.getDevice(), this->numFramesInFlight, this->device.getCommandPool(request.type), request.type,
+                std::make_unique<StarCommandBuffer>(this->device.getDevice(), this->numFramesInFlight,
+                                                    this->device.getCommandPool(request.type), request.type,
                                                     !request.overrideBufferSubmissionCallback.has_value(), true),
                 request.type, request.recordOnce, request.waitStage, request.order,
                 request.beforeBufferSubmissionCallback, request.overrideBufferSubmissionCallback),
@@ -107,7 +108,11 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const uint32_t &s
     }
     else
     {
-        mainGraphicsBuffer.commandBuffer->submit(swapChainIndex, this->device.getQueueFamily(mainGraphicsBuffer.commandBuffer->getType()).getQueues().at(0).getVulkanQueue()); 
+        mainGraphicsBuffer.commandBuffer->submit(
+            swapChainIndex, this->device.getQueueFamily(mainGraphicsBuffer.commandBuffer->getType())
+                                .getQueues()
+                                .at(0)
+                                .getVulkanQueue());
         mainGraphicsSemaphore = mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
     }
 

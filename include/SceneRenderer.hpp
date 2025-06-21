@@ -130,9 +130,9 @@ class SceneRenderer : public StarRenderer,
 
     virtual void destroyResources(StarDevice &device) override;
 
-    virtual vk::Format findColorAttachmentFormat(star::StarDevice &device) const;
+    virtual vk::Format getColorAttachmentFormat(star::StarDevice &device) const;
 
-    virtual vk::Format findDepthAttachmentFormat(star::StarDevice &device) const;
+    virtual vk::Format getDepthAttachmentFormat(star::StarDevice &device) const;
 
 #pragma region helpers
     vk::Viewport prepareRenderingViewport();

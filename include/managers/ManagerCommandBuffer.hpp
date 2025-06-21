@@ -5,14 +5,12 @@
 #include "StarCommandBuffer.hpp"
 #include "StarDevice.hpp"
 
-
 #include "internals/CommandBufferContainer.hpp"
 
 #include <functional>
 #include <stack>
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
-
 
 namespace star
 {

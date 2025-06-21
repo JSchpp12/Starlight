@@ -486,8 +486,8 @@ bool StarDevice::verifyImageCreate(vk::ImageCreateInfo imageInfo)
     return true;
 }
 
-vk::Format StarDevice::findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
-                                           vk::FormatFeatureFlags features)
+bool StarDevice::findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
+                                           vk::FormatFeatureFlags features, vk::Format &selectedFormat) const
 {
     for (vk::Format format : candidates)
     {
@@ -500,15 +500,17 @@ vk::Format StarDevice::findSupportedFormat(const std::vector<vk::Format> &candid
         // check if the properties matches the requirenments for tiling
         if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features)
         {
-            return format;
+            selectedFormat = format;
+            return true;
         }
         else if ((tiling == vk::ImageTiling::eOptimal) && (props.optimalTilingFeatures & features) == features)
         {
-            return format;
+            selectedFormat = format;
+            return true;
         }
     }
 
-    throw std::runtime_error("failed to find supported format!");
+    return false;
 }
 
 star::StarQueueFamily &StarDevice::getQueueFamily(const star::Queue_Type &type)

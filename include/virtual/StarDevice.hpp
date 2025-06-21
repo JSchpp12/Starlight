@@ -170,8 +170,8 @@ class StarDevice
     /// <param name="tiling"></param>
     /// <param name="features"></param>
     /// <returns></returns>
-    vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
-                                   vk::FormatFeatureFlags features);
+    bool findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
+                                           vk::FormatFeatureFlags features, vk::Format &selectedFormat) const;
 
     StarQueueFamily &getQueueFamily(const star::Queue_Type &type);
 

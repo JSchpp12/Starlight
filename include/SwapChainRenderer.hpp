@@ -60,7 +60,6 @@ class SwapChainRenderer : public SceneRenderer
     // more swapchain info
     vk::SwapchainKHR swapChain;
 
-    std::unique_ptr<vk::Format> swapChainImageFormat = std::unique_ptr<vk::Format>();
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
 
     // Sync obj storage
@@ -72,7 +71,9 @@ class SwapChainRenderer : public SceneRenderer
     std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer;
     std::unique_ptr<std::string> screenshotPath = nullptr;
 
-    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
+    vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) const;
+
+    vk::Format getColorAttachmentFormat(star::StarDevice &device) const override;
 
     // Look through givent present modes and pick the "best" one
     vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);
