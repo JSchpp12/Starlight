@@ -139,7 +139,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
 )
-set(${PROJECT_NAME}_TARGET_SOURCE ${PROJECT_NAME}_SOURCE PARENT_SCOPE)
+set(${PROJECT_NAME}_TARGET_SOURCE ${${PROJECT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${PROJECT_NAME}_HEADERS
     "include/StarEngine.hpp"
@@ -243,7 +243,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
 )
-set(${PROJECT_NAME}_TARGET_HEADERS ${PROJECT_NAME}_HEADERS PARENT_SCOPE)
+set(${PROJECT_NAME}_TARGET_HEADERS ${${PROJECT_NAME}_HEADERS} PARENT_SCOPE)
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
 
