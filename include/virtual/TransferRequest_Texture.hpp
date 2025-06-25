@@ -12,7 +12,7 @@ class Texture : private Memory<star::StarTexture>
 {
   public:
     Texture() = default;
-    ~Texture() = default;
+    virtual ~Texture() = default;
 
     virtual std::unique_ptr<StarBuffer> createStagingBuffer(
         vk::Device &device, VmaAllocator &allocator) const override = 0;

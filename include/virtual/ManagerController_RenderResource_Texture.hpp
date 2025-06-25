@@ -8,6 +8,7 @@ namespace star::ManagerController::RenderResource{
 class Texture : public star::ManagerController::Controller<TransferRequest::Texture>{
         public:
         Texture() = default; 
+        virtual ~Texture() = default; 
 
         Texture(const uint8_t& frameInFlightIndexToUpdateOn)
             : star::ManagerController::Controller<TransferRequest::Texture>(frameInFlightIndexToUpdateOn){}

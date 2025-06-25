@@ -10,7 +10,6 @@
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
 
-
 #include <vulkan/vulkan.hpp>
 
 #include <array>
@@ -40,6 +39,8 @@ class StarMesh
     {
         CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
     }
+
+    virtual ~StarMesh() = default;
 
     virtual void prepRender(StarDevice &device);
 
