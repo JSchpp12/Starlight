@@ -62,9 +62,9 @@ namespace star {
 		bool isKnownToBeReady(const uint8_t& swapChainImageIndex);
 	protected:
 		std::unique_ptr<StarShaderInfo> shaderInfo; 
-		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight);
+		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 
-		virtual void createDescriptors(star::StarDevice& device, const int& numFramesInFlight);
+		virtual void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
 
 		/// <summary>
 		/// Function which should contain processes to create all needed functionalities

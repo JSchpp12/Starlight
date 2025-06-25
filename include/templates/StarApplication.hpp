@@ -25,7 +25,7 @@ class StarApplication : public Interactivity
 
     void cleanup();
 
-    virtual void onWorldUpdate(const uint32_t &frameInFlightIndex) = 0;
+    virtual void onWorldUpdate(const uint32_t &frameInFlightIndex) override = 0;
 
     virtual void onKeyPress(int key, int scancode, int mods) override {};
 
