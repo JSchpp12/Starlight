@@ -141,7 +141,6 @@ void StarRenderGroup::init(StarShaderInfo::Builder initEngineBuilder, RenderingT
 
 bool StarRenderGroup::isObjectCompatible(StarObject& object)
 {
-	bool descriptorSetsCompatible = false; 
 	//check if descriptor layouts are compatible
 	auto compLayouts = object.getDescriptorSetLayouts(device);
 
@@ -163,17 +162,13 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 
 void StarRenderGroup::prepareObjects(StarShaderInfo::Builder& groupBuilder, RenderingTargetInfo renderingInfo) {
 	//get descriptor sets from objects and place into render structs
-	int objCounter = 0;
 
 	for (auto& group : this->groups) {
 		//prepare base object
 		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, renderingInfo, numSwapChainImages, groupBuilder);
-		objCounter++; 
 
 		for (auto& renderObject : group.objects) {
 			renderObject.object.prepRender(device, numSwapChainImages, group.baseObject.object.getPipline(), groupBuilder);
-
-			objCounter++;
 		}
 	}
 }

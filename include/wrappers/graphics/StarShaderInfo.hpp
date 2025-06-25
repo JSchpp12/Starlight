@@ -117,8 +117,6 @@ class StarShaderInfo
         void rebuildSet();
     };
 
-    StarDevice &device;
-
     std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> shaderInfoSets =
         std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>();
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> layouts =
@@ -127,7 +125,7 @@ class StarShaderInfo
   public:
     StarShaderInfo(StarDevice &device, const std::vector<std::shared_ptr<StarDescriptorSetLayout>> &layouts,
                    const std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> &shaderInfoSets)
-        : device(device), layouts(layouts), shaderInfoSets(shaderInfoSets) {};
+        : layouts(layouts), shaderInfoSets(shaderInfoSets) {};
 
     bool isReady(const uint8_t &frameInFlight);
 

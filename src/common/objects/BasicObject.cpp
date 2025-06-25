@@ -59,8 +59,6 @@ void star::BasicObject::loadMesh(){
 	std::string texturePath = FileHelpers::GetBaseFileDirectory(objectFilePath);
 	std::string materialFile = FileHelpers::GetBaseFileDirectory(objectFilePath);
 
-	vk::DeviceSize totalNumVerts = 0, totalNumInds = 0;
-
 	std::cout << "Loading object file: " << objectFilePath << std::endl;
 
 	std::vector<std::unique_ptr<std::vector<Vertex>>> meshVerts;
@@ -81,13 +79,7 @@ void star::BasicObject::loadMesh(){
 		std::cout << "Loading will continue..." << std::endl;
 	}
 
-	float maxVal = 0;
-	size_t counter = 0;
 	size_t shapeCounter = 0;
-	size_t materialIndex = 0;
-	size_t triangleCounter = 0;
-	size_t threeCounter = 0;
-	Vertex* currVertex = nullptr;
 	Handle loadMaterialTexture;
 	std::unique_ptr<std::vector<Vertex>> verticies;
 	std::unique_ptr<std::vector<uint32_t>> indicies;
@@ -185,10 +177,6 @@ void star::BasicObject::loadMesh(){
 		//combine all attributes into a single object 
 		int dIndex = 0;
 		for (const auto& shape : shapes) {
-			triangleCounter = 0;
-			threeCounter = 0;
-			counter = 0;
-
 			//tinyobj ensures three verticies per triangle  -- assuming unique vertices 
 			const std::vector<tinyobj::index_t>& indicies = shape.mesh.indices;
 			auto fullInd = std::make_unique<std::vector<uint32_t>>(shape.mesh.indices.size());
@@ -225,8 +213,6 @@ void star::BasicObject::loadMesh(){
 					vertices->at(vertCounter) = newVertex;
 					fullInd->at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter);
 					vertCounter++;
-					totalNumVerts++;
-					totalNumInds++;
 				};
 			}
 

@@ -235,9 +235,10 @@ star::TransferWorker::~TransferWorker()
     // }
 }
 
-star::TransferWorker::TransferWorker(star::StarDevice &device, bool overrideToSingleThreadMode) : device(device)
+star::TransferWorker::TransferWorker(star::StarDevice &device, bool overrideToSingleThreadMode)
 {
     bool runAsync = !overrideToSingleThreadMode;
+    
     if (!device.doesHaveDedicatedFamily(star::Queue_Type::Ttransfer))
     {
         runAsync = false;

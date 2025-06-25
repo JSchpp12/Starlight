@@ -266,11 +266,6 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 	assert(this->instances.size() > 0 && "Call to create instance buffers made but this object does not have any instances");
 	assert(this->instances.size() < 1024 && "Max number of supported instances is 1024"); 
 
-	//each instance must provide the number of buffers that it will need
-	//this is a bit limiting and might need some rework
-
-	uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
-
 	//create a buffer for each image
 	for (int i = 0; i < numImagesInFlight; i++) {
 		this->instanceModelInfos.emplace_back(

@@ -25,7 +25,6 @@ namespace star {
 	{
 		float stepSizeX = 1.0f / (vertX - 1);
 		float stepSizeY = 1.0f / (vertY - 1);
-		float xCounter = 0.0f;
 		uint32_t indexCounter = 0;
 
 		for (int i = 0; i < vertY; i++) {

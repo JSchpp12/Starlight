@@ -77,7 +77,6 @@ void StarDescriptorSetLayout::build()
 /* Descriptor Pool */
 StarDescriptorPool::Builder& StarDescriptorPool::Builder::addPoolSize(vk::DescriptorType descriptorType, uint32_t count) {
 	//check if pool already contains descriptorType
-	int foundIndex = -1; 
 	for (int i = 0; i < this->poolSizes.size(); i++) {
 		if (this->poolSizes.at(i).type == descriptorType)
 		{

@@ -186,7 +186,6 @@ class TransferWorker
     ~TransferWorker();
 
   private:
-    StarDevice &device;
     std::vector<std::unique_ptr<StarQueueFamily>> myQueueFamilies = std::vector<std::unique_ptr<StarQueueFamily>>();
 
     boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> highPriorityRequests =
