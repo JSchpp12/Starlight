@@ -75,8 +75,6 @@ class ManagerCommandBuffer
     CommandBufferContainer buffers;
     std::unique_ptr<star::Handle> mainGraphicsBufferHandle = std::unique_ptr<star::Handle>();
 
-    uint32_t numBuffers = 0;
-
     void handleNewRequests();
 
     vk::Semaphore submitCommandBuffers(const uint32_t &swapChainIndex);

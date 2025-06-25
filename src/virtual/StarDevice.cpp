@@ -84,8 +84,6 @@ void StarDevice::updatePreferredFamilies(const star::Queue_Type &type)
 
 void StarDevice::createInstance()
 {
-    uint32_t extensionCount = 0;
-
     std::cout << "Creating vulkan instance..." << std::endl;
 
     if (enableValidationLayers && !CheckValidationLayerSupport(this->validationLayers))
@@ -223,7 +221,6 @@ void StarDevice::createLogicalDevice()
     auto uniqueIndices = indicies.getUniques();
     std::set<uint32_t> uniqueQueueFamilies = indicies.getUniques();
 
-    float priority = 1.0f;
     for (auto uniqueIndex : uniqueQueueFamilies)
     {
         auto newFamily = std::make_unique<StarQueueFamily>(uniqueIndex, indicies.getNumQueuesForIndex(uniqueIndex),
@@ -328,8 +325,6 @@ bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDevic
 
 bool StarDevice::CheckValidationLayerSupport(const std::vector<const char *> &validationLayers)
 {
-    uint32_t layerCount = 0;
-
     std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
 
     for (const char *layerName : validationLayers)
@@ -767,7 +762,6 @@ bool StarDevice::DoesDeviceSupportPresentation(vk::PhysicalDevice physicalDevice
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
 
     for (uint32_t i = 0; i < queueFamilyCount; ++i) {
-        VkBool32 presentSupport = false;
         if (physicalDevice.getSurfaceSupportKHR(i, surface))
             return true; 
     }

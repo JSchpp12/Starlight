@@ -39,8 +39,6 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
 
 StarEngine::~StarEngine()
 {
-    this->renderingDevice->getDevice().waitIdle();
-    
     this->transferWorker.reset(); 
     ManagerRenderResource::cleanup(*this->renderingDevice);
     RenderResourceSystem::cleanup(*this->renderingDevice);
@@ -76,6 +74,8 @@ void StarEngine::run()
         this->mainRenderer->submitPresentation(currentFrame, &allBuffersSubmitted);
         this->transferWorker->update();
     }
+
+    this->renderingDevice->getDevice().waitIdle();
 }
 
 std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()
