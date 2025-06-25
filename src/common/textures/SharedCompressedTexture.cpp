@@ -18,7 +18,6 @@ star::SharedCompressedTexture::SharedCompressedTexture(const std::string& pathTo
 
 star::SharedCompressedTexture::~SharedCompressedTexture(){
     ktxTexture_Destroy((ktxTexture*)this->resource); 
-    // delete(this->resource);
     this->resource = nullptr;
 }
 
