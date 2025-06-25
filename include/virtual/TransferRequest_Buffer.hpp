@@ -8,7 +8,7 @@ class Buffer : public Memory<StarBuffer>
 {
   public:
     Buffer() = default;
-    ~Buffer() = default;
+    virtual ~Buffer() = default;
 
     virtual std::unique_ptr<StarBuffer> createStagingBuffer(
         vk::Device &device, VmaAllocator &allocator) const override = 0;

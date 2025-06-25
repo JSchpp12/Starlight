@@ -12,7 +12,6 @@
 #include "StarGraphicsPipeline.hpp"
 #include "StarBuffer.hpp"
 #include "StarObject.hpp"
-#include "StarSystemPipeline.hpp"
 #include "StarShaderInfo.hpp"
 #include "StarCommandBuffer.hpp"
 #include "DescriptorModifier.hpp"

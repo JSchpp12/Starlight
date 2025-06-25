@@ -85,8 +85,7 @@ namespace star {
 		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override {};
 
 		virtual void destroyResources(StarDevice& device) override {};
+		
 	private:
-		//flag to determine if the material has been prepped for rendering operations
-		bool knownToBeReady = false;
 	};
 }

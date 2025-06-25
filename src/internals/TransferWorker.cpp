@@ -35,8 +35,6 @@ void star::TransferManagerThread::stopAsync()
 void star::TransferManagerThread::mainLoop(TransferManagerThread::SubThreadInfo myInfo)
 {
     std::cout << "Transfer thread started..." << std::endl;
-    size_t targetBufferIndex = 0;
-    size_t previousBufferIndexUsed = 0;
     std::queue<std::unique_ptr<ProcessRequestInfo>> processRequestInfos = std::queue<std::unique_ptr<ProcessRequestInfo>>(); 
 
     for (int i = 0; i < 5; i++){
@@ -49,7 +47,7 @@ void star::TransferManagerThread::mainLoop(TransferManagerThread::SubThreadInfo 
         bool allEmpty = true;
 
         // try to get a request
-        for (int i = 0; i < myInfo.workingRequestQueues->size(); i++)
+        for (size_t i = 0; i < myInfo.workingRequestQueues->size(); i++)
         {
             myInfo.workingRequestQueues->at(i)->pop(request);
             if (request != nullptr)
@@ -346,7 +344,7 @@ std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::
     boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &standardQueue)
 {
     std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>(queueFamilies.size());
-    for (int i = 0; i < queueFamilies.size(); i++)
+    for (size_t i = 0; i < queueFamilies.size(); i++)
         allTransferQueueFamilyIndicesInUse[i] = queueFamilies.at(i)->getQueueFamilyIndex();
 
     int curNumHighThreads = 0;
@@ -357,7 +355,7 @@ std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::
     for (const auto &family : queueFamilies)
     {
         int targetIndex = 0;
-        for (int i = 0; i < family->getQueueCount(); i++)
+        for (uint32_t i = 0; i < family->getQueueCount(); i++)
         {
             std::vector<StarQueue> queues;
             queues.push_back(family->getQueues().at(targetIndex));

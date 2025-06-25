@@ -22,8 +22,6 @@ class BasicCamera : public StarCamera, public Interactivity
                 const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance, const float &movementSpeed,
                 const float &sensitivity);
 
-    ~BasicCamera() = default;
-
     /// <summary>
     /// Key callback for camera object. Implements default controls for the camera.
     /// </summary>
@@ -71,8 +69,8 @@ class BasicCamera : public StarCamera, public Interactivity
   private:
     Time time = Time();
 
-    const float sensitivity = 0.1f;
     const float movementSpeed = 1000.0f;
+    const float sensitivity = 0.1f;
     bool init = false;
 
     // previous mouse coordinates from GLFW

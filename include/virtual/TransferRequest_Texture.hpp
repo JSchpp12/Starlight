@@ -22,7 +22,7 @@ class Texture : private Memory<star::StarTexture>
         const std::vector<uint32_t> &transferQueueFamilyIndex) const override = 0;
 
     virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarTexture &dst,
-                                          vk::CommandBuffer &commandBuffer) const = 0;
+                                          vk::CommandBuffer &commandBuffer) const override = 0;
 
     virtual void writeDataToStageBuffer(star::StarBuffer &stagingBuffer) const override = 0;
 

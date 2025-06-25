@@ -66,7 +66,7 @@ class StarWindow
 
   private:
     bool frambufferResized = false;
-    int width, height;
+    int width = 0, height = 0;
     GLFWwindow *window = nullptr;
 
     friend class Builder;

@@ -478,7 +478,7 @@ bool StarDevice::verifyImageCreate(vk::ImageCreateInfo imageInfo)
         vk::ImageFormatProperties pros = this->physicalDevice.getImageFormatProperties(
             imageInfo.format, imageInfo.imageType, imageInfo.tiling, imageInfo.usage, imageInfo.flags);
     }
-    catch (std::exception ex)
+    catch (const std::exception &ex)
     {
         std::cout << "An error occurred while attempting to verify new image: " << ex.what() << std::endl;
         return false;

@@ -12,7 +12,10 @@ namespace star
 class SwapChainRenderer : public SceneRenderer
 {
   public:
-    SwapChainRenderer(const StarWindow &window, std::shared_ptr<StarScene> scene, StarDevice &device, const int &numFramesInFlight);
+    SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window, StarDevice &device, const uint8_t &numFramesInFlight);
+
+    SwapChainRenderer(const SwapChainRenderer &other) = delete; 
+
 
     virtual ~SwapChainRenderer();
 
@@ -32,12 +35,12 @@ class SwapChainRenderer : public SceneRenderer
     {
         return *this->swapChainExtent;
     }
-    int getFrameToBeDrawn() const
+    uint8_t getFrameToBeDrawn() const
     {
         return this->currentFrameInFlightCounter;
     }
 
-    vk::Fence getframeStatusFlag(const uint8_t frameIndex)
+    vk::Fence getframeStatusFlag(const uint8_t &frameIndex)
     {
         assert(frameIndex < this->imagesInFlight.size() && "Out of range.");
         return this->imagesInFlight[frameIndex];
@@ -48,9 +51,7 @@ class SwapChainRenderer : public SceneRenderer
     StarDevice &device;
 
     // tracker for which frame is being processed of the available permitted frames
-    uint32_t currentFrameInFlightCounter = 0;
-    int previousFrame = 0;
-    int numFramesInFlight;
+    uint8_t currentFrameInFlightCounter = 0, previousFrame = 0, numFramesInFlight = 0;
 
     uint32_t currentSwapChainImageIndex = 0;
 
@@ -58,7 +59,7 @@ class SwapChainRenderer : public SceneRenderer
         false; // explicit declaration of resize, used if driver does not trigger VK_ERROR_OUT_OF_DATE
 
     // more swapchain info
-    vk::SwapchainKHR swapChain;
+    vk::SwapchainKHR swapChain = vk::SwapchainKHR();
 
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
 
@@ -68,7 +69,7 @@ class SwapChainRenderer : public SceneRenderer
     std::vector<vk::Semaphore> imageAvailableSemaphores;
     std::vector<vk::Semaphore> imageAcquireSemaphores;
 
-    std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer;
+    std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer = nullptr;
     std::unique_ptr<std::string> screenshotPath = nullptr;
 
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) const;

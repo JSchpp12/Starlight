@@ -26,11 +26,22 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::TextureFile::createStag
     int width, height, channels = 0;
     GetTextureInfo(this->imagePath, width, height, channels);
 
-    return std::make_unique<StarBuffer>(allocator, (width * height * channels * 4), 1,
-                                        VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                                        VMA_MEMORY_USAGE_AUTO, vk::BufferUsageFlagBits::eTransferSrc,
-                                        vk::SharingMode::eConcurrent, this->imagePath + "_TransferSRCBuffer");
+    const vk::DeviceSize size = width * height * channels * 4; 
+
+    return StarBuffer::Builder(allocator)
+        .setAllocationCreateInfo(
+            Allocator::AllocationBuilder()
+            .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
+            .setUsage(VMA_MEMORY_USAGE_AUTO)
+            .build(),
+        vk::BufferCreateInfo()
+            .setSharingMode(vk::SharingMode::eExclusive)
+            .setSize(size)
+            .setUsage(vk::BufferUsageFlagBits::eTransferSrc), 
+            this->imagePath + "_TransferSRCBuffer")
+        .setInstanceCount(1)
+        .setInstanceSize(size)
+        .build();
 }
 
 std::unique_ptr<star::StarTexture> star::TransferRequest::TextureFile::createFinal(

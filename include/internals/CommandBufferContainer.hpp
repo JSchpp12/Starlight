@@ -19,10 +19,9 @@ class CommandBufferContainer
         std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback;
         std::unique_ptr<StarCommandBuffer> commandBuffer;
         Queue_Type type;
-        Command_Buffer_Order order;
-        vk::PipelineStageFlags waitStage;
         bool recordOnce;
-
+        vk::PipelineStageFlags waitStage;
+        Command_Buffer_Order order;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
         std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
             overrideBufferSubmissionCallback;

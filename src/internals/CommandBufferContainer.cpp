@@ -145,7 +145,10 @@ star::Handle star::CommandBufferContainer::add(
     const star::Queue_Type &type, const star::Command_Buffer_Order &order,
     const star::Command_Buffer_Order_Index &subOrder)
 {
-    star::Handle newHandle = star::Handle(this->allBuffers.size(), star::Handle_Type::buffer);
+    uint32_t count = 0; 
+    CastHelpers::SafeCast<size_t, uint32_t>(this->allBuffers.size(), count); 
+
+    star::Handle newHandle = star::Handle(star::Handle_Type::buffer, count);
     const int bufferIndex = this->allBuffers.size();
 
     this->allBuffers.push_back(std::move(newRequest));

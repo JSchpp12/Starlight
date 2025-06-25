@@ -27,7 +27,7 @@ star::Handle star::ManagerRenderResource::addRequest(
     {
         newFull->cpuWorkDoneByTransferThread.store(false);
         managerWorker->add(newFull->cpuWorkDoneByTransferThread,
-                           std::move(newFull->bufferRequest->createTransferRequest(*managerDevice)), newFull->buffer,
+                           newFull->bufferRequest->createTransferRequest(*managerDevice), newFull->buffer,
                            isHighPriority);
         newFull->bufferRequest.release();
     }
@@ -48,12 +48,12 @@ star::Handle star::ManagerRenderResource::addRequest(
     bool isStatic = !newRequest->getFrameInFlightIndexToUpdateOn().has_value();
 
     auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest));
-	
+
     if (isStatic)
     {
         newFull->cpuWorkDoneByTransferThread.store(false);
         managerWorker->add(newFull->cpuWorkDoneByTransferThread,
-                           std::move(newFull->textureRequest->createTransferRequest(*managerDevice)), newFull->texture,
+                           newFull->textureRequest->createTransferRequest(*managerDevice), newFull->texture,
                            isHighPriority);
 
         newFull->textureRequest.release();
@@ -77,22 +77,24 @@ void star::ManagerRenderResource::update(const int &frameInFlightIndex)
         // check if the request is still in processing by GPU -- wait if it is
         for (auto &request : bufferStorage->getDynamicMap())
         {
-            std::unique_ptr<FinalizedRenderRequest> *container = request.second;
+            std::unique_ptr<FinalizedRenderRequest> &container = bufferStorage->at(request.second);
 
             // check the requests which need updating this frame
-            if ((container->get()->bufferRequest && !container->get()->bufferRequest->isValid(frameInFlightIndex)) ||
-                (container->get()->textureRequest && !container->get()->textureRequest->isValid(frameInFlightIndex)))
+            if ((container->bufferRequest && !container->bufferRequest->isValid(frameInFlightIndex)) ||
+                (container->textureRequest && !container->textureRequest->isValid(frameInFlightIndex)))
             {
-                requestsToUpdate.push_back(container->get());
+                requestsToUpdate.push_back(container.get());
             }
         }
     }
 
-	for (auto &request : requestsToUpdate){
-		if(!request->cpuWorkDoneByTransferThread.load()){
-			request->cpuWorkDoneByTransferThread.wait(false);
-		}
-	}
+    for (auto &request : requestsToUpdate)
+    {
+        if (!request->cpuWorkDoneByTransferThread.load())
+        {
+            request->cpuWorkDoneByTransferThread.wait(false);
+        }
+    }
 
     for (int i = 0; i < requestsToUpdate.size(); i++)
     {
@@ -100,13 +102,13 @@ void star::ManagerRenderResource::update(const int &frameInFlightIndex)
         if (requestsToUpdate[i]->bufferRequest)
         {
             managerWorker->add(requestsToUpdate[i]->cpuWorkDoneByTransferThread,
-                               std::move(requestsToUpdate[i]->bufferRequest->createTransferRequest(*managerDevice)),
+                               requestsToUpdate[i]->bufferRequest->createTransferRequest(*managerDevice),
                                requestsToUpdate[i]->buffer, true);
         }
         else if (requestsToUpdate[i]->textureRequest)
         {
             managerWorker->add(requestsToUpdate[i]->cpuWorkDoneByTransferThread,
-                               std::move(requestsToUpdate[i]->textureRequest->createTransferRequest(*managerDevice)),
+                               requestsToUpdate[i]->textureRequest->createTransferRequest(*managerDevice),
                                requestsToUpdate[i]->texture, true);
         }
     }
@@ -138,15 +140,16 @@ bool star::ManagerRenderResource::isReady(const star::Handle &handle)
     // check the fence for the buffer request
     std::unique_ptr<FinalizedRenderRequest> &container = bufferStorage->get(handle);
 
-	return container->cpuWorkDoneByTransferThread.load();
+    return container->cpuWorkDoneByTransferThread.load();
 }
 
 void star::ManagerRenderResource::waitForReady(const Handle &handle)
 {
     std::unique_ptr<FinalizedRenderRequest> &container = bufferStorage->get(handle);
 
-    bool value = container->cpuWorkDoneByTransferThread.load(); 
-    if (!value){
+    bool value = container->cpuWorkDoneByTransferThread.load();
+    if (!value)
+    {
         container->cpuWorkDoneByTransferThread.wait(false);
     }
 }

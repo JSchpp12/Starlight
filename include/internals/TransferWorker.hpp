@@ -2,13 +2,11 @@
 
 #include "Allocator.hpp"
 #include "Handle.hpp"
-#include "SharedFence.hpp"
 #include "StarBuffer.hpp"
 #include "StarDevice.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
 
-#include "SharedFence.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarCommandPool.hpp"
 #include "StarQueueFamily.hpp"
@@ -104,31 +102,30 @@ class TransferManagerThread
         }
 
         boost::atomic<bool> *shouldRun = nullptr;
-        std::vector<boost::lockfree::stack<InterThreadRequest *> *> *workingRequestQueues = nullptr;
-
         vk::Device device = vk::Device();
-        VmaAllocator allocator = VmaAllocator();
         std::shared_ptr<StarCommandPool> commandPool = nullptr;
         std::vector<StarQueue> queues = std::vector<StarQueue>();
+        VmaAllocator allocator = VmaAllocator();
         vk::PhysicalDeviceProperties deviceProperties = vk::PhysicalDeviceProperties();
+        std::vector<boost::lockfree::stack<InterThreadRequest *> *> *workingRequestQueues = nullptr;
         std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
     };
 
-    TransferManagerThread() = default;
-
     TransferManagerThread(StarDevice &device, VmaAllocator &allocator,
                           std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
-                          const vk::PhysicalDeviceProperties &deviceLimits, std::vector<StarQueue> myQueues,
+                          const vk::PhysicalDeviceProperties &deviceProperties, std::vector<StarQueue> myQueues,
                           StarQueueFamily &queueFamilyToUse,
                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
 
-    TransferManagerThread(const TransferManagerThread &) = delete;
-    TransferManagerThread &operator=(const TransferManagerThread &) = delete;
+    ~TransferManagerThread(); 
 
-    ~TransferManagerThread();
+    TransferManagerThread(const TransferManagerThread &) = delete;
+    // can be moved
+    TransferManagerThread(TransferManagerThread &&) = delete;
+    TransferManagerThread &operator=(TransferManagerThread &&) = delete;
 
     void startAsync();
-
+    
     void stopAsync();
 
     void cleanup();
@@ -155,24 +152,17 @@ class TransferManagerThread
     static void EnsureInfoReady(vk::Device &device, ProcessRequestInfo &processInfo);
 
   protected:
-    StarQueueFamily &familyToUse;
-    bool ownsVulkanResources = false;
-
     StarDevice &device;
-    std::vector<StarQueue> myQueues;
     VmaAllocator allocator = VmaAllocator();
-    std::shared_ptr<StarCommandPool> myCommandPool = nullptr;
-    const vk::PhysicalDeviceProperties deviceProperties;
-    size_t previousBufferIndexUsed = 0;
-    std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
-
     std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues;
+    vk::PhysicalDeviceProperties deviceProperties;
+    std::vector<StarQueue> myQueues;
+    StarQueueFamily &familyToUse;
+    std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
 
     boost::atomic<bool> shouldRun = false;
     boost::thread thread;
-
-    static void transitionImageLayout(StarTexture &image, vk::CommandBuffer &commandBuffer, const vk::Format &format,
-                                      const vk::ImageLayout &oldLayout, const vk::ImageLayout &newLayout);
+        std::shared_ptr<StarCommandPool> myCommandPool = nullptr;
 };
 
 class TransferWorker

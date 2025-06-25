@@ -18,6 +18,8 @@ class GlobalInfo : public Buffer
     {
     }
 
+    virtual ~GlobalInfo(){}
+
     std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const override;
 
     std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator,

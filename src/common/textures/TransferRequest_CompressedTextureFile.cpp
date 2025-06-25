@@ -19,11 +19,20 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::CompressedTextureFile::
     ktxTexture2 *texture = nullptr;
     this->compressedTexture->giveMeTranscodedImage(lock, texture);
 
-    return std::make_unique<StarBuffer>(allocator, texture->dataSize, 1,
-                                        VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                                        VMA_MEMORY_USAGE_AUTO, vk::BufferUsageFlagBits::eTransferSrc,
-                                        vk::SharingMode::eConcurrent, "CompressedTexture_TransferSRCBuffer");
+    return StarBuffer::Builder(allocator)
+        .setAllocationCreateInfo(
+            Allocator::AllocationBuilder()
+                .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
+                .setUsage(VMA_MEMORY_USAGE_AUTO)
+                .build(),
+            vk::BufferCreateInfo()
+                .setSharingMode(vk::SharingMode::eExclusive)
+                .setSize(texture->dataSize)
+                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+            "CompressedTexture" + this->compressedTexture->getPathToFile() + "_TransferSRC")
+        .setInstanceCount(1)
+        .setInstanceSize(texture->dataSize)
+        .build();
 }
 
 std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile::createFinal(
@@ -126,6 +135,9 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(star
     {
         ktx_size_t offset;
         KTX_error_code result = ktxTexture_GetImageOffset((ktxTexture *)texture, i, 0, 0, &offset);
+
+        if (result != ktx_error_code_e::KTX_SUCCESS)
+            throw std::runtime_error("Failed to process compressed texture"); 
 
         vk::BufferImageCopy copyRegion{};
         copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;

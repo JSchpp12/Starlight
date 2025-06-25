@@ -228,14 +228,14 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
 	StarDescriptorSetLayout::Builder updateSetBuilder = StarDescriptorSetLayout::Builder(device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 		.addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
-	allSets.push_back(std::move(updateSetBuilder.build())); 
+	allSets.emplace_back(updateSetBuilder.build()); 
 
 	auto staticSet = staticSetBuilder.build(); 
 
 	if (staticSet->getBindings().size() > 0)
 		allSets.push_back(std::move(staticSet)); 
 
-	return std::move(allSets); 
+	return allSets; 
 }
 
 void star::StarObject::prepareMeshes(star::StarDevice& device)

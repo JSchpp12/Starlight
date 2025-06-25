@@ -2,7 +2,7 @@
 
 #include <boost/functional/hash/hash.hpp>
 
-size_t star::Handle::id_counter = 0;
+uint32_t star::Handle::id_counter = 0;
 
 size_t star::HandleHash::operator()(const star::Handle& handle) const noexcept{
     size_t result = 0;

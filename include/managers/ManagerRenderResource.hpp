@@ -5,7 +5,6 @@
 #include "ManagerController_RenderResource_Buffer.hpp"
 #include "ManagerController_RenderResource_Texture.hpp"
 #include "ManagerStorageContainer.hpp"
-#include "SharedFence.hpp"
 #include "StarBuffer.hpp"
 #include "StarDevice.hpp"
 #include "StarManager.hpp"

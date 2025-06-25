@@ -35,6 +35,8 @@ class LightInfo : public Buffer
         }
     }
 
+    virtual ~LightInfo(){}
+
     std::unique_ptr<StarBuffer> createStagingBuffer(
         vk::Device &device, VmaAllocator &allocator) const override;
 

@@ -19,8 +19,6 @@ star::StarCamera::StarCamera(const uint32_t &width, const uint32_t &height, cons
 
 glm::mat4 star::StarCamera::getViewMatrix() const
 {
-    glm::vec3 position = this->getPosition();
-
     return glm::lookAt(this->getPosition(), this->getPosition() + glm::vec3(this->getForwardVector()),
                        glm::vec3(this->getUpVector()));
 }
