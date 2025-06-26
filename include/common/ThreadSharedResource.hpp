@@ -9,7 +9,6 @@ namespace star{
         ThreadSharedResource(T* resource = nullptr) : resource(resource){}; 
 
         virtual ~ThreadSharedResource(){
-            // delete(this->resource);
             this->resource = nullptr;
         }
 
