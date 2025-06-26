@@ -17,7 +17,7 @@ class StarCamera : public StarEntity
     StarCamera(const uint32_t &width, const uint32_t &height, const float &horizontalFieldOfView,
                const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance);
 
-    ~StarCamera() = default;
+    virtual ~StarCamera(){}
 
     glm::mat4 getViewMatrix() const;
 

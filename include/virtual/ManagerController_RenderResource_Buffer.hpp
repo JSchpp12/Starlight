@@ -15,6 +15,8 @@ class Buffer : public star::ManagerController::Controller<TransferRequest::Buffe
     Buffer(const uint8_t &frameInFlightIndexToUpdateOn)
         : star::ManagerController::Controller<TransferRequest::Buffer>(frameInFlightIndexToUpdateOn) {};
 
+    virtual ~Buffer() = default; 
+
     virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(StarDevice &device) override = 0;
 
   protected:

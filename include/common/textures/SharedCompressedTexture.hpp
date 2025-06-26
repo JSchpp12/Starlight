@@ -14,7 +14,7 @@ namespace star{
     public:
         SharedCompressedTexture(const std::string& pathToFile, const vk::PhysicalDevice& physicalDevice); 
         
-        ~SharedCompressedTexture() override;
+        virtual ~SharedCompressedTexture();
 
         void giveMeTranscodedImage(boost::unique_lock<boost::mutex>& lock, ktxTexture2*& texture); 
         

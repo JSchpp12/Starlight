@@ -5,10 +5,9 @@
 
 namespace star {
 	struct BufferHandle : public Handle {
-		BufferHandle(const uint32_t id, const size_t targetBufferOffset) : Handle(id, star::Handle_Type::buffer), targetBufferOffset(targetBufferOffset) {}
-		BufferHandle(const uint32_t id) : Handle(id, star::Handle_Type::buffer) {};
+		BufferHandle(const uint32_t &id, const size_t &targetBufferOffset) : Handle(star::Handle_Type::buffer, id), targetBufferOffset(targetBufferOffset) {}
+		BufferHandle(const uint32_t id) : Handle(star::Handle_Type::buffer, id) {};
 
 		size_t targetBufferOffset = 0; 
-
 	};
 }

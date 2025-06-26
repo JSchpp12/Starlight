@@ -6,7 +6,7 @@ void star::StarApplication::init(StarDevice &device, const StarWindow &window, c
 {
     this->scene = createInitialScene(device, window, numFramesInFlight);
     this->swapChainRenderer = createPresentationRenderer(device, window, numFramesInFlight);
-    startup(device, window, numFramesInFlight); 
+    startup(device, window, numFramesInFlight);
 }
 
 void star::StarApplication::cleanup()
@@ -18,6 +18,5 @@ void star::StarApplication::cleanup()
 std::shared_ptr<star::SwapChainRenderer> star::StarApplication::createPresentationRenderer(
     StarDevice &device, const StarWindow &window, const uint8_t &numFramesInFlight)
 {
-    return std::shared_ptr<star::SwapChainRenderer>(
-        new star::SwapChainRenderer(window, this->scene, device, numFramesInFlight));
+    return std::make_shared<star::SwapChainRenderer>(this->scene, window, device, numFramesInFlight);
 }

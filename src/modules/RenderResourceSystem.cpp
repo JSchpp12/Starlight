@@ -29,7 +29,7 @@ void star::RenderResourceSystem::bind(const Handle& resource, vk::CommandBuffer&
 		bindBuffer(resource.getID(), commandBuffer);
 		break;
 	default:
-		throw std::runtime_error("Unsupported resource type requested for bind operation " + resource.getType());
+		throw std::runtime_error("Unsupported resource type requested for bind operation. Handle must have a buffer type");
 	}
 }
 
@@ -55,7 +55,7 @@ void star::RenderResourceSystem::cleanup(StarDevice& device)
 
 void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 {
-	vk::DeviceSize totalVertSize = 0, totalVertInstanceCount = 0, totalIndSize = 0, totalIndInstanceCount = 0;
+	vk::DeviceSize totalVertSize = 0, totalVertInstanceCount = 0, totalIndInstanceCount = 0;
 	std::vector<std::unique_ptr<StarBuffer>> stagingBuffersVert, stagingBuffersIndex; 
 
 	while (!loadGeometryCallbacks.empty()) {
@@ -76,7 +76,6 @@ void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 
 			totalVertSize += result.first->getBufferSize();
 			totalVertInstanceCount += result.first->getInstanceCount();
-			totalIndSize += result.second->getInstanceSize();
 			totalIndInstanceCount += result.second->getInstanceCount();
 			stagingBuffersVert.push_back(std::move(result.first));
 			stagingBuffersIndex.push_back(std::move(result.second));

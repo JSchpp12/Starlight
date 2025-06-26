@@ -97,22 +97,31 @@ void StarRenderGroup::addObject(StarObject& newObject) {
 	this->numMeshes += newObject.getMeshes().size();
 }
 
-void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex) {
+void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, const int &frameInFlightIndex) {
 	for (auto& group : this->groups) {
-		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, swapChainImageIndex);
+		group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, frameInFlightIndex);
 		for (auto& obj : group.objects) {
 			//record commands for each object
-			obj.object.recordRenderPassCommands(mainDrawBuffer, this->pipelineLayout, swapChainImageIndex);
+			obj.object.recordRenderPassCommands(mainDrawBuffer, this->pipelineLayout, frameInFlightIndex);
 		}
 	}
 }
 
-void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex)
+void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, const int &frameInFlightIndex)
 {
 	for (auto& group : this->groups) {
-		group.baseObject.object.recordPreRenderPassCommands(mainDrawBuffer, swapChainImageIndex); 
+		group.baseObject.object.recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex); 
 		for (auto& obj : group.objects) {
-			obj.object.recordPreRenderPassCommands(mainDrawBuffer, swapChainImageIndex);
+			obj.object.recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex);
+		}
+	}
+}
+
+void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex){
+	for (auto &group : this->groups){
+		group.baseObject.object.recordPostRenderPassCommands(commandBuffer, frameInFlightIndex); 
+		for (auto &obj : group.objects){
+			obj.object.recordPostRenderPassCommands(commandBuffer, frameInFlightIndex); 
 		}
 	}
 }
@@ -132,7 +141,6 @@ void StarRenderGroup::init(StarShaderInfo::Builder initEngineBuilder, RenderingT
 
 bool StarRenderGroup::isObjectCompatible(StarObject& object)
 {
-	bool descriptorSetsCompatible = false; 
 	//check if descriptor layouts are compatible
 	auto compLayouts = object.getDescriptorSetLayouts(device);
 
@@ -154,17 +162,13 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 
 void StarRenderGroup::prepareObjects(StarShaderInfo::Builder& groupBuilder, RenderingTargetInfo renderingInfo) {
 	//get descriptor sets from objects and place into render structs
-	int objCounter = 0;
 
 	for (auto& group : this->groups) {
 		//prepare base object
 		group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, renderingInfo, numSwapChainImages, groupBuilder);
-		objCounter++; 
 
 		for (auto& renderObject : group.objects) {
 			renderObject.object.prepRender(device, numSwapChainImages, group.baseObject.object.getPipline(), groupBuilder);
-
-			objCounter++;
 		}
 	}
 }

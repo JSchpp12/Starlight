@@ -13,7 +13,8 @@ namespace star {
 //base class to inherit from if an application wishes to handle user interaction such as keyboard callbacks and mouse movement
 class Interactivity {
 public:
-
+	virtual ~Interactivity(){}; 
+	
 	virtual void onKeyPress(int key, int scancode, int mods){};
 
 	virtual void onKeyRelease(int key, int scancode, int mods){}; 

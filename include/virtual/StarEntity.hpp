@@ -9,6 +9,8 @@ class StarEntity {
 public:
 	glm::vec3 positionCoords = glm::vec3();
 
+	virtual ~StarEntity(){}
+	
 	StarEntity();
 
 	StarEntity(const glm::vec3& position);

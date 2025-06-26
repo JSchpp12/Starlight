@@ -84,11 +84,9 @@ void StarDevice::updatePreferredFamilies(const star::Queue_Type &type)
 
 void StarDevice::createInstance()
 {
-    uint32_t extensionCount = 0;
-
     std::cout << "Creating vulkan instance..." << std::endl;
 
-    if (enableValidationLayers && !checkValidationLayerSupport())
+    if (enableValidationLayers && !CheckValidationLayerSupport(this->validationLayers))
     {
         throw std::runtime_error("validation layers requested, but not available");
     }
@@ -102,30 +100,30 @@ void StarDevice::createInstance()
     appInfo.apiVersion = vk::ApiVersion13;
 
     // enumerate required extensions
-    auto requriedExtensions = this->getRequiredExtensions();
+    auto requiredInstanceExtensions = this->getRequiredExtensions();
 
     std::cout << "Instance requested with extensions: " << std::endl;
-    for (auto ext : requriedExtensions)
+    for (auto ext : requiredInstanceExtensions)
     {
         std::cout << ext << std::endl;
     }
 
-    vk::InstanceCreateInfo createInfo{};
-    createInfo.sType = vk::StructureType::eInstanceCreateInfo;
-    createInfo.pApplicationInfo = &appInfo;
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(requriedExtensions.size());
-    createInfo.ppEnabledExtensionNames = requriedExtensions.data();
-    createInfo.enabledLayerCount = 0;
-    if (isMac)
-        createInfo.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
-    if (enableValidationLayers)
     {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-        createInfo.ppEnabledLayerNames = validationLayers.data();
-    }
-    else
-    {
-        createInfo.enabledLayerCount = 0;
+        uint32_t extensionCount = uint32_t(); 
+        CastHelpers::SafeCast<size_t, uint32_t>(requiredInstanceExtensions.size(), extensionCount);
+
+        uint32_t validationLayerCount = uint32_t(); 
+        CastHelpers::SafeCast<size_t, uint32_t>(validationLayers.size(), validationLayerCount);
+
+        vk::InstanceCreateInfo createInfo = vk::InstanceCreateInfo()
+            .setEnabledExtensionCount(extensionCount)
+            .setPEnabledExtensionNames(requiredInstanceExtensions)
+            .setEnabledLayerCount(this->enableValidationLayers ? validationLayerCount : 0)
+            .setPEnabledLayerNames(this->enableValidationLayers ? validationLayers : vk::ArrayProxyNoTemporaries<const char* const>{})
+            .setPApplicationInfo(&appInfo)
+            .setFlags(this->isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR : vk::InstanceCreateFlags());
+
+        this->instance = vk::createInstance(createInfo);
     }
 
     /*
@@ -134,7 +132,6 @@ void StarDevice::createInstance()
         2.pointer to custom allocator callbacks, (nullptr) here
         3.pointer to the variable that stores the handle to the new object
     */
-    this->instance = vk::createInstance(createInfo);
 
     hasGlfwRequiredInstanceExtensions();
 }
@@ -148,12 +145,12 @@ void StarDevice::pickPhysicalDevice()
     vk::PhysicalDevice picked;
 
     // check devices and see if they are suitable for use
-    for (const auto &device : devices)
+    for (const auto &nDevice : devices)
     {
-        if (isDeviceSuitable(device))
+        if (IsDeviceSuitable(this->requiredDeviceExtensions, this->requiredDeviceFeatures, nDevice, *this->surface))
         {
-            if (device)
-                suitableDevices.push_back(device);
+            if (nDevice)
+                suitableDevices.push_back(nDevice);
         }
     }
 
@@ -161,16 +158,16 @@ void StarDevice::pickPhysicalDevice()
     std::vector<vk::PhysicalDevice> optimalDevices = std::vector<vk::PhysicalDevice>();
     vk::PhysicalDevice optimalDevice;
     uint32_t largestQueueFamilyCount = 0;
-    for (const auto &device : suitableDevices)
+    for (const auto &nDevice : suitableDevices)
     {
-        auto indicies = findQueueFamilies(device);
+        auto indicies = FindQueueFamilies(nDevice, *this->surface);
         if (indicies.isOptimalSupport())
         {
             // try to pick the device that has the most seperate queue families
             if (indicies.getUniques().size() > largestQueueFamilyCount)
             {
                 largestQueueFamilyCount = CastHelpers::size_t_to_unsigned_int(indicies.getUniques().size());
-                optimalDevice = device;
+                optimalDevice = nDevice;
             }
         }
     }
@@ -178,12 +175,12 @@ void StarDevice::pickPhysicalDevice()
     // check for a fully supported device
     if (!optimalDevice)
     {
-        for (const auto &device : devices)
+        for (const auto &nDevice : devices)
         {
-            auto indicies = findQueueFamilies(device);
+            auto indicies = FindQueueFamilies(nDevice, *this->surface);
             if (indicies.isFullySupported())
             {
-                picked = device;
+                picked = nDevice;
             }
         }
     }
@@ -217,23 +214,22 @@ void StarDevice::pickPhysicalDevice()
 
 void StarDevice::createLogicalDevice()
 {
-    QueueFamilyIndicies indicies = findQueueFamilies(this->physicalDevice);
+    QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, *this->surface);
 
     // need multiple structs since we now have a seperate family for presenting and graphics
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
     auto uniqueIndices = indicies.getUniques();
     std::set<uint32_t> uniqueQueueFamilies = indicies.getUniques();
 
-    float priority = 1.0f;
     for (auto uniqueIndex : uniqueQueueFamilies)
     {
         auto newFamily = std::make_unique<StarQueueFamily>(uniqueIndex, indicies.getNumQueuesForIndex(uniqueIndex),
                                                            indicies.getSupportForIndex(uniqueIndex),
                                                            indicies.getSupportsPresentForIndex(uniqueIndex));
 
-        if (!this->defaultFamily && newFamily->doesSupport(star::Queue_Type::Tgraphics) &
-                                        newFamily->doesSupport(star::Queue_Type::Tpresent) &
-                                        newFamily->doesSupport(star::Queue_Type::Ttransfer) &
+        if (!this->defaultFamily && newFamily->doesSupport(star::Queue_Type::Tgraphics) &&
+                                        newFamily->doesSupport(star::Queue_Type::Tpresent) &&
+                                        newFamily->doesSupport(star::Queue_Type::Ttransfer) &&
                                         newFamily->doesSupport(star::Queue_Type::Tcompute))
         {
             this->defaultFamily = std::move(newFamily);
@@ -246,25 +242,36 @@ void StarDevice::createLogicalDevice()
         }
     }
 
+    assert(this->defaultFamily && "A default family which supports all features was not found");
+
     auto dynamicRenderingFeatures = vk::PhysicalDeviceDynamicRenderingFeatures().setDynamicRendering(true);
 
     auto syncFeatures =
         vk::PhysicalDeviceSynchronization2Features().setSynchronization2(true).setPNext(&dynamicRenderingFeatures);
 
-    // Create actual logical device
-    const vk::DeviceCreateInfo createInfo{
-        vk::DeviceCreateFlags(),                                                             // device creation flags
-        static_cast<uint32_t>(queueCreateInfos.size()),                                      // queue create info count
-        queueCreateInfos.data(),                                                             // device queue create info
-        enableValidationLayers ? static_cast<uint32_t>(requiredDeviceExtensions.size()) : 0, // enabled layer count
-        enableValidationLayers ? requiredDeviceExtensions.data() : VK_NULL_HANDLE,           // enables layer names
-        static_cast<uint32_t>(requiredDeviceExtensions.size()),                              // enabled extension coun
-        requiredDeviceExtensions.data(),                                                     // enabled extension names
-        &this->requiredDeviceFeatures,                                                       // enabled features
-        &syncFeatures};
+        {
+            uint32_t numDeviceExtensions = uint32_t();
+            CastHelpers::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
 
-    // call to create the logical device
-    this->vulkanDevice = physicalDevice.createDevice(createInfo);
+            uint32_t numValidationLayers = uint32_t(); 
+            CastHelpers::SafeCast<size_t, uint32_t>(validationLayers.size(), numValidationLayers); 
+
+            uint32_t numQueues = uint32_t(); 
+            CastHelpers::SafeCast<size_t, uint32_t>(queueCreateInfos.size(), numQueues); 
+
+            const vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
+                .setQueueCreateInfoCount(numQueues)
+                .setPQueueCreateInfos(queueCreateInfos.data())
+                .setEnabledExtensionCount(numDeviceExtensions)
+                .setPEnabledExtensionNames(requiredDeviceExtensions)
+                .setPEnabledFeatures(&requiredDeviceFeatures)
+                .setEnabledLayerCount(numValidationLayers)
+                .setPEnabledLayerNames(validationLayers)
+                .setPNext(syncFeatures);
+
+            // call to create the logical device
+            this->vulkanDevice = physicalDevice.createDevice(createInfo);
+        }
 
     this->defaultCommandPool =
         std::make_shared<StarCommandPool>(this->vulkanDevice, this->defaultFamily->getQueueFamilyIndex(), true);
@@ -290,14 +297,14 @@ void StarDevice::createAllocator()
         std::make_unique<star::Allocator>(this->getDevice(), this->getPhysicalDevice(), this->getInstance());
 }
 
-bool StarDevice::isDeviceSuitable(vk::PhysicalDevice device)
+bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface)
 {
     bool swapChainAdequate = false;
-    QueueFamilyIndicies indicies = findQueueFamilies(device);
-    bool extensionsSupported = checkDeviceExtensionSupport(device);
-    if (extensionsSupported)
+    QueueFamilyIndicies indicies = FindQueueFamilies(device, surface);
+    bool extensionsSupported = CheckDeviceExtensionSupport(device, requiredDeviceExtensions);
+    if (extensionsSupported && DoesDeviceSupportPresentation(device, surface))
     {
-        SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+        SwapChainSupportDetails swapChainSupport = QuerySwapchainSupport(device, surface);
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
@@ -316,10 +323,8 @@ bool StarDevice::isDeviceSuitable(vk::PhysicalDevice device)
     return false;
 }
 
-bool StarDevice::checkValidationLayerSupport()
+bool StarDevice::CheckValidationLayerSupport(const std::vector<const char *> &validationLayers)
 {
-    uint32_t layerCount = 0;
-
     std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
 
     for (const char *layerName : validationLayers)
@@ -390,7 +395,7 @@ void StarDevice::hasGlfwRequiredInstanceExtensions()
     }
 }
 
-bool StarDevice::checkDeviceExtensionSupport(vk::PhysicalDevice device)
+bool StarDevice::CheckDeviceExtensionSupport(const vk::PhysicalDevice &device, const std::vector<const char *> &requiredDeviceExtensions)
 {
     uint32_t extensionCount;
     {
@@ -411,15 +416,13 @@ bool StarDevice::checkDeviceExtensionSupport(vk::PhysicalDevice device)
     // iterate through extensions looking for those that are required
     for (const auto &extension : availableExtensions)
     {
-        if (strcmp(extension.extensionName, "VK_KHR_portability_subset") == 0)
-            this->requiredDeviceExtensions.push_back("VK_KHR_portability_subset");
         requiredExtensions.erase(extension.extensionName);
     }
 
     return requiredExtensions.empty();
 }
 
-QueueFamilyIndicies StarDevice::findQueueFamilies(vk::PhysicalDevice device)
+QueueFamilyIndicies StarDevice::FindQueueFamilies(const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface)
 {
     QueueFamilyIndicies indicies;
 
@@ -428,7 +431,7 @@ QueueFamilyIndicies StarDevice::findQueueFamilies(vk::PhysicalDevice device)
     uint32_t i = 0;
     for (const auto &queueFamily : queueFamilies)
     {
-        vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, this->surface.get());
+        vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, surface);
 
         indicies.registerFamily(i, queueFamily.queueFlags, presentSupport, queueFamily.queueCount);
         i++;
@@ -470,7 +473,7 @@ bool StarDevice::verifyImageCreate(vk::ImageCreateInfo imageInfo)
         vk::ImageFormatProperties pros = this->physicalDevice.getImageFormatProperties(
             imageInfo.format, imageInfo.imageType, imageInfo.tiling, imageInfo.usage, imageInfo.flags);
     }
-    catch (std::exception ex)
+    catch (const std::exception &ex)
     {
         std::cout << "An error occurred while attempting to verify new image: " << ex.what() << std::endl;
         return false;
@@ -478,8 +481,8 @@ bool StarDevice::verifyImageCreate(vk::ImageCreateInfo imageInfo)
     return true;
 }
 
-vk::Format StarDevice::findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
-                                           vk::FormatFeatureFlags features)
+bool StarDevice::findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
+                                           vk::FormatFeatureFlags features, vk::Format &selectedFormat) const
 {
     for (vk::Format format : candidates)
     {
@@ -492,15 +495,17 @@ vk::Format StarDevice::findSupportedFormat(const std::vector<vk::Format> &candid
         // check if the properties matches the requirenments for tiling
         if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features)
         {
-            return format;
+            selectedFormat = format;
+            return true;
         }
         else if ((tiling == vk::ImageTiling::eOptimal) && (props.optimalTilingFeatures & features) == features)
         {
-            return format;
+            selectedFormat = format;
+            return true;
         }
     }
 
-    throw std::runtime_error("failed to find supported format!");
+    return false;
 }
 
 star::StarQueueFamily &StarDevice::getQueueFamily(const star::Queue_Type &type)
@@ -625,7 +630,8 @@ void StarDevice::endSingleTimeCommands(std::unique_ptr<StarCommandBuffer> comman
 {
     commandBuff->buffer().end();
 
-    commandBuff->getFinalizedSubmitInfo().submit(this->defaultFamily->getQueues().at(0).getVulkanQueue());
+    commandBuff->submit(0, this->defaultFamily->getQueues().at(0).getVulkanQueue()); 
+
     commandBuff->wait();
     this->defaultFamily->getQueues().at(0).getVulkanQueue().waitIdle();
 }
@@ -701,23 +707,23 @@ void StarDevice::createImageWithInfo(const vk::ImageCreateInfo &imageInfo, vk::M
     this->vulkanDevice.bindImageMemory(image, imageMemory, 0);
 }
 
-SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice device)
+SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface)
 {
     SwapChainSupportDetails details;
     uint32_t formatCount, presentModeCount;
 
     // get surface capabilities
-    details.capabilities = device.getSurfaceCapabilitiesKHR(this->surface.get());
+    details.capabilities = device.getSurfaceCapabilitiesKHR(surface);
 
     {
-        const auto result = device.getSurfaceFormatsKHR(this->surface.get(), &formatCount, nullptr);
+        const auto result = device.getSurfaceFormatsKHR(surface, &formatCount, nullptr);
         if (result != vk::Result::eSuccess){
             throw std::runtime_error("Failed to get any surface formats from device"); 
         }
     }
 
     {
-        const auto result = device.getSurfacePresentModesKHR(this->surface.get(), &presentModeCount, nullptr);  
+        const auto result = device.getSurfacePresentModesKHR(surface, &presentModeCount, nullptr);  
         if (result != vk::Result::eSuccess){
             throw std::runtime_error("Failed to get surface present modes from device");
         }
@@ -728,7 +734,7 @@ SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice dev
         // resize vector in order to hold all available formats
         details.formats.resize(formatCount);
 
-        const auto result = device.getSurfaceFormatsKHR(this->surface.get(), &formatCount, details.formats.data());
+        const auto result = device.getSurfaceFormatsKHR(surface, &formatCount, details.formats.data());
         if (result != vk::Result::eSuccess){
             throw std::runtime_error("Failed to get surface present modes from device"); 
         }
@@ -739,7 +745,7 @@ SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice dev
         // resize for same reasons as format
         details.presentModes.resize(presentModeCount);
 
-        const auto result = device.getSurfacePresentModesKHR(this->surface.get(), &presentModeCount, details.presentModes.data());
+        const auto result = device.getSurfacePresentModesKHR(surface, &presentModeCount, details.presentModes.data());
         if (result != vk::Result::eSuccess){
             throw std::runtime_error("Failed to get surface present modes from device");
         }
@@ -747,8 +753,18 @@ SwapChainSupportDetails StarDevice::querySwapChainSupport(vk::PhysicalDevice dev
 
     return details;
 }
-bool star::StarDevice::checkDynamicRenderingSupport()
+bool StarDevice::DoesDeviceSupportPresentation(vk::PhysicalDevice physicalDevice, const vk::SurfaceKHR &surface)
 {
+    uint32_t queueFamilyCount;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+    for (uint32_t i = 0; i < queueFamilyCount; ++i) {
+        if (physicalDevice.getSurfaceSupportKHR(i, surface))
+            return true; 
+    }
     return false;
 }
 } // namespace star

@@ -39,7 +39,10 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
 
 StarEngine::~StarEngine()
 {
-    this->renderingDevice->getDevice().waitIdle();
+    this->transferWorker.reset(); 
+    ManagerRenderResource::cleanup(*this->renderingDevice);
+    RenderResourceSystem::cleanup(*this->renderingDevice);
+    StarObject::cleanupSharedResources(*this->renderingDevice);
 }
 
 void StarEngine::run()
@@ -52,7 +55,8 @@ void StarEngine::run()
 
     // prepare any shared resources
     StarObject::initSharedResources(*this->renderingDevice, this->window->getExtent(), framesInFlight,
-                                    this->mainRenderer->getGlobalShaderInfo(), this->mainRenderer->getRenderingInfo());
+                            this->mainRenderer->getGlobalShaderInfo(), this->mainRenderer->getRenderTargetInfo());
+
 
     uint8_t currentFrame = 0;
     while (!window->shouldClose())
@@ -72,9 +76,6 @@ void StarEngine::run()
     }
 
     this->renderingDevice->getDevice().waitIdle();
-    ManagerRenderResource::cleanup(*this->renderingDevice);
-    RenderResourceSystem::cleanup(*this->renderingDevice);
-    StarObject::cleanupSharedResources(*this->renderingDevice);
 }
 
 std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()

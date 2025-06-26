@@ -4,7 +4,6 @@
 #include "StarCommandPool.hpp"
 #include "StarQueue.hpp"
 
-
 #include "vulkan/vulkan.hpp"
 
 #include <memory>
@@ -20,44 +19,6 @@ namespace star
 class StarCommandBuffer
 {
   public:
-    struct FinalizedSubmitInfo
-    {
-      public:
-        FinalizedSubmitInfo(vk::CommandBuffer commandBuffer, std::vector<vk::Semaphore> waits,
-                            std::vector<vk::PipelineStageFlags> waitPoints, std::vector<vk::Semaphore> signalSemaphores)
-            : commandBuffer(commandBuffer), waits(waits), waitPoints(waitPoints), signalSemaphores(signalSemaphores) {};
-
-        FinalizedSubmitInfo(vk::CommandBuffer commandBuffer, std::vector<vk::Semaphore> waits,
-                            std::vector<vk::PipelineStageFlags> waitPoints, std::vector<vk::Semaphore> signalSemaphores,
-                            vk::Fence doneFence)
-            : commandBuffer(commandBuffer), waits(waits), waitPoints(waitPoints), signalSemaphores(signalSemaphores),
-              doneFence(doneFence) {};
-
-        vk::SubmitInfo getVulkanSubmitInfo()
-        {
-            return vk::SubmitInfo()
-                .setCommandBufferCount(1)
-                .setPCommandBuffers(&this->commandBuffer)
-                .setWaitSemaphoreCount(this->waits.size() > 0 ? (uint32_t)this->waits.size() : 0)
-                .setPWaitSemaphores(this->waits.size() > 0 ? this->waits.data() : nullptr)
-                .setPWaitDstStageMask(this->waits.size() > 0 ? this->waitPoints.data() : nullptr)
-                .setSignalSemaphoreCount(this->signalSemaphores.size() > 0 ? this->signalSemaphores.size() : 0)
-                .setPSignalSemaphores(this->signalSemaphores.size() > 0 ? this->signalSemaphores.data() : nullptr);
-        }
-
-        void submit(vk::Queue &targetQueue)
-        {
-            targetQueue.submit(this->getVulkanSubmitInfo(),
-                               this->doneFence.has_value() ? this->doneFence.value() : VK_NULL_HANDLE);
-        }
-
-      private:
-        const vk::CommandBuffer commandBuffer;
-        const std::vector<vk::Semaphore> waits = std::vector<vk::Semaphore>();
-        const std::vector<vk::PipelineStageFlags> waitPoints = std::vector<vk::PipelineStageFlags>();
-        const std::vector<vk::Semaphore> signalSemaphores = std::vector<vk::Semaphore>();
-        std::optional<vk::Fence> doneFence = std::nullopt;
-    };
     StarCommandBuffer(const StarCommandBuffer &) = delete;
     StarCommandBuffer &operator=(const StarCommandBuffer &) = delete;
 
@@ -81,9 +42,6 @@ class StarCommandBuffer
     /// <returns>The command buffer which is ready for command recording.</returns>
     void begin(const int buffIndex, const vk::CommandBufferBeginInfo &beginInfo);
 
-    FinalizedSubmitInfo getFinalizedSubmitInfo(
-        int bufferIndex = 0, std::pair<vk::Semaphore, vk::PipelineStageFlags> *overrideWait = nullptr);
-
     /// <summary>
     /// This command buffer should wait for the provided semaphores to complete before proceeding.
     /// This wait information will be provided to vulkan during submit().
@@ -100,6 +58,10 @@ class StarCommandBuffer
     void waitFor(StarCommandBuffer &otherBuffer, vk::PipelineStageFlags whereWait);
 
     void reset(int bufferIndex);
+
+    void submit(int bufferIndex, vk::Queue &targetQueue, std::pair<vk::Semaphore, vk::PipelineStageFlags> *overrideWait = nullptr, vk::Fence *overrideFence = nullptr); 
+
+    bool isFenceReady(const int &bufferIndex); 
 
     /// <summary>
     /// Returns the semaphores that will be signaled once this buffer is done executing.

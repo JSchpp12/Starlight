@@ -13,9 +13,8 @@ class StarManager {
 public:
 	struct FinalizedRequest{
 		boost::atomic<bool> cpuWorkDoneByTransferThread = true; 
-		std::unique_ptr<SharedFence> workingFence = nullptr; 
 
-		FinalizedRequest(std::unique_ptr<SharedFence> workingFence) : workingFence(std::move(workingFence)){}
+		FinalizedRequest(){}
 	};
 
 	StarManager() = default;

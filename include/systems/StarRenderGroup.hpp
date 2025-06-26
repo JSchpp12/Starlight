@@ -12,7 +12,6 @@
 #include "StarGraphicsPipeline.hpp"
 #include "StarBuffer.hpp"
 #include "StarObject.hpp"
-#include "StarSystemPipeline.hpp"
 #include "StarShaderInfo.hpp"
 #include "StarCommandBuffer.hpp"
 #include "DescriptorModifier.hpp"
@@ -35,7 +34,8 @@ namespace star {
 		StarRenderGroup(StarDevice& device, size_t numSwapChainImages,
 			vk::Extent2D swapChainExtent, StarObject& baseObject); 
 
-		StarRenderGroup(const StarRenderGroup& baseObject) = default;
+		//no copy
+		StarRenderGroup(const StarRenderGroup& baseObject) = delete;
 
 		virtual ~StarRenderGroup();
 
@@ -59,9 +59,11 @@ namespace star {
 		/// <summary>
 		/// Render the object
 		/// </summary>
-		virtual void recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex);
+		virtual void recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, const int &swapChainImageIndex);
 
-		virtual void recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, int swapChainImageIndex); 
+		virtual void recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, const int &swapChainImageIndex); 
+
+		virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
 
 		//TODO: remove
 		virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }

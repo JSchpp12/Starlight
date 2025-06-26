@@ -8,6 +8,5 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
     return std::make_unique<TransferRequest::GlobalInfo>(
         this->camera, 
         this->numLights, 
-        device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex(), 
-        device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment);
+        device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex());
 }

@@ -40,27 +40,10 @@ namespace star {
 			else
 				this->ra = 1.0;
 		}
-		float r() const { return rr; }
-		float g() const { return rg; }
-		float b() const { return rb; }
-		float a() const { return ra; }
-		unsigned char raw_r() const { 
-			unsigned char result = (255 * rr);
-			return result; 
-		}
-		unsigned char raw_g() const { 
-			unsigned char result = (255 * rg);
-			return result;
-		}
-		unsigned char raw_b() const { 
-			unsigned char result = (255 * rb); 
-			return result;
-		}
-		unsigned char raw_a() const { 
-			unsigned char result = (255 * ra); 
-			return result;
-		}
-
+		float getR() const { return rr; }
+		float getG() const { return rg; }
+		float getB() const { return rb; }
+		float getA() const { return ra; }
 	protected:
 		float rr = 0.0f, rg = 0.0f, rb = 0.0f, ra = 0.0f;
 

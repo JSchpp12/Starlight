@@ -1,16 +1,16 @@
 cmake_minimum_required (VERSION 3.27)
-find_package(Git)
-
-set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
-if (WIN32)
-    set(CMAKE_FIND_LIBRARY_PREFIXES "")
-    set(CMAKE_CXX_STANDARD 20)
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-elseif(APPLE)
-    set(CMAKE_MACOSX_RPATH 1)
-endif()
 
 project("starlight")
+
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if (APPLE)
+    set(CMAKE_MACOSX_RPATH 1)
+elseif(WIN32)
+    set(CMAKE_FIND_LIBRARY_PREFIXES "")
+endif()
 
 enable_language(C CXX)
 
@@ -33,7 +33,7 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS container thread filesystem)
-find_package(ktx CONFIG REQUIRED COMPONENTS vulkan)
+find_package(Ktx CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -54,7 +54,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/Renderer.cpp"
     "src/SceneRenderer.cpp"
     "src/SwapChainRenderer.cpp"
-    "src/virtual/StarSystemPipeline.cpp"
     "src/virtual/StarObject.cpp"
     "src/virtual/ModulePlug/RenderResourceModifier.cpp"
     "src/virtual/ModulePlug/CommandBufferModifier.cpp"
@@ -84,7 +83,6 @@ set(${PROJECT_NAME}_SOURCE
     "src/wrappers/graphics/StarRenderPass.cpp"
     "src/wrappers/graphics/StarCommandBuffer.cpp"
     "src/wrappers/graphics/StarShaderInfo.cpp"
-    "src/wrappers/graphics/SharedFence.cpp"
     "src/wrappers/graphics/StarQueueFamily.cpp"
     "src/wrappers/graphics/StarTexture.cpp"
     "src/wrappers/graphics/StarQueue.cpp"
@@ -139,7 +137,7 @@ set(${PROJECT_NAME}_SOURCE
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
 )
-set(${PROJECT_NAME}_TARGET_SOURCE ${PROJECT_NAME}_SOURCE PARENT_SCOPE)
+set(${PROJECT_NAME}_TARGET_SOURCE ${${PROJECT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${PROJECT_NAME}_HEADERS
     "include/StarEngine.hpp"
@@ -185,7 +183,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/virtual/StarMesh.hpp"
     "include/virtual/StarCamera.hpp"
     "include/virtual/StarMaterial.hpp"
-    "include/virtual/StarSystemPipeline.hpp"
     "include/virtual/StarPipeline.hpp"
     "include/virtual/TransferRequest_Texture.hpp"
     "include/virtual/TransferRequest_Buffer.hpp"
@@ -199,7 +196,6 @@ set(${PROJECT_NAME}_HEADERS
     "include/wrappers/graphics/StarComputePipeline.hpp"
     "include/wrappers/graphics/StarRenderPass.hpp"
     "include/wrappers/graphics/StarCommandBuffer.hpp"
-    "include/wrappers/graphics/SharedFence.hpp"
     "include/wrappers/ScreenshotCommandBuffer.hpp"
     "include/wrappers/graphics/StarShaderInfo.hpp"
     "include/wrappers/graphics/StarQueueFamily.hpp"
@@ -243,7 +239,7 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
 )
-set(${PROJECT_NAME}_TARGET_HEADERS ${PROJECT_NAME}_HEADERS PARENT_SCOPE)
+set(${PROJECT_NAME}_TARGET_HEADERS ${${PROJECT_NAME}_HEADERS} PARENT_SCOPE)
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
 

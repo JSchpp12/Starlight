@@ -158,7 +158,9 @@ class StarDevice
 
     QueueFamilyIndicies findPhysicalQueueFamilies()
     {
-        return findQueueFamilies(this->physicalDevice);
+        assert(this->physicalDevice && this->surface); 
+
+        return FindQueueFamilies(this->physicalDevice, *this->surface);
     }
 
     /// <summary>
@@ -168,8 +170,8 @@ class StarDevice
     /// <param name="tiling"></param>
     /// <param name="features"></param>
     /// <returns></returns>
-    vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
-                                   vk::FormatFeatureFlags features);
+    bool findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
+                                           vk::FormatFeatureFlags features, vk::Format &selectedFormat) const;
 
     StarQueueFamily &getQueueFamily(const star::Queue_Type &type);
 
@@ -182,7 +184,9 @@ class StarDevice
 #pragma region getters
     SwapChainSupportDetails getSwapChainSupportDetails()
     {
-        return querySwapChainSupport(this->physicalDevice);
+        assert(this->physicalDevice && this->surface); 
+        
+        return QuerySwapchainSupport(this->physicalDevice, *this->surface);
     }
     vk::PhysicalDevice getPhysicalDevice()
     {
@@ -263,8 +267,12 @@ class StarDevice
 
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
+    const std::vector<const char *> validationLayers = {}; 
 #else
     const bool enableValidationLayers = true;
+    const std::vector<const char *> validationLayers = {
+        "VK_LAYER_KHRONOS_validation"
+    };
 #endif
     vk::Instance instance;
     vk::Device vulkanDevice;
@@ -282,14 +290,14 @@ class StarDevice
     std::shared_ptr<StarCommandPool> transferCommandPool = nullptr;
     std::shared_ptr<StarCommandPool> computeCommandPool = nullptr;
 
-    const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-
-    std::vector<const char *> requiredDeviceExtensions = {
+    const std::vector<const char *> requiredDeviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME, // image presentation is not built into the vulkan core...need to enable it
                                          // through an extension
         VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
         VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-        VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+        VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+        VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME
+    };
 
     vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
 
@@ -297,7 +305,6 @@ class StarDevice
     bool isMac = true;
     std::vector<const char *> platformInstanceRequiredExtensions = {
         VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-        // VK_KHR_SURFACE_EXTENSION_NAME,
         "VK_KHR_portability_enumeration"};
 #else
     bool isMac = false;
@@ -318,7 +325,7 @@ class StarDevice
     /* Helper Functions */
 
     // Helper function to test each potential GPU device
-    bool isDeviceSuitable(vk::PhysicalDevice physicalDevice);
+    static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
 
     // Get the extensions required by the system
     std::vector<const char *> getRequiredExtensions();
@@ -328,13 +335,13 @@ class StarDevice
     /// builds only.
     /// </summary>
     /// <returns></returns>
-    bool checkValidationLayerSupport();
+    bool CheckValidationLayerSupport(const std::vector<const char *> &validationLayers);
 
     /// <summary>
     /// Find what queues are available for the device
     /// Queues support different types of commands such as : processing compute commands or memory transfer commands
     /// </summary>
-    QueueFamilyIndicies findQueueFamilies(vk::PhysicalDevice device);
+    static QueueFamilyIndicies FindQueueFamilies(const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
 
     // void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo);
 
@@ -343,16 +350,15 @@ class StarDevice
     /// <summary>
     /// Check if the given device supports required extensions.
     /// </summary>
-    bool checkDeviceExtensionSupport(vk::PhysicalDevice device);
+    static bool CheckDeviceExtensionSupport(const vk::PhysicalDevice &device, const std::vector<const char *> &requiredDeviceExtensions);
 
     /// <summary>
     /// Request specific details about swap chain support for a given device
     /// </summary>
-    SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice device);
+    static SwapChainSupportDetails QuerySwapchainSupport(const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
 
   private:
-    bool checkDynamicRenderingSupport();
 
-    static uint32_t numQueuesInFamily(const uint32_t &familyIndex);
+    static bool DoesDeviceSupportPresentation(vk::PhysicalDevice device, const vk::SurfaceKHR &surface);
 };
 } // namespace star

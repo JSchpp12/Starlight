@@ -45,11 +45,6 @@ class SceneRenderer : public StarRenderer,
         return *this->globalSetLayout;
     }
 
-    virtual RenderingTargetInfo getRenderingInfo()
-    {
-        return *this->renderToTargetInfo;
-    }
-
     std::vector<std::unique_ptr<StarTexture>> *getRenderToColorImages()
     {
         return &this->renderToImages;
@@ -59,12 +54,16 @@ class SceneRenderer : public StarRenderer,
         return &this->renderToDepthImages;
     }
 
+    virtual RenderingTargetInfo getRenderTargetInfo() const
+    {
+        return RenderingTargetInfo({this->renderToImages.at(0)->getBaseFormat()},
+                                   this->renderToDepthImages.at(0)->getBaseFormat());
+    }
+
   protected:
     std::shared_ptr<StarScene> scene = nullptr;
 
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
-
-    std::unique_ptr<RenderingTargetInfo> renderToTargetInfo = std::unique_ptr<RenderingTargetInfo>();
 
     std::vector<std::unique_ptr<StarTexture>> renderToImages = std::vector<std::unique_ptr<StarTexture>>();
     std::vector<vk::Framebuffer> renderToFramebuffers = std::vector<vk::Framebuffer>();
@@ -74,13 +73,11 @@ class SceneRenderer : public StarRenderer,
 
     // storage for multiple buffers for each swap chain image
     // std::vector<vk::DescriptorSet> globalDescriptorSets;
-    std::unique_ptr<StarShaderInfo> globalShaderInfo;
-    std::vector<vk::DescriptorSet> lightDescriptorSets;
+    std::unique_ptr<StarShaderInfo> globalShaderInfo = nullptr;
+    std::vector<vk::DescriptorSet> lightDescriptorSets = std::vector<vk::DescriptorSet>();
 
-    std::shared_ptr<StarDescriptorSetLayout> globalSetLayout{};
-    std::vector<std::unique_ptr<StarRenderGroup>> renderGroups;
-
-    virtual vk::Format getCurrentRenderToImageFormat() = 0;
+    std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
+    std::vector<std::unique_ptr<StarRenderGroup>> renderGroups = std::vector<std::unique_ptr<StarRenderGroup>>();
 
     virtual std::vector<std::unique_ptr<StarTexture>> createRenderToImages(StarDevice &device,
                                                                            const int &numFramesInFlight);
@@ -132,9 +129,11 @@ class SceneRenderer : public StarRenderer,
 
     virtual void destroyResources(StarDevice &device) override;
 
-#pragma region helpers
-    vk::Format findDepthFormat(StarDevice &device);
+    virtual vk::Format getColorAttachmentFormat(star::StarDevice &device) const;
 
+    virtual vk::Format getDepthAttachmentFormat(star::StarDevice &device) const;
+
+#pragma region helpers
     vk::Viewport prepareRenderingViewport();
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int &frameInFlightIndex);
@@ -144,6 +143,8 @@ class SceneRenderer : public StarRenderer,
     void recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
     void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+
+    void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 #pragma endregion
   private:
     // Inherited via DescriptorModifier

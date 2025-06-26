@@ -5,14 +5,12 @@
 #include "StarCommandBuffer.hpp"
 #include "StarDevice.hpp"
 
-
 #include "internals/CommandBufferContainer.hpp"
 
 #include <functional>
 #include <stack>
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
-
 
 namespace star
 {
@@ -76,8 +74,6 @@ class ManagerCommandBuffer
     const int numFramesInFlight = 0;
     CommandBufferContainer buffers;
     std::unique_ptr<star::Handle> mainGraphicsBufferHandle = std::unique_ptr<star::Handle>();
-
-    uint32_t numBuffers = 0;
 
     void handleNewRequests();
 

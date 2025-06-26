@@ -20,7 +20,7 @@ namespace star {
 
 	protected:
 		void cleanup(StarDevice& device) override;
-		void prep(StarDevice& device);
+		void prep(StarDevice& device) override;
 
 		// Inherited via StarMaterial
 		void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;

@@ -12,15 +12,10 @@ void SceneRenderer::prepare(StarDevice &device, const vk::Extent2D &swapChainExt
     this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
     auto globalBuilder = manualCreateDescriptors(device, numFramesInFlight);
-
-    this->renderToTargetInfo = std::make_unique<RenderingTargetInfo>(
-        std::vector<vk::Format>{this->getCurrentRenderToImageFormat()}, this->findDepthFormat(device));
-
     this->renderToImages = createRenderToImages(device, numFramesInFlight);
     assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering");
     this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
     assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
-
     createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
@@ -35,6 +30,8 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
     {
         indices.push_back(device.getQueueFamily(star::Queue_Type::Tpresent).getQueueFamilyIndex());
     }
+
+    vk::Format format = getColorAttachmentFormat(device);
 
     auto builder =
         star::StarTexture::Builder(device.getDevice(), device.getAllocator().get())
@@ -58,10 +55,10 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
                     .setInitialLayout(vk::ImageLayout::eUndefined)
                     .setSamples(vk::SampleCountFlagBits::e1),
                 "OffscreenRenderToImages")
-            .setBaseFormat(this->getCurrentRenderToImageFormat())
+            .setBaseFormat(format)
             .addViewInfo(vk::ImageViewCreateInfo()
                              .setViewType(vk::ImageViewType::e2D)
-                             .setFormat(this->getCurrentRenderToImageFormat())
+                             .setFormat(format)
                              .setSubresourceRange(vk::ImageSubresourceRange()
                                                       .setAspectMask(vk::ImageAspectFlagBits::eColor)
                                                       .setBaseArrayLayer(0)
@@ -92,12 +89,13 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup->buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
-                                                                                        // occurr before barrier
-                                     vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
-                                                                                        // which operations will
-                                                                                        // wait on the barrier
-                                     {}, {}, nullptr, barrier);
+        oneTimeSetup->buffer().pipelineBarrier(
+            vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
+                                                               // occurr before barrier
+            vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
+                                                               // which operations will
+                                                               // wait on the barrier
+            {}, {}, nullptr, barrier);
 
         device.endSingleTimeCommands(std::move(oneTimeSetup));
     }
@@ -110,7 +108,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
 {
     std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-    const vk::Format depthFormat = this->findDepthFormat(device);
+    const vk::Format depthFormat = getDepthAttachmentFormat(device);
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
     indices.push_back(device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex());
@@ -222,7 +220,9 @@ void SceneRenderer::createRenderingGroups(StarDevice &device, const vk::Extent2D
     // init all groups
     for (auto &group : this->renderGroups)
     {
-        group->init(builder, this->getRenderingInfo());
+        RenderingTargetInfo renderInfo =
+            RenderingTargetInfo({this->getColorAttachmentFormat(device)}, this->getDepthAttachmentFormat(device));
+        group->init(builder, renderInfo);
     }
 }
 
@@ -302,14 +302,6 @@ void SceneRenderer::createImage(star::StarDevice &device, uint32_t width, uint32
                    &imageMemory, nullptr);
 }
 
-vk::Format SceneRenderer::findDepthFormat(star::StarDevice &device)
-{
-    // utilizing the VK_FORMAT_FEATURE_ flag to check for candidates that have a depth component.
-    return device.findSupportedFormat(
-        {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint}, vk::ImageTiling::eOptimal,
-        vk::FormatFeatureFlagBits::eDepthStencilAttachment);
-}
-
 void SceneRenderer::initResources(StarDevice &device, const int &numFramesInFlight, const vk::Extent2D &screensize)
 {
     this->prepare(device, screensize, numFramesInFlight);
@@ -328,6 +320,31 @@ void SceneRenderer::destroyResources(StarDevice &device)
     }
 }
 
+vk::Format SceneRenderer::getColorAttachmentFormat(star::StarDevice &device) const
+{
+    vk::Format selectedFormat = vk::Format();
+
+    if (!device.findSupportedFormat({vk::Format::eR8G8B8A8Srgb}, vk::ImageTiling::eOptimal,
+                                    vk::FormatFeatureFlagBits::eColorAttachment, selectedFormat))
+    {
+        throw std::runtime_error("Failed to find supported color format");
+    }
+    return selectedFormat;
+}
+
+vk::Format SceneRenderer::getDepthAttachmentFormat(star::StarDevice &device) const
+{
+    vk::Format selectedFormat = vk::Format();
+    if (!device.findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+                                    vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment,
+                                    selectedFormat))
+    {
+        throw std::runtime_error("Failed to find supported depth format");
+    }
+
+    return selectedFormat;
+}
+
 std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescriptorRequests(const int &numFramesInFlight)
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
@@ -344,7 +361,7 @@ void SceneRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const 
     vk::Viewport viewport = this->prepareRenderingViewport();
     commandBuffer.setViewport(0, viewport);
 
-    this->recordPreRenderingCalls(commandBuffer, frameInFlightIndex);
+    recordPreRenderingCalls(commandBuffer, frameInFlightIndex);
 
     {
         // dynamic rendering used...so dont need all that extra stuff
@@ -363,9 +380,11 @@ void SceneRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const 
         commandBuffer.beginRendering(renderInfo);
     }
 
-    this->recordRenderingCalls(commandBuffer, frameInFlightIndex);
+    recordRenderingCalls(commandBuffer, frameInFlightIndex);
 
     commandBuffer.endRendering();
+
+    recordPostRenderingCalls(commandBuffer, frameInFlightIndex);
 }
 
 vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColorAttachment(
@@ -412,6 +431,14 @@ void SceneRenderer::recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, co
     for (auto &group : this->renderGroups)
     {
         group->recordPreRenderPassCommands(commandBuffer, frameInFlightIndex);
+    }
+}
+
+void SceneRenderer::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+{
+    for (auto &group : this->renderGroups)
+    {
+        group->recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
     }
 }
 

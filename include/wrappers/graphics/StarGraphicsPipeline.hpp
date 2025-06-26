@@ -44,7 +44,7 @@ public:
 		StarShader vertShader, StarShader fragShader, 
 		StarShader geomShader);
 
-	virtual ~StarGraphicsPipeline();
+	virtual ~StarGraphicsPipeline() override;
 
 	//no copy
 	StarGraphicsPipeline(const StarGraphicsPipeline&) = delete;

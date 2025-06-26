@@ -4,23 +4,30 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include <vector>
 #include <functional>
+#include <vector>
 
-namespace star {
-	class DescriptorModifier {
-	public:
-		DescriptorModifier() {
-			this->submitToManager(); 
-		}
+namespace star
+{
+class DescriptorModifier
+{
+  public:
+    DescriptorModifier()
+    {
+        this->submitToManager();
+    }
 
-	protected:
-		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) = 0; 
+    virtual ~DescriptorModifier()
+    {
+    }
 
-		virtual void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) = 0; 
+  protected:
+    virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
+        const int &numFramesInFlight) = 0;
 
-	private:
-		void submitToManager(); 
+    virtual void createDescriptors(star::StarDevice &device, const int &numFramesInFlight) = 0;
 
-	};
-}
+  private:
+    void submitToManager();
+};
+} // namespace star

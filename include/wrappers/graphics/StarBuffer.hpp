@@ -39,8 +39,8 @@ public:
 		vk::BufferUsageFlags useFlags;
 		vk::SharingMode sharingMode;
 		std::vector<uint32_t> queueIndices; 
-		vk::DeviceSize minOffsetAlignment = 1; 
 		std::string allocationName = "BufferDefaultName";
+		vk::DeviceSize minOffsetAlignment = 1; 
 
 		BufferCreationArgs() = default;
 
@@ -90,7 +90,7 @@ public:
 	vk::DeviceSize getBufferSize() const { return bufferSize; }
 
 protected:
-	VmaAllocator& allocator;
+	VmaAllocator allocator = VmaAllocator();
 	void* mapped = nullptr;
 	VmaAllocation memory = VmaAllocation();
 

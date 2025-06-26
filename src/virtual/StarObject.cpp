@@ -228,14 +228,14 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
 	StarDescriptorSetLayout::Builder updateSetBuilder = StarDescriptorSetLayout::Builder(device)
 		.addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
 		.addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
-	allSets.push_back(std::move(updateSetBuilder.build())); 
+	allSets.emplace_back(updateSetBuilder.build()); 
 
 	auto staticSet = staticSetBuilder.build(); 
 
 	if (staticSet->getBindings().size() > 0)
 		allSets.push_back(std::move(staticSet)); 
 
-	return std::move(allSets); 
+	return allSets; 
 }
 
 void star::StarObject::prepareMeshes(star::StarDevice& device)
@@ -265,11 +265,6 @@ void star::StarObject::createInstanceBuffers(star::StarDevice& device, int numIm
 {
 	assert(this->instances.size() > 0 && "Call to create instance buffers made but this object does not have any instances");
 	assert(this->instances.size() < 1024 && "Max number of supported instances is 1024"); 
-
-	//each instance must provide the number of buffers that it will need
-	//this is a bit limiting and might need some rework
-
-	uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
 
 	//create a buffer for each image
 	for (int i = 0; i < numImagesInFlight; i++) {

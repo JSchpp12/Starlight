@@ -16,7 +16,7 @@ class StarQueueFamily
   public:
     ~StarQueueFamily();
     StarQueueFamily(const uint32_t &queueFamilyIndex, const uint32_t &queueCount, const vk::QueueFlags &support,
-                    const bool &supportsPresentation);
+                    const bool &presentationSupport);
 
     vk::DeviceQueueCreateInfo getDeviceCreateInfo();
 
@@ -44,7 +44,7 @@ class StarQueueFamily
     const uint32_t queueFamilyIndex;
     const uint32_t queueCount;
     const vk::QueueFlags support;
-    const bool presentSupport;
+    const bool presentationSupport;
     std::vector<float> queuePriority = std::vector<float>();
 
     vk::Device *vulkanDevice = nullptr;

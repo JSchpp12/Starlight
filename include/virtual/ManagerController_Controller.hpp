@@ -15,7 +15,8 @@ namespace star::ManagerController{
         public:
         Controller() = default;
         Controller(const uint8_t& frameInFlightIndexToUpdateOn) : frameInFlightIndexToUpdateOn(frameInFlightIndexToUpdateOn){}
-
+        virtual ~Controller() = default; 
+        
         virtual bool isValid(const uint8_t& currentFrameInFlightIndex) const{
             if (this->frameInFlightIndexToUpdateOn.has_value() && currentFrameInFlightIndex == this->frameInFlightIndexToUpdateOn.value())
                 return false;

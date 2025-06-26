@@ -70,7 +70,6 @@ void star::BasicCamera::onWorldUpdate(const uint32_t &frameInFlightIndex)
     {
         float moveAmt = this->movementSpeed * time.timeElapsedLastFrameSeconds();
 
-        glm::vec3 cameraPos = this->getPosition();
         glm::vec3 cameraLookDir = this->getForwardVector();
 
         if (moveLeft)

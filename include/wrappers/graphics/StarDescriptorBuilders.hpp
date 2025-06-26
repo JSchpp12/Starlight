@@ -8,137 +8,141 @@
 #include <memory>
 #include <unordered_map>
 
-namespace star {
-class StarDescriptorSetLayout {
-public:
-	class Builder {
-	public:
-		Builder(StarDevice& device) : starDevice(device) {}
+namespace star
+{
+class StarDescriptorSetLayout
+{
+  public:
+    class Builder
+    {
+      public:
+        Builder(StarDevice &device) : starDevice(device)
+        {
+        }
 
-		Builder& addBinding(
-			uint32_t binding,
-			vk::DescriptorType descriptorType,
-			vk::ShaderStageFlags stageFlags,
-			uint32_t count = 1);
-		std::unique_ptr<StarDescriptorSetLayout> build() const;
+        Builder &addBinding(uint32_t binding, vk::DescriptorType descriptorType, vk::ShaderStageFlags stageFlags,
+                            uint32_t count = 1);
+        std::unique_ptr<StarDescriptorSetLayout> build() const;
 
-	protected:
+      protected:
+      private:
+        StarDevice &starDevice;
+        std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings{};
+    };
 
-	private:
-		StarDevice& starDevice;
-		std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings{};
+    StarDescriptorSetLayout(StarDevice &device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings);
 
-	};
+    ~StarDescriptorSetLayout();
 
-	StarDescriptorSetLayout(StarDevice& device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings);
+    bool isCompatibleWith(const StarDescriptorSetLayout &compare);
 
-	~StarDescriptorSetLayout();
+    vk::DescriptorSetLayout getDescriptorSetLayout();
 
-	bool isCompatibleWith(const StarDescriptorSetLayout& compare); 
+    const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> &getBindings()
+    {
+        return this->bindings;
+    }
 
-	vk::DescriptorSetLayout getDescriptorSetLayout();
+  protected:
+    void build();
 
-	const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding>& getBindings() {
-		return this->bindings;
-	}
+  private:
+    StarDevice &starDevice;
+    vk::DescriptorSetLayout descriptorSetLayout;
+    std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings;
 
-protected:
-	virtual void build();
-
-private:
-	StarDevice& starDevice;
-	vk::DescriptorSetLayout descriptorSetLayout;
-	std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings;
-
-	//allow access to the descriptor writer 
-	friend class StarDescriptorWriter;
+    // allow access to the descriptor writer
+    friend class StarDescriptorWriter;
 };
 
-class StarDescriptorPool {
-public:
-	class Builder {
-	public:
-		Builder(StarDevice& device) : starDevice(device) {};
+class StarDescriptorPool
+{
+  public:
+    class Builder
+    {
+      public:
+        Builder(StarDevice &device) : starDevice(device) {};
 
-		Builder& addPoolSize(vk::DescriptorType descriptorType, uint32_t count);
-		Builder& setPoolFlags(vk::DescriptorPoolCreateFlags flags);
-		Builder& setMaxSets(uint32_t count);
-		std::unique_ptr<StarDescriptorPool> build() const;
+        Builder &addPoolSize(vk::DescriptorType descriptorType, uint32_t count);
+        Builder &setPoolFlags(vk::DescriptorPoolCreateFlags flags);
+        Builder &setMaxSets(uint32_t count);
+        std::unique_ptr<StarDescriptorPool> build() const;
 
-	protected:
+      protected:
+      private:
+        StarDevice &starDevice;
+        std::vector<vk::DescriptorPoolSize> poolSizes;
+        uint32_t maxSets = 50;
+        vk::DescriptorPoolCreateFlags poolFlags{};
+    };
 
-	private:
-		StarDevice& starDevice;
-		std::vector<vk::DescriptorPoolSize> poolSizes;
-		uint32_t maxSets = 50;
-		vk::DescriptorPoolCreateFlags poolFlags{};
-	};
+    StarDescriptorPool(StarDevice &device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags,
+                       const std::vector<vk::DescriptorPoolSize> &poolSizes);
+    ~StarDescriptorPool();
 
-	StarDescriptorPool(StarDevice& device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags, const std::vector<vk::DescriptorPoolSize>& poolSizes);
-	~StarDescriptorPool();
+    vk::DescriptorPool getDescriptorPool();
 
-	vk::DescriptorPool getDescriptorPool();
+    bool allocateDescriptorSet(const vk::DescriptorSetLayout descriptorSetLayout, vk::DescriptorSet &descriptorSets);
 
-	bool allocateDescriptorSet(const vk::DescriptorSetLayout descriptorSetLayout, vk::DescriptorSet& descriptorSets);
+    void freeDescriptors(std::vector<vk::DescriptorSet> &descriptors) const;
 
-	void freeDescriptors(std::vector<vk::DescriptorSet>& descriptors) const;
+    void resetPool();
 
-	void resetPool();
+  protected:
+  private:
+    StarDevice &starDevice;
+    vk::DescriptorPool descriptorPool;
 
-protected:
-
-private:
-	StarDevice& starDevice;
-	vk::DescriptorPool descriptorPool;
-
-	//allow this class to read the private info of StarDescriptorSetLayout for construction 
-	friend class StarDescriptorWriter;
+    // allow this class to read the private info of StarDescriptorSetLayout for construction
+    friend class StarDescriptorWriter;
 };
- 
-class StarDescriptorWriter {
-public:
-	StarDescriptorWriter(StarDevice& device, StarDescriptorSetLayout& setLayout, StarDescriptorPool& pool);
 
-	StarDescriptorWriter& writeBuffer(uint32_t binding, vk::DescriptorBufferInfo& bufferInfos);
+class StarDescriptorWriter
+{
+  public:
+    StarDescriptorWriter(StarDevice &device, StarDescriptorSetLayout &setLayout, StarDescriptorPool &pool);
 
-	StarDescriptorWriter& writeImage(uint32_t binding, vk::DescriptorImageInfo& imageInfo);
+    StarDescriptorWriter &writeBuffer(uint32_t binding, vk::DescriptorBufferInfo &bufferInfos);
 
-	vk::DescriptorSet build();
+    StarDescriptorWriter &writeImage(uint32_t binding, vk::DescriptorImageInfo &imageInfo);
 
-	void overwrite(vk::DescriptorSet& set);
+    vk::DescriptorSet build();
 
-private:
-	struct FullDescriptorInfo {
-		std::optional<vk::DescriptorBufferInfo> bufferInfo = std::optional<vk::DescriptorBufferInfo>(); 
-		std::optional<vk::DescriptorImageInfo> imageInfo = std::optional<vk::DescriptorImageInfo>();
-		vk::DescriptorType type; 
-		uint32_t binding; 
+    void overwrite(vk::DescriptorSet &set);
 
-		FullDescriptorInfo(vk::DescriptorBufferInfo& bufferInfo, vk::DescriptorType type, uint32_t binding) : bufferInfo(bufferInfo), type(type), binding(binding) {
-		}; 
+  private:
+    struct FullDescriptorInfo
+    {
+        std::optional<vk::DescriptorBufferInfo> bufferInfo = std::optional<vk::DescriptorBufferInfo>();
+        std::optional<vk::DescriptorImageInfo> imageInfo = std::optional<vk::DescriptorImageInfo>();
+        vk::DescriptorType type;
+        uint32_t binding;
 
-		FullDescriptorInfo(vk::DescriptorImageInfo& imageInfo, vk::DescriptorType type, uint32_t binding) : imageInfo(imageInfo), type(type), binding(binding) {
-		};
+        FullDescriptorInfo(vk::DescriptorBufferInfo &bufferInfo, vk::DescriptorType type, uint32_t binding)
+            : bufferInfo(bufferInfo), type(type), binding(binding) {};
 
-		vk::WriteDescriptorSet getSetInfo() {
-			auto fullSet = vk::WriteDescriptorSet{}; 
-			fullSet.sType = vk::StructureType::eWriteDescriptorSet;
-			fullSet.descriptorType = this->type; 
-			fullSet.dstBinding = this->binding;
-			if (this->bufferInfo.has_value())
-				fullSet.pBufferInfo = &this->bufferInfo.value();
-			else if (this->imageInfo.has_value())
-				fullSet.pImageInfo = &this->imageInfo.value();
-			fullSet.descriptorCount = 1;
+        FullDescriptorInfo(vk::DescriptorImageInfo &imageInfo, vk::DescriptorType type, uint32_t binding)
+            : imageInfo(imageInfo), type(type), binding(binding) {};
 
-			return fullSet; 
-		}
-	};
+        vk::WriteDescriptorSet getSetInfo()
+        {
+            auto fullSet = vk::WriteDescriptorSet{};
+            fullSet.sType = vk::StructureType::eWriteDescriptorSet;
+            fullSet.descriptorType = this->type;
+            fullSet.dstBinding = this->binding;
+            if (this->bufferInfo.has_value())
+                fullSet.pBufferInfo = &this->bufferInfo.value();
+            else if (this->imageInfo.has_value())
+                fullSet.pImageInfo = &this->imageInfo.value();
+            fullSet.descriptorCount = 1;
 
-	StarDevice& starDevice;
-	StarDescriptorSetLayout& setLayout;
-	StarDescriptorPool& pool;
-	std::vector<FullDescriptorInfo> writeSets;
+            return fullSet;
+        }
+    };
 
+    StarDevice &starDevice;
+    StarDescriptorSetLayout &setLayout;
+    StarDescriptorPool &pool;
+    std::vector<FullDescriptorInfo> writeSets;
 };
-}
+} // namespace star
