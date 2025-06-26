@@ -18,7 +18,6 @@ star::SharedCompressedTexture::SharedCompressedTexture(const std::string& pathTo
 
 star::SharedCompressedTexture::~SharedCompressedTexture(){
     ktxTexture_Destroy((ktxTexture*)this->resource); 
-    this->resource = nullptr;
 }
 
 void star::SharedCompressedTexture::giveMeTranscodedImage(boost::unique_lock<boost::mutex>& lock, ktxTexture2*& texture){

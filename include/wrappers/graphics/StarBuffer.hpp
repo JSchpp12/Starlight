@@ -39,8 +39,8 @@ public:
 		vk::BufferUsageFlags useFlags;
 		vk::SharingMode sharingMode;
 		std::vector<uint32_t> queueIndices; 
-		std::string allocationName = "BufferDefaultName";
 		vk::DeviceSize minOffsetAlignment = 1; 
+		std::string allocationName = "BufferDefaultName";
 
 		BufferCreationArgs() = default;
 
@@ -53,6 +53,13 @@ public:
 	};
 
 	static vk::DeviceSize GetAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
+
+	StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
+		const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
+		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName, 
+		vk::DeviceSize minOffsetAlignment = 1);
+
+	StarBuffer(VmaAllocator& allocator, const BufferCreationArgs& creationArgs); 
 
 	~StarBuffer();
 
@@ -83,18 +90,16 @@ public:
 	vk::DeviceSize getBufferSize() const { return bufferSize; }
 
 protected:
+	VmaAllocator allocator = VmaAllocator();
 	void* mapped = nullptr;
+	VmaAllocation memory = VmaAllocation();
 
-	VmaAllocator& allocator;
-	uint32_t instanceCount; 
-	vk::DeviceSize instanceSize; 
+	vk::Buffer buffer = VK_NULL_HANDLE;
 
 	vk::DeviceSize bufferSize;
-	vk::DeviceSize alignmentSize;
+	vk::DeviceSize instanceSize, alignmentSize;
+	uint32_t instanceCount; 
 	vk::BufferUsageFlags usageFlags;
-
-	VmaAllocation memory = VmaAllocation();
-	vk::Buffer buffer = VK_NULL_HANDLE;
 
 	StarBuffer(VmaAllocator &allocator, const uint32_t &instanceCount, 
 		const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment, 

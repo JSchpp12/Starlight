@@ -17,7 +17,7 @@ void star::TransferManagerThread::startAsync()
     this->shouldRun.store(true);
     this->thread = boost::thread(TransferManagerThread::mainLoop,
                                  SubThreadInfo(&this->shouldRun, this->device.getDevice(), this->myCommandPool,
-                                               this->myQueues, this->allocator, this->deviceProperties,
+                                               this->myQueues, this->device.getAllocator().get(), this->deviceProperties,
                                                &this->requestQueues, this->allTransferQueueFamilyIndicesInUse));
 
     if (!this->thread.joinable())
@@ -211,11 +211,11 @@ void star::TransferManagerThread::EnsureInfoReady(vk::Device &device, ProcessReq
 }
 
 star::TransferManagerThread::TransferManagerThread(
-    star::StarDevice &device, VmaAllocator &allocator,
+    star::StarDevice &device,
     std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
     const vk::PhysicalDeviceProperties &deviceProperties, std::vector<StarQueue> myQueues, StarQueueFamily &familyToUse,
     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse)
-    : device(device), allocator(allocator), myQueues(myQueues), requestQueues(requestQueues),
+    : device(device), myQueues(myQueues), requestQueues(requestQueues),
       myCommandPool(std::make_shared<StarCommandPool>(device.getDevice(), familyToUse.getQueueFamilyIndex(), true)),
       deviceProperties(deviceProperties), familyToUse(familyToUse),
       allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse)
@@ -365,7 +365,7 @@ std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::
             if (curNumHighThreads > curNumStandardThreads)
             {
                 newThreads.emplace_back(std::make_unique<TransferManagerThread>(
-                    device, device.getAllocator().get(),
+                    device,
                     std::vector<boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> *>{&standardQueue},
                     device.getPhysicalDevice().getProperties(), queues, *family, allTransferQueueFamilyIndicesInUse));
                 curNumStandardThreads++;
@@ -373,7 +373,7 @@ std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::
             else
             {
                 newThreads.emplace_back(std::make_unique<TransferManagerThread>(
-                    device, device.getAllocator().get(),
+                    device,
                     std::vector<boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> *>{
                         &highPriorityQueue},
                     device.getPhysicalDevice().getProperties(), queues, *family, allTransferQueueFamilyIndicesInUse));
