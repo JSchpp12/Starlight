@@ -125,7 +125,9 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(star
     for (int i = 0; i < texture->numLevels; i++)
     {
         ktx_size_t offset;
-        KTX_error_code result = ktxTexture_GetImageOffset((ktxTexture *)texture, i, 0, 0, &offset);
+        if (ktxTexture_GetImageOffset((ktxTexture *)texture, i, 0, 0, &offset) != ktx_error_code_e::KTX_SUCCESS){
+            throw std::runtime_error("Failed to get image offset into compressed texture"); 
+        }
 
         vk::BufferImageCopy copyRegion{};
         copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;

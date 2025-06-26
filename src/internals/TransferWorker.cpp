@@ -17,7 +17,7 @@ void star::TransferManagerThread::startAsync()
     this->shouldRun.store(true);
     this->thread =
         boost::thread(TransferManagerThread::mainLoop,
-                      SubThreadInfo(&this->shouldRun, this->device.getDevice(), this->myCommandPool, this->myQueues,
+                      SubThreadInfo(&this->shouldRun, this->device.getDevice(), this->familyToUse.getQueueFamilyIndex(), this->myQueues,
                                     this->device.getAllocator().get(), this->deviceProperties, &this->requestQueues,
                                     this->allTransferQueueFamilyIndicesInUse));
 
@@ -37,11 +37,11 @@ void star::TransferManagerThread::mainLoop(TransferManagerThread::SubThreadInfo 
 {
     std::cout << "Transfer thread started..." << std::endl;
     std::queue<std::unique_ptr<ProcessRequestInfo>> processRequestInfos =
-        std::queue<std::unique_ptr<ProcessRequestInfo>>();
+        std::queue<std::unique_ptr<ProcessRequestInfo>>(); 
 
     for (int i = 0; i < 5; i++)
     {
-        processRequestInfos.push(CreateProcessingInfo(myInfo.device, myInfo.commandPool));
+        processRequestInfos.push(CreateProcessingInfo(myInfo.device, std::make_unique<StarCommandPool>(myInfo.device, myInfo.queueFamilyIndexToUse, true)));
     }
 
     while (myInfo.shouldRun->load())
@@ -250,9 +250,9 @@ void star::TransferManagerThread::cleanup()
 
 star::TransferWorker::~TransferWorker()
 {
-    // for (auto &thread : this->threads ){
-    //     thread->stopAsync();
-    // }
+    for (auto &thread : this->threads ){
+        thread->stopAsync();
+    }
 }
 
 star::TransferWorker::TransferWorker(star::StarDevice &device, bool overrideToSingleThreadMode)

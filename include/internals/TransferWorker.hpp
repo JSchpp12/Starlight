@@ -89,13 +89,13 @@ class TransferManagerThread
 
     struct SubThreadInfo
     {
-        SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device device, std::shared_ptr<StarCommandPool> commandPool,
+        SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device device, const uint32_t &queueFamilyIndexToUse,
                       std::vector<StarQueue> queues, VmaAllocator &allocator,
                       vk::PhysicalDeviceProperties deviceProperties,
                       std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest *> *>
                           *workingRequestQueues,
                       std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
-            : shouldRun(shouldRun), device(device), commandPool(commandPool), queues(queues), allocator(allocator),
+            : shouldRun(shouldRun), device(device), queueFamilyIndexToUse(queueFamilyIndexToUse), queues(queues), allocator(allocator),
               deviceProperties(deviceProperties), workingRequestQueues(workingRequestQueues),
               allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse)
         {
@@ -103,7 +103,7 @@ class TransferManagerThread
 
         boost::atomic<bool> *shouldRun = nullptr;
         vk::Device device = vk::Device();
-        std::shared_ptr<StarCommandPool> commandPool = nullptr;
+        uint32_t queueFamilyIndexToUse = 0;
         std::vector<StarQueue> queues = std::vector<StarQueue>();
         VmaAllocator &allocator;
         vk::PhysicalDeviceProperties deviceProperties = vk::PhysicalDeviceProperties();
