@@ -6,7 +6,7 @@
 
 star::SwapChainRenderer::SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window, StarDevice &device,
                                            const uint8_t &numFramesInFlight)
-    : device(device), window(window), SceneRenderer(scene), numFramesInFlight(numFramesInFlight)
+    :  SceneRenderer(scene), window(window), device(device), numFramesInFlight(numFramesInFlight)
 {
     createSwapChain();
 }

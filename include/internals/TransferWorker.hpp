@@ -29,25 +29,25 @@ class TransferManagerThread
   public:
     struct InterThreadRequest
     {
+        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
         std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest = nullptr;
         std::unique_ptr<TransferRequest::Texture> textureTransferRequest = nullptr;
         std::optional<std::unique_ptr<StarBuffer> *> resultingBuffer = std::nullopt;
         std::optional<std::unique_ptr<StarTexture> *> resultingTexture = std::nullopt;
-        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
 
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
                            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           std::unique_ptr<StarBuffer> &resultingBufferAddress)
-            : bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBufferAddress),
-              gpuDoneNotificationToMain(gpuDoneNotificationToMain)
+                           std::unique_ptr<StarBuffer> &resultingBuffer)
+            : gpuDoneNotificationToMain(gpuDoneNotificationToMain),
+              bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBuffer)
         {
         }
 
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
                            std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
-                           std::unique_ptr<StarTexture> &resultingTextureAddress)
-            : gpuDoneNotificationToMain(gpuDoneNotificationToMain), resultingTexture(&resultingTextureAddress),
-              textureTransferRequest(std::move(textureTransferRequest))
+                           std::unique_ptr<StarTexture> &resultingTexture)
+            : gpuDoneNotificationToMain(gpuDoneNotificationToMain),
+              textureTransferRequest(std::move(textureTransferRequest)), resultingTexture(&resultingTexture)
         {
         }
     };
@@ -101,32 +101,31 @@ class TransferManagerThread
         {
         }
 
-        VmaAllocator &allocator;
-
         boost::atomic<bool> *shouldRun = nullptr;
         vk::Device device = vk::Device();
         std::shared_ptr<StarCommandPool> commandPool = nullptr;
         std::vector<StarQueue> queues = std::vector<StarQueue>();
+        VmaAllocator &allocator;
         vk::PhysicalDeviceProperties deviceProperties = vk::PhysicalDeviceProperties();
         std::vector<boost::lockfree::stack<InterThreadRequest *> *> *workingRequestQueues = nullptr;
         std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
     };
 
-    TransferManagerThread(StarDevice &device,
-                          std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
+    TransferManagerThread(StarDevice &device, std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
                           const vk::PhysicalDeviceProperties &deviceProperties, std::vector<StarQueue> myQueues,
                           StarQueueFamily &queueFamilyToUse,
                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
 
-    ~TransferManagerThread(); 
+    ~TransferManagerThread();
 
+    //no copy
     TransferManagerThread(const TransferManagerThread &) = delete;
-    // can be moved
+      TransferManagerThread &operator=(TransferManagerThread &&) = delete;
+    //no move
     TransferManagerThread(TransferManagerThread &&) = delete;
-    TransferManagerThread &operator=(TransferManagerThread &&) = delete;
 
     void startAsync();
-    
+
     void stopAsync();
 
     void cleanup();
@@ -162,7 +161,7 @@ class TransferManagerThread
 
     boost::atomic<bool> shouldRun = false;
     boost::thread thread;
-        std::shared_ptr<StarCommandPool> myCommandPool = nullptr;
+    std::shared_ptr<StarCommandPool> myCommandPool = nullptr;
 };
 
 class TransferWorker

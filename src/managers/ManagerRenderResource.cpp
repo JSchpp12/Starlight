@@ -129,7 +129,7 @@ void star::ManagerRenderResource::updateRequest(std::unique_ptr<ManagerControlle
     container->bufferRequest = std::move(newRequest);
 
     managerWorker->add(container->cpuWorkDoneByTransferThread,
-                       std::move(container->bufferRequest->createTransferRequest(*managerDevice)), container->buffer,
+                       container->bufferRequest->createTransferRequest(*managerDevice), container->buffer,
                        isHighPriority);
 
     highPriorityRequestCompleteFlags.insert(&container->cpuWorkDoneByTransferThread);

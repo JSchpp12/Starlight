@@ -54,11 +54,10 @@ class SceneRenderer : public StarRenderer,
         return &this->renderToDepthImages;
     }
 
-    virtual RenderingTargetInfo getRenderTargetInfo() const {
-        return RenderingTargetInfo(
-          {this->renderToImages.at(0)->getBaseFormat()},
-          {this->renderToDepthImages.at(0)->getBaseFormat()}
-        );
+    virtual RenderingTargetInfo getRenderTargetInfo() const
+    {
+        return RenderingTargetInfo({this->renderToImages.at(0)->getBaseFormat()},
+                                   this->renderToDepthImages.at(0)->getBaseFormat());
     }
 
   protected:
@@ -74,11 +73,11 @@ class SceneRenderer : public StarRenderer,
 
     // storage for multiple buffers for each swap chain image
     // std::vector<vk::DescriptorSet> globalDescriptorSets;
-    std::unique_ptr<StarShaderInfo> globalShaderInfo;
-    std::vector<vk::DescriptorSet> lightDescriptorSets;
+    std::unique_ptr<StarShaderInfo> globalShaderInfo = nullptr;
+    std::vector<vk::DescriptorSet> lightDescriptorSets = std::vector<vk::DescriptorSet>();
 
-    std::shared_ptr<StarDescriptorSetLayout> globalSetLayout{};
-    std::vector<std::unique_ptr<StarRenderGroup>> renderGroups;
+    std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
+    std::vector<std::unique_ptr<StarRenderGroup>> renderGroups = std::vector<std::unique_ptr<StarRenderGroup>>();
 
     virtual std::vector<std::unique_ptr<StarTexture>> createRenderToImages(StarDevice &device,
                                                                            const int &numFramesInFlight);
@@ -145,7 +144,7 @@ class SceneRenderer : public StarRenderer,
 
     void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
-    void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
+    void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 #pragma endregion
   private:
     // Inherited via DescriptorModifier

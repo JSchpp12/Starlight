@@ -34,9 +34,10 @@ class CommandBufferContainer
                 std::optional<std::function<void(const int &)>>(),
             std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
                 overrideBufferSubmissionCallback = std::nullopt)
-            : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), order(order),
-              waitStage(waitStage), beforeBufferSubmissionCallback(beforeSubmissionCallback),
-              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback), type(type), recordOnce(recordOnce) {};
+            : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
+              recordOnce(recordOnce), waitStage(waitStage), order(order),
+              beforeBufferSubmissionCallback(beforeSubmissionCallback),
+              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
     };
 
     CommandBufferContainer(StarDevice &device, const int &numImagesInFlight);

@@ -96,15 +96,15 @@ class StarTexture
                 const vk::SamplerCreateInfo &samplerInfo);
 
     vk::Device &device;
-    const vk::Format baseFormat; 
-    const uint32_t mipmapLevels = 1;
-
-    std::optional<VmaAllocator *> allocator = nullptr;
-    std::optional<VmaAllocation> memory = std::nullopt;
-
     vk::Image vulkanImage = vk::Image();
-    std::optional<vk::Sampler> sampler = std::nullopt;
+    std::optional<VmaAllocator *> allocator = nullptr;
+    const vk::Format baseFormat;
+
     std::unordered_map<vk::Format, vk::ImageView> views = std::unordered_map<vk::Format, vk::ImageView>();
+    const uint32_t mipmapLevels = 1;
+    std::optional<VmaAllocation> memory = std::nullopt;
+    std::optional<vk::Sampler> sampler = std::nullopt;
+
 
     static vk::Sampler CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo);
 

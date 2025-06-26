@@ -67,8 +67,11 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const int &index)
 
         vk::DescriptorImageInfo textureInfo;
         textureInfo.sampler = texture->getSampler().has_value() ? texture->getSampler().value() : VK_NULL_HANDLE;
-        textureInfo.imageLayout = shaderInfos[index].textureInfo.value().expectedLayout; 
-        textureInfo.imageView = shaderInfos[index].textureInfo.value().requestedImageViewFormat.has_value() ? texture->getImageView(&shaderInfos[index].textureInfo.value().requestedImageViewFormat.value()) : texture->getImageView();
+        textureInfo.imageLayout = shaderInfos[index].textureInfo.value().expectedLayout;
+        textureInfo.imageView =
+            shaderInfos[index].textureInfo.value().requestedImageViewFormat.has_value()
+                ? texture->getImageView(&shaderInfos[index].textureInfo.value().requestedImageViewFormat.value())
+                : texture->getImageView();
 
         this->descriptorWriter->writeImage(index, textureInfo);
     }
@@ -79,7 +82,7 @@ void star::StarShaderInfo::ShaderInfoSet::build()
     this->isBuilt = true;
 
     this->descriptorWriter =
-        std::make_unique<StarDescriptorWriter>(this->device, this->layout, ManagerDescriptorPool::getPool());
+        std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, ManagerDescriptorPool::getPool());
     for (int i = 0; i < this->shaderInfos.size(); i++)
     {
         buildIndex(i);
@@ -91,7 +94,7 @@ void star::StarShaderInfo::ShaderInfoSet::rebuildSet()
     if (!this->descriptorWriter)
     {
         this->descriptorWriter =
-            std::make_unique<StarDescriptorWriter>(this->device, this->layout, ManagerDescriptorPool::getPool());
+            std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, ManagerDescriptorPool::getPool());
     }
 
     this->descriptorSet = std::make_shared<vk::DescriptorSet>(this->descriptorWriter->build());

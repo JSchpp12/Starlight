@@ -29,7 +29,7 @@ void star::RenderResourceSystem::bind(const Handle& resource, vk::CommandBuffer&
 		bindBuffer(resource.getID(), commandBuffer);
 		break;
 	default:
-		throw std::runtime_error("Unsupported resource type requested for bind operation " + resource.getType());
+		throw std::runtime_error("Unsupported resource type requested for bind operation. Handle must have a buffer type");
 	}
 }
 

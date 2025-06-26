@@ -34,7 +34,8 @@ namespace star {
 		StarRenderGroup(StarDevice& device, size_t numSwapChainImages,
 			vk::Extent2D swapChainExtent, StarObject& baseObject); 
 
-		StarRenderGroup(const StarRenderGroup& baseObject) = default;
+		//no copy
+		StarRenderGroup(const StarRenderGroup& baseObject) = delete;
 
 		virtual ~StarRenderGroup();
 

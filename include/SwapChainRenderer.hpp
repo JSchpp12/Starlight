@@ -16,7 +16,6 @@ class SwapChainRenderer : public SceneRenderer
 
     SwapChainRenderer(const SwapChainRenderer &other) = delete; 
 
-
     virtual ~SwapChainRenderer();
 
     virtual void prepare(StarDevice &device, const vk::Extent2D &swapChainExtent,

@@ -5,13 +5,11 @@
 #include "StarDevice.hpp"
 #include "StarTexture.hpp"
 
-
 #include "Handle.hpp"
 
 #include <memory>
 #include <optional>
 #include <vector>
-
 
 namespace star
 {
@@ -34,8 +32,9 @@ class StarShaderInfo
             explicit BufferInfo(const Handle &handle) : handle(handle)
             {
             }
-            std::optional<const StarBuffer *> buffer = std::nullopt;
+
             std::optional<Handle> handle = std::nullopt;
+            std::optional<const StarBuffer *> buffer = std::nullopt;
             std::optional<vk::Buffer> currentBuffer = std::nullopt;
         };
 
@@ -64,10 +63,10 @@ class StarShaderInfo
             }
 
             std::optional<const Handle> handle = std::nullopt;
-            std::optional<vk::Image> currentImage = std::nullopt;
-            std::optional<vk::Format> requestedImageViewFormat = std::nullopt;
             std::optional<const StarTexture *> texture = std::nullopt;
             const vk::ImageLayout expectedLayout;
+            std::optional<vk::Image> currentImage = std::nullopt;
+            std::optional<vk::Format> requestedImageViewFormat = std::nullopt;
         };
 
         ShaderInfo(const BufferInfo &bufferInfo, const bool willCheckForIfReady)
@@ -91,7 +90,7 @@ class StarShaderInfo
     {
         std::vector<ShaderInfo> shaderInfos = std::vector<ShaderInfo>();
 
-        ShaderInfoSet(StarDevice &device, StarDescriptorSetLayout &setLayout) : device(device), layout(setLayout) {};
+        ShaderInfoSet(StarDevice &device, StarDescriptorSetLayout &setLayout) : device(device), setLayout(setLayout) {};
 
         void add(const ShaderInfo &shaderInfo);
 
@@ -108,7 +107,7 @@ class StarShaderInfo
 
       private:
         StarDevice &device;
-        StarDescriptorSetLayout &layout;
+        StarDescriptorSetLayout &setLayout;
         bool setNeedsRebuild = true;
         bool isBuilt = false;
         std::shared_ptr<vk::DescriptorSet> descriptorSet = std::shared_ptr<vk::DescriptorSet>();
@@ -117,10 +116,10 @@ class StarShaderInfo
         void rebuildSet();
     };
 
-    std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> shaderInfoSets =
-        std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>();
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> layouts =
         std::vector<std::shared_ptr<StarDescriptorSetLayout>>();
+    std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> shaderInfoSets =
+        std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>();
 
   public:
     StarShaderInfo(StarDevice &device, const std::vector<std::shared_ptr<StarDescriptorSetLayout>> &layouts,

@@ -221,7 +221,7 @@ void SceneRenderer::createRenderingGroups(StarDevice &device, const vk::Extent2D
     for (auto &group : this->renderGroups)
     {
         RenderingTargetInfo renderInfo =
-            RenderingTargetInfo({this->getColorAttachmentFormat(device)}, {this->getDepthAttachmentFormat(device)});
+            RenderingTargetInfo({this->getColorAttachmentFormat(device)}, this->getDepthAttachmentFormat(device));
         group->init(builder, renderInfo);
     }
 }
