@@ -89,7 +89,7 @@ class TransferManagerThread
 
     struct SubThreadInfo
     {
-        SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device device, const uint32_t &queueFamilyIndexToUse,
+        SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device &device, const uint32_t &queueFamilyIndexToUse,
                       std::vector<StarQueue> queues, VmaAllocator &allocator,
                       vk::PhysicalDeviceProperties deviceProperties,
                       std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest *> *>
@@ -102,7 +102,7 @@ class TransferManagerThread
         }
 
         boost::atomic<bool> *shouldRun = nullptr;
-        vk::Device device = vk::Device();
+        vk::Device &device;
         uint32_t queueFamilyIndexToUse = 0;
         std::vector<StarQueue> queues = std::vector<StarQueue>();
         VmaAllocator &allocator;
