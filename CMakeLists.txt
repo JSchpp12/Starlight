@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.27)
+cmake_minimum_required (VERSION 3.26)
 
 project("starlight")
 
@@ -28,7 +28,12 @@ set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
 
 find_package(glm CONFIG REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
+if (not ${HEADLESS})
+    add_subdirectory("extern/glfw")
+    find_package(glfw3 CONFIG REQUIRED)
+    target_compile_options(${PROJECT_NAME} ENABLE_PRESENTATION)
+endif()
+
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
@@ -243,20 +248,37 @@ set(${PROJECT_NAME}_TARGET_HEADERS ${${PROJECT_NAME}_HEADERS} PARENT_SCOPE)
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
 
-target_link_libraries(${PROJECT_NAME}
-    PUBLIC
-        Vulkan::Vulkan
-        shaderc
-        tinyobjloader::tinyobjloader
-        glfw
-        spirv-reflect-static
-        GPUOpen::VulkanMemoryAllocator
-        nlohmann_json::nlohmann_json
-        Boost::thread
-        Boost::container
-        Boost::filesystem
-        KTX::ktx
-    )
+if (not HEADLESS)
+    target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+            Vulkan::Vulkan
+            shaderc
+            tinyobjloader::tinyobjloader
+            spirv-reflect-static
+            GPUOpen::VulkanMemoryAllocator
+            nlohmann_json::nlohmann_json
+            Boost::thread
+            Boost::container
+            Boost::filesystem
+            KTX::ktx
+            glfw
+        )
+else()
+    target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+            Vulkan::Vulkan
+            shaderc
+            tinyobjloader::tinyobjloader
+            spirv-reflect-static
+            GPUOpen::VulkanMemoryAllocator
+            nlohmann_json::nlohmann_json
+            Boost::thread
+            Boost::container
+            Boost::filesystem
+            KTX::ktx
+        )
+endif()
+
 
 set(${PROJECT_NAME}_INCLUDE_DIRS
     "include/"
