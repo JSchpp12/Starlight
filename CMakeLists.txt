@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.26)
 
 project("starlight")
 
+include(CheckIncludeFile)
+
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,9 +16,13 @@ endif()
 
 enable_language(C CXX)
 
-find_package(Vulkan 1.4.313 REQUIRED)
-find_package(Stb REQUIRED)
+find_package(Vulkan 1.4.313.0)
+if (NOT Vulkan_FOUND)
+    message("Vulkan not found. Downloading...")
+    include(${CMAKE_CURRENT_LIST_DIR}/cmake/DownloadVulkan.cmake)
+endif()
 
+find_package(Stb REQUIRED)
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
 
@@ -28,7 +34,7 @@ set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
 
 find_package(glm CONFIG REQUIRED)
-if (not ${HEADLESS})
+if (NOT ${HEADLESS})
     add_subdirectory("extern/glfw")
     find_package(glfw3 CONFIG REQUIRED)
     target_compile_options(${PROJECT_NAME} ENABLE_PRESENTATION)
