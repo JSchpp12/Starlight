@@ -13,10 +13,10 @@ if (APPLE)
 elseif(WIN32)
     set(CMAKE_FIND_LIBRARY_PREFIXES "")
 endif()
-
 enable_language(C CXX)
 
-find_package(Vulkan 1.4.313.0)
+set(VULKAN_VERSION "1.4.313.0")
+find_package(Vulkan ${VULKAN_VERSION})
 if (NOT Vulkan_FOUND)
     message("Vulkan not found. Downloading...")
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/DownloadVulkan.cmake)
@@ -254,7 +254,7 @@ set(${PROJECT_NAME}_TARGET_HEADERS ${${PROJECT_NAME}_HEADERS} PARENT_SCOPE)
 
 add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
 
-if (not HEADLESS)
+if (NOT ${HEADLESS})
     target_link_libraries(${PROJECT_NAME}
         PUBLIC
             Vulkan::Vulkan
@@ -368,7 +368,5 @@ if (CPPCHECK_EXECUTABLE)
 endif()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES 
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
     DEBUG_POSTFIX "d"
 )

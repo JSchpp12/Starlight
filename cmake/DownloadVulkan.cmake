@@ -32,30 +32,34 @@ else()
 endif()
 
 # Set SDK version and URL (e.g., Vulkan SDK 1.3.261.1)
-set(VULKAN_VERSION "1.4.313.0")
-set(VULKAN_SDK_URL "https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/linux/vulkan-sdk-${VULKAN_VERSION}-${DISTRO}.tar.gz?Human=true")
 
+set(VULKAN_SDK_URL "https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/linux/vulkan-sdk-${VULKAN_VERSION}-${DISTRO}.tar.gz?Human=true")
 set(VULKAN_SDK_DIR "${CMAKE_CURRENT_LIST_DIR}/../libs/vulkan-sdk")
 set(VULKAN_SDK_TAR "${CMAKE_CURRENT_LIST_DIR}/../libs/vulkan-sdk.tar.gz")
 set(VULKAN_SDK_EXTRACT_DIR "${CMAKE_CURRENT_LIST_DIR}/../libs/")
 
-file(DOWNLOAD
-    "${VULKAN_SDK_URL}"
-    "${VULKAN_SDK_TAR}"
-    SHOW_PROGRESS
-    STATUS DOWNLOAD_STATUS
-)
+if (NOT EXISTS ${VULKAN_SDK_EXTRACT_DIR})
+    file(DOWNLOAD
+        "${VULKAN_SDK_URL}"
+        "${VULKAN_SDK_TAR}"
+        SHOW_PROGRESS
+        STATUS DOWNLOAD_STATUS
+    )
 
-list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-if(NOT STATUS_CODE EQUAL 0)
-    message(FATAL_ERROR "Failed to download Vulkan SDK from ${VULKAN_SDK_URL}")
+    list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+    if(NOT STATUS_CODE EQUAL 0)
+        message(FATAL_ERROR "Failed to download Vulkan SDK from ${VULKAN_SDK_URL}")
+    endif()
+
+    # Extract .tar.gz into VULKAN_SDK_EXTRACT_DIR
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E tar xzf "${VULKAN_SDK_TAR}"
+        WORKING_DIRECTORY "${VULKAN_SDK_EXTRACT_DIR}"
+    )
+else()
+    message("Vulkan SDK previously downloaded")
 endif()
 
-# Extract .tar.gz into VULKAN_SDK_EXTRACT_DIR
-execute_process(
-    COMMAND ${CMAKE_COMMAND} -E tar xzf "${VULKAN_SDK_TAR}"
-    WORKING_DIRECTORY "${VULKAN_SDK_EXTRACT_DIR}"
-)
 # Use the SDK
 file(GLOB SDK_DIR "${VULKAN_SDK_EXTRACT_DIR}/${VULKAN_VERSION}")
 list(GET SDK_DIR 0 VULKAN_SDK_ROOT)
