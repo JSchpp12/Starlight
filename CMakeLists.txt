@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.26)
 
-project("starlight")
+SET(STARLIGHT_NAME "starlight")
+project(${STARLIGHT_NAME})
 
 include(CheckIncludeFile)
 
@@ -36,8 +37,6 @@ add_subdirectory("extern/glslang")
 find_package(glm CONFIG REQUIRED)
 if (NOT ${HEADLESS})
     add_subdirectory("extern/glfw")
-    find_package(glfw3 CONFIG REQUIRED)
-    target_compile_options(${PROJECT_NAME} ENABLE_PRESENTATION)
 endif()
 
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
@@ -60,7 +59,7 @@ set(SHADERC_ENABLE_SHARED_CRT ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
-set(${PROJECT_NAME}_SOURCE
+set(${STARLIGHT_NAME}_SOURCE
     "src/StarEngine.cpp" 
     "src/Renderer.cpp"
     "src/SceneRenderer.cpp"
@@ -148,9 +147,9 @@ set(${PROJECT_NAME}_SOURCE
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
 )
-set(${PROJECT_NAME}_TARGET_SOURCE ${${PROJECT_NAME}_SOURCE} PARENT_SCOPE)
+set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
-set(${PROJECT_NAME}_HEADERS
+set(${STARLIGHT_NAME}_HEADERS
     "include/StarEngine.hpp"
     "include/SceneRenderer.hpp"
     "include/SwapChainRenderer.hpp"
@@ -250,12 +249,12 @@ set(${PROJECT_NAME}_HEADERS
     "include/common/helpers/CastHelpers.hpp"
     "include/common/VulkanVertex.hpp"
 )
-set(${PROJECT_NAME}_TARGET_HEADERS ${${PROJECT_NAME}_HEADERS} PARENT_SCOPE)
+set(${STARLIGHT_NAME}_TARGET_HEADERS ${${STARLIGHT_NAME}_HEADERS} PARENT_SCOPE)
 
-add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
+add_library(${STARLIGHT_NAME} "${${STARLIGHT_NAME}_SOURCE};${${STARLIGHT_NAME}_HEADERS}")
 
 if (NOT ${HEADLESS})
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${STARLIGHT_NAME}
         PUBLIC
             Vulkan::Vulkan
             shaderc
@@ -270,7 +269,7 @@ if (NOT ${HEADLESS})
             glfw
         )
 else()
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${STARLIGHT_NAME}
         PUBLIC
             Vulkan::Vulkan
             shaderc
@@ -286,7 +285,7 @@ else()
 endif()
 
 
-set(${PROJECT_NAME}_INCLUDE_DIRS
+set(${STARLIGHT_NAME}_INCLUDE_DIRS
     "include/"
     "include/virtual/"
     "include/internals"
@@ -313,23 +312,23 @@ set(${PROJECT_NAME}_INCLUDE_DIRS
     "include/renderers/" 
 )
 
-set(${PROJECT_NAME}_TARGET_INCLUDE_DIRS ${${PROJECT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)
+set(${STARLIGHT_NAME}_TARGET_INCLUDE_DIRS ${${STARLIGHT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)
 
-target_include_directories(${PROJECT_NAME}
+target_include_directories(${STARLIGHT_NAME}
     PUBLIC
-        ${${PROJECT_NAME}_INCLUDE_DIRS}
+        ${${STARLIGHT_NAME}_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
         ${Stb_INCLUDE_DIR}
 )
 
 if (MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE
+    target_compile_options(${STARLIGHT_NAME} PRIVATE
         /Zi 
         /MP
         /EHsc
     )
-    target_link_options(${PROJECT_NAME} PRIVATE 
+    target_link_options(${STARLIGHT_NAME} PRIVATE 
         /DEBUG
     )
 endif()
@@ -339,16 +338,16 @@ if (CPPCHECK_EXECUTABLE)
 	set(CPPCHECK_FILES "")
     set(CPPCHECK_INCLUDES "")
 
-	foreach(FILE "${${PROJECT_NAME}_SOURCE}")
+	foreach(FILE "${${STARLIGHT_NAME}_SOURCE}")
 		file(TO_CMAKE_PATH "${FILE}" UNIX_PATH)
     list(APPEND CPPCHECK_FILES "${UNIX_PATH}")
 	endforeach()
 
-    foreach(DIR ${${PROJECT_NAME}_INCLUDE_DIRS})
+    foreach(DIR ${${STARLIGHT_NAME}_INCLUDE_DIRS})
         list(APPEND CPPCHECK_INCLUDES "-I" "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
     endforeach()
 
-	add_custom_target("${PROJECT_NAME}_cppcheck"
+	add_custom_target("${STARLIGHT_NAME}_cppcheck"
 		COMMAND ${CPPCHECK_EXECUTABLE} 
 			--enable=all 
             --suppress=missingIncludeSystem
@@ -364,9 +363,13 @@ if (CPPCHECK_EXECUTABLE)
 		VERBATIM
 	)
 
-	add_dependencies("${PROJECT_NAME}_cppcheck" ${CMAKE_PROJECT_NAME})
+	add_dependencies("${STARLIGHT_NAME}_cppcheck" ${CMAKE_PROJECT_NAME})
 endif()
 
-set_target_properties(${PROJECT_NAME} PROPERTIES 
+set_target_properties(${STARLIGHT_NAME} PROPERTIES 
     DEBUG_POSTFIX "d"
 )
+
+if (NOT ${HEADLESS})
+    target_compile_definitions(${STARLIGHT_NAME} PRIVATE ENABLE_PRESENTATION)
+endif()
