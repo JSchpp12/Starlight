@@ -1,32 +1,61 @@
 #include "StarEngine.hpp"
 #include "ConfigFile.hpp"
 #include "Enums.hpp"
-#include "ManagerRenderResource.hpp"
-#include "SwapChainRenderer.hpp"
 #include "ManagerCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
+#include "ManagerRenderResource.hpp"
+#include "RenderResourceSystem.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
-#include "RenderResourceSystem.hpp"
+#include "SwapChainRenderer.hpp"
+
 
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
 #include <stdexcept>
+#include <vk_mem_alloc.h>
+
 
 namespace star
 {
 StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
     : application(std::move(nApplication)), window(CreateStarWindow()), renderingDevice(CreateStarDevice(*this->window))
 {
-    this->transferWorker =
-        std::make_unique<TransferWorker>(*this->renderingDevice, this->OVERRIDE_APPLY_SINGLE_THREAD_MODE);
+    // try and get a transfer queue from different queue fams
+    {
+        std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
+        std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
 
-    uint8_t framesInFlight; 
+        const auto transferFams = this->renderingDevice->getQueueOwnershipTracker().getQueueFamiliesWhichSupport(
+            vk::QueueFlagBits::eTransfer);
+        for (const auto &fam : transferFams)
+        {
+            if (fam != this->renderingDevice->getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex() &&
+                fam != this->renderingDevice->getDefaultQueue(Queue_Type::Tcompute).getParentQueueFamilyIndex() &&
+                !selectedFamilyIndices.contains(fam))
+            {
+                auto nQueue = this->renderingDevice->getQueueOwnershipTracker().giveMeQueueWithProperties(
+                    vk::QueueFlagBits::eTransfer, false, fam);
+
+                if (nQueue.has_value())
+                {
+                    transferWorkerQueues.push_back(nQueue.value());
+
+                    selectedFamilyIndices.insert(fam);
+                }
+            }
+        }
+
+        this->transferWorker = std::make_unique<TransferWorker>(
+            *this->renderingDevice, this->OVERRIDE_APPLY_SINGLE_THREAD_MODE, transferWorkerQueues);
+    }
+
+    uint8_t framesInFlight;
     {
         int readFramesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-        if (!CastHelpers::SafeCast<int, uint8_t>(readFramesInFlight, framesInFlight)){
-            throw std::runtime_error("Invalid number of frames in flight in config file"); 
+        if (!CastHelpers::SafeCast<int, uint8_t>(readFramesInFlight, framesInFlight))
+        {
+            throw std::runtime_error("Invalid number of frames in flight in config file");
         }
     }
 
@@ -39,7 +68,7 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
 
 StarEngine::~StarEngine()
 {
-    this->transferWorker.reset(); 
+    this->transferWorker.reset();
     ManagerRenderResource::cleanup(*this->renderingDevice);
     RenderResourceSystem::cleanup(*this->renderingDevice);
     StarObject::cleanupSharedResources(*this->renderingDevice);
@@ -55,8 +84,8 @@ void StarEngine::run()
 
     // prepare any shared resources
     StarObject::initSharedResources(*this->renderingDevice, this->window->getExtent(), framesInFlight,
-                            this->mainRenderer->getGlobalShaderInfo(), this->mainRenderer->getRenderTargetInfo());
-
+                                    this->mainRenderer->getGlobalShaderInfo(),
+                                    this->mainRenderer->getRenderTargetInfo());
 
     uint8_t currentFrame = 0;
     while (!window->shouldClose())

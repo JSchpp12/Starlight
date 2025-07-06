@@ -25,10 +25,10 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
     std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
-    indices.push_back(device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex());
-    if (device.getQueueFamily(star::Queue_Type::Tpresent).getQueueFamilyIndex() != indices.back())
+    indices.push_back(device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
+    if (device.getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex() != indices.back())
     {
-        indices.push_back(device.getQueueFamily(star::Queue_Type::Tpresent).getQueueFamilyIndex());
+        indices.push_back(device.getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
     }
 
     vk::Format format = getColorAttachmentFormat(device);
@@ -111,10 +111,10 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
     const vk::Format depthFormat = getDepthAttachmentFormat(device);
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
-    indices.push_back(device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex());
-    if (device.getQueueFamily(star::Queue_Type::Tpresent).getQueueFamilyIndex() != indices.back())
+    indices.push_back(device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
+    if (device.getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex() != indices.back())
     {
-        indices.push_back(device.getQueueFamily(star::Queue_Type::Tpresent).getQueueFamilyIndex());
+        indices.push_back(device.getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
     }
 
     auto builder =

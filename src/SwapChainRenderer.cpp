@@ -4,9 +4,9 @@
 
 #include <GLFW/glfw3.h>
 
-star::SwapChainRenderer::SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window, StarDevice &device,
-                                           const uint8_t &numFramesInFlight)
-    :  SceneRenderer(scene), window(window), device(device), numFramesInFlight(numFramesInFlight)
+star::SwapChainRenderer::SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window,
+                                           StarDevice &device, const uint8_t &numFramesInFlight)
+    : SceneRenderer(scene), window(window), device(device), numFramesInFlight(numFramesInFlight)
 {
     createSwapChain();
 }
@@ -66,11 +66,8 @@ void star::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
     presentInfo.pResults = nullptr; // Optional
 
     // make call to present image
-    auto presentResult = this->device.getQueueFamily(star::Queue_Type::Tpresent)
-                             .getQueues()
-                             .at(0)
-                             .getVulkanQueue()
-                             .presentKHR(presentInfo);
+    auto presentResult =
+        this->device.getDefaultQueue(star::Queue_Type::Tpresent).getVulkanQueue().presentKHR(presentInfo);
 
     if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR ||
         frameBufferResized)
@@ -112,13 +109,13 @@ vk::SurfaceFormatKHR star::SwapChainRenderer::chooseSwapSurfaceFormat(
     return availableFormats[0];
 }
 
-vk::Format star::SwapChainRenderer::getColorAttachmentFormat(star::StarDevice & device) const
+vk::Format star::SwapChainRenderer::getColorAttachmentFormat(star::StarDevice &device) const
 {
     //   in order to prevent this and allow rendering to continue
     SwapChainSupportDetails swapChainSupport = this->device.getSwapChainSupportDetails();
 
     vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-    return surfaceFormat.format; 
+    return surfaceFormat.format;
 }
 
 vk::PresentModeKHR star::SwapChainRenderer::chooseSwapPresentMode(
@@ -279,9 +276,7 @@ vk::Semaphore star::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, c
     submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
     submitInfo.commandBufferCount = 1;
 
-    auto commandResult = std::make_unique<vk::Result>(this->device.getQueueFamily(star::Queue_Type::Tpresent)
-                                                          .getQueues()
-                                                          .at(0)
+    auto commandResult = std::make_unique<vk::Result>(this->device.getDefaultQueue(star::Queue_Type::Tpresent)
                                                           .getVulkanQueue()
                                                           .submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
 
@@ -306,7 +301,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createR
 {
     std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
 
-    vk::Format format = getColorAttachmentFormat(device); 
+    vk::Format format = getColorAttachmentFormat(device);
 
     // get images in the newly created swapchain
     for (vk::Image &image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain))

@@ -5,7 +5,7 @@
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceNormalInfo::createTransferRequest(star::StarDevice &device) {
 	return std::make_unique<star::TransferRequest::InstanceNormalInfo>(
 		this->objectInstances, 
-		device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex(),
+		device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
 		device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment
 	);
 }

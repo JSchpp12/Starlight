@@ -28,11 +28,8 @@ std::unique_ptr<StarDevice> StarDevice::New(StarWindow &window, std::set<star::R
 
 StarDevice::~StarDevice()
 {
-    this->defaultFamily.reset();
     this->defaultCommandPool.reset();
-    this->preferredTransferFamily.reset();
     this->transferCommandPool.reset();
-    this->preferredComputeFamily.reset();
     this->computeCommandPool.reset();
 
     for (auto &buffer : this->extraFamilies)
@@ -44,42 +41,6 @@ StarDevice::~StarDevice()
     this->vulkanDevice.destroy();
     this->surface.reset();
     this->instance.destroy();
-}
-
-void StarDevice::updatePreferredFamilies(const star::Queue_Type &type)
-{
-    bool found = false;
-
-    for (auto &queue : this->extraFamilies)
-    {
-        if (found)
-            break;
-
-        if (queue)
-        {
-            switch (type)
-            {
-            case (star::Queue_Type::Tcompute):
-                if (queue.get()->doesSupport(type))
-                {
-                    found = true;
-                    this->preferredComputeFamily = std::move(queue);
-                    this->computeCommandPool = this->preferredComputeFamily->createCommandPool(true);
-                }
-                break;
-            case (star::Queue_Type::Ttransfer):
-                if (queue.get()->doesSupport(type))
-                {
-                    found = true;
-                    this->preferredTransferFamily = std::move(queue);
-                    this->transferCommandPool = this->preferredTransferFamily->createCommandPool(true);
-                }
-                break;
-            default:
-                throw std::runtime_error("Unsupported type");
-            }
-        }
-    }
 }
 
 void StarDevice::createInstance()
@@ -109,19 +70,22 @@ void StarDevice::createInstance()
     }
 
     {
-        uint32_t extensionCount = uint32_t(); 
+        uint32_t extensionCount = uint32_t();
         CastHelpers::SafeCast<size_t, uint32_t>(requiredInstanceExtensions.size(), extensionCount);
 
-        uint32_t validationLayerCount = uint32_t(); 
+        uint32_t validationLayerCount = uint32_t();
         CastHelpers::SafeCast<size_t, uint32_t>(validationLayers.size(), validationLayerCount);
 
-        vk::InstanceCreateInfo createInfo = vk::InstanceCreateInfo()
-            .setEnabledExtensionCount(extensionCount)
-            .setPEnabledExtensionNames(requiredInstanceExtensions)
-            .setEnabledLayerCount(this->enableValidationLayers ? validationLayerCount : 0)
-            .setPEnabledLayerNames(this->enableValidationLayers ? validationLayers : vk::ArrayProxyNoTemporaries<const char* const>{})
-            .setPApplicationInfo(&appInfo)
-            .setFlags(this->isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR : vk::InstanceCreateFlags());
+        vk::InstanceCreateInfo createInfo =
+            vk::InstanceCreateInfo()
+                .setEnabledExtensionCount(extensionCount)
+                .setPEnabledExtensionNames(requiredInstanceExtensions)
+                .setEnabledLayerCount(this->enableValidationLayers ? validationLayerCount : 0)
+                .setPEnabledLayerNames(this->enableValidationLayers ? validationLayers
+                                                                    : vk::ArrayProxyNoTemporaries<const char *const>{})
+                .setPApplicationInfo(&appInfo)
+                .setFlags(this->isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR
+                                      : vk::InstanceCreateFlags());
 
         this->instance = vk::createInstance(createInfo);
     }
@@ -217,78 +181,109 @@ void StarDevice::createLogicalDevice()
     QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, *this->surface);
 
     // need multiple structs since we now have a seperate family for presenting and graphics
-    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
     auto uniqueIndices = indicies.getUniques();
     std::set<uint32_t> uniqueQueueFamilies = indicies.getUniques();
 
-    for (auto uniqueIndex : uniqueQueueFamilies)
+    std::vector<StarQueueFamily> queueFamilies = std::vector<StarQueueFamily>();
+    for (auto uniqueIndex : uniqueQueueFamilies) 
     {
-        auto newFamily = std::make_unique<StarQueueFamily>(uniqueIndex, indicies.getNumQueuesForIndex(uniqueIndex),
-                                                           indicies.getSupportForIndex(uniqueIndex),
-                                                           indicies.getSupportsPresentForIndex(uniqueIndex));
-
-        if (!this->defaultFamily && newFamily->doesSupport(star::Queue_Type::Tgraphics) &&
-                                        newFamily->doesSupport(star::Queue_Type::Tpresent) &&
-                                        newFamily->doesSupport(star::Queue_Type::Ttransfer) &&
-                                        newFamily->doesSupport(star::Queue_Type::Tcompute))
-        {
-            this->defaultFamily = std::move(newFamily);
-            queueCreateInfos.push_back(this->defaultFamily->getDeviceCreateInfo());
-        }
-        else
-        {
-            this->extraFamilies.emplace_back(std::move(newFamily));
-            queueCreateInfos.push_back(this->extraFamilies.back()->getDeviceCreateInfo());
-        }
+        queueFamilies.emplace_back(uniqueIndex, indicies.getNumQueuesForIndex(uniqueIndex),
+                                   indicies.getSupportForIndex(uniqueIndex),
+                                   indicies.getSupportsPresentForIndex(uniqueIndex));
     }
-
-    assert(this->defaultFamily && "A default family which supports all features was not found");
 
     auto dynamicRenderingFeatures = vk::PhysicalDeviceDynamicRenderingFeatures().setDynamicRendering(true);
 
     auto syncFeatures =
         vk::PhysicalDeviceSynchronization2Features().setSynchronization2(true).setPNext(&dynamicRenderingFeatures);
 
+    {
+        uint32_t numDeviceExtensions = uint32_t();
+        CastHelpers::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
+
+        uint32_t numValidationLayers = uint32_t();
+        CastHelpers::SafeCast<size_t, uint32_t>(validationLayers.size(), numValidationLayers);
+
+        std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+        for (auto &family : queueFamilies){
+            queueCreateInfos.push_back(family.getDeviceCreateInfo()); 
+        }
+        uint32_t numQueues = uint32_t();
+        CastHelpers::SafeCast<size_t, uint32_t>(queueCreateInfos.size(), numQueues);
+
+        const vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
+                                                    .setQueueCreateInfoCount(numQueues)
+                                                    .setPQueueCreateInfos(queueCreateInfos.data())
+                                                    .setEnabledExtensionCount(numDeviceExtensions)
+                                                    .setPEnabledExtensionNames(requiredDeviceExtensions)
+                                                    .setPEnabledFeatures(&requiredDeviceFeatures)
+                                                    .setEnabledLayerCount(numValidationLayers)
+                                                    .setPEnabledLayerNames(validationLayers)
+                                                    .setPNext(syncFeatures);
+
+        // call to create the logical device
+        this->vulkanDevice = physicalDevice.createDevice(createInfo);
+    }
+
+    for (auto &fam : queueFamilies){
+        fam.init(this->vulkanDevice); 
+    }
+    this->currentDeviceQueues = std::make_unique<QueueOwnershipTracker>(queueFamilies);
+
+    auto test = this->currentDeviceQueues->giveMeQueueWithProperties(
+        vk::QueueFlagBits::eCompute & vk::QueueFlagBits::eTransfer & vk::QueueFlagBits::eGraphics, true); 
+    this->defaultQueue = std::make_unique<StarQueue>(test.value());
+
+    if (indicies.isFullySupported())
+    {
         {
-            uint32_t numDeviceExtensions = uint32_t();
-            CastHelpers::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
+            const std::vector<uint32_t> indices = this->currentDeviceQueues->getQueueFamiliesWhichSupport(vk::QueueFlagBits::eCompute); 
+            // pick queues from different families
+            for (const uint32_t &index : indices)
+            {
+                if (this->defaultQueue->getParentQueueFamilyIndex() != index)
+                {
+                    std::unique_ptr<uint32_t> *target = nullptr;
 
-            uint32_t numValidationLayers = uint32_t(); 
-            CastHelpers::SafeCast<size_t, uint32_t>(validationLayers.size(), numValidationLayers); 
-
-            uint32_t numQueues = uint32_t(); 
-            CastHelpers::SafeCast<size_t, uint32_t>(queueCreateInfos.size(), numQueues); 
-
-            const vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
-                .setQueueCreateInfoCount(numQueues)
-                .setPQueueCreateInfos(queueCreateInfos.data())
-                .setEnabledExtensionCount(numDeviceExtensions)
-                .setPEnabledExtensionNames(requiredDeviceExtensions)
-                .setPEnabledFeatures(&requiredDeviceFeatures)
-                .setEnabledLayerCount(numValidationLayers)
-                .setPEnabledLayerNames(validationLayers)
-                .setPNext(syncFeatures);
-
-            // call to create the logical device
-            this->vulkanDevice = physicalDevice.createDevice(createInfo);
+                    auto fam =
+                        this->currentDeviceQueues->giveMeQueueWithProperties(vk::QueueFlagBits::eCompute, false, index);
+                    if (fam.has_value())
+                    {
+                        this->dedicatedComputeQueue = std::make_unique<StarQueue>(fam.value());
+                        break;
+                    }
+                }
+            }
         }
 
+        {
+            const std::vector<uint32_t> indices = this->currentDeviceQueues->getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
+            for (const uint32_t &index : indices)
+            {
+                if (this->defaultQueue->getParentQueueFamilyIndex() != index && this->dedicatedComputeQueue->getParentQueueFamilyIndex() != index)
+                {
+                    std::unique_ptr<uint32_t> *target = nullptr;
+
+                    auto fam =
+                        this->currentDeviceQueues->giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false, index);
+                    if (fam.has_value())
+                    {
+                        this->dedicatedTransferQueue = std::make_unique<StarQueue>(fam.value());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     this->defaultCommandPool =
-        std::make_shared<StarCommandPool>(this->vulkanDevice, this->defaultFamily->getQueueFamilyIndex(), true);
+        std::make_shared<StarCommandPool>(this->vulkanDevice, this->defaultQueue->getParentQueueFamilyIndex(), true);
 
-    // select preferred default
-    this->defaultFamily->init(this->vulkanDevice);
-    for (auto &queue : this->extraFamilies)
-    {
-        queue.get()->init(this->vulkanDevice);
-    }
+    if (this->dedicatedComputeQueue != nullptr)
+        this->computeCommandPool = std::make_shared<StarCommandPool>(this->vulkanDevice, this->dedicatedComputeQueue->getParentQueueFamilyIndex(), true); 
 
-    // set preferred graphics
-    if (indicies.isOptimalSupport())
-    {
-        updatePreferredFamilies(star::Queue_Type::Tcompute);
-        updatePreferredFamilies(star::Queue_Type::Ttransfer);
-    }
+    if (this->dedicatedTransferQueue != nullptr)
+        this->transferCommandPool = std::make_shared<StarCommandPool>(this->vulkanDevice, this->dedicatedTransferQueue->getParentQueueFamilyIndex(), true); 
 }
 
 void StarDevice::createAllocator()
@@ -297,7 +292,9 @@ void StarDevice::createAllocator()
         std::make_unique<star::Allocator>(this->getDevice(), this->getPhysicalDevice(), this->getInstance());
 }
 
-bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface)
+bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
+                                  const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
+                                  const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface)
 {
     bool swapChainAdequate = false;
     QueueFamilyIndicies indicies = FindQueueFamilies(device, surface);
@@ -395,7 +392,8 @@ void StarDevice::hasGlfwRequiredInstanceExtensions()
     }
 }
 
-bool StarDevice::CheckDeviceExtensionSupport(const vk::PhysicalDevice &device, const std::vector<const char *> &requiredDeviceExtensions)
+bool StarDevice::CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
+                                             const std::vector<const char *> &requiredDeviceExtensions)
 {
     uint32_t extensionCount;
     {
@@ -482,7 +480,7 @@ bool StarDevice::verifyImageCreate(vk::ImageCreateInfo imageInfo)
 }
 
 bool StarDevice::findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
-                                           vk::FormatFeatureFlags features, vk::Format &selectedFormat) const
+                                     vk::FormatFeatureFlags features, vk::Format &selectedFormat) const
 {
     for (vk::Format format : candidates)
     {
@@ -508,16 +506,6 @@ bool StarDevice::findSupportedFormat(const std::vector<vk::Format> &candidates, 
     return false;
 }
 
-star::StarQueueFamily &StarDevice::getQueueFamily(const star::Queue_Type &type)
-{
-    if (type == star::Queue_Type::Tcompute && this->preferredComputeFamily)
-        return *this->preferredComputeFamily;
-    else if (type == star::Queue_Type::Ttransfer && this->preferredTransferFamily)
-        return *this->preferredTransferFamily;
-
-    return *this->defaultFamily;
-}
-
 std::shared_ptr<star::StarCommandPool> StarDevice::getCommandPool(const star::Queue_Type &type)
 {
     if (type == star::Queue_Type::Tcompute && this->computeCommandPool)
@@ -528,37 +516,37 @@ std::shared_ptr<star::StarCommandPool> StarDevice::getCommandPool(const star::Qu
     return this->defaultCommandPool;
 }
 
-bool StarDevice::doesHaveDedicatedFamily(const star::Queue_Type &type)
+StarQueue &StarDevice::getDefaultQueue(const star::Queue_Type &type)
 {
     switch (type)
     {
+    case (star::Queue_Type::Tpresent):
     case (star::Queue_Type::Tgraphics):
-        return (this->preferredTransferFamily != nullptr);
+        return *this->defaultQueue;
         break;
-
+        
     case (star::Queue_Type::Tcompute):
-        return (this->preferredComputeFamily != nullptr);
+        if (this->dedicatedComputeQueue != nullptr)
+        {
+            return *this->dedicatedComputeQueue;
+        }
+        else
+        {
+            return *this->defaultQueue;
+        }
         break;
-
     case (star::Queue_Type::Ttransfer):
-        return (this->preferredTransferFamily != nullptr);
-        break;
-
+        if (this->dedicatedTransferQueue != nullptr)
+        {
+            return *this->dedicatedTransferQueue;
+        }
+        else
+        {
+            return *this->defaultQueue;
+        }
     default:
-        return false;
+        throw std::runtime_error("Unable to find matching default queue with type");
     }
-}
-
-std::unique_ptr<star::StarQueueFamily> StarDevice::giveMeQueueFamily(const star::Queue_Type &type)
-{
-    if (type == star::Queue_Type::Ttransfer)
-    {
-        auto tmp = std::move(this->preferredTransferFamily);
-        updatePreferredFamilies(type);
-        return std::move(tmp);
-    }
-
-    return std::unique_ptr<StarQueueFamily>();
 }
 
 void StarDevice::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags properties,
@@ -630,10 +618,9 @@ void StarDevice::endSingleTimeCommands(std::unique_ptr<StarCommandBuffer> comman
 {
     commandBuff->buffer().end();
 
-    commandBuff->submit(0, this->defaultFamily->getQueues().at(0).getVulkanQueue()); 
+    commandBuff->submit(0, this->defaultQueue->getVulkanQueue());
 
     commandBuff->wait();
-    this->defaultFamily->getQueues().at(0).getVulkanQueue().waitIdle();
 }
 
 void StarDevice::copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size,
@@ -707,7 +694,8 @@ void StarDevice::createImageWithInfo(const vk::ImageCreateInfo &imageInfo, vk::M
     this->vulkanDevice.bindImageMemory(image, imageMemory, 0);
 }
 
-SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface)
+SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevice &device,
+                                                          const vk::SurfaceKHR &surface)
 {
     SwapChainSupportDetails details;
     uint32_t formatCount, presentModeCount;
@@ -717,14 +705,16 @@ SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevi
 
     {
         const auto result = device.getSurfaceFormatsKHR(surface, &formatCount, nullptr);
-        if (result != vk::Result::eSuccess){
-            throw std::runtime_error("Failed to get any surface formats from device"); 
+        if (result != vk::Result::eSuccess)
+        {
+            throw std::runtime_error("Failed to get any surface formats from device");
         }
     }
 
     {
-        const auto result = device.getSurfacePresentModesKHR(surface, &presentModeCount, nullptr);  
-        if (result != vk::Result::eSuccess){
+        const auto result = device.getSurfacePresentModesKHR(surface, &presentModeCount, nullptr);
+        if (result != vk::Result::eSuccess)
+        {
             throw std::runtime_error("Failed to get surface present modes from device");
         }
     }
@@ -735,8 +725,9 @@ SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevi
         details.formats.resize(formatCount);
 
         const auto result = device.getSurfaceFormatsKHR(surface, &formatCount, details.formats.data());
-        if (result != vk::Result::eSuccess){
-            throw std::runtime_error("Failed to get surface present modes from device"); 
+        if (result != vk::Result::eSuccess)
+        {
+            throw std::runtime_error("Failed to get surface present modes from device");
         }
     }
 
@@ -746,7 +737,8 @@ SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevi
         details.presentModes.resize(presentModeCount);
 
         const auto result = device.getSurfacePresentModesKHR(surface, &presentModeCount, details.presentModes.data());
-        if (result != vk::Result::eSuccess){
+        if (result != vk::Result::eSuccess)
+        {
             throw std::runtime_error("Failed to get surface present modes from device");
         }
     }
@@ -761,9 +753,10 @@ bool StarDevice::DoesDeviceSupportPresentation(vk::PhysicalDevice physicalDevice
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
 
-    for (uint32_t i = 0; i < queueFamilyCount; ++i) {
+    for (uint32_t i = 0; i < queueFamilyCount; ++i)
+    {
         if (physicalDevice.getSurfaceSupportKHR(i, surface))
-            return true; 
+            return true;
     }
     return false;
 }

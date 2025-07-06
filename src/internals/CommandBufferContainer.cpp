@@ -47,7 +47,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
 
         buffer->commandBuffer->submit(
             frameInFlightIndex,
-            this->device.getQueueFamily(buffer->commandBuffer->getType()).getQueues().at(0).getVulkanQueue());
+            this->device.getDefaultQueue(buffer->commandBuffer->getType()).getVulkanQueue());
 
         if (i == star::Command_Buffer_Order_Index::fifth || this->bufferGroupsWithSubOrders[order][i] == nullptr)
         {
@@ -121,11 +121,9 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
                 vk::Fence workingFence =
                     this->bufferGroupsWithNoSubOrder[order]->fences[static_cast<Queue_Type>(type)].at(
                         frameInFlightIndex);
-                commandResult = std::make_unique<vk::Result>(this->device.getQueueFamily(static_cast<Queue_Type>(type))
-                                                                 .getQueues()
-                                                                 .at(0)
-                                                                 .getVulkanQueue()
-                                                                 .submit(1, &submitInfo, workingFence));
+                commandResult = std::make_unique<vk::Result>(this->device.getDefaultQueue(static_cast<Queue_Type>(type))
+                                                                .getVulkanQueue()
+                                                                .submit(1, &submitInfo, workingFence));
 
                 assert(commandResult != nullptr && "Invalid command buffer type");
 

@@ -28,7 +28,9 @@ class StarQueueFamily
 
     std::shared_ptr<StarCommandPool> createCommandPool(const bool &setAutoReset);
 
-    bool doesSupport(const star::Queue_Type &type) const;
+    bool doesSupport(const vk::QueueFlags &querySupport, const bool &queryPresentationSupport) const;
+
+    bool doesSupport(const vk::QueueFlags &querySupport) const;
 
     uint32_t getQueueCount() const
     {
@@ -41,10 +43,10 @@ class StarQueueFamily
     }
 
   private:
-    const uint32_t queueFamilyIndex;
-    const uint32_t queueCount;
-    const vk::QueueFlags support;
-    const bool presentationSupport;
+    uint32_t queueFamilyIndex;
+    uint32_t queueCount;
+    vk::QueueFlags support;
+    bool presentationSupport;
     std::vector<float> queuePriority = std::vector<float>();
 
     vk::Device *vulkanDevice = nullptr;

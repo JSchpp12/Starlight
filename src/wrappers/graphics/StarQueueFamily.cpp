@@ -41,26 +41,17 @@ std::shared_ptr<star::StarCommandPool> star::StarQueueFamily::createCommandPool(
     return std::make_shared<StarCommandPool>(*this->vulkanDevice, this->queueFamilyIndex, setAutoReset);
 }
 
-bool star::StarQueueFamily::doesSupport(const star::Queue_Type &type) const
-{
-    if (star::Queue_Type::Tpresent == type && this->presentationSupport)
-    {
-        return true;
-    }
-    else if (star::Queue_Type::Tgraphics == type && this->support & vk::QueueFlagBits::eGraphics)
-    {
-        return true;
-    }
-    else if (star::Queue_Type::Ttransfer == type && this->support & vk::QueueFlagBits::eTransfer)
-    {
-        return true;
-    }
-    else if (star::Queue_Type::Tcompute == type && this->support & vk::QueueFlagBits::eCompute)
-    {
-        return true;
+bool star::StarQueueFamily::doesSupport(const vk::QueueFlags &querySupport, const bool &querySupportPresentation) const{
+    if (!querySupportPresentation || (querySupportPresentation && this->presentationSupport == querySupportPresentation)){
+        return doesSupport(querySupport); 
     }
 
     return false;
+}
+
+bool star::StarQueueFamily::doesSupport(const vk::QueueFlags &querySupport) const
+{
+    return (this->support & querySupport) == querySupport;
 }
 
 std::vector<star::StarQueue> star::StarQueueFamily::CreateQueues(vk::Device *device, const uint32_t &familyIndex,

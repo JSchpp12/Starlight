@@ -7,7 +7,7 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
  
     return std::make_unique<TransferRequest::LightInfo>(
         this->lights,
-        device.getQueueFamily(star::Queue_Type::Tgraphics).getQueueFamilyIndex()
+        device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex()
     ); 
 }
 

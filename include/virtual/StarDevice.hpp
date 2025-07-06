@@ -146,6 +146,94 @@ class QueueFamilyIndicies
 class StarDevice
 {
   public:
+    class QueueOwnershipTracker
+    {
+      public:
+        QueueOwnershipTracker(std::vector<StarQueueFamily> regQueueFamilies)
+            : regQueueFamilies(regQueueFamilies),
+              isQueueAvailable(std::vector<std::vector<bool>>(regQueueFamilies.size()))
+        {
+            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            {
+                this->isQueueAvailable.at(i) = std::vector<bool>(this->regQueueFamilies.at(i).getQueueCount(), true);
+            }
+        }
+
+        std::optional<StarQueue> giveMeQueueWithProperties(const vk::QueueFlags &capabilities,
+                                                           const bool &presentationSupport = false)
+        {
+            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            {
+                if (this->regQueueFamilies.at(i).doesSupport(capabilities, presentationSupport))
+                {
+                    for (int j = 0; j < this->isQueueAvailable.at(i).size(); j++)
+                    {
+                        if (this->isQueueAvailable.at(i).at(j))
+                        {
+                            this->isQueueAvailable.at(i).at(j) = false;
+                            return std::make_optional<StarQueue>(this->regQueueFamilies.at(i).getQueues().at(j));
+                        }
+                    }
+                }
+            }
+
+            return std::nullopt;
+        }
+
+        std::optional<StarQueue> giveMeQueueWithProperties(const vk::QueueFlags &capabilities,
+                                                           const bool &presentationSupport, const uint32_t &familyIndex)
+        {
+            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            {
+                if (this->regQueueFamilies.at(i).getQueueFamilyIndex() == familyIndex &&
+                    this->regQueueFamilies.at(i).doesSupport(capabilities, presentationSupport))
+                {
+                    for (int j = 0; j < this->isQueueAvailable.at(i).size(); j++)
+                    {
+                        if (this->isQueueAvailable.at(i).at(j))
+                        {
+                            this->isQueueAvailable.at(i).at(j) = false;
+                            return std::make_optional(this->regQueueFamilies.at(i).getQueues().at(j));
+                        }
+                    }
+                }
+            }
+
+            return std::nullopt;
+        }
+
+        std::vector<uint32_t> getQueueFamiliesWhichSupport(const vk::QueueFlags &capabilities,
+                                                           const bool &presentationSupport = false)
+        {
+            std::vector<uint32_t> indices = std::vector<uint32_t>();
+
+            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            {
+                if (this->regQueueFamilies.at(i).doesSupport(capabilities, presentationSupport))
+                {
+                    indices.push_back(this->regQueueFamilies.at(i).getQueueFamilyIndex());
+                }
+            }
+
+            return indices;
+        }
+
+        std::vector<uint32_t> getAllQueueFamilyIndices() const
+        {
+            std::vector<uint32_t> indices = std::vector<uint32_t>();
+            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            {
+                indices.emplace_back(this->regQueueFamilies.at(i).getQueueFamilyIndex());
+            }
+
+            return indices;
+        }
+
+      private:
+        std::vector<StarQueueFamily> regQueueFamilies = std::vector<StarQueueFamily>();
+        std::vector<std::vector<bool>> isQueueAvailable = std::vector<std::vector<bool>>();
+    };
+
     static std::unique_ptr<StarDevice> New(StarWindow &window, std::set<star::Rendering_Features> requiredFeatures);
 
     virtual ~StarDevice();
@@ -158,7 +246,7 @@ class StarDevice
 
     QueueFamilyIndicies findPhysicalQueueFamilies()
     {
-        assert(this->physicalDevice && this->surface); 
+        assert(this->physicalDevice && this->surface);
 
         return FindQueueFamilies(this->physicalDevice, *this->surface);
     }
@@ -171,21 +259,24 @@ class StarDevice
     /// <param name="features"></param>
     /// <returns></returns>
     bool findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling,
-                                           vk::FormatFeatureFlags features, vk::Format &selectedFormat) const;
-
-    StarQueueFamily &getQueueFamily(const star::Queue_Type &type);
+                             vk::FormatFeatureFlags features, vk::Format &selectedFormat) const;
 
     std::shared_ptr<StarCommandPool> getCommandPool(const star::Queue_Type &type);
 
-    bool doesHaveDedicatedFamily(const star::Queue_Type &type);
+    StarQueue &getDefaultQueue(const star::Queue_Type &type);
 
-    std::unique_ptr<StarQueueFamily> giveMeQueueFamily(const star::Queue_Type &type);
+    QueueOwnershipTracker &getQueueOwnershipTracker()
+    {
+        assert(this->currentDeviceQueues != nullptr); 
+        
+        return *this->currentDeviceQueues;
+    }
 
 #pragma region getters
     SwapChainSupportDetails getSwapChainSupportDetails()
     {
-        assert(this->physicalDevice && this->surface); 
-        
+        assert(this->physicalDevice && this->surface);
+
         return QuerySwapchainSupport(this->physicalDevice, *this->surface);
     }
     vk::PhysicalDevice getPhysicalDevice()
@@ -267,12 +358,10 @@ class StarDevice
 
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
-    const std::vector<const char *> validationLayers = {}; 
+    const std::vector<const char *> validationLayers = {};
 #else
     const bool enableValidationLayers = true;
-    const std::vector<const char *> validationLayers = {
-        "VK_LAYER_KHRONOS_validation"
-    };
+    const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 #endif
     vk::Instance instance;
     vk::Device vulkanDevice;
@@ -282,9 +371,11 @@ class StarDevice
     StarWindow &starWindow;
 
     std::vector<std::unique_ptr<StarQueueFamily>> extraFamilies = std::vector<std::unique_ptr<StarQueueFamily>>();
-    std::unique_ptr<StarQueueFamily> defaultFamily = nullptr;
-    std::unique_ptr<StarQueueFamily> preferredTransferFamily = nullptr;
-    std::unique_ptr<StarQueueFamily> preferredComputeFamily = nullptr;
+    std::unique_ptr<QueueOwnershipTracker> currentDeviceQueues = std::unique_ptr<QueueOwnershipTracker>();
+
+    std::unique_ptr<StarQueue> defaultQueue = nullptr;
+    std::unique_ptr<StarQueue> dedicatedComputeQueue = nullptr;
+    std::unique_ptr<StarQueue> dedicatedTransferQueue = nullptr;
 
     std::shared_ptr<StarCommandPool> defaultCommandPool = nullptr;
     std::shared_ptr<StarCommandPool> transferCommandPool = nullptr;
@@ -296,21 +387,18 @@ class StarDevice
         VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
         VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
         VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-        VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME
-    };
+        VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
 
     vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
 
 #if __APPLE__
     bool isMac = true;
     std::vector<const char *> platformInstanceRequiredExtensions = {
-        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
-        "VK_KHR_portability_enumeration"};
+        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, "VK_KHR_portability_enumeration"};
 #else
     bool isMac = false;
     std::vector<const char *> platformInstanceRequiredExtensions = {};
 #endif
-    void updatePreferredFamilies(const star::Queue_Type &type);
 
     // Create the vulkan instance machine
     void createInstance();
@@ -325,7 +413,9 @@ class StarDevice
     /* Helper Functions */
 
     // Helper function to test each potential GPU device
-    static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
+    static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
+                                 const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
+                                 const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
 
     // Get the extensions required by the system
     std::vector<const char *> getRequiredExtensions();
@@ -350,15 +440,16 @@ class StarDevice
     /// <summary>
     /// Check if the given device supports required extensions.
     /// </summary>
-    static bool CheckDeviceExtensionSupport(const vk::PhysicalDevice &device, const std::vector<const char *> &requiredDeviceExtensions);
+    static bool CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
+                                            const std::vector<const char *> &requiredDeviceExtensions);
 
     /// <summary>
     /// Request specific details about swap chain support for a given device
     /// </summary>
-    static SwapChainSupportDetails QuerySwapchainSupport(const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
+    static SwapChainSupportDetails QuerySwapchainSupport(const vk::PhysicalDevice &device,
+                                                         const vk::SurfaceKHR &surface);
 
   private:
-
     static bool DoesDeviceSupportPresentation(vk::PhysicalDevice device, const vk::SurfaceKHR &surface);
 };
 } // namespace star

@@ -109,10 +109,7 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const uint32_t &s
     else
     {
         mainGraphicsBuffer.commandBuffer->submit(
-            swapChainIndex, this->device.getQueueFamily(mainGraphicsBuffer.commandBuffer->getType())
-                                .getQueues()
-                                .at(0)
-                                .getVulkanQueue());
+            swapChainIndex, this->device.getDefaultQueue(mainGraphicsBuffer.commandBuffer->getType()).getVulkanQueue());
         mainGraphicsSemaphore = mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
     }
 

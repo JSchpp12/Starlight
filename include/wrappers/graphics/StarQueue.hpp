@@ -10,7 +10,7 @@ class StarQueue
     StarQueue() = default;
     StarQueue(vk::Queue queue, const uint32_t &parentQueueFamilyIndex);
 
-    uint32_t getParentQueueFamilyIndex()
+    uint32_t getParentQueueFamilyIndex() const
     {
         return this->parentQueueFamilyIndex;
     }
