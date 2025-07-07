@@ -1,6 +1,5 @@
 #pragma once
 
-#include "StarTexture.hpp"
 #include "TransferRequest_Texture.hpp"
 #include "ManagerController_Controller.hpp"
 

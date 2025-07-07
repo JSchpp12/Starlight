@@ -19,10 +19,10 @@ void SceneRenderer::prepare(StarDevice &device, const vk::Extent2D &swapChainExt
     createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToImages(star::StarDevice &device,
+std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createRenderToImages(star::StarDevice &device,
                                                                                     const int &numFramesInFlight)
 {
-    std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
+    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
     indices.push_back(device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
@@ -34,7 +34,7 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
     vk::Format format = getColorAttachmentFormat(device);
 
     auto builder =
-        star::StarTexture::Builder(device.getDevice(), device.getAllocator().get())
+        star::StarTextures::Texture::Builder(device.getDevice(), device.getAllocator().get())
             .setCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -103,10 +103,10 @@ std::vector<std::unique_ptr<star::StarTexture>> SceneRenderer::createRenderToIma
     return newRenderToImages;
 }
 
-std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRenderToDepthImages(
+std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SceneRenderer::createRenderToDepthImages(
     StarDevice &device, const int &numFramesInFlight)
 {
-    std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
+    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     const vk::Format depthFormat = getDepthAttachmentFormat(device);
 
@@ -118,7 +118,7 @@ std::vector<std::unique_ptr<star::StarTexture>> star::SceneRenderer::createRende
     }
 
     auto builder =
-        star::StarTexture::Builder(device.getDevice(), device.getAllocator().get())
+        star::StarTextures::Texture::Builder(device.getDevice(), device.getAllocator().get())
             .setCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)

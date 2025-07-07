@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SharedCompressedTexture.hpp"
-#include "StarTexture.hpp"
+#include "StarTextures/Texture.hpp"
 #include "TransferRequest_Texture.hpp"
 
 
@@ -22,11 +22,11 @@ class CompressedTextureFile : public TransferRequest::Texture
 
     virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const override;
 
-    virtual std::unique_ptr<star::StarTexture> createFinal(
+    virtual std::unique_ptr<star::StarTextures::Texture> createFinal(
         vk::Device &device, VmaAllocator &allocator,
         const std::vector<uint32_t> &transferQueueFamilyIndex) const override;
 
-    virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarTexture &dst,
+    virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarTextures::Texture &dst,
                                           vk::CommandBuffer &commandBuffer) const override;
 
     virtual void writeDataToStageBuffer(StarBuffer &stagingBuffer) const override;

@@ -10,7 +10,7 @@
 #include "StarCommandBuffer.hpp"
 #include "StarCommandPool.hpp"
 #include "StarQueueFamily.hpp"
-#include "StarTexture.hpp"
+#include "StarTextures/Texture.hpp"
 
 #include <boost/atomic.hpp>
 #include <boost/lockfree/stack.hpp>
@@ -33,7 +33,7 @@ class TransferManagerThread
         std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest = nullptr;
         std::unique_ptr<TransferRequest::Texture> textureTransferRequest = nullptr;
         std::optional<std::unique_ptr<StarBuffer> *> resultingBuffer = std::nullopt;
-        std::optional<std::unique_ptr<StarTexture> *> resultingTexture = std::nullopt;
+        std::optional<std::unique_ptr<StarTextures::Texture> *> resultingTexture = std::nullopt;
 
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
                            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
@@ -45,7 +45,7 @@ class TransferManagerThread
 
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
                            std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
-                           std::unique_ptr<StarTexture> &resultingTexture)
+                           std::unique_ptr<StarTextures::Texture> &resultingTexture)
             : gpuDoneNotificationToMain(gpuDoneNotificationToMain),
               textureTransferRequest(std::move(textureTransferRequest)), resultingTexture(&resultingTexture)
         {
@@ -143,7 +143,7 @@ class TransferManagerThread
                               const vk::PhysicalDeviceProperties &deviceProperties,
                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                               ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
-                              std::unique_ptr<StarTexture> *resultingTexture, boost::atomic<bool> *gpuDoneSignalToMain);
+                              std::unique_ptr<StarTextures::Texture> *resultingTexture, boost::atomic<bool> *gpuDoneSignalToMain);
 
     static void CheckForCleanups(vk::Device &device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
 
@@ -175,15 +175,13 @@ class TransferWorker
 
     void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
              std::unique_ptr<TransferRequest::Texture> newTextureRequest,
-             std::unique_ptr<StarTexture> &resultingTexture, const bool &isHighPriority);
+             std::unique_ptr<StarTextures::Texture> &resultingTexture, const bool &isHighPriority);
 
     void update();
 
     ~TransferWorker();
 
   private:
-    std::vector<std::unique_ptr<StarQueueFamily>> myQueueFamilies = std::vector<std::unique_ptr<StarQueueFamily>>();
-
     boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> highPriorityRequests =
         boost::lockfree::stack<TransferManagerThread::InterThreadRequest *>(50);
     boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> standardRequests =

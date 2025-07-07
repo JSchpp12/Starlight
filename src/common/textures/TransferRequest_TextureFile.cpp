@@ -44,7 +44,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::TextureFile::createStag
         .build();
 }
 
-std::unique_ptr<star::StarTexture> star::TransferRequest::TextureFile::createFinal(
+std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     int width, height, channels = 0;
@@ -54,7 +54,7 @@ std::unique_ptr<star::StarTexture> star::TransferRequest::TextureFile::createFin
     for (auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    return star::StarTexture::Builder(device, allocator)
+    return star::StarTextures::Texture::Builder(device, allocator)
         .setCreateInfo(Allocator::AllocationBuilder()
                            .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
                            .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
@@ -84,9 +84,9 @@ std::unique_ptr<star::StarTexture> star::TransferRequest::TextureFile::createFin
                                                   .setLevelCount(1)))
         .setSamplerInfo(vk::SamplerCreateInfo()
                             .setAnisotropyEnable(true)
-                            .setMaxAnisotropy(StarTexture::SelectAnisotropyLevel(this->deviceProperties))
-                            .setMagFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
-                            .setMinFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
+                            .setMaxAnisotropy(StarTextures::Texture::SelectAnisotropyLevel(this->deviceProperties))
+                            .setMagFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
+                            .setMinFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
                             .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
                             .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
                             .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
@@ -132,12 +132,12 @@ void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffer
 }
 
 void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuffer &srcBuffer,
-                                                                  star::StarTexture &dstTexture,
+                                                                  star::StarTextures::Texture &dstTexture,
                                                                   vk::CommandBuffer &commandBuffer) const
 {
 
     // transfer to transferdst
-    StarTexture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
+    StarTextures::Texture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
                                        vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
     uint32_t width, height, channels; 
@@ -165,7 +165,7 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     commandBuffer.copyBufferToImage(srcBuffer.getVulkanBuffer(), dstTexture.getVulkanImage(),
                                     vk::ImageLayout::eTransferDstOptimal, region);
 
-    StarTexture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
+    StarTextures::Texture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
                                        vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 }
 

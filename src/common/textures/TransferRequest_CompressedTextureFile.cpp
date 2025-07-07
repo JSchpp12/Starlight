@@ -26,7 +26,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::CompressedTextureFile::
                                         vk::SharingMode::eConcurrent, "CompressedTexture_TransferSRCBuffer");
 }
 
-std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile::createFinal(
+std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTextureFile::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     boost::unique_lock<boost::mutex> lock;
@@ -37,7 +37,7 @@ std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile:
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    return StarTexture::Builder(device, allocator)
+    return StarTextures::Texture::Builder(device, allocator)
         .setCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -68,10 +68,10 @@ std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile:
                                                   .setLevelCount(texture->numLevels)))
         .setSamplerInfo(vk::SamplerCreateInfo()
                             .setAnisotropyEnable(true)
-                            .setMaxAnisotropy(StarTexture::SelectAnisotropyLevel(this->deviceProperties))
-                            .setMagFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
-                            .setMinFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
-                            .setMinFilter(StarTexture::SelectTextureFiltering(this->deviceProperties))
+                            .setMaxAnisotropy(StarTextures::Texture::SelectAnisotropyLevel(this->deviceProperties))
+                            .setMagFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
+                            .setMinFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
+                            .setMinFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
                             .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
                             .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
                             .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
@@ -86,8 +86,8 @@ std::unique_ptr<star::StarTexture> star::TransferRequest::CompressedTextureFile:
         .build();
 }
 
-void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(star::StarBuffer &srcBuffer,
-                                                                            star::StarTexture &dst,
+void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(StarBuffer &srcBuffer,
+                                                                            StarTextures::Texture &dst,
                                                                             vk::CommandBuffer &commandBuffer) const
 {
     boost::unique_lock<boost::mutex> lock;

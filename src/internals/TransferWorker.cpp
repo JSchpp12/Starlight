@@ -155,7 +155,7 @@ void star::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllocator
                                                 const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                                 ProcessRequestInfo &processInfo,
                                                 TransferRequest::Texture *newTextureRequest,
-                                                std::unique_ptr<StarTexture> *resultingTexture,
+                                                std::unique_ptr<StarTextures::Texture> *resultingTexture,
                                                 boost::atomic<bool> *gpuDoneSignalMain)
 {
 
@@ -282,7 +282,7 @@ void star::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThr
 
 void star::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
                                std::unique_ptr<star::TransferRequest::Texture> newTextureRequest,
-                               std::unique_ptr<StarTexture> &resultingTexture, const bool &isHighPriority)
+                               std::unique_ptr<StarTextures::Texture> &resultingTexture, const bool &isHighPriority)
 {
     auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(
         &isBeingWorkedOnByTransferThread, std::move(newTextureRequest), resultingTexture);

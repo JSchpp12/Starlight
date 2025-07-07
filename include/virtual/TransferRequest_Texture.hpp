@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarTexture.hpp"
+#include "StarTextures/Texture.hpp"
 #include "TransferRequest_Memory.hpp"
 
 
@@ -8,7 +8,7 @@
 
 namespace star::TransferRequest
 {
-class Texture : private Memory<star::StarTexture>
+class Texture : private Memory<star::StarTextures::Texture>
 {
   public:
     Texture() = default;
@@ -17,11 +17,11 @@ class Texture : private Memory<star::StarTexture>
     virtual std::unique_ptr<StarBuffer> createStagingBuffer(
         vk::Device &device, VmaAllocator &allocator) const override = 0;
 
-    virtual std::unique_ptr<star::StarTexture> createFinal(
+    virtual std::unique_ptr<star::StarTextures::Texture> createFinal(
         vk::Device &device, VmaAllocator &allocator,
         const std::vector<uint32_t> &transferQueueFamilyIndex) const override = 0;
 
-    virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarTexture &dst,
+    virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, star::StarTextures::Texture &dst,
                                           vk::CommandBuffer &commandBuffer) const override = 0;
 
     virtual void writeDataToStageBuffer(star::StarBuffer &stagingBuffer) const override = 0;

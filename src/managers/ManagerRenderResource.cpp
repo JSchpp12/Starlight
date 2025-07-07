@@ -163,7 +163,7 @@ star::StarBuffer &star::ManagerRenderResource::getBuffer(const star::Handle &han
     return *container->buffer;
 }
 
-star::StarTexture &star::ManagerRenderResource::getTexture(const star::Handle &handle)
+star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const star::Handle &handle)
 {
     assert(handle.getType() == star::Handle_Type::texture && "Handle provided is not a texture handle");
 

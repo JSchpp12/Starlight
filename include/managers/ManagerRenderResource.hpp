@@ -29,7 +29,7 @@ class ManagerRenderResource : public StarManager
         std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest = nullptr;
         std::unique_ptr<StarBuffer> buffer = std::unique_ptr<StarBuffer>();
         std::unique_ptr<ManagerController::RenderResource::Texture> textureRequest = nullptr;
-        std::unique_ptr<StarTexture> texture = std::unique_ptr<StarTexture>();
+        std::unique_ptr<StarTextures::Texture> texture = std::unique_ptr<StarTextures::Texture>();
 
         FinalizedRenderRequest(std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest)
             : bufferRequest(std::move(bufferRequest))
@@ -64,7 +64,7 @@ class ManagerRenderResource : public StarManager
 
     static StarBuffer &getBuffer(const Handle &handle);
 
-    static StarTexture &getTexture(const Handle &handle);
+    static StarTextures::Texture &getTexture(const Handle &handle);
 
     static void destroy(const Handle &handle);
 

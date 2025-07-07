@@ -94,11 +94,13 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/wrappers/graphics/StarCommandBuffer.cpp"
     "src/wrappers/graphics/StarShaderInfo.cpp"
     "src/wrappers/graphics/StarQueueFamily.cpp"
-    "src/wrappers/graphics/StarTexture.cpp"
     "src/wrappers/graphics/StarQueue.cpp"
     "src/wrappers/graphics/StarCommandPool.cpp"
     "src/wrappers/Allocator.cpp"
     "src/wrappers/ScreenshotCommandBuffer.cpp"
+    "src/wrappers/graphics/StarTextures/Texture.cpp"
+    "src/wrappers/graphics/StarTextures/Resources.cpp"
+    "src/wrappers/graphics/StarTextures/AllocatedResources.cpp"
     "src/managers/ShaderManager.cpp" 
     "src/managers/ManagerRenderResource.cpp"
     "src/managers/LightManager.cpp"
@@ -147,6 +149,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
 )
+
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${STARLIGHT_NAME}_HEADERS
@@ -209,7 +212,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/wrappers/ScreenshotCommandBuffer.hpp"
     "include/wrappers/graphics/StarShaderInfo.hpp"
     "include/wrappers/graphics/StarQueueFamily.hpp"
-    "include/wrappers/graphics/StarTexture.hpp"
     "include/wrappers/graphics/StarQueue.hpp"
     "include/wrappers/graphics/StarCommandPool.hpp"
     "include/wrappers/Allocator.hpp"
@@ -226,6 +228,9 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/internals/TransferWorker.hpp"
     "include/internals/ManagerStorageContainer.hpp"
     "include/virtual/StarEntity.hpp"
+    "include/wrappers/graphics/StarTextures/Texture.hpp"
+    "include/wrappers/graphics/StarTextures/Resources.hpp"
+    "include/wrappers/graphics/StarTextures/AllocatedResources.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarShader.hpp"

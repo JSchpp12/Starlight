@@ -88,7 +88,7 @@ class SwapChainRenderer : public SceneRenderer
     std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
     getOverrideBufferSubmissionCallback() override;
 
-    virtual std::vector<std::unique_ptr<StarTexture>> createRenderToImages(StarDevice &device,
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(StarDevice &device,
                                                                            const int &numFramesInFlight) override;
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(

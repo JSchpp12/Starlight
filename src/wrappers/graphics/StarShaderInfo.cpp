@@ -51,7 +51,7 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const int &index)
     }
     else if (shaderInfos[index].textureInfo.has_value())
     {
-        const StarTexture *texture = nullptr;
+        const StarTextures::Texture *texture = nullptr;
         if (shaderInfos[index].textureInfo.value().texture.has_value())
             texture = shaderInfos[index].textureInfo.value().texture.value();
         else if (shaderInfos[index].textureInfo.value().handle.has_value())

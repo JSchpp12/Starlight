@@ -3,7 +3,7 @@
 #include "StarBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarDevice.hpp"
-#include "StarTexture.hpp"
+#include "StarTextures/Texture.hpp"
 
 #include "Handle.hpp"
 
@@ -51,19 +51,19 @@ class StarShaderInfo
             {
             }
 
-            TextureInfo(const StarTexture *texture, const vk::ImageLayout &expectedLayout)
+            TextureInfo(const StarTextures::Texture *texture, const vk::ImageLayout &expectedLayout)
                 : texture(texture), expectedLayout(expectedLayout)
             {
             }
 
-            TextureInfo(const StarTexture *texture, const vk::ImageLayout &expectedLayout,
+            TextureInfo(const StarTextures::Texture *texture, const vk::ImageLayout &expectedLayout,
                         const vk::Format &requestedImageViewFormat)
                 : texture(texture), expectedLayout(expectedLayout), requestedImageViewFormat(requestedImageViewFormat)
             {
             }
 
             std::optional<const Handle> handle = std::nullopt;
-            std::optional<const StarTexture *> texture = std::nullopt;
+            std::optional<const StarTextures::Texture *> texture = std::nullopt;
             const vk::ImageLayout expectedLayout;
             std::optional<vk::Image> currentImage = std::nullopt;
             std::optional<vk::Format> requestedImageViewFormat = std::nullopt;
@@ -170,7 +170,7 @@ class StarShaderInfo
             return *this;
         };
 
-        Builder &add(const StarTexture &texture, const vk::ImageLayout &desiredLayout,
+        Builder &add(const StarTextures::Texture &texture, const vk::ImageLayout &desiredLayout,
                      const vk::Format &requestedImageViewFormat, const bool willCheckForIfReady)
         {
             this->activeSet->back()->add(ShaderInfo(
@@ -178,7 +178,7 @@ class StarShaderInfo
             return *this;
         };
 
-        Builder &add(const StarTexture &texture, const vk::ImageLayout &desiredLayout, const bool &willCheckForIfReady)
+        Builder &add(const StarTextures::Texture &texture, const vk::ImageLayout &desiredLayout, const bool &willCheckForIfReady)
         {
             this->activeSet->back()->add(
                 ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, willCheckForIfReady));

@@ -20,7 +20,7 @@
 #include "StarRenderer.hpp"
 #include "StarScene.hpp"
 #include "StarShaderInfo.hpp"
-#include "StarTexture.hpp"
+#include "StarTextures/Texture.hpp"
 #include "StarWindow.hpp"
 
 #include <chrono>
@@ -45,11 +45,11 @@ class SceneRenderer : public StarRenderer,
         return *this->globalSetLayout;
     }
 
-    std::vector<std::unique_ptr<StarTexture>> *getRenderToColorImages()
+    std::vector<std::unique_ptr<StarTextures::Texture>> *getRenderToColorImages()
     {
         return &this->renderToImages;
     }
-    std::vector<std::unique_ptr<StarTexture>> *getRenderToDepthImages()
+    std::vector<std::unique_ptr<StarTextures::Texture>> *getRenderToDepthImages()
     {
         return &this->renderToDepthImages;
     }
@@ -65,11 +65,13 @@ class SceneRenderer : public StarRenderer,
 
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
 
-    std::vector<std::unique_ptr<StarTexture>> renderToImages = std::vector<std::unique_ptr<StarTexture>>();
+    std::vector<std::unique_ptr<StarTextures::Texture>> renderToImages =
+        std::vector<std::unique_ptr<StarTextures::Texture>>();
     std::vector<vk::Framebuffer> renderToFramebuffers = std::vector<vk::Framebuffer>();
 
     // depth testing storage
-    std::vector<std::unique_ptr<StarTexture>> renderToDepthImages = std::vector<std::unique_ptr<StarTexture>>();
+    std::vector<std::unique_ptr<StarTextures::Texture>> renderToDepthImages =
+        std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     // storage for multiple buffers for each swap chain image
     // std::vector<vk::DescriptorSet> globalDescriptorSets;
@@ -79,11 +81,11 @@ class SceneRenderer : public StarRenderer,
     std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
     std::vector<std::unique_ptr<StarRenderGroup>> renderGroups = std::vector<std::unique_ptr<StarRenderGroup>>();
 
-    virtual std::vector<std::unique_ptr<StarTexture>> createRenderToImages(StarDevice &device,
-                                                                           const int &numFramesInFlight);
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(StarDevice &device,
+                                                                                     const int &numFramesInFlight);
 
-    virtual std::vector<std::unique_ptr<StarTexture>> createRenderToDepthImages(StarDevice &device,
-                                                                                const int &numFramesInFlight);
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToDepthImages(StarDevice &device,
+                                                                                          const int &numFramesInFlight);
 
     /// <summary>
     /// Create vertex buffer + index buffers + any rendering groups for operations

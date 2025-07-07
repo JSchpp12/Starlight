@@ -296,17 +296,17 @@ std::optional<std::function<vk::Semaphore(star::StarCommandBuffer &, const int &
                   std::placeholders::_3));
 }
 
-std::vector<std::unique_ptr<star::StarTexture>> star::SwapChainRenderer::createRenderToImages(
+std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SwapChainRenderer::createRenderToImages(
     star::StarDevice &device, const int &numFramesInFlight)
 {
-    std::vector<std::unique_ptr<StarTexture>> newRenderToImages = std::vector<std::unique_ptr<StarTexture>>();
+    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     vk::Format format = getColorAttachmentFormat(device);
 
     // get images in the newly created swapchain
     for (vk::Image &image : this->device.getDevice().getSwapchainImagesKHR(this->swapChain))
     {
-        auto builder = star::StarTexture::Builder(device.getDevice(), image)
+        auto builder = star::StarTextures::Texture::Builder(device.getDevice(), image)
                            .setBaseFormat(format)
                            .addViewInfo(vk::ImageViewCreateInfo()
                                             .setViewType(vk::ImageViewType::e2D)

@@ -2,7 +2,7 @@
 
 #include "ManagerController_RenderResource_Texture.hpp"
 #include "TransferRequest_Texture.hpp"
-#include "StarTexture.hpp"
+#include "StarTextures/Texture.hpp"
 
 #include <ktx.h>
 
