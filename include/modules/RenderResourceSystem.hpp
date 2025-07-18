@@ -1,7 +1,7 @@
 #pragma once 
 
 #include "StarDevice.hpp"
-#include "StarBuffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 #include "BufferHandle.hpp"
 #include "Vertex.hpp"
 
@@ -21,7 +21,7 @@ namespace star {
 		static void registerCallbacks(std::function<void(StarDevice&, const int&, const vk::Extent2D&)> initCallback, 
 			std::function<void(StarDevice&)> destroyCallback);
 
-		static void registerLoadGeomDataCallback(std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)>);
+		static void registerLoadGeomDataCallback(std::function<std::pair<std::unique_ptr<StarBuffers::Buffer>, std::unique_ptr<StarBuffers::Buffer>>(StarDevice&, BufferHandle, BufferHandle)>);
 
 		static void registerSetDrawInfoCallback(std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)> setGeometryDataOffsetCallback);
 
@@ -37,9 +37,9 @@ namespace star {
 	private: 
 		static std::stack<std::function<void(StarDevice&, const int&, const vk::Extent2D&)>> initCallbacks;
 		static std::stack<std::function<void(StarDevice&)>> destroyCallbacks;
-		static std::stack<std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)>> loadGeometryCallbacks;
+		static std::stack<std::function<std::pair<std::unique_ptr<StarBuffers::Buffer>, std::unique_ptr<StarBuffers::Buffer>>(StarDevice&, BufferHandle, BufferHandle)>> loadGeometryCallbacks;
 		static std::stack<std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>> geometryDataOffsetCallbacks;
-		static std::vector<std::unique_ptr<StarBuffer>> buffers; 
+		static std::vector<std::unique_ptr<StarBuffers::Buffer>> buffers; 
 
 		static void preparePrimaryGeometry(StarDevice& device);
 

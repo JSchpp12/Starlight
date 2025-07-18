@@ -5,7 +5,7 @@
 #include "ManagerController_RenderResource_Buffer.hpp"
 #include "ManagerController_RenderResource_Texture.hpp"
 #include "ManagerStorageContainer.hpp"
-#include "StarBuffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 #include "StarDevice.hpp"
 #include "StarManager.hpp"
 #include "TransferRequest_Memory.hpp"
@@ -27,7 +27,7 @@ class ManagerRenderResource : public StarManager
     struct FinalizedRenderRequest : public StarManager::FinalizedRequest
     {
         std::unique_ptr<ManagerController::RenderResource::Buffer> bufferRequest = nullptr;
-        std::unique_ptr<StarBuffer> buffer = std::unique_ptr<StarBuffer>();
+        std::unique_ptr<StarBuffers::Buffer> buffer = std::unique_ptr<StarBuffers::Buffer>();
         std::unique_ptr<ManagerController::RenderResource::Texture> textureRequest = nullptr;
         std::unique_ptr<StarTextures::Texture> texture = std::unique_ptr<StarTextures::Texture>();
 
@@ -62,7 +62,7 @@ class ManagerRenderResource : public StarManager
 
     static void waitForReady(const Handle &handle);
 
-    static StarBuffer &getBuffer(const Handle &handle);
+    static StarBuffers::Buffer &getBuffer(const Handle &handle);
 
     static StarTextures::Texture &getTexture(const Handle &handle);
 

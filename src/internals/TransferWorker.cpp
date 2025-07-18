@@ -125,7 +125,7 @@ void star::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator 
                                                const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                                ProcessRequestInfo &processInfo,
                                                TransferRequest::Buffer *newBufferRequest,
-                                               std::unique_ptr<StarBuffer> *resultingBuffer,
+                                               std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
                                                boost::atomic<bool> *gpuDoneSignalMain)
 {
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
@@ -272,7 +272,7 @@ star::TransferWorker::TransferWorker(star::StarDevice &device, bool overrideToSi
 
 void star::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
                                std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
-                               std::unique_ptr<star::StarBuffer> &resultingBuffer, const bool &isHighPriority)
+                               std::unique_ptr<star::StarBuffers::Buffer> &resultingBuffer, const bool &isHighPriority)
 {
     auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(
         &isBeingWorkedOnByTransferThread, std::move(newBufferRequest), resultingBuffer);

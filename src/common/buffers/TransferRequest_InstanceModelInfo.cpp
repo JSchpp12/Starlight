@@ -2,13 +2,13 @@
 
 #include "CastHelpers.hpp"
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::createStagingBuffer(
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelInfo::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
     const vk::DeviceSize alignmentInstanceSize =
-        StarBuffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
+        StarBuffers::Buffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
 
-    return StarBuffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
@@ -25,7 +25,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::crea
         .build();
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::createFinal(
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelInfo::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
 
@@ -34,9 +34,9 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::crea
 		indices.push_back(index);
 
     const vk::DeviceSize alignmentInstanceSize =
-        StarBuffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
+        StarBuffers::Buffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
 
-    return StarBuffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -55,7 +55,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceModelInfo::crea
         .build();
 }
 
-void star::TransferRequest::InstanceModelInfo::writeDataToStageBuffer(star::StarBuffer &buffer) const
+void star::TransferRequest::InstanceModelInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const
 {
     buffer.map();
     for (int i = 0; i < this->displayMatrixInfo.size(); ++i)

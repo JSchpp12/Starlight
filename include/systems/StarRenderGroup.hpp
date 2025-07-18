@@ -10,7 +10,6 @@
 #include "StarDescriptorBuilders.hpp"
 #include "StarDevice.hpp"
 #include "StarGraphicsPipeline.hpp"
-#include "StarBuffer.hpp"
 #include "StarObject.hpp"
 #include "StarShaderInfo.hpp"
 #include "StarCommandBuffer.hpp"

@@ -2,13 +2,13 @@
 
 #include "CastHelpers.hpp"
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceNormalInfo::createStagingBuffer(
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormalInfo::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
     const vk::DeviceSize alignmentSize =
-        StarBuffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
+        StarBuffers::Buffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
 
-    return StarBuffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
@@ -25,7 +25,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceNormalInfo::cre
         .build();
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceNormalInfo::createFinal(
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormalInfo::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices = {this->graphicsQueueFamilyIndex};
@@ -33,9 +33,9 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceNormalInfo::cre
 		indices.push_back(queueFamilyIndex);
 
     const vk::DeviceSize alignmentSize =
-        StarBuffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
+        StarBuffers::Buffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
 
-    return StarBuffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -54,7 +54,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::InstanceNormalInfo::cre
         .build();
 }
 
-void star::TransferRequest::InstanceNormalInfo::writeDataToStageBuffer(star::StarBuffer &buffer) const
+void star::TransferRequest::InstanceNormalInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const
 {
     buffer.map();
 

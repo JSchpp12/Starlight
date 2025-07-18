@@ -1,4 +1,4 @@
-#include "StarBuffers::Buffers/Buffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 
 /*
 * Initially based off Ive_buffer by Brendan Galea -
@@ -61,7 +61,7 @@ StarBuffers::Buffer::Buffer(VmaAllocator& allocator, const StarBuffers::Buffer::
 	this->allocationInfo = std::make_unique<VmaAllocationInfo>(allocationInfo);
 }
 
-StarBuffers::Buffer::~Buffer::Buffer() {
+StarBuffers::Buffer::~Buffer() {
 	if (mapped)
 		vmaUnmapMemory(allocator, this->memory);
 
@@ -119,7 +119,7 @@ vk::DescriptorBufferInfo StarBuffers::Buffer::descriptorInfoForIndex(int index) 
 	return descriptorInfo(this->alignmentSize, index * alignmentSize);
 }
 
-StarBuffers::Buffer::StarBuffers::Buffer(VmaAllocator &allocator, const uint32_t &instanceCount, const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment, const VmaAllocationCreateInfo &allocCreateInfo, const vk::BufferCreateInfo &bufferCreateInfo, const std::string &allocName)
+StarBuffers::Buffer::Buffer(VmaAllocator &allocator, const uint32_t &instanceCount, const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment, const VmaAllocationCreateInfo &allocCreateInfo, const vk::BufferCreateInfo &bufferCreateInfo, const std::string &allocName)
 : allocator(allocator), instanceCount(instanceCount), instanceSize(instanceSize), alignmentSize(GetAlignment(instanceSize, minOffsetAlignment)), bufferSize(bufferCreateInfo.size)
 {
 	VmaAllocationInfo nAllocInfo{}; 

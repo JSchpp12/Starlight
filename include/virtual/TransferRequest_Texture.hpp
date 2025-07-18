@@ -14,17 +14,17 @@ class Texture : private Memory<star::StarTextures::Texture>
     Texture() = default;
     virtual ~Texture() = default;
 
-    virtual std::unique_ptr<StarBuffer> createStagingBuffer(
+    virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(
         vk::Device &device, VmaAllocator &allocator) const override = 0;
 
     virtual std::unique_ptr<star::StarTextures::Texture> createFinal(
         vk::Device &device, VmaAllocator &allocator,
         const std::vector<uint32_t> &transferQueueFamilyIndex) const override = 0;
 
-    virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, star::StarTextures::Texture &dst,
+    virtual void copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer, star::StarTextures::Texture &dst,
                                           vk::CommandBuffer &commandBuffer) const override = 0;
 
-    virtual void writeDataToStageBuffer(star::StarBuffer &stagingBuffer) const override = 0;
+    virtual void writeDataToStageBuffer(star::StarBuffers::Buffer &stagingBuffer) const override = 0;
 
   protected:
 };

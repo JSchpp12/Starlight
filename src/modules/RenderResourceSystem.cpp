@@ -2,9 +2,9 @@
 
 std::stack<std::function<void(star::StarDevice&, const int&, const vk::Extent2D&)>> star::RenderResourceSystem::initCallbacks = std::stack<std::function<void(StarDevice&, const int&, const vk::Extent2D&)>>();
 std::stack<std::function<void(star::StarDevice&)>> star::RenderResourceSystem::destroyCallbacks = std::stack<std::function<void(star::StarDevice&)>>();
-std::stack<std::function<std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>>(star::StarDevice&, star::BufferHandle, star::BufferHandle)>> star::RenderResourceSystem::loadGeometryCallbacks = std::stack<std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)>>();
+std::stack<std::function<std::pair<std::unique_ptr<star::StarBuffers::Buffer>, std::unique_ptr<star::StarBuffers::Buffer>>(star::StarDevice&, star::BufferHandle, star::BufferHandle)>> star::RenderResourceSystem::loadGeometryCallbacks = std::stack<std::function<std::pair<std::unique_ptr<StarBuffers::Buffer>, std::unique_ptr<StarBuffers::Buffer>>(StarDevice&, BufferHandle, BufferHandle)>>();
 std::stack<std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>> star::RenderResourceSystem::geometryDataOffsetCallbacks = std::stack<std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>>();
-std::vector<std::unique_ptr<star::StarBuffer>> star::RenderResourceSystem::buffers = std::vector<std::unique_ptr<star::StarBuffer>>(); 
+std::vector<std::unique_ptr<star::StarBuffers::Buffer>> star::RenderResourceSystem::buffers = std::vector<std::unique_ptr<star::StarBuffers::Buffer>>(); 
 
 void star::RenderResourceSystem::registerCallbacks(std::function<void(star::StarDevice&, const int&, const vk::Extent2D&)> initCallback, std::function<void(star::StarDevice&)> destroyCallback)
 {
@@ -12,7 +12,7 @@ void star::RenderResourceSystem::registerCallbacks(std::function<void(star::Star
 	destroyCallbacks.push(destroyCallback);
 }
 
-void star::RenderResourceSystem::registerLoadGeomDataCallback(std::function<std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>>(StarDevice&, BufferHandle, BufferHandle)> loadGeometryCallback)
+void star::RenderResourceSystem::registerLoadGeomDataCallback(std::function<std::pair<std::unique_ptr<StarBuffers::Buffer>, std::unique_ptr<StarBuffers::Buffer>>(StarDevice&, BufferHandle, BufferHandle)> loadGeometryCallback)
 {
 	loadGeometryCallbacks.push(loadGeometryCallback); 
 }
@@ -56,15 +56,15 @@ void star::RenderResourceSystem::cleanup(StarDevice& device)
 void star::RenderResourceSystem::preparePrimaryGeometry(StarDevice& device)
 {
 	vk::DeviceSize totalVertSize = 0, totalVertInstanceCount = 0, totalIndInstanceCount = 0;
-	std::vector<std::unique_ptr<StarBuffer>> stagingBuffersVert, stagingBuffersIndex; 
+	std::vector<std::unique_ptr<StarBuffers::Buffer>> stagingBuffersVert, stagingBuffersIndex; 
 
 	while (!loadGeometryCallbacks.empty()) {
 		BufferHandle vertBufferHandle = BufferHandle{ 0, totalVertSize };
 		BufferHandle indBufferHandle = BufferHandle{ 1 };
 
-		std::function<std::pair<std::unique_ptr<star::StarBuffer>, std::unique_ptr<star::StarBuffer>>(star::StarDevice&, star::BufferHandle, star::BufferHandle)>& function = loadGeometryCallbacks.top();
+		std::function<std::pair<std::unique_ptr<star::StarBuffers::Buffer>, std::unique_ptr<star::StarBuffers::Buffer>>(star::StarDevice&, star::BufferHandle, star::BufferHandle)>& function = loadGeometryCallbacks.top();
 		std::function<void(const uint32_t&, const uint32_t&, const uint32_t&)>& offsetFunction = geometryDataOffsetCallbacks.top();
-		std::pair<std::unique_ptr<StarBuffer>, std::unique_ptr<StarBuffer>> result = function(device, vertBufferHandle, indBufferHandle);
+		std::pair<std::unique_ptr<StarBuffers::Buffer>, std::unique_ptr<StarBuffers::Buffer>> result = function(device, vertBufferHandle, indBufferHandle);
 
 		//might want to throw a check in here to verify buffer type
 		if (!result.first || !result.second)
@@ -152,7 +152,7 @@ void star::RenderResourceSystem::bindBuffer(const uint32_t& bufferId, vk::Comman
 {
 	assert(bufferId < buffers.size() && "Handle provided has an id which does not map to any resources");
 	
-	StarBuffer& buffer = *buffers.at(bufferId);
+	StarBuffers::Buffer& buffer = *buffers.at(bufferId);
 	vk::DeviceSize vOffset{ offset };
 
 	if (buffer.getUsageFlags() & vk::BufferUsageFlagBits::eVertexBuffer) {

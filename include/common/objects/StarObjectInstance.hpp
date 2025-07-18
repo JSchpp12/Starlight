@@ -1,6 +1,6 @@
 #pragma once 
 
-#include "StarBuffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 #include "StarEntity.hpp"
 #include "StarDescriptorBuilders.hpp"
 

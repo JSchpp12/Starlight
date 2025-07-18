@@ -12,14 +12,14 @@ star::TransferRequest::CompressedTextureFile::CompressedTextureFile(
 {
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
     boost::unique_lock<boost::mutex> lock;
     ktxTexture2 *texture = nullptr;
     this->compressedTexture->giveMeTranscodedImage(lock, texture);
 
-    return std::make_unique<StarBuffer>(allocator, texture->dataSize, 1,
+    return std::make_unique<StarBuffers::Buffer>(allocator, texture->dataSize, 1,
                                         VMA_ALLOCATION_CREATE_MAPPED_BIT |
                                             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
                                         VMA_MEMORY_USAGE_AUTO, vk::BufferUsageFlagBits::eTransferSrc,
@@ -86,7 +86,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         .build();
 }
 
-void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(StarBuffer &srcBuffer,
+void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer,
                                                                             StarTextures::Texture &dst,
                                                                             vk::CommandBuffer &commandBuffer) const
 {
@@ -172,7 +172,7 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
     }
 }
 
-void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBuffer &buffer) const
+void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const
 {
     buffer.map();
 

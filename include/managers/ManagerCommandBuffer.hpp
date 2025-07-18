@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Handle.hpp"
-#include "StarBuffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDevice.hpp"
 

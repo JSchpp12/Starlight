@@ -154,7 +154,7 @@ void star::ManagerRenderResource::waitForReady(const Handle &handle)
     }
 }
 
-star::StarBuffer &star::ManagerRenderResource::getBuffer(const star::Handle &handle)
+star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const star::Handle &handle)
 {
     assert(handle.getType() == star::Handle_Type::buffer && "Handle provided is not a buffer handle");
 

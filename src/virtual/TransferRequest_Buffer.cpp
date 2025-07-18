@@ -1,12 +1,12 @@
 #include "TransferRequest_Buffer.hpp"
 
-void star::TransferRequest::Buffer::copyFromTransferSRCToDST(StarBuffer &srcBuffer, StarBuffer &dstBuffer,
+void star::TransferRequest::Buffer::copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer, StarBuffers::Buffer &dstBuffer,
                                                              vk::CommandBuffer &commandBuffer) const
 {
     DefaultCopy(srcBuffer, dstBuffer, commandBuffer);
 }
 
-void star::TransferRequest::Buffer::DefaultCopy(StarBuffer &srcBuffer, StarBuffer &dstBuffer,
+void star::TransferRequest::Buffer::DefaultCopy(StarBuffers::Buffer &srcBuffer, StarBuffers::Buffer &dstBuffer,
                                                 vk::CommandBuffer &commandBuffer)
 {
     vk::BufferCopy copyRegion{};

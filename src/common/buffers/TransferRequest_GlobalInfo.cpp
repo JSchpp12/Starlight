@@ -1,9 +1,9 @@
 #include "TransferRequest_GlobalInfo.hpp"
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createStagingBuffer(
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
-    return StarBuffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
@@ -19,14 +19,14 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createStagi
         .build();
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createFinal(
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices{this->graphicsQueueIndex};
     for (const auto &queueFamilyIndex : transferQueueFamilyIndex)
         indices.push_back(queueFamilyIndex);
 
-    return StarBuffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -44,7 +44,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::GlobalInfo::createFinal
         .build();
 }
 
-void star::TransferRequest::GlobalInfo::writeDataToStageBuffer(star::StarBuffer &buffer) const
+void star::TransferRequest::GlobalInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const
 {
     buffer.map();
 

@@ -22,13 +22,13 @@ class InstanceNormalInfo : public Buffer
         }
     }
 
-    std::unique_ptr<StarBuffer> createStagingBuffer(
+    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(
         vk::Device &device, VmaAllocator &allocator) const override;
 
-    std::unique_ptr<StarBuffer> createFinal(vk::Device &device, VmaAllocator &allocator,
+    std::unique_ptr<StarBuffers::Buffer> createFinal(vk::Device &device, VmaAllocator &allocator,
                                             const std::vector<uint32_t> &transferQueueFamilyIndex) const override;
 
-    void writeDataToStageBuffer(StarBuffer &buffer) const override;
+    void writeDataToStageBuffer(StarBuffers::Buffer &buffer) const override;
 
   protected:
     const uint32_t graphicsQueueFamilyIndex;

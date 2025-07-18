@@ -36,7 +36,10 @@ add_subdirectory("extern/glslang")
 
 find_package(glm CONFIG REQUIRED)
 if (NOT ${HEADLESS})
+    message("Enabling windowing support.")
     add_subdirectory("extern/glfw")
+else()
+    message("Disabling windowing support.")
 endif()
 
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
@@ -260,7 +263,40 @@ set(${STARLIGHT_NAME}_TARGET_HEADERS ${${STARLIGHT_NAME}_HEADERS} PARENT_SCOPE)
 
 add_library(${STARLIGHT_NAME} "${${STARLIGHT_NAME}_SOURCE};${${STARLIGHT_NAME}_HEADERS}")
 
+
+
 if (NOT ${HEADLESS})
+    set(${STARLIGHT_NAME}_INCLUDE_DIRS
+        "include/"
+        "include/virtual/"
+        "include/internals"
+        "include/virtual/ModulePlug/"
+        "include/wrappers/"
+        "include/wrappers/graphics/"
+        "include/structs/"
+        "include/enums/"
+        "include/templates/"
+        "include/managers/"
+        "include/common/"
+        "include/common/entities/"
+        "include/common/materials/"
+        "include/common/helpers/"
+        "include/common/objects/"
+        "include/common/buffers/"
+        "include/common/textures"
+        "include/common/controllers/"
+        "include/builders/"
+        "include/controllers/"
+        "include/modules/"
+        "include/systems/"
+        "include/structs/"
+        "include/renderers/" 
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
+        ${glm_SOURCE_DIR}
+        ${Stb_INCLUDE_DIR}
+        "extern/glfw/include/"
+    )
+
     target_link_libraries(${STARLIGHT_NAME}
         PUBLIC
             Vulkan::Vulkan
@@ -276,6 +312,36 @@ if (NOT ${HEADLESS})
             glfw
         )
 else()
+    set(${STARLIGHT_NAME}_INCLUDE_DIRS
+        "include/"
+        "include/virtual/"
+        "include/internals"
+        "include/virtual/ModulePlug/"
+        "include/wrappers/"
+        "include/wrappers/graphics/"
+        "include/structs/"
+        "include/enums/"
+        "include/templates/"
+        "include/managers/"
+        "include/common/"
+        "include/common/entities/"
+        "include/common/materials/"
+        "include/common/helpers/"
+        "include/common/objects/"
+        "include/common/buffers/"
+        "include/common/textures"
+        "include/common/controllers/"
+        "include/builders/"
+        "include/controllers/"
+        "include/modules/"
+        "include/systems/"
+        "include/structs/"
+        "include/renderers/" 
+        ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
+        ${glm_SOURCE_DIR}
+        ${Stb_INCLUDE_DIR}
+    )
+
     target_link_libraries(${STARLIGHT_NAME}
         PUBLIC
             Vulkan::Vulkan
@@ -291,42 +357,11 @@ else()
         )
 endif()
 
-
-set(${STARLIGHT_NAME}_INCLUDE_DIRS
-    "include/"
-    "include/virtual/"
-    "include/internals"
-    "include/virtual/ModulePlug/"
-    "include/wrappers/"
-    "include/wrappers/graphics/"
-    "include/structs/"
-    "include/enums/"
-    "include/templates/"
-    "include/managers/"
-    "include/common/"
-    "include/common/entities/"
-    "include/common/materials/"
-    "include/common/helpers/"
-    "include/common/objects/"
-    "include/common/buffers/"
-    "include/common/textures"
-    "include/common/controllers/"
-    "include/builders/"
-    "include/controllers/"
-    "include/modules/"
-    "include/systems/"
-    "include/structs/"
-    "include/renderers/" 
-)
-
 set(${STARLIGHT_NAME}_TARGET_INCLUDE_DIRS ${${STARLIGHT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)
 
 target_include_directories(${STARLIGHT_NAME}
     PUBLIC
         ${${STARLIGHT_NAME}_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
-        ${glm_SOURCE_DIR}
-        ${Stb_INCLUDE_DIR}
 )
 
 if (MSVC)

@@ -20,7 +20,7 @@ star::TransferRequest::TextureFile::TextureFile(const std::string &imagePath, co
     assert(star::FileHelpers::FileExists(this->imagePath) && "Provided path does not exist");
 }
 
-std::unique_ptr<star::StarBuffer> star::TransferRequest::TextureFile::createStagingBuffer(
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
     int width, height, channels = 0;
@@ -28,7 +28,7 @@ std::unique_ptr<star::StarBuffer> star::TransferRequest::TextureFile::createStag
 
     const vk::DeviceSize size = width * height * channels * 4; 
 
-    return StarBuffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
             .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
@@ -101,7 +101,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile:
         .build();
 }
 
-void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffer &stagingBuffer) const
+void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffers::Buffer &stagingBuffer) const
 {
     int l_width, l_height, l_channels = 0;
     unsigned char *pixelData(stbi_load(this->imagePath.c_str(), &l_width, &l_height, &l_channels, STBI_rgb_alpha));
@@ -131,7 +131,7 @@ void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffer
     stbi_image_free(pixelData);
 }
 
-void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuffer &srcBuffer,
+void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuffers::Buffer &srcBuffer,
                                                                   star::StarTextures::Texture &dstTexture,
                                                                   vk::CommandBuffer &commandBuffer) const
 {

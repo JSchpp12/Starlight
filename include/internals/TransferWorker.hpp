@@ -2,7 +2,7 @@
 
 #include "Allocator.hpp"
 #include "Handle.hpp"
-#include "StarBuffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 #include "StarDevice.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
@@ -32,12 +32,12 @@ class TransferManagerThread
         boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
         std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest = nullptr;
         std::unique_ptr<TransferRequest::Texture> textureTransferRequest = nullptr;
-        std::optional<std::unique_ptr<StarBuffer> *> resultingBuffer = std::nullopt;
+        std::optional<std::unique_ptr<StarBuffers::Buffer> *> resultingBuffer = std::nullopt;
         std::optional<std::unique_ptr<StarTextures::Texture> *> resultingTexture = std::nullopt;
 
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
                            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           std::unique_ptr<StarBuffer> &resultingBuffer)
+                           std::unique_ptr<StarBuffers::Buffer> &resultingBuffer)
             : gpuDoneNotificationToMain(gpuDoneNotificationToMain),
               bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBuffer)
         {
@@ -60,7 +60,7 @@ class TransferManagerThread
         ProcessRequestInfo(std::unique_ptr<StarCommandBuffer> commandBuffer)
             : commandBuffer(std::move(commandBuffer)) {};
 
-        void setInProcessDeps(std::unique_ptr<StarBuffer> nInProcessTransferSrcBuffer,
+        void setInProcessDeps(std::unique_ptr<StarBuffers::Buffer> nInProcessTransferSrcBuffer,
                               boost::atomic<bool> *nGpuDoneNotificationToMain)
         {
             this->inProcessTransferSrcBuffer = std::move(nInProcessTransferSrcBuffer);
@@ -83,7 +83,7 @@ class TransferManagerThread
         }
 
       private:
-        std::unique_ptr<StarBuffer> inProcessTransferSrcBuffer = nullptr;
+        std::unique_ptr<StarBuffers::Buffer> inProcessTransferSrcBuffer = nullptr;
         boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
     };
 
@@ -137,7 +137,7 @@ class TransferManagerThread
                              const vk::PhysicalDeviceProperties &deviceProperties,
                              const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                              ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
-                             std::unique_ptr<StarBuffer> *resultingBuffer, boost::atomic<bool> *gpuDoneSignalToMain);
+                             std::unique_ptr<StarBuffers::Buffer> *resultingBuffer, boost::atomic<bool> *gpuDoneSignalToMain);
 
     static void CreateTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
                               const vk::PhysicalDeviceProperties &deviceProperties,
@@ -170,7 +170,7 @@ class TransferWorker
     TransferWorker(StarDevice &device, bool overrideRunAsync, std::vector<StarQueue> &queuesToUse);
 
     void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
-             std::unique_ptr<TransferRequest::Buffer> newBufferRequest, std::unique_ptr<StarBuffer> &resultingBuffer,
+             std::unique_ptr<TransferRequest::Buffer> newBufferRequest, std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
              const bool &isHighPriority);
 
     void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
