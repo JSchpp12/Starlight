@@ -120,6 +120,12 @@ vk::Filter star::StarTextures::Texture::SelectTextureFiltering(const vk::Physica
     return filterType;
 }
 
+star::StarTextures::Texture::Texture(const Texture &other)
+    : memoryResources(other.memoryResources), device(other.device), baseFormat(other.baseFormat),
+      mipmapLevels(other.mipmapLevels)
+{
+}
+
 star::StarTextures::Texture::~Texture()
 {
 }
@@ -378,17 +384,13 @@ std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builde
 
     if (this->createNewAllocationInfo.has_value())
     {
-        // assert(this->createNewAllocationInfo.value().createInfo &&
-        // this->createNewAllocationInfo.value().allocationCreateInfo && "Other build info must be provided for
-        // allocation creation");
-
         if (this->samplerInfo.has_value())
         {
-            return std::unique_ptr<Texture>(new Texture(
-                this->device, this->createNewAllocationInfo.value().allocator,
-                this->createNewAllocationInfo.value().createInfo, this->createNewAllocationInfo.value().allocationName,
-                this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos, this->format.value(),
-                this->samplerInfo.value()));
+            return std::unique_ptr<Texture>(new Texture(this->device, this->createNewAllocationInfo.value().allocator,
+                           this->createNewAllocationInfo.value().createInfo,
+                           this->createNewAllocationInfo.value().allocationName,
+                           this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos,
+                           this->format.value(), this->samplerInfo.value()));
         }
         else
         {
@@ -402,13 +404,12 @@ std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builde
     {
         if (this->samplerInfo.has_value())
         {
-            return std::unique_ptr<Texture>(new Texture(this->device, this->vulkanImage.value(), this->viewInfos,
-                                                        this->format.value(), this->samplerInfo.value()));
+            return std::unique_ptr<Texture>(new Texture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value(),
+                           this->samplerInfo.value()));
         }
         else
         {
-            return std::unique_ptr<Texture>(
-                new Texture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()));
+            return std::unique_ptr<Texture>(new Texture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()));
         }
     }
     else
@@ -416,5 +417,4 @@ std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builde
         std::cerr << "Invalid builder config" << std::endl;
         throw std::runtime_error("Invalid builder config");
     }
-    return nullptr;
 }

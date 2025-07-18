@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarBuffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarDevice.hpp"
 #include "StarTextures/Texture.hpp"
@@ -25,7 +25,7 @@ class StarShaderInfo
             {
             }
 
-            BufferInfo(const StarBuffer *buffer) : buffer(buffer)
+            BufferInfo(const StarBuffers::Buffer *buffer) : buffer(buffer)
             {
             }
 
@@ -34,7 +34,7 @@ class StarShaderInfo
             }
 
             std::optional<Handle> handle = std::nullopt;
-            std::optional<const StarBuffer *> buffer = std::nullopt;
+            std::optional<const StarBuffers::Buffer *> buffer = std::nullopt;
             std::optional<vk::Buffer> currentBuffer = std::nullopt;
         };
 
@@ -164,7 +164,7 @@ class StarShaderInfo
             return *this;
         };
 
-        Builder &add(const StarBuffer &buffer)
+        Builder &add(const StarBuffers::Buffer &buffer)
         {
             this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{&buffer}, false));
             return *this;

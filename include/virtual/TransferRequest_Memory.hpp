@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarBuffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 #include "StarDevice.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -18,14 +18,14 @@ template <typename T> class Memory
     Memory() = default;
     ~Memory() = default;
 
-    virtual std::unique_ptr<StarBuffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const = 0;
+    virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const = 0;
 
     virtual std::unique_ptr<T> createFinal(vk::Device &device, VmaAllocator &allocator,
                                            const std::vector<uint32_t> &allTransferQueueFamilyIndices) const = 0;
 
-    virtual void copyFromTransferSRCToDST(StarBuffer &srcBuffer, T &dst, vk::CommandBuffer &commandBuffer) const = 0;
+    virtual void copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer, T &dst, vk::CommandBuffer &commandBuffer) const = 0;
 
-    virtual void writeDataToStageBuffer(StarBuffer &buffer) const = 0; 
+    virtual void writeDataToStageBuffer(StarBuffers::Buffer &buffer) const = 0; 
 
   protected:
 };

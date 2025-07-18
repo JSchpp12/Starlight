@@ -9,9 +9,9 @@
 
 #include <string>
 
-namespace star {
+namespace star::StarBuffers {
 
-class StarBuffer {
+class Buffer {
 public:
 	class Builder{
 		public:
@@ -20,7 +20,7 @@ public:
 			Builder& setInstanceCount(const uint32_t &nInstanceCount); 
 			Builder& setInstanceSize(const vk::DeviceSize &nInstanceSize); 
 			Builder& setMinOffsetAlignment(const vk::DeviceSize &nMinOffsetAlignment);
-			std::unique_ptr<StarBuffer> build(); 
+			std::unique_ptr<Buffer> build(); 
 
 		private:
 			VmaAllocator &allocator; 
@@ -54,18 +54,18 @@ public:
 
 	static vk::DeviceSize GetAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
 
-	StarBuffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
+	Buffer(VmaAllocator& allocator, vk::DeviceSize instanceSize, uint32_t instanceCount,
 		const VmaAllocationCreateFlags& creationFlags, const VmaMemoryUsage& memoryUsageFlags,
 		const vk::BufferUsageFlags& useFlags, const vk::SharingMode& sharingMode, const std::string& allocationName, 
 		vk::DeviceSize minOffsetAlignment = 1);
 
-	StarBuffer(VmaAllocator& allocator, const BufferCreationArgs& creationArgs); 
+	Buffer(VmaAllocator& allocator, const BufferCreationArgs& creationArgs); 
 
-	~StarBuffer();
+	~Buffer();
 
 	//prevent copying
-	StarBuffer(const StarBuffer&) = delete;
-	StarBuffer& operator=(const StarBuffer&) = delete;
+	Buffer(const Buffer&) = delete;
+	Buffer& operator=(const Buffer&) = delete;
 
 	void map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 
@@ -101,7 +101,7 @@ protected:
 	uint32_t instanceCount; 
 	vk::BufferUsageFlags usageFlags;
 
-	StarBuffer(VmaAllocator &allocator, const uint32_t &instanceCount, 
+	Buffer(VmaAllocator &allocator, const uint32_t &instanceCount, 
 		const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment, 
 		const VmaAllocationCreateInfo &allocCreateInfo, 
 		const vk::BufferCreateInfo &bufferCreateInfo, const std::string &allocName);

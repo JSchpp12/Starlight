@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ManagerController_Controller.hpp"
-#include "StarBuffer.hpp"
+#include "StarBuffers/Buffer.hpp"
 #include "TransferRequest_Buffer.hpp"
 
 

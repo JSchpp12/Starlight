@@ -62,6 +62,20 @@ class Texture
         std::optional<vk::SamplerCreateInfo> samplerInfo = std::nullopt;
     };
 
+    Texture(const Texture &other);
+
+    //copy assignment operator
+    Texture& operator=(const Texture& other){
+        if (this != &other){
+            this->memoryResources = other.memoryResources;
+            this->device = other.device; 
+            this->baseFormat = other.baseFormat;
+            this->mipmapLevels = other.mipmapLevels;
+        }
+
+        return *this; 
+    }
+
     virtual ~Texture();
 
     const vk::Image &getVulkanImage() const
@@ -101,9 +115,8 @@ class Texture
     std::shared_ptr<Resources> memoryResources = std::shared_ptr<Resources>();
 
     vk::Device &device;
-    const vk::Format baseFormat = vk::Format();
-
-    const uint32_t mipmapLevels = 1;
+    vk::Format baseFormat = vk::Format();
+    uint32_t mipmapLevels = 1;
 
     static std::shared_ptr<StarTextures::Resources> CreateResource(vk::Device &device, const vk::Format &baseFormat,
                                                                    VmaAllocator &allocator,
