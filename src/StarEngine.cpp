@@ -8,13 +8,15 @@
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
 #include "SwapChainRenderer.hpp"
-
+#include "job/Manager.hpp"
 
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
 #include <stdexcept>
 #include <vk_mem_alloc.h>
 
+#include "job/PrintTask.hpp"
+#include "job/Worker.hpp"
 
 namespace star
 {
@@ -130,6 +132,14 @@ std::unique_ptr<star::StarDevice> star::StarEngine::CreateStarDevice(StarWindow 
         }
     }
 
-    return StarDevice::New(window, features);
+    return StarDevice::New(CreateManager(), window, features);
+}
+
+std::unique_ptr<Job::Manager> StarEngine::CreateManager()
+{
+    std::unique_ptr<Job::Manager> mgr = std::make_unique<Job::Manager>();
+    mgr->registerWorker<std::string, Job::PrintTask>();
+
+    return mgr;
 }
 } // namespace star

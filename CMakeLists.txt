@@ -152,6 +152,14 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/internals/CommandBufferContainer.cpp"
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
+    "src/job/Worker.cpp"
+    "src/job/IWorkerBase.cpp"
+    "src/job/Transfer.cpp"
+    "src/job/Task.cpp"
+    "src/job/ImageWriteTask.cpp"
+    "src/job/Manager.cpp"
+    "src/job/PrintTask.cpp"
+    "src/job/ImageWriterWorker.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
@@ -236,6 +244,14 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/wrappers/graphics/StarTextures/AllocatedResources.hpp"
     "include/wrappers/graphics/StarBuffers/Buffer.hpp"
     "include/wrappers/graphics/StarBuffers/Resources.hpp"
+    "include/job/Worker.hpp"
+    "include/job/IWorkerBase.hpp"
+    "include/job/Task.hpp"
+    "include/job/ImageWriteTask.hpp"
+    "include/job/Transfer.hpp"
+    "include/job/Manager.hpp"
+    "include/job/ImageWriterWorker.hpp"
+    "include/job/PrintTask.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarShader.hpp"
@@ -291,6 +307,7 @@ if (NOT ${HEADLESS})
         "include/systems/"
         "include/structs/"
         "include/renderers/" 
+        "include/job/"
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
         ${Stb_INCLUDE_DIR}

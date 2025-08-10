@@ -2,8 +2,10 @@
 
 namespace star
 {
-StarDevice::StarDevice(StarWindow &window, std::set<star::Rendering_Features> requiredFeatures) : starWindow(window)
+StarDevice::StarDevice(std::unique_ptr<Job::Manager> taskManager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures) : taskManager(std::move(taskManager)), starWindow(window)
 {
+    this->taskManager->startAll(); 
+
     if (requiredFeatures.find(star::Rendering_Features::shader_float64) != requiredFeatures.end())
         this->requiredDeviceFeatures.shaderFloat64 = VK_TRUE;
 
@@ -21,13 +23,15 @@ StarDevice::StarDevice(StarWindow &window, std::set<star::Rendering_Features> re
     createAllocator();
 }
 
-std::unique_ptr<StarDevice> StarDevice::New(StarWindow &window, std::set<star::Rendering_Features> requiredFeatures)
+std::unique_ptr<StarDevice> StarDevice::New(std::unique_ptr<Job::Manager> manager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures)
 {
-    return std::unique_ptr<StarDevice>(new StarDevice(window, requiredFeatures));
+    return std::unique_ptr<StarDevice>(new StarDevice(std::move(manager), window, requiredFeatures));
 }
 
 StarDevice::~StarDevice()
 {
+    this->taskManager->stopAll(); 
+    
     this->defaultCommandPool.reset();
     this->transferCommandPool.reset();
     this->computeCommandPool.reset();
@@ -745,6 +749,7 @@ SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevi
 
     return details;
 }
+
 bool StarDevice::DoesDeviceSupportPresentation(vk::PhysicalDevice physicalDevice, const vk::SurfaceKHR &surface)
 {
     uint32_t queueFamilyCount;

@@ -4,6 +4,7 @@
 #include "StarScene.hpp"
 #include "StarWindow.hpp"
 #include "TransferWorker.hpp"
+#include "Manager.hpp"
 
 #include <memory>
 #include <string>
@@ -33,5 +34,7 @@ class StarEngine
     static std::unique_ptr<StarWindow> CreateStarWindow(); 
 
     static std::unique_ptr<StarDevice> CreateStarDevice(StarWindow &window); 
+
+    static std::unique_ptr<Job::Manager> CreateManager(); 
 };
 } // namespace star
