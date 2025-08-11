@@ -29,6 +29,12 @@ class Manager
       return *raw;
     }
 
+    template <typename T, typename TTask> Worker<T, TTask> &registerWorker(std::unique_ptr<Worker<T, TTask>> newWorker){
+      Worker<T, TTask>* raw = newWorker.get(); 
+      this->workers[typeid(Worker<T, TTask>)].push_back(std::move(newWorker)); 
+      return *raw;
+    }
+
     void startAll(){
       for (auto &[type, list] : this->workers){
         for (auto& w : list){

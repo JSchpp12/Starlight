@@ -31,7 +31,8 @@ std::unique_ptr<StarDevice> StarDevice::New(std::unique_ptr<Job::Manager> manage
 StarDevice::~StarDevice()
 {
     this->taskManager->stopAll(); 
-    
+    this->taskManager.reset(); 
+
     this->defaultCommandPool.reset();
     this->transferCommandPool.reset();
     this->computeCommandPool.reset();
