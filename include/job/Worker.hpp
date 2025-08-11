@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Task.hpp"
 #include "IWorkerBase.hpp"
+#include "Task.hpp"
+
 
 #include <boost/lockfree/spsc_queue.hpp>
 #include <boost/thread.hpp>
@@ -13,7 +14,7 @@
 
 namespace star::Job
 {
-template <typename T, typename TTask> class Worker : public IWorkerBase
+template <typename TTask> class Worker : public IWorkerBase
 {
   public:
     Worker() = default;
@@ -56,7 +57,7 @@ template <typename T, typename TTask> class Worker : public IWorkerBase
 
         while (this->shouldRun.load())
         {
-            std::shared_ptr<Task<T>> task = nullptr;
+            std::shared_ptr<TTask> task = nullptr;
             if (this->taskQueue.pop(task))
             {
                 task->execute();
