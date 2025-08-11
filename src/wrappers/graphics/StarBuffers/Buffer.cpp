@@ -29,8 +29,8 @@ StarBuffers::Buffer::Buffer(VmaAllocator &allocator, vk::DeviceSize instanceSize
         throw std::runtime_error("Unable to create a buffer of size 0");
 
     VmaAllocationInfo allocationInfo{};
-    this->resources = CreateBuffer(allocator, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, allocationInfo,
-                 allocationName);
+    this->resources = CreateBuffer(allocator, this->bufferSize, useFlags, memoryUsageFlags, creationFlags,
+                                   allocationInfo, allocationName);
 
     this->allocationInfo = std::make_optional<VmaAllocationInfo>(allocationInfo);
 }
@@ -69,7 +69,7 @@ void StarBuffers::Buffer::unmap()
 {
     if (mapped)
     {
-		vmaUnmapMemory(this->resources->allocator, this->resources->memory);
+        vmaUnmapMemory(this->resources->allocator, this->resources->memory);
         this->mapped = nullptr;
     }
 }
@@ -92,7 +92,7 @@ void StarBuffers::Buffer::writeToBuffer(void *data, vk::DeviceSize size, vk::Dev
 
 vk::Result StarBuffers::Buffer::flush(vk::DeviceSize size, vk::DeviceSize offset)
 {
-	auto result = vmaFlushAllocation(this->resources->allocator, this->resources->memory, offset, size); 
+    auto result = vmaFlushAllocation(this->resources->allocator, this->resources->memory, offset, size);
     return vk::Result(result);
 }
 

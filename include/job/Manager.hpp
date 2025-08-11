@@ -20,18 +20,18 @@ class Manager
     Manager(Manager &&) = default;
     Manager &operator=(Manager &&) = default;
 
-    template <typename T, typename TTask> Worker<T, TTask> &registerWorker()
+    template <typename TTask> Worker<TTask> &registerWorker()
     {
-      auto worker = std::make_unique<Worker<T, TTask>>();
-      Worker<T, TTask>* raw = worker.get(); 
-      this->workers[typeid(Worker<T, TTask>)].push_back(std::move(worker));
+      auto worker = std::make_unique<Worker<TTask>>();
+      Worker<TTask>* raw = worker.get(); 
+      this->workers[typeid(Worker<TTask>)].push_back(std::move(worker));
 
       return *raw;
     }
 
-    template <typename T, typename TTask> Worker<T, TTask> &registerWorker(std::unique_ptr<Worker<T, TTask>> newWorker){
-      Worker<T, TTask>* raw = newWorker.get(); 
-      this->workers[typeid(Worker<T, TTask>)].push_back(std::move(newWorker)); 
+    template <typename TTask> Worker<TTask> &registerWorker(std::unique_ptr<Worker<TTask>> newWorker){
+      Worker<TTask>* raw = newWorker.get(); 
+      this->workers[typeid(Worker<TTask>)].push_back(std::move(newWorker)); 
       return *raw;
     }
 
@@ -51,13 +51,13 @@ class Manager
       }
     }
 
-    template <typename T, typename TTask> Worker<T, TTask> &getWorker(const size_t &index = 0){
-      auto it = this->workers.find(typeid(Worker<T, TTask>));
+    template <typename TTask> Worker<TTask> &getWorker(const size_t &index = 0){
+      auto it = this->workers.find(typeid(Worker<TTask>));
       if (it == this->workers.end() || index  >= it->second.size()){
         throw std::runtime_error("Worker not found for requested type"); 
       }
 
-      auto *raw = static_cast<Worker<T, TTask>*>(it->second[index].get());
+      auto *raw = static_cast<Worker<TTask>*>(it->second[index].get());
       return *raw;
     }
 
