@@ -29,7 +29,7 @@ StarBuffers::Buffer::Buffer(VmaAllocator &allocator, vk::DeviceSize instanceSize
         throw std::runtime_error("Unable to create a buffer of size 0");
 
     VmaAllocationInfo allocationInfo{};
-    CreateBuffer(allocator, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, allocationInfo,
+    this->resources = CreateBuffer(allocator, this->bufferSize, useFlags, memoryUsageFlags, creationFlags, allocationInfo,
                  allocationName);
 
     this->allocationInfo = std::make_optional<VmaAllocationInfo>(allocationInfo);
