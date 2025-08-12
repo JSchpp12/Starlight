@@ -1,8 +1,6 @@
 #pragma once
 
-#include "IWorkerBase.hpp"
 #include "Task.hpp"
-
 
 #include <boost/lockfree/spsc_queue.hpp>
 #include <boost/thread.hpp>
@@ -14,20 +12,20 @@
 
 namespace star::Job
 {
-template <typename TTask> class Worker : public IWorkerBase
+class Worker
 {
   public:
     Worker() = default;
     virtual ~Worker() = default;
 
-    void stop() override
+    void stop()
     {
         this->shouldRun.store(false);
         if (this->thread.joinable())
             this->thread.join();
     }
 
-    void start() override
+    void start()
     {
         this->shouldRun.store(true);
         this->thread = boost::thread(&Worker::threadFunction, this);
@@ -38,16 +36,16 @@ template <typename TTask> class Worker : public IWorkerBase
     Worker(Worker &&) = default;
     Worker &operator=(Worker &&) = default;
 
-    void queueTask(std::shared_ptr<TTask> task)
+    void queueTask(Task<>&& task)
     {
-        while (!this->taskQueue.push(task))
+        while (!this->taskQueue.push(std::move(task)))
         {
             boost::this_thread::yield();
         }
     };
 
   protected:
-    boost::lockfree::spsc_queue<std::shared_ptr<TTask>, boost::lockfree::capacity<128>> taskQueue;
+    boost::lockfree::spsc_queue<Task<>, boost::lockfree::capacity<128>> taskQueue;
     boost::atomic<bool> shouldRun = boost::atomic<bool>(true);
     boost::thread thread = boost::thread();
 
@@ -57,10 +55,10 @@ template <typename TTask> class Worker : public IWorkerBase
 
         while (this->shouldRun.load())
         {
-            std::shared_ptr<TTask> task = nullptr;
+            Task<> task;
             if (this->taskQueue.pop(task))
             {
-                task->execute();
+                task.run();
             }
             else
             {

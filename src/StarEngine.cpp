@@ -15,7 +15,7 @@
 #include <stdexcept>
 #include <vk_mem_alloc.h>
 
-#include "job/PrintTask.hpp"
+#include "job/TaskFactory.hpp"
 #include "job/Worker.hpp"
 
 namespace star
@@ -89,6 +89,7 @@ void StarEngine::run()
                                     this->mainRenderer->getGlobalShaderInfo(),
                                     this->mainRenderer->getRenderTargetInfo());
 
+    renderingDevice->getManager().submitTask(star::Job::TaskFactory::createPrintTask("Test printout"));
     uint8_t currentFrame = 0;
     while (!window->shouldClose())
     {
@@ -138,7 +139,6 @@ std::unique_ptr<star::StarDevice> star::StarEngine::CreateStarDevice(StarWindow 
 std::unique_ptr<Job::Manager> StarEngine::CreateManager()
 {
     std::unique_ptr<Job::Manager> mgr = std::make_unique<Job::Manager>();
-    mgr->registerWorker<std::string, Job::PrintTask>();
 
     return mgr;
 }

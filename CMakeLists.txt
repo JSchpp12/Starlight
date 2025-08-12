@@ -153,12 +153,11 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
     "src/job/Worker.cpp"
-    "src/job/IWorkerBase.cpp"
     "src/job/Transfer.cpp"
     "src/job/Task.cpp"
     "src/job/ImageWriteTask.cpp"
     "src/job/Manager.cpp"
-    "src/job/PrintTask.cpp"
+    "src/job/TaskFactory.cpp"
     "src/job/ImageWriterWorker.cpp"
 )
 
@@ -245,13 +244,12 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/wrappers/graphics/StarBuffers/Buffer.hpp"
     "include/wrappers/graphics/StarBuffers/Resources.hpp"
     "include/job/Worker.hpp"
-    "include/job/IWorkerBase.hpp"
     "include/job/Task.hpp"
     "include/job/ImageWriteTask.hpp"
     "include/job/Transfer.hpp"
     "include/job/Manager.hpp"
     "include/job/ImageWriterWorker.hpp"
-    "include/job/PrintTask.hpp"
+    "include/job/TaskFactory.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarShader.hpp"
