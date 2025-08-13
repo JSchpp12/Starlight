@@ -8,17 +8,17 @@
 
 namespace star::job
 {
-class Manager
+class TaskManager
 {
   public:
-    Manager() : m_defaultWorker(CreateDefaultWorker()){};
-    ~Manager() = default;
+    TaskManager() : m_defaultWorker(CreateDefaultWorker()){};
+    ~TaskManager() = default;
 
-    Manager(const Manager &) = delete;
-    Manager &operator=(const Manager &) = delete;
+    TaskManager(const TaskManager &) = delete;
+    TaskManager &operator=(const TaskManager &) = delete;
 
-    Manager(Manager &&) = default;
-    Manager &operator=(Manager &&) = default;
+    TaskManager(TaskManager &&) = default;
+    TaskManager &operator=(TaskManager &&) = default;
 
     Worker &registerWorker(const std::type_index &taskType)
     {

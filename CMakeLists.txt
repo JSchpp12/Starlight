@@ -155,11 +155,12 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/job/Worker.cpp"
     "src/job/Task.cpp"
     "src/job/ImageWriteTask.cpp"
-    "src/job/Manager.cpp"
+    "src/job/TaskManager.cpp"
     "src/job/TaskFactory.cpp"
     "src/job/ImageWriterWorker.cpp"
     "src/core/DeviceContext.cpp"
     "src/core/DeviceManager.cpp"
+    "src/core/RenderingInstance.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
@@ -247,11 +248,12 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/job/Worker.hpp"
     "include/job/Task.hpp"
     "include/job/ImageWriteTask.hpp"
-    "include/job/Manager.hpp"
+    "include/job/TaskManager.hpp"
     "include/job/ImageWriterWorker.hpp"
     "include/job/TaskFactory.hpp"
     "include/core/DeviceContext.hpp"
     "include/core/DeviceManager.hpp"
+    "include/core/RenderingInstance.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarShader.hpp"

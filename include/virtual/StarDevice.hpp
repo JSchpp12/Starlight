@@ -7,7 +7,7 @@
 #include "StarCommandPool.hpp"
 #include "StarQueueFamily.hpp"
 #include "StarWindow.hpp"
-#include "Manager.hpp"
+#include "RenderingInstance.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -235,15 +235,16 @@ class StarDevice
         std::vector<std::vector<bool>> isQueueAvailable = std::vector<std::vector<bool>>();
     };
 
-    static std::unique_ptr<StarDevice> New(std::unique_ptr<star::job::Manager> manager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures);
+    StarDevice(StarWindow &window, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures);
 
     virtual ~StarDevice();
 
-    // Not copyable or movable
+    // Not copyable
     StarDevice(const StarDevice &) = delete;
     StarDevice &operator=(const StarDevice &) = delete;
-    StarDevice(StarDevice &&) = delete;
-    StarDevice &operator=(StarDevice &&) = delete;
+
+    StarDevice(StarDevice &&) = default;
+    StarDevice &operator=(StarDevice &&) = default;
 
     QueueFamilyIndicies findPhysicalQueueFamilies()
     {
@@ -292,18 +293,11 @@ class StarDevice
     {
         return this->surface.get();
     }
-    vk::Instance &getInstance()
-    {
-        return this->instance;
-    }
     Allocator &getAllocator()
     {
         assert(this->allocator &&
                "Default allocator should have been created during startup. Something has gone wrong.");
         return *this->allocator;
-    }
-    job::Manager &getManager(){
-        return *this->taskManager; 
     }
 #pragma endregion
 
@@ -358,22 +352,11 @@ class StarDevice
 #pragma endregion
 
   protected:
-    StarDevice(std::unique_ptr<star::job::Manager> taskManager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures);
-
-#ifdef NDEBUG
-    const bool enableValidationLayers = false;
-    const std::vector<const char *> validationLayers = {};
-#else
-    const bool enableValidationLayers = true;
-    const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-#endif
-    vk::Instance instance;
     vk::Device vulkanDevice;
     std::unique_ptr<star::Allocator> allocator;
     vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
     vk::UniqueSurfaceKHR surface;
     StarWindow &starWindow;
-    std::unique_ptr<star::job::Manager> taskManager = nullptr;
 
     std::vector<std::unique_ptr<StarQueueFamily>> extraFamilies = std::vector<std::unique_ptr<StarQueueFamily>>();
     std::unique_ptr<QueueOwnershipTracker> currentDeviceQueues = std::unique_ptr<QueueOwnershipTracker>();
@@ -396,24 +379,12 @@ class StarDevice
 
     vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
 
-#if __APPLE__
-    bool isMac = true;
-    std::vector<const char *> platformInstanceRequiredExtensions = {
-        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, "VK_KHR_portability_enumeration"};
-#else
-    bool isMac = false;
-    std::vector<const char *> platformInstanceRequiredExtensions = {};
-#endif
-
-    // Create the vulkan instance machine
-    void createInstance();
-
     // Pick a proper physical GPU that matches the required extensions
-    void pickPhysicalDevice();
+    void pickPhysicalDevice(const core::RenderingInstance &instance);
     // Create a logical device to communicate with the physical device
-    void createLogicalDevice();
+    void createLogicalDevice(const core::RenderingInstance &instance);
 
-    void createAllocator();
+    void createAllocator(const core::RenderingInstance &instance);
 
     /* Helper Functions */
 
@@ -422,25 +393,11 @@ class StarDevice
                                  const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
                                  const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
 
-    // Get the extensions required by the system
-    std::vector<const char *> getRequiredExtensions();
-
-    /// <summary>
-    /// Check if validation layers are supported and create the layers if needed. Will create layers for debugging
-    /// builds only.
-    /// </summary>
-    /// <returns></returns>
-    bool CheckValidationLayerSupport(const std::vector<const char *> &validationLayers);
-
     /// <summary>
     /// Find what queues are available for the device
     /// Queues support different types of commands such as : processing compute commands or memory transfer commands
     /// </summary>
     static QueueFamilyIndicies FindQueueFamilies(const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
-
-    // void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo);
-
-    void hasGlfwRequiredInstanceExtensions();
 
     /// <summary>
     /// Check if the given device supports required extensions.

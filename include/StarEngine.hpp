@@ -4,7 +4,7 @@
 #include "StarScene.hpp"
 #include "StarWindow.hpp"
 #include "TransferWorker.hpp"
-#include "Manager.hpp"
+#include "DeviceManager.hpp"
 
 #include <memory>
 #include <string>
@@ -23,7 +23,7 @@ class StarEngine
 
   protected:
     std::unique_ptr<StarWindow> window = nullptr;
-    std::unique_ptr<StarDevice> renderingDevice = nullptr;
+    core::DeviceManager deviceManager; 
     std::unique_ptr<StarApplication> application = nullptr; 
     std::shared_ptr<SwapChainRenderer> mainRenderer = nullptr;
     std::unique_ptr<TransferWorker> transferWorker = nullptr;
@@ -33,8 +33,8 @@ class StarEngine
 
     static std::unique_ptr<StarWindow> CreateStarWindow(); 
 
-    static std::unique_ptr<StarDevice> CreateStarDevice(StarWindow &window); 
+    static StarDevice CreateStarDevice(StarWindow &window); 
 
-    static std::unique_ptr<job::Manager> CreateManager(); 
+    static std::unique_ptr<job::TaskManager> CreateManager(); 
 };
 } // namespace star

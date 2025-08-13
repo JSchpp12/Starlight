@@ -2,10 +2,8 @@
 
 namespace star
 {
-StarDevice::StarDevice(std::unique_ptr<job::Manager> taskManager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures) : taskManager(std::move(taskManager)), starWindow(window)
+StarDevice::StarDevice(StarWindow &window, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures) : starWindow(window)
 {
-    this->taskManager->startAll(); 
-
     if (requiredFeatures.find(star::Rendering_Features::shader_float64) != requiredFeatures.end())
         this->requiredDeviceFeatures.shaderFloat64 = VK_TRUE;
 
@@ -14,25 +12,15 @@ StarDevice::StarDevice(std::unique_ptr<job::Manager> taskManager, StarWindow &wi
     this->requiredDeviceFeatures.fillModeNonSolid = VK_TRUE;
     this->requiredDeviceFeatures.logicOp = VK_TRUE;
 
-    createInstance();
+    this->starWindow.createWindowSurface(renderingInstance.getVulkanInstance(), this->surface);
 
-    this->starWindow.createWindowSurface(this->instance, this->surface);
-
-    pickPhysicalDevice();
-    createLogicalDevice();
+    pickPhysicalDevice(renderingInstance);
+    createLogicalDevice(renderingInstance);
     createAllocator();
-}
-
-std::unique_ptr<StarDevice> StarDevice::New(std::unique_ptr<job::Manager> manager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures)
-{
-    return std::unique_ptr<StarDevice>(new StarDevice(std::move(manager), window, requiredFeatures));
 }
 
 StarDevice::~StarDevice()
 {
-    this->taskManager->stopAll(); 
-    this->taskManager.reset(); 
-
     this->defaultCommandPool.reset();
     this->transferCommandPool.reset();
     this->computeCommandPool.reset();
@@ -45,69 +33,11 @@ StarDevice::~StarDevice()
     this->allocator.reset();
     this->vulkanDevice.destroy();
     this->surface.reset();
-    this->instance.destroy();
 }
 
-void StarDevice::createInstance()
+void StarDevice::pickPhysicalDevice(const core::RenderingInstance &instance)
 {
-    std::cout << "Creating vulkan instance..." << std::endl;
-
-    if (enableValidationLayers && !CheckValidationLayerSupport(this->validationLayers))
-    {
-        throw std::runtime_error("validation layers requested, but not available");
-    }
-
-    vk::ApplicationInfo appInfo{};
-    appInfo.sType = vk::StructureType::eApplicationInfo;
-    appInfo.pApplicationName = "Starlight";
-    appInfo.applicationVersion = vk::makeApiVersion(0, 1, 0, 0);
-    appInfo.pEngineName = "Starlight";
-    appInfo.engineVersion = vk::makeApiVersion(0, 1, 0, 0);
-    appInfo.apiVersion = vk::ApiVersion13;
-
-    // enumerate required extensions
-    auto requiredInstanceExtensions = this->getRequiredExtensions();
-
-    std::cout << "Instance requested with extensions: " << std::endl;
-    for (auto ext : requiredInstanceExtensions)
-    {
-        std::cout << ext << std::endl;
-    }
-
-    {
-        uint32_t extensionCount = uint32_t();
-        CastHelpers::SafeCast<size_t, uint32_t>(requiredInstanceExtensions.size(), extensionCount);
-
-        uint32_t validationLayerCount = uint32_t();
-        CastHelpers::SafeCast<size_t, uint32_t>(validationLayers.size(), validationLayerCount);
-
-        vk::InstanceCreateInfo createInfo =
-            vk::InstanceCreateInfo()
-                .setEnabledExtensionCount(extensionCount)
-                .setPEnabledExtensionNames(requiredInstanceExtensions)
-                .setEnabledLayerCount(this->enableValidationLayers ? validationLayerCount : 0)
-                .setPEnabledLayerNames(this->enableValidationLayers ? validationLayers
-                                                                    : vk::ArrayProxyNoTemporaries<const char *const>{})
-                .setPApplicationInfo(&appInfo)
-                .setFlags(this->isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR
-                                      : vk::InstanceCreateFlags());
-
-        this->instance = vk::createInstance(createInfo);
-    }
-
-    /*
-    All vulkan objects follow this pattern of creation :
-    1.pointer to a struct with creation info
-        2.pointer to custom allocator callbacks, (nullptr) here
-        3.pointer to the variable that stores the handle to the new object
-    */
-
-    hasGlfwRequiredInstanceExtensions();
-}
-
-void StarDevice::pickPhysicalDevice()
-{
-    std::vector<vk::PhysicalDevice> devices = this->instance.enumeratePhysicalDevices();
+    std::vector<vk::PhysicalDevice> devices = instance.getVulkanInstance().enumeratePhysicalDevices();
 
     std::vector<vk::PhysicalDevice> suitableDevices;
 
@@ -181,7 +111,7 @@ void StarDevice::pickPhysicalDevice()
     }
 }
 
-void StarDevice::createLogicalDevice()
+void StarDevice::createLogicalDevice(const core::RenderingInstance &instance)
 {
     QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, *this->surface);
 
@@ -206,8 +136,9 @@ void StarDevice::createLogicalDevice()
         uint32_t numDeviceExtensions = uint32_t();
         CastHelpers::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
 
+        std::vector<const char *> validationLayerNames = instance.getValidationLayerNames(); 
         uint32_t numValidationLayers = uint32_t();
-        CastHelpers::SafeCast<size_t, uint32_t>(validationLayers.size(), numValidationLayers);
+        CastHelpers::SafeCast<size_t, uint32_t>(validationLayerNames.size(), numValidationLayers);
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
         for (auto &family : queueFamilies){
@@ -223,7 +154,7 @@ void StarDevice::createLogicalDevice()
                                                     .setPEnabledExtensionNames(requiredDeviceExtensions)
                                                     .setPEnabledFeatures(&requiredDeviceFeatures)
                                                     .setEnabledLayerCount(numValidationLayers)
-                                                    .setPEnabledLayerNames(validationLayers)
+                                                    .setPEnabledLayerNames(validationLayerNames)
                                                     .setPNext(syncFeatures);
 
         // call to create the logical device
@@ -291,10 +222,10 @@ void StarDevice::createLogicalDevice()
         this->transferCommandPool = std::make_shared<StarCommandPool>(this->vulkanDevice, this->dedicatedTransferQueue->getParentQueueFamilyIndex(), true); 
 }
 
-void StarDevice::createAllocator()
+void StarDevice::createAllocator(const core::RenderingInstance &instance)
 {
     this->allocator =
-        std::make_unique<star::Allocator>(this->getDevice(), this->getPhysicalDevice(), this->getInstance());
+        std::make_unique<star::Allocator>(this->getDevice(), this->getPhysicalDevice(), instance.getVulkanInstance());
 }
 
 bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
@@ -323,78 +254,6 @@ bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDevic
         return true;
     }
     return false;
-}
-
-bool StarDevice::CheckValidationLayerSupport(const std::vector<const char *> &validationLayers)
-{
-    std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
-
-    for (const char *layerName : validationLayers)
-    {
-        bool layerFound = false;
-
-        for (const auto &layerProperties : availableLayers)
-        {
-            if (strcmp(layerName, layerProperties.layerName) == 0)
-            {
-                layerFound = true;
-                break;
-            }
-        }
-
-        if (!layerFound)
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-std::vector<const char *> StarDevice::getRequiredExtensions()
-{
-    uint32_t glfwExtensionCount = 0;
-    const char **glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-    // add required extensions for platform dependencies
-    for (auto &extension : this->platformInstanceRequiredExtensions)
-    {
-        extensions.push_back(extension);
-    }
-
-    if (enableValidationLayers)
-    {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-
-    return extensions;
-}
-
-void StarDevice::hasGlfwRequiredInstanceExtensions()
-{
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> extensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-
-    std::unordered_set<std::string> available;
-    for (const auto &extension : extensions)
-    {
-        available.insert(extension.extensionName);
-    }
-
-    // std::cout << "required extensions:" << std::endl;
-    auto requiredExtensions = getRequiredExtensions();
-    for (const auto &required : requiredExtensions)
-    {
-        if (available.find(required) == available.end())
-        {
-            throw std::runtime_error("Missing required glfw extension");
-        }
-    }
 }
 
 bool StarDevice::CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,

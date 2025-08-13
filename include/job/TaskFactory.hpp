@@ -19,17 +19,8 @@ struct PrintPayload
 
 namespace TaskFactory
 {
-void printExecute(void *p)
-{
-  auto* payload = static_cast<PrintPayload*>(p); 
-  std::cout << "Print task: " << payload->message << std::endl; 
-}
+void printExecute(void *p);
 
-star::job::Task<> createPrintTask(std::string message){
-  return star::job::Task<>::Builder<PrintPayload>()
-    .setPayload(PrintPayload(std::move(message)))
-    .setExecute(&printExecute)
-    .build();
-}
+star::job::Task<> createPrintTask(std::string message);
 } // namespace TaskFactory
 } // namespace star::Job

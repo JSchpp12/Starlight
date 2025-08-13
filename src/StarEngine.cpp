@@ -5,10 +5,12 @@
 #include "ManagerDescriptorPool.hpp"
 #include "ManagerRenderResource.hpp"
 #include "RenderResourceSystem.hpp"
+#include "RenderingInstance.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
 #include "SwapChainRenderer.hpp"
-#include "job/Manager.hpp"
+#include "job/TaskManager.hpp"
+
 
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
@@ -21,8 +23,11 @@
 namespace star
 {
 StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
-    : application(std::move(nApplication)), window(CreateStarWindow()), renderingDevice(CreateStarDevice(*this->window))
+    : application(std::move(nApplication)), window(CreateStarWindow()),
+      deviceManager(core::RenderingInstance(ConfigFile::getSetting(star::Config_Settings::app_name)))
 {
+    deviceManager.addDevice(CreateStarDevice(*this->window));
+
     // try and get a transfer queue from different queue fams
     {
         std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
@@ -89,7 +94,6 @@ void StarEngine::run()
                                     this->mainRenderer->getGlobalShaderInfo(),
                                     this->mainRenderer->getRenderTargetInfo());
 
-    renderingDevice->getManager().submitTask(star::job::TaskFactory::createPrintTask("Test printout"));
     uint8_t currentFrame = 0;
     while (!window->shouldClose())
     {
@@ -119,7 +123,7 @@ std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()
         .build();
 }
 
-std::unique_ptr<star::StarDevice> star::StarEngine::CreateStarDevice(StarWindow &window)
+StarDevice star::StarEngine::CreateStarDevice(StarWindow &window)
 {
     std::set<star::Rendering_Features> features;
     {
@@ -133,12 +137,12 @@ std::unique_ptr<star::StarDevice> star::StarEngine::CreateStarDevice(StarWindow 
         }
     }
 
-    return StarDevice::New(CreateManager(), window, features);
+    return StarDevice(window, features);
 }
 
-std::unique_ptr<job::Manager> StarEngine::CreateManager()
+std::unique_ptr<job::TaskManager> StarEngine::CreateManager()
 {
-    std::unique_ptr<job::Manager> mgr = std::make_unique<job::Manager>();
+    std::unique_ptr<job::TaskManager> mgr = std::make_unique<job::TaskManager>();
 
     return mgr;
 }
