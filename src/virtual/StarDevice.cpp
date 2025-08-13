@@ -2,7 +2,7 @@
 
 namespace star
 {
-StarDevice::StarDevice(std::unique_ptr<Job::Manager> taskManager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures) : taskManager(std::move(taskManager)), starWindow(window)
+StarDevice::StarDevice(std::unique_ptr<job::Manager> taskManager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures) : taskManager(std::move(taskManager)), starWindow(window)
 {
     this->taskManager->startAll(); 
 
@@ -23,7 +23,7 @@ StarDevice::StarDevice(std::unique_ptr<Job::Manager> taskManager, StarWindow &wi
     createAllocator();
 }
 
-std::unique_ptr<StarDevice> StarDevice::New(std::unique_ptr<Job::Manager> manager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures)
+std::unique_ptr<StarDevice> StarDevice::New(std::unique_ptr<job::Manager> manager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures)
 {
     return std::unique_ptr<StarDevice>(new StarDevice(std::move(manager), window, requiredFeatures));
 }

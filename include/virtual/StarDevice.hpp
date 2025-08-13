@@ -235,7 +235,7 @@ class StarDevice
         std::vector<std::vector<bool>> isQueueAvailable = std::vector<std::vector<bool>>();
     };
 
-    static std::unique_ptr<StarDevice> New(std::unique_ptr<star::Job::Manager> manager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures);
+    static std::unique_ptr<StarDevice> New(std::unique_ptr<star::job::Manager> manager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures);
 
     virtual ~StarDevice();
 
@@ -302,7 +302,7 @@ class StarDevice
                "Default allocator should have been created during startup. Something has gone wrong.");
         return *this->allocator;
     }
-    Job::Manager &getManager(){
+    job::Manager &getManager(){
         return *this->taskManager; 
     }
 #pragma endregion
@@ -358,7 +358,7 @@ class StarDevice
 #pragma endregion
 
   protected:
-    StarDevice(std::unique_ptr<star::Job::Manager> taskManager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures);
+    StarDevice(std::unique_ptr<star::job::Manager> taskManager, StarWindow &window, std::set<star::Rendering_Features> requiredFeatures);
 
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
@@ -373,7 +373,7 @@ class StarDevice
     vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
     vk::UniqueSurfaceKHR surface;
     StarWindow &starWindow;
-    std::unique_ptr<star::Job::Manager> taskManager = nullptr;
+    std::unique_ptr<star::job::Manager> taskManager = nullptr;
 
     std::vector<std::unique_ptr<StarQueueFamily>> extraFamilies = std::vector<std::unique_ptr<StarQueueFamily>>();
     std::unique_ptr<QueueOwnershipTracker> currentDeviceQueues = std::unique_ptr<QueueOwnershipTracker>();

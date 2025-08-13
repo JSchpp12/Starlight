@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <vulkan/vulkan.hpp>
 
-namespace star::Job
+namespace star::job
 {
 class Worker
 {

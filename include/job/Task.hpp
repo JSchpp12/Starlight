@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace star::Job
+namespace star::job
 {
 
 template <size_t StorageBytes = 64, size_t StorageAlign = alignof(std::max_align_t)> class Task

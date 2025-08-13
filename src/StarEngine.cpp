@@ -89,7 +89,7 @@ void StarEngine::run()
                                     this->mainRenderer->getGlobalShaderInfo(),
                                     this->mainRenderer->getRenderTargetInfo());
 
-    renderingDevice->getManager().submitTask(star::Job::TaskFactory::createPrintTask("Test printout"));
+    renderingDevice->getManager().submitTask(star::job::TaskFactory::createPrintTask("Test printout"));
     uint8_t currentFrame = 0;
     while (!window->shouldClose())
     {
@@ -136,9 +136,9 @@ std::unique_ptr<star::StarDevice> star::StarEngine::CreateStarDevice(StarWindow 
     return StarDevice::New(CreateManager(), window, features);
 }
 
-std::unique_ptr<Job::Manager> StarEngine::CreateManager()
+std::unique_ptr<job::Manager> StarEngine::CreateManager()
 {
-    std::unique_ptr<Job::Manager> mgr = std::make_unique<Job::Manager>();
+    std::unique_ptr<job::Manager> mgr = std::make_unique<job::Manager>();
 
     return mgr;
 }

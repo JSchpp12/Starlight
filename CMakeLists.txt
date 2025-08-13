@@ -153,12 +153,13 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/internals/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
     "src/job/Worker.cpp"
-    "src/job/Transfer.cpp"
     "src/job/Task.cpp"
     "src/job/ImageWriteTask.cpp"
     "src/job/Manager.cpp"
     "src/job/TaskFactory.cpp"
     "src/job/ImageWriterWorker.cpp"
+    "src/core/DeviceContext.cpp"
+    "src/core/DeviceManager.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
@@ -246,10 +247,11 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/job/Worker.hpp"
     "include/job/Task.hpp"
     "include/job/ImageWriteTask.hpp"
-    "include/job/Transfer.hpp"
     "include/job/Manager.hpp"
     "include/job/ImageWriterWorker.hpp"
     "include/job/TaskFactory.hpp"
+    "include/core/DeviceContext.hpp"
+    "include/core/DeviceManager.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarShader.hpp"
@@ -306,6 +308,7 @@ if (NOT ${HEADLESS})
         "include/structs/"
         "include/renderers/" 
         "include/job/"
+        "include/core/"
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
         ${Stb_INCLUDE_DIR}

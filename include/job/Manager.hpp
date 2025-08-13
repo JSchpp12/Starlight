@@ -6,7 +6,7 @@
 #include <typeindex>
 #include <unordered_map>
 
-namespace star::Job
+namespace star::job
 {
 class Manager
 {

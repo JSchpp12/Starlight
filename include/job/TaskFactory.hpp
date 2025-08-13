@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-namespace star::Job
+namespace star::job
 {
 struct PrintPayload
 {
@@ -25,8 +25,8 @@ void printExecute(void *p)
   std::cout << "Print task: " << payload->message << std::endl; 
 }
 
-star::Job::Task<> createPrintTask(std::string message){
-  return star::Job::Task<>::Builder<PrintPayload>()
+star::job::Task<> createPrintTask(std::string message){
+  return star::job::Task<>::Builder<PrintPayload>()
     .setPayload(PrintPayload(std::move(message)))
     .setExecute(&printExecute)
     .build();
