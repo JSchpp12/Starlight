@@ -46,7 +46,8 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::cr
 
 void star::TransferRequest::GlobalInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const
 {
-    buffer.map();
+    void* mapped = nullptr;
+    buffer.map(&mapped);
 
     // update global ubo
     GlobalUniformBufferObject globalUbo;
@@ -58,7 +59,7 @@ void star::TransferRequest::GlobalInfo::writeDataToStageBuffer(star::StarBuffers
     globalUbo.inverseView = glm::inverse(this->camera.getViewMatrix());
     globalUbo.numLights = static_cast<uint32_t>(this->numLights);
 
-    buffer.writeToBuffer(&globalUbo, sizeof(globalUbo));
+    buffer.writeToBuffer(&globalUbo, mapped, sizeof(globalUbo));
 
     buffer.unmap();
 }

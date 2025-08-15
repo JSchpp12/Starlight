@@ -23,11 +23,12 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
 
 void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const
 {
-    buffer.map();
+    void *mapped = nullptr;
+    buffer.map(&mapped);
 
     vk::DeviceSize indSize = sizeof(uint32_t) * this->indices.size();
     std::vector<uint32_t> cpInd{this->indices};
-    buffer.writeToBuffer(cpInd.data(), indSize);
+    buffer.writeToBuffer(cpInd.data(), mapped, indSize);
 
     buffer.unmap();
 }

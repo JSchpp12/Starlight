@@ -48,13 +48,14 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
 
 void star::TransferRequest::VertInfo::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const
 {
-    buffer.map();
+    void *mapped = nullptr;
+    buffer.map(&mapped);
 
     auto data = this->getVertices();
 
     for (int i = 0; i < data.size(); ++i)
     {
-        buffer.writeToIndex(&data.at(i), i);
+        buffer.writeToIndex(&data.at(i), mapped, i);
     }
 
     buffer.unmap();

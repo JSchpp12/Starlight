@@ -124,8 +124,9 @@ void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffer
 
     vk::DeviceSize imageSize = l_width * l_height * 4;
 
-    stagingBuffer.map();
-    stagingBuffer.writeToBuffer(pixelData, imageSize);
+    void *mapped = nullptr; 
+    stagingBuffer.map(&mapped);
+    stagingBuffer.writeToBuffer(pixelData, mapped, imageSize);
     stagingBuffer.unmap();
 
     stbi_image_free(pixelData);

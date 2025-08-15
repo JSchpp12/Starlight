@@ -57,11 +57,12 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelI
 
 void star::TransferRequest::InstanceModelInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const
 {
-    buffer.map();
+    void *mapped = nullptr;
+    buffer.map(&mapped);
     for (int i = 0; i < this->displayMatrixInfo.size(); ++i)
     {
         glm::mat4 info = glm::mat4(this->displayMatrixInfo[i]);
-        buffer.writeToIndex(&info, i);
+        buffer.writeToIndex(&info, mapped, i);
     }
 
     buffer.unmap();

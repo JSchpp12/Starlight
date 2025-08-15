@@ -19,11 +19,19 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedText
     ktxTexture2 *texture = nullptr;
     this->compressedTexture->giveMeTranscodedImage(lock, texture);
 
-    return std::make_unique<StarBuffers::Buffer>(allocator, texture->dataSize, 1,
-                                        VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                                        VMA_MEMORY_USAGE_AUTO, vk::BufferUsageFlagBits::eTransferSrc,
-                                        vk::SharingMode::eConcurrent, "CompressedTexture_TransferSRCBuffer");
+    return star::StarBuffers::Buffer::Builder(allocator)
+        .setInstanceCount(1)
+        .setInstanceSize(texture->dataSize)
+        .setAllocationCreateInfo(
+            VmaAllocationCreateInfo{.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                                    .usage = VMA_MEMORY_USAGE_AUTO},
+            vk::BufferCreateInfo()
+                .setSize(texture->dataSize)
+                .setSharingMode(vk::SharingMode::eExclusive)
+                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+            "CompressedTexture_TransferSRCBuffer")
+        .build();
 }
 
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTextureFile::createFinal(
@@ -125,8 +133,9 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
     for (int i = 0; i < texture->numLevels; i++)
     {
         ktx_size_t offset;
-        if (ktxTexture_GetImageOffset((ktxTexture *)texture, i, 0, 0, &offset) != ktx_error_code_e::KTX_SUCCESS){
-            throw std::runtime_error("Failed to get image offset into compressed texture"); 
+        if (ktxTexture_GetImageOffset((ktxTexture *)texture, i, 0, 0, &offset) != ktx_error_code_e::KTX_SUCCESS)
+        {
+            throw std::runtime_error("Failed to get image offset into compressed texture");
         }
 
         vk::BufferImageCopy copyRegion{};
@@ -174,14 +183,15 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
 
 void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const
 {
-    buffer.map();
+    void *mapped = nullptr; 
+    buffer.map(&mapped);
 
     {
         boost::unique_lock<boost::mutex> lock;
         ktxTexture2 *texture = nullptr;
         this->compressedTexture->giveMeTranscodedImage(lock, texture);
 
-        buffer.writeToBuffer(texture->pData, texture->dataSize);
+        buffer.writeToBuffer(texture->pData, mapped, texture->dataSize);
     }
 
     buffer.unmap();

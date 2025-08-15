@@ -48,7 +48,8 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
 
 void star::TransferRequest::LightInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const
 {
-    buffer.map();
+    void *mapped = nullptr;
+    buffer.map(&mapped);
 
     std::vector<LightBufferObject> lightInformation(this->myLights.size());
     LightBufferObject newBufferObject{};
@@ -70,7 +71,7 @@ void star::TransferRequest::LightInfo::writeDataToStageBuffer(star::StarBuffers:
         lightInformation[i] = newBufferObject;
     }
 
-    buffer.writeToBuffer(lightInformation.data(), sizeof(LightBufferObject) * lightInformation.size());
+    buffer.writeToBuffer(lightInformation.data(), mapped, sizeof(LightBufferObject) * lightInformation.size());
 
     buffer.unmap();
 }

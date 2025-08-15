@@ -56,7 +56,8 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
 
 void star::TransferRequest::InstanceNormalInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const
 {
-    buffer.map();
+    void *mapped = nullptr;
+    buffer.map(&mapped);
 
     std::vector<glm::mat4> inverseTranspose = std::vector<glm::mat4>(this->normalMatrixInfo.size());
 
@@ -65,6 +66,6 @@ void star::TransferRequest::InstanceNormalInfo::writeDataToStageBuffer(star::Sta
         inverseTranspose[i] = glm::inverse(glm::transpose(this->normalMatrixInfo[i]));
     }
 
-    buffer.writeToBuffer(inverseTranspose.data());
+    buffer.writeToBuffer(mapped, inverseTranspose.data());
     buffer.unmap();
 }
