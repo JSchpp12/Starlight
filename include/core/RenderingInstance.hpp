@@ -11,33 +11,39 @@ class RenderingInstance
 {
   public:
     RenderingInstance(const std::string &applicationName);
-    ~RenderingInstance(); 
+    ~RenderingInstance();
 
-    RenderingInstance(const RenderingInstance&) = delete;
-    RenderingInstance(RenderingInstance &&other) : m_instance(other.m_instance){
-      other.m_instance = VK_NULL_HANDLE;
+    RenderingInstance(const RenderingInstance &) = delete;
+    RenderingInstance(RenderingInstance &&other) : m_instance(other.m_instance)
+    {
+        other.m_instance = VK_NULL_HANDLE;
     }
 
-    RenderingInstance &operator=(RenderingInstance &&other){
-      m_instance = other.m_instance;
-      other.m_instance = VK_NULL_HANDLE;
-      return *this;
+    RenderingInstance &operator=(RenderingInstance &&other)
+    {
+        m_instance = other.m_instance;
+        other.m_instance = VK_NULL_HANDLE;
+        return *this;
     }
     RenderingInstance &operator=(RenderingInstance &other) = delete;
 
-    vk::Instance &getVulkanInstance() {
-      return m_instance; 
+    vk::Instance &getVulkanInstance()
+    {
+        return m_instance;
     }
 
-    bool getEnableValidationLayers() const {
-      return m_enableValidationLayers;
+    bool getEnableValidationLayers() const
+    {
+        return m_enableValidationLayers;
     }
 
-    const std::vector<const char *> getValidationLayerNames() const{
-      return m_validationLayers;
+    const std::vector<const char *> getValidationLayerNames() const
+    {
+        return m_validationLayers;
     }
 
-    std::vector<const char *> getRequiredDisplayExtensions() const; 
+    std::vector<const char *> getRequiredDisplayExtensions() const;
+
   private:
     vk::Instance m_instance;
 
@@ -62,6 +68,6 @@ class RenderingInstance
 
     static bool DoesSystemSupportValidationLayers(const std::vector<const char *> &validationLayers);
 
-    static bool DoesSystemSupportDisplayExtensions(const std::vector<const char *> &requiredDisplayExtensions); 
+    static bool DoesSystemSupportDisplayExtensions(const std::vector<const char *> &requiredDisplayExtensions);
 };
 } // namespace star::core

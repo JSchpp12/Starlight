@@ -11,7 +11,6 @@
 #include "SwapChainRenderer.hpp"
 #include "job/TaskManager.hpp"
 
-
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
 #include <stdexcept>
@@ -26,7 +25,7 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
     : application(std::move(nApplication)), window(CreateStarWindow()),
       deviceManager(core::RenderingInstance(ConfigFile::getSetting(star::Config_Settings::app_name)))
 {
-        std::set<star::Rendering_Features> features;
+    std::set<star::Rendering_Features> features;
     {
         bool setting = false;
         std::istringstream(ConfigFile::getSetting(star::Config_Settings::required_device_feature_shader_float64)) >>
@@ -45,16 +44,24 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
         std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
         std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
 
-        const auto transferFams = this->deviceManager.getContext().getDevice().getQueueOwnershipTracker().getQueueFamiliesWhichSupport(
-            vk::QueueFlagBits::eTransfer);
+        const auto transferFams =
+            this->deviceManager.getContext().getDevice().getQueueOwnershipTracker().getQueueFamiliesWhichSupport(
+                vk::QueueFlagBits::eTransfer);
         for (const auto &fam : transferFams)
         {
-            if (fam != deviceManager.getContext().getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex() &&
-                fam != deviceManager.getContext().getDevice().getDefaultQueue(Queue_Type::Tcompute).getParentQueueFamilyIndex() &&
+            if (fam != deviceManager.getContext()
+                           .getDevice()
+                           .getDefaultQueue(Queue_Type::Tgraphics)
+                           .getParentQueueFamilyIndex() &&
+                fam != deviceManager.getContext()
+                           .getDevice()
+                           .getDefaultQueue(Queue_Type::Tcompute)
+                           .getParentQueueFamilyIndex() &&
                 !selectedFamilyIndices.contains(fam))
             {
-                auto nQueue = deviceManager.getContext().getDevice().getQueueOwnershipTracker().giveMeQueueWithProperties(
-                    vk::QueueFlagBits::eTransfer, false, fam);
+                auto nQueue =
+                    deviceManager.getContext().getDevice().getQueueOwnershipTracker().giveMeQueueWithProperties(
+                        vk::QueueFlagBits::eTransfer, false, fam);
 
                 if (nQueue.has_value())
                 {

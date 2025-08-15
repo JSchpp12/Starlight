@@ -2,5 +2,5 @@
 
 star::core::SwapChainSupportDetails star::core::DeviceContext::getSwapchainSupportDetails()
 {
-    return m_device.getSwapchainSupport(*m_surface);  
+    return m_device.getSwapchainSupport(*m_surface);
 }

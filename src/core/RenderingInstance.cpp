@@ -12,7 +12,8 @@ star::core::RenderingInstance::RenderingInstance(const std::string &applicationN
                                  "and vulkan dependencies are properly set");
     }
 
-    if (!DoesSystemSupportDisplayExtensions(getRequiredDisplayExtensions())){
+    if (!DoesSystemSupportDisplayExtensions(getRequiredDisplayExtensions()))
+    {
         throw std::runtime_error("System does not support the required extensions for display");
     }
 
@@ -22,7 +23,7 @@ star::core::RenderingInstance::RenderingInstance(const std::string &applicationN
 star::core::RenderingInstance::~RenderingInstance()
 {
     if (m_instance)
-        m_instance.destroy(); 
+        m_instance.destroy();
 }
 
 vk::Instance star::core::RenderingInstance::createInstance(const std::string &applicationName)
@@ -81,7 +82,7 @@ std::vector<const char *> star::core::RenderingInstance::getRequiredDisplayExten
 
 bool star::core::RenderingInstance::DoesSystemSupportValidationLayers(const std::vector<const char *> &validationLayers)
 {
-    bool doesSupport = true; 
+    bool doesSupport = true;
 
     std::vector<vk::LayerProperties> availableLayers = vk::enumerateInstanceLayerProperties();
 
@@ -100,17 +101,18 @@ bool star::core::RenderingInstance::DoesSystemSupportValidationLayers(const std:
 
         if (!layerFound)
         {
-            doesSupport = false; 
+            doesSupport = false;
             std::cerr << "Missing Validation layer " << layerName << std::endl;
         }
     }
 
-    return doesSupport; 
+    return doesSupport;
 }
 
-bool star::core::RenderingInstance::DoesSystemSupportDisplayExtensions(const std::vector<const char *> &requiredDisplayExtensions)
+bool star::core::RenderingInstance::DoesSystemSupportDisplayExtensions(
+    const std::vector<const char *> &requiredDisplayExtensions)
 {
-    bool doesSupport = true; 
+    bool doesSupport = true;
 
     uint32_t extensionCount = 0;
     vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
@@ -123,12 +125,14 @@ bool star::core::RenderingInstance::DoesSystemSupportDisplayExtensions(const std
         available.insert(extension.extensionName);
     }
 
-    for (const auto& required : requiredDisplayExtensions){
-        if (available.find(required) == available.end()){
+    for (const auto &required : requiredDisplayExtensions)
+    {
+        if (available.find(required) == available.end())
+        {
             std::cerr << "Missing required display extension: " << required << std::endl;
-            doesSupport = false; 
+            doesSupport = false;
         }
     }
 
-    return doesSupport; 
+    return doesSupport;
 }
