@@ -1,7 +1,7 @@
 #pragma once 
 
 #include "StarShader.hpp"
-#include "StarDevice.hpp"
+#include "DeviceContext.hpp"
 #include "VulkanVertex.hpp"
 #include "Compiler.hpp"
 #include "StarPipeline.hpp"
@@ -37,10 +37,10 @@ public:
 		RenderingTargetInfo renderingInfo;
 	};
 
-	StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, 
+	StarGraphicsPipeline(core::DeviceContext& device, PipelineConfigSettings& configSettings, 
 		StarShader vertShader, StarShader fragShader);
 
-	StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, 
+	StarGraphicsPipeline(core::DeviceContext& device, PipelineConfigSettings& configSettings, 
 		StarShader vertShader, StarShader fragShader, 
 		StarShader geomShader);
 

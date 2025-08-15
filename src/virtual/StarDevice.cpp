@@ -2,7 +2,7 @@
 
 namespace star
 {
-StarDevice::StarDevice(StarWindow &window, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures) : starWindow(window)
+StarDevice::StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures) : starWindow(window)
 {
     if (requiredFeatures.find(star::Rendering_Features::shader_float64) != requiredFeatures.end())
         this->requiredDeviceFeatures.shaderFloat64 = VK_TRUE;
@@ -12,30 +12,38 @@ StarDevice::StarDevice(StarWindow &window, core::RenderingInstance &renderingIns
     this->requiredDeviceFeatures.fillModeNonSolid = VK_TRUE;
     this->requiredDeviceFeatures.logicOp = VK_TRUE;
 
-    this->starWindow.createWindowSurface(renderingInstance.getVulkanInstance(), this->surface);
-
-    pickPhysicalDevice(renderingInstance);
-    createLogicalDevice(renderingInstance);
-    createAllocator();
+    pickPhysicalDevice(renderingInstance, renderingSurface);
+    createLogicalDevice(renderingInstance, renderingSurface);
+    createAllocator(renderingInstance);
 }
 
 StarDevice::~StarDevice()
 {
-    this->defaultCommandPool.reset();
-    this->transferCommandPool.reset();
-    this->computeCommandPool.reset();
+    if (vulkanDevice){
+        this->defaultCommandPool.reset();
+        this->transferCommandPool.reset();
+        this->computeCommandPool.reset();
 
-    for (auto &buffer : this->extraFamilies)
-    {
-        buffer.reset();
+        for (auto &buffer : this->extraFamilies)
+        {
+            buffer.reset();
+        }
+
+        this->allocator.reset();
+        this->vulkanDevice.destroy();
     }
-
-    this->allocator.reset();
-    this->vulkanDevice.destroy();
-    this->surface.reset();
 }
 
-void StarDevice::pickPhysicalDevice(const core::RenderingInstance &instance)
+StarDevice::StarDevice(StarDevice &&other) : vulkanDevice(other.vulkanDevice), allocator(std::move(other.allocator)), 
+physicalDevice(other.physicalDevice), starWindow(other.starWindow), extraFamilies(std::move(other.extraFamilies)),
+currentDeviceQueues(std::move(other.currentDeviceQueues)), defaultQueue(std::move(other.defaultQueue)), dedicatedComputeQueue(std::move(other.dedicatedComputeQueue)), 
+dedicatedTransferQueue(std::move(other.dedicatedTransferQueue)), defaultCommandPool(other.defaultCommandPool), transferCommandPool(other.transferCommandPool),
+computeCommandPool(other.computeCommandPool)
+{
+    other.vulkanDevice = VK_NULL_HANDLE;
+}
+
+void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface)
 {
     std::vector<vk::PhysicalDevice> devices = instance.getVulkanInstance().enumeratePhysicalDevices();
 
@@ -46,7 +54,7 @@ void StarDevice::pickPhysicalDevice(const core::RenderingInstance &instance)
     // check devices and see if they are suitable for use
     for (const auto &nDevice : devices)
     {
-        if (IsDeviceSuitable(this->requiredDeviceExtensions, this->requiredDeviceFeatures, nDevice, *this->surface))
+        if (IsDeviceSuitable(this->requiredDeviceExtensions, this->requiredDeviceFeatures, nDevice, renderingSurface))
         {
             if (nDevice)
                 suitableDevices.push_back(nDevice);
@@ -59,7 +67,7 @@ void StarDevice::pickPhysicalDevice(const core::RenderingInstance &instance)
     uint32_t largestQueueFamilyCount = 0;
     for (const auto &nDevice : suitableDevices)
     {
-        auto indicies = FindQueueFamilies(nDevice, *this->surface);
+        auto indicies = FindQueueFamilies(nDevice, renderingSurface.getSurface());
         if (indicies.isOptimalSupport())
         {
             // try to pick the device that has the most seperate queue families
@@ -76,7 +84,7 @@ void StarDevice::pickPhysicalDevice(const core::RenderingInstance &instance)
     {
         for (const auto &nDevice : devices)
         {
-            auto indicies = FindQueueFamilies(nDevice, *this->surface);
+            auto indicies = FindQueueFamilies(nDevice, renderingSurface.getSurface());
             if (indicies.isFullySupported())
             {
                 picked = nDevice;
@@ -111,9 +119,9 @@ void StarDevice::pickPhysicalDevice(const core::RenderingInstance &instance)
     }
 }
 
-void StarDevice::createLogicalDevice(const core::RenderingInstance &instance)
+void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface)
 {
-    QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, *this->surface);
+    QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, renderingSurface.getSurface());
 
     // need multiple structs since we now have a seperate family for presenting and graphics
     auto uniqueIndices = indicies.getUniques();
@@ -166,7 +174,7 @@ void StarDevice::createLogicalDevice(const core::RenderingInstance &instance)
     }
     this->currentDeviceQueues = std::make_unique<QueueOwnershipTracker>(queueFamilies);
 
-    auto test = this->currentDeviceQueues->giveMeQueueWithProperties(
+    std::optional<StarQueue> test = this->currentDeviceQueues->giveMeQueueWithProperties(
         vk::QueueFlagBits::eCompute & vk::QueueFlagBits::eTransfer & vk::QueueFlagBits::eGraphics, true); 
     this->defaultQueue = std::make_unique<StarQueue>(test.value());
 
@@ -222,22 +230,22 @@ void StarDevice::createLogicalDevice(const core::RenderingInstance &instance)
         this->transferCommandPool = std::make_shared<StarCommandPool>(this->vulkanDevice, this->dedicatedTransferQueue->getParentQueueFamilyIndex(), true); 
 }
 
-void StarDevice::createAllocator(const core::RenderingInstance &instance)
+void StarDevice::createAllocator(core::RenderingInstance &instance)
 {
     this->allocator =
-        std::make_unique<star::Allocator>(this->getDevice(), this->getPhysicalDevice(), instance.getVulkanInstance());
+        std::make_unique<star::Allocator>(this->getVulkanDevice(), this->getPhysicalDevice(), instance.getVulkanInstance());
 }
 
 bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
                                   const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                                  const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface)
+                                  const vk::PhysicalDevice &device, core::RenderingSurface &surface)
 {
     bool swapChainAdequate = false;
-    QueueFamilyIndicies indicies = FindQueueFamilies(device, surface);
+    QueueFamilyIndicies indicies = FindQueueFamilies(device, surface.getSurface());
     bool extensionsSupported = CheckDeviceExtensionSupport(device, requiredDeviceExtensions);
-    if (extensionsSupported && DoesDeviceSupportPresentation(device, surface))
+    if (extensionsSupported && DoesDeviceSupportPresentation(device, surface.getSurface()))
     {
-        SwapChainSupportDetails swapChainSupport = QuerySwapchainSupport(device, surface);
+        core::SwapChainSupportDetails swapChainSupport = QuerySwapchainSupport(device, surface);
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
@@ -466,7 +474,7 @@ std::unique_ptr<star::StarCommandBuffer> StarDevice::beginSingleTimeCommands()
     assert(this->defaultCommandPool != nullptr);
 
     std::unique_ptr<StarCommandBuffer> tmpBuffer = std::make_unique<StarCommandBuffer>(
-        this->getDevice(), 1, this->defaultCommandPool, Queue_Type::Tgraphics, true, false);
+        this->getVulkanDevice(), 1, this->defaultCommandPool, Queue_Type::Tgraphics, true, false);
 
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
@@ -558,17 +566,16 @@ void StarDevice::createImageWithInfo(const vk::ImageCreateInfo &imageInfo, vk::M
     this->vulkanDevice.bindImageMemory(image, imageMemory, 0);
 }
 
-SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevice &device,
-                                                          const vk::SurfaceKHR &surface)
+core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevice &device, core::RenderingSurface &surface)
 {
-    SwapChainSupportDetails details;
+    core::SwapChainSupportDetails details;
     uint32_t formatCount, presentModeCount;
 
     // get surface capabilities
-    details.capabilities = device.getSurfaceCapabilitiesKHR(surface);
+    details.capabilities = device.getSurfaceCapabilitiesKHR(surface.getSurface());
 
     {
-        const auto result = device.getSurfaceFormatsKHR(surface, &formatCount, nullptr);
+        const auto result = device.getSurfaceFormatsKHR(surface.getSurface(), &formatCount, nullptr);
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get any surface formats from device");
@@ -576,7 +583,7 @@ SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevi
     }
 
     {
-        const auto result = device.getSurfacePresentModesKHR(surface, &presentModeCount, nullptr);
+        const auto result = device.getSurfacePresentModesKHR(surface.getSurface(), &presentModeCount, nullptr);
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");
@@ -588,7 +595,7 @@ SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevi
         // resize vector in order to hold all available formats
         details.formats.resize(formatCount);
 
-        const auto result = device.getSurfaceFormatsKHR(surface, &formatCount, details.formats.data());
+        const auto result = device.getSurfaceFormatsKHR(surface.getSurface(), &formatCount, details.formats.data());
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");
@@ -600,7 +607,7 @@ SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevi
         // resize for same reasons as format
         details.presentModes.resize(presentModeCount);
 
-        const auto result = device.getSurfacePresentModesKHR(surface, &presentModeCount, details.presentModes.data());
+        const auto result = device.getSurfacePresentModesKHR(surface.getSurface(), &presentModeCount, details.presentModes.data());
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");

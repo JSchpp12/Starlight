@@ -26,22 +26,34 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
     : application(std::move(nApplication)), window(CreateStarWindow()),
       deviceManager(core::RenderingInstance(ConfigFile::getSetting(star::Config_Settings::app_name)))
 {
-    deviceManager.addDevice(CreateStarDevice(*this->window));
+        std::set<star::Rendering_Features> features;
+    {
+        bool setting = false;
+        std::istringstream(ConfigFile::getSetting(star::Config_Settings::required_device_feature_shader_float64)) >>
+            std::boolalpha >> setting;
+
+        if (setting)
+        {
+            features.insert(star::Rendering_Features::shader_float64);
+        }
+    }
+
+    deviceManager.createDevice(features, *this->window);
 
     // try and get a transfer queue from different queue fams
     {
         std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
         std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
 
-        const auto transferFams = this->renderingDevice->getQueueOwnershipTracker().getQueueFamiliesWhichSupport(
+        const auto transferFams = this->deviceManager.getContext().getDevice().getQueueOwnershipTracker().getQueueFamiliesWhichSupport(
             vk::QueueFlagBits::eTransfer);
         for (const auto &fam : transferFams)
         {
-            if (fam != this->renderingDevice->getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex() &&
-                fam != this->renderingDevice->getDefaultQueue(Queue_Type::Tcompute).getParentQueueFamilyIndex() &&
+            if (fam != deviceManager.getContext().getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex() &&
+                fam != deviceManager.getContext().getDevice().getDefaultQueue(Queue_Type::Tcompute).getParentQueueFamilyIndex() &&
                 !selectedFamilyIndices.contains(fam))
             {
-                auto nQueue = this->renderingDevice->getQueueOwnershipTracker().giveMeQueueWithProperties(
+                auto nQueue = deviceManager.getContext().getDevice().getQueueOwnershipTracker().giveMeQueueWithProperties(
                     vk::QueueFlagBits::eTransfer, false, fam);
 
                 if (nQueue.has_value())
@@ -54,7 +66,7 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
         }
 
         this->transferWorker = std::make_unique<TransferWorker>(
-            *this->renderingDevice, this->OVERRIDE_APPLY_SINGLE_THREAD_MODE, transferWorkerQueues);
+            deviceManager.getContext().getDevice(), this->OVERRIDE_APPLY_SINGLE_THREAD_MODE, transferWorkerQueues);
     }
 
     uint8_t framesInFlight;
@@ -66,31 +78,30 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
         }
     }
 
-    StarManager::init(*this->renderingDevice, *this->transferWorker);
+    StarManager::init(deviceManager.getContext().getDevice(), *this->transferWorker);
 
-    this->application->init(*this->renderingDevice, *this->window, framesInFlight);
+    this->application->init(deviceManager.getContext(), *this->window, framesInFlight);
 
     this->mainRenderer = application->getPresentationRenderer();
 }
 
 StarEngine::~StarEngine()
 {
-    this->transferWorker.reset();
-    ManagerRenderResource::cleanup(*this->renderingDevice);
-    RenderResourceSystem::cleanup(*this->renderingDevice);
-    StarObject::cleanupSharedResources(*this->renderingDevice);
+    ManagerRenderResource::cleanup(deviceManager.getContext().getDevice());
+    RenderResourceSystem::cleanup(deviceManager.getContext());
+    StarObject::cleanupSharedResources(deviceManager.getContext());
 }
 
 void StarEngine::run()
 {
     int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
-    ManagerDescriptorPool descriptorManager(*this->renderingDevice, framesInFlight);
-    RenderResourceSystem::init(*this->renderingDevice, framesInFlight, this->window->getExtent());
-    ManagerCommandBuffer commandBufferManager(*this->renderingDevice, framesInFlight);
+    ManagerDescriptorPool descriptorManager(deviceManager.getContext(), framesInFlight);
+    RenderResourceSystem::init(deviceManager.getContext(), framesInFlight, this->window->getExtent());
+    ManagerCommandBuffer commandBufferManager(deviceManager.getContext().getDevice(), framesInFlight);
 
     // prepare any shared resources
-    StarObject::initSharedResources(*this->renderingDevice, this->window->getExtent(), framesInFlight,
+    StarObject::initSharedResources(deviceManager.getContext(), this->window->getExtent(), framesInFlight,
                                     this->mainRenderer->getGlobalShaderInfo(),
                                     this->mainRenderer->getRenderTargetInfo());
 
@@ -100,7 +111,7 @@ void StarEngine::run()
         currentFrame = this->mainRenderer->getFrameToBeDrawn();
 
         // check if any new objects have been added
-        RenderResourceSystem::runInits(*this->renderingDevice, framesInFlight, this->window->getExtent());
+        RenderResourceSystem::runInits(deviceManager.getContext(), framesInFlight, this->window->getExtent());
         descriptorManager.update(framesInFlight);
 
         this->mainRenderer->pollEvents();
@@ -111,7 +122,7 @@ void StarEngine::run()
         this->transferWorker->update();
     }
 
-    this->renderingDevice->getDevice().waitIdle();
+    deviceManager.getContext().getDevice().getVulkanDevice().waitIdle();
 }
 
 std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()
@@ -121,23 +132,6 @@ std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()
         .setHeight(std::stoi(ConfigFile::getSetting(star::Config_Settings::resolution_y)))
         .setTitle(ConfigFile::getSetting(star::Config_Settings::app_name))
         .build();
-}
-
-StarDevice star::StarEngine::CreateStarDevice(StarWindow &window)
-{
-    std::set<star::Rendering_Features> features;
-    {
-        bool setting = false;
-        std::istringstream(ConfigFile::getSetting(star::Config_Settings::required_device_feature_shader_float64)) >>
-            std::boolalpha >> setting;
-
-        if (setting)
-        {
-            features.insert(star::Rendering_Features::shader_float64);
-        }
-    }
-
-    return StarDevice(window, features);
 }
 
 std::unique_ptr<job::TaskManager> StarEngine::CreateManager()

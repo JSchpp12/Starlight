@@ -45,7 +45,7 @@ void star::ManagerCommandBuffer::handleNewRequests()
         star::Handle newHandle = this->buffers.add(
             std::make_unique<CommandBufferContainer::CompleteRequest>(
                 request.recordBufferCallback,
-                std::make_unique<StarCommandBuffer>(this->device.getDevice(), this->numFramesInFlight,
+                std::make_unique<StarCommandBuffer>(this->device.getVulkanDevice(), this->numFramesInFlight,
                                                     this->device.getCommandPool(request.type), request.type,
                                                     !request.overrideBufferSubmissionCallback.has_value(), true),
                 request.type, request.recordOnce, request.waitStage, request.order,

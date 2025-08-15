@@ -21,7 +21,7 @@ class StarApplication : public Interactivity
     }
     virtual ~StarApplication() = default;
 
-    void init(StarDevice &device, const StarWindow &window, const uint8_t &numFramesInFlight);
+    void init(core::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight);
 
     void cleanup();
 
@@ -51,12 +51,12 @@ class StarApplication : public Interactivity
     std::shared_ptr<StarScene> scene = nullptr;
     std::shared_ptr<SwapChainRenderer> swapChainRenderer = nullptr;
 
-    virtual std::shared_ptr<StarScene> createInitialScene(StarDevice &device, const StarWindow &window,
+    virtual std::shared_ptr<StarScene> createInitialScene(core::DeviceContext &device, const StarWindow &window,
                                                           const uint8_t &numFramesInFlight) = 0;
 
-    virtual std::shared_ptr<SwapChainRenderer> createPresentationRenderer(StarDevice &device, const StarWindow &window,
+    virtual std::shared_ptr<SwapChainRenderer> createPresentationRenderer(core::DeviceContext &device, const StarWindow &window,
                                                                           const uint8_t &numFramesInFlight);
 
-    virtual void startup(StarDevice &device, const StarWindow &window, const uint8_t &numFramesInFlight) = 0; 
+    virtual void startup(core::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight) = 0; 
 };
 } // namespace star

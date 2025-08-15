@@ -1,14 +1,14 @@
 #include "StarRenderGroup.hpp"
 
 namespace star {
-StarRenderGroup::StarRenderGroup(StarDevice& device, size_t numSwapChainImages, 
+StarRenderGroup::StarRenderGroup(core::DeviceContext& device, size_t numSwapChainImages, 
 	vk::Extent2D swapChainExtent, StarObject& baseObject)
 	: device(device),numSwapChainImages(numSwapChainImages), swapChainExtent(swapChainExtent)
 {
 	auto objInfo = RenderObjectInfo(baseObject);
 	this->groups.push_back(Group(objInfo));
 
-	auto layoutBuilder = StarDescriptorSetLayout::Builder(device); 
+	auto layoutBuilder = StarDescriptorSetLayout::Builder(device.getDevice()); 
 	this->largestDescriptorSet = this->groups.front().baseObject.object.getDescriptorSetLayouts(device);
 
 	this->numObjects++; 
@@ -25,7 +25,7 @@ StarRenderGroup::~StarRenderGroup() {
 		group.baseObject.object.cleanupRender(device); 
 	}
 
-	this->device.getDevice().destroyPipelineLayout(this->pipelineLayout);
+	this->device.getDevice().getVulkanDevice().destroyPipelineLayout(this->pipelineLayout);
 }
 
 void StarRenderGroup::addObject(StarObject& newObject) {
@@ -189,7 +189,7 @@ void StarRenderGroup::createPipelineLayout(std::vector<std::shared_ptr<StarDescr
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-	this->pipelineLayout = this->device.getDevice().createPipelineLayout(pipelineLayoutInfo);
+	this->pipelineLayout = this->device.getDevice().getVulkanDevice().createPipelineLayout(pipelineLayoutInfo);
 	
 	if (!this->pipelineLayout) {
 		throw std::runtime_error("failed to create pipeline layout");
@@ -199,7 +199,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::StarRenderGroup::get
 {
 	return std::vector<std::pair<vk::DescriptorType, const int>>();
 }
-void star::StarRenderGroup::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+void star::StarRenderGroup::createDescriptors(star::core::DeviceContext& device, const int& numFramesInFlight)
 {
 }
 }

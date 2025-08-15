@@ -33,8 +33,6 @@ class StarEngine
 
     static std::unique_ptr<StarWindow> CreateStarWindow(); 
 
-    static StarDevice CreateStarDevice(StarWindow &window); 
-
     static std::unique_ptr<job::TaskManager> CreateManager(); 
 };
 } // namespace star

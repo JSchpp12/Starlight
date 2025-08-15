@@ -16,7 +16,7 @@ void star::TransferManagerThread::startAsync()
 {
     this->shouldRun.store(true);
     this->thread = boost::thread(TransferManagerThread::mainLoop,
-                                 SubThreadInfo(&this->shouldRun, this->device.getDevice(), this->myQueue,
+                                 SubThreadInfo(&this->shouldRun, this->device.getVulkanDevice(), this->myQueue,
                                                this->device.getAllocator().get(), this->deviceProperties,
                                                &this->requestQueues, this->allTransferQueueFamilyIndicesInUse));
 

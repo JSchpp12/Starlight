@@ -8,12 +8,12 @@ void star::BumpMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLayout
 	constBuilder.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 }
 
-void star::BumpMaterial::cleanup(StarDevice& device)
+void star::BumpMaterial::cleanup(core::DeviceContext& device)
 {
 
 }
 
-void star::BumpMaterial::buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
+void star::BumpMaterial::buildDescriptorSet(core::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 
 {
 	this->TextureMaterial::buildDescriptorSet(device, builder, imageInFlightIndex);

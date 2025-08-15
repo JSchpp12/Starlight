@@ -1,6 +1,6 @@
 #include "StarComputePipeline.hpp"
 
-star::StarComputePipeline::StarComputePipeline(StarDevice& device, vk::PipelineLayout& pipelineLayout, 
+star::StarComputePipeline::StarComputePipeline(core::DeviceContext& device, vk::PipelineLayout& pipelineLayout, 
 	StarShader inCompShader) : compShader(inCompShader), pipelineLayout(pipelineLayout), StarPipeline(device)
 {
 }
@@ -25,12 +25,12 @@ vk::Pipeline star::StarComputePipeline::buildPipeline()
 	createInfo.layout = this->pipelineLayout; 
 	createInfo.stage = compShaderStageInfo; 
 
-	auto result = this->device.getDevice().createComputePipeline(VK_NULL_HANDLE, createInfo); 
+	auto result = this->device.getDevice().getVulkanDevice().createComputePipeline(VK_NULL_HANDLE, createInfo); 
 	if (result.result != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to create compute pipeline"); 
 	}
 
-	this->device.getDevice().destroyShaderModule(compShaderModule); 
+	this->device.getDevice().getVulkanDevice().destroyShaderModule(compShaderModule); 
 
 	return result.value; 
 }

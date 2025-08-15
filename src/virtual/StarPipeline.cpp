@@ -2,7 +2,7 @@
 
 star::StarPipeline::~StarPipeline()
 {
-	device.getDevice().destroyPipeline(pipeline); 
+	device.getDevice().getVulkanDevice().destroyPipeline(pipeline); 
 }
 
 void star::StarPipeline::init()
@@ -21,7 +21,7 @@ vk::ShaderModule star::StarPipeline::createShaderModule(const std::vector<uint32
 	createInfo.codeSize = 4 * sourceCode.size();
 	createInfo.pCode = sourceCode.data();
 
-	VkShaderModule shaderModule = this->device.getDevice().createShaderModule(createInfo);
+	VkShaderModule shaderModule = this->device.getDevice().getVulkanDevice().createShaderModule(createInfo);
 	if (!shaderModule) {
 		throw std::runtime_error("failed to create shader module");
 	}

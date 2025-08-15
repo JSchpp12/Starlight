@@ -5,7 +5,7 @@ star::core::DeviceManager::DeviceManager(RenderingInstance &&renderingInstance) 
 
 }
 
-void star::core::DeviceManager::addDevice(StarDevice&& device)
+void star::core::DeviceManager::createDevice(std::set<Rendering_Features> requiredFeatures, StarWindow &window)
 {
-    m_deviceInfos.emplace_back(std::move(device)); 
+    m_deviceInfos.push_back(DeviceContext(m_instance, requiredFeatures, window)); 
 }

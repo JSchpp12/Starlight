@@ -99,7 +99,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/wrappers/graphics/StarQueue.cpp"
     "src/wrappers/graphics/StarCommandPool.cpp"
     "src/wrappers/Allocator.cpp"
-    "src/wrappers/ScreenshotCommandBuffer.cpp"
     "src/wrappers/graphics/StarTextures/Texture.cpp"
     "src/wrappers/graphics/StarTextures/Resources.cpp"
     "src/wrappers/graphics/StarTextures/AllocatedResources.cpp"
@@ -161,6 +160,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/core/DeviceContext.cpp"
     "src/core/DeviceManager.cpp"
     "src/core/RenderingInstance.cpp"
+    "src/core/RenderingSurface.cpp"
+    "src/core/SwapChainSupportDetails.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
@@ -221,7 +222,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/wrappers/graphics/StarComputePipeline.hpp"
     "include/wrappers/graphics/StarRenderPass.hpp"
     "include/wrappers/graphics/StarCommandBuffer.hpp"
-    "include/wrappers/ScreenshotCommandBuffer.hpp"
     "include/wrappers/graphics/StarShaderInfo.hpp"
     "include/wrappers/graphics/StarQueueFamily.hpp"
     "include/wrappers/graphics/StarQueue.hpp"
@@ -254,6 +254,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/core/DeviceContext.hpp"
     "include/core/DeviceManager.hpp"
     "include/core/RenderingInstance.hpp"
+    "include/core/RenderingSurface.hpp"
+    "include/core/SwapChainSupportDetails.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarShader.hpp"

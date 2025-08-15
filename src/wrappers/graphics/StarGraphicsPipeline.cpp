@@ -2,13 +2,13 @@
 
 namespace star {
 
-StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader)
+StarGraphicsPipeline::StarGraphicsPipeline(core::DeviceContext& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader)
 	: StarPipeline(device), configSettings(configSettings), vertShader(vertShader), fragShader(fragShader)
 {
 	this->hash = vertShader.getPath() + fragShader.getPath(); 
 }
 
-StarGraphicsPipeline::StarGraphicsPipeline(StarDevice& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader, StarShader geomShader)
+StarGraphicsPipeline::StarGraphicsPipeline(core::DeviceContext& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader, StarShader geomShader)
 	: StarPipeline(device), configSettings(configSettings), vertShader(vertShader), fragShader(fragShader), geomShader(geomShader)
 {
 	this->hash = vertShader.getPath() + fragShader.getPath() + this->geomShader.value().getPath(); 
@@ -236,7 +236,7 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 	//finally creating the pipeline -- this call has the capability of creating multiple pipelines in one call
 	//2nd arg is set to null -> normally for graphics pipeline cache (can be used to store and reuse data relevant to pipeline creation across multiple calls to vkCreateGraphicsPipeline)
 
-	auto result = this->device.getDevice().createGraphicsPipelines(VK_NULL_HANDLE, pipelineInfo);
+	auto result = this->device.getDevice().getVulkanDevice().createGraphicsPipelines(VK_NULL_HANDLE, pipelineInfo);
 	if (result.result != vk::Result::eSuccess) {
 		throw std::runtime_error("failed to create graphics pipeline");
 	}
@@ -245,10 +245,10 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline()
 	}
 
 	//destroy the shader modules that were created 
-	this->device.getDevice().destroyShaderModule(vertShaderModule);
-	this->device.getDevice().destroyShaderModule(fragShaderModule);
+	this->device.getDevice().getVulkanDevice().destroyShaderModule(vertShaderModule);
+	this->device.getDevice().getVulkanDevice().destroyShaderModule(fragShaderModule);
 	if (this->geomShader.has_value())
-		this->device.getDevice().destroyShaderModule(geomShaderModule);
+		this->device.getDevice().getVulkanDevice().destroyShaderModule(geomShaderModule);
 
 	return result.value.at(0);
 }

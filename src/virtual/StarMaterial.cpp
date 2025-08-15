@@ -1,17 +1,17 @@
 #include "StarMaterial.hpp"
 
-void star::StarMaterial::cleanupRender(StarDevice& device)
+void star::StarMaterial::cleanupRender(core::DeviceContext& device)
 {
 
 }
 
-void star::StarMaterial::prepRender(StarDevice& device)
+void star::StarMaterial::prepRender(core::DeviceContext& device)
 {
 	//since multiple meshes can share a material, ensure that the material has not already been prepared
 
 }
 
-void star::StarMaterial::finalizeDescriptors(StarDevice& device, star::StarShaderInfo::Builder builder, int numSwapChainImages)
+void star::StarMaterial::finalizeDescriptors(core::DeviceContext& device, star::StarShaderInfo::Builder builder, int numSwapChainImages)
 {
 	//only build descriptor sets if this object hasnt already been initialized
 	for (int i = 0; i < numSwapChainImages; i++) {
@@ -39,7 +39,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDes
 	return std::vector<std::pair<vk::DescriptorType, const int>>();
 }
 
-void star::StarMaterial::createDescriptors(star::StarDevice& device, const int& numFramesInFlight)
+void star::StarMaterial::createDescriptors(star::core::DeviceContext& device, const int& numFramesInFlight)
 {
 }
 

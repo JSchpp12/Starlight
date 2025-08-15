@@ -1,6 +1,6 @@
 #pragma once 
 
-#include "StarDevice.hpp"
+#include "DeviceContext.hpp"
 
 #include "vulkan/vulkan.hpp"
 
@@ -19,11 +19,11 @@ namespace star {
 		bool areResourcesReady(); 
 
 	protected:
-		StarDevice& device; 
+		core::DeviceContext& device; 
 		vk::Pipeline pipeline;
 		std::string hash; //this is simply the paths of all shaders in this pipeline concated together
 
-		StarPipeline(StarDevice& device) : device(device) {};
+		StarPipeline(core::DeviceContext& device) : device(device) {};
 
 		virtual vk::Pipeline buildPipeline()=0;
 

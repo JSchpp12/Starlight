@@ -7,7 +7,7 @@ SceneRenderer::SceneRenderer(std::shared_ptr<StarScene> scene) : StarRenderer(sc
 {
 }
 
-void SceneRenderer::prepare(StarDevice &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
+void SceneRenderer::prepare(core::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
 {
     this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
@@ -19,22 +19,22 @@ void SceneRenderer::prepare(StarDevice &device, const vk::Extent2D &swapChainExt
     createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createRenderToImages(star::StarDevice &device,
+std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createRenderToImages(star::core::DeviceContext &device,
                                                                                     const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
-    indices.push_back(device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
-    if (device.getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex() != indices.back())
+    indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
+    if (device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex() != indices.back())
     {
-        indices.push_back(device.getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
+        indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
     }
 
     vk::Format format = getColorAttachmentFormat(device);
 
     auto builder =
-        star::StarTextures::Texture::Builder(device.getDevice(), device.getAllocator().get())
+        star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(), device.getDevice().getAllocator().get())
             .setCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -70,7 +70,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createR
     {
         newRenderToImages.emplace_back(builder.build());
 
-        auto oneTimeSetup = device.beginSingleTimeCommands();
+        auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 
         vk::ImageMemoryBarrier barrier{};
         barrier.sType = vk::StructureType::eImageMemoryBarrier;
@@ -97,28 +97,28 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createR
                                                                // wait on the barrier
             {}, {}, nullptr, barrier);
 
-        device.endSingleTimeCommands(std::move(oneTimeSetup));
+        device.getDevice().endSingleTimeCommands(std::move(oneTimeSetup));
     }
 
     return newRenderToImages;
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SceneRenderer::createRenderToDepthImages(
-    StarDevice &device, const int &numFramesInFlight)
+    core::DeviceContext &device, const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     const vk::Format depthFormat = getDepthAttachmentFormat(device);
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
-    indices.push_back(device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
-    if (device.getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex() != indices.back())
+    indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
+    if (device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex() != indices.back())
     {
-        indices.push_back(device.getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
+        indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
     }
 
     auto builder =
-        star::StarTextures::Texture::Builder(device.getDevice(), device.getAllocator().get())
+        star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(), device.getDevice().getAllocator().get())
             .setCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -156,7 +156,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SceneRenderer::c
     {
         newRenderToImages.emplace_back(builder.build());
 
-        auto oneTimeSetup = device.beginSingleTimeCommands();
+        auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 
         vk::ImageMemoryBarrier barrier{};
         barrier.sType = vk::StructureType::eImageMemoryBarrier;
@@ -181,13 +181,13 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SceneRenderer::c
                                                            // barrier
             {}, {}, nullptr, barrier);
 
-        device.endSingleTimeCommands(std::move(oneTimeSetup));
+        device.getDevice().endSingleTimeCommands(std::move(oneTimeSetup));
     }
 
     return newRenderToImages;
 }
 
-void SceneRenderer::createRenderingGroups(StarDevice &device, const vk::Extent2D &swapChainExtent,
+void SceneRenderer::createRenderingGroups(core::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                                           const int &numFramesInFlight, star::StarShaderInfo::Builder builder)
 {
     for (StarObject &object : this->scene->getObjects())
@@ -226,7 +226,7 @@ void SceneRenderer::createRenderingGroups(StarDevice &device, const vk::Extent2D
     }
 }
 
-vk::ImageView SceneRenderer::createImageView(star::StarDevice &device, vk::Image image, vk::Format format,
+vk::ImageView SceneRenderer::createImageView(star::core::DeviceContext &device, vk::Image image, vk::Format format,
                                              vk::ImageAspectFlags aspectFlags)
 {
     vk::ImageViewCreateInfo viewInfo{};
@@ -240,7 +240,7 @@ vk::ImageView SceneRenderer::createImageView(star::StarDevice &device, vk::Image
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
-    vk::ImageView imageView = device.getDevice().createImageView(viewInfo);
+    vk::ImageView imageView = device.getDevice().getVulkanDevice().createImageView(viewInfo);
 
     if (!imageView)
     {
@@ -250,12 +250,12 @@ vk::ImageView SceneRenderer::createImageView(star::StarDevice &device, vk::Image
     return imageView;
 }
 
-star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarDevice &device,
+star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::core::DeviceContext &device,
                                                                      const int &numFramesInFlight)
 {
-    auto globalBuilder = StarShaderInfo::Builder(device, numFramesInFlight);
+    auto globalBuilder = StarShaderInfo::Builder(device.getDevice(), numFramesInFlight);
 
-    this->globalSetLayout = StarDescriptorSetLayout::Builder(device)
+    this->globalSetLayout = StarDescriptorSetLayout::Builder(device.getDevice())
                                 .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
                                 .addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
                                 .build();
@@ -272,7 +272,7 @@ star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::StarD
     return globalBuilder;
 }
 
-void SceneRenderer::createImage(star::StarDevice &device, uint32_t width, uint32_t height, vk::Format format,
+void SceneRenderer::createImage(star::core::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
                                 vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
                                 vk::Image &image, VmaAllocation &imageMemory)
 {
@@ -298,16 +298,16 @@ void SceneRenderer::createImage(star::StarDevice &device, uint32_t width, uint32
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
     allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-    vmaCreateImage(device.getAllocator().get(), (VkImageCreateInfo *)&imageInfo, &allocInfo, (VkImage *)&image,
+    vmaCreateImage(device.getDevice().getAllocator().get(), (VkImageCreateInfo *)&imageInfo, &allocInfo, (VkImage *)&image,
                    &imageMemory, nullptr);
 }
 
-void SceneRenderer::initResources(StarDevice &device, const int &numFramesInFlight, const vk::Extent2D &screensize)
+void SceneRenderer::initResources(core::DeviceContext &device, const int &numFramesInFlight, const vk::Extent2D &screensize)
 {
     this->prepare(device, screensize, numFramesInFlight);
 }
 
-void SceneRenderer::destroyResources(StarDevice &device)
+void SceneRenderer::destroyResources(core::DeviceContext &device)
 {
     for (auto &image : this->renderToImages)
     {
@@ -320,11 +320,11 @@ void SceneRenderer::destroyResources(StarDevice &device)
     }
 }
 
-vk::Format SceneRenderer::getColorAttachmentFormat(star::StarDevice &device) const
+vk::Format SceneRenderer::getColorAttachmentFormat(star::core::DeviceContext &device) const
 {
     vk::Format selectedFormat = vk::Format();
 
-    if (!device.findSupportedFormat({vk::Format::eR8G8B8A8Srgb}, vk::ImageTiling::eOptimal,
+    if (!device.getDevice().findSupportedFormat({vk::Format::eR8G8B8A8Srgb}, vk::ImageTiling::eOptimal,
                                     vk::FormatFeatureFlagBits::eColorAttachment, selectedFormat))
     {
         throw std::runtime_error("Failed to find supported color format");
@@ -332,10 +332,10 @@ vk::Format SceneRenderer::getColorAttachmentFormat(star::StarDevice &device) con
     return selectedFormat;
 }
 
-vk::Format SceneRenderer::getDepthAttachmentFormat(star::StarDevice &device) const
+vk::Format SceneRenderer::getDepthAttachmentFormat(star::core::DeviceContext &device) const
 {
     vk::Format selectedFormat = vk::Format();
-    if (!device.findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+    if (!device.getDevice().findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
                                     vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment,
                                     selectedFormat))
     {
@@ -352,7 +352,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescript
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)};
 }
 
-void SceneRenderer::createDescriptors(star::StarDevice &device, const int &numFramesInFlight)
+void SceneRenderer::createDescriptors(star::core::DeviceContext &device, const int &numFramesInFlight)
 {
 }
 

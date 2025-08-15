@@ -25,7 +25,7 @@ class RenderingInstance
     }
     RenderingInstance &operator=(RenderingInstance &other) = delete;
 
-    const vk::Instance &getVulkanInstance() const {
+    vk::Instance &getVulkanInstance() {
       return m_instance; 
     }
 

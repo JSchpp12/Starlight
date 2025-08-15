@@ -69,7 +69,7 @@ std::vector<const char *> star::core::RenderingInstance::getRequiredDisplayExten
     const char **glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-    return std::vector<const char *>(glfwExtensions, glfwExtensions);
+    return std::vector<const char *>(glfwExtensions, glfwExtensions + glfwExtensionCount);
 }
 
 #else

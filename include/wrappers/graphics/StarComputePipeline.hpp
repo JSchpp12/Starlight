@@ -6,7 +6,7 @@
 namespace star {
 	class StarComputePipeline : public StarPipeline {
 	public:
-		StarComputePipeline(StarDevice& device, vk::PipelineLayout& pipelineLayout, StarShader inCompShader); 
+		StarComputePipeline(core::DeviceContext& device, vk::PipelineLayout& pipelineLayout, StarShader inCompShader); 
 
 		// Inherited via StarPipeline
 		void bind(vk::CommandBuffer& commandBuffer) override;

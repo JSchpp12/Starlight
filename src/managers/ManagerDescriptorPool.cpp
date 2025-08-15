@@ -2,12 +2,12 @@
 
 bool star::ManagerDescriptorPool::ready = false; 
 std::stack<std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>> star::ManagerDescriptorPool::requestCallbacks = std::stack < std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>>();
-std::stack<std::function<void(star::StarDevice&, const int&)>> star::ManagerDescriptorPool::creationCallbacks = std::stack<std::function<void(star::StarDevice&, const int&)>>(); 
+std::stack<std::function<void(star::core::DeviceContext&, const int&)>> star::ManagerDescriptorPool::creationCallbacks = std::stack<std::function<void(star::core::DeviceContext&, const int&)>>(); 
 std::unordered_map<vk::DescriptorType, int> star::ManagerDescriptorPool::actives = std::unordered_map<vk::DescriptorType, int>(); 
 star::StarDescriptorPool* star::ManagerDescriptorPool::pool = nullptr; 
 
 void star::ManagerDescriptorPool::request(std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)> newRequest, 
-	std::function<void(star::StarDevice&, const int&)> createCall)
+	std::function<void(star::core::DeviceContext&, const int&)> createCall)
 {
 	requestCallbacks.push(newRequest);
 	creationCallbacks.push(createCall);
@@ -20,7 +20,7 @@ star::StarDescriptorPool& star::ManagerDescriptorPool::getPool()
 	return *pool; 
 }
 
-star::ManagerDescriptorPool::ManagerDescriptorPool(StarDevice& device, const int& numFramesInFligth)
+star::ManagerDescriptorPool::ManagerDescriptorPool(core::DeviceContext& device, const int& numFramesInFligth)
 : device(device) 
 {
 	init(numFramesInFligth);
@@ -55,7 +55,7 @@ void star::ManagerDescriptorPool::init(const int& numFramesInFlight)
 	}
 
 	//build from actives 
-	auto builder = StarDescriptorPool::Builder(device); 
+	auto builder = StarDescriptorPool::Builder(device.getDevice()); 
 	int total = 0;
 	for (auto& active : this->actives) {
 		int numToAdd = active.second * 3;
@@ -73,7 +73,7 @@ void star::ManagerDescriptorPool::init(const int& numFramesInFlight)
 void star::ManagerDescriptorPool::update(const int& numFramesInFlight)
 {
 	while (!creationCallbacks.empty()) {
-		std::function<void(star::StarDevice&, const int&)> callback = creationCallbacks.top();
+		std::function<void(star::core::DeviceContext&, const int&)> callback = creationCallbacks.top();
 		callback(this->device, numFramesInFlight);
 		creationCallbacks.pop();
 	}

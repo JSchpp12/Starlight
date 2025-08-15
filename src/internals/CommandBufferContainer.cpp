@@ -199,14 +199,14 @@ void star::CommandBufferContainer::waitUntilOrderGroupReady(const int &frameInde
                                                             const star::Command_Buffer_Order &order,
                                                             const star::Queue_Type &type)
 {
-    auto waitResult = this->device.getDevice().waitForFences(
+    auto waitResult = this->device.getVulkanDevice().waitForFences(
         this->bufferGroupsWithNoSubOrder[order]->fences[type].at(frameIndex), VK_TRUE, UINT64_MAX);
     if (waitResult != vk::Result::eSuccess)
     {
         throw std::runtime_error("Failed to wait for fence");
     }
 
-    this->device.getDevice().resetFences(this->bufferGroupsWithNoSubOrder[order]->fences[type].at(frameIndex));
+    this->device.getVulkanDevice().resetFences(this->bufferGroupsWithNoSubOrder[order]->fences[type].at(frameIndex));
 }
 
 std::vector<std::reference_wrapper<star::CommandBufferContainer::CompleteRequest>> star::CommandBufferContainer::

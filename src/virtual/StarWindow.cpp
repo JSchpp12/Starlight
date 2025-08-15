@@ -21,16 +21,6 @@ void StarWindow::initWindowInfo()
     auto mouseScrollCallback = glfwSetScrollCallback(this->window, InteractionSystem::glfwScrollCallback);
 }
 
-void StarWindow::createWindowSurface(const vk::Instance &instance, vk::UniqueSurfaceKHR &surface)
-{
-    VkSurfaceKHR surfaceTmp;
-    if (glfwCreateWindowSurface(instance, this->window, nullptr, &surfaceTmp) != VK_SUCCESS)
-    {
-        throw std::runtime_error("failed to create window surface");
-    }
-    surface = vk::UniqueSurfaceKHR(surfaceTmp, instance);
-}
-
 StarWindow::StarWindow(const int &width, const int &height, const std::string &title)
     : window(CreateGLFWWindow(width, height, title)), width(width), height(height)
 {

@@ -87,11 +87,11 @@ class CommandBufferContainer
             {
                 for (int i = star::Queue_Type::Tgraphics; i != star::Queue_Type::Tcompute; i++)
                 {
-                    vk::Fence newFence = device.getDevice().createFence(fenceInfo);
+                    vk::Fence newFence = device.getVulkanDevice().createFence(fenceInfo);
                     this->fences[static_cast<star::Queue_Type>(i)].push_back(newFence);
 
                     this->semaphores[static_cast<star::Queue_Type>(i)].push_back(
-                        device.getDevice().createSemaphore(semaphoreInfo));
+                        device.getVulkanDevice().createSemaphore(semaphoreInfo));
                 }
             }
         };
@@ -100,11 +100,11 @@ class CommandBufferContainer
         {
             for (auto &typeSemaphore : this->semaphores)
                 for (auto &semaphore : typeSemaphore.second)
-                    this->device.getDevice().destroySemaphore(semaphore);
+                    this->device.getVulkanDevice().destroySemaphore(semaphore);
 
             for (auto &typeFence : this->fences)
                 for (auto &fence : typeFence.second)
-                    this->device.getDevice().destroyFence(fence);
+                    this->device.getVulkanDevice().destroyFence(fence);
         };
 
       private:

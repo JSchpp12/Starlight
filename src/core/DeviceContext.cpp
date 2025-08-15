@@ -1,5 +1,6 @@
 #include "DeviceContext.hpp"
 
-star::core::DeviceContext::DeviceContext(StarDevice&& device) : m_device(std::move(device))
+star::core::SwapChainSupportDetails star::core::DeviceContext::getSwapchainSupportDetails()
 {
+    return m_device.getSwapchainSupport(*m_surface);  
 }

@@ -31,7 +31,7 @@ StarDescriptorSetLayout::StarDescriptorSetLayout(StarDevice &device,
 
 StarDescriptorSetLayout::~StarDescriptorSetLayout()
 {
-    this->starDevice.getDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
+    this->starDevice.getVulkanDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
 }
 
 bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout &compare)
@@ -78,7 +78,7 @@ void StarDescriptorSetLayout::build()
     createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
     createInfo.pBindings = setLayoutBindings.data();
 
-    this->descriptorSetLayout = this->starDevice.getDevice().createDescriptorSetLayout(createInfo);
+    this->descriptorSetLayout = this->starDevice.getVulkanDevice().createDescriptorSetLayout(createInfo);
     if (!this->descriptorSetLayout)
     {
         throw std::runtime_error("failed to create descriptor set layout");
@@ -131,7 +131,7 @@ StarDescriptorPool::StarDescriptorPool(StarDevice &device, uint32_t maxSets, vk:
     createInfo.maxSets = maxSets;
     createInfo.flags = poolFlags;
 
-    this->descriptorPool = this->starDevice.getDevice().createDescriptorPool(createInfo);
+    this->descriptorPool = this->starDevice.getVulkanDevice().createDescriptorPool(createInfo);
     if (!this->descriptorPool)
     {
         throw std::runtime_error("Unable to create descriptor pool");
@@ -140,7 +140,7 @@ StarDescriptorPool::StarDescriptorPool(StarDevice &device, uint32_t maxSets, vk:
 
 StarDescriptorPool::~StarDescriptorPool()
 {
-    this->starDevice.getDevice().destroyDescriptorPool(this->descriptorPool);
+    this->starDevice.getVulkanDevice().destroyDescriptorPool(this->descriptorPool);
 }
 
 vk::DescriptorPool StarDescriptorPool::getDescriptorPool()
@@ -157,7 +157,7 @@ bool StarDescriptorPool::allocateDescriptorSet(const vk::DescriptorSetLayout des
     allocInfo.pSetLayouts = &descriptorSetLayout;
     allocInfo.descriptorSetCount = 1;
 
-    auto result = this->starDevice.getDevice().allocateDescriptorSets(&allocInfo, &descriptorSet);
+    auto result = this->starDevice.getVulkanDevice().allocateDescriptorSets(&allocInfo, &descriptorSet);
 
     if (result != vk::Result::eSuccess)
     {
@@ -178,12 +178,12 @@ bool StarDescriptorPool::allocateDescriptorSet(const vk::DescriptorSetLayout des
 
 void StarDescriptorPool::freeDescriptors(std::vector<vk::DescriptorSet> &descriptors) const
 {
-    this->starDevice.getDevice().freeDescriptorSets(this->descriptorPool, descriptors);
+    this->starDevice.getVulkanDevice().freeDescriptorSets(this->descriptorPool, descriptors);
 }
 
 void StarDescriptorPool::resetPool()
 {
-    this->starDevice.getDevice().resetDescriptorPool(this->descriptorPool);
+    this->starDevice.getVulkanDevice().resetDescriptorPool(this->descriptorPool);
 }
 
 /* Descriptor Writer */
@@ -251,6 +251,6 @@ void StarDescriptorWriter::overwrite(vk::DescriptorSet &set)
         nSet.push_back(newSet);
     }
 
-    this->starDevice.getDevice().updateDescriptorSets(nSet, nullptr);
+    this->starDevice.getVulkanDevice().updateDescriptorSets(nSet, nullptr);
 }
 } // namespace star

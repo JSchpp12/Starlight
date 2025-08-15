@@ -8,6 +8,8 @@
 #include "StarQueueFamily.hpp"
 #include "StarWindow.hpp"
 #include "RenderingInstance.hpp"
+#include "RenderingSurface.hpp"
+#include "SwapChainSupportDetails.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -20,12 +22,6 @@
 
 namespace star
 {
-struct SwapChainSupportDetails
-{
-    vk::SurfaceCapabilitiesKHR capabilities;
-    std::vector<vk::SurfaceFormatKHR> formats;
-    std::vector<vk::PresentModeKHR> presentModes;
-};
 
 class QueueFamilyIndicies
 {
@@ -235,7 +231,7 @@ class StarDevice
         std::vector<std::vector<bool>> isQueueAvailable = std::vector<std::vector<bool>>();
     };
 
-    StarDevice(StarWindow &window, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures);
+    StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures);
 
     virtual ~StarDevice();
 
@@ -243,15 +239,8 @@ class StarDevice
     StarDevice(const StarDevice &) = delete;
     StarDevice &operator=(const StarDevice &) = delete;
 
-    StarDevice(StarDevice &&) = default;
-    StarDevice &operator=(StarDevice &&) = default;
-
-    QueueFamilyIndicies findPhysicalQueueFamilies()
-    {
-        assert(this->physicalDevice && this->surface);
-
-        return FindQueueFamilies(this->physicalDevice, *this->surface);
-    }
+    StarDevice(StarDevice &&other);
+    StarDevice &operator=(StarDevice &&);
 
     /// <summary>
     /// Check the hardware to make sure that the supplied formats are compatible with the current system.
@@ -275,29 +264,23 @@ class StarDevice
     }
 
 #pragma region getters
-    SwapChainSupportDetails getSwapChainSupportDetails()
-    {
-        assert(this->physicalDevice && this->surface);
-
-        return QuerySwapchainSupport(this->physicalDevice, *this->surface);
-    }
     vk::PhysicalDevice getPhysicalDevice()
     {
         return this->physicalDevice;
     }
-    inline vk::Device &getDevice()
+    inline vk::Device &getVulkanDevice()
     {
         return this->vulkanDevice;
-    }
-    vk::SurfaceKHR getSurface()
-    {
-        return this->surface.get();
     }
     Allocator &getAllocator()
     {
         assert(this->allocator &&
                "Default allocator should have been created during startup. Something has gone wrong.");
         return *this->allocator;
+    }
+
+    core::SwapChainSupportDetails getSwapchainSupport(core::RenderingSurface &surface){
+        return QuerySwapchainSupport(this->physicalDevice, surface); 
     }
 #pragma endregion
 
@@ -355,7 +338,6 @@ class StarDevice
     vk::Device vulkanDevice;
     std::unique_ptr<star::Allocator> allocator;
     vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    vk::UniqueSurfaceKHR surface;
     StarWindow &starWindow;
 
     std::vector<std::unique_ptr<StarQueueFamily>> extraFamilies = std::vector<std::unique_ptr<StarQueueFamily>>();
@@ -380,18 +362,18 @@ class StarDevice
     vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
 
     // Pick a proper physical GPU that matches the required extensions
-    void pickPhysicalDevice(const core::RenderingInstance &instance);
+    void pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface);
     // Create a logical device to communicate with the physical device
-    void createLogicalDevice(const core::RenderingInstance &instance);
+    void createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface);
 
-    void createAllocator(const core::RenderingInstance &instance);
+    void createAllocator(core::RenderingInstance &instance);
 
     /* Helper Functions */
 
     // Helper function to test each potential GPU device
     static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
                                  const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                                 const vk::PhysicalDevice &device, const vk::SurfaceKHR &surface);
+                                 const vk::PhysicalDevice &device, core::RenderingSurface &surface);
 
     /// <summary>
     /// Find what queues are available for the device
@@ -408,8 +390,8 @@ class StarDevice
     /// <summary>
     /// Request specific details about swap chain support for a given device
     /// </summary>
-    static SwapChainSupportDetails QuerySwapchainSupport(const vk::PhysicalDevice &device,
-                                                         const vk::SurfaceKHR &surface);
+    static core::SwapChainSupportDetails QuerySwapchainSupport(const vk::PhysicalDevice &device,
+                                                         core::RenderingSurface &surface);
 
   private:
     static bool DoesDeviceSupportPresentation(vk::PhysicalDevice device, const vk::SurfaceKHR &surface);

@@ -1,24 +1,48 @@
 #pragma once
 
-
 #include "StarDevice.hpp"
 #include "TaskManager.hpp"
-
+#include "RenderingSurface.hpp"
+#include "SwapChainSupportDetails.hpp"
 
 #include <vulkan/vulkan.hpp>
 
-namespace star::core{
-    class DeviceContext{
-        public:
-        DeviceContext(StarDevice&& device);
-        ~DeviceContext() = default;
+#include <memory>
 
-        DeviceContext(const DeviceContext&) = delete;
-        DeviceContext& operator=(const DeviceContext&) = delete;
+namespace star::core
+{
+class DeviceContext
+{
+  public:
+    DeviceContext(RenderingInstance &instance, std::set<Rendering_Features> requiredFeatures, StarWindow &window) 
+    : m_surface(std::make_shared<RenderingSurface>(instance, window)), m_device(StarDevice(window, *m_surface, instance, requiredFeatures)){};
 
-        private:
-        StarDevice m_device;
-        job::TaskManager m_manager;
+    ~DeviceContext() = default;
 
-    };
-}
+    DeviceContext(DeviceContext &&other) = default;
+    DeviceContext &operator=(DeviceContext &&other) = default;
+    DeviceContext(const DeviceContext &) = delete;
+    DeviceContext &operator=(const DeviceContext &) = delete;
+
+    inline StarDevice &getDevice()
+    {
+        return m_device;
+    }
+
+    job::TaskManager &getManager()
+    {
+        return m_manager;
+    }
+
+    std::shared_ptr<RenderingSurface> getSurface(){
+        return m_surface; 
+    }
+
+    SwapChainSupportDetails getSwapchainSupportDetails();
+
+  private:
+    std::shared_ptr<RenderingSurface> m_surface = nullptr;
+    StarDevice m_device;
+    job::TaskManager m_manager; 
+};
+} // namespace star::core

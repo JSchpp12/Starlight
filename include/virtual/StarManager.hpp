@@ -32,7 +32,7 @@ protected:
 	static std::unique_ptr<ManagerStorageContainer<FinalizedRequest>> resourceStorage; 
 	
 	static void waitForFences(std::vector<vk::Fence>& fence){
-		auto result = managerDevice->getDevice().waitForFences(fence, VK_TRUE, UINT64_MAX);
+		auto result = managerDevice->getVulkanDevice().waitForFences(fence, VK_TRUE, UINT64_MAX);
 
 		if (result != vk::Result::eSuccess)
 			throw std::runtime_error("Failed to wait for fence");

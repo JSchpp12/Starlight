@@ -1,7 +1,6 @@
 #pragma once
 
 #include "StarMaterial.hpp"
-#include "StarDevice.hpp"
 #include "StarDescriptorBuilders.hpp"
 
 
@@ -16,13 +15,13 @@ namespace star {
 			: StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny) {};
 
 		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
-		void buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
+		void buildDescriptorSet(core::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
 
 	protected:
-		void cleanup(StarDevice& device) override;
-		void prep(StarDevice& device) override;
+		void cleanup(core::DeviceContext& device) override;
+		void prep(core::DeviceContext& device) override;
 
 		// Inherited via StarMaterial
-		void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
+		void createDescriptors(star::core::DeviceContext& device, const int& numFramesInFlight) override;
 	};
 }

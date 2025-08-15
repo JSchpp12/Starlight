@@ -1,7 +1,6 @@
 #pragma once
 
 #include "StarShader.hpp"
-#include "StarDevice.hpp"
 #include "StarCommandBuffer.hpp"
 #include "RenderResourceModifier.hpp"
 #include "DescriptorModifier.hpp"
@@ -38,13 +37,13 @@ namespace star {
 		/// <summary>
 		/// Engine entrypoint for cleanup operations
 		/// </summary>
-		void cleanupRender(StarDevice& device); 
+		void cleanupRender(core::DeviceContext& device); 
 
 		/// <summary>
 		/// Entry point for rendering preparations
 		/// </summary>
 		/// <param name="device"></param>
-		void prepRender(StarDevice& device); 
+		void prepRender(core::DeviceContext& device); 
 
 		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) = 0; 
 
@@ -54,7 +53,7 @@ namespace star {
 		/// @param groupPool 
 		/// @param globalSets 
 		/// @param numSwapChainImages 
-		virtual void finalizeDescriptors(StarDevice& device, StarShaderInfo::Builder builder, 
+		virtual void finalizeDescriptors(core::DeviceContext& device, StarShaderInfo::Builder builder, 
 			int numSwapChainImages);
 
 		virtual void bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex); 
@@ -64,7 +63,7 @@ namespace star {
 		std::unique_ptr<StarShaderInfo> shaderInfo; 
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 
-		virtual void createDescriptors(star::StarDevice& device, const int& numFramesInFlight) override;
+		virtual void createDescriptors(star::core::DeviceContext& device, const int& numFramesInFlight) override;
 
 		/// <summary>
 		/// Function which should contain processes to create all needed functionalities
@@ -72,19 +71,19 @@ namespace star {
 		/// and gpu memory. 
 		/// </summary>
 		/// <param name="device">Device that is being used in rendering operations</param>
-		virtual void prep(StarDevice& device) = 0;
+		virtual void prep(core::DeviceContext& device) = 0;
 
-		virtual void buildDescriptorSet(StarDevice& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) = 0;
+		virtual void buildDescriptorSet(core::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) = 0;
 
 		/// <summary>
 		/// Cleanup any vulkan objects created by this material
 		/// </summary>
 		/// <param name="device"></param>
-		virtual void cleanup(StarDevice& device)=0;
+		virtual void cleanup(core::DeviceContext& device)=0;
 
-		virtual void initResources(StarDevice& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override {};
+		virtual void initResources(core::DeviceContext& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override {};
 
-		virtual void destroyResources(StarDevice& device) override {};
+		virtual void destroyResources(core::DeviceContext& device) override {};
 		
 	private:
 	};

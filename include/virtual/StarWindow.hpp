@@ -32,7 +32,7 @@ class StarWindow
 
     ~StarWindow();
 
-    void createWindowSurface(const vk::Instance &instance, vk::UniqueSurfaceKHR &surface);
+    vk::SurfaceKHR createWindowSurface(const vk::Instance &instance);
 
     void resetWindowResizedFlag()
     {

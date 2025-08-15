@@ -6,7 +6,7 @@
 #include "ManagerRenderResource.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
-#include "StarDevice.hpp"
+#include "DeviceContext.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
 
@@ -42,7 +42,7 @@ class StarMesh
 
     virtual ~StarMesh() = default;
 
-    virtual void prepRender(StarDevice &device);
+    virtual void prepRender(core::DeviceContext &device);
 
     virtual void recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
                                           int &frameInFlightIndex, const uint32_t &instanceCount);
