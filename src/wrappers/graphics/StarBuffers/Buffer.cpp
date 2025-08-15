@@ -36,7 +36,7 @@ void StarBuffers::Buffer::unmap()
 
 void StarBuffers::Buffer::writeToBuffer(void *data, void *mapped, vk::DeviceSize size, vk::DeviceSize offset)
 {
-    assert(mapped && "Invalid mapped memory"); 
+    assert(mapped && "Invalid mapped memory");
 
     if (size == vk::WholeSize)
     {
@@ -76,28 +76,30 @@ vk::DescriptorBufferInfo StarBuffers::Buffer::descriptorInfoForIndex(int index)
     return descriptorInfo(this->alignmentSize, index * alignmentSize);
 }
 
-StarBuffers::Buffer::Buffer(VmaAllocator &allocator, const uint32_t &requestedInstanceCount, const vk::DeviceSize &requestedInstanceSize,
-                            const vk::DeviceSize &minOffsetAlignment, const VmaAllocationCreateInfo &allocCreateInfo,
+StarBuffers::Buffer::Buffer(VmaAllocator &allocator, const uint32_t &requestedInstanceCount,
+                            const vk::DeviceSize &requestedInstanceSize, const vk::DeviceSize &minOffsetAlignment,
+                            const VmaAllocationCreateInfo &allocCreateInfo,
                             const vk::BufferCreateInfo &bufferCreateInfo, const std::string &allocName)
-    : alignmentSize(GetAlignment(instanceSize, minOffsetAlignment)), instanceSize(requestedInstanceSize), usageFlags(bufferCreateInfo.usage)
+    : alignmentSize(GetAlignment(instanceSize, minOffsetAlignment)), instanceSize(requestedInstanceSize),
+      usageFlags(bufferCreateInfo.usage)
 {
     assert(bufferCreateInfo.size != 0 && requestedInstanceCount != 0 && requestedInstanceSize != 0);
 
     if (!star::CastHelpers::SafeCast<vk::DeviceSize, uint32_t>(requestedInstanceCount, this->instanceCount))
-        throw std::runtime_error("Failed to cast instance count");  
+        throw std::runtime_error("Failed to cast instance count");
 
     this->resources = CreateBuffer(allocator, allocCreateInfo, bufferCreateInfo, this->size, this->offset, allocName);
 }
 
 std::string StarBuffers::Buffer::AllocationName(const std::string &allocationName)
 {
-    return allocationName + "_BUFFER"; 
+    return allocationName + "_BUFFER";
 }
 std::shared_ptr<star::StarBuffers::Resources> StarBuffers::Buffer::CreateBuffer(
     VmaAllocator &allocator, const VmaAllocationCreateInfo &allocCreateInfo, const vk::BufferCreateInfo &bufferInfo,
     vk::DeviceSize &resultingBufferSize, vk::DeviceSize &resultingBufferOffset, const std::string &allocationName)
 {
-    VmaAllocationInfo allocationInfo; 
+    VmaAllocationInfo allocationInfo;
     vk::Buffer buffer;
     VmaAllocation memory;
 
@@ -109,7 +111,7 @@ std::shared_ptr<star::StarBuffers::Resources> StarBuffers::Buffer::CreateBuffer(
         throw std::runtime_error("Failed to allocate buffer memory");
     }
 
-    auto fullAllocationName = AllocationName(allocationName); 
+    auto fullAllocationName = AllocationName(allocationName);
     vmaSetAllocationName(allocator, memory, fullAllocationName.c_str());
 
     resultingBufferSize = bufferInfo.size;

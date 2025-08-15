@@ -62,11 +62,12 @@ class Buffer
     vk::Result flushIndex(int index);
     vk::DescriptorBufferInfo descriptorInfoForIndex(int index);
 
-	std::shared_ptr<Resources> releaseResources(){
-		auto storage = std::move(resources); 
-		resources = nullptr;
-		return storage; 
-	}
+    std::shared_ptr<Resources> releaseResources()
+    {
+        auto storage = std::move(resources);
+        resources = nullptr;
+        return storage;
+    }
 
     vk::Buffer getVulkanBuffer() const
     {
@@ -84,7 +85,10 @@ class Buffer
     {
         return alignmentSize;
     }
-	vk::BufferUsageFlags getUsageFlags() const { return usageFlags; }
+    vk::BufferUsageFlags getUsageFlags() const
+    {
+        return usageFlags;
+    }
     vk::DeviceSize getBufferSize() const
     {
         return size;
@@ -97,7 +101,7 @@ class Buffer
     vk::DeviceSize instanceSize;
     uint32_t instanceCount;
     uint32_t alignmentSize;
-	vk::BufferUsageFlags usageFlags;
+    vk::BufferUsageFlags usageFlags;
 
     Buffer(VmaAllocator &allocator, const uint32_t &instanceCount, const vk::DeviceSize &instanceSize,
            const vk::DeviceSize &minOffsetAlignment, const VmaAllocationCreateInfo &allocCreateInfo,
