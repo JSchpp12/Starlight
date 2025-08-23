@@ -1,7 +1,6 @@
 #include "StarEngine.hpp"
 #include "ConfigFile.hpp"
 #include "Enums.hpp"
-#include "ManagerCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "ManagerRenderResource.hpp"
 #include "RenderResourceSystem.hpp"
@@ -16,7 +15,7 @@
 #include <stdexcept>
 #include <vk_mem_alloc.h>
 
-#include "job/TaskFactory.hpp"
+#include "job/tasks/TaskFactory.hpp"
 #include "job/Worker.hpp"
 
 namespace star
@@ -37,7 +36,16 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
         }
     }
 
-    deviceManager.createDevice(features, *this->window);
+    uint8_t framesInFlight;
+    {
+        int readFramesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
+        if (!CastHelpers::SafeCast<int, uint8_t>(readFramesInFlight, framesInFlight))
+        {
+            throw std::runtime_error("Invalid number of frames in flight in config file");
+        }
+    }
+
+    deviceManager.createDevice(frameCounter, framesInFlight, features, *this->window);
 
     // try and get a transfer queue from different queue fams
     {
@@ -76,15 +84,6 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
             deviceManager.getContext().getDevice(), this->OVERRIDE_APPLY_SINGLE_THREAD_MODE, transferWorkerQueues);
     }
 
-    uint8_t framesInFlight;
-    {
-        int readFramesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-        if (!CastHelpers::SafeCast<int, uint8_t>(readFramesInFlight, framesInFlight))
-        {
-            throw std::runtime_error("Invalid number of frames in flight in config file");
-        }
-    }
-
     StarManager::init(deviceManager.getContext().getDevice(), *this->transferWorker);
 
     this->application->init(deviceManager.getContext(), *this->window, framesInFlight);
@@ -105,28 +104,29 @@ void StarEngine::run()
 
     ManagerDescriptorPool descriptorManager(deviceManager.getContext(), framesInFlight);
     RenderResourceSystem::init(deviceManager.getContext(), framesInFlight, this->window->getExtent());
-    ManagerCommandBuffer commandBufferManager(deviceManager.getContext().getDevice(), framesInFlight);
 
     // prepare any shared resources
     StarObject::initSharedResources(deviceManager.getContext(), this->window->getExtent(), framesInFlight,
                                     this->mainRenderer->getGlobalShaderInfo(),
                                     this->mainRenderer->getRenderTargetInfo());
 
-    uint8_t currentFrame = 0;
+    uint8_t frameInFlightIndex = 0;
     while (!window->shouldClose())
     {
-        currentFrame = this->mainRenderer->getFrameToBeDrawn();
+        frameInFlightIndex = this->mainRenderer->getFrameToBeDrawn();
 
         // check if any new objects have been added
         RenderResourceSystem::runInits(deviceManager.getContext(), framesInFlight, this->window->getExtent());
         descriptorManager.update(framesInFlight);
 
         this->mainRenderer->pollEvents();
-        InteractionSystem::callWorldUpdates(currentFrame);
-        ManagerRenderResource::update(currentFrame);
-        vk::Semaphore allBuffersSubmitted = commandBufferManager.update(currentFrame);
-        this->mainRenderer->submitPresentation(currentFrame, &allBuffersSubmitted);
+        InteractionSystem::callWorldUpdates(frameInFlightIndex);
+        ManagerRenderResource::update(frameInFlightIndex);
+        vk::Semaphore allBuffersSubmitted = deviceManager.getContext().getManagerCommandBuffer().update(frameInFlightIndex);
+        this->mainRenderer->submitPresentation(frameInFlightIndex, &allBuffersSubmitted);
         this->transferWorker->update();
+
+        frameCounter++; 
     }
 
     deviceManager.getContext().getDevice().getVulkanDevice().waitIdle();

@@ -1,23 +1,46 @@
 #include "ManagerCommandBuffer.hpp"
 
-std::stack<std::function<star::ManagerCommandBuffer::CommandBufferRequest(void)>>
-    star::ManagerCommandBuffer::newCommandBufferRequests =
-        std::stack<std::function<star::ManagerCommandBuffer::CommandBufferRequest(void)>>();
+#include "tasks/TaskFactory.hpp"
 
 std::stack<star::Handle> star::ManagerCommandBuffer::dynamicBuffersToSubmit = std::stack<star::Handle>();
 
-star::ManagerCommandBuffer::ManagerCommandBuffer(StarDevice &device, const int &numFramesInFlight)
-    : device(device), numFramesInFlight(numFramesInFlight), buffers(device, numFramesInFlight)
+star::ManagerCommandBuffer::ManagerCommandBuffer(StarDevice &device, const uint8_t &numFramesInFlight)
+    : numFramesInFlight(numFramesInFlight), buffers(numFramesInFlight, device)
 {
 }
 
-star::ManagerCommandBuffer::~ManagerCommandBuffer()
+void star::ManagerCommandBuffer::cleanup(StarDevice &device)
 {
+    buffers.cleanup(device);
 }
 
-void star::ManagerCommandBuffer::request(std::function<CommandBufferRequest(void)> request)
+star::Handle star::ManagerCommandBuffer::submit(StarDevice &device, Request request)
 {
-    ManagerCommandBuffer::newCommandBufferRequests.push(request);
+    star::Handle newHandle = this->buffers.add(
+        std::make_unique<CommandBufferContainer::CompleteRequest>(
+            request.recordBufferCallback,
+            std::make_unique<StarCommandBuffer>(device.getVulkanDevice(), this->numFramesInFlight,
+                                                device.getCommandPool(request.type), request.type,
+                                                !request.overrideBufferSubmissionCallback.has_value(), true),
+            request.type, request.recordOnce, request.waitStage, request.order, request.beforeBufferSubmissionCallback,
+            request.overrideBufferSubmissionCallback),
+        request.willBeSubmittedEachFrame, request.type, request.order,
+        static_cast<Command_Buffer_Order_Index>(request.orderIndex));
+
+    if (request.type == Queue_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
+        this->mainGraphicsBufferHandle = std::make_unique<Handle>(newHandle);
+
+    if (request.recordOnce)
+    {
+        for (int i = 0; i < this->numFramesInFlight; i++)
+        {
+            this->buffers.getBuffer(newHandle).commandBuffer->begin(i);
+            request.recordBufferCallback(this->buffers.getBuffer(newHandle).commandBuffer->buffer(i), i);
+            this->buffers.getBuffer(newHandle).commandBuffer->buffer(i).end();
+        }
+    }
+
+    return newHandle;
 }
 
 void star::ManagerCommandBuffer::submitDynamicBuffer(Handle bufferHandle)
@@ -25,65 +48,25 @@ void star::ManagerCommandBuffer::submitDynamicBuffer(Handle bufferHandle)
     ManagerCommandBuffer::dynamicBuffersToSubmit.push(bufferHandle);
 }
 
-vk::Semaphore star::ManagerCommandBuffer::update(const int &frameIndexToBeDrawn)
+vk::Semaphore star::ManagerCommandBuffer::update(StarDevice &device, const int &frameIndexToBeDrawn)
 {
-    handleNewRequests();
-
     handleDynamicBufferRequests();
 
-    return submitCommandBuffers(frameIndexToBeDrawn);
-}
-
-void star::ManagerCommandBuffer::handleNewRequests()
-{
-    while (!ManagerCommandBuffer::newCommandBufferRequests.empty())
-    {
-        std::function<CommandBufferRequest(void)> requestFunction =
-            ManagerCommandBuffer::newCommandBufferRequests.top();
-        auto request = requestFunction();
-
-        star::Handle newHandle = this->buffers.add(
-            std::make_unique<CommandBufferContainer::CompleteRequest>(
-                request.recordBufferCallback,
-                std::make_unique<StarCommandBuffer>(this->device.getVulkanDevice(), this->numFramesInFlight,
-                                                    this->device.getCommandPool(request.type), request.type,
-                                                    !request.overrideBufferSubmissionCallback.has_value(), true),
-                request.type, request.recordOnce, request.waitStage, request.order,
-                request.beforeBufferSubmissionCallback, request.overrideBufferSubmissionCallback),
-            request.willBeSubmittedEachFrame, request.type, request.order,
-            static_cast<Command_Buffer_Order_Index>(request.orderIndex));
-
-        request.promiseBufferHandleCallback(newHandle);
-
-        if (request.type == Queue_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
-            this->mainGraphicsBufferHandle = std::make_unique<Handle>(newHandle);
-
-        if (request.recordOnce)
-        {
-            for (int i = 0; i < this->numFramesInFlight; i++)
-            {
-                this->buffers.getBuffer(newHandle).commandBuffer->begin(i);
-                request.recordBufferCallback(this->buffers.getBuffer(newHandle).commandBuffer->buffer(i), i);
-                this->buffers.getBuffer(newHandle).commandBuffer->buffer(i).end();
-            }
-        }
-
-        ManagerCommandBuffer::newCommandBufferRequests.pop();
-    }
+    return submitCommandBuffers(device, frameIndexToBeDrawn);
 }
 
 void star::ManagerCommandBuffer::callPreRecordFunctions(const uint8_t &frameInFlightIndex)
 {
 }
 
-vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const uint32_t &swapChainIndex)
+vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex)
 {
     // determine the order of buffers to execute
     assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- cannot happen");
 
     // submit before
     std::vector<vk::Semaphore> beforeSemaphores =
-        this->buffers.submitGroupWhenReady(Command_Buffer_Order::before_render_pass, swapChainIndex);
+        this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::before_render_pass, swapChainIndex);
 
     // need to submit each group of buffers depending on the queue family they are in
     CommandBufferContainer::CompleteRequest &mainGraphicsBuffer =
@@ -109,7 +92,7 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const uint32_t &s
     else
     {
         mainGraphicsBuffer.commandBuffer->submit(
-            swapChainIndex, this->device.getDefaultQueue(mainGraphicsBuffer.commandBuffer->getType()).getVulkanQueue());
+            swapChainIndex, device.getDefaultQueue(mainGraphicsBuffer.commandBuffer->getType()).getVulkanQueue());
         mainGraphicsSemaphore = mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
     }
 
@@ -119,7 +102,7 @@ vk::Semaphore star::ManagerCommandBuffer::submitCommandBuffers(const uint32_t &s
     std::vector<vk::Semaphore> waitSemaphores = {mainGraphicsSemaphore};
 
     std::vector<vk::Semaphore> finalSubmissionSemaphores =
-        this->buffers.submitGroupWhenReady(Command_Buffer_Order::end_of_frame, swapChainIndex, &waitSemaphores);
+        this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::end_of_frame, swapChainIndex, &waitSemaphores);
 
     if (finalSubmissionSemaphores.empty())
         return mainGraphicsSemaphore;

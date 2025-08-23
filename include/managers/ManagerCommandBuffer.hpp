@@ -17,14 +17,13 @@ namespace star
 class ManagerCommandBuffer
 {
   public:
-    struct CommandBufferRequest
+    struct Request
     {
         // when
         // type
         // callback function to record the buffer
         // is it dependent on another buffer to finish first?
         std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback;
-        std::function<void(star::Handle)> promiseBufferHandleCallback;
         Command_Buffer_Order order;
         int orderIndex;
         star::Queue_Type type;
@@ -34,50 +33,33 @@ class ManagerCommandBuffer
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
         std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
             overrideBufferSubmissionCallback;
-
-        CommandBufferRequest(
-            std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback,
-            std::function<void(star::Handle)> promiseBufferHandleCallback, const Command_Buffer_Order &order,
-            const int orderIndex, const star::Queue_Type &type, const vk::PipelineStageFlags &waitStage,
-            const bool &willBeSubmittedEachFrame, const bool &recordOnce,
-            std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback,
-            std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
-                overrideBufferSubmissionCallback)
-            : recordBufferCallback(recordBufferCallback), promiseBufferHandleCallback(promiseBufferHandleCallback),
-              order(order), orderIndex(orderIndex), type(type), waitStage(waitStage),
-              willBeSubmittedEachFrame(willBeSubmittedEachFrame), recordOnce(recordOnce),
-              beforeBufferSubmissionCallback(beforeBufferSubmissionCallback),
-              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
     };
 
-    ManagerCommandBuffer(StarDevice &device, const int &numFramesInFlight);
+    ManagerCommandBuffer(StarDevice &device, const uint8_t &numFramesInFlight);
 
-    ~ManagerCommandBuffer();
+    ~ManagerCommandBuffer() = default;
 
-    static void request(std::function<CommandBufferRequest(void)> request);
+    void cleanup(StarDevice &device);
 
-    static void callPreRecordFunctions(const uint8_t &frameInFlightIndex);
+    Handle submit(StarDevice &device, Request requestFunction);
 
-    static void submitDynamicBuffer(Handle bufferHandle);
+    void callPreRecordFunctions(const uint8_t &frameInFlightIndex);
+
+    void submitDynamicBuffer(Handle bufferHandle);
 
     /// @brief Process and submit all command buffers
     /// @param frameIndexToBeDrawn
     /// @return semaphore signaling completion of submission
-    vk::Semaphore update(const int &frameIndexToBeDrawn);
+    vk::Semaphore update(StarDevice &device, const int &frameIndexToBeDrawn);
 
   private:
-    static std::stack<std::function<CommandBufferRequest(void)>> newCommandBufferRequests;
-
     static std::stack<Handle> dynamicBuffersToSubmit;
 
-    StarDevice &device;
-    const int numFramesInFlight = 0;
+    uint8_t numFramesInFlight = 0;
     CommandBufferContainer buffers;
     std::unique_ptr<star::Handle> mainGraphicsBufferHandle = std::unique_ptr<star::Handle>();
 
-    void handleNewRequests();
-
-    vk::Semaphore submitCommandBuffers(const uint32_t &swapChainIndex);
+    vk::Semaphore submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex);
 
     void handleDynamicBufferRequests();
 };

@@ -22,6 +22,7 @@ class StarEngine
     void run();
 
   protected:
+    uint64_t frameCounter = 0;
     std::unique_ptr<StarWindow> window = nullptr;
     core::DeviceManager deviceManager; 
     std::unique_ptr<StarApplication> application = nullptr; 

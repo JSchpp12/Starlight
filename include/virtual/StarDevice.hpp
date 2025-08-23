@@ -240,7 +240,9 @@ class StarDevice
     StarDevice &operator=(const StarDevice &) = delete;
 
     StarDevice(StarDevice &&other);
-    StarDevice &operator=(StarDevice &&);
+    StarDevice &operator=(StarDevice &&){
+        
+    };
 
     /// <summary>
     /// Check the hardware to make sure that the supplied formats are compatible with the current system.

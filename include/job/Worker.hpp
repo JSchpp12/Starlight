@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Task.hpp"
+#include "tasks/Task.hpp"
 
 #include <boost/lockfree/spsc_queue.hpp>
 #include <boost/thread.hpp>
@@ -15,8 +15,13 @@ namespace star::job
 class Worker
 {
   public:
+    enum class WorkerMode{
+        Immediate, 
+        FrameControlled
+    };
+    
     Worker() = default;
-    virtual ~Worker() = default;
+    ~Worker() = default;
 
     void stop()
     {
@@ -36,7 +41,7 @@ class Worker
     Worker(Worker &&) = default;
     Worker &operator=(Worker &&) = default;
 
-    void queueTask(Task<>&& task)
+    void queueTask(tasks::Task<>&& task)
     {
         while (!this->taskQueue.push(std::move(task)))
         {
@@ -45,7 +50,7 @@ class Worker
     };
 
   protected:
-    boost::lockfree::spsc_queue<Task<>, boost::lockfree::capacity<128>> taskQueue;
+    boost::lockfree::spsc_queue<tasks::Task<>, boost::lockfree::capacity<128>> taskQueue;
     boost::atomic<bool> shouldRun = boost::atomic<bool>(true);
     boost::thread thread = boost::thread();
 
@@ -55,7 +60,7 @@ class Worker
 
         while (this->shouldRun.load())
         {
-            Task<> task;
+            tasks::Task<> task;
             if (this->taskQueue.pop(task))
             {
                 task.run();

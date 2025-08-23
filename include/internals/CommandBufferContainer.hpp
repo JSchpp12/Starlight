@@ -40,12 +40,14 @@ class CommandBufferContainer
               overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
     };
 
-    CommandBufferContainer(StarDevice &device, const int &numImagesInFlight);
+    CommandBufferContainer(const int &numImagesInFlight, StarDevice &device);
 
     ~CommandBufferContainer() = default;
 
-    std::vector<vk::Semaphore> submitGroupWhenReady(const star::Command_Buffer_Order &order,
-                                                    const int &frameInFlightIndex,
+    void cleanup(StarDevice &device);
+
+    std::vector<vk::Semaphore> submitGroupWhenReady(StarDevice &device, const star::Command_Buffer_Order &order,
+                                                    const uint8_t &frameInFlightIndex,
                                                     std::vector<vk::Semaphore> *waitSemaphores = nullptr);
 
     star::Handle add(std::unique_ptr<CompleteRequest> newRequest, const bool &willBeSubmittedEachFrame,
@@ -75,7 +77,7 @@ class CommandBufferContainer
         std::unordered_map<star::Queue_Type, std::vector<vk::Fence>> fences =
             std::unordered_map<star::Queue_Type, std::vector<vk::Fence>>();
 
-        GenericBufferGroupInfo(StarDevice &device, const int &numFramesInFlight) : device(device)
+        GenericBufferGroupInfo(const int &numFramesInFlight, StarDevice &device)
         {
             vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
             semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
@@ -98,20 +100,43 @@ class CommandBufferContainer
 
         ~GenericBufferGroupInfo()
         {
-            for (auto &typeSemaphore : this->semaphores)
-                for (auto &semaphore : typeSemaphore.second)
-                    this->device.getVulkanDevice().destroySemaphore(semaphore);
-
-            for (auto &typeFence : this->fences)
-                for (auto &fence : typeFence.second)
-                    this->device.getVulkanDevice().destroyFence(fence);
+            assert(this->semaphores.empty() && "Not all semaphores have been destroyed");
         };
 
+        void cleanup(StarDevice &device)
+        {
+            {
+                std::vector<star::Queue_Type> types;
+                for (auto &typeSemaphore : this->semaphores)
+                {
+                    for (auto &semaphore : typeSemaphore.second)
+                    {
+                        device.getVulkanDevice().destroySemaphore(semaphore);
+                    }
+                    types.push_back(typeSemaphore.first);
+                }
+
+                for (const auto &type : types)
+                    this->semaphores.erase(type);
+            }
+            {
+                std::vector<star::Queue_Type> types;
+                for (auto &typeFence : this->fences)
+                {
+                    for (auto &fence : typeFence.second)
+                    {
+                        device.getVulkanDevice().destroyFence(fence);
+                    }
+                }
+
+                for (const auto &type : types)
+                    this->fences.erase(type);
+            }
+        }
+
       private:
-        StarDevice &device;
     };
 
-    StarDevice &device;
     std::vector<std::unique_ptr<CompleteRequest>> allBuffers = std::vector<std::unique_ptr<CompleteRequest>>();
     std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>> bufferGroupsWithNoSubOrder =
         std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>>();
@@ -126,7 +151,7 @@ class CommandBufferContainer
     // Indicates if all semaphores are updated with the proper order of execution
     bool subOrderSemaphoresUpToDate = false;
 
-    void waitUntilOrderGroupReady(const int &frameIndex, const star::Command_Buffer_Order &order,
+    void waitUntilOrderGroupReady(StarDevice &device, const int &frameIndex, const star::Command_Buffer_Order &order,
                                   const star::Queue_Type &type);
 
     std::vector<std::reference_wrapper<CompleteRequest>> getAllBuffersOfTypeAndOrderReadyToSubmit(

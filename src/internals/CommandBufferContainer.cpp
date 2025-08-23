@@ -1,8 +1,7 @@
 #include "internals/CommandBufferContainer.hpp"
 
-star::CommandBufferContainer::CommandBufferContainer(StarDevice &device, const int &numImagesInFlight)
-    : device(device),
-      bufferGroupsWithSubOrders(
+star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFlight, StarDevice &device)
+    : bufferGroupsWithSubOrders(
           {std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<CompleteRequest *>(5)),
            std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<CompleteRequest *>(5)),
            std::make_pair(star::Command_Buffer_Order::after_render_pass, std::vector<CompleteRequest *>(5)),
@@ -12,12 +11,18 @@ star::CommandBufferContainer::CommandBufferContainer(StarDevice &device, const i
     for (int i = Command_Buffer_Order::before_render_pass; i != Command_Buffer_Order::presentation; i++)
     {
         this->bufferGroupsWithNoSubOrder[static_cast<star::Command_Buffer_Order>(i)] =
-            std::make_unique<GenericBufferGroupInfo>(device, numImagesInFlight);
+            std::make_unique<GenericBufferGroupInfo>(numImagesInFlight, device );
     }
 }
 
-std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
-    const star::Command_Buffer_Order &order, const int &frameInFlightIndex, std::vector<vk::Semaphore> *waitSemaphores)
+void star::CommandBufferContainer::cleanup(StarDevice &device){
+    for (auto &[order, group] : this->bufferGroupsWithNoSubOrder){
+        group->cleanup(device);
+    }
+}
+
+std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(StarDevice &device, 
+    const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex, std::vector<vk::Semaphore> *waitSemaphores)
 {
     if (!this->subOrderSemaphoresUpToDate)
     {
@@ -45,9 +50,8 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
             buffer->commandBuffer->buffer(frameInFlightIndex).end();
         }
 
-        buffer->commandBuffer->submit(
-            frameInFlightIndex,
-            this->device.getDefaultQueue(buffer->commandBuffer->getType()).getVulkanQueue());
+        buffer->commandBuffer->submit(frameInFlightIndex,
+                                      device.getDefaultQueue(buffer->commandBuffer->getType()).getVulkanQueue());
 
         if (i == star::Command_Buffer_Order_Index::fifth || this->bufferGroupsWithSubOrders[order][i] == nullptr)
         {
@@ -65,7 +69,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
 
         if (!buffersToSubmit.empty())
         {
-            waitUntilOrderGroupReady(frameInFlightIndex, order, static_cast<Queue_Type>(type));
+            waitUntilOrderGroupReady(device, frameInFlightIndex, order, static_cast<Queue_Type>(type));
 
             auto waitPoints = std::vector<vk::PipelineStageFlags>();
             for (auto &buffer : buffersToSubmit)
@@ -121,9 +125,9 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
                 vk::Fence workingFence =
                     this->bufferGroupsWithNoSubOrder[order]->fences[static_cast<Queue_Type>(type)].at(
                         frameInFlightIndex);
-                commandResult = std::make_unique<vk::Result>(this->device.getDefaultQueue(static_cast<Queue_Type>(type))
-                                                                .getVulkanQueue()
-                                                                .submit(1, &submitInfo, workingFence));
+                commandResult = std::make_unique<vk::Result>(device.getDefaultQueue(static_cast<Queue_Type>(type))
+                                                                 .getVulkanQueue()
+                                                                 .submit(1, &submitInfo, workingFence));
 
                 assert(commandResult != nullptr && "Invalid command buffer type");
 
@@ -143,8 +147,8 @@ star::Handle star::CommandBufferContainer::add(
     const star::Queue_Type &type, const star::Command_Buffer_Order &order,
     const star::Command_Buffer_Order_Index &subOrder)
 {
-    uint32_t count = 0; 
-    CastHelpers::SafeCast<size_t, uint32_t>(this->allBuffers.size(), count); 
+    uint32_t count = 0;
+    CastHelpers::SafeCast<size_t, uint32_t>(this->allBuffers.size(), count);
 
     star::Handle newHandle = star::Handle(star::Handle_Type::buffer, count);
     const int bufferIndex = this->allBuffers.size();
@@ -195,18 +199,18 @@ star::CommandBufferContainer::CompleteRequest &star::CommandBufferContainer::get
     return *this->allBuffers[bufferHandle.getID()];
 }
 
-void star::CommandBufferContainer::waitUntilOrderGroupReady(const int &frameIndex,
+void star::CommandBufferContainer::waitUntilOrderGroupReady(StarDevice &device, const int &frameIndex,
                                                             const star::Command_Buffer_Order &order,
                                                             const star::Queue_Type &type)
 {
-    auto waitResult = this->device.getVulkanDevice().waitForFences(
+    auto waitResult = device.getVulkanDevice().waitForFences(
         this->bufferGroupsWithNoSubOrder[order]->fences[type].at(frameIndex), VK_TRUE, UINT64_MAX);
     if (waitResult != vk::Result::eSuccess)
     {
         throw std::runtime_error("Failed to wait for fence");
     }
 
-    this->device.getVulkanDevice().resetFences(this->bufferGroupsWithNoSubOrder[order]->fences[type].at(frameIndex));
+    device.getVulkanDevice().resetFences(this->bufferGroupsWithNoSubOrder[order]->fences[type].at(frameIndex));
 }
 
 std::vector<std::reference_wrapper<star::CommandBufferContainer::CompleteRequest>> star::CommandBufferContainer::

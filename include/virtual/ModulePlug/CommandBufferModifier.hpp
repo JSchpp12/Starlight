@@ -1,53 +1,53 @@
-#pragma once
+// #pragma once
 
-#include "Handle.hpp"
-#include "ManagerCommandBuffer.hpp"
-
-
-#include <functional>
-#include <memory>
-#include <optional>
-#include <stack>
-#include <vector>
-#include <vulkan/vulkan.hpp>
+// #include "Handle.hpp"
+// #include "ManagerCommandBuffer.hpp"
 
 
-namespace star
-{
-class CommandBufferModifier
-{
-  public:
-    CommandBufferModifier();
+// #include <functional>
+// #include <memory>
+// #include <optional>
+// #include <stack>
+// #include <vector>
+// #include <vulkan/vulkan.hpp>
 
-    ~CommandBufferModifier() = default;
 
-    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) = 0;
+// namespace star
+// {
+// class CommandBufferModifier
+// {
+//   public:
+//     CommandBufferModifier();
 
-    void setBufferHandle(Handle bufferHandle);
+//     ~CommandBufferModifier() = default;
 
-  protected:
-    void submitMyBuffer();
+//     virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) = 0;
 
-    virtual Command_Buffer_Order getCommandBufferOrder() = 0;
+//     void setBufferHandle(Handle bufferHandle);
 
-    virtual star::Command_Buffer_Order_Index getCommandBufferOrderIndex();
+//   protected:
+//     void submitMyBuffer();
 
-    virtual Queue_Type getCommandBufferType() = 0;
+//     virtual Command_Buffer_Order getCommandBufferOrder() = 0;
 
-    virtual vk::PipelineStageFlags getWaitStages() = 0;
+//     virtual star::Command_Buffer_Order_Index getCommandBufferOrderIndex();
 
-    virtual bool getWillBeSubmittedEachFrame() = 0;
+//     virtual Queue_Type getCommandBufferType() = 0;
 
-    virtual bool getWillBeRecordedOnce() = 0;
+//     virtual vk::PipelineStageFlags getWaitStages() = 0;
 
-    virtual std::optional<std::function<void(const int &)>> getBeforeBufferSubmissionCallback();
+//     virtual bool getWillBeSubmittedEachFrame() = 0;
 
-    virtual std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
-    getOverrideBufferSubmissionCallback();
+//     virtual bool getWillBeRecordedOnce() = 0;
 
-    ManagerCommandBuffer::CommandBufferRequest getCommandBufferRequest();
+//     virtual std::optional<std::function<void(const int &)>> getBeforeBufferSubmissionCallback();
 
-  private:
-    std::optional<Handle> bufferHandle;
-};
-} // namespace star
+//     virtual std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
+//     getOverrideBufferSubmissionCallback();
+
+//     ManagerCommandBuffer::Request getCommandBufferRequest();
+
+//   private:
+//     std::optional<Handle> bufferHandle;
+// };
+// } // namespace star

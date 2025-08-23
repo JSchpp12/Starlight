@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ManagerCommandBuffer.hpp"
 #include "RenderingSurface.hpp"
 #include "StarDevice.hpp"
 #include "SwapChainSupportDetails.hpp"
@@ -14,14 +15,43 @@ namespace star::core
 class DeviceContext
 {
   public:
-    DeviceContext(RenderingInstance &instance, std::set<Rendering_Features> requiredFeatures, StarWindow &window)
-        : m_surface(std::make_shared<RenderingSurface>(instance, window)),
-          m_device(StarDevice(window, *m_surface, instance, requiredFeatures)) {};
+    struct ManagerCommandBufferWrapper
+    {
+        Handle submit(ManagerCommandBuffer::Request request)
+        {
+            return m_manager.submit(m_device, request);
+        }
 
-    ~DeviceContext() = default;
+        vk::Semaphore update(const int &frameIndexToBeDrawn){
+            return m_manager.update(m_device, frameIndexToBeDrawn); 
+        }
+
+        StarDevice &m_device;
+        ManagerCommandBuffer &m_manager;
+    };
+
+    DeviceContext(const uint8_t &numFramesInFlight, RenderingInstance &instance,
+                  std::set<Rendering_Features> requiredFeatures, StarWindow &window)
+        : m_surface(std::make_shared<RenderingSurface>(instance, window)),
+          m_device(StarDevice(window, *m_surface, instance, requiredFeatures)),
+          m_commandBufferManager(std::make_unique<star::ManagerCommandBuffer>(m_device, numFramesInFlight)) {};
+
+    ~DeviceContext()
+    {
+        if (m_commandBufferManager)
+            m_commandBufferManager->cleanup(m_device);
+    };
 
     DeviceContext(DeviceContext &&other) = default;
-    DeviceContext &operator=(DeviceContext &&other) = default;
+    DeviceContext &operator=(DeviceContext &&other)
+    {
+        m_surface = std::move(other.m_surface);
+        m_device = std::move(other.m_device);
+        m_manager = std::move(other.m_manager);
+        m_commandBufferManager = std::move(other.m_commandBufferManager);
+
+        return *this;
+    };
     DeviceContext(const DeviceContext &) = delete;
     DeviceContext &operator=(const DeviceContext &) = delete;
 
@@ -40,11 +70,19 @@ class DeviceContext
         return m_surface;
     }
 
+    ManagerCommandBufferWrapper getManagerCommandBuffer()
+    {
+        assert(m_commandBufferManager);
+
+        return ManagerCommandBufferWrapper{.m_device = m_device, .m_manager = *m_commandBufferManager};
+    }
+
     SwapChainSupportDetails getSwapchainSupportDetails();
 
   private:
     std::shared_ptr<RenderingSurface> m_surface = nullptr;
     StarDevice m_device;
     job::TaskManager m_manager;
+    std::unique_ptr<ManagerCommandBuffer> m_commandBufferManager = nullptr;
 };
 } // namespace star::core

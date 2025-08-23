@@ -31,7 +31,6 @@
 namespace star
 {
 class SceneRenderer : public StarRenderer,
-                      public CommandBufferModifier,
                       private RenderResourceModifier,
                       private DescriptorModifier
 {
@@ -61,6 +60,7 @@ class SceneRenderer : public StarRenderer,
     }
 
   protected:
+    Handle m_commandBuffer; 
     std::shared_ptr<StarScene> scene = nullptr;
 
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
@@ -114,16 +114,9 @@ class SceneRenderer : public StarRenderer,
                              vk::Image &image, VmaAllocation &imageMemory);
 
     // Inherited via CommandBufferModifier
-    Queue_Type getCommandBufferType() override;
-    virtual Command_Buffer_Order getCommandBufferOrder() override = 0;
-    virtual vk::PipelineStageFlags getWaitStages() override = 0;
-    virtual bool getWillBeSubmittedEachFrame() override = 0;
-    virtual bool getWillBeRecordedOnce() override = 0;
-    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) override;
+    virtual ManagerCommandBuffer::Request getCommandBufferRequest() = 0; 
 
     virtual void prepareForSubmission(const int &frameIndexToBeDrawn);
-
-    virtual std::optional<std::function<void(const int &)>> getBeforeBufferSubmissionCallback() override;
 
     // Inherited via RenderResourceModifier
     virtual void initResources(core::DeviceContext &device, const int &numFramesInFlight,
@@ -141,6 +134,8 @@ class SceneRenderer : public StarRenderer,
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const int &frameInFlightIndex);
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const int &frameInFlightIndex);
+
+    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
 
     void recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 

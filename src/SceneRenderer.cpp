@@ -9,6 +9,8 @@ SceneRenderer::SceneRenderer(std::shared_ptr<StarScene> scene) : StarRenderer(sc
 
 void SceneRenderer::prepare(core::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
 {
+    m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
+
     this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
     auto globalBuilder = manualCreateDescriptors(device, numFramesInFlight);
@@ -450,23 +452,12 @@ void SceneRenderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const
     }
 }
 
-Queue_Type SceneRenderer::getCommandBufferType()
-{
-    return Queue_Type::Tgraphics;
-}
-
 void SceneRenderer::prepareForSubmission(const int &frameIndexToBeDrawn)
 {
     for (StarObject &obj : this->scene->getObjects())
     {
         obj.prepDraw(frameIndexToBeDrawn);
     }
-}
-
-std::optional<std::function<void(const int &)>> SceneRenderer::getBeforeBufferSubmissionCallback()
-{
-    return std::optional<std::function<void(const int &)>>(
-        std::function<void(const int &)>(std::bind(&SceneRenderer::prepareForSubmission, this, std::placeholders::_1)));
 }
 
 } // namespace star

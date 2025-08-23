@@ -90,6 +90,21 @@ void star::SwapChainRenderer::pollEvents()
     glfwPollEvents();
 }
 
+star::ManagerCommandBuffer::Request star::SwapChainRenderer::getCommandBufferRequest()
+{
+    return ManagerCommandBuffer::Request{
+        .recordBufferCallback = std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2),
+        .order = Command_Buffer_Order::main_render_pass,
+        .orderIndex = 0,
+        .type = Queue_Type::Tgraphics,
+        .waitStage = vk::PipelineStageFlagBits::eFragmentShader,
+        .willBeSubmittedEachFrame = true,
+        .recordOnce = false,
+        .beforeBufferSubmissionCallback = std::bind(&SwapChainRenderer::prepareForSubmission, this, std::placeholders::_1),
+        .overrideBufferSubmissionCallback = std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
+    };
+}
+
 vk::SurfaceFormatKHR star::SwapChainRenderer::chooseSwapSurfaceFormat(
     const std::vector<vk::SurfaceFormatKHR> &availableFormats) const
 {
@@ -285,14 +300,6 @@ vk::Semaphore star::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, c
     }
 
     return this->imageAvailableSemaphores[this->currentSwapChainImageIndex];
-}
-
-std::optional<std::function<vk::Semaphore(star::StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>> star::
-    SwapChainRenderer::getOverrideBufferSubmissionCallback()
-{
-    return std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>(
-        std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2,
-                  std::placeholders::_3));
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SwapChainRenderer::createRenderToImages(
@@ -537,26 +544,6 @@ void star::SwapChainRenderer::createSwapChain()
     this->swapChain = this->device.getDevice().getVulkanDevice().createSwapchainKHR(createInfo);
 
     this->swapChainExtent = std::make_unique<vk::Extent2D>(extent);
-}
-
-star::Command_Buffer_Order star::SwapChainRenderer::getCommandBufferOrder()
-{
-    return Command_Buffer_Order::main_render_pass;
-}
-
-vk::PipelineStageFlags star::SwapChainRenderer::getWaitStages()
-{
-    return vk::PipelineStageFlagBits::eFragmentShader;
-}
-
-bool star::SwapChainRenderer::getWillBeSubmittedEachFrame()
-{
-    return true;
-}
-
-bool star::SwapChainRenderer::getWillBeRecordedOnce()
-{
-    return false;
 }
 
 void star::SwapChainRenderer::recreateSwapChain()

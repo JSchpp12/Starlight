@@ -68,6 +68,8 @@ class SwapChainRenderer : public SceneRenderer
     std::vector<vk::Semaphore> imageAvailableSemaphores;
     std::vector<vk::Semaphore> imageAcquireSemaphores;
 
+    virtual ManagerCommandBuffer::Request getCommandBufferRequest() override;  
+
     // std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer = nullptr;
     std::unique_ptr<std::string> screenshotPath = nullptr;
 
@@ -84,9 +86,6 @@ class SwapChainRenderer : public SceneRenderer
 
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
                                std::vector<vk::Semaphore> mustWaitFor);
-
-    std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
-    getOverrideBufferSubmissionCallback() override;
 
     virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(core::DeviceContext &device,
                                                                            const int &numFramesInFlight) override;
@@ -122,11 +121,5 @@ class SwapChainRenderer : public SceneRenderer
     /// Create a swap chain that will be used in rendering images
     /// </summary>
     virtual void createSwapChain();
-
-    // Inherited via SceneRenderer
-    Command_Buffer_Order getCommandBufferOrder() override;
-    vk::PipelineStageFlags getWaitStages() override;
-    bool getWillBeSubmittedEachFrame() override;
-    bool getWillBeRecordedOnce() override;
 };
 } // namespace star
