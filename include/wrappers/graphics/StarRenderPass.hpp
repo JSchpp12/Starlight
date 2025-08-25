@@ -1,18 +1,19 @@
-#pragma once 
+#pragma once
 
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 
 #include <vulkan/vulkan.hpp>
 
-namespace star {
-	class StarRenderPass {
-	public:
-		StarRenderPass(StarDevice& device) : device(device) {};
-		virtual ~StarRenderPass(); 
+namespace star
+{
+class StarRenderPass
+{
+  public:
+    StarRenderPass(core::devices::StarDevice &device) : device(device) {};
+    virtual ~StarRenderPass();
 
-	protected:
-		StarDevice& device; 
-		vk::RenderPass renderPass; 
-
-	};
-}
+  protected:
+    core::devices::StarDevice &device;
+    vk::RenderPass renderPass;
+};
+} // namespace star

@@ -2,7 +2,7 @@
 
 #include "FileResourceManager.hpp"
 #include "StarCamera.hpp"
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 #include "StarShader.hpp"
 #include "StarWindow.hpp"
 

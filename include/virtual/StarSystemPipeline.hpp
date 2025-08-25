@@ -1,7 +1,7 @@
 #pragma once
 
 #include "StarShader.hpp"
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 
 #include "vulkan/vulkan.hpp"
 

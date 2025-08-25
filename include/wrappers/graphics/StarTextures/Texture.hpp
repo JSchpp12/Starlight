@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 #include "StarTextures/Resources.hpp"
 
 #include <vk_mem_alloc.h>

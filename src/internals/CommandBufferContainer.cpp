@@ -1,6 +1,6 @@
 #include "internals/CommandBufferContainer.hpp"
 
-star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFlight, StarDevice &device)
+star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFlight, core::devices::StarDevice &device)
     : bufferGroupsWithSubOrders(
           {std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<CompleteRequest *>(5)),
            std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<CompleteRequest *>(5)),
@@ -15,13 +15,13 @@ star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFligh
     }
 }
 
-void star::CommandBufferContainer::cleanup(StarDevice &device){
+void star::CommandBufferContainer::cleanup(core::devices::StarDevice &device){
     for (auto &[order, group] : this->bufferGroupsWithNoSubOrder){
         group->cleanup(device);
     }
 }
 
-std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(StarDevice &device, 
+std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(core::devices::StarDevice &device, 
     const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex, std::vector<vk::Semaphore> *waitSemaphores)
 {
     if (!this->subOrderSemaphoresUpToDate)
@@ -199,7 +199,7 @@ star::CommandBufferContainer::CompleteRequest &star::CommandBufferContainer::get
     return *this->allBuffers[bufferHandle.getID()];
 }
 
-void star::CommandBufferContainer::waitUntilOrderGroupReady(StarDevice &device, const int &frameIndex,
+void star::CommandBufferContainer::waitUntilOrderGroupReady(core::devices::StarDevice &device, const int &frameIndex,
                                                             const star::Command_Buffer_Order &order,
                                                             const star::Queue_Type &type)
 {

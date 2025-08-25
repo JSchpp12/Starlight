@@ -3,7 +3,7 @@
 #include "Handle.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "StarCommandBuffer.hpp"
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 
 #include "internals/CommandBufferContainer.hpp"
 

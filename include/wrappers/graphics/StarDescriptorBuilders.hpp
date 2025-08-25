@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -16,7 +16,7 @@ class StarDescriptorSetLayout
     class Builder
     {
       public:
-        Builder(StarDevice &device) : starDevice(device)
+        Builder(core::devices::StarDevice &device) : m_device(device)
         {
         }
 
@@ -26,11 +26,11 @@ class StarDescriptorSetLayout
 
       protected:
       private:
-        StarDevice &starDevice;
+        core::devices::StarDevice &m_device;
         std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings{};
     };
 
-    StarDescriptorSetLayout(StarDevice &device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings);
+    StarDescriptorSetLayout(core::devices::StarDevice &device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings);
 
     ~StarDescriptorSetLayout();
 
@@ -47,7 +47,7 @@ class StarDescriptorSetLayout
     void build();
 
   private:
-    StarDevice &starDevice;
+    core::devices::StarDevice &m_device;
     vk::DescriptorSetLayout descriptorSetLayout;
     std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings;
 
@@ -61,7 +61,7 @@ class StarDescriptorPool
     class Builder
     {
       public:
-        Builder(StarDevice &device) : starDevice(device) {};
+        Builder(core::devices::StarDevice &device) : m_device(device) {};
 
         Builder &addPoolSize(vk::DescriptorType descriptorType, uint32_t count);
         Builder &setPoolFlags(vk::DescriptorPoolCreateFlags flags);
@@ -70,13 +70,13 @@ class StarDescriptorPool
 
       protected:
       private:
-        StarDevice &starDevice;
+        core::devices::StarDevice &m_device;
         std::vector<vk::DescriptorPoolSize> poolSizes;
         uint32_t maxSets = 50;
         vk::DescriptorPoolCreateFlags poolFlags{};
     };
 
-    StarDescriptorPool(StarDevice &device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags,
+    StarDescriptorPool(core::devices::StarDevice &device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags,
                        const std::vector<vk::DescriptorPoolSize> &poolSizes);
     ~StarDescriptorPool();
 
@@ -90,7 +90,7 @@ class StarDescriptorPool
 
   protected:
   private:
-    StarDevice &starDevice;
+    core::devices::StarDevice &m_device;
     vk::DescriptorPool descriptorPool;
 
     // allow this class to read the private info of StarDescriptorSetLayout for construction
@@ -100,7 +100,7 @@ class StarDescriptorPool
 class StarDescriptorWriter
 {
   public:
-    StarDescriptorWriter(StarDevice &device, StarDescriptorSetLayout &setLayout, StarDescriptorPool &pool);
+    StarDescriptorWriter(core::devices::StarDevice &device, StarDescriptorSetLayout &setLayout, StarDescriptorPool &pool);
 
     StarDescriptorWriter &writeBuffer(uint32_t binding, vk::DescriptorBufferInfo &bufferInfos);
 
@@ -140,7 +140,7 @@ class StarDescriptorWriter
         }
     };
 
-    StarDevice &starDevice;
+    core::devices::StarDevice &m_device;
     StarDescriptorSetLayout &setLayout;
     StarDescriptorPool &pool;
     std::vector<FullDescriptorInfo> writeSets;

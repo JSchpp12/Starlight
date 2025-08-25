@@ -3,7 +3,7 @@
 #include "TransferRequest_VertInfo.hpp"
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::VertInfo::createTransferRequest(
-    star::StarDevice &device)
+    star::core::devices::StarDevice &device)
 {
     return std::make_unique<TransferRequest::VertInfo>(
         device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex(), this->vertices);

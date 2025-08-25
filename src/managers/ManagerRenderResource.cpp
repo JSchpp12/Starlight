@@ -6,7 +6,7 @@ std::unique_ptr<star::ManagerStorageContainer<star::ManagerRenderResource::Final
     star::ManagerRenderResource::bufferStorage =
         std::make_unique<star::ManagerStorageContainer<star::ManagerRenderResource::FinalizedRenderRequest>>();
 
-void star::ManagerRenderResource::init(star::StarDevice &device, star::TransferWorker &worker,
+void star::ManagerRenderResource::init(star::core::devices::StarDevice &device, star::TransferWorker &worker,
                                        const int &numFramesInFlight)
 {
     assert(managerDevice == nullptr && "Init function should only be called once");
@@ -177,7 +177,7 @@ void star::ManagerRenderResource::destroy(const star::Handle &handle)
     bufferStorage->destroy(handle);
 }
 
-void star::ManagerRenderResource::cleanup(StarDevice &device)
+void star::ManagerRenderResource::cleanup(core::devices::StarDevice &device)
 {
     bufferStorage.reset();
 }

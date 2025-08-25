@@ -234,7 +234,7 @@ void star::TransferManagerThread::EnsureInfoReady(vk::Device &device, ProcessReq
 }
 
 star::TransferManagerThread::TransferManagerThread(
-    star::StarDevice &device, std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
+    star::core::devices::StarDevice &device, std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
     const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse)
     : device(device), requestQueues(requestQueues), deviceProperties(deviceProperties), myQueue(myQueue),
@@ -256,7 +256,7 @@ star::TransferWorker::~TransferWorker()
     }
 }
 
-star::TransferWorker::TransferWorker(star::StarDevice &device, bool overrideToSingleThreadMode,
+star::TransferWorker::TransferWorker(star::core::devices::StarDevice &device, bool overrideToSingleThreadMode,
                                      std::vector<StarQueue> &queuesToUse)
 {
     bool runAsync = !overrideToSingleThreadMode;
@@ -342,7 +342,7 @@ void star::TransferWorker::insertRequest(std::unique_ptr<TransferManagerThread::
 // }
 
 std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::CreateThreads(
-        StarDevice &device, const std::vector<StarQueue> queuesToUse,
+        core::devices::StarDevice &device, const std::vector<StarQueue> queuesToUse,
         boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &highPriorityQueue,
         boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &standardQueue)
 {

@@ -10,7 +10,7 @@ namespace star::ManagerController::RenderResource{
         GlobalInfo(const uint8_t& frameInFlightIndexToUpdateOn, StarCamera& camera, const int& numLights) 
         : Buffer(frameInFlightIndexToUpdateOn), camera(camera), numLights(numLights) {} 
 
-        std::unique_ptr<TransferRequest::Buffer> createTransferRequest(StarDevice &device) override;
+        std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::devices::StarDevice &device) override;
 
         protected:
         const StarCamera& camera; 

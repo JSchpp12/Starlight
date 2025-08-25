@@ -17,7 +17,7 @@ class Buffer : public star::ManagerController::Controller<TransferRequest::Buffe
 
     virtual ~Buffer() = default; 
 
-    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(StarDevice &device) override = 0;
+    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::devices::StarDevice &device) override = 0;
 
   protected:
 };

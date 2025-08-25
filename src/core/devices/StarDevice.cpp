@@ -1,6 +1,6 @@
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 
-namespace star
+namespace star::core::devices
 {
 StarDevice::StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures) : starWindow(window)
 {

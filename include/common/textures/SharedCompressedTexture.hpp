@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 #include "ThreadSharedResource.hpp"
 
 #include <ktx.h>

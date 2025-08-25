@@ -2,7 +2,7 @@
 
 #include "TransferRequest_GlobalInfo.hpp"
 
-std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::GlobalInfo::createTransferRequest(star::StarDevice &device) {
+std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::GlobalInfo::createTransferRequest(star::core::devices::StarDevice &device) {
     this->lastNumLights = this->numLights; 
 
     return std::make_unique<TransferRequest::GlobalInfo>(

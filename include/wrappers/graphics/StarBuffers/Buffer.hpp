@@ -3,7 +3,7 @@
 #include "Allocator.hpp"
 #include "Enums.hpp"
 #include "StarBuffers/Resources.hpp"
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>

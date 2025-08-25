@@ -2,7 +2,7 @@
 
 #include "TransferRequest_LightInfo.hpp"
 
-std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::LightInfo::createTransferRequest(star::StarDevice &device){
+std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::LightInfo::createTransferRequest(star::core::devices::StarDevice &device){
     this->lastWriteNumLights = this->lights.size();
  
     return std::make_unique<TransferRequest::LightInfo>(

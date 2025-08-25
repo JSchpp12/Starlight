@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 #include "StarCommandBuffer.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -23,7 +23,7 @@ namespace star::ManagerController{
             return true;
         };
 
-        virtual std::unique_ptr<T> createTransferRequest(StarDevice &device) = 0;
+        virtual std::unique_ptr<T> createTransferRequest(core::devices::StarDevice &device) = 0;
         const std::optional<uint8_t>& getFrameInFlightIndexToUpdateOn() const { return frameInFlightIndexToUpdateOn; }
         
         private:

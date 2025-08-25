@@ -2,7 +2,7 @@
 
 #include "Handle.hpp"
 #include "StarCommandBuffer.hpp"
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 
 #include <functional>
 #include <memory>
@@ -40,13 +40,13 @@ class CommandBufferContainer
               overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
     };
 
-    CommandBufferContainer(const int &numImagesInFlight, StarDevice &device);
+    CommandBufferContainer(const int &numImagesInFlight, core::devices::StarDevice &device);
 
     ~CommandBufferContainer() = default;
 
-    void cleanup(StarDevice &device);
+    void cleanup(core::devices::StarDevice &device);
 
-    std::vector<vk::Semaphore> submitGroupWhenReady(StarDevice &device, const star::Command_Buffer_Order &order,
+    std::vector<vk::Semaphore> submitGroupWhenReady(core::devices::StarDevice &device, const star::Command_Buffer_Order &order,
                                                     const uint8_t &frameInFlightIndex,
                                                     std::vector<vk::Semaphore> *waitSemaphores = nullptr);
 
@@ -77,7 +77,7 @@ class CommandBufferContainer
         std::unordered_map<star::Queue_Type, std::vector<vk::Fence>> fences =
             std::unordered_map<star::Queue_Type, std::vector<vk::Fence>>();
 
-        GenericBufferGroupInfo(const int &numFramesInFlight, StarDevice &device)
+        GenericBufferGroupInfo(const int &numFramesInFlight, core::devices::StarDevice &device)
         {
             vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
             semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
@@ -103,7 +103,7 @@ class CommandBufferContainer
             assert(this->semaphores.empty() && "Not all semaphores have been destroyed");
         };
 
-        void cleanup(StarDevice &device)
+        void cleanup(core::devices::StarDevice &device)
         {
             {
                 std::vector<star::Queue_Type> types;
@@ -151,7 +151,7 @@ class CommandBufferContainer
     // Indicates if all semaphores are updated with the proper order of execution
     bool subOrderSemaphoresUpToDate = false;
 
-    void waitUntilOrderGroupReady(StarDevice &device, const int &frameIndex, const star::Command_Buffer_Order &order,
+    void waitUntilOrderGroupReady(core::devices::StarDevice &device, const int &frameIndex, const star::Command_Buffer_Order &order,
                                   const star::Queue_Type &type);
 
     std::vector<std::reference_wrapper<CompleteRequest>> getAllBuffersOfTypeAndOrderReadyToSubmit(

@@ -1,7 +1,7 @@
 #pragma once 
 
 #include "Handle.hpp"
-#include "StarDevice.hpp"
+#include "devices/StarDevice.hpp"
 
 namespace star {
 	struct BufferHandle : public Handle {
