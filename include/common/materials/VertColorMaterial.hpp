@@ -15,13 +15,13 @@ namespace star {
 			: StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny) {};
 
 		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
-		void buildDescriptorSet(core::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
+		void buildDescriptorSet(core::devices::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
 
 	protected:
-		void cleanup(core::DeviceContext& device) override;
-		void prep(core::DeviceContext& device) override;
+		void cleanup(core::devices::DeviceContext& device) override;
+		void prep(core::devices::DeviceContext& device) override;
 
 		// Inherited via StarMaterial
-		void createDescriptors(star::core::DeviceContext& device, const int& numFramesInFlight) override;
+		void createDescriptors(star::core::devices::DeviceContext& device, const int& numFramesInFlight) override;
 	};
 }

@@ -7,7 +7,7 @@ SceneRenderer::SceneRenderer(std::shared_ptr<StarScene> scene) : StarRenderer(sc
 {
 }
 
-void SceneRenderer::prepare(core::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
+void SceneRenderer::prepare(core::devices::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
 {
     m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
 
@@ -21,7 +21,7 @@ void SceneRenderer::prepare(core::DeviceContext &device, const vk::Extent2D &swa
     createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createRenderToImages(star::core::DeviceContext &device,
+std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createRenderToImages(star::core::devices::DeviceContext &device,
                                                                                     const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -106,7 +106,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createR
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SceneRenderer::createRenderToDepthImages(
-    core::DeviceContext &device, const int &numFramesInFlight)
+    core::devices::DeviceContext &device, const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
 
@@ -189,7 +189,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SceneRenderer::c
     return newRenderToImages;
 }
 
-void SceneRenderer::createRenderingGroups(core::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+void SceneRenderer::createRenderingGroups(core::devices::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                                           const int &numFramesInFlight, star::StarShaderInfo::Builder builder)
 {
     for (StarObject &object : this->scene->getObjects())
@@ -228,7 +228,7 @@ void SceneRenderer::createRenderingGroups(core::DeviceContext &device, const vk:
     }
 }
 
-vk::ImageView SceneRenderer::createImageView(star::core::DeviceContext &device, vk::Image image, vk::Format format,
+vk::ImageView SceneRenderer::createImageView(star::core::devices::DeviceContext &device, vk::Image image, vk::Format format,
                                              vk::ImageAspectFlags aspectFlags)
 {
     vk::ImageViewCreateInfo viewInfo{};
@@ -252,7 +252,7 @@ vk::ImageView SceneRenderer::createImageView(star::core::DeviceContext &device, 
     return imageView;
 }
 
-star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::core::DeviceContext &device,
+star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::core::devices::DeviceContext &device,
                                                                      const int &numFramesInFlight)
 {
     auto globalBuilder = StarShaderInfo::Builder(device.getDevice(), numFramesInFlight);
@@ -274,7 +274,7 @@ star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::core:
     return globalBuilder;
 }
 
-void SceneRenderer::createImage(star::core::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
+void SceneRenderer::createImage(star::core::devices::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
                                 vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
                                 vk::Image &image, VmaAllocation &imageMemory)
 {
@@ -304,12 +304,12 @@ void SceneRenderer::createImage(star::core::DeviceContext &device, uint32_t widt
                    &imageMemory, nullptr);
 }
 
-void SceneRenderer::initResources(core::DeviceContext &device, const int &numFramesInFlight, const vk::Extent2D &screensize)
+void SceneRenderer::initResources(core::devices::DeviceContext &device, const int &numFramesInFlight, const vk::Extent2D &screensize)
 {
     this->prepare(device, screensize, numFramesInFlight);
 }
 
-void SceneRenderer::destroyResources(core::DeviceContext &device)
+void SceneRenderer::destroyResources(core::devices::DeviceContext &device)
 {
     for (auto &image : this->renderToImages)
     {
@@ -322,7 +322,7 @@ void SceneRenderer::destroyResources(core::DeviceContext &device)
     }
 }
 
-vk::Format SceneRenderer::getColorAttachmentFormat(star::core::DeviceContext &device) const
+vk::Format SceneRenderer::getColorAttachmentFormat(star::core::devices::DeviceContext &device) const
 {
     vk::Format selectedFormat = vk::Format();
 
@@ -334,7 +334,7 @@ vk::Format SceneRenderer::getColorAttachmentFormat(star::core::DeviceContext &de
     return selectedFormat;
 }
 
-vk::Format SceneRenderer::getDepthAttachmentFormat(star::core::DeviceContext &device) const
+vk::Format SceneRenderer::getDepthAttachmentFormat(star::core::devices::DeviceContext &device) const
 {
     vk::Format selectedFormat = vk::Format();
     if (!device.getDevice().findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
@@ -354,7 +354,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescript
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)};
 }
 
-void SceneRenderer::createDescriptors(star::core::DeviceContext &device, const int &numFramesInFlight)
+void SceneRenderer::createDescriptors(star::core::devices::DeviceContext &device, const int &numFramesInFlight)
 {
 }
 

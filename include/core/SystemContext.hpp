@@ -9,15 +9,15 @@
 
 namespace star::core
 {
-class DeviceManager
+class SystemContext
 {
   public:
-    DeviceManager(RenderingInstance &&renderingInstance);
+    SystemContext(RenderingInstance &&renderingInstance);
 
     void createDevice(const uint64_t &frameIndex, const uint8_t &numOfFramesInFlight, std::set<star::Rendering_Features> requiredFeatures,
                       StarWindow &window);
 
-    DeviceContext &getContext()
+    devices::DeviceContext &getContext()
     {
         assert(m_deviceInfos.size() > 0 && "No devices have been added to the manager yet");
 
@@ -30,6 +30,6 @@ class DeviceManager
 
   private:
     RenderingInstance m_instance;
-    std::vector<DeviceContext> m_deviceInfos = std::vector<DeviceContext>();
+    std::vector<devices::DeviceContext> m_deviceInfos = std::vector<devices::DeviceContext>();
 };
 } // namespace star::core

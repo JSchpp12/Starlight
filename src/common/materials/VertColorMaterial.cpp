@@ -4,21 +4,21 @@ void star::VertColorMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetL
 {
 }
 
-void star::VertColorMaterial::buildDescriptorSet(core::DeviceContext& device, star::StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
+void star::VertColorMaterial::buildDescriptorSet(core::devices::DeviceContext& device, star::StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 {
 
 }
 
-void star::VertColorMaterial::cleanup(core::DeviceContext& device)
+void star::VertColorMaterial::cleanup(core::devices::DeviceContext& device)
 {
 
 }
 
-void star::VertColorMaterial::prep(core::DeviceContext& device)
+void star::VertColorMaterial::prep(core::devices::DeviceContext& device)
 {
 
 }
 
-void star::VertColorMaterial::createDescriptors(star::core::DeviceContext& device, const int& numFramesInFlight)
+void star::VertColorMaterial::createDescriptors(star::core::devices::DeviceContext& device, const int& numFramesInFlight)
 {
 }

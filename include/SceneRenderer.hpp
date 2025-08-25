@@ -1,12 +1,13 @@
 #pragma once
 
+#include "devices/managers/ManagerCommandBuffer.hpp"
+
 #include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
 #include "InteractionSystem.hpp"
 #include "Light.hpp"
 #include "LightBufferObject.hpp"
 #include "LightManager.hpp"
-#include "ManagerCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "ManagerRenderResource.hpp"
 #include "MapManager.hpp"
@@ -37,7 +38,7 @@ class SceneRenderer : public StarRenderer,
   public:
     SceneRenderer(std::shared_ptr<StarScene> scene);
 
-    virtual void prepare(core::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight);
+    virtual void prepare(core::devices::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight);
 
     StarDescriptorSetLayout &getGlobalShaderInfo()
     {
@@ -81,22 +82,22 @@ class SceneRenderer : public StarRenderer,
     std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
     std::vector<std::unique_ptr<StarRenderGroup>> renderGroups = std::vector<std::unique_ptr<StarRenderGroup>>();
 
-    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(core::DeviceContext &device,
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(core::devices::DeviceContext &device,
                                                                                      const int &numFramesInFlight);
 
-    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToDepthImages(core::DeviceContext &device,
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToDepthImages(core::devices::DeviceContext &device,
                                                                                           const int &numFramesInFlight);
 
     /// <summary>
     /// Create vertex buffer + index buffers + any rendering groups for operations
     /// </summary>
-    virtual void createRenderingGroups(core::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+    virtual void createRenderingGroups(core::devices::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                                        const int &numFramesInFlight, StarShaderInfo::Builder builder);
 
-    vk::ImageView createImageView(core::DeviceContext &device, vk::Image image, vk::Format format,
+    vk::ImageView createImageView(core::devices::DeviceContext &device, vk::Image image, vk::Format format,
                                   vk::ImageAspectFlags aspectFlags);
 
-    virtual StarShaderInfo::Builder manualCreateDescriptors(core::DeviceContext &device, const int &numFramesInFlight);
+    virtual StarShaderInfo::Builder manualCreateDescriptors(core::devices::DeviceContext &device, const int &numFramesInFlight);
 
     /// <summary>
     /// Create Vulkan Image object with properties provided in function arguments.
@@ -109,24 +110,24 @@ class SceneRenderer : public StarRenderer,
     /// <param name="properties"></param>
     /// <param name="image"></param>
     /// <param name="imageMemory"></param>
-    virtual void createImage(core::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
+    virtual void createImage(core::devices::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
                              vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
                              vk::Image &image, VmaAllocation &imageMemory);
 
     // Inherited via CommandBufferModifier
-    virtual ManagerCommandBuffer::Request getCommandBufferRequest() = 0; 
+    virtual core::devices::managers::ManagerCommandBuffer::Request getCommandBufferRequest() = 0; 
 
     virtual void prepareForSubmission(const int &frameIndexToBeDrawn);
 
     // Inherited via RenderResourceModifier
-    virtual void initResources(core::DeviceContext &device, const int &numFramesInFlight,
+    virtual void initResources(core::devices::DeviceContext &device, const int &numFramesInFlight,
                                const vk::Extent2D &screensize) override;
 
-    virtual void destroyResources(core::DeviceContext &device) override;
+    virtual void destroyResources(core::devices::DeviceContext &device) override;
 
-    virtual vk::Format getColorAttachmentFormat(star::core::DeviceContext &device) const;
+    virtual vk::Format getColorAttachmentFormat(star::core::devices::DeviceContext &device) const;
 
-    virtual vk::Format getDepthAttachmentFormat(star::core::DeviceContext &device) const;
+    virtual vk::Format getDepthAttachmentFormat(star::core::devices::DeviceContext &device) const;
 
 #pragma region helpers
     vk::Viewport prepareRenderingViewport();
@@ -146,6 +147,6 @@ class SceneRenderer : public StarRenderer,
   private:
     // Inherited via DescriptorModifier
     std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int &numFramesInFlight) override;
-    void createDescriptors(star::core::DeviceContext &device, const int &numFramesInFlight) override;
+    void createDescriptors(star::core::devices::DeviceContext &device, const int &numFramesInFlight) override;
 };
 } // namespace star

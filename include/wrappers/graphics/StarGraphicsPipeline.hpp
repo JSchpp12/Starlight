@@ -37,10 +37,10 @@ public:
 		RenderingTargetInfo renderingInfo;
 	};
 
-	StarGraphicsPipeline(core::DeviceContext& device, PipelineConfigSettings& configSettings, 
+	StarGraphicsPipeline(core::devices::DeviceContext& device, PipelineConfigSettings& configSettings, 
 		StarShader vertShader, StarShader fragShader);
 
-	StarGraphicsPipeline(core::DeviceContext& device, PipelineConfigSettings& configSettings, 
+	StarGraphicsPipeline(core::devices::DeviceContext& device, PipelineConfigSettings& configSettings, 
 		StarShader vertShader, StarShader fragShader, 
 		StarShader geomShader);
 

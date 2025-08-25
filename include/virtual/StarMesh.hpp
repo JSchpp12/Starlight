@@ -42,7 +42,7 @@ class StarMesh
 
     virtual ~StarMesh() = default;
 
-    virtual void prepRender(core::DeviceContext &device);
+    virtual void prepRender(core::devices::DeviceContext &device);
 
     virtual void recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
                                           int &frameInFlightIndex, const uint32_t &instanceCount);

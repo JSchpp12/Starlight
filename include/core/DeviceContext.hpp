@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ManagerCommandBuffer.hpp"
+#include "devices/managers/ManagerCommandBuffer.hpp"
 #include "RenderingSurface.hpp"
 #include "StarDevice.hpp"
 #include "SwapChainSupportDetails.hpp"
@@ -10,14 +10,14 @@
 
 #include <memory>
 
-namespace star::core
+namespace star::core::devices
 {
 class DeviceContext
 {
   public:
     struct ManagerCommandBufferWrapper
     {
-        Handle submit(ManagerCommandBuffer::Request request)
+        Handle submit(devices::managers::ManagerCommandBuffer::Request request)
         {
             return m_manager.submit(m_device, request);
         }
@@ -27,14 +27,14 @@ class DeviceContext
         }
 
         StarDevice &m_device;
-        ManagerCommandBuffer &m_manager;
+        managers::ManagerCommandBuffer &m_manager;
     };
 
     DeviceContext(const uint8_t &numFramesInFlight, RenderingInstance &instance,
                   std::set<Rendering_Features> requiredFeatures, StarWindow &window)
         : m_surface(std::make_shared<RenderingSurface>(instance, window)),
           m_device(StarDevice(window, *m_surface, instance, requiredFeatures)),
-          m_commandBufferManager(std::make_unique<star::ManagerCommandBuffer>(m_device, numFramesInFlight)) {};
+          m_commandBufferManager(std::make_unique<managers::ManagerCommandBuffer>(m_device, numFramesInFlight)) {};
 
     ~DeviceContext()
     {
@@ -83,6 +83,6 @@ class DeviceContext
     std::shared_ptr<RenderingSurface> m_surface = nullptr;
     StarDevice m_device;
     job::TaskManager m_manager;
-    std::unique_ptr<ManagerCommandBuffer> m_commandBufferManager = nullptr;
+    std::unique_ptr<managers::ManagerCommandBuffer> m_commandBufferManager = nullptr;
 };
 } // namespace star::core

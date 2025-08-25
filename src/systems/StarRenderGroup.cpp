@@ -1,7 +1,7 @@
 #include "StarRenderGroup.hpp"
 
 namespace star {
-StarRenderGroup::StarRenderGroup(core::DeviceContext& device, size_t numSwapChainImages, 
+StarRenderGroup::StarRenderGroup(core::devices::DeviceContext& device, size_t numSwapChainImages, 
 	vk::Extent2D swapChainExtent, StarObject& baseObject)
 	: device(device),numSwapChainImages(numSwapChainImages), swapChainExtent(swapChainExtent)
 {
@@ -199,7 +199,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::StarRenderGroup::get
 {
 	return std::vector<std::pair<vk::DescriptorType, const int>>();
 }
-void star::StarRenderGroup::createDescriptors(star::core::DeviceContext& device, const int& numFramesInFlight)
+void star::StarRenderGroup::createDescriptors(star::core::devices::DeviceContext& device, const int& numFramesInFlight)
 {
 }
 }

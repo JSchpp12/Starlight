@@ -1,6 +1,6 @@
 #include "StarMesh.hpp"
 
-void star::StarMesh::prepRender(star::core::DeviceContext &device)
+void star::StarMesh::prepRender(star::core::devices::DeviceContext &device)
 {
     this->material->prepRender(device);
 }

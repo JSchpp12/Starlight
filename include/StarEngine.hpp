@@ -4,7 +4,7 @@
 #include "StarScene.hpp"
 #include "StarWindow.hpp"
 #include "TransferWorker.hpp"
-#include "DeviceManager.hpp"
+#include "core/SystemContext.hpp"
 
 #include <memory>
 #include <string>
@@ -24,7 +24,7 @@ class StarEngine
   protected:
     uint64_t frameCounter = 0;
     std::unique_ptr<StarWindow> window = nullptr;
-    core::DeviceManager deviceManager; 
+    core::SystemContext deviceManager; 
     std::unique_ptr<StarApplication> application = nullptr; 
     std::shared_ptr<SwapChainRenderer> mainRenderer = nullptr;
     std::unique_ptr<TransferWorker> transferWorker = nullptr;

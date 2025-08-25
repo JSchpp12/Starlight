@@ -102,7 +102,7 @@ void StarEngine::run()
 {
     int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
-    ManagerDescriptorPool descriptorManager(deviceManager.getContext(), framesInFlight);
+    core::devices::managers::ManagerDescriptorPool descriptorManager(deviceManager.getContext(), framesInFlight);
     RenderResourceSystem::init(deviceManager.getContext(), framesInFlight, this->window->getExtent());
 
     // prepare any shared resources

@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
 
-namespace star
+namespace star::core::devices::managers
 {
 class ManagerCommandBuffer
 {
