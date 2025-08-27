@@ -2,13 +2,13 @@
 
 namespace star {
 
-StarGraphicsPipeline::StarGraphicsPipeline(core::devices::DeviceContext& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader)
+StarGraphicsPipeline::StarGraphicsPipeline(core::device::DeviceContext& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader)
 	: StarPipeline(device), configSettings(configSettings), vertShader(vertShader), fragShader(fragShader)
 {
 	this->hash = vertShader.getPath() + fragShader.getPath(); 
 }
 
-StarGraphicsPipeline::StarGraphicsPipeline(core::devices::DeviceContext& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader, StarShader geomShader)
+StarGraphicsPipeline::StarGraphicsPipeline(core::device::DeviceContext& device, PipelineConfigSettings& configSettings, StarShader vertShader, StarShader fragShader, StarShader geomShader)
 	: StarPipeline(device), configSettings(configSettings), vertShader(vertShader), fragShader(fragShader), geomShader(geomShader)
 {
 	this->hash = vertShader.getPath() + fragShader.getPath() + this->geomShader.value().getPath(); 

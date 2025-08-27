@@ -6,7 +6,7 @@
 #include "ManagerController_RenderResource_Texture.hpp"
 #include "ManagerStorageContainer.hpp"
 #include "StarBuffers/Buffer.hpp"
-#include "devices/StarDevice.hpp"
+#include "device/StarDevice.hpp"
 #include "StarManager.hpp"
 #include "TransferRequest_Memory.hpp"
 
@@ -42,7 +42,7 @@ class ManagerRenderResource : public StarManager
         }
     };
 
-    static void init(core::devices::StarDevice &device, TransferWorker &worker, const int &totalNumFramesInFlight);
+    static void init(core::device::StarDevice &device, job::TransferWorker &worker, const int &totalNumFramesInFlight);
 
     static Handle addRequest(std::unique_ptr<ManagerController::RenderResource::Buffer> newRequest,
                              const bool &isHighPriority = false);
@@ -68,7 +68,7 @@ class ManagerRenderResource : public StarManager
 
     static void destroy(const Handle &handle);
 
-    static void cleanup(core::devices::StarDevice &device);
+    static void cleanup(core::device::StarDevice &device);
 
   protected:
     static std::unique_ptr<ManagerStorageContainer<FinalizedRenderRequest>> bufferStorage;

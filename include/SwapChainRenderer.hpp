@@ -12,13 +12,13 @@ namespace star
 class SwapChainRenderer : public SceneRenderer
 {
   public:
-    SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window, core::devices::DeviceContext &device, const uint8_t &numFramesInFlight);
+    SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window, core::device::DeviceContext &device, const uint8_t &numFramesInFlight);
 
     SwapChainRenderer(const SwapChainRenderer &other) = delete; 
 
     virtual ~SwapChainRenderer();
 
-    virtual void prepare(core::devices::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+    virtual void prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                          const int &numFramesInFlight) override;
 
     void submitPresentation(const int &frameIndexToBeDrawn, const vk::Semaphore *mainGraphicsDoneSemaphore);
@@ -47,7 +47,7 @@ class SwapChainRenderer : public SceneRenderer
 
   protected:
     const StarWindow &window;
-    core::devices::DeviceContext &device;
+    core::device::DeviceContext &device;
 
     // tracker for which frame is being processed of the available permitted frames
     uint8_t currentFrameInFlightCounter = 0, previousFrame = 0, numFramesInFlight = 0;
@@ -68,14 +68,14 @@ class SwapChainRenderer : public SceneRenderer
     std::vector<vk::Semaphore> imageAvailableSemaphores;
     std::vector<vk::Semaphore> imageAcquireSemaphores;
 
-    virtual star::core::devices::managers::ManagerCommandBuffer::Request getCommandBufferRequest() override;  
+    virtual star::core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() override;  
 
     // std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer = nullptr;
     std::unique_ptr<std::string> screenshotPath = nullptr;
 
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) const;
 
-    vk::Format getColorAttachmentFormat(core::devices::DeviceContext &context) const override;
+    vk::Format getColorAttachmentFormat(core::device::DeviceContext &context) const override;
 
     // Look through givent present modes and pick the "best" one
     vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR> &availablePresentModes);
@@ -87,7 +87,7 @@ class SwapChainRenderer : public SceneRenderer
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
                                std::vector<vk::Semaphore> mustWaitFor);
 
-    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(core::devices::DeviceContext &device,
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(core::device::DeviceContext &device,
                                                                            const int &numFramesInFlight) override;
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(
@@ -105,7 +105,7 @@ class SwapChainRenderer : public SceneRenderer
     /// <summary>
     /// Create semaphores that are going to be used to sync rendering and presentation queues
     /// </summary>
-    static std::vector<vk::Semaphore> CreateSemaphores(core::devices::DeviceContext &device, const int &numToCreate);
+    static std::vector<vk::Semaphore> CreateSemaphores(core::device::DeviceContext &device, const int &numToCreate);
 
     /// <summary>
     /// Fences are needed for CPU-GPU sync. Creates these required objects

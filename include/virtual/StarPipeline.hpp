@@ -19,11 +19,11 @@ namespace star {
 		bool areResourcesReady(); 
 
 	protected:
-		core::devices::DeviceContext& device; 
+		core::device::DeviceContext& device; 
 		vk::Pipeline pipeline;
 		std::string hash; //this is simply the paths of all shaders in this pipeline concated together
 
-		StarPipeline(core::devices::DeviceContext& device) : device(device) {};
+		StarPipeline(core::device::DeviceContext& device) : device(device) {};
 
 		virtual vk::Pipeline buildPipeline()=0;
 

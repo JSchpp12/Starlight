@@ -25,7 +25,7 @@ class DescriptorModifier
     virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
         const int &numFramesInFlight) = 0;
 
-    virtual void createDescriptors(core::devices::DeviceContext &device, const int &numFramesInFlight) = 0;
+    virtual void createDescriptors(core::device::DeviceContext &device, const int &numFramesInFlight) = 0;
 
   private:
     void submitToManager();

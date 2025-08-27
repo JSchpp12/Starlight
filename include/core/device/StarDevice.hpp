@@ -20,7 +20,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace star::core::devices
+namespace star::core::device
 {
 
 class QueueFamilyIndicies

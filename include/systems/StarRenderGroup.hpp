@@ -30,7 +30,7 @@ namespace star {
 	class StarRenderGroup : private DescriptorModifier {
 	public:
 
-		StarRenderGroup(core::devices::DeviceContext& device, size_t numSwapChainImages,
+		StarRenderGroup(core::device::DeviceContext& device, size_t numSwapChainImages,
 			vk::Extent2D swapChainExtent, StarObject& baseObject); 
 
 		//no copy
@@ -87,7 +87,7 @@ namespace star {
 			Group(RenderObjectInfo baseObject) : baseObject(baseObject) {}
 		};
 
-		core::devices::DeviceContext& device;
+		core::device::DeviceContext& device;
 		int numSwapChainImages = 0;
 		int numObjects = 0; 
 		int numMeshes = 0; 
@@ -110,6 +110,6 @@ namespace star {
 
 		// Inherited via DescriptorModifier
 		std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
-		void createDescriptors(star::core::devices::DeviceContext& device, const int& numFramesInFlight) override;
+		void createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight) override;
 	};
 }

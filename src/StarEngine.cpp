@@ -2,7 +2,6 @@
 #include "ConfigFile.hpp"
 #include "Enums.hpp"
 #include "ManagerDescriptorPool.hpp"
-#include "ManagerRenderResource.hpp"
 #include "RenderResourceSystem.hpp"
 #include "RenderingInstance.hpp"
 #include "StarCommandBuffer.hpp"
@@ -79,12 +78,7 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
                 }
             }
         }
-
-        this->transferWorker = std::make_unique<TransferWorker>(
-            deviceManager.getContext().getDevice(), this->OVERRIDE_APPLY_SINGLE_THREAD_MODE, transferWorkerQueues);
     }
-
-    StarManager::init(deviceManager.getContext().getDevice(), *this->transferWorker);
 
     this->application->init(deviceManager.getContext(), *this->window, framesInFlight);
 
@@ -93,7 +87,6 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
 
 StarEngine::~StarEngine()
 {
-    ManagerRenderResource::cleanup(deviceManager.getContext().getDevice());
     RenderResourceSystem::cleanup(deviceManager.getContext());
     StarObject::cleanupSharedResources(deviceManager.getContext());
 }
@@ -102,7 +95,7 @@ void StarEngine::run()
 {
     int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
 
-    core::devices::managers::ManagerDescriptorPool descriptorManager(deviceManager.getContext(), framesInFlight);
+    core::device::managers::ManagerDescriptorPool descriptorManager(deviceManager.getContext(), framesInFlight);
     RenderResourceSystem::init(deviceManager.getContext(), framesInFlight, this->window->getExtent());
 
     // prepare any shared resources
@@ -121,10 +114,11 @@ void StarEngine::run()
 
         this->mainRenderer->pollEvents();
         InteractionSystem::callWorldUpdates(frameInFlightIndex);
-        ManagerRenderResource::update(frameInFlightIndex);
+        ManagerRenderResource::update(frameInFlightIndex); 
+        // ManagerRenderResource::update(frameInFlightIndex);
         vk::Semaphore allBuffersSubmitted = deviceManager.getContext().getManagerCommandBuffer().update(frameInFlightIndex);
         this->mainRenderer->submitPresentation(frameInFlightIndex, &allBuffersSubmitted);
-        this->transferWorker->update();
+        this->deviceManager.getContext().getTransferWorker().update();
 
         frameCounter++; 
     }

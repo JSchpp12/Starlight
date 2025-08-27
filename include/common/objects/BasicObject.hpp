@@ -21,6 +21,13 @@ namespace star {
 		virtual ~BasicObject() = default;
 
 		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
+
+		virtual void prepRender(star::core::device::DeviceContext& context, vk::Extent2D swapChainExtent,
+			vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo, int numSwapChainImages, 
+			StarShaderInfo::Builder fullEngineBuilder) override; 
+
+		virtual void prepRender(star::core::device::DeviceContext& context, int numSwapChainImages, 
+			StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder) override;
 	protected:
 		std::string filePath = "";
 
@@ -29,12 +36,10 @@ namespace star {
 
 		Handle primaryVertBuffer, primaryIndbuffer;
 
-		BasicObject(std::string objectFilePath) : objectFilePath(objectFilePath) {
-			loadMesh();
-		};
+		BasicObject(std::string objectFilePath) : objectFilePath(objectFilePath){}
 
 		std::string objectFilePath;
 		
-		void loadMesh(); 
+		void loadMesh(core::device::DeviceContext &context); 
 	};
 }

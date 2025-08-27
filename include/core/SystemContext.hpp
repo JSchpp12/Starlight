@@ -17,7 +17,7 @@ class SystemContext
     void createDevice(const uint64_t &frameIndex, const uint8_t &numOfFramesInFlight, std::set<star::Rendering_Features> requiredFeatures,
                       StarWindow &window);
 
-    devices::DeviceContext &getContext()
+    device::DeviceContext &getContext()
     {
         assert(m_deviceInfos.size() > 0 && "No devices have been added to the manager yet");
 
@@ -30,6 +30,6 @@ class SystemContext
 
   private:
     RenderingInstance m_instance;
-    std::vector<devices::DeviceContext> m_deviceInfos = std::vector<devices::DeviceContext>();
+    std::vector<device::DeviceContext> m_deviceInfos = std::vector<device::DeviceContext>();
 };
 } // namespace star::core

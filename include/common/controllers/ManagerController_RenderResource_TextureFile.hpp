@@ -14,7 +14,7 @@ namespace star::ManagerController::RenderResource{
         public:
         TextureFile(const std::string& nFilePath);
 
-        virtual std::unique_ptr<TransferRequest::Texture> createTransferRequest(core::devices::StarDevice &device) override; 
+        virtual std::unique_ptr<TransferRequest::Texture> createTransferRequest(core::device::StarDevice &device) override; 
 
         protected:
         bool isCompressedTexture; 

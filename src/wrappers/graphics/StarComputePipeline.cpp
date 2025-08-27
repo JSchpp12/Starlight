@@ -1,6 +1,6 @@
 #include "StarComputePipeline.hpp"
 
-star::StarComputePipeline::StarComputePipeline(core::devices::DeviceContext& device, vk::PipelineLayout& pipelineLayout, 
+star::StarComputePipeline::StarComputePipeline(core::device::DeviceContext& device, vk::PipelineLayout& pipelineLayout, 
 	StarShader inCompShader) : compShader(inCompShader), pipelineLayout(pipelineLayout), StarPipeline(device)
 {
 }

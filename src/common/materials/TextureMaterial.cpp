@@ -2,7 +2,7 @@
 
 #include "StarShaderInfo.hpp"
 
-void star::TextureMaterial::initResources(core::devices::DeviceContext& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
+void star::TextureMaterial::initResources(core::device::DeviceContext& device, const int& numFramesInFlight, const vk::Extent2D& screensize)
 {
 
 }
@@ -12,16 +12,16 @@ void star::TextureMaterial::applyDescriptorSetLayouts(star::StarDescriptorSetLay
 	constBuilder.addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 }
 
-void star::TextureMaterial::cleanup(core::devices::DeviceContext& device)
+void star::TextureMaterial::cleanup(core::device::DeviceContext& device)
 {
 
 }
 
-void star::TextureMaterial::prep(core::devices::DeviceContext& device){
+void star::TextureMaterial::prep(core::device::DeviceContext& device){
 	
 }
 
-void star::TextureMaterial::buildDescriptorSet(core::devices::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
+void star::TextureMaterial::buildDescriptorSet(core::device::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 {
 	builder.startSet();
 	builder.add(this->texture, vk::ImageLayout::eShaderReadOnlyOptimal, true); 
@@ -34,6 +34,6 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::get
 	};
 }
 
-void star::TextureMaterial::createDescriptors(star::core::devices::DeviceContext& device, const int& numFramesInFlight)
+void star::TextureMaterial::createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight)
 {
 }

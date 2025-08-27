@@ -1,20 +1,20 @@
-#include "devices/managers/ManagerCommandBuffer.hpp"
+#include "device/managers/ManagerCommandBuffer.hpp"
 
 #include "tasks/TaskFactory.hpp"
 
-std::stack<star::Handle> star::core::devices::managers::ManagerCommandBuffer::dynamicBuffersToSubmit = std::stack<star::Handle>();
+std::stack<star::Handle> star::core::device::managers::ManagerCommandBuffer::dynamicBuffersToSubmit = std::stack<star::Handle>();
 
-star::core::devices::managers::ManagerCommandBuffer::ManagerCommandBuffer(StarDevice &device, const uint8_t &numFramesInFlight)
+star::core::device::managers::ManagerCommandBuffer::ManagerCommandBuffer(StarDevice &device, const uint8_t &numFramesInFlight)
     : numFramesInFlight(numFramesInFlight), buffers(numFramesInFlight, device)
 {
 }
 
-void star::core::devices::managers::ManagerCommandBuffer::cleanup(StarDevice &device)
+void star::core::device::managers::ManagerCommandBuffer::cleanup(StarDevice &device)
 {
     buffers.cleanup(device);
 }
 
-star::Handle star::core::devices::managers::ManagerCommandBuffer::submit(StarDevice &device, Request request)
+star::Handle star::core::device::managers::ManagerCommandBuffer::submit(StarDevice &device, Request request)
 {
     star::Handle newHandle = this->buffers.add(
         std::make_unique<CommandBufferContainer::CompleteRequest>(
@@ -23,8 +23,8 @@ star::Handle star::core::devices::managers::ManagerCommandBuffer::submit(StarDev
                                                 device.getCommandPool(request.type), request.type,
                                                 !request.overrideBufferSubmissionCallback.has_value(), true),
             request.type, request.recordOnce, request.waitStage, request.order, request.beforeBufferSubmissionCallback,
-            request.overrideBufferSubmissionCallback),
-        request.willBeSubmittedEachFrame, request.type, request.order,
+            request.overrideBufferSubmissionCallback), request.willBeSubmittedEachFrame,
+        request.type, request.order,
         static_cast<Command_Buffer_Order_Index>(request.orderIndex));
 
     if (request.type == Queue_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
@@ -43,23 +43,23 @@ star::Handle star::core::devices::managers::ManagerCommandBuffer::submit(StarDev
     return newHandle;
 }
 
-void star::core::devices::managers::ManagerCommandBuffer::submitDynamicBuffer(Handle bufferHandle)
+void star::core::device::managers::ManagerCommandBuffer::submitDynamicBuffer(Handle bufferHandle)
 {
     ManagerCommandBuffer::dynamicBuffersToSubmit.push(bufferHandle);
 }
 
-vk::Semaphore star::core::devices::managers::ManagerCommandBuffer::update(StarDevice &device, const int &frameIndexToBeDrawn)
+vk::Semaphore star::core::device::managers::ManagerCommandBuffer::update(StarDevice &device, const int &frameIndexToBeDrawn)
 {
     handleDynamicBufferRequests();
 
     return submitCommandBuffers(device, frameIndexToBeDrawn);
 }
 
-void star::core::devices::managers::ManagerCommandBuffer::callPreRecordFunctions(const uint8_t &frameInFlightIndex)
+void star::core::device::managers::ManagerCommandBuffer::callPreRecordFunctions(const uint8_t &frameInFlightIndex)
 {
 }
 
-vk::Semaphore star::core::devices::managers::ManagerCommandBuffer::submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex)
+vk::Semaphore star::core::device::managers::ManagerCommandBuffer::submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex)
 {
     // determine the order of buffers to execute
     assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- cannot happen");
@@ -110,7 +110,7 @@ vk::Semaphore star::core::devices::managers::ManagerCommandBuffer::submitCommand
         return finalSubmissionSemaphores[0];
 }
 
-void star::core::devices::managers::ManagerCommandBuffer::handleDynamicBufferRequests()
+void star::core::device::managers::ManagerCommandBuffer::handleDynamicBufferRequests()
 {
     while (!ManagerCommandBuffer::dynamicBuffersToSubmit.empty())
     {

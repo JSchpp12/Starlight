@@ -3,7 +3,7 @@
 #include "Handle.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "StarCommandBuffer.hpp"
-#include "devices/StarDevice.hpp"
+#include "device/StarDevice.hpp"
 
 #include "internals/CommandBufferContainer.hpp"
 
@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
 
-namespace star::core::devices::managers
+namespace star::core::device::managers
 {
 class ManagerCommandBuffer
 {

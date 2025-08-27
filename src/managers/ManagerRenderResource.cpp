@@ -1,4 +1,4 @@
-#include "ManagerRenderResource.hpp"
+#include "managers/ManagerRenderResource.hpp"
 
 std::set<boost::atomic<bool> *> star::ManagerRenderResource::highPriorityRequestCompleteFlags =
     std::set<boost::atomic<bool> *>();
@@ -6,7 +6,7 @@ std::unique_ptr<star::ManagerStorageContainer<star::ManagerRenderResource::Final
     star::ManagerRenderResource::bufferStorage =
         std::make_unique<star::ManagerStorageContainer<star::ManagerRenderResource::FinalizedRenderRequest>>();
 
-void star::ManagerRenderResource::init(star::core::devices::StarDevice &device, star::TransferWorker &worker,
+void star::ManagerRenderResource::init(star::core::device::StarDevice &device, star::job::TransferWorker &worker,
                                        const int &numFramesInFlight)
 {
     assert(managerDevice == nullptr && "Init function should only be called once");
@@ -177,7 +177,7 @@ void star::ManagerRenderResource::destroy(const star::Handle &handle)
     bufferStorage->destroy(handle);
 }
 
-void star::ManagerRenderResource::cleanup(core::devices::StarDevice &device)
+void star::ManagerRenderResource::cleanup(core::device::StarDevice &device)
 {
     bufferStorage.reset();
 }

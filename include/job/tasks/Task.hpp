@@ -3,7 +3,6 @@
 #include "TaskTracker.hpp"
 #include "complete_tasks/CompleteTask.hpp"
 
-
 #include "boost/atomic/atomic.hpp"
 
 #include <stdexcept>
@@ -91,6 +90,7 @@ class Task
             task.m_executeFunction = m_executeFunction;
             task.m_destroyPayloadFunction = m_destroyPayloadFunction;
             task.m_movePayloadFunction = m_movePayloadFunction;
+            task.m_createCompleteFunction = m_createCompleteTaskFunction;
 
             return task;
         }

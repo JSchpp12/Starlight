@@ -34,6 +34,10 @@ struct CommandBufferSubmitPayload
     uint8_t frameInFlightIndex = 0; 
 };
 
+struct TextureTransferPayload{
+
+};
+
 struct ImageWritePayload
 {
     std::string fileName;

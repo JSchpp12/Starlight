@@ -12,7 +12,7 @@ class Texture : public star::ManagerController::Controller<TransferRequest::Text
         Texture(const uint8_t& frameInFlightIndexToUpdateOn)
             : star::ManagerController::Controller<TransferRequest::Texture>(frameInFlightIndexToUpdateOn){}
 
-        virtual std::unique_ptr<TransferRequest::Texture> createTransferRequest(core::devices::StarDevice& device) override = 0;
+        virtual std::unique_ptr<TransferRequest::Texture> createTransferRequest(core::device::StarDevice& device) override = 0;
 
         protected:
 

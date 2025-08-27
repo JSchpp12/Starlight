@@ -1,10 +1,10 @@
-#include "TransferWorker.hpp"
+#include "job/TransferWorker.hpp"
 
 #include "CastHelpers.hpp"
 
 #include <thread>
 
-star::TransferManagerThread::~TransferManagerThread()
+star::job::TransferManagerThread::~TransferManagerThread()
 {
     if (this->thread.joinable())
     {
@@ -12,11 +12,11 @@ star::TransferManagerThread::~TransferManagerThread()
     }
 }
 
-void star::TransferManagerThread::startAsync()
+void star::job::TransferManagerThread::startAsync()
 {
     this->shouldRun.store(true);
-    this->thread = boost::thread(TransferManagerThread::mainLoop,
-                                 SubThreadInfo(&this->shouldRun, this->device.getVulkanDevice(), this->myQueue,
+    this->thread = boost::thread(job::TransferManagerThread::mainLoop,
+                                 job::TransferManagerThread::SubThreadInfo(&this->shouldRun, this->device.getVulkanDevice(), this->myQueue,
                                                this->device.getAllocator().get(), this->deviceProperties,
                                                &this->requestQueues, this->allTransferQueueFamilyIndicesInUse));
 
@@ -24,7 +24,7 @@ void star::TransferManagerThread::startAsync()
         throw std::runtime_error("Failed to launch transfer thread");
 }
 
-void star::TransferManagerThread::stopAsync()
+void star::job::TransferManagerThread::stopAsync()
 {
     this->shouldRun.store(false);
 
@@ -32,7 +32,7 @@ void star::TransferManagerThread::stopAsync()
     this->thread.join();
 }
 
-void star::TransferManagerThread::mainLoop(TransferManagerThread::SubThreadInfo myInfo)
+void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubThreadInfo myInfo)
 {
     std::cout << "Transfer thread started..." << std::endl;
     std::queue<std::unique_ptr<ProcessRequestInfo>> processRequestInfos =
@@ -113,14 +113,14 @@ void star::TransferManagerThread::mainLoop(TransferManagerThread::SubThreadInfo 
     }
 }
 
-std::unique_ptr<star::TransferManagerThread::ProcessRequestInfo> star::TransferManagerThread::CreateProcessingInfo(
+std::unique_ptr<star::job::TransferManagerThread::ProcessRequestInfo> star::job::TransferManagerThread::CreateProcessingInfo(
     vk::Device &device, std::shared_ptr<star::StarCommandPool> commandPool)
 {
     return std::make_unique<ProcessRequestInfo>(
         std::make_unique<StarCommandBuffer>(device, 1, commandPool, star::Queue_Type::Ttransfer, true, false));
 }
 
-void star::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
                                                const vk::PhysicalDeviceProperties &deviceProperties,
                                                const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                                ProcessRequestInfo &processInfo,
@@ -150,7 +150,7 @@ void star::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain);
 }
 
-void star::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
                                                 const vk::PhysicalDeviceProperties &deviceProperties,
                                                 const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                                 ProcessRequestInfo &processInfo,
@@ -185,7 +185,7 @@ void star::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllocator
     processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain);
 }
 
-void star::TransferManagerThread::CheckForCleanups(vk::Device &device,
+void star::job::TransferManagerThread::CheckForCleanups(vk::Device &device,
                                                    std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos)
 {
     std::queue<std::unique_ptr<ProcessRequestInfo>> readyInfos = std::queue<std::unique_ptr<ProcessRequestInfo>>();
@@ -220,7 +220,7 @@ void star::TransferManagerThread::CheckForCleanups(vk::Device &device,
     }
 }
 
-void star::TransferManagerThread::EnsureInfoReady(vk::Device &device, ProcessRequestInfo &info)
+void star::job::TransferManagerThread::EnsureInfoReady(vk::Device &device, ProcessRequestInfo &info)
 {
     if (!info.isMarkedAsAvailable())
     {
@@ -233,8 +233,8 @@ void star::TransferManagerThread::EnsureInfoReady(vk::Device &device, ProcessReq
     }
 }
 
-star::TransferManagerThread::TransferManagerThread(
-    star::core::devices::StarDevice &device, std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
+star::job::TransferManagerThread::TransferManagerThread(
+    star::core::device::StarDevice &device, std::vector<boost::lockfree::stack<star::job::TransferManagerThread::InterThreadRequest *> *> requestQueues,
     const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse)
     : device(device), requestQueues(requestQueues), deviceProperties(deviceProperties), myQueue(myQueue),
@@ -242,13 +242,7 @@ star::TransferManagerThread::TransferManagerThread(
 {
 }
 
-void star::TransferManagerThread::cleanup()
-{
-    // if (this->thread.joinable())
-    //     checkForCleanups(this->device.getDevice(), this->inProcessRequests);
-}
-
-star::TransferWorker::~TransferWorker()
+star::job::TransferWorker::~TransferWorker()
 {
     for (auto &thread : this->threads)
     {
@@ -256,7 +250,7 @@ star::TransferWorker::~TransferWorker()
     }
 }
 
-star::TransferWorker::TransferWorker(star::core::devices::StarDevice &device, bool overrideToSingleThreadMode,
+star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device, bool overrideToSingleThreadMode,
                                      std::vector<StarQueue> &queuesToUse)
 {
     bool runAsync = !overrideToSingleThreadMode;
@@ -270,35 +264,35 @@ star::TransferWorker::TransferWorker(star::core::devices::StarDevice &device, bo
         thread->startAsync();
 }
 
-void star::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
+void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
                                std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
                                std::unique_ptr<star::StarBuffers::Buffer> &resultingBuffer, const bool &isHighPriority)
 {
-    auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(
+    auto newRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
         &isBeingWorkedOnByTransferThread, std::move(newBufferRequest), resultingBuffer);
 
     insertRequest(std::move(newRequest), isHighPriority);
 }
 
-void star::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
+void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
                                std::unique_ptr<star::TransferRequest::Texture> newTextureRequest,
                                std::unique_ptr<StarTextures::Texture> &resultingTexture, const bool &isHighPriority)
 {
-    auto newRequest = std::make_unique<TransferManagerThread::InterThreadRequest>(
+    auto newRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
         &isBeingWorkedOnByTransferThread, std::move(newTextureRequest), resultingTexture);
 
     insertRequest(std::move(newRequest), isHighPriority);
 }
 
-void star::TransferWorker::update()
+void star::job::TransferWorker::update()
 {
     for (auto &thread : this->threads)
     {
-        thread->cleanup();
+        // thread->cleanup();
     }
 }
 
-void star::TransferWorker::insertRequest(std::unique_ptr<TransferManagerThread::InterThreadRequest> newRequest,
+void star::job::TransferWorker::insertRequest(std::unique_ptr<job::TransferManagerThread::InterThreadRequest> newRequest,
                                          const bool &isHighPriority)
 {
     this->requests.push_back(std::move(newRequest));
@@ -313,38 +307,10 @@ void star::TransferWorker::insertRequest(std::unique_ptr<TransferManagerThread::
     }
 }
 
-// void star::TransferWorker::checkForCleanups()
-// {
-//     bool fullCleanupAvailable = true;
-//     for (int i = 0; i < this->requests.size(); i++)
-//     {
-//         if (this->requests[i])
-//         {
-//             fullCleanupAvailable = false;
-
-//             {
-//                 boost::unique_lock<boost::mutex> lock;
-//                 vk::Fence *fence = nullptr;
-//                 this->requests[i]->completeFence->giveMeResource(lock, fence);
-
-//                 if (this->device.getDevice().getFenceStatus(*fence) == vk::Result::eSuccess)
-//                 {
-//                     this->requests[i].reset();
-//                 }
-//             }
-//         }
-//     }
-
-//     if (fullCleanupAvailable)
-//     {
-//         this->requests = std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>>();
-//     }
-// }
-
-std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::CreateThreads(
-        core::devices::StarDevice &device, const std::vector<StarQueue> queuesToUse,
-        boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &highPriorityQueue,
-        boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &standardQueue)
+std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::TransferWorker::CreateThreads(
+        core::device::StarDevice &device, const std::vector<StarQueue> queuesToUse,
+        boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> &highPriorityQueue,
+        boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> &standardQueue)
 {
     std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
 
@@ -363,8 +329,8 @@ std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::
 
     int curNumHighThreads = 0;
     int curNumStandardThreads = 0;
-    std::vector<std::unique_ptr<TransferManagerThread>> newThreads =
-        std::vector<std::unique_ptr<TransferManagerThread>>();
+    std::vector<std::unique_ptr<job::TransferManagerThread>> newThreads =
+        std::vector<std::unique_ptr<job::TransferManagerThread>>();
 
     for (const auto &queue : queuesToUse)
     {
@@ -372,18 +338,18 @@ std::vector<std::unique_ptr<star::TransferManagerThread>> star::TransferWorker::
 
         if (curNumHighThreads > curNumStandardThreads)
         {
-            newThreads.emplace_back(std::make_unique<TransferManagerThread>(
+            newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
                 device,
-                std::vector<boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> *>{&standardQueue},
+                std::vector<boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> *>{&standardQueue},
                 device.getPhysicalDevice().getProperties(), queue, allTransferQueueFamilyIndicesInUse));
 
             curNumStandardThreads++;
         }
         else
         {
-            newThreads.emplace_back(std::make_unique<TransferManagerThread>(
+            newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
                 device,
-                std::vector<boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> *>{&highPriorityQueue},
+                std::vector<boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> *>{&highPriorityQueue},
                 device.getPhysicalDevice().getProperties(), queue, allTransferQueueFamilyIndicesInUse));
             curNumHighThreads++;
         }

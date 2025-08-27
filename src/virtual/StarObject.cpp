@@ -13,11 +13,7 @@ std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::boundDescriptor
 vk::PipelineLayout star::StarObject::boundPipelineLayout = vk::PipelineLayout{}; 
 std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::boundBoxPipeline = std::unique_ptr<star::StarGraphicsPipeline>(); 
 
-star::StarObject::StarObject(){
-
-}
-
-void star::StarObject::initSharedResources(core::devices::DeviceContext& device, vk::Extent2D swapChainExtent, int numSwapChainImages, 
+void star::StarObject::initSharedResources(core::device::DeviceContext& device, vk::Extent2D swapChainExtent, int numSwapChainImages, 
 	StarDescriptorSetLayout& globalDescriptors, RenderingTargetInfo renderingInfo)
 {
 	std::string mediaPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory);
@@ -103,7 +99,7 @@ void star::StarObject::initSharedResources(core::devices::DeviceContext& device,
 	}
 }
 
-void star::StarObject::cleanupSharedResources(core::devices::DeviceContext& device)
+void star::StarObject::cleanupSharedResources(core::device::DeviceContext& device)
 {
 	instanceDescriptorLayout.reset(); 
 	device.getDevice().getVulkanDevice().destroyPipelineLayout(extrusionPipelineLayout);
@@ -115,7 +111,7 @@ void star::StarObject::cleanupSharedResources(core::devices::DeviceContext& devi
 	StarObject::boundBoxPipeline.reset(); 
 }
 
-void star::StarObject::cleanupRender(core::devices::DeviceContext& device)
+void star::StarObject::cleanupRender(core::device::DeviceContext& device)
 {
 	this->normalExtrusionPipeline.reset(); 
 
@@ -131,7 +127,7 @@ void star::StarObject::cleanupRender(core::devices::DeviceContext& device)
 		this->pipeline.reset(); 
 }
 
-std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(core::devices::DeviceContext& device, vk::Extent2D swapChainExtent, 
+std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(core::device::DeviceContext& device, vk::Extent2D swapChainExtent, 
 	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo)
 {
 	StarGraphicsPipeline::PipelineConfigSettings settings;
@@ -144,7 +140,7 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(core::device
 	return std::move(newPipeline);
 }
 
-void star::StarObject::prepRender(star::core::devices::DeviceContext& device, vk::Extent2D swapChainExtent,
+void star::StarObject::prepRender(star::core::device::DeviceContext& context, vk::Extent2D swapChainExtent,
 	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo, int numSwapChainImages, 
 	star::StarShaderInfo::Builder fullEngineBuilder)
 {
@@ -159,13 +155,13 @@ void star::StarObject::prepRender(star::core::devices::DeviceContext& device, vk
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
 	//handle pipeline infos
-	this->pipeline = this->buildPipeline(device, swapChainExtent, pipelineLayout, renderInfo);
+	this->pipeline = this->buildPipeline(context, swapChainExtent, pipelineLayout, renderInfo);
 
-	createInstanceBuffers(device, numSwapChainImages); 
-	prepareMeshes(device); 
+	createInstanceBuffers(context, numSwapChainImages); 
+	prepareMeshes(context); 
 }
 
-void star::StarObject::prepRender(star::core::devices::DeviceContext& device, int numSwapChainImages, StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
+void star::StarObject::prepRender(star::core::device::DeviceContext& context, int numSwapChainImages, StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
 {
 	std::vector<Vertex> bbVerts;
 	std::vector<uint32_t> bbInds;
@@ -179,8 +175,8 @@ void star::StarObject::prepRender(star::core::devices::DeviceContext& device, in
 
 	this->sharedPipeline = &sharedPipeline;
 
-	createInstanceBuffers(device, numSwapChainImages);
-	prepareMeshes(device); 
+	createInstanceBuffers(context, numSwapChainImages);
+	prepareMeshes(context); 
 }
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout,
@@ -218,7 +214,7 @@ void star::StarObject::prepDraw(int swapChainTarget)
 
 }
 
-std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::getDescriptorSetLayouts(core::devices::DeviceContext& device)
+std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::getDescriptorSetLayouts(core::device::DeviceContext& device)
 {
 	auto allSets = std::vector<std::shared_ptr<star::StarDescriptorSetLayout>>(); 
 	auto staticSetBuilder = StarDescriptorSetLayout::Builder(device.getDevice());
@@ -238,14 +234,14 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
 	return allSets; 
 }
 
-void star::StarObject::prepareMeshes(star::core::devices::DeviceContext& device)
+void star::StarObject::prepareMeshes(star::core::device::DeviceContext& device)
 {
 	for (auto& mesh : this->getMeshes()) {
 		mesh->prepRender(device);
 	}
 }
 
-void star::StarObject::prepareDescriptors(star::core::devices::DeviceContext& device, int numSwapChainImages,
+void star::StarObject::prepareDescriptors(star::core::device::DeviceContext& device, int numSwapChainImages,
 	star::StarShaderInfo::Builder frameBuilder)
 {
 	for (int i = 0; i < numSwapChainImages; i++) {
@@ -261,7 +257,7 @@ void star::StarObject::prepareDescriptors(star::core::devices::DeviceContext& de
 	}
 }
 
-void star::StarObject::createInstanceBuffers(star::core::devices::DeviceContext& device, int numImagesInFlight)
+void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext& context, int numImagesInFlight)
 {
 	assert(this->instances.size() > 0 && "Call to create instance buffers made but this object does not have any instances");
 	assert(this->instances.size() < 1024 && "Max number of supported instances is 1024"); 
@@ -350,7 +346,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::StarObject::getDescr
 	return std::vector<std::pair<vk::DescriptorType, const int>>{std::make_pair(vk::DescriptorType::eUniformBuffer, 2)};
 }
 
-void star::StarObject::createDescriptors(star::core::devices::DeviceContext& device, const int& numFramesInFlight)
+void star::StarObject::createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight)
 {
 	this->prepareDescriptors(device, numFramesInFlight, *this->engineBuilder);
 

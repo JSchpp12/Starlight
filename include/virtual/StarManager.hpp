@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Handle.hpp"
-#include "devices/StarDevice.hpp"
+#include "device/StarDevice.hpp"
 #include "TransferWorker.hpp"
 #include "ManagerStorageContainer.hpp"
 
@@ -19,15 +19,15 @@ public:
 
 	StarManager() = default;
 
-	static void init(core::devices::StarDevice& device, TransferWorker& transferWorker){
+	static void init(core::device::StarDevice& device, job::TransferWorker& transferWorker){
 		assert(managerDevice == nullptr && "Init function should only be called once");
 		managerDevice = &device; 
 		managerWorker = &transferWorker;
 	}
 
 protected:
-	static core::devices::StarDevice* managerDevice; 
-	static TransferWorker* managerWorker;
+	static core::device::StarDevice* managerDevice; 
+	static job::TransferWorker* managerWorker;
 
 	static std::unique_ptr<ManagerStorageContainer<FinalizedRequest>> resourceStorage; 
 	

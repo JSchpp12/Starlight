@@ -2,7 +2,7 @@
 
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
-#include "devices/StarDevice.hpp"
+#include "DeviceContext.hpp"
 #include "StarTextures/Texture.hpp"
 
 #include "Handle.hpp"
@@ -90,7 +90,7 @@ class StarShaderInfo
     {
         std::vector<ShaderInfo> shaderInfos = std::vector<ShaderInfo>();
 
-        ShaderInfoSet(core::devices::StarDevice &device, StarDescriptorSetLayout &setLayout) : device(device), setLayout(setLayout) {};
+        ShaderInfoSet(core::device::StarDevice &device, StarDescriptorSetLayout &setLayout) : device(device), setLayout(setLayout) {};
 
         void add(const ShaderInfo &shaderInfo);
 
@@ -106,7 +106,7 @@ class StarShaderInfo
         }
 
       private:
-        core::devices::StarDevice &device;
+        core::device::StarDevice &device;
         StarDescriptorSetLayout &setLayout;
         bool setNeedsRebuild = true;
         bool isBuilt = false;
@@ -122,7 +122,7 @@ class StarShaderInfo
         std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>();
 
   public:
-    StarShaderInfo(core::devices::StarDevice &device, const std::vector<std::shared_ptr<StarDescriptorSetLayout>> &layouts,
+    StarShaderInfo(core::device::StarDevice &device, const std::vector<std::shared_ptr<StarDescriptorSetLayout>> &layouts,
                    const std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> &shaderInfoSets)
         : layouts(layouts), shaderInfoSets(shaderInfoSets) {};
 
@@ -135,7 +135,7 @@ class StarShaderInfo
     class Builder
     {
       public:
-        Builder(core::devices::StarDevice &device, const int numFramesInFlight) : device(device), sets(numFramesInFlight) {};
+        Builder(core::device::StarDevice &device, const int numFramesInFlight) : device(device), sets(numFramesInFlight) {};
 
         Builder(Builder &other) : device(other.device)
         {
@@ -202,7 +202,7 @@ class StarShaderInfo
         };
 
       private:
-        core::devices::StarDevice &device;
+        core::device::StarDevice &device;
         std::vector<std::shared_ptr<ShaderInfoSet>> *activeSet = nullptr;
 
         std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> layouts =

@@ -27,8 +27,6 @@ class StarEngine
     core::SystemContext deviceManager; 
     std::unique_ptr<StarApplication> application = nullptr; 
     std::shared_ptr<SwapChainRenderer> mainRenderer = nullptr;
-    std::unique_ptr<TransferWorker> transferWorker = nullptr;
-
   private:
     const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
 

@@ -16,7 +16,7 @@ class IndicesInfo : public Buffer
     {
     }
 
-    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::devices::StarDevice &device) override;
+    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device) override;
 
   protected:
     const std::vector<uint32_t> indices;

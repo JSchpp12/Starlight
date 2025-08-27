@@ -18,12 +18,12 @@ namespace star {
 
 
 		void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
-		void cleanup(core::devices::DeviceContext& device) override;
+		void cleanup(core::device::DeviceContext& device) override;
 
 	protected:
 		Handle bumpMap; 
 
-		void buildDescriptorSet(core::devices::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
+		void buildDescriptorSet(core::device::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
 
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 	};

@@ -23,7 +23,7 @@ std::unique_ptr<StarDescriptorSetLayout> StarDescriptorSetLayout::Builder::build
     return std::make_unique<StarDescriptorSetLayout>(m_device, this->bindings);
 }
 
-StarDescriptorSetLayout::StarDescriptorSetLayout(core::devices::StarDevice &device,
+StarDescriptorSetLayout::StarDescriptorSetLayout(core::device::StarDevice &device,
                                                  std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings)
     : m_device(device), bindings{bindings}
 {
@@ -120,7 +120,7 @@ std::unique_ptr<StarDescriptorPool> StarDescriptorPool::Builder::build() const
     return std::make_unique<StarDescriptorPool>(m_device, this->maxSets, this->poolFlags, this->poolSizes);
 }
 
-StarDescriptorPool::StarDescriptorPool(core::devices::StarDevice &device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags,
+StarDescriptorPool::StarDescriptorPool(core::device::StarDevice &device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags,
                                        const std::vector<vk::DescriptorPoolSize> &poolSizes)
     : m_device(device)
 {
@@ -188,7 +188,7 @@ void StarDescriptorPool::resetPool()
 
 /* Descriptor Writer */
 
-StarDescriptorWriter::StarDescriptorWriter(core::devices::StarDevice &device, StarDescriptorSetLayout &setLayout,
+StarDescriptorWriter::StarDescriptorWriter(core::device::StarDevice &device, StarDescriptorSetLayout &setLayout,
                                            StarDescriptorPool &pool)
     : m_device(device), setLayout{setLayout}, pool{pool}
 {

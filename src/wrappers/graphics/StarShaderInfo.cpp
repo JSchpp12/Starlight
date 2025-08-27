@@ -1,7 +1,6 @@
 #include "StarShaderInfo.hpp"
 
 #include "ManagerDescriptorPool.hpp"
-#include "ManagerRenderResource.hpp"
 
 vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet()
 {
@@ -82,7 +81,7 @@ void star::StarShaderInfo::ShaderInfoSet::build()
     this->isBuilt = true;
 
     this->descriptorWriter =
-        std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, core::devices::managers::ManagerDescriptorPool::getPool());
+        std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
     for (int i = 0; i < this->shaderInfos.size(); i++)
     {
         buildIndex(i);
@@ -94,7 +93,7 @@ void star::StarShaderInfo::ShaderInfoSet::rebuildSet()
     if (!this->descriptorWriter)
     {
         this->descriptorWriter =
-            std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, core::devices::managers::ManagerDescriptorPool::getPool());
+            std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
     }
 
     this->descriptorSet = std::make_shared<vk::DescriptorSet>(this->descriptorWriter->build());

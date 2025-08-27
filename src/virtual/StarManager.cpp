@@ -1,4 +1,4 @@
 #include "StarManager.hpp"
 
-star::core::devices::StarDevice* star::StarManager::managerDevice = nullptr;
-star::TransferWorker* star::StarManager::managerWorker = nullptr;
+star::core::device::StarDevice* star::StarManager::managerDevice = nullptr;
+star::job::TransferWorker* star::StarManager::managerWorker = nullptr;

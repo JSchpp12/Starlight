@@ -5,7 +5,7 @@
 #include <GLFW/glfw3.h>
 
 star::SwapChainRenderer::SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window,
-                                           core::devices::DeviceContext &device, const uint8_t &numFramesInFlight)
+                                           core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
     : SceneRenderer(scene), window(window), device(device), numFramesInFlight(numFramesInFlight)
 {
     createSwapChain();
@@ -31,7 +31,7 @@ star::SwapChainRenderer::~SwapChainRenderer()
     }
 }
 
-void star::SwapChainRenderer::prepare(core::devices::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+void star::SwapChainRenderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                                       const int &numFramesInFlight)
 {
     const size_t numSwapChainImages = this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
@@ -90,9 +90,9 @@ void star::SwapChainRenderer::pollEvents()
     glfwPollEvents();
 }
 
-star::core::devices::managers::ManagerCommandBuffer::Request star::SwapChainRenderer::getCommandBufferRequest()
+star::core::device::managers::ManagerCommandBuffer::Request star::SwapChainRenderer::getCommandBufferRequest()
 {
-    return core::devices::managers::ManagerCommandBuffer::Request{
+    return core::device::managers::ManagerCommandBuffer::Request{
         .recordBufferCallback = std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2),
         .order = Command_Buffer_Order::main_render_pass,
         .orderIndex = 0,
@@ -124,7 +124,7 @@ vk::SurfaceFormatKHR star::SwapChainRenderer::chooseSwapSurfaceFormat(
     return availableFormats[0];
 }
 
-vk::Format star::SwapChainRenderer::getColorAttachmentFormat(star::core::devices::DeviceContext &device) const
+vk::Format star::SwapChainRenderer::getColorAttachmentFormat(star::core::device::DeviceContext &device) const
 {
     core::SwapChainSupportDetails swapChainSupport = device.getSwapchainSupportDetails();
 
@@ -303,7 +303,7 @@ vk::Semaphore star::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, c
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SwapChainRenderer::createRenderToImages(
-    star::core::devices::DeviceContext &device, const int &numFramesInFlight)
+    star::core::device::DeviceContext &device, const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
 
@@ -418,7 +418,7 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuff
     this->SceneRenderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
 }
 
-std::vector<vk::Semaphore> star::SwapChainRenderer::CreateSemaphores(star::core::devices::DeviceContext &device, const int &numToCreate)
+std::vector<vk::Semaphore> star::SwapChainRenderer::CreateSemaphores(star::core::device::DeviceContext &device, const int &numToCreate)
 {
     std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>(numToCreate);
 

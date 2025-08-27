@@ -9,15 +9,15 @@
 #include <unordered_map>
 #include <memory>
 
-namespace star::core::devices::managers {
+namespace star::core::device::managers {
 	class ManagerDescriptorPool {
 	public:
 		static void request(std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)> newRequest, 
-			std::function<void(core::devices::DeviceContext&, const int&)> createCall);
+			std::function<void(core::device::DeviceContext&, const int&)> createCall);
 
 		static StarDescriptorPool& getPool();
 
-		ManagerDescriptorPool(core::devices::DeviceContext& device, const int& numFramesInFligth); 
+		ManagerDescriptorPool(core::device::DeviceContext& device, const int& numFramesInFligth); 
 
 		~ManagerDescriptorPool();
 
@@ -30,11 +30,11 @@ namespace star::core::devices::managers {
 		static bool ready; 
 		//static std::stack<std::pair<vk::DescriptorType, int>> requests;
 		static std::stack<std::function<std::vector<std::pair<vk::DescriptorType, const int>>(const int&)>> requestCallbacks;
-		static std::stack<std::function<void(core::devices::DeviceContext&, const int&)>> creationCallbacks; 
+		static std::stack<std::function<void(core::device::DeviceContext&, const int&)>> creationCallbacks; 
 
 		static StarDescriptorPool* pool; 
 
-		core::devices::DeviceContext& device; 
+		core::device::DeviceContext& device; 
 		std::unique_ptr<StarDescriptorPool> currentPool; 
 
 		static std::unordered_map<vk::DescriptorType, int> actives; 

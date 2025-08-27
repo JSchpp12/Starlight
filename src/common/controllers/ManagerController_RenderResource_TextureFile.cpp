@@ -15,7 +15,7 @@ star::ManagerController::RenderResource::TextureFile::TextureFile(const std::str
 }
 
 std::unique_ptr<star::TransferRequest::Texture> star::ManagerController::RenderResource::TextureFile::
-    createTransferRequest(star::core::devices::StarDevice &device)
+    createTransferRequest(star::core::device::StarDevice &device)
 {
 
     std::shared_ptr<star::SharedCompressedTexture> compressedTexture =

@@ -14,10 +14,10 @@ class RenderResourceModifier
         this->registerRenderResourceCallbacks();
     }
 
-    virtual void initResources(core::devices::DeviceContext &device, const int &numFramesInFlight,
+    virtual void initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
                                const vk::Extent2D &screenSize) = 0;
 
-    virtual void destroyResources(core::devices::DeviceContext &device) = 0;
+    virtual void destroyResources(core::device::DeviceContext &device) = 0;
 
   private:
     void registerRenderResourceCallbacks();

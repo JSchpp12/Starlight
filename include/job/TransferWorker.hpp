@@ -3,7 +3,7 @@
 #include "Allocator.hpp"
 #include "Handle.hpp"
 #include "StarBuffers/Buffer.hpp"
-#include "devices/StarDevice.hpp"
+#include "device/StarDevice.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
 
@@ -22,7 +22,7 @@
 #include <queue>
 #include <vector>
 
-namespace star
+namespace star::job
 {
 class TransferManagerThread
 {
@@ -92,7 +92,7 @@ class TransferManagerThread
         SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device &device,
                       StarQueue queue, VmaAllocator &allocator,
                       vk::PhysicalDeviceProperties deviceProperties,
-                      std::vector<boost::lockfree::stack<star::TransferManagerThread::InterThreadRequest *> *>
+                      std::vector<boost::lockfree::stack<star::job::TransferManagerThread::InterThreadRequest *> *>
                           *workingRequestQueues,
                       std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
             : shouldRun(shouldRun), device(device), queue(queue), allocator(allocator),
@@ -110,7 +110,7 @@ class TransferManagerThread
         std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
     };
 
-    TransferManagerThread(core::devices::StarDevice &device, std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
+    TransferManagerThread(core::device::StarDevice &device, std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
                           const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
 
@@ -150,7 +150,7 @@ class TransferManagerThread
     static void EnsureInfoReady(vk::Device &device, ProcessRequestInfo &processInfo);
 
   protected:
-    core::devices::StarDevice &device;
+    core::device::StarDevice &device;
     std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues;
     vk::PhysicalDeviceProperties deviceProperties;
     StarQueue myQueue; 
@@ -167,7 +167,7 @@ class TransferWorker
     /// @brief Creates a transfer worker which does not own the dedicated transfer queue. Device might not support
     /// dedicated transfer queue. As such, transfers are submitted on the main thread.
     /// @param device Created star device from which vulkan objects can be made
-    TransferWorker(core::devices::StarDevice &device, bool overrideRunAsync, std::vector<StarQueue> &queuesToUse);
+    TransferWorker(core::device::StarDevice &device, bool overrideRunAsync, std::vector<StarQueue> &queuesToUse);
 
     void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
              std::unique_ptr<TransferRequest::Buffer> newBufferRequest, std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
@@ -197,7 +197,7 @@ class TransferWorker
     // void checkForCleanups();
 
     static std::vector<std::unique_ptr<TransferManagerThread>> CreateThreads(
-        core::devices::StarDevice &device, const std::vector<StarQueue> queuesToUse,
+        core::device::StarDevice &device, const std::vector<StarQueue> queuesToUse,
         boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &highPriorityQueue,
         boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &standardQueue);
 };

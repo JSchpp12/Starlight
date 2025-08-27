@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Handle.hpp"
+#include "device/StarDevice.hpp"
 
 #include <memory>
 #include <unordered_map>
@@ -14,6 +15,31 @@ template <typename T> class ManagerStorageContainer
   public:
     ManagerStorageContainer() : allElements(std::vector<std::unique_ptr<T>>(2000)) {};
     ~ManagerStorageContainer() = default;
+
+    ManagerStorageContainer(const ManagerStorageContainer &) = delete;
+    ManagerStorageContainer &operator=(const ManagerStorageContainer &) = delete;
+
+    ManagerStorageContainer(const ManagerStorageContainer &&other)
+        : staticCounter(other.staticCounter), updateableCounter(other.updateableCounter),
+          elementCounter(other.elementCounter), allElements(std::move(other.allElements)),
+          handleToDynamicMap(other.handleToDynamicMap), handleToStaticMap(other.handleToStaticMap)
+    {
+    }
+
+    ManagerStorageContainer &operator=(const ManagerStorageContainer &&other)
+    {
+        if (this != other)
+        {
+            staticCounter = other.staticCounter;
+            updateableCounter = other.updateableCounter;
+            elementCounter = other.elementCounter;
+            allElements = std::move(other.allElements);
+            handleToDynamicMap = other.handleToDynamicMap;
+            handleToStaticMap = other.handleToStaticMap;
+        }
+
+        return *this;
+    }
 
     std::unique_ptr<T> &get(const Handle &handle)
     {
@@ -75,6 +101,12 @@ template <typename T> class ManagerStorageContainer
     std::unordered_map<Handle, size_t, HandleHash> &getDynamicMap()
     {
         return this->handleToDynamicMap;
+    }
+
+    void cleanup(core::device::StarDevice &device){
+        for (int i = 0; i < allElements.size(); i++){
+            allElements.at(i).reset(); 
+        }
     }
 
   private:

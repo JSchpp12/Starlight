@@ -21,7 +21,7 @@ class Worker
     };
     
     Worker() = default;
-    ~Worker() = default;
+    virtual ~Worker() = default;
 
     void stop()
     {

@@ -2,7 +2,7 @@
 
 #include "BasicCamera.hpp"
 
-void star::StarApplication::init(core::devices::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight)
+void star::StarApplication::init(core::device::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight)
 {
     this->scene = createInitialScene(device, window, numFramesInFlight);
     this->swapChainRenderer = createPresentationRenderer(device, window, numFramesInFlight);
@@ -16,7 +16,7 @@ void star::StarApplication::cleanup()
 }
 
 std::shared_ptr<star::SwapChainRenderer> star::StarApplication::createPresentationRenderer(
-    core::devices::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight)
+    core::device::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight)
 {
     return std::make_shared<star::SwapChainRenderer>(this->scene, window, device, numFramesInFlight);
 }
