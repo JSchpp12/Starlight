@@ -65,7 +65,7 @@ add_subdirectory("extern/shaderc")
 
 set(${STARLIGHT_NAME}_SOURCE
     "src/StarEngine.cpp" 
-    "src/core/renderer/SceneRenderer.cpp"
+    "src/core/renderer/Renderer.cpp"
     "src/core/renderer/SwapChainRenderer.cpp"
     "src/virtual/StarObject.cpp"
     "src/virtual/ModulePlug/RenderResourceModifier.cpp"
@@ -173,7 +173,7 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${STARLIGHT_NAME}_HEADERS
     "include/StarEngine.hpp"
-    "include/core/renderer/SceneRenderer.hpp"
+    "include/core/renderer/Renderer.hpp"
     "include/core/renderer/SwapChainRenderer.hpp"
     "include/common/ThreadSharedResource.hpp"
     "include/common/Compiler.hpp"

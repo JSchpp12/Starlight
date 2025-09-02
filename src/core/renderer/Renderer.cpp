@@ -1,4 +1,4 @@
-#include "renderer/SceneRenderer.hpp"
+#include "renderer/Renderer.hpp"
 
 namespace star
 {

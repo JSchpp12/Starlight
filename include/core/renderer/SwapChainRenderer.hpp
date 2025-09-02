@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CommandBufferModifier.hpp"
-#include "SceneRenderer.hpp"
+#include "Renderer.hpp"
 #include "DeviceContext.hpp"
 
 #include <vulkan/vulkan.hpp>
