@@ -65,16 +65,14 @@ add_subdirectory("extern/shaderc")
 
 set(${STARLIGHT_NAME}_SOURCE
     "src/StarEngine.cpp" 
-    "src/Renderer.cpp"
-    "src/SceneRenderer.cpp"
-    "src/SwapChainRenderer.cpp"
+    "src/core/renderer/SceneRenderer.cpp"
+    "src/core/renderer/SwapChainRenderer.cpp"
     "src/virtual/StarObject.cpp"
     "src/virtual/ModulePlug/RenderResourceModifier.cpp"
     "src/virtual/ModulePlug/CommandBufferModifier.cpp"
     "src/virtual/ModulePlug/DescriptorModifier.cpp"
     "src/virtual/ModulePlug/ManagerPlug.cpp"
     "src/virtual/StarMesh.cpp"
-    "src/virtual/StarRenderer.cpp" 
     "src/virtual/StarManager.cpp"
     "src/virtual/StarWindow.cpp" 
     "src/virtual/StarScene.cpp"
@@ -175,8 +173,8 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${STARLIGHT_NAME}_HEADERS
     "include/StarEngine.hpp"
-    "include/SceneRenderer.hpp"
-    "include/SwapChainRenderer.hpp"
+    "include/core/renderer/SceneRenderer.hpp"
+    "include/core/renderer/SwapChainRenderer.hpp"
     "include/common/ThreadSharedResource.hpp"
     "include/common/Compiler.hpp"
     "include/common/Interactivity.hpp"
@@ -209,7 +207,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/virtual/ModulePlug/DescriptorModifier.hpp"
     "include/virtual/ModulePlug/ManagerPlug.hpp"
     "include/virtual/StarManager.hpp"
-    "include/virtual/StarRenderer.hpp" 
     "include/virtual/StarWindow.hpp" 
     "include/virtual/StarObject.hpp"
     "include/virtual/StarScene.hpp"

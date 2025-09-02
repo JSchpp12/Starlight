@@ -6,7 +6,6 @@
 #include "ManagerRenderResource.hpp"
 #include "StarCamera.hpp"
 #include "StarObject.hpp"
-#include "StarRenderObject.hpp"
 #include "StarWindow.hpp"
 #include "device/DeviceID.hpp"
 

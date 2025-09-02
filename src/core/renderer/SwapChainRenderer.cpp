@@ -1,4 +1,4 @@
-#include "SwapChainRenderer.hpp"
+#include "renderer/SwapChainRenderer.hpp"
 
 #include "ConfigFile.hpp"
 
@@ -6,7 +6,7 @@
 
 star::SwapChainRenderer::SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window,
                                            core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
-    : SceneRenderer(scene), window(window), device(device), numFramesInFlight(numFramesInFlight)
+    : Renderer(scene), window(window), device(device), numFramesInFlight(numFramesInFlight)
 {
     createSwapChain();
 }
@@ -35,7 +35,7 @@ void star::SwapChainRenderer::prepare(core::device::DeviceContext &device, const
                                       const int &numFramesInFlight)
 {
     const size_t numSwapChainImages = this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
-    this->SceneRenderer::prepare(this->device, *this->swapChainExtent, numFramesInFlight);
+    this->Renderer::prepare(this->device, *this->swapChainExtent, numFramesInFlight);
 
     this->imageAcquireSemaphores = CreateSemaphores(this->device, numFramesInFlight);
     this->imageAvailableSemaphores = CreateSemaphores(this->device, numSwapChainImages);
@@ -260,7 +260,7 @@ void star::SwapChainRenderer::prepareForSubmission(const int &frameIndexToBeDraw
     // mark image as now being in use by this frame by assigning the fence to it
     imagesInFlight[this->currentSwapChainImageIndex] = inFlightFences[frameIndexToBeDrawn];
 
-    this->SceneRenderer::prepareForSubmission(frameIndexToBeDrawn);
+    this->Renderer::prepareForSubmission(frameIndexToBeDrawn);
 
     // set fence to unsignaled state
     const vk::Result resetResult = this->device.getDevice().getVulkanDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
@@ -415,7 +415,7 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuff
     commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader,
                                   vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, nullptr, presentBarrier);
 
-    this->SceneRenderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
+    this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
 }
 
 std::vector<vk::Semaphore> star::SwapChainRenderer::CreateSemaphores(star::core::device::DeviceContext &device, const int &numToCreate)

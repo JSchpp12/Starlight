@@ -17,7 +17,6 @@
 #include "StarDescriptorBuilders.hpp"
 #include "StarObject.hpp"
 #include "StarRenderGroup.hpp"
-#include "StarRenderer.hpp"
 #include "StarScene.hpp"
 #include "StarShaderInfo.hpp"
 #include "StarTextures/Texture.hpp"
@@ -30,12 +29,11 @@
 
 namespace star
 {
-class SceneRenderer : public StarRenderer,
-                      private RenderResourceModifier,
+class Renderer : private RenderResourceModifier,
                       private DescriptorModifier
 {
   public:
-    SceneRenderer(std::shared_ptr<StarScene> scene);
+    Renderer(std::shared_ptr<StarScene> scene);
 
     virtual void prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight);
 

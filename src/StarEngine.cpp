@@ -6,7 +6,7 @@
 #include "RenderingInstance.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
-#include "SwapChainRenderer.hpp"
+#include "renderer/SwapChainRenderer.hpp"
 #include "job/TaskManager.hpp"
 
 #include <vulkan/vulkan.hpp>

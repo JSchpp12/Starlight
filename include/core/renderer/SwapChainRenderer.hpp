@@ -9,7 +9,7 @@
 
 namespace star
 {
-class SwapChainRenderer : public SceneRenderer
+class SwapChainRenderer : public Renderer
 {
   public:
     SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window, core::device::DeviceContext &device, const uint8_t &numFramesInFlight);

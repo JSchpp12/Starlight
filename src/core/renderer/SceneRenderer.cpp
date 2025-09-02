@@ -1,13 +1,13 @@
-#include "SceneRenderer.hpp"
+#include "renderer/SceneRenderer.hpp"
 
 namespace star
 {
 
-SceneRenderer::SceneRenderer(std::shared_ptr<StarScene> scene) : StarRenderer(scene->getCamera()), scene(scene)
+Renderer::Renderer(std::shared_ptr<StarScene> scene) : scene(scene)
 {
 }
 
-void SceneRenderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
+void Renderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
 {
     m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
 
@@ -21,7 +21,7 @@ void SceneRenderer::prepare(core::device::DeviceContext &device, const vk::Exten
     createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createRenderToImages(star::core::device::DeviceContext &device,
+std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRenderToImages(star::core::device::DeviceContext &device,
                                                                                     const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -105,7 +105,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> SceneRenderer::createR
     return newRenderToImages;
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SceneRenderer::createRenderToDepthImages(
+std::vector<std::unique_ptr<star::StarTextures::Texture>> star::Renderer::createRenderToDepthImages(
     core::device::DeviceContext &device, const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -189,7 +189,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SceneRenderer::c
     return newRenderToImages;
 }
 
-void SceneRenderer::createRenderingGroups(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+void Renderer::createRenderingGroups(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                                           const int &numFramesInFlight, star::StarShaderInfo::Builder builder)
 {
     for (StarObject &object : this->scene->getObjects())
@@ -228,7 +228,7 @@ void SceneRenderer::createRenderingGroups(core::device::DeviceContext &device, c
     }
 }
 
-vk::ImageView SceneRenderer::createImageView(star::core::device::DeviceContext &device, vk::Image image, vk::Format format,
+vk::ImageView Renderer::createImageView(star::core::device::DeviceContext &device, vk::Image image, vk::Format format,
                                              vk::ImageAspectFlags aspectFlags)
 {
     vk::ImageViewCreateInfo viewInfo{};
@@ -252,7 +252,7 @@ vk::ImageView SceneRenderer::createImageView(star::core::device::DeviceContext &
     return imageView;
 }
 
-star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::core::device::DeviceContext &device,
+star::StarShaderInfo::Builder Renderer::manualCreateDescriptors(star::core::device::DeviceContext &device,
                                                                      const int &numFramesInFlight)
 {
     auto globalBuilder = StarShaderInfo::Builder(device.getDeviceID(), device.getDevice(), numFramesInFlight);
@@ -274,7 +274,7 @@ star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::core:
     return globalBuilder;
 }
 
-void SceneRenderer::createImage(star::core::device::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
+void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
                                 vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
                                 vk::Image &image, VmaAllocation &imageMemory)
 {
@@ -304,12 +304,12 @@ void SceneRenderer::createImage(star::core::device::DeviceContext &device, uint3
                    &imageMemory, nullptr);
 }
 
-void SceneRenderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight, const vk::Extent2D &screensize)
+void Renderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight, const vk::Extent2D &screensize)
 {
     this->prepare(device, screensize, numFramesInFlight);
 }
 
-void SceneRenderer::destroyResources(core::device::DeviceContext &device)
+void Renderer::destroyResources(core::device::DeviceContext &device)
 {
     for (auto &image : this->renderToImages)
     {
@@ -322,7 +322,7 @@ void SceneRenderer::destroyResources(core::device::DeviceContext &device)
     }
 }
 
-vk::Format SceneRenderer::getColorAttachmentFormat(star::core::device::DeviceContext &device) const
+vk::Format Renderer::getColorAttachmentFormat(star::core::device::DeviceContext &device) const
 {
     vk::Format selectedFormat = vk::Format();
 
@@ -334,7 +334,7 @@ vk::Format SceneRenderer::getColorAttachmentFormat(star::core::device::DeviceCon
     return selectedFormat;
 }
 
-vk::Format SceneRenderer::getDepthAttachmentFormat(star::core::device::DeviceContext &device) const
+vk::Format Renderer::getDepthAttachmentFormat(star::core::device::DeviceContext &device) const
 {
     vk::Format selectedFormat = vk::Format();
     if (!device.getDevice().findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
@@ -347,18 +347,18 @@ vk::Format SceneRenderer::getDepthAttachmentFormat(star::core::device::DeviceCon
     return selectedFormat;
 }
 
-std::vector<std::pair<vk::DescriptorType, const int>> SceneRenderer::getDescriptorRequests(const int &numFramesInFlight)
+std::vector<std::pair<vk::DescriptorType, const int>> Renderer::getDescriptorRequests(const int &numFramesInFlight)
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eUniformBuffer, numFramesInFlight),
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)};
 }
 
-void SceneRenderer::createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight)
+void Renderer::createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight)
 {
 }
 
-void SceneRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void Renderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
 {
     vk::Viewport viewport = this->prepareRenderingViewport();
     commandBuffer.setViewport(0, viewport);
@@ -389,7 +389,7 @@ void SceneRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const 
     recordPostRenderingCalls(commandBuffer, frameInFlightIndex);
 }
 
-vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColorAttachment(
+vk::RenderingAttachmentInfo star::Renderer::prepareDynamicRenderingInfoColorAttachment(
     const int &frameInFlightIndex)
 {
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
@@ -402,7 +402,7 @@ vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoColo
     return colorAttachmentInfo;
 }
 
-vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoDepthAttachment(
+vk::RenderingAttachmentInfo star::Renderer::prepareDynamicRenderingInfoDepthAttachment(
     const int &frameInFlightIndex)
 {
     vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};
@@ -415,7 +415,7 @@ vk::RenderingAttachmentInfo star::SceneRenderer::prepareDynamicRenderingInfoDept
     return depthAttachmentInfo;
 }
 
-vk::Viewport SceneRenderer::prepareRenderingViewport()
+vk::Viewport Renderer::prepareRenderingViewport()
 {
     vk::Viewport viewport{};
     viewport.x = 0.0f;
@@ -428,7 +428,7 @@ vk::Viewport SceneRenderer::prepareRenderingViewport()
     return viewport;
 }
 
-void SceneRenderer::recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void Renderer::recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
 {
     for (auto &group : this->renderGroups)
     {
@@ -436,7 +436,7 @@ void SceneRenderer::recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, co
     }
 }
 
-void SceneRenderer::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void Renderer::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
 {
     for (auto &group : this->renderGroups)
     {
@@ -444,7 +444,7 @@ void SceneRenderer::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, c
     }
 }
 
-void SceneRenderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
 {
     for (auto &group : this->renderGroups)
     {
@@ -452,7 +452,7 @@ void SceneRenderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const
     }
 }
 
-void SceneRenderer::prepareForSubmission(const int &frameIndexToBeDrawn)
+void Renderer::prepareForSubmission(const int &frameIndexToBeDrawn)
 {
     for (StarObject &obj : this->scene->getObjects())
     {

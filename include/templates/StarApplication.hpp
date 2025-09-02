@@ -2,7 +2,7 @@
 
 #include "Interactivity.hpp"
 #include "StarScene.hpp"
-#include "SwapChainRenderer.hpp"
+#include "core/renderer/SwapChainRenderer.hpp"
 #include "Time.hpp"
 
 #include <GLFW/glfw3.h>
