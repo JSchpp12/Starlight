@@ -14,8 +14,8 @@ class SystemContext
   public:
     SystemContext(RenderingInstance &&renderingInstance);
 
-    void createDevice(const uint64_t &frameIndex, const uint8_t &numOfFramesInFlight, std::set<star::Rendering_Features> requiredFeatures,
-                      StarWindow &window);
+    void createDevice(const device::DeviceID &deviceID, const uint64_t &frameIndex, const uint8_t &numOfFramesInFlight, std::set<star::Rendering_Features> requiredFeatures,
+                      StarWindow &window, const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
 
     device::DeviceContext &getContext()
     {

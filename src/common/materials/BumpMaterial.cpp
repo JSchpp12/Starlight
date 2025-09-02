@@ -13,10 +13,10 @@ void star::BumpMaterial::cleanup(core::device::DeviceContext& device)
 
 }
 
-void star::BumpMaterial::buildDescriptorSet(core::device::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
+void star::BumpMaterial::buildDescriptorSet(core::device::DeviceContext& context, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 
 {
-	this->TextureMaterial::buildDescriptorSet(device, builder, imageInFlightIndex);
+	this->TextureMaterial::buildDescriptorSet(context, builder, imageInFlightIndex);
 	builder.add(this->bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal, true);
 }
 

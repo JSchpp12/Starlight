@@ -1,20 +1,19 @@
 #pragma once
 
-#include "StarCamera.hpp"
 #include "Handle.hpp"
 #include "Interactivity.hpp"
 #include "Light.hpp"
 #include "ManagerRenderResource.hpp"
+#include "StarCamera.hpp"
 #include "StarObject.hpp"
 #include "StarRenderObject.hpp"
 #include "StarWindow.hpp"
-
+#include "device/DeviceID.hpp"
 
 #include <map>
 #include <memory>
 #include <optional>
 #include <vector>
-
 
 namespace star
 {
@@ -24,7 +23,8 @@ namespace star
 class StarScene
 {
   public:
-    StarScene(const uint8_t &numFramesInFlight, std::shared_ptr<StarCamera> camera);
+    StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
+              std::shared_ptr<StarCamera> camera);
 
     StarScene(const uint8_t &numFramesInFlight, std::shared_ptr<StarCamera> camera,
               std::vector<Handle> globalInfoBuffers, std::vector<Handle> lightInfoBuffers);
@@ -78,6 +78,6 @@ class StarScene
         std::unordered_map<int, std::unique_ptr<StarObject>>();
     std::vector<std::unique_ptr<Light>> lightList = std::vector<std::unique_ptr<Light>>();
 
-    void initBuffers(const uint8_t &numFramesInFlight);
+    void initBuffers(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight);
 };
 } // namespace star

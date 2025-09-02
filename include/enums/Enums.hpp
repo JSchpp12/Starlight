@@ -24,6 +24,10 @@ namespace star {
 		shader_float64
     };
 
+    enum class Rendering_Device_Features{
+        timeline_semaphores
+    };
+
     enum Buffer_Type {
         update_once_per_frame, 
         once, 

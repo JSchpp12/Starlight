@@ -3,12 +3,12 @@
 #include "Allocator.hpp"
 #include "CastHelpers.hpp"
 #include "Enums.hpp"
+#include "RenderingInstance.hpp"
+#include "RenderingSurface.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarCommandPool.hpp"
 #include "StarQueueFamily.hpp"
 #include "StarWindow.hpp"
-#include "RenderingInstance.hpp"
-#include "RenderingSurface.hpp"
 #include "SwapChainSupportDetails.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -231,7 +231,8 @@ class StarDevice
         std::vector<std::vector<bool>> isQueueAvailable = std::vector<std::vector<bool>>();
     };
 
-    StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures);
+    StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface, core::RenderingInstance &renderingInstance,
+               std::set<star::Rendering_Features> requiredFeatures, const std::set<star::Rendering_Device_Features> &requiredRenderingDeviceFeatures);
 
     virtual ~StarDevice();
 
@@ -240,8 +241,8 @@ class StarDevice
     StarDevice &operator=(const StarDevice &) = delete;
 
     StarDevice(StarDevice &&other);
-    StarDevice &operator=(StarDevice &&){
-        
+    StarDevice &operator=(StarDevice &&) {
+
     };
 
     /// <summary>
@@ -260,8 +261,8 @@ class StarDevice
 
     QueueOwnershipTracker &getQueueOwnershipTracker()
     {
-        assert(this->currentDeviceQueues != nullptr); 
-        
+        assert(this->currentDeviceQueues != nullptr);
+
         return *this->currentDeviceQueues;
     }
 
@@ -281,8 +282,9 @@ class StarDevice
         return *this->allocator;
     }
 
-    core::SwapChainSupportDetails getSwapchainSupport(core::RenderingSurface &surface){
-        return QuerySwapchainSupport(this->physicalDevice, surface); 
+    core::SwapChainSupportDetails getSwapchainSupport(core::RenderingSurface &surface)
+    {
+        return QuerySwapchainSupport(this->physicalDevice, surface);
     }
 #pragma endregion
 
@@ -361,12 +363,10 @@ class StarDevice
         VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
         VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
 
-    vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
-
     // Pick a proper physical GPU that matches the required extensions
-    void pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface);
+    void pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures);
     // Create a logical device to communicate with the physical device
-    void createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface);
+    void createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const std::set<Rendering_Device_Features> &deviceFeatures);
 
     void createAllocator(core::RenderingInstance &instance);
 
@@ -393,9 +393,9 @@ class StarDevice
     /// Request specific details about swap chain support for a given device
     /// </summary>
     static core::SwapChainSupportDetails QuerySwapchainSupport(const vk::PhysicalDevice &device,
-                                                         core::RenderingSurface &surface);
+                                                               core::RenderingSurface &surface);
 
   private:
     static bool DoesDeviceSupportPresentation(vk::PhysicalDevice device, const vk::SurfaceKHR &surface);
 };
-} // namespace star
+} // namespace star::core::device

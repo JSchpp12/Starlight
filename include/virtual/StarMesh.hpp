@@ -74,7 +74,8 @@ class StarMesh
         return this->numInds;
     }
 
-  protected:
+  protected:  
+    core::device::DeviceID m_deviceID; 
     Handle vertBuffer, indBuffer;
     bool hasAdjacenciesPacked = false;
     bool triangular = false;

@@ -35,6 +35,8 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
         }
     }
 
+    std::set<Rendering_Device_Features> renderingFeatures {Rendering_Device_Features::timeline_semaphores}; 
+
     uint8_t framesInFlight;
     {
         int readFramesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
@@ -44,7 +46,7 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
         }
     }
 
-    deviceManager.createDevice(frameCounter, framesInFlight, features, *this->window);
+    deviceManager.createDevice(core::device::DeviceID{.id = uint8_t(0)}, frameCounter, framesInFlight, features, *this->window, renderingFeatures);
 
     // try and get a transfer queue from different queue fams
     {
@@ -54,8 +56,12 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
         const auto transferFams =
             this->deviceManager.getContext().getDevice().getQueueOwnershipTracker().getQueueFamiliesWhichSupport(
                 vk::QueueFlagBits::eTransfer);
+
         for (const auto &fam : transferFams)
         {
+            if (selectedFamilyIndices.size() > 1)
+                break;
+
             if (fam != deviceManager.getContext()
                            .getDevice()
                            .getDefaultQueue(Queue_Type::Tgraphics)
@@ -114,8 +120,7 @@ void StarEngine::run()
 
         this->mainRenderer->pollEvents();
         InteractionSystem::callWorldUpdates(frameInFlightIndex);
-        ManagerRenderResource::update(frameInFlightIndex); 
-        // ManagerRenderResource::update(frameInFlightIndex);
+        ManagerRenderResource::update(deviceManager.getContext().getDeviceID(), frameInFlightIndex); 
         vk::Semaphore allBuffersSubmitted = deviceManager.getContext().getManagerCommandBuffer().update(frameInFlightIndex);
         this->mainRenderer->submitPresentation(frameInFlightIndex, &allBuffersSubmitted);
         this->deviceManager.getContext().getTransferWorker().update();
@@ -124,6 +129,7 @@ void StarEngine::run()
     }
 
     deviceManager.getContext().getDevice().getVulkanDevice().waitIdle();
+    ManagerRenderResource::cleanup(star::core::device::DeviceID(0), deviceManager.getContext().getDevice()); 
 }
 
 std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()

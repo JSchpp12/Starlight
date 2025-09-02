@@ -89,7 +89,7 @@ class TransferManagerThread
 
     struct SubThreadInfo
     {
-        SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device &device,
+        SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device device,
                       StarQueue queue, VmaAllocator &allocator,
                       vk::PhysicalDeviceProperties deviceProperties,
                       std::vector<boost::lockfree::stack<star::job::TransferManagerThread::InterThreadRequest *> *>
@@ -102,7 +102,7 @@ class TransferManagerThread
         }
 
         boost::atomic<bool> *shouldRun = nullptr;
-        vk::Device &device;
+        vk::Device device;
         StarQueue queue; 
         VmaAllocator &allocator;
         vk::PhysicalDeviceProperties deviceProperties = vk::PhysicalDeviceProperties();
@@ -110,7 +110,7 @@ class TransferManagerThread
         std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
     };
 
-    TransferManagerThread(core::device::StarDevice &device, std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
+    TransferManagerThread(std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
                           const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
 
@@ -122,7 +122,7 @@ class TransferManagerThread
     //no move
     TransferManagerThread(TransferManagerThread &&) = delete;
 
-    void startAsync();
+    void startAsync(core::device::StarDevice &device);
 
     void stopAsync();
 
@@ -150,7 +150,6 @@ class TransferManagerThread
     static void EnsureInfoReady(vk::Device &device, ProcessRequestInfo &processInfo);
 
   protected:
-    core::device::StarDevice &device;
     std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues;
     vk::PhysicalDeviceProperties deviceProperties;
     StarQueue myQueue; 

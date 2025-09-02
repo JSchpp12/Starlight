@@ -7,6 +7,7 @@
 #include "ManagerStorageContainer.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "device/StarDevice.hpp"
+#include "device/DeviceID.hpp"
 #include "StarManager.hpp"
 #include "TransferRequest_Memory.hpp"
 
@@ -42,37 +43,39 @@ class ManagerRenderResource : public StarManager
         }
     };
 
-    static void init(core::device::StarDevice &device, job::TransferWorker &worker, const int &totalNumFramesInFlight);
+    static void init(core::device::DeviceID deviceID, std::shared_ptr<core::device::StarDevice> device, job::TransferWorker &worker, const int &totalNumFramesInFlight);
 
-    static Handle addRequest(std::unique_ptr<ManagerController::RenderResource::Buffer> newRequest,
+    static Handle addRequest(const core::device::DeviceID &deviceID, std::unique_ptr<ManagerController::RenderResource::Buffer> newRequest,
                              const bool &isHighPriority = false);
 
-    static Handle addRequest(std::unique_ptr<ManagerController::RenderResource::Texture> newRequest,
+    static Handle addRequest(const core::device::DeviceID &deviceID, std::unique_ptr<ManagerController::RenderResource::Texture> newRequest,
                              const bool &isHighPriorirty = false);
 
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
     /// @param handle Handle to resource
-    static void updateRequest(std::unique_ptr<ManagerController::RenderResource::Buffer> newRequest,
+    static void updateRequest(const core::device::DeviceID &deviceID, std::unique_ptr<ManagerController::RenderResource::Buffer> newRequest,
                               const Handle &handle, const bool &isHighPriority = false);
 
-    static void update(const int &frameInFlightIndex);
+    static void update(const core::device::DeviceID &deviceID, const int &frameInFlightIndex);
 
-    static bool isReady(const Handle &handle);
+    static bool isReady(const core::device::DeviceID &deviceID, const Handle &handle);
 
-    static void waitForReady(const Handle &handle);
+    static void waitForReady(const core::device::DeviceID &deviceID, const Handle &handle);
 
-    static StarBuffers::Buffer &getBuffer(const Handle &handle);
+    static StarBuffers::Buffer &getBuffer(const core::device::DeviceID &deviceID, const Handle &handle);
 
-    static StarTextures::Texture &getTexture(const Handle &handle);
+    static StarTextures::Texture &getTexture(const core::device::DeviceID &deviceID, const Handle &handle);
 
-    static void destroy(const Handle &handle);
+    static void destroy(const core::device::DeviceID &deviceID, const Handle &handle);
 
-    static void cleanup(core::device::StarDevice &device);
+    static void cleanup(const core::device::DeviceID &deviceID, core::device::StarDevice &device);
 
   protected:
-    static std::unique_ptr<ManagerStorageContainer<FinalizedRenderRequest>> bufferStorage;
 
-    static std::set<boost::atomic<bool> *> highPriorityRequestCompleteFlags;
+  static std::unordered_map<core::device::DeviceID, std::shared_ptr<core::device::StarDevice>> devices; 
+    static std::unordered_map<core::device::DeviceID, std::unique_ptr<ManagerStorageContainer<FinalizedRenderRequest>>> bufferStorage;
+
+    static std::unordered_map<core::device::DeviceID, std::set<boost::atomic<bool> *>> highPriorityRequestCompleteFlags;
 };
 } // namespace star

@@ -255,7 +255,7 @@ vk::ImageView SceneRenderer::createImageView(star::core::device::DeviceContext &
 star::StarShaderInfo::Builder SceneRenderer::manualCreateDescriptors(star::core::device::DeviceContext &device,
                                                                      const int &numFramesInFlight)
 {
-    auto globalBuilder = StarShaderInfo::Builder(device.getDevice(), numFramesInFlight);
+    auto globalBuilder = StarShaderInfo::Builder(device.getDeviceID(), device.getDevice(), numFramesInFlight);
 
     this->globalSetLayout = StarDescriptorSetLayout::Builder(device.getDevice())
                                 .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)

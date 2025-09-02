@@ -157,8 +157,7 @@ std::unique_ptr<StarBuffers::Buffer> StarBuffers::Buffer::Builder::build()
 {
     assert(this->instanceCount != 0 && this->instanceSize != 0 && "Instance info must be provided");
 
-    return std::unique_ptr<StarBuffers::Buffer>(
-        new StarBuffers::Buffer(this->allocator, this->instanceCount, this->instanceSize, this->minOffsetAlignment,
+    return std::unique_ptr<StarBuffers::Buffer>(new StarBuffers::Buffer(this->allocator, this->instanceCount, this->instanceSize, this->minOffsetAlignment,
                                 this->allocInfo, this->buffInfo, this->allocName));
 }
 } // namespace star

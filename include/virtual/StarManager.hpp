@@ -7,6 +7,8 @@
 
 #include <boost/atomic.hpp>
 
+#include <memory>
+
 namespace star {
 
 class StarManager {
@@ -19,23 +21,13 @@ public:
 
 	StarManager() = default;
 
-	static void init(core::device::StarDevice& device, job::TransferWorker& transferWorker){
-		assert(managerDevice == nullptr && "Init function should only be called once");
-		managerDevice = &device; 
+	static void init(job::TransferWorker& transferWorker){
 		managerWorker = &transferWorker;
 	}
 
 protected:
-	static core::device::StarDevice* managerDevice; 
 	static job::TransferWorker* managerWorker;
 
 	static std::unique_ptr<ManagerStorageContainer<FinalizedRequest>> resourceStorage; 
-	
-	static void waitForFences(std::vector<vk::Fence>& fence){
-		auto result = managerDevice->getVulkanDevice().waitForFences(fence, VK_TRUE, UINT64_MAX);
-
-		if (result != vk::Result::eSuccess)
-			throw std::runtime_error("Failed to wait for fence");
-	}
 };
 }

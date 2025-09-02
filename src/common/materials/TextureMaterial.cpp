@@ -21,7 +21,7 @@ void star::TextureMaterial::prep(core::device::DeviceContext& device){
 	
 }
 
-void star::TextureMaterial::buildDescriptorSet(core::device::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
+void star::TextureMaterial::buildDescriptorSet(core::device::DeviceContext& context, StarShaderInfo::Builder& builder, const int& imageInFlightIndex)
 {
 	builder.startSet();
 	builder.add(this->texture, vk::ImageLayout::eShaderReadOnlyOptimal, true); 

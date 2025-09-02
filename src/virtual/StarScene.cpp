@@ -3,9 +3,11 @@
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
 
-star::StarScene::StarScene(const uint8_t &numFramesInFlight, std::shared_ptr<StarCamera> camera) : camera(camera)
+star::StarScene::StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
+                           std::shared_ptr<StarCamera> camera)
+    : camera(camera)
 {
-    initBuffers(numFramesInFlight);
+    initBuffers(deviceID, numFramesInFlight);
 }
 
 star::StarScene::StarScene(const uint8_t &numFramesInFlight, std::shared_ptr<star::StarCamera> externalCamera,
@@ -42,17 +44,18 @@ std::vector<std::reference_wrapper<star::StarObject>> star::StarScene::getObject
     return result;
 }
 
-void star::StarScene::initBuffers(const uint8_t &numFramesInFlight)
+void star::StarScene::initBuffers(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight)
 {
     this->lightInfoBuffers.resize(numFramesInFlight);
     this->globalInfoBuffers.resize(numFramesInFlight);
 
     for (int i = 0; i < numFramesInFlight; i++)
     {
-        this->globalInfoBuffers[i] =
-            (ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::GlobalInfo>(
-                static_cast<uint8_t>(i), *this->camera, this->lightCounter)));
+        this->globalInfoBuffers[i] = (ManagerRenderResource::addRequest(
+            deviceID, std::make_unique<ManagerController::RenderResource::GlobalInfo>(
+                          static_cast<uint8_t>(i), *this->camera, this->lightCounter)));
         this->lightInfoBuffers[i] = ManagerRenderResource::addRequest(
+            deviceID,
             std::make_unique<ManagerController::RenderResource::LightInfo>(static_cast<uint8_t>(i), this->lightList));
     }
 }

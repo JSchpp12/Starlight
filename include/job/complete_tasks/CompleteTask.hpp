@@ -1,17 +1,19 @@
 #pragma once
 
+#include "core/device/StarDevice.hpp"
+
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
 
 namespace star::job::complete_tasks
 {
-using EngineOnCompleteFuntion = void (*)(void *);
 using DestroyPayloadFunction = void (*)(void *);
 using MovePayloadFunction = void (*)(void *, void *);
+using EngineOnCompleteFunction = void (*)(star::core::device::StarDevice *, void *);
 
 template <size_t StorageBytes =
-              128 - sizeof(EngineOnCompleteFuntion) - sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction),
+              128 - sizeof(EngineOnCompleteFunction) - sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction),
           size_t StorageAlign = alignof(std::max_align_t)>
 class CompleteTask
 {
@@ -42,11 +44,6 @@ class CompleteTask
             m_data = std::move(data);
             return *this;
         }
-        Builder &setCompleteFunction(EngineOnCompleteFuntion onCompleteFunction)
-        {
-            m_onCompleteFunction = onCompleteFunction;
-            return *this;
-        }
         Builder &setDestroyFunction(DestroyPayloadFunction destroyPayloadFunction)
         {
             m_destroyPayloadFunction = destroyPayloadFunction;
@@ -55,6 +52,10 @@ class CompleteTask
         Builder &setMovePayloadFunction(MovePayloadFunction movePayloadFunction)
         {
             m_movePayloadFunction = movePayloadFunction;
+            return *this;
+        }
+        Builder &setEngineExecuteFunction(EngineOnCompleteFunction onCompleteFunction){
+            m_engineOnCompleteFunction = onCompleteFunction; 
             return *this;
         }
         CompleteTask<> build()
@@ -66,7 +67,7 @@ class CompleteTask
 
             if (!m_hasData)
                 throw std::runtime_error("Data must be provided");
-            if (!m_onCompleteFunction)
+            if (!m_engineOnCompleteFunction)
                 throw std::runtime_error("On complete function must be provided");
             if (!m_destroyPayloadFunction)
                 m_destroyPayloadFunction = &Builder<PayloadType>::DefaultDestroyPayload;
@@ -75,7 +76,7 @@ class CompleteTask
 
             CompleteTask<> complete;
             new (complete.m_data) PayloadType(std::forward<PayloadType>(m_data));
-            complete.m_onCompleteFunction = m_onCompleteFunction;
+            complete.m_engineOnCompleteFunction = m_engineOnCompleteFunction;
             complete.m_movePayloadFunction = m_movePayloadFunction;
             complete.m_destroyPayloadFunction = m_destroyPayloadFunction;
 
@@ -83,7 +84,7 @@ class CompleteTask
         }
 
       private:
-        EngineOnCompleteFuntion m_onCompleteFunction = nullptr;
+        EngineOnCompleteFunction m_engineOnCompleteFunction = nullptr;
         MovePayloadFunction m_movePayloadFunction = nullptr;
         DestroyPayloadFunction m_destroyPayloadFunction = nullptr;
 
@@ -97,29 +98,29 @@ class CompleteTask
         if (other.m_movePayloadFunction)
             other.m_movePayloadFunction(m_data, other.m_data);
 
-        m_onCompleteFunction = other.m_onCompleteFunction;
+        m_engineOnCompleteFunction = other.m_engineOnCompleteFunction;
         m_movePayloadFunction = other.m_movePayloadFunction;
         m_destroyPayloadFunction = other.m_destroyPayloadFunction;
 
-        other.m_onCompleteFunction = nullptr;
+        other.m_engineOnCompleteFunction = nullptr;
         other.m_movePayloadFunction = nullptr;
         other.m_destroyPayloadFunction = nullptr;
     }
     CompleteTask &operator=(CompleteTask &&other) noexcept
     {
-        if (this != other)
+        if (this != &other)
         {
             if (m_destroyPayloadFunction)
                 m_destroyPayloadFunction(m_data);
 
-            m_onCompleteFunction = other.m_onCompleteFunction;
+            m_engineOnCompleteFunction = other.m_engineOnCompleteFunction;
             m_destroyPayloadFunction = other.m_destroyPayloadFunction;
             m_movePayloadFunction = other.m_movePayloadFunction;
 
             if (m_movePayloadFunction)
                 m_movePayloadFunction(m_data, other.m_data);
 
-            other.m_onCompleteFunction = nullptr;
+            other.m_engineOnCompleteFunction = nullptr;
             other.m_destroyPayloadFunction = nullptr;
             other.m_movePayloadFunction = nullptr;
         }
@@ -134,15 +135,16 @@ class CompleteTask
             m_destroyPayloadFunction(m_data);
     }
 
-    void run()
+    //will be run on the MAIN engine thread
+    void run(star::core::device::StarDevice *device)
     {
-        m_onCompleteFunction(payload());
+        m_engineOnCompleteFunction(device, payload());
     }
 
   private:
-    EngineOnCompleteFuntion m_onCompleteFunction = nullptr;
     MovePayloadFunction m_movePayloadFunction = nullptr;
     DestroyPayloadFunction m_destroyPayloadFunction = nullptr;
+    EngineOnCompleteFunction m_engineOnCompleteFunction = nullptr;
     alignas(StorageAlign) std::byte m_data[StorageBytes];
 
     void *payload() noexcept

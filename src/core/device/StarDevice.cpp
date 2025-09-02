@@ -2,24 +2,30 @@
 
 namespace star::core::device
 {
-StarDevice::StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface, core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures) : starWindow(window)
+StarDevice::StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface,
+                       core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures,
+                       const std::set<star::Rendering_Device_Features> &requiredRenderingDeviceFeatures)
+    : starWindow(window)
 {
+    vk::PhysicalDeviceFeatures requiredPhysicalDeviceFeatures{};
+
     if (requiredFeatures.find(star::Rendering_Features::shader_float64) != requiredFeatures.end())
-        this->requiredDeviceFeatures.shaderFloat64 = VK_TRUE;
+        requiredPhysicalDeviceFeatures.shaderFloat64 = VK_TRUE;
 
-    this->requiredDeviceFeatures.geometryShader = VK_TRUE;
-    this->requiredDeviceFeatures.samplerAnisotropy = VK_TRUE;
-    this->requiredDeviceFeatures.fillModeNonSolid = VK_TRUE;
-    this->requiredDeviceFeatures.logicOp = VK_TRUE;
+    requiredPhysicalDeviceFeatures.geometryShader = VK_TRUE;
+    requiredPhysicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
+    requiredPhysicalDeviceFeatures.fillModeNonSolid = VK_TRUE;
+    requiredPhysicalDeviceFeatures.logicOp = VK_TRUE;
 
-    pickPhysicalDevice(renderingInstance, renderingSurface);
-    createLogicalDevice(renderingInstance, renderingSurface);
+    pickPhysicalDevice(renderingInstance, renderingSurface, requiredPhysicalDeviceFeatures);
+    createLogicalDevice(renderingInstance, renderingSurface, requiredPhysicalDeviceFeatures, requiredRenderingDeviceFeatures);
     createAllocator(renderingInstance);
 }
 
 StarDevice::~StarDevice()
 {
-    if (vulkanDevice){
+    if (vulkanDevice)
+    {
         this->defaultCommandPool.reset();
         this->transferCommandPool.reset();
         this->computeCommandPool.reset();
@@ -34,16 +40,19 @@ StarDevice::~StarDevice()
     }
 }
 
-StarDevice::StarDevice(StarDevice &&other) : vulkanDevice(other.vulkanDevice), allocator(std::move(other.allocator)), 
-physicalDevice(other.physicalDevice), starWindow(other.starWindow), extraFamilies(std::move(other.extraFamilies)),
-currentDeviceQueues(std::move(other.currentDeviceQueues)), defaultQueue(std::move(other.defaultQueue)), dedicatedComputeQueue(std::move(other.dedicatedComputeQueue)), 
-dedicatedTransferQueue(std::move(other.dedicatedTransferQueue)), defaultCommandPool(other.defaultCommandPool), transferCommandPool(other.transferCommandPool),
-computeCommandPool(other.computeCommandPool)
+StarDevice::StarDevice(StarDevice &&other)
+    : vulkanDevice(other.vulkanDevice), allocator(std::move(other.allocator)), physicalDevice(other.physicalDevice),
+      starWindow(other.starWindow), extraFamilies(std::move(other.extraFamilies)),
+      currentDeviceQueues(std::move(other.currentDeviceQueues)), defaultQueue(std::move(other.defaultQueue)),
+      dedicatedComputeQueue(std::move(other.dedicatedComputeQueue)),
+      dedicatedTransferQueue(std::move(other.dedicatedTransferQueue)), defaultCommandPool(other.defaultCommandPool),
+      transferCommandPool(other.transferCommandPool), computeCommandPool(other.computeCommandPool)
 {
     other.vulkanDevice = VK_NULL_HANDLE;
 }
 
-void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface)
+void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface,
+                                    const vk::PhysicalDeviceFeatures &requiredDeviceFeatures)
 {
     std::vector<vk::PhysicalDevice> devices = instance.getVulkanInstance().enumeratePhysicalDevices();
 
@@ -54,7 +63,7 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::Ren
     // check devices and see if they are suitable for use
     for (const auto &nDevice : devices)
     {
-        if (IsDeviceSuitable(this->requiredDeviceExtensions, this->requiredDeviceFeatures, nDevice, renderingSurface))
+        if (IsDeviceSuitable(this->requiredDeviceExtensions, requiredDeviceFeatures, nDevice, renderingSurface))
         {
             if (nDevice)
                 suitableDevices.push_back(nDevice);
@@ -119,7 +128,8 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::Ren
     }
 }
 
-void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface)
+void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface, 
+    const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const std::set<Rendering_Device_Features> &deviceFeatures)
 {
     QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, renderingSurface.getSurface());
 
@@ -128,7 +138,7 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
     std::set<uint32_t> uniqueQueueFamilies = indicies.getUniques();
 
     std::vector<StarQueueFamily> queueFamilies = std::vector<StarQueueFamily>();
-    for (auto uniqueIndex : uniqueQueueFamilies) 
+    for (auto uniqueIndex : uniqueQueueFamilies)
     {
         queueFamilies.emplace_back(uniqueIndex, indicies.getNumQueuesForIndex(uniqueIndex),
                                    indicies.getSupportForIndex(uniqueIndex),
@@ -136,21 +146,27 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
     }
 
     auto dynamicRenderingFeatures = vk::PhysicalDeviceDynamicRenderingFeatures().setDynamicRendering(true);
-
+    
+    auto timelineSemaphoreFeature = vk::PhysicalDeviceTimelineSemaphoreFeatures().setTimelineSemaphore(true).setPNext(&dynamicRenderingFeatures); 
+    void *next = &dynamicRenderingFeatures;
+    if (deviceFeatures.contains(Rendering_Device_Features::timeline_semaphores)){
+        next = &timelineSemaphoreFeature; 
+    }
     auto syncFeatures =
-        vk::PhysicalDeviceSynchronization2Features().setSynchronization2(true).setPNext(&dynamicRenderingFeatures);
+        vk::PhysicalDeviceSynchronization2Features().setSynchronization2(true).setPNext(next);
 
     {
         uint32_t numDeviceExtensions = uint32_t();
         CastHelpers::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
 
-        std::vector<const char *> validationLayerNames = instance.getValidationLayerNames(); 
+        std::vector<const char *> validationLayerNames = instance.getValidationLayerNames();
         uint32_t numValidationLayers = uint32_t();
         CastHelpers::SafeCast<size_t, uint32_t>(validationLayerNames.size(), numValidationLayers);
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-        for (auto &family : queueFamilies){
-            queueCreateInfos.push_back(family.getDeviceCreateInfo()); 
+        for (auto &family : queueFamilies)
+        {
+            queueCreateInfos.push_back(family.getDeviceCreateInfo());
         }
         uint32_t numQueues = uint32_t();
         CastHelpers::SafeCast<size_t, uint32_t>(queueCreateInfos.size(), numQueues);
@@ -169,19 +185,21 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
         this->vulkanDevice = physicalDevice.createDevice(createInfo);
     }
 
-    for (auto &fam : queueFamilies){
-        fam.init(this->vulkanDevice); 
+    for (auto &fam : queueFamilies)
+    {
+        fam.init(this->vulkanDevice);
     }
     this->currentDeviceQueues = std::make_unique<QueueOwnershipTracker>(queueFamilies);
 
     std::optional<StarQueue> test = this->currentDeviceQueues->giveMeQueueWithProperties(
-        vk::QueueFlagBits::eCompute & vk::QueueFlagBits::eTransfer & vk::QueueFlagBits::eGraphics, true); 
+        vk::QueueFlagBits::eCompute & vk::QueueFlagBits::eTransfer & vk::QueueFlagBits::eGraphics, true);
     this->defaultQueue = std::make_unique<StarQueue>(test.value());
 
     if (indicies.isFullySupported())
     {
         {
-            const std::vector<uint32_t> indices = this->currentDeviceQueues->getQueueFamiliesWhichSupport(vk::QueueFlagBits::eCompute); 
+            const std::vector<uint32_t> indices =
+                this->currentDeviceQueues->getQueueFamiliesWhichSupport(vk::QueueFlagBits::eCompute);
             // pick queues from different families
             for (const uint32_t &index : indices)
             {
@@ -201,15 +219,17 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
         }
 
         {
-            const std::vector<uint32_t> indices = this->currentDeviceQueues->getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
+            const std::vector<uint32_t> indices =
+                this->currentDeviceQueues->getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
             for (const uint32_t &index : indices)
             {
-                if (this->defaultQueue->getParentQueueFamilyIndex() != index && this->dedicatedComputeQueue->getParentQueueFamilyIndex() != index)
+                if (this->defaultQueue->getParentQueueFamilyIndex() != index &&
+                    this->dedicatedComputeQueue->getParentQueueFamilyIndex() != index)
                 {
                     std::unique_ptr<uint32_t> *target = nullptr;
 
-                    auto fam =
-                        this->currentDeviceQueues->giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false, index);
+                    auto fam = this->currentDeviceQueues->giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false,
+                                                                                    index);
                     if (fam.has_value())
                     {
                         this->dedicatedTransferQueue = std::make_unique<StarQueue>(fam.value());
@@ -224,16 +244,18 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
         std::make_shared<StarCommandPool>(this->vulkanDevice, this->defaultQueue->getParentQueueFamilyIndex(), true);
 
     if (this->dedicatedComputeQueue != nullptr)
-        this->computeCommandPool = std::make_shared<StarCommandPool>(this->vulkanDevice, this->dedicatedComputeQueue->getParentQueueFamilyIndex(), true); 
+        this->computeCommandPool = std::make_shared<StarCommandPool>(
+            this->vulkanDevice, this->dedicatedComputeQueue->getParentQueueFamilyIndex(), true);
 
     if (this->dedicatedTransferQueue != nullptr)
-        this->transferCommandPool = std::make_shared<StarCommandPool>(this->vulkanDevice, this->dedicatedTransferQueue->getParentQueueFamilyIndex(), true); 
+        this->transferCommandPool = std::make_shared<StarCommandPool>(
+            this->vulkanDevice, this->dedicatedTransferQueue->getParentQueueFamilyIndex(), true);
 }
 
 void StarDevice::createAllocator(core::RenderingInstance &instance)
 {
-    this->allocator =
-        std::make_unique<star::Allocator>(this->getVulkanDevice(), this->getPhysicalDevice(), instance.getVulkanInstance());
+    this->allocator = std::make_unique<star::Allocator>(this->getVulkanDevice(), this->getPhysicalDevice(),
+                                                        instance.getVulkanInstance());
 }
 
 bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
@@ -396,7 +418,7 @@ StarQueue &StarDevice::getDefaultQueue(const star::Queue_Type &type)
     case (star::Queue_Type::Tgraphics):
         return *this->defaultQueue;
         break;
-        
+
     case (star::Queue_Type::Tcompute):
         if (this->dedicatedComputeQueue != nullptr)
         {
@@ -566,7 +588,8 @@ void StarDevice::createImageWithInfo(const vk::ImageCreateInfo &imageInfo, vk::M
     this->vulkanDevice.bindImageMemory(image, imageMemory, 0);
 }
 
-core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevice &device, core::RenderingSurface &surface)
+core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::PhysicalDevice &device,
+                                                                core::RenderingSurface &surface)
 {
     core::SwapChainSupportDetails details;
     uint32_t formatCount, presentModeCount;
@@ -607,7 +630,8 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
         // resize for same reasons as format
         details.presentModes.resize(presentModeCount);
 
-        const auto result = device.getSurfacePresentModesKHR(surface.getSurface(), &presentModeCount, details.presentModes.data());
+        const auto result =
+            device.getSurfacePresentModesKHR(surface.getSurface(), &presentModeCount, details.presentModes.data());
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");
@@ -632,4 +656,4 @@ bool StarDevice::DoesDeviceSupportPresentation(vk::PhysicalDevice physicalDevice
     }
     return false;
 }
-} // namespace star
+} // namespace star::core::device

@@ -6,13 +6,14 @@
 #include "boost/atomic/atomic.hpp"
 
 #include <stdexcept>
+#include <optional>
 
 namespace star::job::tasks
 {
 using ExecuteFunction = void (*)(void *);
 using DestructorFunction = void (*)(void *);
 using MovePayloadFunction = void (*)(void *, void *);
-using CreateCompleteTaskFunction = star::job::complete_tasks::CompleteTask<>* (*)(void *);
+using CreateCompleteTaskFunction = std::optional<star::job::complete_tasks::CompleteTask<>> (*)(void *);
 
 template <size_t StorageBytes = 128 - sizeof(ExecuteFunction) - sizeof(DestructorFunction) -
                                 sizeof(MovePayloadFunction) - sizeof(CreateCompleteTaskFunction) - sizeof(uint16_t) - 8,
@@ -158,11 +159,11 @@ class Task
         m_executeFunction(payload());
     }
 
-    complete_tasks::CompleteTask<> *getCompleteMessage(){
+    std::optional<complete_tasks::CompleteTask<>> getCompleteMessage(){
         if (m_createCompleteFunction)
             return m_createCompleteFunction(payload()); 
 
-        return nullptr; 
+        return std::nullopt; 
     }
 
   private:

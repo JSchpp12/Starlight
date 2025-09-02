@@ -1,11 +1,16 @@
 #pragma once
 
+#include "ManagerRenderResource.hpp"
 #include "RenderingSurface.hpp"
 #include "SwapChainSupportDetails.hpp"
 #include "TaskManager.hpp"
+#include "device/DeviceID.hpp"
 #include "device/StarDevice.hpp"
 #include "device/managers/ManagerCommandBuffer.hpp"
-#include "ManagerRenderResource.hpp"
+#include "tasks/TaskFactory.hpp"
+
+
+#include "ConfigFile.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -33,21 +38,14 @@ class DeviceContext
         managers::ManagerCommandBuffer &m_manager;
     };
 
-    DeviceContext(const uint8_t &numFramesInFlight, RenderingInstance &instance,
-                  std::set<Rendering_Features> requiredFeatures, StarWindow &window)
-        : m_surface(std::make_shared<RenderingSurface>(instance, window)),
-          m_device(StarDevice(window, *m_surface, instance, requiredFeatures)),
-          m_commandBufferManager(std::make_unique<managers::ManagerCommandBuffer>(m_device, numFramesInFlight)),
-          m_transferWorker(CreateTransferWorker(m_device)), 
-          m_renderResourceManager(std::make_unique<ManagerRenderResource>())
-    {
-        ManagerRenderResource::init(m_device, *m_transferWorker, numFramesInFlight);
-    };
+    DeviceContext(const DeviceID &deviceID, const uint8_t &numFramesInFlight, RenderingInstance &instance,
+                  std::set<Rendering_Features> requiredFeatures, StarWindow &window,
+                  const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
 
     ~DeviceContext()
     {
         if (m_commandBufferManager)
-            m_commandBufferManager->cleanup(m_device);
+            m_commandBufferManager->cleanup(*m_device);
     };
 
     DeviceContext(DeviceContext &&other) = default;
@@ -65,7 +63,7 @@ class DeviceContext
 
     inline StarDevice &getDevice()
     {
-        return m_device;
+        return *m_device;
     }
 
     job::TaskManager &getManager()
@@ -82,7 +80,7 @@ class DeviceContext
     {
         assert(m_commandBufferManager);
 
-        return ManagerCommandBufferWrapper{.m_device = m_device, .m_manager = *m_commandBufferManager};
+        return ManagerCommandBufferWrapper{.m_device = *m_device, .m_manager = *m_commandBufferManager};
     }
 
     ManagerRenderResource &getManagerRenderResource()
@@ -99,14 +97,20 @@ class DeviceContext
 
     SwapChainSupportDetails getSwapchainSupportDetails();
 
+    DeviceID getDeviceID()
+    {
+        return m_deviceID;
+    }
+
   private:
+    DeviceID m_deviceID;
     std::shared_ptr<RenderingSurface> m_surface = nullptr;
-    StarDevice m_device;
+    std::shared_ptr<StarDevice> m_device;
     job::TaskManager m_manager;
     std::unique_ptr<managers::ManagerCommandBuffer> m_commandBufferManager = nullptr;
     std::unique_ptr<job::TransferWorker> m_transferWorker = nullptr;
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager = nullptr;
 
-    std::unique_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device); 
+    std::unique_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device);
 };
-} // namespace star::core::devices
+} // namespace star::core::device

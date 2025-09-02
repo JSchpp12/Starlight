@@ -12,12 +12,12 @@ star::job::TransferManagerThread::~TransferManagerThread()
     }
 }
 
-void star::job::TransferManagerThread::startAsync()
+void star::job::TransferManagerThread::startAsync(core::device::StarDevice &device)
 {
     this->shouldRun.store(true);
     this->thread = boost::thread(job::TransferManagerThread::mainLoop,
-                                 job::TransferManagerThread::SubThreadInfo(&this->shouldRun, this->device.getVulkanDevice(), this->myQueue,
-                                               this->device.getAllocator().get(), this->deviceProperties,
+                                 job::TransferManagerThread::SubThreadInfo(&this->shouldRun, device.getVulkanDevice(), this->myQueue,
+                                               device.getAllocator().get(), this->deviceProperties,
                                                &this->requestQueues, this->allTransferQueueFamilyIndicesInUse));
 
     if (!this->thread.joinable())
@@ -234,10 +234,10 @@ void star::job::TransferManagerThread::EnsureInfoReady(vk::Device &device, Proce
 }
 
 star::job::TransferManagerThread::TransferManagerThread(
-    star::core::device::StarDevice &device, std::vector<boost::lockfree::stack<star::job::TransferManagerThread::InterThreadRequest *> *> requestQueues,
+    std::vector<boost::lockfree::stack<star::job::TransferManagerThread::InterThreadRequest *> *> requestQueues,
     const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse)
-    : device(device), requestQueues(requestQueues), deviceProperties(deviceProperties), myQueue(myQueue),
+    : requestQueues(requestQueues), deviceProperties(deviceProperties), myQueue(myQueue),
       allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse)
 {
 }
@@ -261,7 +261,7 @@ star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device
         throw std::runtime_error("Failed to create transfer worker");
 
     for (auto &thread : this->threads)
-        thread->startAsync();
+        thread->startAsync(device);
 }
 
 void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
@@ -339,7 +339,6 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
         if (curNumHighThreads > curNumStandardThreads)
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
-                device,
                 std::vector<boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> *>{&standardQueue},
                 device.getPhysicalDevice().getProperties(), queue, allTransferQueueFamilyIndicesInUse));
 
@@ -348,7 +347,6 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
         else
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
-                device,
                 std::vector<boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> *>{&highPriorityQueue},
                 device.getPhysicalDevice().getProperties(), queue, allTransferQueueFamilyIndicesInUse));
             curNumHighThreads++;

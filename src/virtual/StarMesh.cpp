@@ -1,8 +1,10 @@
 #include "StarMesh.hpp"
 
-void star::StarMesh::prepRender(star::core::device::DeviceContext &device)
+void star::StarMesh::prepRender(star::core::device::DeviceContext &context)
 {
-    this->material->prepRender(device);
+    m_deviceID = context.getDeviceID(); 
+
+    this->material->prepRender(context);
 }
 
 bool star::StarMesh::isKnownToBeReady(const uint8_t &frameInFlightIndex)
@@ -11,7 +13,7 @@ bool star::StarMesh::isKnownToBeReady(const uint8_t &frameInFlightIndex)
         return true;
 
     // need to also check if vert + ind buffers are ready
-    if (ManagerRenderResource::isReady(this->vertBuffer) && ManagerRenderResource::isReady(this->indBuffer) &&
+    if (ManagerRenderResource::isReady(m_deviceID, this->vertBuffer) && ManagerRenderResource::isReady(m_deviceID, this->indBuffer) &&
         this->material->isKnownToBeReady(frameInFlightIndex))
     {
         this->isReady = true;
@@ -28,8 +30,8 @@ void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, 
     this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex);
 
     vk::DeviceSize offset{0};
-    auto &vBuff = ManagerRenderResource::getBuffer(this->vertBuffer);
-    auto &iBuff = ManagerRenderResource::getBuffer(this->indBuffer);
+    auto &vBuff = ManagerRenderResource::getBuffer(m_deviceID, this->vertBuffer);
+    auto &iBuff = ManagerRenderResource::getBuffer(m_deviceID, this->indBuffer);
     commandBuffer.bindVertexBuffers(0, vBuff.getVulkanBuffer(), offset);
     commandBuffer.bindIndexBuffer(iBuff.getVulkanBuffer(), offset, vk::IndexType::eUint32);
     commandBuffer.drawIndexed(this->numInds, instanceCount, 0, 0, 0);

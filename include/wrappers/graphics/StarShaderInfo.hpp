@@ -1,8 +1,8 @@
 #pragma once
 
+#include "DeviceContext.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
-#include "DeviceContext.hpp"
 #include "StarTextures/Texture.hpp"
 
 #include "Handle.hpp"
@@ -90,13 +90,14 @@ class StarShaderInfo
     {
         std::vector<ShaderInfo> shaderInfos = std::vector<ShaderInfo>();
 
-        ShaderInfoSet(core::device::StarDevice &device, StarDescriptorSetLayout &setLayout) : device(device), setLayout(setLayout) {};
+        ShaderInfoSet(core::device::StarDevice &device, StarDescriptorSetLayout &setLayout)
+            : device(device), setLayout(setLayout) {};
 
         void add(const ShaderInfo &shaderInfo);
 
-        void buildIndex(const int &index);
+        void buildIndex(const core::device::DeviceID &deviceID, const int &index);
 
-        void build();
+        void build(const core::device::DeviceID &deviceID);
 
         vk::DescriptorSet getDescriptorSet();
 
@@ -122,9 +123,10 @@ class StarShaderInfo
         std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>();
 
   public:
-    StarShaderInfo(core::device::StarDevice &device, const std::vector<std::shared_ptr<StarDescriptorSetLayout>> &layouts,
+    StarShaderInfo(core::device::DeviceID deviceID, core::device::StarDevice &device,
+                   const std::vector<std::shared_ptr<StarDescriptorSetLayout>> &layouts,
                    const std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> &shaderInfoSets)
-        : layouts(layouts), shaderInfoSets(shaderInfoSets) {};
+        : m_deviceID(deviceID), layouts(layouts), shaderInfoSets(shaderInfoSets) {};
 
     bool isReady(const uint8_t &frameInFlight);
 
@@ -135,10 +137,12 @@ class StarShaderInfo
     class Builder
     {
       public:
-        Builder(core::device::StarDevice &device, const int numFramesInFlight) : device(device), sets(numFramesInFlight) {};
+        Builder(core::device::DeviceID deviceID, core::device::StarDevice &device, const int numFramesInFlight)
+            : m_deviceID(deviceID), device(device), sets(numFramesInFlight) {};
 
         Builder(Builder &other) : device(other.device)
         {
+            m_deviceID = other.m_deviceID;
             this->layouts = other.layouts;
             this->sets = other.sets;
         };
@@ -160,6 +164,8 @@ class StarShaderInfo
 
         Builder &add(const Handle &bufferHandle, const bool willCheckForIfReady)
         {
+            assert(bufferHandle.getType() == star::Handle_Type::buffer);
+
             this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, willCheckForIfReady));
             return *this;
         };
@@ -178,22 +184,36 @@ class StarShaderInfo
             return *this;
         };
 
-        Builder &add(const StarTextures::Texture &texture, const vk::ImageLayout &desiredLayout, const bool &willCheckForIfReady)
+        Builder &add(const StarTextures::Texture &texture, const vk::ImageLayout &desiredLayout,
+                     const bool &willCheckForIfReady)
         {
             this->activeSet->back()->add(
                 ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, willCheckForIfReady));
             return *this;
         }
 
-        Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout,
-                     const bool &willCheckForIfReady);
+        Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, const bool &willCheckForIfReady)
+        {
+            assert(textureHandle.getType() == Handle_Type::texture);
+            this->activeSet->back()->add(
+                ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, willCheckForIfReady));
+            return *this;
+        }
 
         Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout,
-                     vk::Format &requestedImageViewFormat, const bool &willCheckForIfReady);
+                     vk::Format &requestedImageViewFormat, const bool &willCheckForIfReady)
+        {
+            assert(textureHandle.getType() == Handle_Type::texture);
+
+            this->activeSet->back()->add(ShaderInfo(
+                ShaderInfo::TextureInfo{textureHandle, desiredLayout, requestedImageViewFormat}, willCheckForIfReady));
+            return *this;
+        }
 
         std::unique_ptr<StarShaderInfo> build()
         {
-            return std::make_unique<StarShaderInfo>(this->device, std::move(this->layouts), std::move(this->sets));
+            return std::make_unique<StarShaderInfo>(m_deviceID, this->device, std::move(this->layouts),
+                                                    std::move(this->sets));
         };
 
         std::vector<std::shared_ptr<StarDescriptorSetLayout>> getCurrentSetLayouts()
@@ -202,6 +222,7 @@ class StarShaderInfo
         };
 
       private:
+        core::device::DeviceID m_deviceID;
         core::device::StarDevice &device;
         std::vector<std::shared_ptr<ShaderInfoSet>> *activeSet = nullptr;
 
@@ -210,5 +231,8 @@ class StarShaderInfo
         std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> sets =
             std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>();
     };
+
+  private:
+    core::device::DeviceID m_deviceID;
 };
 } // namespace star

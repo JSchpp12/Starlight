@@ -144,13 +144,15 @@ void star::StarObject::prepRender(star::core::device::DeviceContext& context, vk
 	vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo, int numSwapChainImages, 
 	star::StarShaderInfo::Builder fullEngineBuilder)
 {
+	m_deviceID = context.getDeviceID(); 
+
 	std::vector<Vertex> bbVerts;
 	std::vector<uint32_t> bbInds;
 
 	calculateBoundingBox(bbVerts, bbInds);
 
-	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
-	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
+	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(m_deviceID, std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(m_deviceID, std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
 
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
@@ -163,13 +165,15 @@ void star::StarObject::prepRender(star::core::device::DeviceContext& context, vk
 
 void star::StarObject::prepRender(star::core::device::DeviceContext& context, int numSwapChainImages, StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
 {
+	m_deviceID = context.getDeviceID(); 
+
 	std::vector<Vertex> bbVerts;
 	std::vector<uint32_t> bbInds;
 
 	calculateBoundingBox(bbVerts, bbInds);
 
-	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
-	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
+	this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(m_deviceID, std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
+	this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(m_deviceID, std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
 
 	this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder); 
 
@@ -241,7 +245,7 @@ void star::StarObject::prepareMeshes(star::core::device::DeviceContext& device)
 	}
 }
 
-void star::StarObject::prepareDescriptors(star::core::device::DeviceContext& device, int numSwapChainImages,
+void star::StarObject::prepareDescriptors(star::core::device::DeviceContext& context, int numSwapChainImages,
 	star::StarShaderInfo::Builder frameBuilder)
 {
 	for (int i = 0; i < numSwapChainImages; i++) {
@@ -253,7 +257,7 @@ void star::StarObject::prepareDescriptors(star::core::device::DeviceContext& dev
 	
 	for (auto& mesh : this->getMeshes()) {
 		//descriptors
-		mesh->getMaterial().finalizeDescriptors(device, frameBuilder, numSwapChainImages);
+		mesh->getMaterial().finalizeDescriptors(context, frameBuilder, numSwapChainImages);
 	}
 }
 
@@ -265,10 +269,10 @@ void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext& 
 	//create a buffer for each image
 	for (int i = 0; i < numImagesInFlight; i++) {
 		this->instanceModelInfos.emplace_back(
-			ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(this->instances, i))
+			ManagerRenderResource::addRequest(context.getDeviceID(), std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(this->instances, i))
 		);
 		this->instanceNormalInfos.emplace_back(
-			ManagerRenderResource::addRequest(std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(this->instances, i))
+			ManagerRenderResource::addRequest(context.getDeviceID(), std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(this->instances, i))
 		); 
 	}
 }
@@ -324,8 +328,8 @@ void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer& commandBuffer
 void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex)
 {
 	vk::DeviceSize offsets{}; 
-	commandBuffer.bindVertexBuffers(0, ManagerRenderResource::getBuffer(this->boundingBoxVertBuffer).getVulkanBuffer(), offsets); 
-	commandBuffer.bindIndexBuffer(ManagerRenderResource::getBuffer(this->boundingBoxIndexBuffer).getVulkanBuffer(), 0, vk::IndexType::eUint32);
+	commandBuffer.bindVertexBuffers(0, ManagerRenderResource::getBuffer(m_deviceID, this->boundingBoxVertBuffer).getVulkanBuffer(), offsets); 
+	commandBuffer.bindIndexBuffer(ManagerRenderResource::getBuffer(m_deviceID, this->boundingBoxIndexBuffer).getVulkanBuffer(), 0, vk::IndexType::eUint32);
 
 	this->boundBoxPipeline->bind(commandBuffer); 
 	commandBuffer.setLineWidth(1.0f);

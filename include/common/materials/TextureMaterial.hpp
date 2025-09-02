@@ -20,7 +20,7 @@ namespace star {
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 
 	protected:
-		Handle texture; 
+		Handle texture;
 
 		void prep(core::device::DeviceContext& device) override;
 
