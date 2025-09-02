@@ -26,7 +26,7 @@ class StarEngine
     std::unique_ptr<StarWindow> window = nullptr;
     core::SystemContext deviceManager; 
     std::unique_ptr<StarApplication> application = nullptr; 
-    std::shared_ptr<SwapChainRenderer> mainRenderer = nullptr;
+    std::shared_ptr<core::renderer::SwapChainRenderer> mainRenderer = nullptr;
   private:
     const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
 

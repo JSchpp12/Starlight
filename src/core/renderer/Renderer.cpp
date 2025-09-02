@@ -1,6 +1,6 @@
 #include "renderer/Renderer.hpp"
 
-namespace star
+namespace star::core::renderer
 {
 
 Renderer::Renderer(std::shared_ptr<StarScene> scene) : scene(scene)
@@ -105,7 +105,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
     return newRenderToImages;
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> star::Renderer::createRenderToDepthImages(
+std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::Renderer::createRenderToDepthImages(
     core::device::DeviceContext &device, const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -389,7 +389,7 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &
     recordPostRenderingCalls(commandBuffer, frameInFlightIndex);
 }
 
-vk::RenderingAttachmentInfo star::Renderer::prepareDynamicRenderingInfoColorAttachment(
+vk::RenderingAttachmentInfo star::core::renderer::Renderer::prepareDynamicRenderingInfoColorAttachment(
     const int &frameInFlightIndex)
 {
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
@@ -402,7 +402,7 @@ vk::RenderingAttachmentInfo star::Renderer::prepareDynamicRenderingInfoColorAtta
     return colorAttachmentInfo;
 }
 
-vk::RenderingAttachmentInfo star::Renderer::prepareDynamicRenderingInfoDepthAttachment(
+vk::RenderingAttachmentInfo star::core::renderer::Renderer::prepareDynamicRenderingInfoDepthAttachment(
     const int &frameInFlightIndex)
 {
     vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};

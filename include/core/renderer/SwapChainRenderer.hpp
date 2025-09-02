@@ -7,7 +7,7 @@
 #include <vulkan/vulkan.hpp>
 #include <memory>
 
-namespace star
+namespace star::core::renderer
 {
 class SwapChainRenderer : public Renderer
 {

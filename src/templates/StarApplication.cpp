@@ -15,8 +15,8 @@ void star::StarApplication::cleanup()
     this->swapChainRenderer.reset();
 }
 
-std::shared_ptr<star::SwapChainRenderer> star::StarApplication::createPresentationRenderer(
+std::shared_ptr<star::core::renderer::SwapChainRenderer> star::StarApplication::createPresentationRenderer(
     core::device::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight)
 {
-    return std::make_shared<star::SwapChainRenderer>(this->scene, window, device, numFramesInFlight);
+    return std::make_shared<star::core::renderer::SwapChainRenderer>(this->scene, window, device, numFramesInFlight);
 }

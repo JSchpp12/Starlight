@@ -37,7 +37,7 @@ class StarApplication : public Interactivity
 
     virtual void onScroll(double xoffset, double yoffset) override {};
 
-    std::shared_ptr<SwapChainRenderer> getPresentationRenderer()
+    std::shared_ptr<core::renderer::SwapChainRenderer> getPresentationRenderer()
     {
         return this->swapChainRenderer;
     }
@@ -49,12 +49,12 @@ class StarApplication : public Interactivity
 
   protected:
     std::shared_ptr<StarScene> scene = nullptr;
-    std::shared_ptr<SwapChainRenderer> swapChainRenderer = nullptr;
+    std::shared_ptr<core::renderer::SwapChainRenderer> swapChainRenderer = nullptr;
 
     virtual std::shared_ptr<StarScene> createInitialScene(core::device::DeviceContext &device, const StarWindow &window,
                                                           const uint8_t &numFramesInFlight) = 0;
 
-    virtual std::shared_ptr<SwapChainRenderer> createPresentationRenderer(core::device::DeviceContext &device, const StarWindow &window,
+    virtual std::shared_ptr<core::renderer::SwapChainRenderer> createPresentationRenderer(core::device::DeviceContext &device, const StarWindow &window,
                                                                           const uint8_t &numFramesInFlight);
 
     virtual void startup(core::device::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight) = 0; 

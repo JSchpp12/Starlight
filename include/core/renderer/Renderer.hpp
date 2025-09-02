@@ -27,7 +27,7 @@
 #include <optional>
 #include <vulkan/vulkan.hpp>
 
-namespace star
+namespace star::core::renderer
 {
 class Renderer : private RenderResourceModifier,
                       private DescriptorModifier

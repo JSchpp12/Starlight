@@ -4,14 +4,15 @@
 
 #include <GLFW/glfw3.h>
 
-star::SwapChainRenderer::SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window,
+
+star::core::renderer::SwapChainRenderer::SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window,
                                            core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
     : Renderer(scene), window(window), device(device), numFramesInFlight(numFramesInFlight)
 {
     createSwapChain();
 }
 
-star::SwapChainRenderer::~SwapChainRenderer()
+star::core::renderer::SwapChainRenderer::~SwapChainRenderer()
 {
     cleanupSwapChain();
 
@@ -31,7 +32,7 @@ star::SwapChainRenderer::~SwapChainRenderer()
     }
 }
 
-void star::SwapChainRenderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+void star::core::renderer::SwapChainRenderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                                       const int &numFramesInFlight)
 {
     const size_t numSwapChainImages = this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
@@ -44,7 +45,7 @@ void star::SwapChainRenderer::prepare(core::device::DeviceContext &device, const
     this->createFenceImageTracking();
 }
 
-void star::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
+void star::core::renderer::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
                                                  const vk::Semaphore *mainGraphicsDoneSemaphore)
 {
     /* Presentation */
@@ -85,12 +86,12 @@ void star::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
     this->currentFrameInFlightCounter = (this->currentFrameInFlightCounter + 1) % this->numFramesInFlight;
 }
 
-void star::SwapChainRenderer::pollEvents()
+void star::core::renderer::SwapChainRenderer::pollEvents()
 {
     glfwPollEvents();
 }
 
-star::core::device::managers::ManagerCommandBuffer::Request star::SwapChainRenderer::getCommandBufferRequest()
+star::core::device::managers::ManagerCommandBuffer::Request star::core::renderer::SwapChainRenderer::getCommandBufferRequest()
 {
     return core::device::managers::ManagerCommandBuffer::Request{
         .recordBufferCallback = std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2),
@@ -105,7 +106,7 @@ star::core::device::managers::ManagerCommandBuffer::Request star::SwapChainRende
     };
 }
 
-vk::SurfaceFormatKHR star::SwapChainRenderer::chooseSwapSurfaceFormat(
+vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceFormat(
     const std::vector<vk::SurfaceFormatKHR> &availableFormats) const
 {
     for (const auto &availableFormat : availableFormats)
@@ -124,7 +125,7 @@ vk::SurfaceFormatKHR star::SwapChainRenderer::chooseSwapSurfaceFormat(
     return availableFormats[0];
 }
 
-vk::Format star::SwapChainRenderer::getColorAttachmentFormat(star::core::device::DeviceContext &device) const
+vk::Format star::core::renderer::SwapChainRenderer::getColorAttachmentFormat(star::core::device::DeviceContext &device) const
 {
     core::SwapChainSupportDetails swapChainSupport = device.getSwapchainSupportDetails();
 
@@ -132,7 +133,7 @@ vk::Format star::SwapChainRenderer::getColorAttachmentFormat(star::core::device:
     return surfaceFormat.format;
 }
 
-vk::PresentModeKHR star::SwapChainRenderer::chooseSwapPresentMode(
+vk::PresentModeKHR star::core::renderer::SwapChainRenderer::chooseSwapPresentMode(
     const std::vector<vk::PresentModeKHR> &availablePresentModes)
 {
     /*
@@ -163,7 +164,7 @@ vk::PresentModeKHR star::SwapChainRenderer::chooseSwapPresentMode(
     return vk::PresentModeKHR::eFifo;
 }
 
-vk::Extent2D star::SwapChainRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities)
+vk::Extent2D star::core::renderer::SwapChainRenderer::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities)
 {
     /*
      * "swap extent" -> resolution of the swap chain images (usually the same as window resultion
@@ -194,7 +195,7 @@ vk::Extent2D star::SwapChainRenderer::chooseSwapExtent(const vk::SurfaceCapabili
     }
 }
 
-void star::SwapChainRenderer::prepareForSubmission(const int &frameIndexToBeDrawn)
+void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &frameIndexToBeDrawn)
 {
     /* Goals of each call to drawFrame:
      *   get an image from the swap chain
@@ -268,7 +269,7 @@ void star::SwapChainRenderer::prepareForSubmission(const int &frameIndexToBeDraw
         throw std::runtime_error("Failed to reset fences");
 }
 
-vk::Semaphore star::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
+vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
                                                     std::vector<vk::Semaphore> mustWaitFor)
 {
     vk::SubmitInfo submitInfo{};
@@ -302,7 +303,7 @@ vk::Semaphore star::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, c
     return this->imageAvailableSemaphores[this->currentSwapChainImageIndex];
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SwapChainRenderer::createRenderToImages(
+std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::SwapChainRenderer::createRenderToImages(
     star::core::device::DeviceContext &device, const int &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -364,7 +365,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::SwapChainRendere
     return newRenderToImages;
 }
 
-vk::RenderingAttachmentInfo star::SwapChainRenderer::prepareDynamicRenderingInfoColorAttachment(
+vk::RenderingAttachmentInfo star::core::renderer::SwapChainRenderer::prepareDynamicRenderingInfoColorAttachment(
     const int &frameInFlightIndex)
 {
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
@@ -377,7 +378,7 @@ vk::RenderingAttachmentInfo star::SwapChainRenderer::prepareDynamicRenderingInfo
     return colorAttachmentInfo;
 }
 
-void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
 {
     // transition image layout
     vk::ImageMemoryBarrier setupBarrier{};
@@ -418,7 +419,7 @@ void star::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuff
     this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
 }
 
-std::vector<vk::Semaphore> star::SwapChainRenderer::CreateSemaphores(star::core::device::DeviceContext &device, const int &numToCreate)
+std::vector<vk::Semaphore> star::core::renderer::SwapChainRenderer::CreateSemaphores(star::core::device::DeviceContext &device, const int &numToCreate)
 {
     std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>(numToCreate);
 
@@ -438,7 +439,7 @@ std::vector<vk::Semaphore> star::SwapChainRenderer::CreateSemaphores(star::core:
     return semaphores;
 }
 
-void star::SwapChainRenderer::createFences()
+void star::core::renderer::SwapChainRenderer::createFences()
 {
     // note: fence creation can be rolled into semaphore creation. Seperated for understanding
     inFlightFences.resize(this->numFramesInFlight);
@@ -459,7 +460,7 @@ void star::SwapChainRenderer::createFences()
     }
 }
 
-void star::SwapChainRenderer::createFenceImageTracking()
+void star::core::renderer::SwapChainRenderer::createFenceImageTracking()
 {
     // note: just like createFences() this too can be wrapped into semaphore creation. Seperated for understanding.
 
@@ -470,7 +471,7 @@ void star::SwapChainRenderer::createFenceImageTracking()
     // initially, no frame is using any image so this is going to be created without an explicit link
 }
 
-void star::SwapChainRenderer::createSwapChain()
+void star::core::renderer::SwapChainRenderer::createSwapChain()
 {
     // TODO: current implementation requires halting to all rendering when recreating swapchain. Can place old swap
     // chain in oldSwapChain field
@@ -546,7 +547,7 @@ void star::SwapChainRenderer::createSwapChain()
     this->swapChainExtent = std::make_unique<vk::Extent2D>(extent);
 }
 
-void star::SwapChainRenderer::recreateSwapChain()
+void star::core::renderer::SwapChainRenderer::recreateSwapChain()
 {
     int width = 0, height = 0;
 
@@ -566,7 +567,7 @@ void star::SwapChainRenderer::recreateSwapChain()
     createSwapChain();
 }
 
-void star::SwapChainRenderer::cleanupSwapChain()
+void star::core::renderer::SwapChainRenderer::cleanupSwapChain()
 {
     for (auto &image : this->renderToImages)
     {
