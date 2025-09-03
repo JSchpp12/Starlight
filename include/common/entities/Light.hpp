@@ -15,11 +15,11 @@ class Light : public StarEntity
 {
   public:
     Type::Light type = Type::Light::point;
-    glm::vec4 direction = glm::vec4{0.0f, 1.0f, 0.0f, 0.0f} ;
+    glm::vec4 direction = glm::vec4{0.0f, 1.0f, 0.0f, 0.0f};
     glm::vec4 ambient = glm::vec4{0.5f, 0.5f, 0.5f, 1.0f};
     glm::vec4 diffuse = glm::vec4{0.5f, 0.5f, 0.5f, 1.0f};
     glm::vec4 specular = glm::vec4{0.5f, 0.5f, 0.5f, 1.0f};
-
+    Light() = default;
     Light(const glm::vec3 &position, const Type::Light &type) : StarEntity(position), type(type)
     {
     }
@@ -28,6 +28,8 @@ class Light : public StarEntity
         : StarEntity(position), type(type), direction(glm::vec4(direction, 1.0))
     {
     }
+
+    virtual ~Light() = default;
 
     /// <summary>
     /// Turn the light off or on. Default behavior is to simply switch the light status.

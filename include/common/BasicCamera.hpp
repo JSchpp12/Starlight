@@ -4,7 +4,6 @@
 #include "StarCamera.hpp"
 #include "Time.hpp"
 
-
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <iostream>
@@ -19,8 +18,8 @@ class BasicCamera : public StarCamera, public Interactivity
   public:
     BasicCamera(const uint32_t &width, const uint32_t &height);
     BasicCamera(const uint32_t &width, const uint32_t &height, const float &horizontalFieldOfView,
-                const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance, const float &movementSpeed,
-                const float &sensitivity);
+                const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance,
+                const float &movementSpeed, const float &sensitivity);
 
     /// <summary>
     /// Key callback for camera object. Implements default controls for the camera.
@@ -65,7 +64,6 @@ class BasicCamera : public StarCamera, public Interactivity
         return this->yaw;
     }
 
-  protected:
   private:
     Time time = Time();
 

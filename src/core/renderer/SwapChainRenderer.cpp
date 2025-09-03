@@ -4,10 +4,24 @@
 
 #include <GLFW/glfw3.h>
 
+star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceContext &context,
+                                                           const uint8_t &numFramesInFlight,
+                                                           std::vector<std::shared_ptr<StarObject>> objects,
+                                                           std::vector<std::shared_ptr<Light>> lights,
+                                                           std::vector<Handle> &cameraInfoBuffers,
+                                                           const StarWindow &window)
+    : Renderer(context, numFramesInFlight, objects, lights, cameraInfoBuffers), window(window),
+      numFramesInFlight(numFramesInFlight), device(context)
+{
+    createSwapChain();
+}
 
-star::core::renderer::SwapChainRenderer::SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window,
-                                           core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
-    : Renderer(scene), window(window), device(device), numFramesInFlight(numFramesInFlight)
+star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceContext &context,
+                                                           const uint8_t &numFramesInFlight,
+                                                           std::vector<std::shared_ptr<StarObject>> objects,
+                                                           std::vector<std::shared_ptr<Light>> lights,
+                                                           std::shared_ptr<StarCamera> camera, const StarWindow &window)
+    : Renderer(context, numFramesInFlight, objects, lights, camera), window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain();
 }
@@ -32,10 +46,11 @@ star::core::renderer::SwapChainRenderer::~SwapChainRenderer()
     }
 }
 
-void star::core::renderer::SwapChainRenderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                                      const int &numFramesInFlight)
+void star::core::renderer::SwapChainRenderer::prepare(core::device::DeviceContext &device,
+                                                      const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
 {
-    const size_t numSwapChainImages = this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
+    const size_t numSwapChainImages =
+        this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
     this->Renderer::prepare(this->device, *this->swapChainExtent, numFramesInFlight);
 
     this->imageAcquireSemaphores = CreateSemaphores(this->device, numFramesInFlight);
@@ -46,7 +61,7 @@ void star::core::renderer::SwapChainRenderer::prepare(core::device::DeviceContex
 }
 
 void star::core::renderer::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
-                                                 const vk::Semaphore *mainGraphicsDoneSemaphore)
+                                                                 const vk::Semaphore *mainGraphicsDoneSemaphore)
 {
     /* Presentation */
     vk::PresentInfoKHR presentInfo{};
@@ -91,19 +106,22 @@ void star::core::renderer::SwapChainRenderer::pollEvents()
     glfwPollEvents();
 }
 
-star::core::device::managers::ManagerCommandBuffer::Request star::core::renderer::SwapChainRenderer::getCommandBufferRequest()
+star::core::device::managers::ManagerCommandBuffer::Request star::core::renderer::SwapChainRenderer::
+    getCommandBufferRequest()
 {
     return core::device::managers::ManagerCommandBuffer::Request{
-        .recordBufferCallback = std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2),
+        .recordBufferCallback =
+            std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2),
         .order = Command_Buffer_Order::main_render_pass,
         .orderIndex = 0,
         .type = Queue_Type::Tgraphics,
         .waitStage = vk::PipelineStageFlagBits::eFragmentShader,
         .willBeSubmittedEachFrame = true,
         .recordOnce = false,
-        .beforeBufferSubmissionCallback = std::bind(&SwapChainRenderer::prepareForSubmission, this, std::placeholders::_1),
-        .overrideBufferSubmissionCallback = std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
-    };
+        .beforeBufferSubmissionCallback =
+            std::bind(&SwapChainRenderer::prepareForSubmission, this, std::placeholders::_1),
+        .overrideBufferSubmissionCallback = std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1,
+                                                      std::placeholders::_2, std::placeholders::_3)};
 }
 
 vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceFormat(
@@ -125,7 +143,8 @@ vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceF
     return availableFormats[0];
 }
 
-vk::Format star::core::renderer::SwapChainRenderer::getColorAttachmentFormat(star::core::device::DeviceContext &device) const
+vk::Format star::core::renderer::SwapChainRenderer::getColorAttachmentFormat(
+    star::core::device::DeviceContext &device) const
 {
     core::SwapChainSupportDetails swapChainSupport = device.getSwapchainSupportDetails();
 
@@ -216,7 +235,8 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     //  4. timeout
 
     {
-        auto result = this->device.getDevice().getVulkanDevice().waitForFences(inFlightFences[frameIndexToBeDrawn], VK_TRUE, UINT64_MAX);
+        auto result = this->device.getDevice().getVulkanDevice().waitForFences(inFlightFences[frameIndexToBeDrawn],
+                                                                               VK_TRUE, UINT64_MAX);
         if (result != vk::Result::eSuccess)
             throw std::runtime_error("Failed to wait for fences");
     }
@@ -232,8 +252,8 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     //  2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no
     //  longer match
     {
-        auto result = this->device.getDevice().getVulkanDevice().acquireNextImageKHR(swapChain, UINT64_MAX,
-                                                                   this->imageAcquireSemaphores[frameIndexToBeDrawn]);
+        auto result = this->device.getDevice().getVulkanDevice().acquireNextImageKHR(
+            swapChain, UINT64_MAX, this->imageAcquireSemaphores[frameIndexToBeDrawn]);
 
         if (result.result == vk::Result::eErrorOutOfDateKHR)
         {
@@ -264,13 +284,15 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     this->Renderer::prepareForSubmission(frameIndexToBeDrawn);
 
     // set fence to unsignaled state
-    const vk::Result resetResult = this->device.getDevice().getVulkanDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
+    const vk::Result resetResult =
+        this->device.getDevice().getVulkanDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
     if (resetResult != vk::Result::eSuccess)
         throw std::runtime_error("Failed to reset fences");
 }
 
-vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
-                                                    std::vector<vk::Semaphore> mustWaitFor)
+vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer,
+                                                                    const int &frameIndexToBeDrawn,
+                                                                    std::vector<vk::Semaphore> mustWaitFor)
 {
     vk::SubmitInfo submitInfo{};
     std::vector<vk::Semaphore> waitSemaphores = {this->imageAcquireSemaphores[frameIndexToBeDrawn]};
@@ -291,7 +313,8 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(StarCommandB
     submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
     submitInfo.commandBufferCount = 1;
 
-    auto commandResult = std::make_unique<vk::Result>(this->device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent)
+    auto commandResult = std::make_unique<vk::Result>(this->device.getDevice()
+                                                          .getDefaultQueue(star::Queue_Type::Tpresent)
                                                           .getVulkanQueue()
                                                           .submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
 
@@ -306,7 +329,8 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(StarCommandB
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::SwapChainRenderer::createRenderToImages(
     star::core::device::DeviceContext &device, const int &numFramesInFlight)
 {
-    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
+    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages =
+        std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     vk::Format format = getColorAttachmentFormat(device);
 
@@ -378,7 +402,8 @@ vk::RenderingAttachmentInfo star::core::renderer::SwapChainRenderer::prepareDyna
     return colorAttachmentInfo;
 }
 
-void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer,
+                                                                  const int &frameInFlightIndex)
 {
     // transition image layout
     vk::ImageMemoryBarrier setupBarrier{};
@@ -419,7 +444,8 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
     this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
 }
 
-std::vector<vk::Semaphore> star::core::renderer::SwapChainRenderer::CreateSemaphores(star::core::device::DeviceContext &device, const int &numToCreate)
+std::vector<vk::Semaphore> star::core::renderer::SwapChainRenderer::CreateSemaphores(
+    star::core::device::DeviceContext &device, const int &numToCreate)
 {
     std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>(numToCreate);
 
@@ -493,7 +519,7 @@ void star::core::renderer::SwapChainRenderer::createSwapChain()
 
     vk::SwapchainCreateInfoKHR createInfo{};
     createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;
-    createInfo.surface = this->device.getSurface()->getSurface(); 
+    createInfo.surface = this->device.getSurface()->getSurface();
 
     // specify image information for the surface
     createInfo.minImageCount = imageCount;
@@ -505,8 +531,9 @@ void star::core::renderer::SwapChainRenderer::createSwapChain()
         vk::ImageUsageFlagBits::eColorAttachment |
         vk::ImageUsageFlagBits::eTransferSrc; // how are these images going to be used? Color attachment since we are
                                               // rendering to them (can change for postprocessing effects)
- 
-    std::vector<uint32_t> queueFamilyIndicies = this->device.getDevice().getQueueOwnershipTracker().getAllQueueFamilyIndices();
+
+    std::vector<uint32_t> queueFamilyIndicies =
+        this->device.getDevice().getQueueOwnershipTracker().getAllQueueFamilyIndices();
 
     if (queueFamilyIndicies.size() > 1)
     {

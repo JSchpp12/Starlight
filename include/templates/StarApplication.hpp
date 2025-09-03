@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/DeviceContext.hpp"
 #include "Interactivity.hpp"
 #include "StarScene.hpp"
 #include "core/renderer/SwapChainRenderer.hpp"
@@ -15,13 +16,12 @@ namespace star
 class StarApplication : public Interactivity
 {
   public:
-    StarApplication()
-    {
-        this->registerInteractions();
-    }
+    StarApplication() = default;
     virtual ~StarApplication() = default;
 
-    void init(core::device::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight);
+    void init(){
+        this->registerInteractions();
+    }
 
     void cleanup();
 
@@ -37,26 +37,8 @@ class StarApplication : public Interactivity
 
     virtual void onScroll(double xoffset, double yoffset) override {};
 
-    std::shared_ptr<core::renderer::SwapChainRenderer> getPresentationRenderer()
-    {
-        return this->swapChainRenderer;
-    }
-
-    std::shared_ptr<StarScene> getInitialScene()
-    {
-        return this->scene;
-    }
+    virtual std::shared_ptr<StarScene> loadScene(core::device::DeviceContext &context, const StarWindow &window, const uint8_t &numFramesInFlight) = 0; 
 
   protected:
-    std::shared_ptr<StarScene> scene = nullptr;
-    std::shared_ptr<core::renderer::SwapChainRenderer> swapChainRenderer = nullptr;
-
-    virtual std::shared_ptr<StarScene> createInitialScene(core::device::DeviceContext &device, const StarWindow &window,
-                                                          const uint8_t &numFramesInFlight) = 0;
-
-    virtual std::shared_ptr<core::renderer::SwapChainRenderer> createPresentationRenderer(core::device::DeviceContext &device, const StarWindow &window,
-                                                                          const uint8_t &numFramesInFlight);
-
-    virtual void startup(core::device::DeviceContext &device, const StarWindow &window, const uint8_t &numFramesInFlight) = 0; 
 };
 } // namespace star

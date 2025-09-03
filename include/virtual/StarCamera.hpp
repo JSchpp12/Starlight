@@ -17,7 +17,11 @@ class StarCamera : public StarEntity
     StarCamera(const uint32_t &width, const uint32_t &height, const float &horizontalFieldOfView,
                const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance);
 
-    virtual ~StarCamera(){}
+    StarCamera(const StarCamera&) = default;
+    StarCamera& operator=(const StarCamera &) = default;
+    StarCamera(StarCamera&&) = default;
+    StarCamera& operator=(StarCamera&&) = default;
+    virtual ~StarCamera()= default;
 
     glm::mat4 getViewMatrix() const;
 
@@ -25,7 +29,7 @@ class StarCamera : public StarEntity
 
     glm::vec2 getResolution() const
     {
-        return this->resolution;
+      return this->resolution;
     }
 
     float getHorizontalFieldOfView(const bool &inRadians = false) const;

@@ -17,7 +17,6 @@
 #include "StarDescriptorBuilders.hpp"
 #include "StarObject.hpp"
 #include "StarRenderGroup.hpp"
-#include "StarScene.hpp"
 #include "StarShaderInfo.hpp"
 #include "StarTextures/Texture.hpp"
 #include "StarWindow.hpp"
@@ -29,13 +28,35 @@
 
 namespace star::core::renderer
 {
-class Renderer : private RenderResourceModifier,
-                      private DescriptorModifier
+class Renderer : private RenderResourceModifier, private DescriptorModifier
 {
   public:
-    Renderer(std::shared_ptr<StarScene> scene);
+    Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+             std::vector<std::shared_ptr<StarObject>> objects, std::vector<std::shared_ptr<Light>> lights,
+             std::vector<Handle> &cameraInfoBuffers)
+        : m_objects(objects), m_lights(lights), m_cameraInfoBuffers(cameraInfoBuffers)
+    {
+        initBuffers(context, numFramesInFlight);
+    }
 
-    virtual void prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight);
+    Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+             std::vector<std::shared_ptr<StarObject>> objects, std::vector<std::shared_ptr<Light>> lights,
+             std::shared_ptr<StarCamera> camera)
+        : m_objects(objects), m_lights(lights)
+    {
+        initBuffers(context, numFramesInFlight, camera);
+    }
+
+    Renderer(Renderer &) = delete;
+    Renderer &operator=(Renderer &) = delete;
+    Renderer(Renderer &&other) = delete;
+    Renderer &operator=(Renderer &&other) = delete;
+    virtual ~Renderer() = default;
+
+    virtual void prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+                         const int &numFramesInFlight);
+
+    virtual void update(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex);
 
     StarDescriptorSetLayout &getGlobalShaderInfo()
     {
@@ -57,9 +78,28 @@ class Renderer : private RenderResourceModifier,
                                    this->renderToDepthImages.at(0)->getBaseFormat());
     }
 
+    std::vector<Handle> getCameraInfoBuffers()
+    {
+        return m_cameraInfoBuffers;
+    }
+
+    std::vector<Handle> getLightInfoBuffers()
+    {
+        return m_lightInfoBuffers;
+    }
+
+    std::vector<Handle> getLightListBuffers()
+    {
+        return m_lightListBuffers;
+    }
+
   protected:
-    Handle m_commandBuffer; 
-    std::shared_ptr<StarScene> scene = nullptr;
+    bool isReady = false;
+    std::vector<Handle> m_cameraInfoBuffers, m_lightInfoBuffers, m_lightListBuffers;
+
+    Handle m_commandBuffer;
+    std::vector<std::shared_ptr<star::StarObject>> m_objects;
+    std::vector<std::shared_ptr<star::Light>> m_lights;
 
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
 
@@ -71,19 +111,23 @@ class Renderer : private RenderResourceModifier,
     std::vector<std::unique_ptr<StarTextures::Texture>> renderToDepthImages =
         std::vector<std::unique_ptr<StarTextures::Texture>>();
 
-    // storage for multiple buffers for each swap chain image
-    // std::vector<vk::DescriptorSet> globalDescriptorSets;
-    std::unique_ptr<StarShaderInfo> globalShaderInfo = nullptr;
-    std::vector<vk::DescriptorSet> lightDescriptorSets = std::vector<vk::DescriptorSet>();
-
     std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
     std::vector<std::unique_ptr<StarRenderGroup>> renderGroups = std::vector<std::unique_ptr<StarRenderGroup>>();
 
-    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(core::device::DeviceContext &device,
-                                                                                     const int &numFramesInFlight);
+    void initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
 
-    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToDepthImages(core::device::DeviceContext &device,
-                                                                                          const int &numFramesInFlight);
+    void initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                     std::shared_ptr<StarCamera> camera);
+
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(
+        core::device::DeviceContext &device, const int &numFramesInFlight);
+
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToDepthImages(
+        core::device::DeviceContext &device, const int &numFramesInFlight);
+
+    /// Create the descriptor set layout that will be shared by all objects within this renderer
+    virtual std::shared_ptr<StarDescriptorSetLayout> createGlobalDescriptorSetLayout(
+        core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
 
     /// <summary>
     /// Create vertex buffer + index buffers + any rendering groups for operations
@@ -94,7 +138,8 @@ class Renderer : private RenderResourceModifier,
     vk::ImageView createImageView(core::device::DeviceContext &device, vk::Image image, vk::Format format,
                                   vk::ImageAspectFlags aspectFlags);
 
-    virtual StarShaderInfo::Builder manualCreateDescriptors(core::device::DeviceContext &device, const int &numFramesInFlight);
+    virtual StarShaderInfo::Builder manualCreateDescriptors(core::device::DeviceContext &device,
+                                                            const int &numFramesInFlight);
 
     /// <summary>
     /// Create Vulkan Image object with properties provided in function arguments.
@@ -112,7 +157,7 @@ class Renderer : private RenderResourceModifier,
                              vk::Image &image, VmaAllocation &imageMemory);
 
     // Inherited via CommandBufferModifier
-    virtual core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() = 0; 
+    virtual core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
 
     virtual void prepareForSubmission(const int &frameIndexToBeDrawn);
 
@@ -133,7 +178,7 @@ class Renderer : private RenderResourceModifier,
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const int &frameInFlightIndex);
 
-    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
+    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
     void recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
@@ -146,4 +191,4 @@ class Renderer : private RenderResourceModifier,
     std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int &numFramesInFlight) override;
     void createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight) override;
 };
-} // namespace star
+} // namespace star::core::renderer

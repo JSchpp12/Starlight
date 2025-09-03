@@ -1,13 +1,15 @@
 #include "renderer/Renderer.hpp"
 
+#include "ManagerController_RenderResource_LightInfo.hpp"
+#include "ManagerController_RenderResource_LightList.hpp"
+#include "ManagerController_RenderResource_GlobalInfo.hpp"
+#include "ManagerRenderResource.hpp"
+
 namespace star::core::renderer
 {
 
-Renderer::Renderer(std::shared_ptr<StarScene> scene) : scene(scene)
-{
-}
-
-void Renderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
+void Renderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+                       const int &numFramesInFlight)
 {
     m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
 
@@ -21,10 +23,46 @@ void Renderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &
     createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRenderToImages(star::core::device::DeviceContext &device,
-                                                                                    const int &numFramesInFlight)
+void Renderer::update(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex)
 {
-    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
+}
+
+void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+{
+    m_lightListBuffers.resize(numFramesInFlight);
+    m_lightInfoBuffers.resize(numFramesInFlight);
+
+    for (uint16_t i = 0; i < numFramesInFlight; i++)
+    {
+        m_lightListBuffers[i] = ManagerRenderResource::addRequest(
+            context.getDeviceID(),
+            std::make_unique<star::ManagerController::RenderResource::LightList>(
+                i,
+                m_lights));
+
+        m_lightInfoBuffers[i] = ManagerRenderResource::addRequest(
+            context.getDeviceID(),
+            std::make_unique<star::ManagerController::RenderResource::LightInfo>(
+                i,
+                m_lights));
+    }
+}
+
+void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, std::shared_ptr<StarCamera> camera){
+    initBuffers(context, numFramesInFlight); 
+
+    m_cameraInfoBuffers.resize(numFramesInFlight); 
+
+    for (uint8_t i = 0; i < numFramesInFlight; i++){
+        m_cameraInfoBuffers[i] = ManagerRenderResource::addRequest(context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::GlobalInfo>(i, camera));
+    }
+}
+
+std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRenderToImages(
+    star::core::device::DeviceContext &device, const int &numFramesInFlight)
+{
+    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages =
+        std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
     indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
@@ -36,7 +74,8 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
     vk::Format format = getColorAttachmentFormat(device);
 
     auto builder =
-        star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(), device.getDevice().getAllocator().get())
+        star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(),
+                                             device.getDevice().getAllocator().get())
             .setCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -108,7 +147,8 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::Renderer::createRenderToDepthImages(
     core::device::DeviceContext &device, const int &numFramesInFlight)
 {
-    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages = std::vector<std::unique_ptr<StarTextures::Texture>>();
+    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages =
+        std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     const vk::Format depthFormat = getDepthAttachmentFormat(device);
 
@@ -120,7 +160,8 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
     }
 
     auto builder =
-        star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(), device.getDevice().getAllocator().get())
+        star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(),
+                                             device.getDevice().getAllocator().get())
             .setCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -190,9 +231,9 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
 }
 
 void Renderer::createRenderingGroups(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                                          const int &numFramesInFlight, star::StarShaderInfo::Builder builder)
+                                     const int &numFramesInFlight, star::StarShaderInfo::Builder builder)
 {
-    for (StarObject &object : this->scene->getObjects())
+    for (int i = 0; i < m_objects.size(); i++)
     {
         // check if the object is compatible with any render groups
         StarRenderGroup *match = nullptr;
@@ -200,7 +241,7 @@ void Renderer::createRenderingGroups(core::device::DeviceContext &device, const 
         // if it is not, create a new render group
         for (int i = 0; i < this->renderGroups.size(); i++)
         {
-            if (this->renderGroups[i]->isObjectCompatible(object))
+            if (this->renderGroups[i]->isObjectCompatible(*m_objects[i]))
             {
                 match = this->renderGroups[i].get();
                 break;
@@ -209,13 +250,13 @@ void Renderer::createRenderingGroups(core::device::DeviceContext &device, const 
 
         if (match != nullptr)
         {
-            match->addObject(object);
+            match->addObject(*m_objects[i]);
         }
         else
         {
             // create a new one and add object
             this->renderGroups.push_back(std::unique_ptr<StarRenderGroup>(
-                new StarRenderGroup(device, numFramesInFlight, swapChainExtent, object)));
+                new StarRenderGroup(device, numFramesInFlight, swapChainExtent, *m_objects[i])));
         }
     }
 
@@ -229,7 +270,7 @@ void Renderer::createRenderingGroups(core::device::DeviceContext &device, const 
 }
 
 vk::ImageView Renderer::createImageView(star::core::device::DeviceContext &device, vk::Image image, vk::Format format,
-                                             vk::ImageAspectFlags aspectFlags)
+                                        vk::ImageAspectFlags aspectFlags)
 {
     vk::ImageViewCreateInfo viewInfo{};
     viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
@@ -253,30 +294,37 @@ vk::ImageView Renderer::createImageView(star::core::device::DeviceContext &devic
 }
 
 star::StarShaderInfo::Builder Renderer::manualCreateDescriptors(star::core::device::DeviceContext &device,
-                                                                     const int &numFramesInFlight)
+                                                                const int &numFramesInFlight)
 {
-    auto globalBuilder = StarShaderInfo::Builder(device.getDeviceID(), device.getDevice(), numFramesInFlight);
+    this->globalSetLayout = createGlobalDescriptorSetLayout(device, numFramesInFlight); 
+    auto globalBuilder = StarShaderInfo::Builder(device.getDeviceID(), device.getDevice(), numFramesInFlight)
+        .addSetLayout(this->globalSetLayout); 
 
-    this->globalSetLayout = StarDescriptorSetLayout::Builder(device.getDevice())
-                                .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-                                .addBinding(1, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
-                                .build();
-    globalBuilder.addSetLayout(this->globalSetLayout);
-
+    assert(m_cameraInfoBuffers.size() == numFramesInFlight && m_lightInfoBuffers.size() == numFramesInFlight && m_lightListBuffers.size() == numFramesInFlight &&
+           "Shader info buffers not properly initialized.");
     for (size_t i = 0; i < numFramesInFlight; i++)
     {
         globalBuilder.startOnFrameIndex(i)
             .startSet()
-            .add(this->scene->getGlobalInfoBuffer(i), false)
-            .add(this->scene->getLightInfoBuffer(i), false);
+            .add(m_cameraInfoBuffers[i], false)
+            .add(m_lightInfoBuffers[i], false)
+            .add(m_lightListBuffers[i], false); 
     }
 
     return globalBuilder;
 }
 
-void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
-                                vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
-                                vk::Image &image, VmaAllocation &imageMemory)
+std::shared_ptr<star::StarDescriptorSetLayout> Renderer::createGlobalDescriptorSetLayout(device::DeviceContext &context, const uint8_t &numFramesInFlight){
+    return StarDescriptorSetLayout::Builder(context.getDevice())
+                                .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+                                .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+                                .addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
+                                .build();
+}
+
+void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t width, uint32_t height,
+                           vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+                           vk::MemoryPropertyFlags properties, vk::Image &image, VmaAllocation &imageMemory)
 {
     /* Create vulkan image */
     vk::ImageCreateInfo imageInfo{};
@@ -300,11 +348,12 @@ void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t w
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
     allocInfo.requiredFlags = (VkMemoryPropertyFlags)properties;
 
-    vmaCreateImage(device.getDevice().getAllocator().get(), (VkImageCreateInfo *)&imageInfo, &allocInfo, (VkImage *)&image,
-                   &imageMemory, nullptr);
+    vmaCreateImage(device.getDevice().getAllocator().get(), (VkImageCreateInfo *)&imageInfo, &allocInfo,
+                   (VkImage *)&image, &imageMemory, nullptr);
 }
 
-void Renderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight, const vk::Extent2D &screensize)
+void Renderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
+                             const vk::Extent2D &screensize)
 {
     this->prepare(device, screensize, numFramesInFlight);
 }
@@ -327,7 +376,7 @@ vk::Format Renderer::getColorAttachmentFormat(star::core::device::DeviceContext 
     vk::Format selectedFormat = vk::Format();
 
     if (!device.getDevice().findSupportedFormat({vk::Format::eR8G8B8A8Srgb}, vk::ImageTiling::eOptimal,
-                                    vk::FormatFeatureFlagBits::eColorAttachment, selectedFormat))
+                                                vk::FormatFeatureFlagBits::eColorAttachment, selectedFormat))
     {
         throw std::runtime_error("Failed to find supported color format");
     }
@@ -337,9 +386,9 @@ vk::Format Renderer::getColorAttachmentFormat(star::core::device::DeviceContext 
 vk::Format Renderer::getDepthAttachmentFormat(star::core::device::DeviceContext &device) const
 {
     vk::Format selectedFormat = vk::Format();
-    if (!device.getDevice().findSupportedFormat({vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
-                                    vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment,
-                                    selectedFormat))
+    if (!device.getDevice().findSupportedFormat(
+            {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+            vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment, selectedFormat))
     {
         throw std::runtime_error("Failed to find supported depth format");
     }
@@ -454,10 +503,10 @@ void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int 
 
 void Renderer::prepareForSubmission(const int &frameIndexToBeDrawn)
 {
-    for (StarObject &obj : this->scene->getObjects())
+    for (int i = 0; i < m_objects.size(); i++)
     {
-        obj.prepDraw(frameIndexToBeDrawn);
+        m_objects[i]->prepDraw(frameIndexToBeDrawn);
     }
 }
 
-} // namespace star
+} // namespace star::core::renderer

@@ -10,23 +10,24 @@ namespace star::TransferRequest
 class GlobalInfo : public Buffer
 {
   public:
-    GlobalInfo(const StarCamera &camera, const int &numLights, const uint32_t &graphicsQueueIndex)
-        : camera(camera), numLights(numLights), graphicsQueueIndex(graphicsQueueIndex)
+    GlobalInfo(const StarCamera &camera, const uint32_t &graphicsQueueIndex)
+        : camera(camera), graphicsQueueIndex(graphicsQueueIndex)
     {
     }
 
-    virtual ~GlobalInfo(){}
+    virtual ~GlobalInfo() = default;
 
-    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const override;
+    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device,
+                                                             VmaAllocator &allocator) const override;
 
-    std::unique_ptr<StarBuffers::Buffer> createFinal(vk::Device &device, VmaAllocator &allocator,
-                                            const std::vector<uint32_t> &transferQueueFamilyIndex) const override;
+    std::unique_ptr<StarBuffers::Buffer> createFinal(
+        vk::Device &device, VmaAllocator &allocator,
+        const std::vector<uint32_t> &transferQueueFamilyIndex) const override;
 
     void writeDataToStageBuffer(StarBuffers::Buffer &buffer) const override;
 
   private:
     const uint32_t graphicsQueueIndex;
-    const int numLights = 0;
     const StarCamera camera;
 
     struct GlobalUniformBufferObject
@@ -34,8 +35,7 @@ class GlobalInfo : public Buffer
         alignas(16) glm::mat4 proj;
         alignas(16) glm::mat4 view;
         alignas(16) glm::mat4
-            inverseView;    // used to extrapolate camera position, can be used to convert from camera to world space
-        uint32_t numLights; // number of lights in render
+            inverseView; // used to extrapolate camera position, can be used to convert from camera to world space
     };
 };
 } // namespace star::TransferRequest

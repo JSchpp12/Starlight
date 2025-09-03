@@ -26,12 +26,15 @@ class StarEngine
     std::unique_ptr<StarWindow> window = nullptr;
     core::SystemContext deviceManager; 
     std::unique_ptr<StarApplication> application = nullptr; 
-    std::shared_ptr<core::renderer::SwapChainRenderer> mainRenderer = nullptr;
+    std::shared_ptr<StarScene> currentScene = nullptr;
+    
   private:
     const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
 
     static std::unique_ptr<StarWindow> CreateStarWindow(); 
 
     static std::unique_ptr<job::TaskManager> CreateManager(); 
+
+    static uint8_t GetNumFramesInFlight(); 
 };
 } // namespace star

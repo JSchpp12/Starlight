@@ -13,11 +13,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(LightBufferObject) * CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+                .setSize(sizeof(int))
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            "LightInfo_Stage")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
-        .setInstanceSize(sizeof(LightBufferObject))
+            "LightList_Stage")
+        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(1))
+        .setInstanceSize(sizeof(int))
         .build();
 }
 
@@ -25,8 +25,8 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices = std::vector<uint32_t>{this->graphicsQueueFamilyIndex};
-	for (const auto &index : transferQueueFamilyIndex)
-		indices.push_back(index);
+    for (const auto &index : transferQueueFamilyIndex)
+        indices.push_back(index);
 
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
@@ -38,11 +38,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
                 .setSharingMode(vk::SharingMode::eConcurrent)
                 .setPQueueFamilyIndices(indices.data())
                 .setQueueFamilyIndexCount(indices.size())
-                .setSize(sizeof(LightBufferObject) * CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
-                .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer),
-            "LightInfo_Src")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
-        .setInstanceSize(sizeof(LightBufferObject))
+                .setSize(sizeof(int))
+                .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
+            "LightInfo")
+        .setInstanceCount(1)
+        .setInstanceSize(sizeof(int))
         .build();
 }
 
@@ -51,27 +51,13 @@ void star::TransferRequest::LightInfo::writeDataToStageBuffer(star::StarBuffers:
     void *mapped = nullptr;
     buffer.map(&mapped);
 
-    std::vector<LightBufferObject> lightInformation(this->myLights.size());
-    LightBufferObject newBufferObject{};
+    uint32_t num; 
+    star::CastHelpers::SafeCast<size_t, uint32_t>(m_numLights, num); 
 
-    for (size_t i = 0; i < this->myLights.size(); i++)
-    {
-        const Light &currLight = this->myLights.at(i);
-        newBufferObject.position = glm::vec4{currLight.getPosition(), 1.0f};
-        newBufferObject.direction = currLight.direction;
-        newBufferObject.ambient = currLight.getAmbient();
-        newBufferObject.diffuse = currLight.getDiffuse();
-        newBufferObject.specular = currLight.getSpecular();
-        newBufferObject.settings.x = currLight.getEnabled() ? 1 : 0;
-        newBufferObject.settings.y = currLight.getType();
-        newBufferObject.controls.x = glm::cos(
-            glm::radians(currLight.getInnerDiameter())); // represent the diameter of light as the cos of the light
-                                                         // (increase shader performance when doing comparison)
-        newBufferObject.controls.y = glm::cos(glm::radians(currLight.getOuterDiameter()));
-        lightInformation[i] = newBufferObject;
-    }
+    Info info = Info{
+        .numLights = num
+    }; 
 
-    buffer.writeToBuffer(lightInformation.data(), mapped, sizeof(LightBufferObject) * lightInformation.size());
-
-    buffer.unmap();
+    buffer.writeToBuffer(&info, mapped, sizeof(int));
+    buffer.unmap();  
 }

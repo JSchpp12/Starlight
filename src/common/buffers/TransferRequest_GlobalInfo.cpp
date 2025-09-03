@@ -57,7 +57,6 @@ void star::TransferRequest::GlobalInfo::writeDataToStageBuffer(star::StarBuffers
     globalUbo.proj[1][1] *= -1;
     globalUbo.view = this->camera.getViewMatrix();
     globalUbo.inverseView = glm::inverse(this->camera.getViewMatrix());
-    globalUbo.numLights = static_cast<uint32_t>(this->numLights);
 
     buffer.writeToBuffer(&globalUbo, mapped, sizeof(globalUbo));
 

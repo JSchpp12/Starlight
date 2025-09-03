@@ -7,14 +7,12 @@ namespace star::ManagerController::RenderResource{
     class GlobalInfo : public star::ManagerController::RenderResource::Buffer{
         public: 
 
-        GlobalInfo(const uint8_t& frameInFlightIndexToUpdateOn, StarCamera& camera, const int& numLights) 
-        : Buffer(frameInFlightIndexToUpdateOn), camera(camera), numLights(numLights) {} 
+        GlobalInfo(const uint8_t& frameInFlightIndexToUpdateOn, const std::shared_ptr<StarCamera> camera) 
+        : Buffer(frameInFlightIndexToUpdateOn), camera(camera){} 
 
         std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device) override;
 
         protected:
-        const StarCamera& camera; 
-        const int& numLights; 
-        int lastNumLights = 0; 
+        const std::shared_ptr<StarCamera> camera; 
     };
 }

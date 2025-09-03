@@ -3,10 +3,7 @@
 #include "TransferRequest_GlobalInfo.hpp"
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::GlobalInfo::createTransferRequest(star::core::device::StarDevice &device) {
-    this->lastNumLights = this->numLights; 
-
     return std::make_unique<TransferRequest::GlobalInfo>(
-        this->camera, 
-        this->numLights, 
+        *this->camera, 
         device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
 }

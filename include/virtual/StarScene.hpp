@@ -1,12 +1,10 @@
 #pragma once
 
 #include "Handle.hpp"
-#include "Interactivity.hpp"
 #include "Light.hpp"
-#include "ManagerRenderResource.hpp"
-#include "StarCamera.hpp"
 #include "StarObject.hpp"
 #include "StarWindow.hpp"
+#include "core/renderer/SwapChainRenderer.hpp"
 #include "device/DeviceID.hpp"
 
 #include <map>
@@ -22,61 +20,31 @@ namespace star
 class StarScene
 {
   public:
-    StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
-              std::shared_ptr<StarCamera> camera);
 
-    StarScene(const uint8_t &numFramesInFlight, std::shared_ptr<StarCamera> camera,
-              std::vector<Handle> globalInfoBuffers, std::vector<Handle> lightInfoBuffers);
+    StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
+              std::shared_ptr<StarCamera> camera,
+              std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer);
+
+    StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
+              std::shared_ptr<StarCamera> camera,
+              std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer,
+              std::vector<std::shared_ptr<core::renderer::Renderer>> additionalRenderers);
 
     virtual ~StarScene() = default;
 
-    int add(std::unique_ptr<Light> newLight);
-
-    int add(std::unique_ptr<StarObject> newObject);
+    std::shared_ptr<core::renderer::SwapChainRenderer> getPresentationRenderer()
+    {
+        return m_presentationRenderer;
+    }
 
     std::shared_ptr<StarCamera> getCamera()
     {
-        return this->camera;
-    }
-
-    StarObject &getObject(int objHandle)
-    {
-        return *this->objects.at(objHandle);
-    }
-
-    Light &getLight(int light)
-    {
-        return *this->lightList.at(light);
-    }
-
-    std::vector<std::unique_ptr<Light>> &getLights()
-    {
-        return this->lightList;
-    }
-    std::vector<std::reference_wrapper<StarObject>> getObjects();
-    Handle getGlobalInfoBuffer(const int &index)
-    {
-        return this->globalInfoBuffers.at(index);
-    }
-    Handle getLightInfoBuffer(const int &index)
-    {
-        return this->lightInfoBuffers.at(index);
+        return this->m_camera;
     }
 
   protected:
-    std::shared_ptr<StarCamera> camera = std::shared_ptr<StarCamera>();
-
-    std::vector<Handle> globalInfoBuffers = std::vector<Handle>();
-    std::vector<Handle> lightInfoBuffers = std::vector<Handle>();
-
-    int objCounter = 0;
-    int rObjCounter = 0;
-    int lightCounter = 0;
-
-    std::unordered_map<int, std::unique_ptr<StarObject>> objects =
-        std::unordered_map<int, std::unique_ptr<StarObject>>();
-    std::vector<std::unique_ptr<Light>> lightList = std::vector<std::unique_ptr<Light>>();
-
-    void initBuffers(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight);
+    std::shared_ptr<star::core::renderer::SwapChainRenderer> m_presentationRenderer;
+    std::vector<std::shared_ptr<star::core::renderer::Renderer>> m_additionalRenderers;
+    std::shared_ptr<StarCamera> m_camera = std::shared_ptr<StarCamera>();
 };
 } // namespace star

@@ -1,20 +1,26 @@
 #pragma once
 
 #include "CommandBufferModifier.hpp"
-#include "Renderer.hpp"
 #include "DeviceContext.hpp"
+#include "Renderer.hpp"
 
-#include <vulkan/vulkan.hpp>
 #include <memory>
+#include <vulkan/vulkan.hpp>
 
 namespace star::core::renderer
 {
-class SwapChainRenderer : public Renderer
+class SwapChainRenderer : public star::core::renderer::Renderer
 {
   public:
-    SwapChainRenderer(std::shared_ptr<StarScene> scene, const StarWindow &window, core::device::DeviceContext &device, const uint8_t &numFramesInFlight);
+    SwapChainRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                      std::vector<std::shared_ptr<StarObject>> objects, std::vector<std::shared_ptr<Light>> lights,
+                      std::vector<Handle> &cameraInfoBuffers, const StarWindow &window);
 
-    SwapChainRenderer(const SwapChainRenderer &other) = delete; 
+    SwapChainRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                      std::vector<std::shared_ptr<StarObject>> objects, std::vector<std::shared_ptr<Light>> lights,
+                      std::shared_ptr<StarCamera> camera, const StarWindow &window);
+
+    SwapChainRenderer(const SwapChainRenderer &other) = delete;
 
     virtual ~SwapChainRenderer();
 
@@ -25,8 +31,7 @@ class SwapChainRenderer : public Renderer
 
     void pollEvents();
 
-    void triggerScreenshot(const std::string &path)
-    {
+    void triggerScreenshot(const std::string &path) {
         // this->screenshotCommandBuffer->takeScreenshot(path);
     };
 
@@ -68,7 +73,7 @@ class SwapChainRenderer : public Renderer
     std::vector<vk::Semaphore> imageAvailableSemaphores;
     std::vector<vk::Semaphore> imageAcquireSemaphores;
 
-    virtual star::core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() override;  
+    virtual star::core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
     // std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer = nullptr;
     std::unique_ptr<std::string> screenshotPath = nullptr;
@@ -87,8 +92,8 @@ class SwapChainRenderer : public Renderer
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
                                std::vector<vk::Semaphore> mustWaitFor);
 
-    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(core::device::DeviceContext &device,
-                                                                           const int &numFramesInFlight) override;
+    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(
+        core::device::DeviceContext &device, const int &numFramesInFlight) override;
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(
         const int &frameInFlightIndex) override;
@@ -122,4 +127,4 @@ class SwapChainRenderer : public Renderer
     /// </summary>
     virtual void createSwapChain();
 };
-} // namespace star
+} // namespace star::core::renderer
