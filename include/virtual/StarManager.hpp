@@ -21,12 +21,12 @@ public:
 
 	StarManager() = default;
 
-	static void init(job::TransferWorker& transferWorker){
-		managerWorker = &transferWorker;
+	static void init(std::shared_ptr<job::TransferWorker> transferWorker){
+		managerWorker = transferWorker;
 	}
 
 protected:
-	static job::TransferWorker* managerWorker;
+	static std::shared_ptr<job::TransferWorker> managerWorker;
 
 	static std::unique_ptr<ManagerStorageContainer<FinalizedRequest>> resourceStorage; 
 };

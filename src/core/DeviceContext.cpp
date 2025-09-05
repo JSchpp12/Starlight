@@ -1,15 +1,19 @@
 #include "DeviceContext.hpp"
 
-star::core::device::DeviceContext::DeviceContext(const DeviceID &deviceID, 
-    const uint8_t &numFramesInFlight, RenderingInstance &instance, std::set<Rendering_Features> requiredFeatures,
-    StarWindow &window, const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
+#include <cassert>
+
+star::core::device::DeviceContext::DeviceContext(
+    const DeviceID &deviceID, const uint8_t &numFramesInFlight, RenderingInstance &instance,
+    std::set<Rendering_Features> requiredFeatures, StarWindow &window,
+    const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
     : m_deviceID(deviceID), m_surface(std::make_shared<RenderingSurface>(instance, window)),
-      m_device(std::make_shared<StarDevice>(window, *m_surface, instance, requiredFeatures, requiredRenderingDeviceFeatures)),
+      m_device(std::make_shared<StarDevice>(window, *m_surface, instance, requiredFeatures,
+                                            requiredRenderingDeviceFeatures)),
       m_commandBufferManager(std::make_unique<managers::ManagerCommandBuffer>(*m_device, numFramesInFlight)),
       m_transferWorker(CreateTransferWorker(*m_device)),
       m_renderResourceManager(std::make_unique<ManagerRenderResource>())
 {
-    ManagerRenderResource::init(m_deviceID, m_device, *m_transferWorker, numFramesInFlight);
+    ManagerRenderResource::init(m_deviceID, m_device, m_transferWorker, numFramesInFlight);
 
     const auto transferFams =
         m_device->getQueueOwnershipTracker().getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
@@ -22,8 +26,8 @@ star::core::device::DeviceContext::DeviceContext(const DeviceID &deviceID,
             fam != m_device->getDefaultQueue(Queue_Type::Tcompute).getParentQueueFamilyIndex() &&
             !selectedFamilyIndices.contains(fam))
         {
-            auto nQueue =
-                m_device->getQueueOwnershipTracker().giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false, fam);
+            auto nQueue = m_device->getQueueOwnershipTracker().giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer,
+                                                                                         false, fam);
 
             if (nQueue.has_value())
             {
@@ -34,36 +38,29 @@ star::core::device::DeviceContext::DeviceContext(const DeviceID &deviceID,
         }
     }
 
-    auto &newWorker = m_manager.registerWorker(typeid(star::job::tasks::IODataPreparationPayload));
+    m_taskManager.registerWorker(typeid(star::job::tasks::CompileShaderPayload));
 
-    m_manager.startAll();
+    m_taskManager.startAll();
+}
 
-    // vk::SemaphoreTypeCreateInfo timelineCreateInfo{};
-    // timelineCreateInfo.sType = vk::StructureType::eSemaphoreTypeCreateInfo;
-    // timelineCreateInfo.pNext = NULL;
-    // timelineCreateInfo.semaphoreType = vk::SemaphoreType::eTimeline;
-    // timelineCreateInfo.initialValue = 0;
+star::core::device::DeviceContext::~DeviceContext()
+{
+    if (m_ownsWorkers)
+    {
+        m_taskManager.stopAll();
+    }
 
-    // vk::SemaphoreCreateInfo create{};
-    // create.sType = vk::StructureType::eSemaphoreCreateInfo;
-    // create.pNext = &timelineCreateInfo;
-    // vk::Semaphore newSemaphore = m_device.getVulkanDevice().createSemaphore(create);
+    if (m_commandBufferManager)
+    {
+        m_commandBufferManager->cleanup(*m_device);
+    }
+}
 
-    // std::string path =
-    //     star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "terrains/1805583_s2025470.ktx2";
-    // newWorker.queueTask(
-    //     job::tasks::task_factory::createTextureTransferTask(path, m_device.getPhysicalDevice(), newSemaphore));
-
-    // // for testing only
-
-    // job::complete_tasks::CompleteTask<> completeTask;
-    // while (!m_manager.getCompleteMessages()->pop(completeTask))
-    // {
-    // }
-
-    // completeTask.run(&m_device);
-
-    m_manager.stopAll();
+void star::core::device::DeviceContext::prepareForNextFrame()
+{
+    handleCompleteMessages(); 
+    
+    m_frameCounter++;
 }
 
 star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapchainSupportDetails()
@@ -71,7 +68,7 @@ star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapch
     return m_device->getSwapchainSupport(*m_surface);
 }
 
-std::unique_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device)
+std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device)
 {
     std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
     std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
@@ -96,5 +93,21 @@ std::unique_ptr<star::job::TransferWorker> star::core::device::DeviceContext::Cr
         }
     }
 
-    return std::make_unique<job::TransferWorker>(device, false, transferWorkerQueues);
+    return std::make_shared<job::TransferWorker>(device, false, transferWorkerQueues);
+}
+
+void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t maxMessagesCounter)
+{
+    std::vector<job::complete_tasks::CompleteTask<>> completeMessages;
+
+    if (maxMessagesCounter == 0)
+    {
+        size_t count = m_taskManager.getCompleteMessages()->consume_all(
+            [this](auto msg) { processCompleteMessage(std::move(msg)); });
+    }
+}
+
+void star::core::device::DeviceContext::processCompleteMessage(job::complete_tasks::CompleteTask<> completeTask)
+{
+    completeTask.run(static_cast<void *>(m_device.get()), static_cast<void *>(&m_shaderManager));
 }

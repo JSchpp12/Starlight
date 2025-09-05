@@ -14,7 +14,7 @@ std::unordered_map<star::core::device::DeviceID,
 
 void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
                                        std::shared_ptr<star::core::device::StarDevice> device,
-                                       star::job::TransferWorker &worker, const int &numFramesInFlight)
+                                       std::shared_ptr<star::job::TransferWorker> worker, const int &numFramesInFlight)
 {
     {
         core::device::DeviceID tmpDevice = deviceID;
@@ -33,7 +33,7 @@ void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
             std::move(tmpDevice), std::set<boost::atomic<bool> *>()));
     }
 
-    managerWorker = &worker;
+    managerWorker = worker;
 }
 
 star::Handle star::ManagerRenderResource::addRequest(
@@ -65,7 +65,7 @@ star::Handle star::ManagerRenderResource::addRequest(
 }
 
 star::Handle star::ManagerRenderResource::addRequest(
-    const core::device::DeviceID &deviceID,
+    const core::device::DeviceID &deviceID, 
     std::unique_ptr<star::ManagerController::RenderResource::Texture> newRequest, const bool &isHighPriority)
 {
     Handle newHandle = Handle(Handle_Type::texture);

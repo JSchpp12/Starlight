@@ -1,3 +1,3 @@
 #include "StarManager.hpp"
 
-star::job::TransferWorker* star::StarManager::managerWorker = nullptr;
+std::shared_ptr<star::job::TransferWorker> star::StarManager::managerWorker = nullptr;

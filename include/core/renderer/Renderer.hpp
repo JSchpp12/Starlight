@@ -11,7 +11,6 @@
 #include "ManagerDescriptorPool.hpp"
 #include "MapManager.hpp"
 #include "RenderResourceModifier.hpp"
-#include "ShaderManager.hpp"
 #include "StarCamera.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
@@ -57,6 +56,8 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
                          const int &numFramesInFlight);
 
     virtual void update(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex);
+
+    virtual void frameUpdate(core::device::DeviceContext &context); 
 
     StarDescriptorSetLayout &getGlobalShaderInfo()
     {

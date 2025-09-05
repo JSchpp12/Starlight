@@ -1,36 +1,46 @@
 #include "StarComputePipeline.hpp"
 
-star::StarComputePipeline::StarComputePipeline(core::device::DeviceContext& device, vk::PipelineLayout& pipelineLayout, 
-	StarShader inCompShader) : compShader(inCompShader), pipelineLayout(pipelineLayout), StarPipeline(device)
+star::StarComputePipeline::StarComputePipeline(vk::PipelineLayout pipelineLayout, StarShader inCompShader)
+    : compShader(std::move(inCompShader)), pipelineLayout(std::move(pipelineLayout))
 {
 }
 
-void star::StarComputePipeline::bind(vk::CommandBuffer& commandBuffer)
+void star::StarComputePipeline::bind(vk::CommandBuffer &commandBuffer)
 {
-	commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, this->pipeline); 
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline);
 }
 
-vk::Pipeline star::StarComputePipeline::buildPipeline()
+vk::Pipeline star::StarComputePipeline::buildPipeline(core::device::DeviceContext &context)
 {
-	vk::ShaderModule compShaderModule = createShaderModule(*compShader.compile()); 
+    vk::ShaderModule compShaderModule;
+    {
+        auto compiledCode = std::move(context.getShaderManager().get(getShaders()[0]).compiledShader);
+        compShaderModule = createShaderModule(context.getDevice(), *compiledCode);
+    }
 
-	vk::PipelineShaderStageCreateInfo compShaderStageInfo{}; 
-	compShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo; 
-	compShaderStageInfo.stage = vk::ShaderStageFlagBits::eCompute; 
-	compShaderStageInfo.module = compShaderModule; 
-	compShaderStageInfo.pName = "main"; 
+    vk::PipelineShaderStageCreateInfo compShaderStageInfo{};
+    compShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+    compShaderStageInfo.stage = vk::ShaderStageFlagBits::eCompute;
+    compShaderStageInfo.module = compShaderModule;
+    compShaderStageInfo.pName = "main";
 
-	vk::ComputePipelineCreateInfo createInfo{}; 
-	createInfo.sType = vk::StructureType::eComputePipelineCreateInfo; 
-	createInfo.layout = this->pipelineLayout; 
-	createInfo.stage = compShaderStageInfo; 
+    vk::ComputePipelineCreateInfo createInfo{};
+    createInfo.sType = vk::StructureType::eComputePipelineCreateInfo;
+    createInfo.layout = this->pipelineLayout;
+    createInfo.stage = compShaderStageInfo;
 
-	auto result = this->device.getDevice().getVulkanDevice().createComputePipeline(VK_NULL_HANDLE, createInfo); 
-	if (result.result != vk::Result::eSuccess) {
-		throw std::runtime_error("failed to create compute pipeline"); 
-	}
+    auto result = context.getDevice().getVulkanDevice().createComputePipeline(VK_NULL_HANDLE, createInfo);
+    if (result.result != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("failed to create compute pipeline");
+    }
 
-	this->device.getDevice().getVulkanDevice().destroyShaderModule(compShaderModule); 
+    context.getDevice().getVulkanDevice().destroyShaderModule(compShaderModule);
 
-	return result.value; 
+    return result.value;
+}
+
+std::vector<star::Handle> star::StarComputePipeline::submitShaders(core::device::DeviceContext &context)
+{
+    return std::vector<star::Handle>{context.getShaderManager().submit(compShader)};
 }

@@ -1,43 +1,77 @@
-#pragma once 
+#pragma once
 
-#include "DeviceContext.hpp"
+#include "core/DeviceContext.hpp"
 
 #include "vulkan/vulkan.hpp"
 
-#include <vector>
 #include <string>
+#include <vector>
 
-namespace star {
-	class StarPipeline {
-	public:
-		virtual ~StarPipeline();
 
-		void init();
+namespace star
+{
+class StarPipeline
+{
+  public:
+    StarPipeline() = default;
+    virtual ~StarPipeline();
+    StarPipeline(const StarPipeline &) = delete;
+    StarPipeline &operator=(const StarPipeline &) = delete;
+    StarPipeline(StarPipeline &&other)
+    {
+        m_pipeline = other.m_pipeline;
+        m_hash = other.m_hash;
 
-		virtual void bind(vk::CommandBuffer& commandBuffer)=0;
+        other.m_pipeline = VK_NULL_HANDLE;
+    }
+    StarPipeline &operator=(StarPipeline &&other)
+    {
+        if (this != &other)
+        {
+            m_pipeline = other.m_pipeline;
+            m_hash = other.m_hash;
 
-		bool areResourcesReady(); 
+            other.m_pipeline = VK_NULL_HANDLE;
+        }
 
-	protected:
-		core::device::DeviceContext& device; 
-		vk::Pipeline pipeline;
-		std::string hash; //this is simply the paths of all shaders in this pipeline concated together
+		return *this;
+    }
+    
+    bool isRenderReady(core::device::DeviceContext& device); 
 
-		StarPipeline(core::device::DeviceContext& device) : device(device) {};
+    void init(core::device::DeviceContext &context);
 
-		virtual vk::Pipeline buildPipeline()=0;
+    void prepRender(core::device::DeviceContext &context); 
 
-		bool isSame(StarPipeline& compPipe); 
+    void cleanup(core::device::DeviceContext &context);
 
-		std::string getHash() { return this->hash; }
+    virtual void bind(vk::CommandBuffer &commandBuffer) = 0;
+
+    const std::vector<Handle> &getShaders(){
+        return m_shaders; 
+    }
+
+  protected:
+    vk::Pipeline m_pipeline;
+    std::string m_hash; // this is simply the paths of all shaders in this pipeline concated together
+
+    virtual vk::Pipeline buildPipeline(core::device::DeviceContext &context) = 0;
+
+	///Child objects should submit requests to the shader manager in this function call and provide the handles
+	virtual std::vector<Handle> submitShaders(core::device::DeviceContext &context)=0;
+
+    bool isSame(StarPipeline &compPipe);
 
 #pragma region helpers
-		/// <summary>
-		/// Build a shader module with the provided SPIR-V source code
-		/// </summary>
-		/// <param name="sourceCode"></param>
-		/// <returns></returns>
-		vk::ShaderModule createShaderModule(const std::vector<uint32_t>& sourceCode);
+    /// <summary>
+    /// Build a shader module with the provided SPIR-V source code
+    /// </summary>
+    /// <param name="sourceCode"></param>
+    /// <returns></returns>
+    vk::ShaderModule createShaderModule(core::device::StarDevice &device, const std::vector<uint32_t> &sourceCode);
 #pragma endregion
-	};
-}
+
+private:
+std::vector<Handle> m_shaders; 
+};
+} // namespace star

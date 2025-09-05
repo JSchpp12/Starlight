@@ -1,29 +1,61 @@
 #include "StarPipeline.hpp"
 
+#include "job/tasks/TaskFactory.hpp"
+
 star::StarPipeline::~StarPipeline()
 {
-	device.getDevice().getVulkanDevice().destroyPipeline(pipeline); 
+	assert(!m_pipeline && "Pipeline was not properly destroyed"); 
 }
 
-void star::StarPipeline::init()
+bool star::StarPipeline::isRenderReady(core::device::DeviceContext &context){
+    assert(m_shaders.size() > 0 && "Pipeline not properly initialized"); 
+
+    if (m_pipeline != VK_NULL_HANDLE)
+        return true; 
+
+    for (const auto &sh : m_shaders){
+        if (!context.getShaderManager().isReady(sh))
+            return false; 
+    }
+
+    //going to go ahead and build
+    prepRender(context); 
+    return true; 
+}
+
+void star::StarPipeline::init(core::device::DeviceContext &context)
 {
-	pipeline = this->buildPipeline();
+    m_shaders = submitShaders(context); 
 }
 
-bool star::StarPipeline::isSame(StarPipeline& compPipe)
+void star::StarPipeline::prepRender(core::device::DeviceContext &context){
+    assert(m_shaders.size() > 0 && "Not prepared correctly"); 
+
+    m_pipeline = buildPipeline(context); 
+}
+
+void star::StarPipeline::cleanup(core::device::DeviceContext &context)
 {
-	return (this->hash == compPipe.getHash()); 
+    context.getDevice().getVulkanDevice().destroyPipeline(m_pipeline);
+	m_pipeline = nullptr; 
 }
 
-vk::ShaderModule star::StarPipeline::createShaderModule(const std::vector<uint32_t>& sourceCode) {
-	vk::ShaderModuleCreateInfo createInfo{};
-	createInfo.sType = vk::StructureType::eShaderModuleCreateInfo;
-	createInfo.codeSize = 4 * sourceCode.size();
-	createInfo.pCode = sourceCode.data();
+bool star::StarPipeline::isSame(StarPipeline &compPipe)
+{
+    return (m_hash == compPipe.m_hash);
+}
 
-	VkShaderModule shaderModule = this->device.getDevice().getVulkanDevice().createShaderModule(createInfo);
-	if (!shaderModule) {
-		throw std::runtime_error("failed to create shader module");
-	}
-	return shaderModule;
+vk::ShaderModule star::StarPipeline::createShaderModule(core::device::StarDevice &device, const std::vector<uint32_t> &sourceCode)
+{
+    vk::ShaderModuleCreateInfo createInfo{};
+    createInfo.sType = vk::StructureType::eShaderModuleCreateInfo;
+    createInfo.codeSize = 4 * sourceCode.size();
+    createInfo.pCode = sourceCode.data();
+
+    VkShaderModule shaderModule = device.getVulkanDevice().createShaderModule(createInfo);
+    if (!shaderModule)
+    {
+        throw std::runtime_error("failed to create shader module");
+    }
+    return shaderModule;
 }

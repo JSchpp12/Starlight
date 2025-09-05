@@ -4,7 +4,6 @@
 #include "ManagerController_RenderResource_TextureFile.hpp"
 #include "ManagerController_RenderResource_VertInfo.hpp"
 
-
 #include "BumpMaterial.hpp"
 #include "CastHelpers.hpp"
 #include "FileHelpers.hpp"
@@ -130,13 +129,21 @@ void star::BasicObject::loadMesh(core::device::DeviceContext &context)
             Handle texture;
             Handle bumpMap;
 
-			if (currMaterial->diffuse_texname != "") {
-				texture = ManagerRenderResource::addRequest(context.getDeviceID(), std::make_unique<ManagerController::RenderResource::TextureFile>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
+            if (currMaterial->diffuse_texname != "")
+            {
+                texture = ManagerRenderResource::addRequest(
+                    context.getDeviceID(),
+                    std::make_unique<ManagerController::RenderResource::TextureFile>(
+                        texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
             }
 
-			//apply maps 
-			if (currMaterial->bump_texname != "") {
-				bumpMap = ManagerRenderResource::addRequest(context.getDeviceID(), std::make_unique<ManagerController::RenderResource::TextureFile>(texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
+            // apply maps
+            if (currMaterial->bump_texname != "")
+            {
+                bumpMap = ManagerRenderResource::addRequest(
+                    context.getDeviceID(),
+                    std::make_unique<ManagerController::RenderResource::TextureFile>(
+                        texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
             }
 
             // check if any material values are 0 - ambient is important
@@ -218,11 +225,18 @@ void star::BasicObject::loadMesh(core::device::DeviceContext &context)
                 };
             }
 
-			if (shape.mesh.material_ids.at(shapeCounter) != -1) {
-				Handle meshVertBuffer = ManagerRenderResource::addRequest(context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
-				Handle meshIndBuffer = ManagerRenderResource::addRequest(context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::IndicesInfo>(*fullInd)); 
-				//apply material from files to mesh -- will ignore passed values 
-				meshes.at(shapeCounter) = std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd, preparedMaterials.at(shape.mesh.material_ids[0]), false));
+            if (shape.mesh.material_ids.at(shapeCounter) != -1)
+            {
+                Handle meshVertBuffer = ManagerRenderResource::addRequest(
+                    context.getDeviceID(),
+                    std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
+                Handle meshIndBuffer = ManagerRenderResource::addRequest(
+                    context.getDeviceID(),
+                    std::make_unique<star::ManagerController::RenderResource::IndicesInfo>(*fullInd));
+                // apply material from files to mesh -- will ignore passed values
+                meshes.at(shapeCounter) =
+                    std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd,
+                                                           preparedMaterials.at(shape.mesh.material_ids[0]), false));
             }
 
             meshVerts.push_back(std::move(vertices));

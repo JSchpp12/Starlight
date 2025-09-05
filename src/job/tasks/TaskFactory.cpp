@@ -1,92 +1,14 @@
 #include "tasks/TaskFactory.hpp"
 
+#include "Compiler.hpp"
+#include "StarShader.hpp"
 #include "complete_tasks/CompleteTask.hpp"
 #include "complete_tasks/TaskFactory.hpp"
+
 
 #include "FileHelpers.hpp"
 
 #include <memory>
-
-// void star::job::tasks::task_factory::textureIOExecute(IODataPreparationPayload *data)
-// {
-//     assert(data != nullptr);
-
-//     if (std::holds_alternative<CompressedTextureMetadata>(data->metadata))
-//     {
-//         auto &compMeta = std::get<CompressedTextureMetadata>(data->metadata);
-//         auto compTex = std::make_unique<SharedCompressedTexture>(compMeta.filePath, compMeta.targetFormat);
-//         compTex->triggerTranscode();
-//         data->preparedData = std::move(compTex);
-//     }
-//     else if (std::holds_alternative<TextureMetadata>(data->metadata))
-//     {
-//         throw std::runtime_error("Cant do regular textures yet");
-//     }
-//     else
-//     {
-//         throw std::runtime_error("Failed to parse variant of payload metadata for texture");
-//     }
-// }
-
-// void star::job::tasks::task_factory::ioDataExecute(void *p)
-// {
-//     auto *data = static_cast<IODataPreparationPayload *>(p);
-
-//     if (std::holds_alternative<CompressedTextureMetadata>(data->metadata) ||
-//         std::holds_alternative<TextureMetadata>(data->metadata))
-//     {
-//         textureIOExecute(data);
-//     }
-//     else
-//     {
-//         throw std::runtime_error("Invalid transfer kind");
-//     }
-// }
-
-// std::optional<star::job::complete_tasks::CompleteTask<>> star::job::tasks::task_factory::ioDataCreateComplete(void *p)
-// {
-//     auto *data = static_cast<IODataPreparationPayload *>(p);
-
-//     if (std::holds_alternative<CompressedTextureMetadata>(data->metadata))
-//     {
-//         auto &metadata = std::get<CompressedTextureMetadata>(data->metadata);
-//         auto &compData = std::get<std::unique_ptr<star::SharedCompressedTexture>>(data->preparedData);
-//         return std::optional<complete_tasks::CompleteTask<>>(
-//             complete_tasks::task_factory::createTextureTransferComplete(metadata.gpuResourceReady,
-//                                                                         std::move(compData)));
-//     }
-//     else if (std::holds_alternative<TextureMetadata>(data->metadata))
-//     {
-//     }
-//     else
-//     {
-//         throw std::runtime_error("Invalid metadatatype");
-//     }
-
-//     return std::nullopt;
-// }
-
-// void star::job::tasks::task_factory::imageWriteExecute(void *p)
-// {
-// }
-
-// star::job::tasks::Task<> star::job::tasks::task_factory::createTextureTransferTask(
-//     const std::string &filePath, const vk::PhysicalDevice &physicalDevice, vk::Semaphore gpuResourceReady)
-// {
-//     ktx_transcode_fmt_e targetFormat = star::SharedCompressedTexture::GetResultTargetCompressedFormat(physicalDevice);
-
-//     IODataPreparationPayload payload{.metadata = CompressedTextureMetadata{
-//                                          filePath,
-//                                          gpuResourceReady,
-//                                          targetFormat,
-//                                      }};
-
-//     return star::job::tasks::Task<>::Builder<IODataPreparationPayload>()
-//         .setPayload(std::move(payload))
-//         .setExecute(&ioDataExecute)
-//         .setCreateCompleteTaskFunction(&ioDataCreateComplete)
-//         .build();
-// }
 
 star::job::tasks::Task<> star::job::tasks::task_factory::createPrintTask(std::string message)
 {
@@ -99,40 +21,65 @@ star::job::tasks::Task<> star::job::tasks::task_factory::createPrintTask(std::st
         .build();
 }
 
-star::job::tasks::Task<> star::job::tasks::task_factory::createImageWriteTask(std::string fileName,
-                                                                              StarBuffers::Buffer imageBuffer)
+// void star::job::tasks::task_factory::MoveCompilePaylod(void *fresh, void *old)
+// {
+//     auto *o = static_cast<CompileShaderPayload *>(old);
+
+//     new (fresh) CompileShaderPayload(std::move(*o));
+//     o->finalizedShaderObject = nullptr;
+//     o->compiledShaderCode = nullptr;
+//     o->~CompileShaderPayload();
+// }
+
+// void star::job::tasks::task_factory::DestroyCompilePayload(void *p)
+// {
+//     auto *payload = static_cast<CompileShaderPayload *>(p);
+
+//     // if (payload->finalizedShaderObject != nullptr){
+//     //     payload
+//     // }
+//     // if (payload->compiledShaderCode != nullptr){
+//     //     static_cast<std::unique_ptr<std::vector<uint32_t>> *>(payload->compiledShaderCode)->reset();
+//     //     payload->compiledShaderCode = nullptr;
+//     // }
+
+//     payload->~CompileShaderPayload();
+// }
+
+std::optional<star::job::complete_tasks::CompleteTask<>> star::job::tasks::task_factory::CreateCompileComplete(void *p)
 {
-    auto resources = imageBuffer.releaseResources();
+    auto *data = static_cast<CompileShaderPayload *>(p);
 
-    auto task = star::job::tasks::Task<>::Builder<ImageWritePayload>()
-                    .setPayload(ImageWritePayload(fileName.c_str(), resources->allocator, resources->memory,
-                                                  imageBuffer.getBufferSize(), resources->buffer))
-                    .setExecute(&task_factory::imageWriteExecute)
-                    .build();
+    auto complete = job::complete_tasks::task_factory::CreateShaderCompileComplete(
+        data->handleID, std::move(data->finalizedShaderObject), std::move(data->compiledShaderCode));
+    // data->finalizedShaderObject = nullptr;
+    data->compiledShaderCode = nullptr;
 
-    resources->buffer = VK_NULL_HANDLE;
-    return task;
+    return std::make_optional<star::job::complete_tasks::CompleteTask<>>(std::move(complete));
 }
 
-star::job::tasks::Task<> star::job::tasks::task_factory::createRecordCommandBufferTask(
-    vk::CommandBuffer commandBuffer, std::function<void(vk::CommandBuffer &, const uint8_t &)> recordFunction,
-    uint8_t frameInFlightIndex)
+void star::job::tasks::task_factory::ExecuteCompileShader(void *p)
 {
-    return star::job::tasks::Task<>::Builder<CommandBufferRecordingPayload>()
-        .setPayload(CommandBufferRecordingPayload{
-            commandBuffer,
-            frameInFlightIndex,
-            recordFunction,
+    auto *data = static_cast<CompileShaderPayload *>(p);
+
+    data->finalizedShaderObject = std::make_unique<StarShader>(data->path, data->stage);
+    std::cout << "Comiling shader: " << data->path << std::endl;
+    data->compiledShaderCode = star::Compiler::compile(data->path, true);
+}
+
+star::job::tasks::Task<> star::job::tasks::task_factory::CreateCompileShader(const std::string &fileName,
+                                                                             const star::Shader_Stage &stage,
+                                                                             const Handle &shaderHandle)
+{
+    return star::job::tasks::Task<>::Builder<CompileShaderPayload>()
+        .setPayload(CompileShaderPayload{
+            .path = fileName,
+            .stage = stage,
+            .handleID = shaderHandle.getID(),
         })
-        .setExecute([](void *p) {
-            auto *payload = static_cast<CommandBufferRecordingPayload *>(p);
-            payload->recordFunction(payload->commandBuffer, payload->frameInFlightIndex);
-        })
+        // .setDestroy(&DestroyCompilePayload)
+        // .setMovePayload(&MoveCompilePaylod)
+        .setExecute(&ExecuteCompileShader)
+        .setCreateCompleteTaskFunction(&CreateCompileComplete)
         .build();
 }
-
-// star::job::tasks::Task<>
-// star::job::tasks::task_factory::createTextureTransferTask(std::unique_ptr<SharedCompressedTexture> compressedTex)
-// {
-//     return star::job::tasks::Task<>();
-// }

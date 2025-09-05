@@ -7,10 +7,8 @@
 #include "device/DeviceID.hpp"
 #include "device/StarDevice.hpp"
 #include "device/managers/ManagerCommandBuffer.hpp"
+#include "device/managers/ManagerShader.hpp"
 #include "tasks/TaskFactory.hpp"
-
-
-#include "ConfigFile.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -38,28 +36,61 @@ class DeviceContext
         managers::ManagerCommandBuffer &m_manager;
     };
 
+    struct ManagerShaderWrapper
+    {
+        Handle submit(StarShader shader)
+        {
+            return shaderManager.submit(taskManager, std::move(shader));
+        }
+
+        manager::Shader::Record &get(const Handle &handle)
+        {
+            return shaderManager.get(handle);
+        }
+
+        bool isReady(const Handle &handle)
+        {
+            return shaderManager.isReady(handle);
+        }
+
+        job::TaskManager &taskManager;
+        manager::Shader &shaderManager;
+    };
+
     DeviceContext(const DeviceID &deviceID, const uint8_t &numFramesInFlight, RenderingInstance &instance,
                   std::set<Rendering_Features> requiredFeatures, StarWindow &window,
                   const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
 
-    ~DeviceContext()
+    ~DeviceContext();
+    DeviceContext(DeviceContext &&other)
+        : m_deviceID(std::move(other.m_deviceID)), m_surface(std::move(other.m_surface)), m_device(std::move(other.m_device)),
+          m_taskManager(std::move(other.m_taskManager)),
+          m_commandBufferManager(std::move(other.m_commandBufferManager)),
+          m_transferWorker(std::move(other.m_transferWorker))
     {
-        if (m_commandBufferManager)
-            m_commandBufferManager->cleanup(*m_device);
+        other.m_ownsWorkers = false;
     };
-
-    DeviceContext(DeviceContext &&other) = default;
     DeviceContext &operator=(DeviceContext &&other)
     {
-        m_surface = std::move(other.m_surface);
-        m_device = std::move(other.m_device);
-        m_manager = std::move(other.m_manager);
-        m_commandBufferManager = std::move(other.m_commandBufferManager);
+        if (this != &other)
+        {
+            m_deviceID = std::move(other.m_deviceID); 
+            m_surface = std::move(other.m_surface);
+            m_device = std::move(other.m_device);
+            m_taskManager = std::move(other.m_taskManager);
+            m_commandBufferManager = std::move(other.m_commandBufferManager);
+            m_transferWorker = std::move(other.m_transferWorker);
+            m_ownsWorkers = true;
+
+            other.m_ownsWorkers = false;
+        }
 
         return *this;
     };
     DeviceContext(const DeviceContext &) = delete;
     DeviceContext &operator=(const DeviceContext &) = delete;
+
+    void prepareForNextFrame();
 
     inline StarDevice &getDevice()
     {
@@ -68,7 +99,7 @@ class DeviceContext
 
     job::TaskManager &getManager()
     {
-        return m_manager;
+        return m_taskManager;
     }
 
     std::shared_ptr<RenderingSurface> getSurface()
@@ -88,6 +119,11 @@ class DeviceContext
         return *m_renderResourceManager;
     }
 
+    ManagerShaderWrapper getShaderManager()
+    {
+        return ManagerShaderWrapper{.taskManager = m_taskManager, .shaderManager = m_shaderManager};
+    }
+
     job::TransferWorker &getTransferWorker()
     {
         assert(m_transferWorker);
@@ -103,14 +139,21 @@ class DeviceContext
     }
 
   private:
+    bool m_ownsWorkers = true;
+    uint64_t m_frameCounter = 0;
     DeviceID m_deviceID;
-    std::shared_ptr<RenderingSurface> m_surface = nullptr;
+    std::shared_ptr<RenderingSurface> m_surface;
     std::shared_ptr<StarDevice> m_device;
-    job::TaskManager m_manager;
-    std::unique_ptr<managers::ManagerCommandBuffer> m_commandBufferManager = nullptr;
-    std::unique_ptr<job::TransferWorker> m_transferWorker = nullptr;
-    std::unique_ptr<ManagerRenderResource> m_renderResourceManager = nullptr;
+    job::TaskManager m_taskManager;
+    manager::Shader m_shaderManager;
+    std::unique_ptr<managers::ManagerCommandBuffer> m_commandBufferManager;
+    std::shared_ptr<job::TransferWorker> m_transferWorker;
+    std::unique_ptr<ManagerRenderResource> m_renderResourceManager;
 
-    std::unique_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device);
+    std::shared_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device);
+
+    void handleCompleteMessages(const uint8_t maxMessageCounter = 0);
+
+    void processCompleteMessage(job::complete_tasks::CompleteTask<> completeTask);
 };
 } // namespace star::core::device

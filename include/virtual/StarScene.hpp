@@ -31,6 +31,8 @@ class StarScene
               std::vector<std::shared_ptr<core::renderer::Renderer>> additionalRenderers);
 
     virtual ~StarScene() = default;
+    
+    void frameUpdate(core::device::DeviceContext &context); 
 
     std::shared_ptr<core::renderer::SwapChainRenderer> getPresentationRenderer()
     {
@@ -41,7 +43,6 @@ class StarScene
     {
         return this->m_camera;
     }
-
   protected:
     std::shared_ptr<star::core::renderer::SwapChainRenderer> m_presentationRenderer;
     std::vector<std::shared_ptr<star::core::renderer::Renderer>> m_additionalRenderers;

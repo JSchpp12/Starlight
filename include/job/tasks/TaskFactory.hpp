@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Handle.hpp"
 #include "SharedCompressedTexture.hpp"
 #include "StarBuffers/Buffer.hpp"
-#include "tasks/Task.hpp"
+#include "StarShader.hpp"
 #include "TransferRequest_Texture.hpp"
+#include "tasks/Task.hpp"
+
 
 #include <vulkan/vulkan.hpp>
 
@@ -82,11 +85,19 @@ struct CompressedTextureMetadata : public TextureMetadata
 {
     ktx_transcode_fmt_e targetFormat;
 
-    CompressedTextureMetadata(const std::string &filePath,
-                              ktx_transcode_fmt_e targetFormat)
+    CompressedTextureMetadata(const std::string &filePath, ktx_transcode_fmt_e targetFormat)
         : TextureMetadata(filePath), targetFormat(targetFormat)
     {
     }
+};
+
+struct CompileShaderPayload
+{
+    std::string path;
+    star::Shader_Stage stage;
+    size_t handleID;
+    std::unique_ptr<StarShader> finalizedShaderObject = nullptr;
+    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
 };
 
 struct IODataPreparationPayload
@@ -97,21 +108,6 @@ struct IODataPreparationPayload
 
 namespace task_factory
 {
-
-void imageWriteExecute(void *p);
-
-void recordBufferExecute(void *p);
-
-// void textureIOExecute(IODataPreparationPayload *data);
-
-// void ioDataExecute(void *p);
-
-// std::optional<complete_tasks::CompleteTask<>> ioDataCreateComplete(void *p);
-
-// star::job::tasks::Task<> createTextureTransferTask(const std::string &filePath,
-//                                                    const vk::PhysicalDevice &physicalDevice,
-//                                                    vk::Semaphore gpuResourceReady);
-
 star::job::tasks::Task<> createPrintTask(std::string message);
 
 star::job::tasks::Task<> createImageWriteTask(std::string fileName, star::StarBuffers::Buffer imageBuffer);
@@ -120,7 +116,19 @@ star::job::tasks::Task<> createRecordCommandBufferTask(
     vk::CommandBuffer commandBuffer, std::function<void(vk::CommandBuffer &, const uint8_t &)> recordFunction,
     uint8_t frameInFlightIndex);
 
-// star::job::tasks::Task<> createTextureTransferTask(std::unique_ptr<SharedCompressedTexture> compressedTex);
+#pragma region CompileShader
+// void DestroyCompilePayload(void *p); 
+
+// void MoveCompilePaylod(void *fresh, void *old); 
+
+void ExecuteCompileShader(void *p);
+
+std::optional<star::job::complete_tasks::CompleteTask<>> CreateCompileComplete(void *p);
+
+star::job::tasks::Task<> CreateCompileShader(const std::string &fileName, const star::Shader_Stage &stage,
+                                             const Handle &shaderHandle);
+
+#pragma endregion CompileShader
 
 } // namespace task_factory
 } // namespace star::job::tasks

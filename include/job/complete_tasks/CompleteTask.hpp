@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core/device/StarDevice.hpp"
-
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
@@ -10,7 +8,7 @@ namespace star::job::complete_tasks
 {
 using DestroyPayloadFunction = void (*)(void *);
 using MovePayloadFunction = void (*)(void *, void *);
-using EngineOnCompleteFunction = void (*)(star::core::device::StarDevice *, void *);
+using EngineOnCompleteFunction = void (*)(void *, void *, void *);
 
 template <size_t StorageBytes =
               128 - sizeof(EngineOnCompleteFunction) - sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction),
@@ -136,9 +134,9 @@ class CompleteTask
     }
 
     //will be run on the MAIN engine thread
-    void run(star::core::device::StarDevice *device)
+    void run(void *device, void *shaderManager)
     {
-        m_engineOnCompleteFunction(device, payload());
+        m_engineOnCompleteFunction(device, shaderManager, payload());
     }
 
   private:

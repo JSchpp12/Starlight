@@ -27,6 +27,12 @@ void Renderer::update(core::device::DeviceContext &device, const uint8_t &frameI
 {
 }
 
+void Renderer::frameUpdate(core::device::DeviceContext &device){
+    for (int i = 0; i < m_objects.size(); i++){
+        m_objects[i]->frameUpdate(device);
+    }
+}
+
 void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
 {
     m_lightListBuffers.resize(numFramesInFlight);

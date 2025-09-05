@@ -28,8 +28,15 @@ class Task
 
         static void DefaultMovePayload(void *dest, void *src)
         {
-            new (dest) PayloadType(std::move(*static_cast<PayloadType *>(src)));
-            static_cast<PayloadType *>(src)->~PayloadType();
+            auto *s = static_cast<PayloadType *>(src); 
+
+            try{
+                new (dest) PayloadType(std::move(*s)); 
+            }catch (const std::runtime_error &ex){
+                throw std::runtime_error("Failed to move payload"); 
+            }
+
+            s->~PayloadType(); 
         }
 
         static void DefaultDestroyPayload(void *data)

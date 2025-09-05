@@ -8,7 +8,6 @@ star::StarScene::StarScene(const core::device::DeviceID &deviceID, const uint8_t
                            std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer)
     : m_presentationRenderer(presentationRenderer), m_camera(camera)
 {
-    // m_presentationRenderer->init(globalInfoBuffers); 
 }
 
 star::StarScene::StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
@@ -17,5 +16,12 @@ star::StarScene::StarScene(const core::device::DeviceID &deviceID, const uint8_t
                            std::vector<std::shared_ptr<core::renderer::Renderer>> renderers)
     : m_presentationRenderer(presentationRenderer), m_additionalRenderers(renderers), m_camera(camera)
 {
-    // m_presentationRenderer->init(globalInfoBuffers); 
+}
+
+void star::StarScene::frameUpdate(core::device::DeviceContext &context){
+    m_presentationRenderer->frameUpdate(context); 
+
+    for (int i = 0; i < m_additionalRenderers.size(); i++){
+        m_additionalRenderers[i]->frameUpdate(context); 
+    }
 }

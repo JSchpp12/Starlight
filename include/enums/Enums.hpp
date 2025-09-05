@@ -47,7 +47,8 @@ namespace star {
         glsl
     };
 
-    enum Shader_Stage {
+    enum class Shader_Stage {
+        none,
         vertex,
         fragment,
         compute, 

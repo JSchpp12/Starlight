@@ -1,8 +1,10 @@
-#include "managers/ManagerShader.hpp"
+#include "device/managers/ManagerShader.hpp"
 
-#include <cassert> 
+#include "job/tasks/TaskFactory.hpp"
 
-star::Handle star::core::device::manager::Shader::add(const StarShader &shader)
+#include <cassert>
+
+star::Handle star::core::device::manager::Shader::submit(job::TaskManager &taskSystem, StarShader shader)
 {
     uint32_t nextSpace;
 
@@ -15,23 +17,37 @@ star::Handle star::core::device::manager::Shader::add(const StarShader &shader)
         else
         {
             nextSpace = m_skippedSpaces.top();
-            m_skippedSpaces.pop(); 
+            m_skippedSpaces.pop();
         }
-    }else{
-        m_nextSpace++;
+    }
+    else
+    {
+        nextSpace = m_nextSpace;
+        m_nextSpace++; 
     }
 
-    m_shaders.at(m_nextSpace) = Record{
-        .shader = shader,
-        .compiledShader = nullptr
-    };
+    m_shaders.at(nextSpace) = Record(shader);
 
-    return star::Handle(star::Handle_Type::shader, m_nextSpace); 
+    Handle handle = Handle(star::Handle_Type::shader, nextSpace); 
+    submitTask(taskSystem, m_shaders.at(nextSpace), handle); 
+
+    return handle;
 }
 
-star::core::device::manager::Shader::Record &star::core::device::manager::Shader::get(const Handle &handle){
-    assert(handle.getType() == star::Handle_Type::shader); 
-    assert(handle.getID() < m_shaders.size()); 
+star::core::device::manager::Shader::Record &star::core::device::manager::Shader::get(const Handle &handle)
+{
+    assert(handle.getType() == star::Handle_Type::shader);
+    assert(handle.getID() < m_shaders.size());
 
-    return m_shaders.at(handle.getID()); 
+    return m_shaders.at(handle.getID());
+}
+
+bool star::core::device::manager::Shader::isReady(const Handle &handle){
+    return get(handle).compiledShader != nullptr; 
+}
+
+void star::core::device::manager::Shader::submitTask(job::TaskManager &taskSystem, Record &storedRecord, const Handle &handle)
+{
+    taskSystem.submitTask(
+        job::tasks::task_factory::CreateCompileShader(storedRecord.shader.getPath(), storedRecord.shader.getStage(), handle));
 }

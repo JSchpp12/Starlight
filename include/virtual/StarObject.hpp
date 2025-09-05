@@ -93,7 +93,7 @@ namespace star {
 		/// <param name="commandBuffer"></param>
 		/// <param name="pipelineLayout"></param>
 		/// <param name="swapChainIndexNum"></param>
-		virtual void recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum);
+		void recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum);
 
 		/// @brief Create an instance of this object.
 		/// @return A reference to the created instance. The object will own the instance. 
@@ -104,6 +104,8 @@ namespace star {
 		/// main draw command.
 		/// </summary>
 		virtual void prepDraw(int swapChainTarget); 
+
+		virtual void frameUpdate(core::device::DeviceContext &context); 
 
 		/// <summary>
 		/// Every material must provide a method to return shaders within a map. The keys of the map will contain the stages in which the 
@@ -151,6 +153,8 @@ namespace star {
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
 		virtual void createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight) override;
 
+		virtual bool isRenderReady(core::device::DeviceContext &context); 
+
 	private:
 		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
 		static vk::PipelineLayout extrusionPipelineLayout;
@@ -158,6 +162,8 @@ namespace star {
 		static std::unique_ptr<StarDescriptorSetLayout> boundDescriptorLayout;
 		static vk::PipelineLayout boundPipelineLayout;
 		static std::unique_ptr<StarGraphicsPipeline> boundBoxPipeline;
+
+		bool isReady = false; 
 
 		core::device::DeviceID m_deviceID; 
 		std::unique_ptr<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>> groupLayout;

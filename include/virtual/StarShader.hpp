@@ -1,32 +1,41 @@
-#pragma once 
+#pragma once
 
 #include "Compiler.hpp"
 
 #include "spirv_reflect.h"
 
-#include <vector> 
 #include <iostream>
-#include <memory> 
+#include <memory>
 #include <string>
+#include <vector>
 
-namespace star {
-    class StarShader {
-    public:
-        StarShader(const std::string& path, star::Shader_Stage stage); 
-        ~StarShader() = default;
+namespace star
+{
+class StarShader
+{
+  public:
+    StarShader() = default;
+    StarShader(const std::string &path, const star::Shader_Stage &stage) : path(path), stage(stage)
+    {
+    }
+    ~StarShader() = default;
+    StarShader(const StarShader &) = default;
+    StarShader &operator=(const StarShader &) = default;
+    StarShader(StarShader &&) = default;
+    StarShader &operator=(StarShader &&) = default;
+    
+    star::Shader_Stage getStage()
+    {
+        return this->stage;
+    }
 
-        /// <summary>
-        /// Compile the shader to SPIR-V 
-        /// </summary>
-        /// <returns></returns>
-        std::unique_ptr<std::vector<uint32_t>> compile();
+    std::string getPath()
+    {
+        return this->path;
+    }
 
-        star::Shader_Stage getStage() { return this->stage; }
-
-        std::string getPath() { return this->path;  }
-    protected:
-        std::string path;
-        star::Shader_Stage stage;
-
-    };
-}
+  protected:
+    std::string path = "";
+    star::Shader_Stage stage = star::Shader_Stage::none;
+};
+} // namespace star

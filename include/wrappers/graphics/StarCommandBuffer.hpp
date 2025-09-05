@@ -21,6 +21,8 @@ class StarCommandBuffer
   public:
     StarCommandBuffer(const StarCommandBuffer &) = delete;
     StarCommandBuffer &operator=(const StarCommandBuffer &) = delete;
+    StarCommandBuffer(StarCommandBuffer &&) = default;
+    StarCommandBuffer &operator=(StarCommandBuffer &&) = default;
 
     StarCommandBuffer(vk::Device &device, int numBuffersToCreate, std::shared_ptr<StarCommandPool> parentPool,
                       const Queue_Type type, bool initFences, bool initSemaphores);

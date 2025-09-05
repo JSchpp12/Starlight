@@ -43,7 +43,7 @@ class ManagerRenderResource : public StarManager
         }
     };
 
-    static void init(core::device::DeviceID deviceID, std::shared_ptr<core::device::StarDevice> device, job::TransferWorker &worker, const int &totalNumFramesInFlight);
+    static void init(core::device::DeviceID deviceID, std::shared_ptr<core::device::StarDevice> device, std::shared_ptr<job::TransferWorker> worker, const int &totalNumFramesInFlight);
 
     static Handle addRequest(const core::device::DeviceID &deviceID, std::unique_ptr<ManagerController::RenderResource::Buffer> newRequest,
                              const bool &isHighPriority = false);

@@ -119,7 +119,10 @@ void StarEngine::run()
         frameInFlightIndex = currentScene->getPresentationRenderer()->getFrameToBeDrawn();
 
         // check if any new objects have been added
+        deviceManager.getContext().prepareForNextFrame(); 
+
         RenderResourceSystem::runInits(deviceManager.getContext(), numFramesInFlight, this->window->getExtent());
+        currentScene->frameUpdate(deviceManager.getContext()); 
         descriptorManager.update(numFramesInFlight);
 
         currentScene->getPresentationRenderer()->pollEvents();

@@ -144,6 +144,6 @@ class TaskManager
     static std::unique_ptr<workers::Worker> CreateDefaultWorker(boost::lockfree::stack<job::complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
     {
         return std::make_unique<workers::Worker>(completeMessages);
-    }
+    } 
 };
 } // namespace star::job
