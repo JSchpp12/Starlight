@@ -7,7 +7,6 @@
 #include "StarShader.hpp"
 #include "VulkanVertex.hpp"
 
-
 #include <vulkan/vulkan.hpp>
 
 #include <iostream>
@@ -45,9 +44,9 @@ class StarGraphicsPipeline : public StarPipeline
         RenderingTargetInfo renderingInfo;
     };
 
-    StarGraphicsPipeline(PipelineConfigSettings &configSettings, StarShader vertShader, StarShader fragShader);
+    StarGraphicsPipeline(StarShader vertShader, StarShader fragShader);
 
-    StarGraphicsPipeline(PipelineConfigSettings &configSettings, StarShader vertShader, StarShader fragShader,
+    StarGraphicsPipeline(StarShader vertShader, StarShader fragShader,
                          StarShader geomShader);
 
     virtual ~StarGraphicsPipeline() = default;
@@ -67,7 +66,8 @@ class StarGraphicsPipeline : public StarPipeline
     std::optional<StarShader> geomShader;
     PipelineConfigSettings configSettings;
 
-    virtual vk::Pipeline buildPipeline(core::device::DeviceContext &context) override;
+    virtual vk::Pipeline buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
+                                       vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo) override;
 
     virtual std::vector<Handle> submitShaders(core::device::DeviceContext &context) override;
 };

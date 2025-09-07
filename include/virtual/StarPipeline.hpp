@@ -1,12 +1,12 @@
 #pragma once
 
 #include "core/DeviceContext.hpp"
+#include "structs/RenderingTargetInfo.hpp"
 
 #include "vulkan/vulkan.hpp"
 
 #include <string>
 #include <vector>
-
 
 namespace star
 {
@@ -34,31 +34,34 @@ class StarPipeline
             other.m_pipeline = VK_NULL_HANDLE;
         }
 
-		return *this;
+        return *this;
     }
-    
-    bool isRenderReady(core::device::DeviceContext& device); 
 
-    void init(core::device::DeviceContext &context);
+    bool isRenderReady(core::device::DeviceContext &device);
 
-    void prepRender(core::device::DeviceContext &context); 
+    void init(core::device::DeviceContext &context, vk::PipelineLayout pipelineLayout,
+              RenderingTargetInfo renderingInfo);
 
-    void cleanup(core::device::DeviceContext &context);
+    void prepRender(core::device::DeviceContext &context);
+
+    void cleanupRender(core::device::DeviceContext &context);
 
     virtual void bind(vk::CommandBuffer &commandBuffer) = 0;
 
-    const std::vector<Handle> &getShaders(){
-        return m_shaders; 
+    const std::vector<Handle> &getShaders()
+    {
+        return m_shaders;
     }
 
   protected:
     vk::Pipeline m_pipeline;
     std::string m_hash; // this is simply the paths of all shaders in this pipeline concated together
 
-    virtual vk::Pipeline buildPipeline(core::device::DeviceContext &context) = 0;
+    virtual vk::Pipeline buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
+                                       vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo) = 0;
 
-	///Child objects should submit requests to the shader manager in this function call and provide the handles
-	virtual std::vector<Handle> submitShaders(core::device::DeviceContext &context)=0;
+    /// Child objects should submit requests to the shader manager in this function call and provide the handles
+    virtual std::vector<Handle> submitShaders(core::device::DeviceContext &context) = 0;
 
     bool isSame(StarPipeline &compPipe);
 
@@ -68,10 +71,10 @@ class StarPipeline
     /// </summary>
     /// <param name="sourceCode"></param>
     /// <returns></returns>
-    vk::ShaderModule createShaderModule(core::device::StarDevice &device, const std::vector<uint32_t> &sourceCode);
+    static vk::ShaderModule CreateShaderModule(core::device::StarDevice &device, const std::vector<uint32_t> &sourceCode);
 #pragma endregion
 
-private:
-std::vector<Handle> m_shaders; 
+  private:
+    std::vector<Handle> m_shaders;
 };
 } // namespace star

@@ -11,6 +11,8 @@ namespace star {
     std::unique_ptr<std::vector<uint32_t>> Compiler::compile(const std::string& pathToFile, bool optimize) {
         shaderc::Compiler shaderCompiler;
         shaderc::CompileOptions compilerOptions;
+        compilerOptions.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3); 
+        compilerOptions.SetTargetSpirv(shaderc_spirv_version_1_6); 
 
         if (compileDebug)
             compilerOptions.SetGenerateDebugInfo(); 

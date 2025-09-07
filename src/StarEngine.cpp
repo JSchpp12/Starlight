@@ -122,8 +122,8 @@ void StarEngine::run()
         deviceManager.getContext().prepareForNextFrame(); 
 
         RenderResourceSystem::runInits(deviceManager.getContext(), numFramesInFlight, this->window->getExtent());
-        currentScene->frameUpdate(deviceManager.getContext()); 
         descriptorManager.update(numFramesInFlight);
+        currentScene->frameUpdate(deviceManager.getContext()); 
 
         currentScene->getPresentationRenderer()->pollEvents();
         InteractionSystem::callWorldUpdates(frameInFlightIndex);

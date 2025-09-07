@@ -195,11 +195,4 @@ void StarRenderGroup::createPipelineLayout(std::vector<std::shared_ptr<StarDescr
 		throw std::runtime_error("failed to create pipeline layout");
 	}
 }
-std::vector<std::pair<vk::DescriptorType, const int>> star::StarRenderGroup::getDescriptorRequests(const int& numFramesInFlight)
-{
-	return std::vector<std::pair<vk::DescriptorType, const int>>();
-}
-void star::StarRenderGroup::createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight)
-{
-}
 }

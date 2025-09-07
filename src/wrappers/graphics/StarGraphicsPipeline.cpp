@@ -3,14 +3,14 @@
 namespace star
 {
 
-StarGraphicsPipeline::StarGraphicsPipeline(PipelineConfigSettings &configSettings, StarShader vertShader,
+StarGraphicsPipeline::StarGraphicsPipeline(StarShader vertShader,
                                            StarShader fragShader)
     : configSettings(std::move(configSettings)), vertShader(vertShader), fragShader(fragShader)
 {
     m_hash = vertShader.getPath() + fragShader.getPath();
 }
 
-StarGraphicsPipeline::StarGraphicsPipeline(PipelineConfigSettings &configSettings, StarShader vertShader,
+StarGraphicsPipeline::StarGraphicsPipeline(StarShader vertShader,
                                            StarShader fragShader, StarShader geomShader)
     : configSettings(std::move(configSettings)), vertShader(vertShader), fragShader(fragShader), geomShader(geomShader)
 {
@@ -141,15 +141,13 @@ void StarGraphicsPipeline::defaultPipelineConfigInfo(PipelineConfigSettings &con
     configSettings.renderingInfo = renderingInfo;
 }
 
-vk::Pipeline StarGraphicsPipeline::buildPipeline(core::device::DeviceContext &context)
+vk::Pipeline StarGraphicsPipeline::buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo)
 {
     vk::ShaderModule vertShaderModule, fragShaderModule, geomShaderModule;
 
     {
         std::unique_ptr<std::vector<uint32_t>> compiled =
             std::move(context.getShaderManager().get(getShaders()[0]).compiledShader);
-
-        assert(compiled);
         vertShaderModule = createShaderModule(context.getDevice(), *compiled);
     }
     {
@@ -193,22 +191,25 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline(core::device::DeviceContext &co
 
     auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
 
+    PipelineConfigSettings test = PipelineConfigSettings(); 
+    defaultPipelineConfigInfo(test, m_swapChainExtent, m_layout, m_renderingTarget); 
+
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
-    vertexInputInfo.vertexBindingDescriptionCount = configSettings.vertInputBindingDescription.size();
-    vertexInputInfo.pVertexBindingDescriptions = configSettings.vertInputBindingDescription.data();
+    vertexInputInfo.vertexBindingDescriptionCount = test.vertInputBindingDescription.size();
+    vertexInputInfo.pVertexBindingDescriptions = test.vertInputBindingDescription.data();
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
     vk::PipelineRenderingCreateInfoKHR renderingCreateInfo{};
     renderingCreateInfo.pNext = VK_NULL_HANDLE;
     renderingCreateInfo.sType = vk::StructureType::ePipelineRenderingCreateInfoKHR;
-    renderingCreateInfo.colorAttachmentCount = configSettings.renderingInfo.colorAttachmentFormats.size();
-    renderingCreateInfo.pColorAttachmentFormats = configSettings.renderingInfo.colorAttachmentFormats.data();
-    if (configSettings.renderingInfo.depthAttachmentFormat.has_value())
-        renderingCreateInfo.depthAttachmentFormat = configSettings.renderingInfo.depthAttachmentFormat.value();
-    if (configSettings.renderingInfo.stencilAttachmentFormat.has_value())
-        renderingCreateInfo.stencilAttachmentFormat = configSettings.renderingInfo.stencilAttachmentFormat.value();
+    renderingCreateInfo.colorAttachmentCount = test.renderingInfo.colorAttachmentFormats.size();
+    renderingCreateInfo.pColorAttachmentFormats = test.renderingInfo.colorAttachmentFormats.data();
+    if (test.renderingInfo.depthAttachmentFormat.has_value())
+        renderingCreateInfo.depthAttachmentFormat = test.renderingInfo.depthAttachmentFormat.value();
+    if (test.renderingInfo.stencilAttachmentFormat.has_value())
+        renderingCreateInfo.stencilAttachmentFormat = test.renderingInfo.stencilAttachmentFormat.value();
 
     /* Dynamic State */
     // some parts of the pipeline can be changed without recreating the entire pipeline
@@ -227,7 +228,7 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline(core::device::DeviceContext &co
 
     vk::Rect2D scissor{};
     scissor.offset = vk::Offset2D{0, 0};
-    scissor.extent = configSettings.swapChainExtent;
+    scissor.extent = test.swapChainExtent;
 
     vk::PipelineViewportStateCreateInfo viewportState{};
     viewportState.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
@@ -238,14 +239,14 @@ vk::Pipeline StarGraphicsPipeline::buildPipeline(core::device::DeviceContext &co
 
     // ref all previously created structs
     pipelineInfo.pVertexInputState = &vertexInputInfo;
-    pipelineInfo.pInputAssemblyState = &configSettings.inputAssemblyInfo;
+    pipelineInfo.pInputAssemblyState = &test.inputAssemblyInfo;
     pipelineInfo.pViewportState = &viewportState;
-    pipelineInfo.pRasterizationState = &configSettings.rasterizationInfo;
-    pipelineInfo.pMultisampleState = &configSettings.multisampleInfo;
-    pipelineInfo.pDepthStencilState = &configSettings.depthStencilInfo;
-    pipelineInfo.pColorBlendState = &configSettings.colorBlendInfo;
+    pipelineInfo.pRasterizationState = &test.rasterizationInfo;
+    pipelineInfo.pMultisampleState = &test.multisampleInfo;
+    pipelineInfo.pDepthStencilState = &test.depthStencilInfo;
+    pipelineInfo.pColorBlendState = &test.colorBlendInfo;
     pipelineInfo.pDynamicState = &dynamicStateInfo;
-    pipelineInfo.layout = configSettings.pipelineLayout;
+    pipelineInfo.layout = test.pipelineLayout;
     // render pass info - ensure renderpass is compatible with pipeline --check khronos docs
     pipelineInfo.renderPass = VK_NULL_HANDLE;
     pipelineInfo.subpass = 0; // index where the graphics pipeline will be used

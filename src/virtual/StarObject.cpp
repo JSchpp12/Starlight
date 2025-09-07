@@ -57,7 +57,7 @@ void star::StarObject::initSharedResources(core::device::DeviceContext &device, 
             StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
 
             StarObject::tri_normalExtrusionPipeline =
-                std::make_unique<StarGraphicsPipeline>(settings, vert, frag, geom);
+                std::make_unique<StarGraphicsPipeline>(swapChainExtent, extrusionPipelineLayout, renderingInfo, vert, frag, geom);
             StarObject::tri_normalExtrusionPipeline->init(device);
         }
         {
@@ -67,7 +67,7 @@ void star::StarObject::initSharedResources(core::device::DeviceContext &device, 
             StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
 
             StarObject::triAdj_normalExtrusionPipeline =
-                std::make_unique<StarGraphicsPipeline>(settings, vert, frag, geom);
+                std::make_unique<StarGraphicsPipeline>(swapChainExtent, extrusionPipelineLayout, renderingInfo, vert, frag, geom);
             StarObject::triAdj_normalExtrusionPipeline->init(device);
         }
     }
@@ -100,7 +100,7 @@ void star::StarObject::initSharedResources(core::device::DeviceContext &device, 
         StarShader vert = StarShader(boundVertPath, Shader_Stage::vertex);
         StarShader frag = StarShader(boundFragPath, Shader_Stage::fragment);
 
-        StarObject::boundBoxPipeline = std::make_unique<StarGraphicsPipeline>(settings, vert, frag);
+        StarObject::boundBoxPipeline = std::make_unique<StarGraphicsPipeline>(swapChainExtent, extrusionPipelineLayout, renderingInfo, vert, frag);
         boundBoxPipeline->init(device);
     }
 }
@@ -119,6 +119,7 @@ void star::StarObject::cleanupSharedResources(core::device::DeviceContext &devic
 
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 {
+    normalExtrusionPipeline->cleanupRender(context); 
     this->normalExtrusionPipeline.reset();
 
     this->setLayout.reset();
@@ -132,7 +133,7 @@ void star::StarObject::cleanupRender(core::device::DeviceContext &context)
     // delete pipeline if owns one
     if (this->pipeline)
     {
-        this->pipeline->cleanup(context);
+        this->pipeline->cleanupRender(context);
         this->pipeline.reset();
     }
 }
@@ -146,7 +147,7 @@ std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(core::device
     StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, pipelineLayout, renderInfo);
     auto graphicsShaders = this->getShaders();
 
-    auto newPipeline = std::make_unique<StarGraphicsPipeline>(settings, graphicsShaders.at(Shader_Stage::vertex),
+    auto newPipeline = std::make_unique<StarGraphicsPipeline>(swapChainExtent, pipelineLayout, renderInfo, graphicsShaders.at(Shader_Stage::vertex),
                                                               graphicsShaders.at(Shader_Stage::fragment));
     newPipeline->init(device);
 

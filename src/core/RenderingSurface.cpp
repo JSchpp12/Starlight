@@ -1,10 +1,5 @@
 #include "RenderingSurface.hpp"
 
-star::core::RenderingSurface::RenderingSurface(RenderingInstance &instance, StarWindow &window)
-    : m_surface(CreateSurface(instance, window))
-{
-}
-
 vk::UniqueSurfaceKHR star::core::RenderingSurface::CreateSurface(RenderingInstance &instance, StarWindow &window)
 {
     VkSurfaceKHR surfaceTmp = VkSurfaceKHR();

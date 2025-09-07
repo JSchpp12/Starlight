@@ -3,11 +3,12 @@
 #include <cassert>
 
 star::core::device::DeviceContext::DeviceContext(
-    const DeviceID &deviceID, const uint8_t &numFramesInFlight, RenderingInstance &instance,
-    std::set<Rendering_Features> requiredFeatures, StarWindow &window,
+    const uint8_t &numFramesInFlight, const DeviceID &deviceID, 
+    RenderingInstance &instance, std::set<Rendering_Features> requiredFeatures, StarWindow &window,
     const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
-    : m_deviceID(deviceID), m_surface(std::make_shared<RenderingSurface>(instance, window)),
-      m_device(std::make_shared<StarDevice>(window, *m_surface, instance, requiredFeatures,
+    : m_deviceID(deviceID), 
+      m_surface(RenderingSurface(instance, window)),
+      m_device(std::make_shared<StarDevice>(window, m_surface, instance, requiredFeatures,
                                             requiredRenderingDeviceFeatures)),
       m_commandBufferManager(std::make_unique<managers::ManagerCommandBuffer>(*m_device, numFramesInFlight)),
       m_transferWorker(CreateTransferWorker(*m_device)),
@@ -38,8 +39,6 @@ star::core::device::DeviceContext::DeviceContext(
         }
     }
 
-    m_taskManager.registerWorker(typeid(star::job::tasks::CompileShaderPayload));
-
     m_taskManager.startAll();
 }
 
@@ -58,8 +57,8 @@ star::core::device::DeviceContext::~DeviceContext()
 
 void star::core::device::DeviceContext::prepareForNextFrame()
 {
-    handleCompleteMessages(); 
-    
+    handleCompleteMessages();
+
     m_frameCounter++;
 }
 

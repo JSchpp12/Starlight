@@ -27,9 +27,8 @@ namespace star {
 	/// which are compatible with one another. Implies that they can all share 
 	/// same pipeline layout but NOT the same pipeline.
 	/// </summary>
-	class StarRenderGroup : private DescriptorModifier {
+	class StarRenderGroup{
 	public:
-
 		StarRenderGroup(core::device::DeviceContext& device, size_t numSwapChainImages,
 			vk::Extent2D swapChainExtent, StarObject& baseObject); 
 
@@ -107,9 +106,5 @@ namespace star {
 		virtual void prepareObjects(StarShaderInfo::Builder& groupBuilder, RenderingTargetInfo renderingInfo);
 
 		virtual void createPipelineLayout(std::vector<std::shared_ptr<StarDescriptorSetLayout>>& fullSetLayout);
-
-		// Inherited via DescriptorModifier
-		std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
-		void createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight) override;
 	};
 }

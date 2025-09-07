@@ -14,7 +14,8 @@ vk::Pipeline star::StarComputePipeline::buildPipeline(core::device::DeviceContex
 {
     vk::ShaderModule compShaderModule;
     {
-        auto compiledCode = std::move(context.getShaderManager().get(getShaders()[0]).compiledShader);
+        // auto compiledCode = std::move(context.getShaderManager().get(getShaders()[0]).compiledShader);
+        auto compiledCode = Compiler::compile(compShader.getPath(), false); 
         compShaderModule = createShaderModule(context.getDevice(), *compiledCode);
     }
 

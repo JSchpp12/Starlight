@@ -10,6 +10,7 @@ star::StarPipeline::~StarPipeline()
 bool star::StarPipeline::isRenderReady(core::device::DeviceContext &context){
     assert(m_shaders.size() > 0 && "Pipeline not properly initialized"); 
 
+
     if (m_pipeline != VK_NULL_HANDLE)
         return true; 
 
@@ -23,9 +24,10 @@ bool star::StarPipeline::isRenderReady(core::device::DeviceContext &context){
     return true; 
 }
 
-void star::StarPipeline::init(core::device::DeviceContext &context)
+void star::StarPipeline::init(core::device::DeviceContext &context, vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo)
 {
-    m_shaders = submitShaders(context); 
+    m_shaders = submitShaders(context);
+	// prepRender(context); 
 }
 
 void star::StarPipeline::prepRender(core::device::DeviceContext &context){
@@ -34,7 +36,7 @@ void star::StarPipeline::prepRender(core::device::DeviceContext &context){
     m_pipeline = buildPipeline(context); 
 }
 
-void star::StarPipeline::cleanup(core::device::DeviceContext &context)
+void star::StarPipeline::cleanupRender(core::device::DeviceContext &context)
 {
     context.getDevice().getVulkanDevice().destroyPipeline(m_pipeline);
 	m_pipeline = nullptr; 
@@ -45,7 +47,7 @@ bool star::StarPipeline::isSame(StarPipeline &compPipe)
     return (m_hash == compPipe.m_hash);
 }
 
-vk::ShaderModule star::StarPipeline::createShaderModule(core::device::StarDevice &device, const std::vector<uint32_t> &sourceCode)
+vk::ShaderModule star::StarPipeline::CreateShaderModule(core::device::StarDevice &device, const std::vector<uint32_t> &sourceCode)
 {
     vk::ShaderModuleCreateInfo createInfo{};
     createInfo.sType = vk::StructureType::eShaderModuleCreateInfo;

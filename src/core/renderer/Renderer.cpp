@@ -405,7 +405,7 @@ vk::Format Renderer::getDepthAttachmentFormat(star::core::device::DeviceContext 
 std::vector<std::pair<vk::DescriptorType, const int>> Renderer::getDescriptorRequests(const int &numFramesInFlight)
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
-        std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eUniformBuffer, numFramesInFlight),
+        std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eUniformBuffer, numFramesInFlight*2),
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)};
 }
 

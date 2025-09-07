@@ -57,14 +57,14 @@ class DeviceContext
         manager::Shader &shaderManager;
     };
 
-    DeviceContext(const DeviceID &deviceID, const uint8_t &numFramesInFlight, RenderingInstance &instance,
+    DeviceContext(const uint8_t &numFramesInFlight, const DeviceID &deviceID, RenderingInstance &instance,
                   std::set<Rendering_Features> requiredFeatures, StarWindow &window,
                   const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
 
     ~DeviceContext();
     DeviceContext(DeviceContext &&other)
-        : m_deviceID(std::move(other.m_deviceID)), m_surface(std::move(other.m_surface)), m_device(std::move(other.m_device)),
-          m_taskManager(std::move(other.m_taskManager)),
+        : m_deviceID(std::move(other.m_deviceID)), m_surface(std::move(other.m_surface)),
+          m_device(std::move(other.m_device)), m_taskManager(std::move(other.m_taskManager)),
           m_commandBufferManager(std::move(other.m_commandBufferManager)),
           m_transferWorker(std::move(other.m_transferWorker))
     {
@@ -74,7 +74,7 @@ class DeviceContext
     {
         if (this != &other)
         {
-            m_deviceID = std::move(other.m_deviceID); 
+            m_deviceID = std::move(other.m_deviceID);
             m_surface = std::move(other.m_surface);
             m_device = std::move(other.m_device);
             m_taskManager = std::move(other.m_taskManager);
@@ -100,11 +100,6 @@ class DeviceContext
     job::TaskManager &getManager()
     {
         return m_taskManager;
-    }
-
-    std::shared_ptr<RenderingSurface> getSurface()
-    {
-        return m_surface;
     }
 
     ManagerCommandBufferWrapper getManagerCommandBuffer()
@@ -138,11 +133,16 @@ class DeviceContext
         return m_deviceID;
     }
 
+    RenderingSurface &getRenderingSurface(){
+        return m_surface;
+    }
+
   private:
     bool m_ownsWorkers = true;
+    // Resolution of the final image to be produced -- usually set from the window
     uint64_t m_frameCounter = 0;
     DeviceID m_deviceID;
-    std::shared_ptr<RenderingSurface> m_surface;
+    RenderingSurface m_surface;
     std::shared_ptr<StarDevice> m_device;
     job::TaskManager m_taskManager;
     manager::Shader m_shaderManager;
