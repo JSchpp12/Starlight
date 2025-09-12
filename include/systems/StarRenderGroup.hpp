@@ -37,7 +37,7 @@ namespace star {
 
 		virtual ~StarRenderGroup();
 
-		virtual void init(StarShaderInfo::Builder initEngineBuilder, RenderingTargetInfo renderingInfo);
+		virtual void init(StarShaderInfo::Builder initEngineBuilder, core::renderer::RenderingTargetInfo renderingInfo);
 
 		virtual bool isObjectCompatible(StarObject& object); 
 
@@ -92,7 +92,6 @@ namespace star {
 		int numMeshes = 0; 
 		vk::Extent2D swapChainExtent;
 
-		std::unique_ptr<StarPipeline> starPipeline; 
 		vk::PipelineLayout pipelineLayout;
 		std::vector<std::shared_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
 
@@ -103,7 +102,7 @@ namespace star {
 		/// <summary>
 		/// Create descriptors for binding render buffers to shaders.
 		/// </summary>
-		virtual void prepareObjects(StarShaderInfo::Builder& groupBuilder, RenderingTargetInfo renderingInfo);
+		virtual void prepareObjects(StarShaderInfo::Builder& groupBuilder, core::renderer::RenderingTargetInfo renderingInfo);
 
 		virtual void createPipelineLayout(std::vector<std::shared_ptr<StarDescriptorSetLayout>>& fullSetLayout);
 	};

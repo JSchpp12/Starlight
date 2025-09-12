@@ -5,8 +5,9 @@
 
 #include "boost/atomic/atomic.hpp"
 
-#include <stdexcept>
 #include <optional>
+#include <stdexcept>
+
 
 namespace star::job::tasks
 {
@@ -24,19 +25,20 @@ class Task
     template <typename PayloadType> class Builder
     {
       public:
-        Builder() = default;
-
         static void DefaultMovePayload(void *dest, void *src)
         {
-            auto *s = static_cast<PayloadType *>(src); 
+            auto *s = static_cast<PayloadType *>(src);
 
-            try{
-                new (dest) PayloadType(std::move(*s)); 
-            }catch (const std::runtime_error &ex){
-                throw std::runtime_error("Failed to move payload"); 
+            try
+            {
+                new (dest) PayloadType(std::move(*s));
+            }
+            catch (const std::runtime_error &ex)
+            {
+                throw std::runtime_error("Failed to move payload");
             }
 
-            s->~PayloadType(); 
+            s->~PayloadType();
         }
 
         static void DefaultDestroyPayload(void *data)
@@ -129,7 +131,7 @@ class Task
         other.m_movePayloadFunction = nullptr;
         other.m_createCompleteFunction = nullptr;
     }
-    Task &operator=(Task &&other) noexcept 
+    Task &operator=(Task &&other) noexcept
     {
         if (this != &other)
         {
@@ -166,11 +168,12 @@ class Task
         m_executeFunction(payload());
     }
 
-    std::optional<complete_tasks::CompleteTask<>> getCompleteMessage(){
+    std::optional<complete_tasks::CompleteTask<>> getCompleteMessage()
+    {
         if (m_createCompleteFunction)
-            return m_createCompleteFunction(payload()); 
+            return m_createCompleteFunction(payload());
 
-        return std::nullopt; 
+        return std::nullopt;
     }
 
   private:

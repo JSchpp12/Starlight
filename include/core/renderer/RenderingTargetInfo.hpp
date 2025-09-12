@@ -4,7 +4,7 @@
 #include <vector>
 #include <optional>
 
-namespace star {
+namespace star::core::renderer {
 	struct RenderingTargetInfo {
 		RenderingTargetInfo() = default;
 		RenderingTargetInfo(const std::vector<vk::Format>& colorAttachmentFormats)

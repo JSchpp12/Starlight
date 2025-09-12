@@ -126,7 +126,7 @@ void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer &commandBuf
 	}
 }
 
-void StarRenderGroup::init(StarShaderInfo::Builder initEngineBuilder, RenderingTargetInfo renderingInfo)
+void StarRenderGroup::init(StarShaderInfo::Builder initEngineBuilder, core::renderer::RenderingTargetInfo renderingInfo)
 {
 	auto fullSetLayout = initEngineBuilder.getCurrentSetLayouts(); 
 	for (auto& set : this->largestDescriptorSet) {
@@ -160,7 +160,7 @@ bool StarRenderGroup::isObjectCompatible(StarObject& object)
 	return true;
 }
 
-void StarRenderGroup::prepareObjects(StarShaderInfo::Builder& groupBuilder, RenderingTargetInfo renderingInfo) {
+void StarRenderGroup::prepareObjects(StarShaderInfo::Builder& groupBuilder, core::renderer::RenderingTargetInfo renderingInfo) {
 	//get descriptor sets from objects and place into render structs
 
 	for (auto& group : this->groups) {

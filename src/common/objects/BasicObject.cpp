@@ -68,7 +68,7 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
 }
 
 void star::BasicObject::prepRender(star::core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
-                                   vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo,
+                                   vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo,
                                    int numSwapChainImages, StarShaderInfo::Builder fullEngineBuilder)
 {
     loadMesh(context);
@@ -76,7 +76,7 @@ void star::BasicObject::prepRender(star::core::device::DeviceContext &context, v
 }
 
 void star::BasicObject::prepRender(star::core::device::DeviceContext &context, int numSwapChainImages,
-                                   StarPipeline &sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
+                                   Handle sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
 {
     loadMesh(context);
     prepRender(context, numSwapChainImages, sharedPipeline, fullEngineBuilder);

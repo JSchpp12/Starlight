@@ -97,7 +97,7 @@ struct CompileShaderPayload
     star::Shader_Stage stage;
     size_t handleID;
     std::unique_ptr<StarShader> finalizedShaderObject = nullptr;
-    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
+    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr; 
 };
 
 struct IODataPreparationPayload
@@ -126,7 +126,7 @@ void ExecuteCompileShader(void *p);
 std::optional<star::job::complete_tasks::CompleteTask<>> CreateCompileComplete(void *p);
 
 star::job::tasks::Task<> CreateCompileShader(const std::string &fileName, const star::Shader_Stage &stage,
-                                             const Handle &shaderHandle);
+                                             const Handle &shaderHandle, Handle *owningPipeline = nullptr);
 
 #pragma endregion CompileShader
 

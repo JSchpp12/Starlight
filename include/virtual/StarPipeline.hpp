@@ -1,69 +1,63 @@
 #pragma once
 
-#include "core/DeviceContext.hpp"
-#include "structs/RenderingTargetInfo.hpp"
+#include "Handle.hpp"
+#include "StarShader.hpp"
+#include "VulkanVertex.hpp"
+#include "core/device/StarDevice.hpp"
+#include "core/renderer/RenderingTargetInfo.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 
 #include <string>
+#include <unordered_map>
+#include <variant>
 #include <vector>
 
 namespace star
 {
+
 class StarPipeline
 {
   public:
-    StarPipeline() = default;
-    virtual ~StarPipeline();
-    StarPipeline(const StarPipeline &) = delete;
-    StarPipeline &operator=(const StarPipeline &) = delete;
-    StarPipeline(StarPipeline &&other)
+    struct RenderResourceDepdencies
     {
-        m_pipeline = other.m_pipeline;
-        m_hash = other.m_hash;
+        std::vector<std::pair<star::StarShader, std::unique_ptr<std::vector<uint32_t>>>> compiledShaders;
+        core::renderer::RenderingTargetInfo renderingTargetInfo;
+        vk::Extent2D swapChainExtent;
+    };
 
-        other.m_pipeline = VK_NULL_HANDLE;
-    }
-    StarPipeline &operator=(StarPipeline &&other)
+    struct GraphicsPipelineConfigSettings
     {
-        if (this != &other)
-        {
-            m_pipeline = other.m_pipeline;
-            m_hash = other.m_hash;
+        GraphicsPipelineConfigSettings() = default;
+        ~GraphicsPipelineConfigSettings() = default;
+        // no copy
+        GraphicsPipelineConfigSettings(const GraphicsPipelineConfigSettings &) = delete;
+        GraphicsPipelineConfigSettings &operator=(const GraphicsPipelineConfigSettings &) = delete;
 
-            other.m_pipeline = VK_NULL_HANDLE;
-        }
+        GraphicsPipelineConfigSettings(GraphicsPipelineConfigSettings &&) = default;
+        GraphicsPipelineConfigSettings &operator=(GraphicsPipelineConfigSettings &&) = default;
 
-        return *this;
-    }
+        vk::Rect2D scissor;
+        vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
+        vk::PipelineRasterizationStateCreateInfo rasterizationInfo;
+        vk::PipelineMultisampleStateCreateInfo multisampleInfo;
+        vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+        vk::PipelineColorBlendStateCreateInfo colorBlendInfo;
+        vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
+        std::vector<VkDynamicState> dynamicStateEnables;
+        vk::PipelineDynamicStateCreateInfo dynamicStateInfo;
+        vk::PipelineLayout pipelineLayout = nullptr;
+        vk::Extent2D swapChainExtent;
+        std::vector<vk::VertexInputBindingDescription> vertInputBindingDescription =
+            std::vector<vk::VertexInputBindingDescription>{VulkanVertex::getBindingDescription()};
+        uint32_t subpass = 0;
+        core::renderer::RenderingTargetInfo renderingInfo;
+    };
 
-    bool isRenderReady(core::device::DeviceContext &device);
-
-    void init(core::device::DeviceContext &context, vk::PipelineLayout pipelineLayout,
-              RenderingTargetInfo renderingInfo);
-
-    void prepRender(core::device::DeviceContext &context);
-
-    void cleanupRender(core::device::DeviceContext &context);
-
-    virtual void bind(vk::CommandBuffer &commandBuffer) = 0;
-
-    const std::vector<Handle> &getShaders()
+    struct ComputePipelineConfigSettings
     {
-        return m_shaders;
-    }
-
-  protected:
-    vk::Pipeline m_pipeline;
-    std::string m_hash; // this is simply the paths of all shaders in this pipeline concated together
-
-    virtual vk::Pipeline buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
-                                       vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo) = 0;
-
-    /// Child objects should submit requests to the shader manager in this function call and provide the handles
-    virtual std::vector<Handle> submitShaders(core::device::DeviceContext &context) = 0;
-
-    bool isSame(StarPipeline &compPipe);
+        ComputePipelineConfigSettings() = default;
+    };
 
 #pragma region helpers
     /// <summary>
@@ -71,10 +65,82 @@ class StarPipeline
     /// </summary>
     /// <param name="sourceCode"></param>
     /// <returns></returns>
-    static vk::ShaderModule CreateShaderModule(core::device::StarDevice &device, const std::vector<uint32_t> &sourceCode);
+    static vk::ShaderModule CreateShaderModule(vk::Device &device, const std::vector<uint32_t> &sourceCode);
 #pragma endregion
 
+    StarPipeline() = default;
+    StarPipeline(std::variant<GraphicsPipelineConfigSettings, ComputePipelineConfigSettings> configSettings,
+                 vk::PipelineLayout pipelineLayout, std::vector<Handle> shaders);
+    virtual ~StarPipeline();
+    StarPipeline(const StarPipeline &) = delete;
+    StarPipeline &operator=(const StarPipeline &) = delete;
+    StarPipeline(StarPipeline &&other)
+        : m_pipelineLayout(std::move(other.m_pipelineLayout)), m_shaders(std::move(other.m_shaders)),
+          m_pipeline(std::move(other.m_pipeline)), m_configSettings(std::move(other.m_configSettings))
+    {
+    }
+    StarPipeline &operator=(StarPipeline &&other)
+    {
+        if (this != &other)
+        {
+            m_pipelineLayout = std::move(other.m_pipelineLayout);
+            m_shaders = std::move(other.m_shaders);
+            m_pipeline = std::move(other.m_pipeline);
+            m_configSettings = std::move(other.m_configSettings);
+        }
+
+        return *this;
+    }
+    bool operator!()
+    {
+        return m_shaders.size() == 0;
+    }
+
+    bool isRenderReady() const;
+
+    void prepRender(core::device::StarDevice &device, RenderResourceDepdencies deps);
+
+    void cleanupRender(core::device::StarDevice &device);
+
+    void bind(vk::CommandBuffer &commandBuffer);
+
+    const std::vector<Handle> &getShaders()
+    {
+        return m_shaders;
+    }
+
   private:
-    std::vector<Handle> m_shaders;
+    vk::PipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+    std::variant<GraphicsPipelineConfigSettings, ComputePipelineConfigSettings> m_configSettings;
+    std::vector<Handle> m_shaders = std::vector<Handle>();
+    bool m_isGraphicsPipeline = false;
+
+  protected:
+    vk::Pipeline m_pipeline = VK_NULL_HANDLE;
+
+    static vk::Pipeline BuildGraphicsPieline(vk::Device &device, const vk::PipelineLayout &pipelineLayout,
+                                             const RenderResourceDepdencies &depdencies,
+                                             GraphicsPipelineConfigSettings &pipelineSettings);
+
+    static vk::Pipeline BuildComputePipeline(vk::Device &device, const vk::PipelineLayout &pipelineLayout,
+                                             const RenderResourceDepdencies &depdencies,
+                                             ComputePipelineConfigSettings &pipelineSettings);
+
+    vk::Pipeline buildPipeline(core::device::StarDevice &device, const RenderResourceDepdencies &depdencies);
+
+    bool isSame(StarPipeline &compPipe);
+
+    bool hasSameShadersAs(StarPipeline &compPipe);
+
+    static bool IsGraphicsPipeline(
+        const std::variant<GraphicsPipelineConfigSettings, ComputePipelineConfigSettings> &settings);
+
+    static void DefaultGraphicsPipelineConfigInfo(GraphicsPipelineConfigSettings &configSettings,
+                                                  vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout,
+                                                  core::renderer::RenderingTargetInfo renderingInfo);
+
+    static void ProcessShaders(vk::Device &device, const RenderResourceDepdencies &deps,
+                               vk::ShaderModule &vertShaderModule, vk::ShaderModule &fragShaderModule,
+                               vk::ShaderModule &geoModule);
 };
 } // namespace star

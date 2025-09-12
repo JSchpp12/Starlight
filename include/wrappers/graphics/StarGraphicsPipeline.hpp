@@ -1,74 +1,67 @@
-#pragma once
+// #pragma once
 
-#include "Compiler.hpp"
-#include "DeviceContext.hpp"
-#include "RenderingTargetInfo.hpp"
-#include "StarPipeline.hpp"
-#include "StarShader.hpp"
-#include "VulkanVertex.hpp"
+// #include "Compiler.hpp"
+// #include "DeviceContext.hpp"
+// #include "StarPipeline.hpp"
+// #include "StarShader.hpp"
+// #include "VulkanVertex.hpp"
+// #include "core/renderer/RenderingTargetInfo.hpp"
 
-#include <vulkan/vulkan.hpp>
+// #include <vulkan/vulkan.hpp>
 
-#include <iostream>
+// #include <iostream>
 
-namespace star
-{
-class StarGraphicsPipeline : public StarPipeline
-{
-  public:
-    struct PipelineConfigSettings
-    {
-        PipelineConfigSettings() = default;
-        ~PipelineConfigSettings() = default;
-        // no copy
-        PipelineConfigSettings(const PipelineConfigSettings &) = delete;
-        PipelineConfigSettings &operator=(const PipelineConfigSettings &) = delete;
+// namespace star
+// {
+// class StarGraphicsPipeline : public StarPipeline
+// {
+//   public:
+//     class Builder
+//     {
+//       public:
+//         Builder(core::device::DeviceContext &context) : m_context(context)
+//         {
+//         }
 
-        PipelineConfigSettings(PipelineConfigSettings &&) = default;
-        PipelineConfigSettings &operator=(PipelineConfigSettings &&) = default;
+//         std::unique_ptr<StarPipeline> build();
 
-        vk::Rect2D scissor;
-        vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
-        vk::PipelineRasterizationStateCreateInfo rasterizationInfo;
-        vk::PipelineMultisampleStateCreateInfo multisampleInfo;
-        vk::PipelineColorBlendAttachmentState colorBlendAttachment;
-        vk::PipelineColorBlendStateCreateInfo colorBlendInfo;
-        vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
-        std::vector<VkDynamicState> dynamicStateEnables;
-        vk::PipelineDynamicStateCreateInfo dynamicStateInfo;
-        vk::PipelineLayout pipelineLayout = nullptr;
-        vk::Extent2D swapChainExtent;
-        std::vector<vk::VertexInputBindingDescription> vertInputBindingDescription =
-            std::vector<vk::VertexInputBindingDescription>{VulkanVertex::getBindingDescription()};
-        uint32_t subpass = 0;
-        RenderingTargetInfo renderingInfo;
-    };
+//       private:
+//         core::device::DeviceContext &m_context;
+//     };
 
-    StarGraphicsPipeline(StarShader vertShader, StarShader fragShader);
 
-    StarGraphicsPipeline(StarShader vertShader, StarShader fragShader,
-                         StarShader geomShader);
+//     StarGraphicsPipeline(vk::PipelineLayout layout, Handle vertShader, Handle fragShader)
+//         : StarPipeline(&StarGraphicsPipeline::BuildPipeline, layout, std::vector<Handle>{vertShader, fragShader})
+//     {
+//     }
 
-    virtual ~StarGraphicsPipeline() = default;
-    // no copy
-    StarGraphicsPipeline(const StarGraphicsPipeline &) = delete;
-    StarGraphicsPipeline &operator=(const StarGraphicsPipeline &) = delete;
-    StarGraphicsPipeline(StarGraphicsPipeline &&) = default;
-    StarGraphicsPipeline &operator=(StarGraphicsPipeline &&) = default;
+//     StarGraphicsPipeline(vk::PipelineLayout layout, Handle vertShader, Handle fragShader, Handle geomShader)
+//         : hasGeomShader(true), StarPipeline(&StarGraphicsPipeline::BuildPipeline, layout, std::vector<Handle>{vertShader, fragShader, geomShader})
+//     {
+//     }
 
-    virtual void bind(vk::CommandBuffer &commandBuffer) override;
+//     virtual ~StarGraphicsPipeline() = default;
+//     // no copy
+//     StarGraphicsPipeline(const StarGraphicsPipeline &) = delete;
+//     StarGraphicsPipeline &operator=(const StarGraphicsPipeline &) = delete;
+//     StarGraphicsPipeline(StarGraphicsPipeline &&) = default;
+//     StarGraphicsPipeline &operator=(StarGraphicsPipeline &&) = default;
 
-    static void defaultPipelineConfigInfo(PipelineConfigSettings &configSettings, vk::Extent2D swapChainExtent,
-                                          vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo);
+//     virtual void bind(vk::CommandBuffer &commandBuffer) override;
 
-  protected:
-    StarShader vertShader, fragShader;
-    std::optional<StarShader> geomShader;
-    PipelineConfigSettings configSettings;
+//     static void defaultPipelineConfigInfo(PipelineConfigSettings &configSettings, vk::Extent2D swapChainExtent,
+//                                           vk::PipelineLayout pipelineLayout,
+//                                           core::renderer::RenderingTargetInfo renderingInfo);
 
-    virtual vk::Pipeline buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
-                                       vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo) override;
+//   protected:
+//     bool hasGeomShader = false;
+//     PipelineConfigSettings configSettings;
 
-    virtual std::vector<Handle> submitShaders(core::device::DeviceContext &context) override;
-};
-} // namespace star
+//     static void ProcessShaders(vk::Device &device, const StarPipeline::RenderResourceDepdencies &deps, vk::ShaderModule &vertModule, vk::ShaderModule &fragModule, vk::ShaderModule &geoModule); 
+
+//     static vk::Pipeline BuildPipeline(vk::Device device, const vk::PipelineLayout &pipelineLayout,
+//                                        const StarPipeline::RenderResourceDepdencies &deps);
+
+//     // virtual std::vector<Handle> submitShaders(core::device::DeviceContext &context) override;
+// };
+// } // namespace star

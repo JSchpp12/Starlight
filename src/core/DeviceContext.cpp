@@ -64,7 +64,7 @@ void star::core::device::DeviceContext::prepareForNextFrame()
 
 star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapchainSupportDetails()
 {
-    return m_device->getSwapchainSupport(*m_surface);
+    return m_device->getSwapchainSupport(m_surface);
 }
 
 std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device)
@@ -108,5 +108,5 @@ void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t max
 
 void star::core::device::DeviceContext::processCompleteMessage(job::complete_tasks::CompleteTask<> completeTask)
 {
-    completeTask.run(static_cast<void *>(m_device.get()), static_cast<void *>(&m_shaderManager));
+    completeTask.run(static_cast<void *>(m_device.get()), static_cast<void *>(&m_eventBus), static_cast<void *>(&m_shaderManager));
 }

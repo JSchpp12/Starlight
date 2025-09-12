@@ -36,9 +36,9 @@ namespace task_factory
 
 // void MoveShaderCompletePaylod(void *fresh, void *old);
 
-// void DestroyShaderCompletePayload(void *object);
+// void DestroyShaderCompletePayload(void *object);p
 
-void ExecuteShaderCompileComplete(void *device, void *shaderManager, void *payload);
+void ExecuteShaderCompileComplete(void *device, void *eventBus, void *shaderManager, void *payload);
 
 star::job::complete_tasks::CompleteTask<> CreateShaderCompileComplete(size_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
                                                                       std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader);

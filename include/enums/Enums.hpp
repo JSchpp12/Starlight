@@ -75,7 +75,8 @@ namespace star {
         material,
         light,
         map,
-        buffer
+        buffer,
+        pipeline
     };
 
     enum KEY {

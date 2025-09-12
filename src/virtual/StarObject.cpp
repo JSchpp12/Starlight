@@ -4,105 +4,106 @@
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 #include "ManagerController_RenderResource_VertInfo.hpp"
+#include "exception/NeedsPrepared.hpp"
 
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout =
     std::unique_ptr<star::StarDescriptorSetLayout>();
 vk::PipelineLayout star::StarObject::extrusionPipelineLayout = vk::PipelineLayout{};
-std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::tri_normalExtrusionPipeline =
-    std::unique_ptr<star::StarGraphicsPipeline>();
-std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::triAdj_normalExtrusionPipeline =
-    std::unique_ptr<star::StarGraphicsPipeline>();
+std::unique_ptr<star::Handle> star::StarObject::tri_normalExtrusionPipeline = std::unique_ptr<star::Handle>();
+std::unique_ptr<star::Handle> star::StarObject::triAdj_normalExtrusionPipeline = std::unique_ptr<star::Handle>();
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::boundDescriptorLayout =
     std::unique_ptr<star::StarDescriptorSetLayout>();
 vk::PipelineLayout star::StarObject::boundPipelineLayout = vk::PipelineLayout{};
-std::unique_ptr<star::StarGraphicsPipeline> star::StarObject::boundBoxPipeline =
-    std::unique_ptr<star::StarGraphicsPipeline>();
+std::unique_ptr<star::Handle> star::StarObject::boundBoxPipeline = std::unique_ptr<star::Handle>();
 
 void star::StarObject::initSharedResources(core::device::DeviceContext &device, vk::Extent2D swapChainExtent,
                                            int numSwapChainImages, StarDescriptorSetLayout &globalDescriptors,
-                                           RenderingTargetInfo renderingInfo)
+                                           core::renderer::RenderingTargetInfo renderingInfo)
 {
-    std::string mediaPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory);
+    // std::string mediaPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory);
 
-    instanceDescriptorLayout = StarDescriptorSetLayout::Builder(device.getDevice())
-                                   .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-                                   .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-                                   .build();
+    // instanceDescriptorLayout = StarDescriptorSetLayout::Builder(device.getDevice())
+    //                                .addBinding(0, vk::DescriptorType::eUniformBuffer,
+    //                                vk::ShaderStageFlagBits::eVertex) .addBinding(1,
+    //                                vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex) .build();
 
-    // this must match the descriptors for the StarObjectInstance
-    {
-        std::vector<vk::DescriptorSetLayout> globalLayouts{globalDescriptors.getDescriptorSetLayout(),
-                                                           instanceDescriptorLayout->getDescriptorSetLayout()};
+    // // this must match the descriptors for the StarObjectInstance
+    // {
+    //     std::vector<vk::DescriptorSetLayout> globalLayouts{globalDescriptors.getDescriptorSetLayout(),
+    //                                                        instanceDescriptorLayout->getDescriptorSetLayout()};
 
-        vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
-        pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-        pipelineLayoutInfo.setLayoutCount = globalLayouts.size();
-        pipelineLayoutInfo.pSetLayouts = globalLayouts.data();
-        pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        pipelineLayoutInfo.pushConstantRangeCount = 0;
-        extrusionPipelineLayout = device.getDevice().getVulkanDevice().createPipelineLayout(pipelineLayoutInfo);
-    }
-    {
-        std::string vertPath = mediaPath + "/shaders/extrudeNormals/extrudeNormals.vert";
-        std::string fragPath = mediaPath + "/shaders/extrudeNormals/extrudeNormals.frag";
+    //     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
+    //     pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+    //     pipelineLayoutInfo.setLayoutCount = globalLayouts.size();
+    //     pipelineLayoutInfo.pSetLayouts = globalLayouts.data();
+    //     pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    //     pipelineLayoutInfo.pushConstantRangeCount = 0;
+    //     extrusionPipelineLayout = device.getDevice().getVulkanDevice().createPipelineLayout(pipelineLayoutInfo);
+    // }
+    // {
+    //     std::string vertPath = mediaPath + "/shaders/extrudeNormals/extrudeNormals.vert";
+    //     std::string fragPath = mediaPath + "/shaders/extrudeNormals/extrudeNormals.frag";
 
-        StarShader vert = StarShader(vertPath, Shader_Stage::vertex);
-        StarShader frag = StarShader(fragPath, Shader_Stage::fragment);
+    //     StarShader vert = StarShader(vertPath, Shader_Stage::vertex);
+    //     StarShader frag = StarShader(fragPath, Shader_Stage::fragment);
 
-        StarGraphicsPipeline::PipelineConfigSettings settings;
-        StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, extrusionPipelineLayout,
-                                                        renderingInfo);
-        {
-            std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangle.geom";
-            StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
+    //     // StarGraphicsPipeline::PipelineConfigSettings settings;
+    //     // StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, extrusionPipelineLayout,
+    //     //                                                 renderingInfo);
+    //     {
+    //         std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangle.geom";
+    //         StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
 
-            StarObject::tri_normalExtrusionPipeline =
-                std::make_unique<StarGraphicsPipeline>(swapChainExtent, extrusionPipelineLayout, renderingInfo, vert, frag, geom);
-            StarObject::tri_normalExtrusionPipeline->init(device);
-        }
-        {
-            settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eTriangleListWithAdjacency;
+    //         // StarObject::tri_normalExtrusionPipeline = std::make_unique<StarGraphicsPipeline>(vert, frag, geom);
+    //         StarObject::tri_normalExtrusionPipeline = std::make_unique<Handle>(device.getShaderManager(
+    //             core::device::manager::PipelineRequest(swapChainExtent,renderingInfo,
+    //                 StarPipeline(StarPipeline::GraphicsPipelineConfigSettings(), extrusionPipelineLayout,
+    //             std::vector<Handle>{})
+    //         ))
+    //         StarObject::tri_normalExtrusionPipeline->init(device, extrusionPipelineLayout);
+    //     }
+    //     {
+    //         settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eTriangleListWithAdjacency;
 
-            std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangleAdj.geom";
-            StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
+    //         std::string geomPath = mediaPath + "shaders/extrudeNormals/extrudeNormals_triangleAdj.geom";
+    //         StarShader geom = StarShader(geomPath, Shader_Stage::geometry);
 
-            StarObject::triAdj_normalExtrusionPipeline =
-                std::make_unique<StarGraphicsPipeline>(swapChainExtent, extrusionPipelineLayout, renderingInfo, vert, frag, geom);
-            StarObject::triAdj_normalExtrusionPipeline->init(device);
-        }
-    }
+    //         StarObject::triAdj_normalExtrusionPipeline = std::make_unique<StarGraphicsPipeline>(vert, frag, geom);
+    //         StarObject::triAdj_normalExtrusionPipeline->init(device, extrusionPipelineLayout);
+    //     }
+    // }
 
-    boundDescriptorLayout = StarDescriptorSetLayout::Builder(device.getDevice())
-                                .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-                                .build();
+    // boundDescriptorLayout = StarDescriptorSetLayout::Builder(device.getDevice())
+    //                             .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+    //                             .build();
 
-    {
-        std::vector<vk::DescriptorSetLayout> globalLayouts{globalDescriptors.getDescriptorSetLayout(),
-                                                           boundDescriptorLayout->getDescriptorSetLayout()};
+    // {
+    //     std::vector<vk::DescriptorSetLayout> globalLayouts{globalDescriptors.getDescriptorSetLayout(),
+    //                                                        boundDescriptorLayout->getDescriptorSetLayout()};
 
-        vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
-        pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-        pipelineLayoutInfo.setLayoutCount = globalLayouts.size();
-        pipelineLayoutInfo.pSetLayouts = globalLayouts.data();
-        pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        pipelineLayoutInfo.pushConstantRangeCount = 0;
-        boundPipelineLayout = device.getDevice().getVulkanDevice().createPipelineLayout(pipelineLayoutInfo);
+    //     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
+    //     pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+    //     pipelineLayoutInfo.setLayoutCount = globalLayouts.size();
+    //     pipelineLayoutInfo.pSetLayouts = globalLayouts.data();
+    //     pipelineLayoutInfo.pPushConstantRanges = nullptr;
+    //     pipelineLayoutInfo.pushConstantRangeCount = 0;
+    //     boundPipelineLayout = device.getDevice().getVulkanDevice().createPipelineLayout(pipelineLayoutInfo);
 
-        StarGraphicsPipeline::PipelineConfigSettings settings;
-        StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, extrusionPipelineLayout,
-                                                        renderingInfo);
+    //     StarGraphicsPipeline::PipelineConfigSettings settings;
+    //     StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, extrusionPipelineLayout,
+    //                                                     renderingInfo);
 
-        settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eLineList;
+    //     settings.inputAssemblyInfo.topology = vk::PrimitiveTopology::eLineList;
 
-        // bounding box vert buffer will be bound to the 1st index
-        std::string boundVertPath = mediaPath + "shaders/boundingBox/bounding.vert";
-        std::string boundFragPath = mediaPath + "shaders/boundingBox/bounding.frag";
-        StarShader vert = StarShader(boundVertPath, Shader_Stage::vertex);
-        StarShader frag = StarShader(boundFragPath, Shader_Stage::fragment);
+    //     // bounding box vert buffer will be bound to the 1st index
+    //     std::string boundVertPath = mediaPath + "shaders/boundingBox/bounding.vert";
+    //     std::string boundFragPath = mediaPath + "shaders/boundingBox/bounding.frag";
+    //     StarShader vert = StarShader(boundVertPath, Shader_Stage::vertex);
+    //     StarShader frag = StarShader(boundFragPath, Shader_Stage::fragment);
 
-        StarObject::boundBoxPipeline = std::make_unique<StarGraphicsPipeline>(swapChainExtent, extrusionPipelineLayout, renderingInfo, vert, frag);
-        boundBoxPipeline->init(device);
-    }
+    //     StarObject::boundBoxPipeline = std::make_unique<StarGraphicsPipeline>(vert, frag);
+    //     boundBoxPipeline->init(device, extrusionPipelineLayout);
+    // }
 }
 
 void star::StarObject::cleanupSharedResources(core::device::DeviceContext &device)
@@ -119,7 +120,7 @@ void star::StarObject::cleanupSharedResources(core::device::DeviceContext &devic
 
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 {
-    normalExtrusionPipeline->cleanupRender(context); 
+    normalExtrusionPipeline->cleanupRender(context.getDevice());
     this->normalExtrusionPipeline.reset();
 
     this->setLayout.reset();
@@ -130,32 +131,30 @@ void star::StarObject::cleanupRender(core::device::DeviceContext &context)
         mesh->getMaterial().cleanupRender(context);
     }
 
-    // delete pipeline if owns one
-    if (this->pipeline)
-    {
-        this->pipeline->cleanupRender(context);
-        this->pipeline.reset();
-    }
+    // // delete pipeline if owns one
+    // if (this->pipeline)
+    // {
+    //     this->pipeline->cleanupRender(context);
+    //     this->pipeline.reset();
+    // }
 }
 
-std::unique_ptr<star::StarPipeline> star::StarObject::buildPipeline(core::device::DeviceContext &device,
-                                                                    vk::Extent2D swapChainExtent,
-                                                                    vk::PipelineLayout pipelineLayout,
-                                                                    RenderingTargetInfo renderInfo)
+star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
+                                             vk::PipelineLayout pipelineLayout,
+                                             core::renderer::RenderingTargetInfo renderInfo)
 {
-    StarGraphicsPipeline::PipelineConfigSettings settings;
-    StarGraphicsPipeline::defaultPipelineConfigInfo(settings, swapChainExtent, pipelineLayout, renderInfo);
     auto graphicsShaders = this->getShaders();
 
-    auto newPipeline = std::make_unique<StarGraphicsPipeline>(swapChainExtent, pipelineLayout, renderInfo, graphicsShaders.at(Shader_Stage::vertex),
-                                                              graphicsShaders.at(Shader_Stage::fragment));
-    newPipeline->init(device);
-
-    return std::move(newPipeline);
+    return context.getPipelineManager().submit(core::device::manager::PipelineRequest(
+        StarPipeline(
+            StarPipeline::GraphicsPipelineConfigSettings(), pipelineLayout,
+            std::vector<Handle>{context.getShaderManager().submit(graphicsShaders.at(Shader_Stage::vertex)),
+                                context.getShaderManager().submit(graphicsShaders.at(Shader_Stage::fragment))}),
+        swapChainExtent, renderInfo));
 }
 
 void star::StarObject::prepRender(star::core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
-                                  vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderInfo,
+                                  vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderInfo,
                                   int numSwapChainImages, star::StarShaderInfo::Builder fullEngineBuilder)
 {
     m_deviceID = context.getDeviceID();
@@ -172,15 +171,22 @@ void star::StarObject::prepRender(star::core::device::DeviceContext &context, vk
 
     this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
-    // handle pipeline infos
-    this->pipeline = this->buildPipeline(context, swapChainExtent, pipelineLayout, renderInfo);
+    this->pipeline = buildPipeline(context, swapChainExtent, pipelineLayout, renderInfo);
+
+    renderingContext = std::make_unique<core::renderer::RenderingContext>(buildRenderingContext(context));
 
     createInstanceBuffers(context, numSwapChainImages);
     prepareMeshes(context);
 }
 
+star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
+    star::core::device::DeviceContext &context)
+{
+    return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->request.pipeline};
+}
+
 void star::StarObject::prepRender(star::core::device::DeviceContext &context, int numSwapChainImages,
-                                  StarPipeline &sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
+                                  Handle sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
 {
     m_deviceID = context.getDeviceID();
 
@@ -196,7 +202,7 @@ void star::StarObject::prepRender(star::core::device::DeviceContext &context, in
 
     this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
 
-    this->sharedPipeline = &sharedPipeline;
+    this->sharedPipeline = sharedPipeline;
 
     createInstanceBuffers(context, numSwapChainImages);
     prepareMeshes(context);
@@ -218,8 +224,8 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
         }
     }
 
-    if (this->pipeline)
-        this->pipeline->bind(commandBuffer);
+    assert(renderingContext->pipeline != nullptr && "Provided rendering context does not contain any pipelines");
+    renderingContext->pipeline->bind(commandBuffer);
 
     for (auto &rmesh : this->getMeshes())
     {
@@ -352,41 +358,41 @@ void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector
 
 void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer &commandBuffer)
 {
-    uint32_t ib = 0;
+    // uint32_t ib = 0;
 
-    // assuming all meshes have same packing approach at this point. Should have checked earlier on during load time
-    bool useAdjPipe = this->getMeshes().front()->hasAdjacentVertsPacked();
+    // // assuming all meshes have same packing approach at this point. Should have checked earlier on during load time
+    // bool useAdjPipe = this->getMeshes().front()->hasAdjacentVertsPacked();
 
-    if (useAdjPipe)
-        StarObject::triAdj_normalExtrusionPipeline->bind(commandBuffer);
-    else
-        StarObject::tri_normalExtrusionPipeline->bind(commandBuffer);
+    // if (useAdjPipe)
+    //     StarObject::triAdj_normalExtrusionPipeline->bind(commandBuffer);
+    // else
+    //     StarObject::tri_normalExtrusionPipeline->bind(commandBuffer);
 
-    commandBuffer.setLineWidth(1.0f);
+    // commandBuffer.setLineWidth(1.0f);
 
-    for (auto &rmesh : this->getMeshes())
-    {
-        uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
-        uint32_t indexCount = rmesh->getNumIndices();
-        commandBuffer.drawIndexed(indexCount, instanceCount, ib, 0, 0);
+    // for (auto &rmesh : this->getMeshes())
+    // {
+    //     uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
+    //     uint32_t indexCount = rmesh->getNumIndices();
+    //     commandBuffer.drawIndexed(indexCount, instanceCount, ib, 0, 0);
 
-        ib += rmesh->getNumIndices();
-    }
+    //     ib += rmesh->getNumIndices();
+    // }
 }
 
 void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer &commandBuffer, int inFlightIndex)
 {
-    vk::DeviceSize offsets{};
-    commandBuffer.bindVertexBuffers(
-        0, ManagerRenderResource::getBuffer(m_deviceID, this->boundingBoxVertBuffer).getVulkanBuffer(), offsets);
-    commandBuffer.bindIndexBuffer(
-        ManagerRenderResource::getBuffer(m_deviceID, this->boundingBoxIndexBuffer).getVulkanBuffer(), 0,
-        vk::IndexType::eUint32);
+    // vk::DeviceSize offsets{};
+    // commandBuffer.bindVertexBuffers(
+    //     0, ManagerRenderResource::getBuffer(m_deviceID, this->boundingBoxVertBuffer).getVulkanBuffer(), offsets);
+    // commandBuffer.bindIndexBuffer(
+    //     ManagerRenderResource::getBuffer(m_deviceID, this->boundingBoxIndexBuffer).getVulkanBuffer(), 0,
+    //     vk::IndexType::eUint32);
 
-    this->boundBoxPipeline->bind(commandBuffer);
-    commandBuffer.setLineWidth(1.0f);
+    // this->boundBoxPipeline->bind(commandBuffer);
+    // commandBuffer.setLineWidth(1.0f);
 
-    commandBuffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0);
+    // commandBuffer.drawIndexed(this->boundingBoxIndsCount, 1, 0, 0, 0);
 }
 
 void star::StarObject::calculateBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)
@@ -417,5 +423,5 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
 
     // for
 
-    return this->pipeline->isRenderReady(context);
+    return context.getPipelineManager().get(this->pipeline)->isReady();
 }

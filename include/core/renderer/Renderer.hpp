@@ -52,12 +52,12 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     Renderer &operator=(Renderer &&other) = delete;
     virtual ~Renderer() = default;
 
-    virtual void prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+    virtual void prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                          const int &numFramesInFlight);
 
     virtual void update(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex);
 
-    virtual void frameUpdate(core::device::DeviceContext &context); 
+    virtual void frameUpdate(core::device::DeviceContext &context);
 
     StarDescriptorSetLayout &getGlobalShaderInfo()
     {
@@ -186,6 +186,11 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
     void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+
+    RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context)
+    {
+        return RenderingTargetInfo({this->getColorAttachmentFormat(context)}, {this->getDepthAttachmentFormat(context)});
+    }
 #pragma endregion
   private:
     // Inherited via DescriptorModifier

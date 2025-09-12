@@ -46,12 +46,12 @@ star::core::renderer::SwapChainRenderer::~SwapChainRenderer()
     }
 }
 
-void star::core::renderer::SwapChainRenderer::prepare(core::device::DeviceContext &device,
+void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &device,
                                                       const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
 {
     const size_t numSwapChainImages =
         this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
-    this->Renderer::prepare(this->device, *this->swapChainExtent, numFramesInFlight);
+    this->Renderer::prepRender(this->device, *this->swapChainExtent, numFramesInFlight);
 
     this->imageAcquireSemaphores = CreateSemaphores(this->device, numFramesInFlight);
     this->imageAvailableSemaphores = CreateSemaphores(this->device, numSwapChainImages);
@@ -519,7 +519,7 @@ void star::core::renderer::SwapChainRenderer::createSwapChain()
 
     vk::SwapchainCreateInfoKHR createInfo{};
     createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;
-    createInfo.surface = this->device.getSurface()->getSurface();
+    createInfo.surface = this->device.getRenderingSurface().getVulkanSurface();
 
     // specify image information for the surface
     createInfo.minImageCount = imageCount;

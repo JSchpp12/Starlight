@@ -23,11 +23,11 @@ namespace star {
 		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 
 		virtual void prepRender(star::core::device::DeviceContext& context, vk::Extent2D swapChainExtent,
-			vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo, int numSwapChainImages, 
+			vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo, int numSwapChainImages, 
 			StarShaderInfo::Builder fullEngineBuilder) override; 
 
 		virtual void prepRender(star::core::device::DeviceContext& context, int numSwapChainImages, 
-			StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder) override;
+			Handle sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder) override;
 	protected:
 		std::string filePath = "";
 

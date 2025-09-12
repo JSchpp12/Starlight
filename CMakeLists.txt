@@ -65,8 +65,11 @@ add_subdirectory("extern/shaderc")
 
 set(${STARLIGHT_NAME}_SOURCE
     "src/StarEngine.cpp" 
+    "src/graphics/PipelineFactory.cpp"
     "src/core/renderer/Renderer.cpp"
     "src/core/renderer/SwapChainRenderer.cpp"
+    "src/core/renderer/RenderingTargetInfo.cpp"
+    "src/core/renderer/RenderingContext.cpp"
     "src/virtual/StarObject.cpp"
     "src/virtual/ModulePlug/RenderResourceModifier.cpp"
     "src/virtual/ModulePlug/CommandBufferModifier.cpp"
@@ -107,6 +110,11 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/managers/ManagerDescriptorPool.cpp"
     "src/core/device/managers/ManagerCommandBuffer.cpp"
     "src/core/device/managers/ManagerShader.cpp"
+    "src/core/device/managers/Pipeline.cpp"
+    "src/core/device/managers/Manager.cpp"
+    "src/core/device/system/EventBus.cpp"
+    "src/core/device/system/Event.cpp"
+    "src/core/device/system/ShaderCompiledEvent.cpp"
     "src/managers/ManagerRenderResource.cpp"
     "src/templates/StarApplication.cpp"
     "src/modules/InteractionSystem.cpp"
@@ -169,14 +177,18 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/core/RenderingInstance.cpp"
     "src/core/RenderingSurface.cpp"
     "src/core/SwapChainSupportDetails.cpp"
+    "src/core/exception/NeedsPrepared.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${STARLIGHT_NAME}_HEADERS
     "include/StarEngine.hpp"
+    "include/graphics/PipelineFactory.hpp"
     "include/core/renderer/Renderer.hpp"
     "include/core/renderer/SwapChainRenderer.hpp"
+    "include/core/renderer/RenderingTargetInfo.hpp"
+    "include/core/renderer/RenderingContext.hpp"
     "include/common/ThreadSharedResource.hpp"
     "include/common/Compiler.hpp"
     "include/common/Interactivity.hpp"
@@ -240,6 +252,11 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/managers/ManagerDescriptorPool.hpp"
     "include/core/device/managers/ManagerCommandBuffer.hpp"
     "include/core/device/managers/ManagerShader.hpp"
+    "include/core/device/managers/Pipeline.hpp"
+    "include/core/device/managers/Manager.hpp"
+    "include/core/device/system/EventBus.hpp"
+    "include/core/device/system/Event.hpp"
+    "include/core/device/system/ShaderCompiledEvent.hpp"
     "include/managers/ManagerRenderResource.hpp"
     "include/modules/InteractionSystem.hpp"
     "include/modules/RenderResourceSystem.hpp"
@@ -271,6 +288,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/core/RenderingInstance.hpp"
     "include/core/RenderingSurface.hpp"
     "include/core/SwapChainSupportDetails.hpp"
+    "include/core/exception/NeedsPrepared.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarShader.hpp"
@@ -281,7 +299,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/structs/Vertex.hpp"
     "include/structs/Color.hpp"
     "include/structs/Ray.hpp"
-    "include/structs/RenderingTargetInfo.hpp"
     "include/templates/StarMemoryManager.hpp"
     "include/templates/StarApplication.hpp"
     "include/templates/StarResourceContainer.hpp"

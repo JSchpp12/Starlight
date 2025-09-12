@@ -69,7 +69,7 @@ void star::job::tasks::task_factory::ExecuteCompileShader(void *p)
 
 star::job::tasks::Task<> star::job::tasks::task_factory::CreateCompileShader(const std::string &fileName,
                                                                              const star::Shader_Stage &stage,
-                                                                             const Handle &shaderHandle)
+                                                                             const Handle &shaderHandle, Handle *owningPipeline)
 {
     return star::job::tasks::Task<>::Builder<CompileShaderPayload>()
         .setPayload(CompileShaderPayload{
@@ -77,8 +77,6 @@ star::job::tasks::Task<> star::job::tasks::task_factory::CreateCompileShader(con
             .stage = stage,
             .handleID = shaderHandle.getID(),
         })
-        // .setDestroy(&DestroyCompilePayload)
-        // .setMovePayload(&MoveCompilePaylod)
         .setExecute(&ExecuteCompileShader)
         .setCreateCompleteTaskFunction(&CreateCompileComplete)
         .build();

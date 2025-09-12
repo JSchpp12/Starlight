@@ -8,6 +8,8 @@
 #include "device/StarDevice.hpp"
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/ManagerShader.hpp"
+#include "device/managers/Pipeline.hpp"
+#include "device/system/EventBus.hpp"
 #include "tasks/TaskFactory.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -35,26 +37,20 @@ class DeviceContext
         StarDevice &m_device;
         managers::ManagerCommandBuffer &m_manager;
     };
-
-    struct ManagerShaderWrapper
+    template <typename TManager, typename TRequest, typename TRecord> struct ManagerWrapper
     {
-        Handle submit(StarShader shader)
+        Handle submit(TRequest request)
         {
-            return shaderManager.submit(taskManager, std::move(shader));
+            return manager.submit(taskManager, eventBus, std::move(request));
         }
 
-        manager::Shader::Record &get(const Handle &handle)
+        TRecord *get(const Handle &handle)
         {
-            return shaderManager.get(handle);
+            return manager.get(handle);
         }
-
-        bool isReady(const Handle &handle)
-        {
-            return shaderManager.isReady(handle);
-        }
-
+        TManager &manager;
         job::TaskManager &taskManager;
-        manager::Shader &shaderManager;
+        system::EventBus &eventBus;
     };
 
     DeviceContext(const uint8_t &numFramesInFlight, const DeviceID &deviceID, RenderingInstance &instance,
@@ -64,7 +60,8 @@ class DeviceContext
     ~DeviceContext();
     DeviceContext(DeviceContext &&other)
         : m_deviceID(std::move(other.m_deviceID)), m_surface(std::move(other.m_surface)),
-          m_device(std::move(other.m_device)), m_taskManager(std::move(other.m_taskManager)),
+          m_device(std::move(other.m_device)), m_eventBus(std::move(other.m_eventBus)),
+          m_taskManager(std::move(other.m_taskManager)), m_pipelineManager(std::move(other.m_pipelineManager)),
           m_commandBufferManager(std::move(other.m_commandBufferManager)),
           m_transferWorker(std::move(other.m_transferWorker))
     {
@@ -77,8 +74,10 @@ class DeviceContext
             m_deviceID = std::move(other.m_deviceID);
             m_surface = std::move(other.m_surface);
             m_device = std::move(other.m_device);
+            m_eventBus = std::move(other.m_eventBus);
             m_taskManager = std::move(other.m_taskManager);
             m_commandBufferManager = std::move(other.m_commandBufferManager);
+            m_pipelineManager = std::move(other.m_pipelineManager);
             m_transferWorker = std::move(other.m_transferWorker);
             m_ownsWorkers = true;
 
@@ -114,9 +113,19 @@ class DeviceContext
         return *m_renderResourceManager;
     }
 
-    ManagerShaderWrapper getShaderManager()
+    ManagerWrapper<manager::Shader, StarShader, manager::ShaderRecord> getShaderManager()
     {
-        return ManagerShaderWrapper{.taskManager = m_taskManager, .shaderManager = m_shaderManager};
+        return ManagerWrapper<manager::Shader, StarShader, manager::ShaderRecord>{
+            .manager = m_shaderManager, .taskManager = m_taskManager, .eventBus = m_eventBus};
+    }
+
+    ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord> getPipelineManager()
+    {
+        return ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord>{
+            .manager = m_pipelineManager,
+            .taskManager = m_taskManager,
+            .eventBus = m_eventBus,
+        };
     }
 
     job::TransferWorker &getTransferWorker()
@@ -133,19 +142,21 @@ class DeviceContext
         return m_deviceID;
     }
 
-    RenderingSurface &getRenderingSurface(){
+    RenderingSurface &getRenderingSurface()
+    {
         return m_surface;
     }
 
   private:
     bool m_ownsWorkers = true;
-    // Resolution of the final image to be produced -- usually set from the window
     uint64_t m_frameCounter = 0;
     DeviceID m_deviceID;
     RenderingSurface m_surface;
     std::shared_ptr<StarDevice> m_device;
+    system::EventBus m_eventBus;
     job::TaskManager m_taskManager;
     manager::Shader m_shaderManager;
+    manager::Pipeline m_pipelineManager;
     std::unique_ptr<managers::ManagerCommandBuffer> m_commandBufferManager;
     std::shared_ptr<job::TransferWorker> m_transferWorker;
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager;

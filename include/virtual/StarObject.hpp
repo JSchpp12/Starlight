@@ -12,8 +12,8 @@
 #include "StarGraphicsPipeline.hpp"
 #include "StarCommandBuffer.hpp"
 #include "ManagerDescriptorPool.hpp"
-#include "RenderingTargetInfo.hpp"
 #include "DescriptorModifier.hpp"
+#include "core/renderer/RenderingContext.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -43,7 +43,7 @@ namespace star {
 
 		static void initSharedResources(core::device::DeviceContext& device, vk::Extent2D swapChainExtent,
 			int numSwapChainImages, StarDescriptorSetLayout& globalDescriptors, 
-			RenderingTargetInfo renderingInfo);
+			core::renderer::RenderingTargetInfo renderingInfo);
 
 		static void cleanupSharedResources(core::device::DeviceContext& device);
 
@@ -57,29 +57,18 @@ namespace star {
 
 		virtual void cleanupRender(core::device::DeviceContext& device); 
 
-		virtual std::unique_ptr<StarPipeline> buildPipeline(core::device::DeviceContext& device,
+		virtual Handle buildPipeline(core::device::DeviceContext& device,
 			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, 
-			RenderingTargetInfo renderInfo);
+			core::renderer::RenderingTargetInfo renderInfo);
 
-		/// <summary>
-		/// Prepare needed objects for rendering operations.
-		/// </summary>
-		/// <param name="device"></param>
-		virtual void prepRender(star::core::device::DeviceContext& device, vk::Extent2D swapChainExtent,
-			vk::PipelineLayout pipelineLayout, RenderingTargetInfo renderingInfo, int numSwapChainImages, 
+		virtual void prepRender(star::core::device::DeviceContext& context, vk::Extent2D swapChainExtent,
+			vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo, int numSwapChainImages, 
 			StarShaderInfo::Builder fullEngineBuilder);
 
-		/// <summary>
-		/// Initalize this object. This object wil not have its own pipeline. It will expect to share one.
-		/// </summary>
-		/// <param name="device"></param>
-		/// <param name="numSwapChainImages"></param>
-		/// <param name="groupLayout"></param>
-		/// <param name="groupPool"></param>
-		/// <param name="globalSets"></param>
-		/// <param name="sharedPipeline"></param>
-		virtual void prepRender(star::core::device::DeviceContext& device, int numSwapChainImages, 
-			StarPipeline& sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder);
+		virtual core::renderer::RenderingContext buildRenderingContext(star::core::device::DeviceContext &context); 
+
+		virtual void prepRender(star::core::device::DeviceContext& context, int numSwapChainImages, 
+			Handle sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder);
 
 		///Function to contain any commands to be submitted before the start of the rendering pass this object is contained in begins
 		virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) {};
@@ -124,16 +113,17 @@ namespace star {
 
 #pragma region getters
 		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
-		virtual StarPipeline& getPipline() {
-			assert(this->pipeline && "This object is expecting to share a pipeline with another object."); 
-			return *this->pipeline; 
+		Handle getPipline() {
+			return this->pipeline; 
 		}
 #pragma endregion
 
 	protected:
 		///pipeline + rendering infos
-		StarPipeline* sharedPipeline = nullptr;
-		std::unique_ptr<StarPipeline> pipeline; 
+		// Pipeline* sharedPipeline = nullptr;
+		Handle pipeline; 
+		Handle sharedPipeline;
+		std::unique_ptr<core::renderer::RenderingContext> renderingContext; 
 		std::unique_ptr<StarPipeline> normalExtrusionPipeline; 
 		std::unique_ptr<StarDescriptorSetLayout> setLayout; 
 		std::vector<Handle> instanceNormalInfos; 
@@ -158,10 +148,10 @@ namespace star {
 	private:
 		static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
 		static vk::PipelineLayout extrusionPipelineLayout;
-		static std::unique_ptr<StarGraphicsPipeline> tri_normalExtrusionPipeline, triAdj_normalExtrusionPipeline;
+		static std::unique_ptr<Handle> tri_normalExtrusionPipeline, triAdj_normalExtrusionPipeline;
 		static std::unique_ptr<StarDescriptorSetLayout> boundDescriptorLayout;
 		static vk::PipelineLayout boundPipelineLayout;
-		static std::unique_ptr<StarGraphicsPipeline> boundBoxPipeline;
+		static std::unique_ptr<Handle> boundBoxPipeline;
 
 		bool isReady = false; 
 

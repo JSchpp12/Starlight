@@ -29,7 +29,7 @@ class RenderingSurface
         return *this;
     }
 
-    vk::SurfaceKHR &getSurface()
+    vk::SurfaceKHR &getVulkanSurface()
     {
         return m_surface.get();
     }

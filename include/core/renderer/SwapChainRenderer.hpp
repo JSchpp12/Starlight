@@ -24,7 +24,7 @@ class SwapChainRenderer : public star::core::renderer::Renderer
 
     virtual ~SwapChainRenderer();
 
-    virtual void prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+    virtual void prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                          const int &numFramesInFlight) override;
 
     void submitPresentation(const int &frameIndexToBeDrawn, const vk::Semaphore *mainGraphicsDoneSemaphore);

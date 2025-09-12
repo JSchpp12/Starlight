@@ -1,35 +1,44 @@
 #include "renderer/Renderer.hpp"
 
+#include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
 #include "ManagerController_RenderResource_LightList.hpp"
-#include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerRenderResource.hpp"
+#include "exception/NeedsPrepared.hpp"
+
 
 namespace star::core::renderer
 {
 
-void Renderer::prepare(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                        const int &numFramesInFlight)
-{
-    m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
+    {
+        m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
 
-    this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
+        this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
-    auto globalBuilder = manualCreateDescriptors(device, numFramesInFlight);
-    this->renderToImages = createRenderToImages(device, numFramesInFlight);
-    assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering");
-    this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
-    assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
-    createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
+        auto globalBuilder = manualCreateDescriptors(device, numFramesInFlight);
+        this->renderToImages = createRenderToImages(device, numFramesInFlight);
+        assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering");
+        this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
+        assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
+        createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
 }
 
 void Renderer::update(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex)
 {
 }
 
-void Renderer::frameUpdate(core::device::DeviceContext &device){
-    for (int i = 0; i < m_objects.size(); i++){
+void Renderer::frameUpdate(core::device::DeviceContext &device)
+{
+    for (int i = 0; i < m_objects.size(); i++)
+    {
         m_objects[i]->frameUpdate(device);
+        // try{
+        // m_objects[i]->frameUpdate(device);
+        // }catch (const core::exception::NeedsPrepared &err){
+        //     m_objects[i]->prepDraw()
+        // }
     }
 }
 
@@ -41,26 +50,24 @@ void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &
     for (uint16_t i = 0; i < numFramesInFlight; i++)
     {
         m_lightListBuffers[i] = ManagerRenderResource::addRequest(
-            context.getDeviceID(),
-            std::make_unique<star::ManagerController::RenderResource::LightList>(
-                i,
-                m_lights));
+            context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::LightList>(i, m_lights));
 
         m_lightInfoBuffers[i] = ManagerRenderResource::addRequest(
-            context.getDeviceID(),
-            std::make_unique<star::ManagerController::RenderResource::LightInfo>(
-                i,
-                m_lights));
+            context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::LightInfo>(i, m_lights));
     }
 }
 
-void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, std::shared_ptr<StarCamera> camera){
-    initBuffers(context, numFramesInFlight); 
+void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                           std::shared_ptr<StarCamera> camera)
+{
+    initBuffers(context, numFramesInFlight);
 
-    m_cameraInfoBuffers.resize(numFramesInFlight); 
+    m_cameraInfoBuffers.resize(numFramesInFlight);
 
-    for (uint8_t i = 0; i < numFramesInFlight; i++){
-        m_cameraInfoBuffers[i] = ManagerRenderResource::addRequest(context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::GlobalInfo>(i, camera));
+    for (uint8_t i = 0; i < numFramesInFlight; i++)
+    {
+        m_cameraInfoBuffers[i] = ManagerRenderResource::addRequest(
+            context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::GlobalInfo>(i, camera));
     }
 }
 
@@ -302,30 +309,32 @@ vk::ImageView Renderer::createImageView(star::core::device::DeviceContext &devic
 star::StarShaderInfo::Builder Renderer::manualCreateDescriptors(star::core::device::DeviceContext &device,
                                                                 const int &numFramesInFlight)
 {
-    this->globalSetLayout = createGlobalDescriptorSetLayout(device, numFramesInFlight); 
+    this->globalSetLayout = createGlobalDescriptorSetLayout(device, numFramesInFlight);
     auto globalBuilder = StarShaderInfo::Builder(device.getDeviceID(), device.getDevice(), numFramesInFlight)
-        .addSetLayout(this->globalSetLayout); 
+                             .addSetLayout(this->globalSetLayout);
 
-    assert(m_cameraInfoBuffers.size() == numFramesInFlight && m_lightInfoBuffers.size() == numFramesInFlight && m_lightListBuffers.size() == numFramesInFlight &&
-           "Shader info buffers not properly initialized.");
+    assert(m_cameraInfoBuffers.size() == numFramesInFlight && m_lightInfoBuffers.size() == numFramesInFlight &&
+           m_lightListBuffers.size() == numFramesInFlight && "Shader info buffers not properly initialized.");
     for (size_t i = 0; i < numFramesInFlight; i++)
     {
         globalBuilder.startOnFrameIndex(i)
             .startSet()
             .add(m_cameraInfoBuffers[i], false)
             .add(m_lightInfoBuffers[i], false)
-            .add(m_lightListBuffers[i], false); 
+            .add(m_lightListBuffers[i], false);
     }
 
     return globalBuilder;
 }
 
-std::shared_ptr<star::StarDescriptorSetLayout> Renderer::createGlobalDescriptorSetLayout(device::DeviceContext &context, const uint8_t &numFramesInFlight){
+std::shared_ptr<star::StarDescriptorSetLayout> Renderer::createGlobalDescriptorSetLayout(
+    device::DeviceContext &context, const uint8_t &numFramesInFlight)
+{
     return StarDescriptorSetLayout::Builder(context.getDevice())
-                                .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-                                .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-                                .addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
-                                .build();
+        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+        .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+        .addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
+        .build();
 }
 
 void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t width, uint32_t height,
@@ -361,7 +370,7 @@ void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t w
 void Renderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
                              const vk::Extent2D &screensize)
 {
-    this->prepare(device, screensize, numFramesInFlight);
+    this->prepRender(device, screensize, numFramesInFlight);
 }
 
 void Renderer::destroyResources(core::device::DeviceContext &device)
@@ -405,7 +414,7 @@ vk::Format Renderer::getDepthAttachmentFormat(star::core::device::DeviceContext 
 std::vector<std::pair<vk::DescriptorType, const int>> Renderer::getDescriptorRequests(const int &numFramesInFlight)
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
-        std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eUniformBuffer, numFramesInFlight*2),
+        std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eUniformBuffer, numFramesInFlight * 2),
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)};
 }
 

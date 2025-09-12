@@ -24,12 +24,12 @@ class StarShader
     StarShader(StarShader &&) = default;
     StarShader &operator=(StarShader &&) = default;
     
-    star::Shader_Stage getStage()
+    star::Shader_Stage getStage() const
     {
         return this->stage;
     }
 
-    std::string getPath()
+    std::string getPath() const
     {
         return this->path;
     }

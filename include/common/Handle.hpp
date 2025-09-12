@@ -8,74 +8,48 @@ struct Handle
 {
     static Handle getDefault()
     {
-        Handle newHandle;
-        newHandle.type = Handle_Type::defaultHandle;
-        return newHandle;
+        return Handle(Handle_Type::defaultHandle);
     }
-    Handle() : type(Handle_Type::defaultHandle), id(0), global_id(id_counter++) {};
-    Handle(const Handle &other) = default;
-    Handle(const Handle_Type &type) : isInit(true), type(type){}; 
-    Handle(const Handle_Type &type, const uint32_t &id) : isInit(true), type(type), id(id), global_id(id_counter++) {};
+
+    Handle() : Handle(Handle_Type::defaultHandle, 0) {}
+    Handle(Handle_Type type) : Handle(type, 0) {}
+    Handle(Handle_Type type, uint32_t id) 
+        : type(type), id(id), global_id(id_counter++) {}
+
+    Handle(const Handle&) = default;
+    Handle& operator=(const Handle&) = default;
     ~Handle() = default;
 
-    bool operator==(const Handle &other) const
+    bool operator==(const Handle& other) const
     {
         return global_id == other.global_id && id == other.id && type == other.type;
     }
 
-    Handle &operator=(const Handle &other)
+    bool isInitialized() const
     {
-        if (this != &other)
-        {
-            global_id = other.global_id;
-            id = other.id;
-            type = other.type;
-            isInit = other.isInit;
-        }
-        return *this;
+        return type != Handle_Type::null;
     }
 
-    const bool &isInitialized()
-    {
-        return isInit;
-    }
+    uint32_t getID() const { return id; }
+    uint32_t getGlobalID() const { return global_id; }
+    Handle_Type getType() const { return type; }
 
-    const uint32_t &getID() const
-    {
-        return id;
-    }
-    const uint32_t &getGlobalID() const
-    {
-        return global_id;
-    }
-    const Handle_Type &getType() const
-    {
-        return type;
-    }
-    void setType(const Handle_Type &type)
-    {
-        this->isInit = true;
-        this->type = type;
-    }
-    void setID(const size_t &id)
-    {
-        this->isInit = true;
-        this->id = id;
-    }
+    void setType(Handle_Type newType) { type = newType; }
+    void setID(uint32_t newID) { id = newID; }
 
-  private:
+private:
     static uint32_t id_counter;
-    bool isInit = false;
     Handle_Type type = Handle_Type::null;
-    uint32_t id = 0, global_id = 0;
+    uint32_t id = 0;
+    uint32_t global_id = 0;
 };
 
 struct HandleHash
 {
-    size_t operator()(const Handle &handle) const noexcept;
+    size_t operator()(const Handle& handle) const noexcept;
 };
 
-inline bool operator<(const Handle &lhs, const Handle &rhs)
+inline bool operator<(const Handle& lhs, const Handle& rhs)
 {
     return lhs.getGlobalID() < rhs.getGlobalID();
 }

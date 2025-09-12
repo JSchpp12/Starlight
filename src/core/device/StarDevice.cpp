@@ -76,7 +76,7 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::Ren
     uint32_t largestQueueFamilyCount = 0;
     for (const auto &nDevice : suitableDevices)
     {
-        auto indicies = FindQueueFamilies(nDevice, renderingSurface.getSurface());
+        auto indicies = FindQueueFamilies(nDevice, renderingSurface.getVulkanSurface());
         if (indicies.isOptimalSupport())
         {
             // try to pick the device that has the most seperate queue families
@@ -93,7 +93,7 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::Ren
     {
         for (const auto &nDevice : devices)
         {
-            auto indicies = FindQueueFamilies(nDevice, renderingSurface.getSurface());
+            auto indicies = FindQueueFamilies(nDevice, renderingSurface.getVulkanSurface());
             if (indicies.isFullySupported())
             {
                 picked = nDevice;
@@ -131,7 +131,7 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::Ren
 void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface, 
     const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const std::set<Rendering_Device_Features> &deviceFeatures)
 {
-    QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, renderingSurface.getSurface());
+    QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, renderingSurface.getVulkanSurface());
 
     // need multiple structs since we now have a seperate family for presenting and graphics
     auto uniqueIndices = indicies.getUniques();
@@ -263,9 +263,9 @@ bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDevic
                                   const vk::PhysicalDevice &device, core::RenderingSurface &surface)
 {
     bool swapChainAdequate = false;
-    QueueFamilyIndicies indicies = FindQueueFamilies(device, surface.getSurface());
+    QueueFamilyIndicies indicies = FindQueueFamilies(device, surface.getVulkanSurface());
     bool extensionsSupported = CheckDeviceExtensionSupport(device, requiredDeviceExtensions);
-    if (extensionsSupported && DoesDeviceSupportPresentation(device, surface.getSurface()))
+    if (extensionsSupported && DoesDeviceSupportPresentation(device, surface.getVulkanSurface()))
     {
         core::SwapChainSupportDetails swapChainSupport = QuerySwapchainSupport(device, surface);
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
@@ -595,10 +595,10 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
     uint32_t formatCount, presentModeCount;
 
     // get surface capabilities
-    details.capabilities = device.getSurfaceCapabilitiesKHR(surface.getSurface());
+    details.capabilities = device.getSurfaceCapabilitiesKHR(surface.getVulkanSurface());
 
     {
-        const auto result = device.getSurfaceFormatsKHR(surface.getSurface(), &formatCount, nullptr);
+        const auto result = device.getSurfaceFormatsKHR(surface.getVulkanSurface(), &formatCount, nullptr);
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get any surface formats from device");
@@ -606,7 +606,7 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
     }
 
     {
-        const auto result = device.getSurfacePresentModesKHR(surface.getSurface(), &presentModeCount, nullptr);
+        const auto result = device.getSurfacePresentModesKHR(surface.getVulkanSurface(), &presentModeCount, nullptr);
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");
@@ -618,7 +618,7 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
         // resize vector in order to hold all available formats
         details.formats.resize(formatCount);
 
-        const auto result = device.getSurfaceFormatsKHR(surface.getSurface(), &formatCount, details.formats.data());
+        const auto result = device.getSurfaceFormatsKHR(surface.getVulkanSurface(), &formatCount, details.formats.data());
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");
@@ -631,7 +631,7 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
         details.presentModes.resize(presentModeCount);
 
         const auto result =
-            device.getSurfacePresentModesKHR(surface.getSurface(), &presentModeCount, details.presentModes.data());
+            device.getSurfacePresentModesKHR(surface.getVulkanSurface(), &presentModeCount, details.presentModes.data());
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");
