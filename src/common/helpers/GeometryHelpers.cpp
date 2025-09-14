@@ -63,7 +63,7 @@ void star::GeometryHelpers::packTriangleAdjacency(std::vector<Vertex>& verts, st
 	//pack adjacency information
 	std::vector<uint32_t> adjInds; 
 
-	for (int i = 0; i < triangles.size(); i++) {
+	for (size_t i = 0; i < triangles.size(); i++) {
 		for (int j = 0; j < 3; j++) {
 			EdgeTracker& curEdge = triangles[i].edges[j]; 
 			adjInds.push_back(curEdge.verts.first); 
@@ -79,7 +79,7 @@ void star::GeometryHelpers::packTriangleAdjacency(std::vector<Vertex>& verts, st
 void star::GeometryHelpers::calculateAndApplyVertTangents(std::vector<star::Vertex>& verts, std::vector<uint32_t>& indices)
 {
 	//calculate tangents for all provided verts and indices
-	for (int i = 0; i < indices.size()  - 3; i += 3) {
+	for (size_t i = 0; i < indices.size()  - 3; i += 3) {
 		//go through each group of 3 verts -- assume they are triangles
 		//apply needed calculations
 

@@ -1,10 +1,8 @@
 #pragma once
 
-#include "complete_tasks/CompleteTask.hpp"
-#include "tasks/Task.hpp"
+#include "TaskContainer.hpp"
 #include "TransferWorker.hpp"
-
-
+#include "complete_tasks/CompleteTask.hpp"
 #include <boost/lockfree/stack.hpp>
 #include <boost/thread.hpp>
 
@@ -13,17 +11,11 @@
 #include <type_traits>
 #include <vulkan/vulkan.hpp>
 
-namespace star::job::workers
+namespace star::job::worker
 {
 class Worker
 {
   public:
-    // enum class WorkerMode
-    // {
-    //     Immediate,
-    //     FrameControlled
-    // };
-
     Worker() = default;
     Worker(boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
         : m_completeMessages(completeMessages)
@@ -49,24 +41,24 @@ class Worker
     Worker(Worker &&) = default;
     Worker &operator=(Worker &&) = default;
 
-    void queueTask(tasks::Task<> &&task)
+    void queueTask(tasks::Task<> task)
     {
-        while (!this->taskQueue.push(std::move(task)))
-        {
-            boost::this_thread::yield();
-        }
-    };
+        m_tasks.queueTask(std::move(task));
+    }
 
-    void setCompleteMessageCommunicationStructure(boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages){
-        m_completeMessages = completeMessages; 
+    void setCompleteMessageCommunicationStructure(
+        boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
+    {
+        m_completeMessages = completeMessages;
     }
 
   protected:
-    boost::lockfree::spsc_queue<tasks::Task<>, boost::lockfree::capacity<128>> taskQueue;
-    boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *m_completeMessages = nullptr;
+    job::TaskContainer<tasks::Task<>, 128> m_tasks = job::TaskContainer<tasks::Task<>, 128>();
+    boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *m_completeMessages =
+        nullptr;
     boost::atomic<bool> shouldRun = boost::atomic<bool>(true);
     boost::thread thread = boost::thread();
 
     virtual void threadFunction();
 };
-} // namespace star::job
+} // namespace star::job::workers

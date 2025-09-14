@@ -3,6 +3,7 @@
 #include "Handle.hpp"
 #include "job/TaskManager.hpp"
 #include "device/system/EventBus.hpp"
+#include "device/StarDevice.hpp"
 
 #include <array>
 #include <cassert>
@@ -41,13 +42,13 @@ class Manager
         return *this;
     }
     
-    Handle submit(job::TaskManager &taskSystem, system::EventBus &eventBus, TResourceRequest resource)
+    Handle submit(device::StarDevice& device, job::TaskManager &taskSystem, system::EventBus &eventBus, TResourceRequest resource)
     {
         TRecord *record = nullptr;
         Handle newHandle;
         insert(std::move(resource), newHandle, record);
 
-        submitTask(newHandle, taskSystem, eventBus, record);
+        submitTask(newHandle, device, taskSystem, eventBus, record);
 
         return newHandle;
     }
@@ -66,6 +67,10 @@ class Manager
         assert(rec != nullptr);
 
         return rec->isReady();
+    }
+
+    std::array<TRecord, TMaxRecordCount> &getRecords(){
+        return m_records;
     }
 
   protected:
@@ -111,6 +116,6 @@ class Manager
         return nextSpace;
     }
 
-    virtual void submitTask(const Handle &handle, job::TaskManager &taskSystem, system::EventBus &eventBus, TRecord *storedRecord) = 0;
+    virtual void submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus, TRecord *storedRecord) = 0;
 };
 } // namespace star::core::device::manager

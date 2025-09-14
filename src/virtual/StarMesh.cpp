@@ -24,7 +24,7 @@ bool star::StarMesh::isKnownToBeReady(const uint8_t &frameInFlightIndex)
 }
 
 void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                              int &frameInFlightIndex, const uint32_t &instanceCount)
+                                              uint8_t &frameInFlightIndex, const uint32_t &instanceCount)
 {
 
     this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex);
@@ -41,7 +41,7 @@ void star::StarMesh::CalcBoundingBox(const std::vector<star::Vertex> &verts, glm
 	glm::vec3 max{}, min{};
 
 	// calcualte bounding box info
-	for (int i = 1; i < verts.size(); i++)
+	for (size_t i = 1; i < verts.size(); i++)
 	{
 	if (verts.at(i).pos.x < min.x)
 		min.x = verts.at(i).pos.x;

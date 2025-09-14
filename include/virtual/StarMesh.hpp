@@ -44,7 +44,7 @@ class StarMesh
     virtual void prepRender(core::device::DeviceContext &device);
 
     virtual void recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                          int &frameInFlightIndex, const uint32_t &instanceCount);
+                                          uint8_t &frameInFlightIndex, const uint32_t &instanceCount);
 
     bool isKnownToBeReady(const uint8_t &frameInFlightIndex);
 

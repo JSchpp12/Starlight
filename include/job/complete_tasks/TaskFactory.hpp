@@ -2,6 +2,7 @@
 
 #include "CompleteTask.hpp"
 #include "SharedCompressedTexture.hpp"
+#include "StarPipeline.hpp"
 #include "StarShader.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -19,12 +20,18 @@ struct TextureTransferCompletePayload
 
 struct CompileCompletePayload
 {
-    size_t handleID;
+    uint32_t handleID;
     std::unique_ptr<star::StarShader> finalizedShaderObject = nullptr;
-    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr; 
+    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
 };
 
-struct CompressedTextureTransferCompletePaylod : public TextureTransferCompletePayload
+struct PipelineBuildCompletePayload
+{
+    uint32_t handleID = 0;
+    std::unique_ptr<star::StarPipeline> pipeline = nullptr;
+};
+
+struct CompressedTextureTransferCompletePayload : public TextureTransferCompletePayload
 {
     std::unique_ptr<star::SharedCompressedTexture> texture;
 };
@@ -32,16 +39,25 @@ struct CompressedTextureTransferCompletePaylod : public TextureTransferCompleteP
 namespace task_factory
 {
 
+#pragma region BuildPipeline
+
+void ExecuteBuildPipelineComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers,
+                                  void *payload);
+
+complete_tasks::CompleteTask<> CreateBuildPipelineComplete(uint32_t handleID, std::unique_ptr<StarPipeline> pipeline);
+
+#pragma endregion BuildPipeline
+
 #pragma region CompileShaders
 
-// void MoveShaderCompletePaylod(void *fresh, void *old);
+void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, void *graphicsManagers);
 
-// void DestroyShaderCompletePayload(void *object);p
+void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers,
+                                  void *payload);
 
-void ExecuteShaderCompileComplete(void *device, void *eventBus, void *shaderManager, void *payload);
-
-star::job::complete_tasks::CompleteTask<> CreateShaderCompileComplete(size_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
-                                                                      std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader);
+star::job::complete_tasks::CompleteTask<> CreateShaderCompileComplete(
+    uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
+    std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader);
 
 #pragma endregion CompileShaders
 } // namespace task_factory

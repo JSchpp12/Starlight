@@ -51,7 +51,7 @@ class Shader : public Manager<ShaderRecord, StarShader, 50>
     }
 
   private:
-    void submitTask(const Handle &handle, job::TaskManager &taskSystem, system::EventBus &eventBus,
+    void submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
                     ShaderRecord *storedRecord) override;
 };
 } // namespace star::core::device::manager

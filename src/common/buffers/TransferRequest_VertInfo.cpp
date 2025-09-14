@@ -9,6 +9,12 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
+    uint32_t numIndices = 0;
+    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
+
+    uint32_t numVerts = 0; 
+    CastHelpers::SafeCast<size_t, uint32_t>(vertices.size(), numVerts); 
+
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -18,11 +24,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eConcurrent)
                 .setPQueueFamilyIndices(indices.data())
-                .setQueueFamilyIndexCount(indices.size())
-                .setSize(sizeof(Vertex) * CastHelpers::size_t_to_unsigned_int(this->vertices.size()))
+                .setQueueFamilyIndexCount(numIndices)
+                .setSize(sizeof(Vertex) * numVerts)
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer),
             "VertexBuffer")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->vertices.size()))
+        .setInstanceCount(numVerts)
         .setInstanceSize(sizeof(Vertex))
         .build();
 }
@@ -30,6 +36,9 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
+    uint32_t numVerts = 0; 
+    CastHelpers::SafeCast<size_t, uint32_t>(this->vertices.size(), numVerts); 
+
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -38,10 +47,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(Vertex) * CastHelpers::size_t_to_unsigned_int(this->vertices.size()))
+                .setSize(sizeof(Vertex) * numVerts)
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "VertexBuffer_Stage")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->vertices.size()))
+        .setInstanceCount(numVerts)
         .setInstanceSize(sizeof(Vertex))
         .build();
 }
@@ -53,9 +62,11 @@ void star::TransferRequest::VertInfo::writeDataToStageBuffer(StarBuffers::Buffer
 
     auto data = this->getVertices();
 
-    for (int i = 0; i < data.size(); ++i)
+    for (size_t i = 0; i < data.size(); ++i)
     {
-        buffer.writeToIndex(&data.at(i), mapped, i);
+        int index = 0;
+        CastHelpers::SafeCast<size_t, int>(i, index); 
+        buffer.writeToIndex(&data.at(i), mapped, index);
     }
 
     buffer.unmap();

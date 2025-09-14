@@ -40,17 +40,6 @@ StarDevice::~StarDevice()
     }
 }
 
-StarDevice::StarDevice(StarDevice &&other)
-    : vulkanDevice(other.vulkanDevice), allocator(std::move(other.allocator)), physicalDevice(other.physicalDevice),
-      starWindow(other.starWindow), extraFamilies(std::move(other.extraFamilies)),
-      currentDeviceQueues(std::move(other.currentDeviceQueues)), defaultQueue(std::move(other.defaultQueue)),
-      dedicatedComputeQueue(std::move(other.dedicatedComputeQueue)),
-      dedicatedTransferQueue(std::move(other.dedicatedTransferQueue)), defaultCommandPool(other.defaultCommandPool),
-      transferCommandPool(other.transferCommandPool), computeCommandPool(other.computeCommandPool)
-{
-    other.vulkanDevice = VK_NULL_HANDLE;
-}
-
 void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface,
                                     const vk::PhysicalDeviceFeatures &requiredDeviceFeatures)
 {
@@ -205,8 +194,6 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
             {
                 if (this->defaultQueue->getParentQueueFamilyIndex() != index)
                 {
-                    std::unique_ptr<uint32_t> *target = nullptr;
-
                     auto fam =
                         this->currentDeviceQueues->giveMeQueueWithProperties(vk::QueueFlagBits::eCompute, false, index);
                     if (fam.has_value())

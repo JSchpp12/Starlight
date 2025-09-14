@@ -19,7 +19,7 @@ namespace star
 class StarPipeline
 {
   public:
-    struct RenderResourceDepdencies
+    struct RenderResourceDependencies
     {
         std::vector<std::pair<star::StarShader, std::unique_ptr<std::vector<uint32_t>>>> compiledShaders;
         core::renderer::RenderingTargetInfo renderingTargetInfo;
@@ -68,16 +68,20 @@ class StarPipeline
     static vk::ShaderModule CreateShaderModule(vk::Device &device, const std::vector<uint32_t> &sourceCode);
 #pragma endregion
 
-    StarPipeline() = default;
+    StarPipeline()
+    {
+    }
     StarPipeline(std::variant<GraphicsPipelineConfigSettings, ComputePipelineConfigSettings> configSettings,
                  vk::PipelineLayout pipelineLayout, std::vector<Handle> shaders);
     virtual ~StarPipeline();
     StarPipeline(const StarPipeline &) = delete;
     StarPipeline &operator=(const StarPipeline &) = delete;
     StarPipeline(StarPipeline &&other)
-        : m_pipelineLayout(std::move(other.m_pipelineLayout)), m_shaders(std::move(other.m_shaders)),
-          m_pipeline(std::move(other.m_pipeline)), m_configSettings(std::move(other.m_configSettings))
+        : m_pipelineLayout(std::move(other.m_pipelineLayout)), m_configSettings(std::move(other.m_configSettings)),
+          m_shaders(std::move(other.m_shaders)), m_pipeline(std::move(other.m_pipeline)),
+          m_isGraphicsPipeline(std::move(other.m_isGraphicsPipeline))
     {
+        other.m_pipeline = VK_NULL_HANDLE;
     }
     StarPipeline &operator=(StarPipeline &&other)
     {
@@ -87,6 +91,9 @@ class StarPipeline
             m_shaders = std::move(other.m_shaders);
             m_pipeline = std::move(other.m_pipeline);
             m_configSettings = std::move(other.m_configSettings);
+            m_isGraphicsPipeline = std::move(other.m_isGraphicsPipeline);
+
+            other.m_pipeline = VK_NULL_HANDLE;
         }
 
         return *this;
@@ -98,7 +105,7 @@ class StarPipeline
 
     bool isRenderReady() const;
 
-    void prepRender(core::device::StarDevice &device, RenderResourceDepdencies deps);
+    void prepRender(vk::Device &device, const RenderResourceDependencies &deps);
 
     void cleanupRender(core::device::StarDevice &device);
 
@@ -118,15 +125,15 @@ class StarPipeline
   protected:
     vk::Pipeline m_pipeline = VK_NULL_HANDLE;
 
-    static vk::Pipeline BuildGraphicsPieline(vk::Device &device, const vk::PipelineLayout &pipelineLayout,
-                                             const RenderResourceDepdencies &depdencies,
-                                             GraphicsPipelineConfigSettings &pipelineSettings);
+    static vk::Pipeline BuildGraphicsPipeline(vk::Device &device, const vk::PipelineLayout &pipelineLayout,
+                                              const RenderResourceDependencies &deps,
+                                              GraphicsPipelineConfigSettings &pipelineSettings);
 
     static vk::Pipeline BuildComputePipeline(vk::Device &device, const vk::PipelineLayout &pipelineLayout,
-                                             const RenderResourceDepdencies &depdencies,
+                                             const RenderResourceDependencies &deps,
                                              ComputePipelineConfigSettings &pipelineSettings);
 
-    vk::Pipeline buildPipeline(core::device::StarDevice &device, const RenderResourceDepdencies &depdencies);
+    vk::Pipeline buildPipeline(vk::Device &device, const RenderResourceDependencies &deps);
 
     bool isSame(StarPipeline &compPipe);
 
@@ -139,7 +146,7 @@ class StarPipeline
                                                   vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout,
                                                   core::renderer::RenderingTargetInfo renderingInfo);
 
-    static void ProcessShaders(vk::Device &device, const RenderResourceDepdencies &deps,
+    static void ProcessShaders(vk::Device &device, const RenderResourceDependencies &deps,
                                vk::ShaderModule &vertShaderModule, vk::ShaderModule &fragShaderModule,
                                vk::ShaderModule &geoModule);
 };

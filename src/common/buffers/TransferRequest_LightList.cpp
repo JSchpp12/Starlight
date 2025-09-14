@@ -1,7 +1,12 @@
 #include "TransferRequest_LightList.hpp"
 
+#include "CastHelpers.hpp"
+
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const
 {
+    uint32_t numLights = 0; 
+    CastHelpers::SafeCast<size_t, uint32_t>(myLights.size(), numLights); 
+
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -10,10 +15,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(LightBufferObject) * CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+                .setSize(sizeof(LightBufferObject) * numLights)
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "LightList_Stage")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+        .setInstanceCount(numLights)
         .setInstanceSize(sizeof(LightBufferObject))
         .build();
 }
@@ -24,6 +29,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
 	for (const auto &index : transferQueueFamilyIndex)
 		indices.push_back(index);
 
+    uint32_t numIndices, numLights; 
+    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
+    CastHelpers::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
+
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -33,11 +42,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eConcurrent)
                 .setPQueueFamilyIndices(indices.data())
-                .setQueueFamilyIndexCount(indices.size())
-                .setSize(sizeof(LightBufferObject) * CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+                .setQueueFamilyIndexCount(numIndices)
+                .setSize(sizeof(LightBufferObject) * numLights)
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer),
             "LightInfo")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->myLights.size()))
+        .setInstanceCount(numLights)
         .setInstanceSize(sizeof(LightBufferObject))
         .build();
 }

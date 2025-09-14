@@ -24,7 +24,6 @@ if (NOT Vulkan_FOUND)
     include(${CMAKE_CURRENT_LIST_DIR}/cmake/DownloadVulkan.cmake)
 endif()
 
-find_package(Stb REQUIRED)
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
 
@@ -48,6 +47,7 @@ find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS container thread filesystem)
 find_package(Ktx CONFIG REQUIRED)
+find_package(Stb REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -112,6 +112,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/core/device/managers/ManagerShader.cpp"
     "src/core/device/managers/Pipeline.cpp"
     "src/core/device/managers/Manager.cpp"
+    "src/core/device/managers/GraphicsContainer.cpp"
     "src/core/device/system/EventBus.cpp"
     "src/core/device/system/Event.cpp"
     "src/core/device/system/ShaderCompiledEvent.cpp"
@@ -157,10 +158,11 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/common/helpers/GeometryHelpers.cpp"
     "src/common/helpers/FileHelpers.cpp"
     "src/internals/CommandBufferContainer.cpp"
-    "src/job/workers/Transfer.cpp"
+    "src/job/worker/Device.cpp"
     "src/job/TransferWorker.cpp"
     "src/internals/ManagerStorageContainer.cpp"
     "src/job/Worker.cpp"
+    "src/job/TaskContainer.cpp"
     "src/job/complete_tasks/CompleteTask.cpp"
     "src/job/complete_tasks/TaskFactory.cpp"
     "src/job/tasks/Task.cpp"
@@ -216,7 +218,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/common/controllers/ManagerController_RenderResource_InstanceModelInfo.hpp"
     "include/common/controllers/ManagerController_RenderResource_InstanceNormalInfo.hpp"
     "include/common/controllers/ManagerController_RenderResource_LightInfo.hpp"
-    "include/common/controllers/ManagerController_RenderResource_LightLIst.hpp"
+    "include/common/controllers/ManagerController_RenderResource_LightList.hpp"
     "include/common/controllers/ManagerController_RenderResource_IndicesInfo.hpp"
     "include/common/controllers/ManagerController_RenderResource_VertInfo.hpp"
     "include/virtual/ModulePlug/RenderResourceModifier.hpp"
@@ -254,6 +256,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/core/device/managers/ManagerShader.hpp"
     "include/core/device/managers/Pipeline.hpp"
     "include/core/device/managers/Manager.hpp"
+    "include/core/device/managers/GraphicsContainer.hpp"
     "include/core/device/system/EventBus.hpp"
     "include/core/device/system/Event.hpp"
     "include/core/device/system/ShaderCompiledEvent.hpp"
@@ -271,6 +274,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/wrappers/graphics/StarBuffers/Buffer.hpp"
     "include/wrappers/graphics/StarBuffers/Resources.hpp"
     "include/job/Worker.hpp"
+    "include/job/worker/Device.hpp"
+    "include/job/TaskContainer.hpp"
     "include/job/complete_tasks/CompleteTask.hpp"
     "include/job/complete_tasks/TaskFactory.hpp"
     "include/job/tasks/Task.hpp"
@@ -280,7 +285,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/job/ImageWriterWorker.hpp"
     "include/job/FrameScheduler.hpp"
     "include/job/TaskTracker.hpp"
-    "include/job/workers/Transfer.hpp"
+    "include/job/worker/Device.hpp"
     "include/core/device/StarDevice.hpp"
     "include/core/DeviceContext.hpp"
     "include/core/device/DeviceID.hpp"

@@ -150,7 +150,7 @@ class StarDevice
             : regQueueFamilies(regQueueFamilies),
               isQueueAvailable(std::vector<std::vector<bool>>(regQueueFamilies.size()))
         {
-            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            for (size_t i = 0; i < this->regQueueFamilies.size(); i++)
             {
                 this->isQueueAvailable.at(i) = std::vector<bool>(this->regQueueFamilies.at(i).getQueueCount(), true);
             }
@@ -159,11 +159,11 @@ class StarDevice
         std::optional<StarQueue> giveMeQueueWithProperties(const vk::QueueFlags &capabilities,
                                                            const bool &presentationSupport = false)
         {
-            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            for (size_t i = 0; i < this->regQueueFamilies.size(); i++)
             {
                 if (this->regQueueFamilies.at(i).doesSupport(capabilities, presentationSupport))
                 {
-                    for (int j = 0; j < this->isQueueAvailable.at(i).size(); j++)
+                    for (size_t j = 0; j < this->isQueueAvailable.at(i).size(); j++)
                     {
                         if (this->isQueueAvailable.at(i).at(j))
                         {
@@ -180,12 +180,12 @@ class StarDevice
         std::optional<StarQueue> giveMeQueueWithProperties(const vk::QueueFlags &capabilities,
                                                            const bool &presentationSupport, const uint32_t &familyIndex)
         {
-            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            for (size_t i = 0; i < this->regQueueFamilies.size(); i++)
             {
                 if (this->regQueueFamilies.at(i).getQueueFamilyIndex() == familyIndex &&
                     this->regQueueFamilies.at(i).doesSupport(capabilities, presentationSupport))
                 {
-                    for (int j = 0; j < this->isQueueAvailable.at(i).size(); j++)
+                    for (size_t j = 0; j < this->isQueueAvailable.at(i).size(); j++)
                     {
                         if (this->isQueueAvailable.at(i).at(j))
                         {
@@ -204,7 +204,7 @@ class StarDevice
         {
             std::vector<uint32_t> indices = std::vector<uint32_t>();
 
-            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            for (size_t i = 0; i < this->regQueueFamilies.size(); i++)
             {
                 if (this->regQueueFamilies.at(i).doesSupport(capabilities, presentationSupport))
                 {
@@ -218,7 +218,7 @@ class StarDevice
         std::vector<uint32_t> getAllQueueFamilyIndices() const
         {
             std::vector<uint32_t> indices = std::vector<uint32_t>();
-            for (int i = 0; i < this->regQueueFamilies.size(); i++)
+            for (size_t i = 0; i < this->regQueueFamilies.size(); i++)
             {
                 indices.emplace_back(this->regQueueFamilies.at(i).getQueueFamilyIndex());
             }
@@ -232,7 +232,8 @@ class StarDevice
     };
 
     StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface, core::RenderingInstance &renderingInstance,
-               std::set<star::Rendering_Features> requiredFeatures, const std::set<star::Rendering_Device_Features> &requiredRenderingDeviceFeatures);
+               std::set<star::Rendering_Features> requiredFeatures,
+               const std::set<star::Rendering_Device_Features> &requiredRenderingDeviceFeatures);
 
     virtual ~StarDevice();
 
@@ -240,10 +241,37 @@ class StarDevice
     StarDevice(const StarDevice &) = delete;
     StarDevice &operator=(const StarDevice &) = delete;
 
-    StarDevice(StarDevice &&other);
-    StarDevice &operator=(StarDevice &&) {
+    StarDevice(StarDevice &&other)
+        : vulkanDevice(other.vulkanDevice), allocator(std::move(other.allocator)), physicalDevice(other.physicalDevice),
+          starWindow(other.starWindow), extraFamilies(std::move(other.extraFamilies)),
+          currentDeviceQueues(std::move(other.currentDeviceQueues)), defaultQueue(std::move(other.defaultQueue)),
+          dedicatedComputeQueue(std::move(other.dedicatedComputeQueue)),
+          dedicatedTransferQueue(std::move(other.dedicatedTransferQueue)), defaultCommandPool(other.defaultCommandPool),
+          transferCommandPool(other.transferCommandPool), computeCommandPool(other.computeCommandPool)
+    {
+        other.vulkanDevice = VK_NULL_HANDLE;
+    }
 
-    };
+    StarDevice &operator=(StarDevice &&other){
+        if (this != &other){
+            vulkanDevice = other.vulkanDevice; 
+            allocator = std::move(other.allocator);
+            physicalDevice = other.physicalDevice; 
+            starWindow = other.starWindow; 
+            extraFamilies = std::move(other.extraFamilies); 
+            currentDeviceQueues = std::move(other.currentDeviceQueues); 
+            defaultQueue = std::move(other.defaultQueue); 
+            dedicatedComputeQueue = std::move(other.dedicatedComputeQueue);
+            dedicatedTransferQueue = std::move(other.dedicatedTransferQueue); 
+            defaultCommandPool = std::move(other.defaultCommandPool);
+            transferCommandPool = std::move(other.transferCommandPool);
+            computeCommandPool = std::move(other.computeCommandPool); 
+
+            other.vulkanDevice = VK_NULL_HANDLE; 
+        }
+
+        return *this; 
+    }
 
     /// <summary>
     /// Check the hardware to make sure that the supplied formats are compatible with the current system.
@@ -364,9 +392,12 @@ class StarDevice
         VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
 
     // Pick a proper physical GPU that matches the required extensions
-    void pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures);
+    void pickPhysicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface,
+                            const vk::PhysicalDeviceFeatures &requiredDeviceFeatures);
     // Create a logical device to communicate with the physical device
-    void createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const std::set<Rendering_Device_Features> &deviceFeatures);
+    void createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface,
+                             const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
+                             const std::set<Rendering_Device_Features> &deviceFeatures);
 
     void createAllocator(core::RenderingInstance &instance);
 

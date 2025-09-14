@@ -1,45 +1,51 @@
 #pragma once
 
-#include "VertColorMaterial.hpp"
-#include "HeightDisplacementMaterial.hpp"
-#include "StarMesh.hpp"
-#include "RuntimeUpdateTexture.hpp"
-#include "StarObject.hpp"
-#include "Vertex.hpp"
 #include "Color.hpp"
-#include "StarGraphicsPipeline.hpp"
 #include "ConfigFile.hpp"
+#include "HeightDisplacementMaterial.hpp"
+#include "RuntimeUpdateTexture.hpp"
+#include "StarGraphicsPipeline.hpp"
+#include "StarMesh.hpp"
+#include "StarObject.hpp"
+#include "VertColorMaterial.hpp"
+#include "Vertex.hpp"
 
 #include <glm/glm.hpp>
 
 #include <memory>
 
-namespace star {
-	/// <summary>
-	/// Grid object which will programmatically generate vertices as needed.
-	/// </summary>
-	class Grid : public StarObject {
-	public:
-		virtual ~Grid(); 
-		
-		Grid(int vertX, int vertY);
+namespace star
+{
+/// <summary>
+/// Grid object which will programmatically generate vertices as needed.
+/// </summary>
+class Grid : public StarObject
+{
+  public:
+    virtual ~Grid();
 
-		Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material);
+    Grid(int vertX, int vertY);
 
-		std::optional<glm::vec2> getXYCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head);
+    Grid(int vertX, int vertY, std::shared_ptr<StarMaterial> material);
 
-		int getSizeX() { return this->vertX; }
-		int getSizeY() { return this->vertY; }
-	protected:
+    std::optional<glm::vec2> getXYCoordsWhereRayIntersectsMe(glm::vec3 tail, glm::vec3 head);
 
-		int width = 0.5;
+    int getSizeX()
+    {
+        return this->vertX;
+    }
+    int getSizeY()
+    {
+        return this->vertY;
+    }
 
-		int vertX = 0, vertY = 0;
+  protected:
+    int vertX = 0, vertY = 0;
+    int width = 0;
 
-		glm::vec3 getCenter();
+    virtual void loadGeometry(std::unique_ptr<std::vector<Vertex>> &verts,
+                              std::unique_ptr<std::vector<uint32_t>> &inds);
 
-		virtual void loadGeometry(std::unique_ptr<std::vector<Vertex>>& verts, std::unique_ptr<std::vector<uint32_t>>& inds); 
-
-		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
-	};
-}
+    virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
+};
+} // namespace star

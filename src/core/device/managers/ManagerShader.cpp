@@ -3,7 +3,7 @@
 #include "job/tasks/TaskFactory.hpp"
 #include "device/system/ShaderCompiledEvent.hpp"
 
-void star::core::device::manager::Shader::submitTask(const Handle &handle, job::TaskManager &taskSystem,
+void star::core::device::manager::Shader::submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem,
                                                      system::EventBus &eventBus, ShaderRecord *storedRecord)
 {
 

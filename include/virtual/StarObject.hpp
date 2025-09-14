@@ -82,7 +82,7 @@ namespace star {
 		/// <param name="commandBuffer"></param>
 		/// <param name="pipelineLayout"></param>
 		/// <param name="swapChainIndexNum"></param>
-		void recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, int swapChainIndexNum);
+		void recordRenderPassCommands(vk::CommandBuffer& commandBuffer, vk::PipelineLayout& pipelineLayout, uint8_t swapChainIndexNum);
 
 		/// @brief Create an instance of this object.
 		/// @return A reference to the created instance. The object will own the instance. 

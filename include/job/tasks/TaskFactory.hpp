@@ -6,7 +6,8 @@
 #include "StarShader.hpp"
 #include "TransferRequest_Texture.hpp"
 #include "tasks/Task.hpp"
-
+#include "renderer/RenderingTargetInfo.hpp"
+#include "StarPipeline.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -95,15 +96,22 @@ struct CompileShaderPayload
 {
     std::string path;
     star::Shader_Stage stage;
-    size_t handleID;
+    uint32_t handleID;
     std::unique_ptr<StarShader> finalizedShaderObject = nullptr;
-    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr; 
+    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
 };
 
 struct IODataPreparationPayload
 {
     std::variant<std::monostate, TextureMetadata, CompressedTextureMetadata> metadata;
     std::variant<std::monostate, std::unique_ptr<star::SharedCompressedTexture>> preparedData;
+};
+
+struct PipelineBuildPayload{
+    vk::Device device; 
+    uint32_t handleID; 
+    std::unique_ptr<star::StarPipeline::RenderResourceDependencies> deps = nullptr; 
+    std::unique_ptr<star::StarPipeline> pipeline = nullptr; 
 };
 
 namespace task_factory
@@ -116,17 +124,25 @@ star::job::tasks::Task<> createRecordCommandBufferTask(
     vk::CommandBuffer commandBuffer, std::function<void(vk::CommandBuffer &, const uint8_t &)> recordFunction,
     uint8_t frameInFlightIndex);
 
-#pragma region CompileShader
-// void DestroyCompilePayload(void *p); 
+#pragma region BuildPipeline
+void ExecuteBuildPipeline(void *p); 
 
-// void MoveCompilePaylod(void *fresh, void *old); 
+std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(void *p); 
+
+star::job::tasks::Task<> CreateBuildPipeline(vk::Device device, Handle handle, star::StarPipeline::RenderResourceDependencies buildDeps, StarPipeline pipeline);
+#pragma endregion BuildPipeline
+
+#pragma region CompileShader
+// void DestroyCompilePayload(void *p);
+
+// void MoveCompilePaylod(void *fresh, void *old);
 
 void ExecuteCompileShader(void *p);
 
 std::optional<star::job::complete_tasks::CompleteTask<>> CreateCompileComplete(void *p);
 
 star::job::tasks::Task<> CreateCompileShader(const std::string &fileName, const star::Shader_Stage &stage,
-                                             const Handle &shaderHandle, Handle *owningPipeline = nullptr);
+                                             const Handle &shaderHandle);
 
 #pragma endregion CompileShader
 

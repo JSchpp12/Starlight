@@ -182,7 +182,7 @@ void star::StarObject::prepRender(star::core::device::DeviceContext &context, vk
 star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     star::core::device::DeviceContext &context)
 {
-    return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->request.pipeline};
+    return core::renderer::RenderingContext{context.getPipelineManager().get(pipeline)->request.pipeline};
 }
 
 void star::StarObject::prepRender(star::core::device::DeviceContext &context, int numSwapChainImages,
@@ -209,7 +209,7 @@ void star::StarObject::prepRender(star::core::device::DeviceContext &context, in
 }
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                                int swapChainIndexNum)
+                                                uint8_t swapChainIndexNum)
 {
     if (!isReady)
     {
@@ -224,8 +224,7 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
         }
     }
 
-    assert(renderingContext->pipeline != nullptr && "Provided rendering context does not contain any pipelines");
-    renderingContext->pipeline->bind(commandBuffer);
+    renderingContext->pipeline.bind(commandBuffer);
 
     for (auto &rmesh : this->getMeshes())
     {
@@ -260,6 +259,7 @@ void star::StarObject::frameUpdate(core::device::DeviceContext &context)
 
     if (isRenderReady(context))
     {
+
         isReady = true;
     }
 }
@@ -334,7 +334,7 @@ void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector
 {
     std::array<glm::vec3, 2> bbBounds = this->meshes.front()->getBoundingBoxCoords();
 
-    for (int i = 1; i < this->meshes.size(); i++)
+    for (size_t i = 1; i < this->meshes.size(); i++)
     {
         std::array<glm::vec3, 2> curbbBounds = this->meshes.at(i)->getBoundingBoxCoords();
 
@@ -420,8 +420,6 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
 {
     assert(this->meshes.size() > 0 &&
            "Meshes have not yet been prepared. Need to have been created in the constructors");
-
-    // for
 
     return context.getPipelineManager().get(this->pipeline)->isReady();
 }

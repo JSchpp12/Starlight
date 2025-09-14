@@ -1,37 +1,111 @@
 #include "complete_tasks/TaskFactory.hpp"
 
 #include "device/StarDevice.hpp"
+#include "job/TaskManager.hpp"
 #include "job/tasks/TaskFactory.hpp"
 
 #pragma region CompileShaders
 #include "core/device/StarDevice.hpp"
-#include "core/device/managers/ManagerShader.hpp"
+
+#include "core/device/managers/GraphicsContainer.hpp"
 #include "core/device/system/EventBus.hpp"
 #include "core/device/system/ShaderCompiledEvent.hpp"
 
-void star::job::complete_tasks::task_factory::ExecuteShaderCompileComplete(void *device, void *eventBus, void *shaderManager,
+#pragma region BuildPipeline
+
+void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void *device, void *taskSystem,
+                                                                           void *eventBus, void *graphicsManagers,
+                                                                           void *payload)
+{
+    auto *gm = static_cast<core::device::manager::GraphicsContainer *>(graphicsManagers);
+
+    auto *p = static_cast<PipelineBuildCompletePayload *>(payload);
+
+    auto handle = Handle();
+    handle.setID(p->handleID);
+    handle.setType(Handle_Type::pipeline);
+
+    gm->pipelineManager.get(handle)->request.pipeline = std::move(*p->pipeline);
+}
+
+star::job::complete_tasks::CompleteTask<> star::job::complete_tasks::task_factory::CreateBuildPipelineComplete(
+    uint32_t handleID, std::unique_ptr<StarPipeline> pipeline)
+{
+    return CompleteTask<>::Builder<PipelineBuildCompletePayload>()
+        .setPayload(PipelineBuildCompletePayload{.handleID = std::move(handleID), .pipeline = std::move(pipeline)})
+        .setEngineExecuteFunction(&ExecuteBuildPipelineComplete)
+        .build();
+}
+
+#pragma endregion BuildPipeline
+
+void star::job::complete_tasks::task_factory::ExecuteShaderCompileComplete(void *device, void *taskSystem,
+                                                                           void *eventBus, void *graphicsManagers,
                                                                            void *payload)
 {
     auto *d = static_cast<core::device::StarDevice *>(device);
-    auto *sm = static_cast<star::core::device::manager::Shader *>(shaderManager);
-    auto *eb = static_cast<star::core::device::system::EventBus *>(eventBus); 
+    auto *gm = static_cast<star::core::device::manager::GraphicsContainer *>(graphicsManagers);
+    auto *eb = static_cast<star::core::device::system::EventBus *>(eventBus);
     auto *p = static_cast<CompileCompletePayload *>(payload);
 
     Handle shader = Handle();
     shader.setID(p->handleID);
     shader.setType(Handle_Type::shader);
 
-    eb->emit<core::device::system::ShaderCompiledEvent>(core::device::system::ShaderCompiledEvent(shader)); 
-
     assert(p->compiledShaderCode != nullptr && "Compiled shader data not properly set");
 
     std::cout << "Marking shader at index [" << p->handleID << "] as ready" << std::endl;
+    gm->shaderManager.get(shader)->compiledShader = std::move(p->compiledShaderCode);
+    eb->emit<core::device::system::ShaderCompiledEvent>(core::device::system::ShaderCompiledEvent(shader));
 
-    sm->get(shader)->compiledShader = std::move(p->compiledShaderCode);
+    ProcessPipelinesWhichAreNowReadyForBuild(device, taskSystem, graphicsManagers);
 }
 
+void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem,
+                                                                                       void *graphicsManagers)
+{
+    assert(graphicsManagers != nullptr && "Managers pointer is null");
+
+    auto *d = static_cast<core::device::StarDevice *>(device);
+    auto *gm = static_cast<core::device::manager::GraphicsContainer *>(graphicsManagers);
+    auto *ts = static_cast<job::TaskManager *>(taskSystem);
+
+    for (size_t i = 0; i < gm->pipelineManager.getRecords().size(); i++)
+    {
+        auto &record = gm->pipelineManager.getRecords()[i];
+        if (!record.isReady() && record.numCompiled == record.request.pipeline.getShaders().size())
+        {
+            uint32_t recordHandle = 0;
+            if (!star::CastHelpers::SafeCast<size_t, uint32_t>(i, recordHandle))
+            {
+                throw std::runtime_error("Unknown error. Failed to process record handle");
+            }
+
+            Handle handle = Handle();
+            handle.setType(Handle_Type::pipeline);
+            handle.setID(recordHandle);
+
+            std::vector<std::pair<StarShader, std::unique_ptr<std::vector<uint32_t>>>> compiledShaders;
+            for (auto &shader : record.request.pipeline.getShaders())
+            {
+                compiledShaders.push_back(std::make_pair<StarShader, std::unique_ptr<std::vector<uint32_t>>>(
+                    StarShader(gm->shaderManager.get(shader)->shader),
+                    std::move(gm->shaderManager.get(shader)->compiledShader)));
+            }
+
+            star::StarPipeline::RenderResourceDependencies deps{.compiledShaders = std::move(compiledShaders),
+                                                                .renderingTargetInfo = record.request.renderingInfo,
+                                                                .swapChainExtent = record.request.resolution};
+
+            ts->getWorker(typeid(tasks::PipelineBuildPayload))
+                ->queueTask(tasks::task_factory::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
+                                                                     std::move(record.request.pipeline)));
+        }
+    }
+}
 star::job::complete_tasks::CompleteTask<> star::job::complete_tasks::task_factory::CreateShaderCompileComplete(
-    size_t handleID, std::unique_ptr<StarShader> finalizedShaderObject, std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader)
+    uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
+    std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader)
 {
     return complete_tasks::CompleteTask<>::Builder<CompileCompletePayload>()
         .setPayload(CompileCompletePayload{.handleID = std::move(handleID),

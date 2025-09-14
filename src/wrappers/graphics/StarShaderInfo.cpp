@@ -82,7 +82,7 @@ void star::StarShaderInfo::ShaderInfoSet::build(const core::device::DeviceID &de
 
     this->descriptorWriter =
         std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
-    for (int i = 0; i < this->shaderInfos.size(); i++)
+    for (size_t i = 0; i < this->shaderInfos.size(); i++)
     {
         buildIndex(deviceID, i);
     }
@@ -104,7 +104,7 @@ bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
 {
     for (const auto &set : this->shaderInfoSets[frameInFlight])
     {
-        for (int i = 0; i < set->shaderInfos.size(); i++)
+        for (size_t i = 0; i < set->shaderInfos.size(); i++)
         {
             if (set->shaderInfos.at(i).willCheckForIfReady)
             {
@@ -147,7 +147,7 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int &f
             set->build(m_deviceID);
         else
         {
-            for (int i = 0; i < set->shaderInfos.size(); i++)
+            for (size_t i = 0; i < set->shaderInfos.size(); i++)
             {
                 if (set->shaderInfos.at(i).bufferInfo.has_value() &&
                     set->shaderInfos.at(i).bufferInfo.value().handle.has_value())
@@ -180,7 +180,7 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int &f
     }
 
     auto allSets = std::vector<vk::DescriptorSet>();
-    for (int i = 0; i < this->shaderInfoSets[frameInFlight].size(); i++)
+    for (size_t i = 0; i < this->shaderInfoSets[frameInFlight].size(); i++)
     {
         allSets.push_back(this->shaderInfoSets[frameInFlight].at(i)->getDescriptorSet());
     }

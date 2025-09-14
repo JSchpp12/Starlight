@@ -1,6 +1,6 @@
 #include "Worker.hpp"
 
-void star::job::workers::Worker::threadFunction()
+void star::job::worker::Worker::threadFunction()
 {
     assert(m_completeMessages != nullptr);
 
@@ -8,12 +8,13 @@ void star::job::workers::Worker::threadFunction()
 
     while (this->shouldRun.load())
     {
-        tasks::Task<> task;
-        if (this->taskQueue.pop(task))
-        {
-            task.run();
+        std::optional<tasks::Task<>> task = m_tasks.getQueuedTask(); 
 
-            auto message = task.getCompleteMessage();
+        if (task.has_value())
+        {
+            task.value().run();
+
+            auto message = task.value().getCompleteMessage();
             if (message.has_value())
             {
                 m_completeMessages->push(std::move(message.value()));

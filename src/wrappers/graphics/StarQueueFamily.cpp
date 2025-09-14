@@ -9,7 +9,7 @@ star::StarQueueFamily::StarQueueFamily(const uint32_t &queueFamilyIndex, const u
     : queueFamilyIndex(queueFamilyIndex), queueCount(queueCount), support(support), presentationSupport(presentationSupport)
 {
     this->queuePriority.push_back(1.0f);
-    for (int i = 1; i < queueCount; i++)
+    for (uint32_t i = 1; i < queueCount; i++)
     {
         this->queuePriority.push_back(0.0f);
     }

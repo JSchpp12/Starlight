@@ -1,4 +1,4 @@
-#include "core/exception/NeedsPrepared.hpp"
+// #include "core/exception/NeedsPrepared.hpp"
 
-namespace star::core::exception{
-}
+// namespace star::core::exception{
+// }

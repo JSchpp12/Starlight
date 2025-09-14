@@ -27,12 +27,12 @@ class ManagerCommandBuffer
         Command_Buffer_Order order;
         int orderIndex;
         star::Queue_Type type;
-        vk::PipelineStageFlags waitStage;
-        bool willBeSubmittedEachFrame;
-        bool recordOnce;
-        std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
+        vk::PipelineStageFlags waitStage = vk::PipelineStageFlags();
+        bool willBeSubmittedEachFrame = false;
+        bool recordOnce = false;
+        std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback = std::nullopt;
         std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
-            overrideBufferSubmissionCallback;
+            overrideBufferSubmissionCallback = std::nullopt;
     };
 
     ManagerCommandBuffer(StarDevice &device, const uint8_t &numFramesInFlight);

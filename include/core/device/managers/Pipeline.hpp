@@ -17,24 +17,25 @@ struct PipelineRequest
     {
     }
     PipelineRequest(StarPipeline pipeline, vk::Extent2D resolution, renderer::RenderingTargetInfo renderingInfo)
-        : resolution(std::move(resolution)), renderingInfo(std::move(renderingInfo)), pipeline(std::move(pipeline))
+        : pipeline(std::move(pipeline)), resolution(std::move(resolution)), renderingInfo(std::move(renderingInfo)) 
     {
     }
     ~PipelineRequest() = default;
     PipelineRequest(const PipelineRequest &) = delete;
     PipelineRequest &operator=(const PipelineRequest &) = delete;
     PipelineRequest(PipelineRequest &&other)
-        : resolution(std::move(other.resolution)), renderingInfo(std::move(other.renderingInfo)),
-          pipeline(std::move(other.pipeline))
+        : pipeline(std::move(other.pipeline)), resolution(std::move(other.resolution)), renderingInfo(std::move(other.renderingInfo))
+          
     {
     }
     PipelineRequest &operator=(PipelineRequest &&other)
     {
         if (this != &other)
         {
-            resolution = std::move(other.resolution);
-            renderingInfo = std::move(other.renderingInfo);
             pipeline = std::move(other.pipeline);
+            resolution = other.resolution; 
+            renderingInfo = other.renderingInfo; 
+
         }
         return *this;
     }
@@ -56,6 +57,7 @@ struct PipelineRecord
         if (this != &other)
         {
             request = std::move(other.request);
+            numCompiled = other.numCompiled; 
         }
         return *this;
     };
@@ -79,6 +81,6 @@ class Pipeline : public Manager<PipelineRecord, PipelineRequest, 50>
     }
 
   private:
-    void submitTask(const Handle &handle, job::TaskManager &taskSystem, system::EventBus &eventBus, PipelineRecord *storedRecord) override;
+    void submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus, PipelineRecord *storedRecord) override;
 };
 } // namespace star::core::device::manager

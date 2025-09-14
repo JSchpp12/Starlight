@@ -45,6 +45,9 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
+    uint32_t numIndices = 0; 
+    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
+
     return StarTextures::Texture::Builder(device, allocator)
         .setCreateInfo(
             Allocator::AllocationBuilder()
@@ -53,7 +56,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
                 .build(),
             vk::ImageCreateInfo()
                 .setExtent(vk::Extent3D().setWidth(texture->baseWidth).setHeight(texture->baseHeight).setDepth(1))
-                .setQueueFamilyIndexCount(indices.size())
+                .setQueueFamilyIndexCount(numIndices)
                 .setPQueueFamilyIndices(indices.data())
                 .setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
                 .setImageType(vk::ImageType::e2D)

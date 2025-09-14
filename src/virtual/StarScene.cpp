@@ -21,7 +21,7 @@ star::StarScene::StarScene(const core::device::DeviceID &deviceID, const uint8_t
 void star::StarScene::frameUpdate(core::device::DeviceContext &context){
     m_presentationRenderer->frameUpdate(context); 
 
-    for (int i = 0; i < m_additionalRenderers.size(); i++){
+    for (size_t i = 0; i < m_additionalRenderers.size(); i++){
         m_additionalRenderers[i]->frameUpdate(context); 
     }
 }

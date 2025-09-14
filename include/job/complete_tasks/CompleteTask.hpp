@@ -8,7 +8,7 @@ namespace star::job::complete_tasks
 {
 using DestroyPayloadFunction = void (*)(void *);
 using MovePayloadFunction = void (*)(void *, void *);
-using EngineOnCompleteFunction = void (*)(void *, void *, void *, void *);
+using EngineOnCompleteFunction = void (*)(void *, void *, void *, void *, void *);
 
 template <size_t StorageBytes =
               128 - sizeof(EngineOnCompleteFunction) - sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction),
@@ -134,9 +134,9 @@ class CompleteTask
     }
 
     //will be run on the MAIN engine thread
-    void run(void *device, void *eventBus, void *shaderManager)
+    void run(void *device, void *taskSystem, void *eventBus, void *graphicsManagers)
     {
-        m_engineOnCompleteFunction(device, eventBus, shaderManager, payload());
+        m_engineOnCompleteFunction(device, taskSystem, eventBus, graphicsManagers, payload());
     }
 
   private:

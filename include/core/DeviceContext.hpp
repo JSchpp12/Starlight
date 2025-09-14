@@ -1,5 +1,6 @@
 #pragma once
 
+#include "device/managers/GraphicsContainer.hpp"
 #include "ManagerRenderResource.hpp"
 #include "RenderingSurface.hpp"
 #include "SwapChainSupportDetails.hpp"
@@ -39,16 +40,24 @@ class DeviceContext
     };
     template <typename TManager, typename TRequest, typename TRecord> struct ManagerWrapper
     {
+        ManagerWrapper(TManager &manager, DeviceContext &context)
+            : manager(manager), device(*context.m_device), taskManager(context.m_taskManager),
+              eventBus(context.m_eventBus)
+        {
+        }
+
         Handle submit(TRequest request)
         {
-            return manager.submit(taskManager, eventBus, std::move(request));
+            return manager.submit(device, taskManager, eventBus, std::move(request));
         }
 
         TRecord *get(const Handle &handle)
         {
             return manager.get(handle);
         }
+
         TManager &manager;
+        device::StarDevice &device;
         job::TaskManager &taskManager;
         system::EventBus &eventBus;
     };
@@ -61,7 +70,7 @@ class DeviceContext
     DeviceContext(DeviceContext &&other)
         : m_deviceID(std::move(other.m_deviceID)), m_surface(std::move(other.m_surface)),
           m_device(std::move(other.m_device)), m_eventBus(std::move(other.m_eventBus)),
-          m_taskManager(std::move(other.m_taskManager)), m_pipelineManager(std::move(other.m_pipelineManager)),
+          m_taskManager(std::move(other.m_taskManager)), m_graphicsManagers(std::move(other.m_graphicsManagers)),
           m_commandBufferManager(std::move(other.m_commandBufferManager)),
           m_transferWorker(std::move(other.m_transferWorker))
     {
@@ -77,7 +86,7 @@ class DeviceContext
             m_eventBus = std::move(other.m_eventBus);
             m_taskManager = std::move(other.m_taskManager);
             m_commandBufferManager = std::move(other.m_commandBufferManager);
-            m_pipelineManager = std::move(other.m_pipelineManager);
+            m_graphicsManagers = std::move(other.m_graphicsManagers); 
             m_transferWorker = std::move(other.m_transferWorker);
             m_ownsWorkers = true;
 
@@ -115,17 +124,13 @@ class DeviceContext
 
     ManagerWrapper<manager::Shader, StarShader, manager::ShaderRecord> getShaderManager()
     {
-        return ManagerWrapper<manager::Shader, StarShader, manager::ShaderRecord>{
-            .manager = m_shaderManager, .taskManager = m_taskManager, .eventBus = m_eventBus};
+        return ManagerWrapper<manager::Shader, StarShader, manager::ShaderRecord>{m_graphicsManagers.shaderManager, *this};
     }
 
     ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord> getPipelineManager()
     {
-        return ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord>{
-            .manager = m_pipelineManager,
-            .taskManager = m_taskManager,
-            .eventBus = m_eventBus,
-        };
+        return ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord>(m_graphicsManagers.pipelineManager,
+                                                                                                    *this);
     }
 
     job::TransferWorker &getTransferWorker()
@@ -155,8 +160,7 @@ class DeviceContext
     std::shared_ptr<StarDevice> m_device;
     system::EventBus m_eventBus;
     job::TaskManager m_taskManager;
-    manager::Shader m_shaderManager;
-    manager::Pipeline m_pipelineManager;
+    manager::GraphicsContainer m_graphicsManagers; 
     std::unique_ptr<managers::ManagerCommandBuffer> m_commandBufferManager;
     std::shared_ptr<job::TransferWorker> m_transferWorker;
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager;

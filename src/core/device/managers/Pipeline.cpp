@@ -1,10 +1,11 @@
 #include "core/device/managers/Pipeline.hpp"
 
 #include "core/device/system/ShaderCompiledEvent.hpp"
+#include "job/tasks/TaskFactory.hpp"
 
 namespace star::core::device::manager
 {
-void Pipeline::submitTask(const Handle &handle, job::TaskManager &taskSystem, system::EventBus &eventBus,
+void Pipeline::submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
                           PipelineRecord *storedRecord)
 {
     eventBus.subscribe<system::ShaderCompiledEvent>([this, handle](const system::Event &e, bool &keepAlive) {
@@ -18,11 +19,6 @@ void Pipeline::submitTask(const Handle &handle, job::TaskManager &taskSystem, sy
             {
                 record->numCompiled++;
             }
-        }
-
-        if (record->numCompiled == record->request.pipeline.getShaders().size()){
-            //all are compiled
-            
         }
 
         keepAlive = false;

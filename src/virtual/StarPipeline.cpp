@@ -33,7 +33,7 @@ bool star::StarPipeline::isRenderReady() const
     return m_pipeline != VK_NULL_HANDLE;
 }
 
-void star::StarPipeline::prepRender(core::device::StarDevice &device, RenderResourceDepdencies deps)
+void star::StarPipeline::prepRender(vk::Device &device, const RenderResourceDependencies &deps)
 {
     assert(m_shaders.size() > 0 && "Not prepared correctly");
 
@@ -48,23 +48,26 @@ void star::StarPipeline::cleanupRender(core::device::StarDevice &device)
 
 void star::StarPipeline::bind(vk::CommandBuffer &commandBuffer)
 {
-    assert(m_pipeline && "Pipeline has not yet been created"); 
-    
-    if (m_isGraphicsPipeline){
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline); 
-    }else{
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline); 
+    assert(m_pipeline && "Pipeline has not yet been created");
+
+    if (m_isGraphicsPipeline)
+    {
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline);
+    }
+    else
+    {
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline);
     }
 }
 
-vk::Pipeline star::StarPipeline::BuildGraphicsPieline(vk::Device &device,
-                                                      const vk::PipelineLayout &pipelineLayout,
-                                                      const RenderResourceDepdencies &depdencies,
-                                                      GraphicsPipelineConfigSettings &pipelineSettings)
+vk::Pipeline star::StarPipeline::BuildGraphicsPipeline(vk::Device &device, const vk::PipelineLayout &pipelineLayout,
+                                                       const RenderResourceDependencies &depdencies,
+                                                       GraphicsPipelineConfigSettings &pipelineSettings)
 {
-    vk::ShaderModule vertShaderModule = VK_NULL_HANDLE, fragShaderModule = VK_NULL_HANDLE, geomShaderModule = VK_NULL_HANDLE;
+    vk::ShaderModule vertShaderModule = VK_NULL_HANDLE, fragShaderModule = VK_NULL_HANDLE,
+                     geomShaderModule = VK_NULL_HANDLE;
 
-    ProcessShaders(device, depdencies, vertShaderModule, fragShaderModule, geomShaderModule); 
+    ProcessShaders(device, depdencies, vertShaderModule, fragShaderModule, geomShaderModule);
 
     std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 
@@ -95,7 +98,8 @@ vk::Pipeline star::StarPipeline::BuildGraphicsPieline(vk::Device &device,
     auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
 
     GraphicsPipelineConfigSettings defaultConfig = GraphicsPipelineConfigSettings();
-    DefaultGraphicsPipelineConfigInfo(pipelineSettings, depdencies.swapChainExtent, pipelineLayout, depdencies.renderingTargetInfo); 
+    DefaultGraphicsPipelineConfigInfo(pipelineSettings, depdencies.swapChainExtent, pipelineLayout,
+                                      depdencies.renderingTargetInfo);
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
@@ -182,28 +186,26 @@ vk::Pipeline star::StarPipeline::BuildGraphicsPieline(vk::Device &device,
     return result.value.at(0);
 }
 
-vk::Pipeline star::StarPipeline::BuildComputePipeline(vk::Device &device,
-                                                      const vk::PipelineLayout &pipelineLayout,
-                                                      const RenderResourceDepdencies &depdencies,
+vk::Pipeline star::StarPipeline::BuildComputePipeline(vk::Device &device, const vk::PipelineLayout &pipelineLayout,
+                                                      const RenderResourceDependencies &depdencies,
                                                       ComputePipelineConfigSettings &pipelineSettings)
 {
     return vk::Pipeline();
 }
 
-vk::Pipeline star::StarPipeline::buildPipeline(core::device::StarDevice &device,
-                                               const RenderResourceDepdencies &depdencies)
+vk::Pipeline star::StarPipeline::buildPipeline(vk::Device &device, const RenderResourceDependencies &depdencies)
 {
     if (m_isGraphicsPipeline)
     {
         assert(std::holds_alternative<GraphicsPipelineConfigSettings>(m_configSettings));
         auto &config = std::get<GraphicsPipelineConfigSettings>(m_configSettings);
-        return BuildGraphicsPieline(device.getVulkanDevice(), m_pipelineLayout, depdencies, config);
+        return BuildGraphicsPipeline(device, m_pipelineLayout, depdencies, config);
     }
     else
     {
         assert(std::holds_alternative<ComputePipelineConfigSettings>(m_configSettings));
         auto &config = std::get<ComputePipelineConfigSettings>(m_configSettings);
-        return BuildComputePipeline(device.getVulkanDevice(), m_pipelineLayout, depdencies, config);
+        return BuildComputePipeline(device, m_pipelineLayout, depdencies, config);
     }
 }
 
@@ -356,7 +358,7 @@ void star::StarPipeline::DefaultGraphicsPipelineConfigInfo(GraphicsPipelineConfi
     configSettings.renderingInfo = renderingInfo;
 }
 
-void star::StarPipeline::ProcessShaders(vk::Device &device, const RenderResourceDepdencies &deps,
+void star::StarPipeline::ProcessShaders(vk::Device &device, const RenderResourceDependencies &deps,
                                         vk::ShaderModule &vertModule, vk::ShaderModule &fragModule,
                                         vk::ShaderModule &geoModule)
 {

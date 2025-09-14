@@ -161,10 +161,11 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue, st
 
     if (overrideFence != nullptr){
         targetQueue.submit(submitInfo, *overrideFence); 
-    }else{
+    }else if (this->readyFence.size() > 0){
         targetQueue.submit(submitInfo, this->readyFence.at(bufferIndex)); 
+    }else{
+        targetQueue.submit(submitInfo); 
     }
-
 }
 
 bool star::StarCommandBuffer::isFenceReady(const int &bufferIndex)
@@ -207,7 +208,7 @@ void star::StarCommandBuffer::createSemaphores()
     vk::SemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
-    for (int i = 0; i < this->commandBuffers.size(); i++)
+    for (size_t i = 0; i < this->commandBuffers.size(); i++)
     {
         this->completeSemaphores.at(i) = this->vulkanDevice.createSemaphore(semaphoreInfo);
     }
@@ -227,7 +228,7 @@ void star::StarCommandBuffer::createFences()
     fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
     fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
-    for (int i = 0; i < this->readyFence.size(); i++)
+    for (size_t i = 0; i < this->readyFence.size(); i++)
     {
         this->readyFence[i] = this->vulkanDevice.createFence(fenceInfo);
     }

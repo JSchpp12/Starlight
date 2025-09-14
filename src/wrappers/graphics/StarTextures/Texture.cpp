@@ -256,7 +256,7 @@ void star::StarTextures::Texture::VerifyImageCreateInfo(const vk::ImageCreateInf
     assert(createInfo.extent.depth != 0 && "depth cannot be 0");
     assert(createInfo.mipLevels != 0 && "mip levels cannnot be 0");
     assert(createInfo.arrayLayers != 0 && "array layers cannot be 0");
-    assert(createInfo.initialLayout == vk::ImageLayout::eUndefined ||
+    assert((createInfo.initialLayout == vk::ImageLayout::eUndefined) ||
            createInfo.initialLayout == vk::ImageLayout::ePreinitialized &&
                "Invalid initial layout according to vulkan specs");
     assert(createInfo.sharingMode == vk::SharingMode::eExclusive ||

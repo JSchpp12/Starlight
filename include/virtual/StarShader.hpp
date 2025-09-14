@@ -2,8 +2,6 @@
 
 #include "Compiler.hpp"
 
-#include "spirv_reflect.h"
-
 #include <iostream>
 #include <memory>
 #include <string>

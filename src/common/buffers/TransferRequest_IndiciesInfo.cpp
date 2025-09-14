@@ -5,6 +5,9 @@
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::createStagingBuffer(vk::Device &device,
                                                                                           VmaAllocator &allocator) const
 {
+    uint32_t numIndices = 0; 
+    CastHelpers::SafeCast<size_t, uint32_t>(this->indices.size(), numIndices); 
+
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -39,6 +42,9 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
     std::vector<uint32_t> indices = {this->graphicsQueueFamilyIndex};
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
+
+    uint32_t numIndices = 0; 
+    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
 
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(

@@ -3,13 +3,12 @@
 #include <cassert>
 
 star::core::device::DeviceContext::DeviceContext(
-    const uint8_t &numFramesInFlight, const DeviceID &deviceID, 
-    RenderingInstance &instance, std::set<Rendering_Features> requiredFeatures, StarWindow &window,
+    const uint8_t &numFramesInFlight, const DeviceID &deviceID, RenderingInstance &instance,
+    std::set<Rendering_Features> requiredFeatures, StarWindow &window,
     const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
-    : m_deviceID(deviceID), 
-      m_surface(RenderingSurface(instance, window)),
-      m_device(std::make_shared<StarDevice>(window, m_surface, instance, requiredFeatures,
-                                            requiredRenderingDeviceFeatures)),
+    : m_deviceID(deviceID), m_surface(RenderingSurface(instance, window)),
+      m_device(
+          std::make_shared<StarDevice>(window, m_surface, instance, requiredFeatures, requiredRenderingDeviceFeatures)),
       m_commandBufferManager(std::make_unique<managers::ManagerCommandBuffer>(*m_device, numFramesInFlight)),
       m_transferWorker(CreateTransferWorker(*m_device)),
       m_renderResourceManager(std::make_unique<ManagerRenderResource>())
@@ -108,5 +107,6 @@ void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t max
 
 void star::core::device::DeviceContext::processCompleteMessage(job::complete_tasks::CompleteTask<> completeTask)
 {
-    completeTask.run(static_cast<void *>(m_device.get()), static_cast<void *>(&m_eventBus), static_cast<void *>(&m_shaderManager));
+    completeTask.run(static_cast<void *>(m_device.get()), static_cast<void *>(&m_taskManager),
+                     static_cast<void *>(&m_eventBus), static_cast<void *>(&m_graphicsManagers));
 }

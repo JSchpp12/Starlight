@@ -27,8 +27,8 @@ class GlobalInfo : public Buffer
     void writeDataToStageBuffer(StarBuffers::Buffer &buffer) const override;
 
   private:
-    const uint32_t graphicsQueueIndex;
     const StarCamera camera;
+    const uint32_t graphicsQueueIndex;
 
     struct GlobalUniformBufferObject
     {

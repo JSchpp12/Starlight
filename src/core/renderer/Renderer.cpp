@@ -31,7 +31,7 @@ void Renderer::update(core::device::DeviceContext &device, const uint8_t &frameI
 
 void Renderer::frameUpdate(core::device::DeviceContext &device)
 {
-    for (int i = 0; i < m_objects.size(); i++)
+    for (size_t i = 0; i < m_objects.size(); i++)
     {
         m_objects[i]->frameUpdate(device);
         // try{
@@ -85,6 +85,8 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
     }
 
     vk::Format format = getColorAttachmentFormat(device);
+    uint32_t numIndices; 
+    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
 
     auto builder =
         star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(),
@@ -100,7 +102,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
                                    .setHeight(static_cast<int>(this->swapChainExtent->height))
                                    .setDepth(1))
                     .setPQueueFamilyIndices(indices.data())
-                    .setQueueFamilyIndexCount(indices.size())
+                    .setQueueFamilyIndexCount(numIndices)
                     .setSharingMode(indices.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent)
                     .setUsage(vk::ImageUsageFlagBits::eColorAttachment)
                     .setImageType(vk::ImageType::e2D)
@@ -246,17 +248,17 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
 void Renderer::createRenderingGroups(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                                      const int &numFramesInFlight, star::StarShaderInfo::Builder builder)
 {
-    for (int i = 0; i < m_objects.size(); i++)
+    for (size_t i = 0; i < m_objects.size(); i++)
     {
         // check if the object is compatible with any render groups
         StarRenderGroup *match = nullptr;
 
         // if it is not, create a new render group
-        for (int i = 0; i < this->renderGroups.size(); i++)
+        for (size_t j = 0; j < this->renderGroups.size(); j++)
         {
-            if (this->renderGroups[i]->isObjectCompatible(*m_objects[i]))
+            if (this->renderGroups[j]->isObjectCompatible(*m_objects[i]))
             {
-                match = this->renderGroups[i].get();
+                match = this->renderGroups[j].get();
                 break;
             }
         }
@@ -315,7 +317,7 @@ star::StarShaderInfo::Builder Renderer::manualCreateDescriptors(star::core::devi
 
     assert(m_cameraInfoBuffers.size() == numFramesInFlight && m_lightInfoBuffers.size() == numFramesInFlight &&
            m_lightListBuffers.size() == numFramesInFlight && "Shader info buffers not properly initialized.");
-    for (size_t i = 0; i < numFramesInFlight; i++)
+    for (int i = 0; i < numFramesInFlight; i++)
     {
         globalBuilder.startOnFrameIndex(i)
             .startSet()
@@ -518,7 +520,7 @@ void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int 
 
 void Renderer::prepareForSubmission(const int &frameIndexToBeDrawn)
 {
-    for (int i = 0; i < m_objects.size(); i++)
+    for (size_t i = 0; i < m_objects.size(); i++)
     {
         m_objects[i]->prepDraw(frameIndexToBeDrawn);
     }

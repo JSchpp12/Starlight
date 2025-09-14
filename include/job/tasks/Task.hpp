@@ -7,7 +7,7 @@
 
 #include <optional>
 #include <stdexcept>
-
+#include <typeindex>
 
 namespace star::job::tasks
 {
@@ -101,6 +101,7 @@ class Task
             task.m_destroyPayloadFunction = m_destroyPayloadFunction;
             task.m_movePayloadFunction = m_movePayloadFunction;
             task.m_createCompleteFunction = m_createCompleteTaskFunction;
+            task.m_type = std::make_unique<std::type_index>(typeid(PayloadType)); 
 
             return task;
         }
@@ -125,6 +126,7 @@ class Task
         m_movePayloadFunction = other.m_movePayloadFunction;
         m_destroyPayloadFunction = other.m_destroyPayloadFunction;
         m_createCompleteFunction = other.m_createCompleteFunction;
+        m_type = std::move(other.m_type); 
 
         other.m_executeFunction = nullptr;
         other.m_destroyPayloadFunction = nullptr;
@@ -142,6 +144,7 @@ class Task
             m_destroyPayloadFunction = other.m_destroyPayloadFunction;
             m_movePayloadFunction = other.m_movePayloadFunction;
             m_createCompleteFunction = other.m_createCompleteFunction;
+            m_type = std::move(other.m_type); 
 
             if (m_movePayloadFunction)
                 m_movePayloadFunction(m_data, other.m_data);
@@ -161,8 +164,6 @@ class Task
             m_destroyPayloadFunction(m_data);
     }
 
-    uint16_t id = 0;
-
     void run()
     {
         m_executeFunction(payload());
@@ -176,11 +177,31 @@ class Task
         return std::nullopt;
     }
 
+    void reset()
+    {
+        if (m_destroyPayloadFunction)
+        {
+            m_destroyPayloadFunction(m_data);
+        }
+
+        m_executeFunction = nullptr;
+        m_destroyPayloadFunction = nullptr;
+        m_movePayloadFunction = nullptr;
+        m_createCompleteFunction = nullptr;
+    }
+
+    const std::type_index &getType() const{
+        assert(m_type != nullptr && "Type was not properly initialized"); 
+        
+        return *m_type;
+    }
+
   private:
     ExecuteFunction m_executeFunction = nullptr;
     DestructorFunction m_destroyPayloadFunction = nullptr;
     MovePayloadFunction m_movePayloadFunction = nullptr;
     CreateCompleteTaskFunction m_createCompleteFunction = nullptr;
+    std::unique_ptr<std::type_index> m_type = nullptr; 
     alignas(StorageAlign) std::byte m_data[StorageBytes];
 
     void *payload() noexcept
