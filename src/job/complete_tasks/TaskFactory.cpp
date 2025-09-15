@@ -4,7 +4,6 @@
 #include "job/TaskManager.hpp"
 #include "job/tasks/TaskFactory.hpp"
 
-#pragma region CompileShaders
 #include "core/device/StarDevice.hpp"
 
 #include "core/device/managers/GraphicsContainer.hpp"
@@ -25,6 +24,8 @@ void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void 
     handle.setID(p->handleID);
     handle.setType(Handle_Type::pipeline);
 
+    std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;  
+
     gm->pipelineManager.get(handle)->request.pipeline = std::move(*p->pipeline);
 }
 
@@ -39,6 +40,7 @@ star::job::complete_tasks::CompleteTask<> star::job::complete_tasks::task_factor
 
 #pragma endregion BuildPipeline
 
+#pragma region CompileShaders
 void star::job::complete_tasks::task_factory::ExecuteShaderCompileComplete(void *device, void *taskSystem,
                                                                            void *eventBus, void *graphicsManagers,
                                                                            void *payload)
@@ -73,7 +75,7 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
     for (size_t i = 0; i < gm->pipelineManager.getRecords().size(); i++)
     {
         auto &record = gm->pipelineManager.getRecords()[i];
-        if (!record.isReady() && record.numCompiled == record.request.pipeline.getShaders().size())
+        if (!record.isReady() && record.numCompiled != 0 && record.numCompiled == record.request.pipeline.getShaders().size())
         {
             uint32_t recordHandle = 0;
             if (!star::CastHelpers::SafeCast<size_t, uint32_t>(i, recordHandle))
@@ -97,9 +99,8 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
                                                                 .renderingTargetInfo = record.request.renderingInfo,
                                                                 .swapChainExtent = record.request.resolution};
 
-            ts->getWorker(typeid(tasks::PipelineBuildPayload))
-                ->queueTask(tasks::task_factory::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
-                                                                     std::move(record.request.pipeline)));
+            ts->submitTask(tasks::task_factory::CreateBuildPipeline(
+                d->getVulkanDevice(), handle, std::move(deps), std::move(record.request.pipeline)));
         }
     }
 }

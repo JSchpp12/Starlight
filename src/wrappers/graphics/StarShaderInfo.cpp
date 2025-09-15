@@ -63,6 +63,7 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const core::device::DeviceI
         {
             throw std::runtime_error("Unknown error regarding texture binding");
         }
+        assert(texture != nullptr && "Texture cannot be found"); 
 
         vk::DescriptorImageInfo textureInfo;
         textureInfo.sampler = texture->getSampler().has_value() ? texture->getSampler().value() : VK_NULL_HANDLE;

@@ -3,10 +3,11 @@
 #include "job/tasks/Task.hpp"
 
 #include <boost/lockfree/queue.hpp>
+#include <boost/atomic/atomic.hpp>
 
+#include <optional>
 #include <queue>
 #include <vector>
-#include <optional>
 
 namespace star::job
 {
@@ -28,12 +29,12 @@ template <typename TTask, size_t TMaxSize> class TaskContainer
         const uint32_t newSpace = getNextAvailableSpace();
 
         m_tasks[newSpace] = std::move(newTask);
-        m_queuedTasks.push(newSpace); 
+        m_queuedTasks.push(newSpace);
     }
 
     void freeTask(const uint32_t &taskHandle)
     {
-        assert(taskHandle <= TMaxSize && "Task handle is beyond range of container size");
+        assert(taskHandle < TMaxSize && "Task handle is beyond range of container size");
         m_tasks[taskHandle].reset();
         m_availableSpaces.push(taskHandle);
     }
@@ -46,9 +47,9 @@ template <typename TTask, size_t TMaxSize> class TaskContainer
             return std::nullopt;
         }
 
-        assert(queuedIndex <= TMaxSize && "Popped queued task is beyond available range"); 
+        assert(queuedIndex <= TMaxSize && "Popped queued task is beyond available range");
 
-        return std::make_optional<TTask>(std::move(m_tasks[queuedIndex])); 
+        return std::make_optional<TTask>(std::move(m_tasks[queuedIndex]));
     }
 
   private:
@@ -61,7 +62,10 @@ template <typename TTask, size_t TMaxSize> class TaskContainer
     uint32_t getNextAvailableSpace()
     {
         uint32_t nextSpace = 0;
-        m_availableSpaces.pop(nextSpace);
+        if (!m_availableSpaces.pop(nextSpace))
+        {
+            throw std::runtime_error("No available space for new task. Consider recompiling with larger space allocated for container.");
+        }
 
         return nextSpace;
     }

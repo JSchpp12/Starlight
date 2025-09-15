@@ -46,12 +46,10 @@ class StarPipeline
         vk::PipelineDepthStencilStateCreateInfo depthStencilInfo;
         std::vector<VkDynamicState> dynamicStateEnables;
         vk::PipelineDynamicStateCreateInfo dynamicStateInfo;
-        vk::PipelineLayout pipelineLayout = nullptr;
         vk::Extent2D swapChainExtent;
         std::vector<vk::VertexInputBindingDescription> vertInputBindingDescription =
             std::vector<vk::VertexInputBindingDescription>{VulkanVertex::getBindingDescription()};
         uint32_t subpass = 0;
-        core::renderer::RenderingTargetInfo renderingInfo;
     };
 
     struct ComputePipelineConfigSettings
@@ -78,8 +76,9 @@ class StarPipeline
     StarPipeline &operator=(const StarPipeline &) = delete;
     StarPipeline(StarPipeline &&other)
         : m_pipelineLayout(std::move(other.m_pipelineLayout)), m_configSettings(std::move(other.m_configSettings)),
-          m_shaders(std::move(other.m_shaders)), m_pipeline(std::move(other.m_pipeline)),
-          m_isGraphicsPipeline(std::move(other.m_isGraphicsPipeline))
+          m_shaders(std::move(other.m_shaders)), m_isGraphicsPipeline(std::move(other.m_isGraphicsPipeline)),
+          m_pipeline(std::move(other.m_pipeline))
+
     {
         other.m_pipeline = VK_NULL_HANDLE;
     }
@@ -143,7 +142,7 @@ class StarPipeline
         const std::variant<GraphicsPipelineConfigSettings, ComputePipelineConfigSettings> &settings);
 
     static void DefaultGraphicsPipelineConfigInfo(GraphicsPipelineConfigSettings &configSettings,
-                                                  vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout,
+                                                  vk::Extent2D swapChainExtent,
                                                   core::renderer::RenderingTargetInfo renderingInfo);
 
     static void ProcessShaders(vk::Device &device, const RenderResourceDependencies &deps,

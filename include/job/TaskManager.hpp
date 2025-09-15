@@ -74,25 +74,15 @@ class TaskManager
         m_defaultWorker->stop();
     }
 
-    worker::Worker *getWorker(const std::type_index &taskType, const size_t &index = 0)
-    {
-        auto it = m_workers.find(taskType);
-        if (it == m_workers.end() || index >= it->second.size())
-        {
-            return nullptr;
-        }
-
-        return it->second[index].get();
-    }
-
     void submitTask(tasks::Task<> &&newTask)
     {
-        worker::Worker *worker = getWorker(newTask.getType()); 
-        if (worker == nullptr){
-            worker = m_defaultWorker.get(); 
+        worker::Worker *worker = getWorker(newTask.getType());
+        if (worker == nullptr)
+        {
+            worker = m_defaultWorker.get();
         }
 
-        worker->queueTask(std::move(newTask)); 
+        worker->queueTask(std::move(newTask));
     }
 
     void scheduleTaskForFrame(uint64_t &targetFrameIndex, std::type_index &taskType, tasks::Task<> &&newTask)
@@ -146,6 +136,17 @@ class TaskManager
     std::unordered_map<std::type_index, FrameScheduler> m_frameSchedulers;
 
     std::unique_ptr<worker::Worker> m_defaultWorker = nullptr;
+
+    worker::Worker *getWorker(const std::type_index &taskType, const size_t &index = 0)
+    {
+        auto it = m_workers.find(taskType);
+        if (it == m_workers.end() || index >= it->second.size())
+        {
+            return nullptr;
+        }
+
+        return it->second[index].get();
+    }
 
     static std::unique_ptr<worker::Worker> CreateDefaultWorker(
         boost::lockfree::stack<job::complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)

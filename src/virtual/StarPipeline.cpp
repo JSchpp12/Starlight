@@ -36,6 +36,7 @@ bool star::StarPipeline::isRenderReady() const
 void star::StarPipeline::prepRender(vk::Device &device, const RenderResourceDependencies &deps)
 {
     assert(m_shaders.size() > 0 && "Not prepared correctly");
+    assert(m_pipelineLayout && "Provided pipeline layout is not valid");
 
     m_pipeline = buildPipeline(device, deps);
 }
@@ -98,8 +99,7 @@ vk::Pipeline star::StarPipeline::BuildGraphicsPipeline(vk::Device &device, const
     auto attributeDescriptions = VulkanVertex::getAttributeDescriptions();
 
     GraphicsPipelineConfigSettings defaultConfig = GraphicsPipelineConfigSettings();
-    DefaultGraphicsPipelineConfigInfo(pipelineSettings, depdencies.swapChainExtent, pipelineLayout,
-                                      depdencies.renderingTargetInfo);
+    DefaultGraphicsPipelineConfigInfo(defaultConfig, depdencies.swapChainExtent, depdencies.renderingTargetInfo);
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
@@ -111,12 +111,12 @@ vk::Pipeline star::StarPipeline::BuildGraphicsPipeline(vk::Device &device, const
     vk::PipelineRenderingCreateInfoKHR renderingCreateInfo{};
     renderingCreateInfo.pNext = VK_NULL_HANDLE;
     renderingCreateInfo.sType = vk::StructureType::ePipelineRenderingCreateInfoKHR;
-    renderingCreateInfo.colorAttachmentCount = defaultConfig.renderingInfo.colorAttachmentFormats.size();
-    renderingCreateInfo.pColorAttachmentFormats = defaultConfig.renderingInfo.colorAttachmentFormats.data();
-    if (defaultConfig.renderingInfo.depthAttachmentFormat.has_value())
-        renderingCreateInfo.depthAttachmentFormat = defaultConfig.renderingInfo.depthAttachmentFormat.value();
-    if (defaultConfig.renderingInfo.stencilAttachmentFormat.has_value())
-        renderingCreateInfo.stencilAttachmentFormat = defaultConfig.renderingInfo.stencilAttachmentFormat.value();
+    renderingCreateInfo.colorAttachmentCount = depdencies.renderingTargetInfo.colorAttachmentFormats.size();
+    renderingCreateInfo.pColorAttachmentFormats = depdencies.renderingTargetInfo.colorAttachmentFormats.data();
+    if (depdencies.renderingTargetInfo.depthAttachmentFormat.has_value())
+        renderingCreateInfo.depthAttachmentFormat = depdencies.renderingTargetInfo.depthAttachmentFormat.value();
+    if (depdencies.renderingTargetInfo.stencilAttachmentFormat.has_value())
+        renderingCreateInfo.stencilAttachmentFormat = depdencies.renderingTargetInfo.stencilAttachmentFormat.value();
 
     /* Dynamic State */
     // some parts of the pipeline can be changed without recreating the entire pipeline
@@ -153,7 +153,7 @@ vk::Pipeline star::StarPipeline::BuildGraphicsPipeline(vk::Device &device, const
     pipelineInfo.pDepthStencilState = &defaultConfig.depthStencilInfo;
     pipelineInfo.pColorBlendState = &defaultConfig.colorBlendInfo;
     pipelineInfo.pDynamicState = &dynamicStateInfo;
-    pipelineInfo.layout = defaultConfig.pipelineLayout;
+    pipelineInfo.layout = pipelineLayout;
     // render pass info - ensure renderpass is compatible with pipeline --check khronos docs
     pipelineInfo.renderPass = VK_NULL_HANDLE;
     pipelineInfo.subpass = 0; // index where the graphics pipeline will be used
@@ -187,25 +187,53 @@ vk::Pipeline star::StarPipeline::BuildGraphicsPipeline(vk::Device &device, const
 }
 
 vk::Pipeline star::StarPipeline::BuildComputePipeline(vk::Device &device, const vk::PipelineLayout &pipelineLayout,
-                                                      const RenderResourceDependencies &depdencies,
+                                                      const RenderResourceDependencies &deps,
                                                       ComputePipelineConfigSettings &pipelineSettings)
 {
-    return vk::Pipeline();
+    assert(deps.compiledShaders.size() == 1 && "More shaders than expected for a compute pipeline");
+    assert(deps.compiledShaders.at(0).first.getStage() == star::Shader_Stage::compute &&
+           "Shaders for a compute pipeline should be compute shaders");
+
+    vk::ShaderModule compShaderModule;
+    {
+        compShaderModule = CreateShaderModule(device, *deps.compiledShaders[0].second);
+    }
+
+    vk::PipelineShaderStageCreateInfo compShaderStageInfo{};
+    compShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+    compShaderStageInfo.stage = vk::ShaderStageFlagBits::eCompute;
+    compShaderStageInfo.module = compShaderModule;
+    compShaderStageInfo.pName = "main";
+
+    vk::ComputePipelineCreateInfo createInfo{};
+    createInfo.sType = vk::StructureType::eComputePipelineCreateInfo;
+    createInfo.layout = pipelineLayout;
+    createInfo.stage = compShaderStageInfo;
+
+    auto result = device.createComputePipeline(VK_NULL_HANDLE, createInfo);
+    if (result.result != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("failed to create compute pipeline");
+    }
+
+    device.destroyShaderModule(compShaderModule);
+
+    return result.value;
 }
 
-vk::Pipeline star::StarPipeline::buildPipeline(vk::Device &device, const RenderResourceDependencies &depdencies)
+vk::Pipeline star::StarPipeline::buildPipeline(vk::Device &device, const RenderResourceDependencies &deps)
 {
     if (m_isGraphicsPipeline)
     {
         assert(std::holds_alternative<GraphicsPipelineConfigSettings>(m_configSettings));
         auto &config = std::get<GraphicsPipelineConfigSettings>(m_configSettings);
-        return BuildGraphicsPipeline(device, m_pipelineLayout, depdencies, config);
+        return BuildGraphicsPipeline(device, m_pipelineLayout, deps, config);
     }
     else
     {
         assert(std::holds_alternative<ComputePipelineConfigSettings>(m_configSettings));
         auto &config = std::get<ComputePipelineConfigSettings>(m_configSettings);
-        return BuildComputePipeline(device, m_pipelineLayout, depdencies, config);
+        return BuildComputePipeline(device, m_pipelineLayout, deps, config);
     }
 }
 
@@ -221,7 +249,7 @@ bool star::StarPipeline::hasSameShadersAs(StarPipeline &compPipe)
         return false;
     }
 
-    for (int i = 0; i < m_shaders.size(); i++)
+    for (size_t i = 0; i < m_shaders.size(); i++)
     {
         if (m_shaders[i] != compPipe.m_shaders[i])
         {
@@ -240,11 +268,9 @@ bool star::StarPipeline::IsGraphicsPipeline(
 
 void star::StarPipeline::DefaultGraphicsPipelineConfigInfo(GraphicsPipelineConfigSettings &configSettings,
                                                            vk::Extent2D swapChainExtent,
-                                                           vk::PipelineLayout pipelineLayout,
                                                            core::renderer::RenderingTargetInfo renderingInfo)
 {
     configSettings.swapChainExtent = swapChainExtent;
-    configSettings.pipelineLayout = pipelineLayout;
 
     /* Rasterizer */
     // takes the geometry and creates fragments which are then passed onto the fragment shader
@@ -355,7 +381,6 @@ void star::StarPipeline::DefaultGraphicsPipelineConfigInfo(GraphicsPipelineConfi
     }
 
     configSettings.rasterizationInfo = rasterizer;
-    configSettings.renderingInfo = renderingInfo;
 }
 
 void star::StarPipeline::ProcessShaders(vk::Device &device, const RenderResourceDependencies &deps,
