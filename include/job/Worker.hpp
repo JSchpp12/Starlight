@@ -25,25 +25,27 @@ class Worker
 
     void stop()
     {
-        this->shouldRun.store(false);
+        this->shouldRun->store(false);
         if (this->thread.joinable())
             this->thread.join();
     }
 
     void start()
     {
-        this->shouldRun.store(true);
+        this->shouldRun->store(true);
         this->thread = boost::thread(&Worker::threadFunction, this);
     }
 
     Worker(const Worker &) = delete;
     Worker &operator=(const Worker &) = delete;
-    Worker(Worker &&) = default;
+    Worker(Worker &&other)
+        : m_tasks(std::move(other.m_tasks)), shouldRun(std::move(other.shouldRun)),
+          m_completeMessages(std::move(other.m_completeMessages)), thread(std::move(other.thread)) {};
     Worker &operator=(Worker &&) = default;
 
     void queueTask(tasks::Task<> task)
     {
-        m_tasks.queueTask(std::move(task));
+        m_tasks->queueTask(std::move(task));
     }
 
     void setCompleteMessageCommunicationStructure(
@@ -53,12 +55,14 @@ class Worker
     }
 
   protected:
-    job::TaskContainer<tasks::Task<>, 128> m_tasks = job::TaskContainer<tasks::Task<>, 128>();
+    std::unique_ptr<job::TaskContainer<tasks::Task<>, 128>> m_tasks =
+        std::unique_ptr<job::TaskContainer<tasks::Task<>, 128>>(new job::TaskContainer<tasks::Task<>, 128>());
+    std::unique_ptr<boost::atomic<bool>> shouldRun =
+        std::unique_ptr<boost::atomic<bool>>(new boost::atomic<bool>(true));
     boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *m_completeMessages =
         nullptr;
-    boost::atomic<bool> shouldRun = boost::atomic<bool>(true);
     boost::thread thread = boost::thread();
 
     virtual void threadFunction();
 };
-} // namespace star::job::workers
+} // namespace star::job::worker

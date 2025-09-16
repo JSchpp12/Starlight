@@ -66,7 +66,7 @@ class StarPipeline
     static vk::ShaderModule CreateShaderModule(vk::Device &device, const std::vector<uint32_t> &sourceCode);
 #pragma endregion
 
-    StarPipeline()
+    StarPipeline() : m_configSettings(GraphicsPipelineConfigSettings())
     {
     }
     StarPipeline(std::variant<GraphicsPipelineConfigSettings, ComputePipelineConfigSettings> configSettings,

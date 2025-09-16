@@ -6,9 +6,9 @@ void star::job::worker::Worker::threadFunction()
 
     std::cout << "Beginning work" << std::endl;
 
-    while (this->shouldRun.load())
+    while (this->shouldRun->load())
     {
-        std::optional<tasks::Task<>> task = m_tasks.getQueuedTask(); 
+        std::optional<tasks::Task<>> task = m_tasks->getQueuedTask(); 
 
         if (task.has_value())
         {

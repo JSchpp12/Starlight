@@ -72,7 +72,7 @@ class DeviceContext
           m_device(std::move(other.m_device)), m_eventBus(std::move(other.m_eventBus)),
           m_taskManager(std::move(other.m_taskManager)), m_graphicsManagers(std::move(other.m_graphicsManagers)),
           m_commandBufferManager(std::move(other.m_commandBufferManager)),
-          m_transferWorker(std::move(other.m_transferWorker))
+          m_transferWorker(std::move(other.m_transferWorker)), m_renderResourceManager(std::move(other.m_renderResourceManager))
     {
         other.m_ownsWorkers = false;
     };
@@ -88,6 +88,7 @@ class DeviceContext
             m_commandBufferManager = std::move(other.m_commandBufferManager);
             m_graphicsManagers = std::move(other.m_graphicsManagers); 
             m_transferWorker = std::move(other.m_transferWorker);
+            m_renderResourceManager = std::move(other.m_renderResourceManager); 
             m_ownsWorkers = true;
 
             other.m_ownsWorkers = false;
@@ -119,6 +120,8 @@ class DeviceContext
 
     ManagerRenderResource &getManagerRenderResource()
     {
+        assert(m_renderResourceManager && "Manager not properly created");
+
         return *m_renderResourceManager;
     }
 

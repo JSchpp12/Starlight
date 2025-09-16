@@ -18,12 +18,9 @@ endif()
 enable_language(C CXX)
 
 set(VULKAN_VERSION "1.4.313.0")
-find_package(Vulkan ${VULKAN_VERSION})
-if (NOT Vulkan_FOUND)
-    message("Vulkan not found. Downloading...")
-    include(${CMAKE_CURRENT_LIST_DIR}/cmake/DownloadVulkan.cmake)
-endif()
+find_package(Vulkan ${VULKAN_VERSION} REQUIRED)
 
+set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
 
@@ -57,6 +54,8 @@ set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_reflect")
 
+set(SHADERC_ENABLE_GLSLC OFF CACHE BOOL "Disable building glslc" FORCE)
+set(SHADERC_ENABLE_RTTI ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_TESTS ON CACHE BOOL "" FORCE)
 set(SHADERC_ENABLE_SHARED_CRT ON CACHE BOOL "" FORCE)
@@ -358,11 +357,15 @@ if (NOT ${HEADLESS})
 
     target_link_libraries(${STARLIGHT_NAME}
         PUBLIC
-            Vulkan::Vulkan
+            glslang
+            SPIRV-Tools-opt
+            SPIRV-Tools
+            shaderc_util
             shaderc
             tinyobjloader::tinyobjloader
             spirv-reflect-static
             GPUOpen::VulkanMemoryAllocator
+            Vulkan::Vulkan
             nlohmann_json::nlohmann_json
             Boost::thread
             Boost::container
