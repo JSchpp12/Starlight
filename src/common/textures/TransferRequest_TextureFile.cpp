@@ -17,7 +17,7 @@ star::TransferRequest::TextureFile::TextureFile(const std::string &imagePath, co
                                                 const vk::PhysicalDeviceProperties &deviceProperties)
     : imagePath(imagePath), deviceProperties(deviceProperties), graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
 {
-    assert(star::FileHelpers::FileExists(this->imagePath) && "Provided path does not exist");
+    assert(star::file_helpers::FileExists(this->imagePath) && "Provided path does not exist");
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::createStagingBuffer(

@@ -1,80 +1,36 @@
-#pragma once 
+#pragma once
 
 #include "Enums.hpp"
 
 #include <sys/stat.h>
 
-#include <iostream>
-#include <vector>
 #include <fstream>
-#include <string>
+#include <iostream>
 #include <optional>
+#include <string>
+#include <vector>
 
-namespace star {
-struct FileHelpers {
-    static bool FileExists(std::string_view filePath);
+namespace star::file_helpers
+{
+bool FileExists(std::string_view filePath);
 
-    ///Search through directory where the provided file is located, and see if another file exists of the same name, just different type/extension
-    static std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const std::string& directoryPath, const std::string& name); 
+/// Search through directory where the provided file is located, and see if another file exists of the same name, just
+/// different type/extension
+std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const std::string &directoryPath,
+                                                                         const std::string &name);
 
-    static std::string ReadFile(std::string pathToFile, bool includeCarriageReturns = true) {
-        std::string line, text;
-        std::ifstream fileReader(pathToFile);
+std::string ReadFile(std::string pathToFile, bool includeCarriageReturns = true);
 
-        while (std::getline(fileReader, line)) {
-            text += line + (includeCarriageReturns ? "\n" : "");
-        }
+std::string GetFileExtension(std::string_view pathToFile);
 
-        return(text);
-    }
+std::string GetFileNameWithExtension(std::string_view pathToFile);
 
-    static std::string GetFileExtension(const std::string& pathToFile);
+std::string GetFileNameWithoutExtension(std::string_view pathToFile);
 
-    static std::string GetFileNameWithExtension(const std::string& pathToFile) {
-        return pathToFile.substr(pathToFile.find_last_of("/\\") + 1);
-    }
+std::string GetParentDirectory(std::string_view pathToFile);
 
-    static std::string GetFileNameWithoutExtension(const std::string& pathToFile) {
-        const std::string mainFileName = GetFileNameWithExtension(pathToFile);
-        auto posOfExt = mainFileName.find_last_of('.');
-        return mainFileName.substr(0, posOfExt);
-    }
+Shader_Stage GetStageOfShader(std::string_view pathToFile);
 
-    static std::string GetParentDirectory(std::string_view pathToFile) {
-        size_t found = pathToFile.find_last_of("/\\");
-        std::string path = std::string(pathToFile.substr(0, found)); 
-        return path += "/"; 
-    }
+void CreateDirectoryIfDoesNotExist(std::string_view pathToDirectory);
 
-    //Get file type of provided file -- shaders
-    static Shader_File_Type GetFileType(const std::string& pathToFile) {
-        auto posOfExt = pathToFile.find_last_of('.');
-
-        auto fileExtension = pathToFile.substr(posOfExt);
-
-        if (fileExtension == ".spv") {
-            return Shader_File_Type::spirv;
-        }
-        else if (fileExtension == ".frag" || fileExtension == ".vert") {
-            return Shader_File_Type::glsl;
-        }
-
-        throw std::runtime_error("Unsupported file type provided");
-    }
-
-    static Shader_Stage GetStageOfShader(const std::string& pathToFile) {
-        auto posOfExt = pathToFile.find_last_of('.');
-
-        auto fileExt = pathToFile.substr(posOfExt);
-
-        if (fileExt == ".vert") {
-            return Shader_Stage::vertex;
-        }
-        else if (fileExt == ".frag") {
-            return Shader_Stage::fragment;
-        }
-
-        throw std::runtime_error("Unsupported stage type for shader");
-    }
-};
-}
+} // namespace star::file_helpers

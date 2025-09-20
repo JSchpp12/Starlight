@@ -1,6 +1,6 @@
 #include "device/managers/ManagerCommandBuffer.hpp"
 
-#include "tasks/TaskFactory.hpp"
+#include "tasks/task_factory/TaskFactory.hpp"
 
 std::stack<star::Handle> star::core::device::managers::ManagerCommandBuffer::dynamicBuffersToSubmit = std::stack<star::Handle>();
 

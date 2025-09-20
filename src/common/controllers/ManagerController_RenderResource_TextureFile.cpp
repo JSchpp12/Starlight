@@ -37,20 +37,20 @@ std::unique_ptr<star::TransferRequest::Texture> star::ManagerController::RenderR
 
 bool star::ManagerController::RenderResource::TextureFile::IsCompressedFileType(const std::string &filePath)
 {
-    return FileHelpers::GetFileExtension(filePath) == ".ktx2";
+    return file_helpers::GetFileExtension(filePath) == ".ktx2";
 }
 
 std::string star::ManagerController::RenderResource::TextureFile::GetFilePath(const std::string &filePath)
 {
-    if (FileHelpers::FileExists(filePath))
+    if (file_helpers::FileExists(filePath))
     {
         return filePath;
     }
 
-    const std::string name = FileHelpers::GetFileNameWithoutExtension(filePath);
+    const std::string name = file_helpers::GetFileNameWithoutExtension(filePath);
 
     boost::filesystem::path parentDir = boost::filesystem::path(filePath);
-    auto result = FileHelpers::FindFileInDirectoryWithSameNameIgnoreFileType(parentDir.parent_path().string(), name);
+    auto result = file_helpers::FindFileInDirectoryWithSameNameIgnoreFileType(parentDir.parent_path().string(), name);
 
     assert(result.has_value() && "Unable to find matching file!");
 

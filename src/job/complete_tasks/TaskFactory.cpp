@@ -2,7 +2,7 @@
 
 #include "device/StarDevice.hpp"
 #include "job/TaskManager.hpp"
-#include "job/tasks/TaskFactory.hpp"
+#include "job/tasks/task_factory/TaskFactory.hpp"
 
 #include "core/device/StarDevice.hpp"
 

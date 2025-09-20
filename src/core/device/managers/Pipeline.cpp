@@ -1,7 +1,6 @@
 #include "core/device/managers/Pipeline.hpp"
 
 #include "core/device/system/ShaderCompiledEvent.hpp"
-#include "job/tasks/TaskFactory.hpp"
 
 namespace star::core::device::manager
 {

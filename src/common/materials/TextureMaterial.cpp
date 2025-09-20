@@ -16,7 +16,7 @@ void star::TextureMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLay
 
 star::TextureMaterial::TextureMaterial(std::string texturePath) : m_texturePath(std::move(texturePath))
 {
-    if (!FileHelpers::FileExists(m_texturePath)){
+    if (!file_helpers::FileExists(m_texturePath)){
         throw std::runtime_error("Provided texture path for material does not exist"); 
     } 
 }

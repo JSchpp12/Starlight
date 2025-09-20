@@ -1,4 +1,4 @@
-#include "tasks/TaskFactory.hpp"
+#include "tasks/task_factory/TaskFactory.hpp"
 
 #include "Compiler.hpp"
 #include "StarShader.hpp"
@@ -7,9 +7,13 @@
 
 #include "FileHelpers.hpp"
 
+#include <boost/filesystem.hpp>
+
 #include <memory>
 
-star::job::tasks::Task<> star::job::tasks::task_factory::createPrintTask(std::string message)
+namespace star::job::tasks::task_factory
+{
+star::job::tasks::Task<> createPrintTask(std::string message)
 {
     return star::job::tasks::Task<>::Builder<PrintPayload>()
         .setPayload(PrintPayload(std::move(message)))
@@ -22,38 +26,41 @@ star::job::tasks::Task<> star::job::tasks::task_factory::createPrintTask(std::st
 
 #pragma region BuildPipeline
 
-void star::job::tasks::task_factory::ExecuteBuildPipeline(void *p){
-    auto *payload = static_cast<PipelineBuildPayload *>(p); 
+void ExecuteBuildPipeline(void *p)
+{
+    auto *payload = static_cast<PipelineBuildPayload *>(p);
 
-    payload->pipeline->prepRender(payload->device, *payload->deps); 
+    payload->pipeline->prepRender(payload->device, *payload->deps);
 }
 
-std::optional<star::job::complete_tasks::CompleteTask<>> star::job::tasks::task_factory::CreateBuildComplete(void *payload){
-    auto *p = static_cast<PipelineBuildPayload *>(payload); 
+std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(
+    void *payload)
+{
+    auto *p = static_cast<PipelineBuildPayload *>(payload);
 
-    assert(p->pipeline && "Pipeline not a valid object in the payload"); 
-    
-    return std::make_optional<complete_tasks::CompleteTask<>>(complete_tasks::task_factory::CreateBuildPipelineComplete(p->handleID, std::move(p->pipeline))); 
+    assert(p->pipeline && "Pipeline not a valid object in the payload");
+
+    return std::make_optional<complete_tasks::CompleteTask<>>(
+        complete_tasks::task_factory::CreateBuildPipelineComplete(p->handleID, std::move(p->pipeline)));
 }
 
-star::job::tasks::Task<> star::job::tasks::task_factory::CreateBuildPipeline(
+star::job::tasks::Task<> CreateBuildPipeline(
     vk::Device device, Handle handle, StarPipeline::RenderResourceDependencies deps, StarPipeline pipeline)
 {
     return job::tasks::Task<>::Builder<PipelineBuildPayload>()
-    .setPayload(PipelineBuildPayload{
-        .device = std::move(device), 
-        .handleID = handle.getID(),
-        .deps = std::make_unique<star::StarPipeline::RenderResourceDependencies>(std::move(deps)), 
-        .pipeline = std::make_unique<StarPipeline>(std::move(pipeline))
-    })
-    .setExecute(&ExecuteBuildPipeline)
-    .setCreateCompleteTaskFunction(&CreateBuildComplete)
-    .build();
+        .setPayload(PipelineBuildPayload{
+            .device = std::move(device),
+            .handleID = handle.getID(),
+            .deps = std::make_unique<star::StarPipeline::RenderResourceDependencies>(std::move(deps)),
+            .pipeline = std::make_unique<StarPipeline>(std::move(pipeline))})
+        .setExecute(&ExecuteBuildPipeline)
+        .setCreateCompleteTaskFunction(&CreateBuildComplete)
+        .build();
 }
 
 #pragma endregion BuildPipeline
 
-std::optional<star::job::complete_tasks::CompleteTask<>> star::job::tasks::task_factory::CreateCompileComplete(void *p)
+std::optional<star::job::complete_tasks::CompleteTask<>> CreateCompileComplete(void *p)
 {
     auto *data = static_cast<CompileShaderPayload *>(p);
 
@@ -64,7 +71,7 @@ std::optional<star::job::complete_tasks::CompleteTask<>> star::job::tasks::task_
     return std::make_optional<star::job::complete_tasks::CompleteTask<>>(std::move(complete));
 }
 
-void star::job::tasks::task_factory::ExecuteCompileShader(void *p)
+void ExecuteCompileShader(void *p)
 {
     auto *data = static_cast<CompileShaderPayload *>(p);
 
@@ -73,7 +80,7 @@ void star::job::tasks::task_factory::ExecuteCompileShader(void *p)
     data->compiledShaderCode = star::Compiler::compile(data->path, true);
 }
 
-star::job::tasks::Task<> star::job::tasks::task_factory::CreateCompileShader(const std::string &fileName,
+star::job::tasks::Task<> CreateCompileShader(const std::string &fileName,
                                                                              const star::Shader_Stage &stage,
                                                                              const Handle &shaderHandle)
 {
@@ -87,3 +94,4 @@ star::job::tasks::Task<> star::job::tasks::task_factory::CreateCompileShader(con
         .setCreateCompleteTaskFunction(&CreateCompileComplete)
         .build();
 }
+} // namespace star::job::tasks::task_factory

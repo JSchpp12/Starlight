@@ -18,8 +18,8 @@ namespace star {
             compilerOptions.SetGenerateDebugInfo(); 
 
         auto stageC = getShaderCStageFlag(pathToFile);
-        auto name = FileHelpers::GetFileNameWithExtension(pathToFile);
-        auto fileCode = FileHelpers::ReadFile(pathToFile, true);
+        auto name = file_helpers::GetFileNameWithExtension(pathToFile);
+        auto fileCode = file_helpers::ReadFile(pathToFile, true);
 
         std::string preprocessed = preprocessShader(name, stageC, fileCode.c_str());
 
@@ -34,7 +34,7 @@ namespace star {
 
     shaderc_shader_kind Compiler::getShaderCStageFlag(const std::string& pathToFile) {
 
-        auto extension = FileHelpers::GetFileExtension(pathToFile);
+        auto extension = file_helpers::GetFileExtension(pathToFile);
 
         if (extension == ".vert") {
             return shaderc_shader_kind::shaderc_vertex_shader;

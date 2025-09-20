@@ -10,7 +10,7 @@
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
 #include "device/system/EventBus.hpp"
-#include "tasks/TaskFactory.hpp"
+#include "tasks/task_factory/TaskFactory.hpp"
 
 #include <vulkan/vulkan.hpp>
 

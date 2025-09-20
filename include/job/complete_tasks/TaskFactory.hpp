@@ -4,6 +4,7 @@
 #include "SharedCompressedTexture.hpp"
 #include "StarPipeline.hpp"
 #include "StarShader.hpp"
+#include "StarTextures/Texture.hpp"
 
 #include <vulkan/vulkan.hpp>
 namespace star::job::complete_tasks
@@ -36,6 +37,10 @@ struct CompressedTextureTransferCompletePayload : public TextureTransferComplete
     std::unique_ptr<star::SharedCompressedTexture> texture;
 };
 
+struct ImageWriteToDiskCompletePayload{
+    std::unique_ptr<StarTextures::Texture> texture = nullptr; 
+};
+
 namespace task_factory
 {
 
@@ -60,5 +65,10 @@ star::job::complete_tasks::CompleteTask<> CreateShaderCompileComplete(
     std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader);
 
 #pragma endregion CompileShaders
+
+#pragma region WriteImageToDisk
+
+
+#pragma endregion WriteImageToDisk
 } // namespace task_factory
 }; // namespace star::job::complete_tasks

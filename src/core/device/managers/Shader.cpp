@@ -1,6 +1,6 @@
 #include "device/managers/Shader.hpp"
 
-#include "job/tasks/TaskFactory.hpp"
+#include "job/tasks/task_factory/TaskFactory.hpp"
 #include "device/system/ShaderCompiledEvent.hpp"
 
 void star::core::device::manager::Shader::submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem,

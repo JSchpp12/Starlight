@@ -8,6 +8,7 @@
 #include "tasks/Task.hpp"
 #include "renderer/RenderingTargetInfo.hpp"
 #include "StarPipeline.hpp"
+#include "tasks/task_factory/WriteImageToDisk.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -133,9 +134,6 @@ star::job::tasks::Task<> CreateBuildPipeline(vk::Device device, Handle handle, s
 #pragma endregion BuildPipeline
 
 #pragma region CompileShader
-// void DestroyCompilePayload(void *p);
-
-// void MoveCompilePaylod(void *fresh, void *old);
 
 void ExecuteCompileShader(void *p);
 

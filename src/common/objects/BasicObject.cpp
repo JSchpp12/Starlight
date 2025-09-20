@@ -68,8 +68,8 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
 
 std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core::device::DeviceContext &context)
 {
-    std::string texturePath = FileHelpers::GetParentDirectory(m_objFilePath);
-    std::string materialFile = FileHelpers::GetParentDirectory(m_objFilePath);
+    std::string texturePath = file_helpers::GetParentDirectory(m_objFilePath);
+    std::string materialFile = file_helpers::GetParentDirectory(m_objFilePath);
 
     std::cout << "Loading object file: " << m_objFilePath << std::endl;
 
@@ -169,9 +169,9 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
 
 std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(std::string_view filePath)
 {
-    std::string parentDirectory = FileHelpers::GetParentDirectory(filePath);
+    std::string parentDirectory = file_helpers::GetParentDirectory(filePath);
 
-    if (!star::FileHelpers::FileExists(filePath))
+    if (!star::file_helpers::FileExists(filePath))
     {
         throw std::runtime_error("Provided object file does not exist");
     }

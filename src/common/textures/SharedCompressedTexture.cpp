@@ -148,10 +148,10 @@ ktx_transcode_fmt_e star::SharedCompressedTexture::SelectTranscodeFormat(
 void star::SharedCompressedTexture::VerifyFiles(const std::string &imagePath)
 {
     // check extension on file
-    assert(FileHelpers::GetFileExtension(imagePath) == ".ktx2");
+    assert(file_helpers::GetFileExtension(imagePath) == ".ktx2");
 
     // ensure file exists
-    assert(FileHelpers::FileExists(imagePath));
+    assert(file_helpers::FileExists(imagePath));
 }
 
 void star::SharedCompressedTexture::loadKTX()

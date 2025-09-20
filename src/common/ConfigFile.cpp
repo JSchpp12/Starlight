@@ -30,7 +30,7 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
 };
 
 void star::ConfigFile::load(const std::string& configFilePath) {
-    assert(FileHelpers::FileExists(configFilePath));
+    assert(file_helpers::FileExists(configFilePath));
 
     json configJson;
 

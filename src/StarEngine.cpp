@@ -15,8 +15,6 @@
 #include <stdexcept>
 #include <vk_mem_alloc.h>
 
-#include "job/tasks/TaskFactory.hpp"
-
 
 namespace star
 {
