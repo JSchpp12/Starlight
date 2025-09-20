@@ -15,7 +15,6 @@
 #include <stdexcept>
 #include <vk_mem_alloc.h>
 
-#include "job/Worker.hpp"
 #include "job/tasks/TaskFactory.hpp"
 
 

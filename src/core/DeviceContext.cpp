@@ -38,6 +38,8 @@ star::core::device::DeviceContext::DeviceContext(
         }
     }
 
+    m_taskManager.registerWorker(typeid(star::job::tasks::ImageWritePayload), std::make_shared<star::job::worker::Worker<512>>()); 
+
     m_taskManager.startAll();
 }
 

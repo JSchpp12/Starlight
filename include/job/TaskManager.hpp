@@ -1,7 +1,7 @@
 #pragma once
 
 #include "FrameScheduler.hpp"
-#include "Worker.hpp"
+#include "job/worker/Worker.hpp"
 #include "complete_tasks/CompleteTask.hpp"
 
 #include <boost/lockfree/stack.hpp>
@@ -28,18 +28,18 @@ class TaskManager
     TaskManager(TaskManager &&) = default;
     TaskManager &operator=(TaskManager &&) = default;
 
-    worker::Worker &registerWorker(const std::type_index &taskType)
+    worker::WorkerBase &registerWorker(const std::type_index &taskType)
     {
-        auto worker = std::make_shared<worker::Worker>(m_completeTasks.get());
-        worker::Worker *raw = worker.get();
-        m_workers[taskType].push_back(worker);
+        auto worker = std::make_shared<worker::Worker<>>(m_completeTasks.get());
+        worker::WorkerBase *raw = worker.get();
+        m_workers[taskType].emplace_back(worker);
 
         m_frameSchedulers[taskType] = FrameScheduler();
 
         return *raw;
     }
 
-    worker::Worker &registerWorker(const std::type_index &taskType, std::shared_ptr<worker::Worker> newWorker)
+    worker::WorkerBase &registerWorker(const std::type_index &taskType, std::shared_ptr<worker::WorkerBase> newWorker)
     {
         newWorker->setCompleteMessageCommunicationStructure(m_completeTasks.get());
 
@@ -76,7 +76,7 @@ class TaskManager
 
     void submitTask(tasks::Task<> &&newTask)
     {
-        worker::Worker *worker = getWorker(newTask.getType());
+        worker::WorkerBase *worker = getWorker(newTask.getType());
         if (worker == nullptr)
         {
             worker = m_defaultWorker.get();
@@ -96,7 +96,7 @@ class TaskManager
 
         if (scheduler != m_frameSchedulers.end())
         {
-            worker::Worker *worker = getWorker(taskType);
+            worker::WorkerBase *worker = getWorker(taskType);
             if (worker != nullptr)
             {
                 for (auto &task : scheduler->second.fetchTasksForFrame(frameIndex))
@@ -113,7 +113,7 @@ class TaskManager
         {
             for (auto &task : scheduler.fetchTasksForFrame(targetFrameIndex))
             {
-                worker::Worker *worker = getWorker(type);
+                worker::WorkerBase *worker = getWorker(type);
                 assert(worker != nullptr && "Worker for this type was not found.");
 
                 worker->queueTask(std::move(task));
@@ -127,17 +127,17 @@ class TaskManager
     }
 
   private:
-    std::unordered_map<std::type_index, std::vector<std::shared_ptr<worker::Worker>>> m_workers =
-        std::unordered_map<std::type_index, std::vector<std::shared_ptr<worker::Worker>>>();
+    std::unordered_map<std::type_index, std::vector<std::shared_ptr<worker::WorkerBase>>> m_workers =
+        std::unordered_map<std::type_index, std::vector<std::shared_ptr<worker::WorkerBase>>>();
 
     std::unique_ptr<boost::lockfree::stack<job::complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>>>
         m_completeTasks = nullptr;
 
     std::unordered_map<std::type_index, FrameScheduler> m_frameSchedulers;
 
-    std::unique_ptr<worker::Worker> m_defaultWorker = nullptr;
+    std::unique_ptr<worker::WorkerBase> m_defaultWorker = nullptr;
 
-    worker::Worker *getWorker(const std::type_index &taskType, const size_t &index = 0)
+    worker::WorkerBase *getWorker(const std::type_index &taskType, const size_t &index = 0)
     {
         auto it = m_workers.find(taskType);
         if (it == m_workers.end() || index >= it->second.size())
@@ -148,10 +148,10 @@ class TaskManager
         return it->second[index].get();
     }
 
-    static std::unique_ptr<worker::Worker> CreateDefaultWorker(
+    static std::unique_ptr<worker::WorkerBase> CreateDefaultWorker(
         boost::lockfree::stack<job::complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
     {
-        return std::make_unique<worker::Worker>(completeMessages);
+        return std::make_unique<worker::Worker<>>(completeMessages);
     }
 };
 } // namespace star::job

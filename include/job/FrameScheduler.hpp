@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Worker.hpp"
+#include "worker/Worker.hpp"
 
 #include <vulkan/vulkan.hpp>
 
