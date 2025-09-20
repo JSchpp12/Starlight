@@ -104,11 +104,10 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/wrappers/graphics/StarTextures/AllocatedResources.cpp"
     "src/wrappers/graphics/StarBuffers/Buffer.cpp"
     "src/wrappers/graphics/StarBuffers/Resources.cpp"
-    "src/managers/LightManager.cpp"
     "src/managers/MapManager.cpp" 
     "src/managers/ManagerDescriptorPool.cpp"
     "src/core/device/managers/ManagerCommandBuffer.cpp"
-    "src/core/device/managers/ManagerShader.cpp"
+    "src/core/device/managers/Shader.cpp"
     "src/core/device/managers/Pipeline.cpp"
     "src/core/device/managers/Manager.cpp"
     "src/core/device/managers/GraphicsContainer.cpp"
@@ -178,7 +177,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/core/RenderingInstance.cpp"
     "src/core/RenderingSurface.cpp"
     "src/core/SwapChainSupportDetails.cpp"
-    "src/core/exception/NeedsPrepared.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
@@ -248,11 +246,10 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/wrappers/graphics/StarQueue.hpp"
     "include/wrappers/graphics/StarCommandPool.hpp"
     "include/wrappers/Allocator.hpp"
-    "include/managers/LightManager.hpp"
     "include/managers/MapManager.hpp"
     "include/managers/ManagerDescriptorPool.hpp"
     "include/core/device/managers/ManagerCommandBuffer.hpp"
-    "include/core/device/managers/ManagerShader.hpp"
+    "include/core/device/managers/Shader.hpp"
     "include/core/device/managers/Pipeline.hpp"
     "include/core/device/managers/Manager.hpp"
     "include/core/device/managers/GraphicsContainer.hpp"
@@ -292,7 +289,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/core/RenderingInstance.hpp"
     "include/core/RenderingSurface.hpp"
     "include/core/SwapChainSupportDetails.hpp"
-    "include/core/exception/NeedsPrepared.hpp"
     #header only
     "include/common/entities/Light.hpp"
     "include/virtual/StarShader.hpp"

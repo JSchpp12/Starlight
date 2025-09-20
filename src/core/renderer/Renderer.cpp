@@ -4,7 +4,6 @@
 #include "ManagerController_RenderResource_LightInfo.hpp"
 #include "ManagerController_RenderResource_LightList.hpp"
 #include "ManagerRenderResource.hpp"
-#include "exception/NeedsPrepared.hpp"
 
 namespace star::core::renderer
 {

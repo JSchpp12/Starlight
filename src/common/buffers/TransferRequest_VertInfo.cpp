@@ -9,6 +9,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
+    uint32_t numVerts = 0, numInds = 0;
+    if (!CastHelpers::SafeCast<size_t, uint32_t>(vertices.size(), numVerts) || !CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numInds)){
+        throw std::runtime_error("Failed to parse numerical values for vert info buffer creation"); 
+    } 
+
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -18,11 +23,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eConcurrent)
                 .setPQueueFamilyIndices(indices.data())
-                .setQueueFamilyIndexCount(indices.size())
-                .setSize(sizeof(Vertex) * vertices.size())
+                .setQueueFamilyIndexCount(numInds)
+                .setSize(sizeof(Vertex) * numVerts)
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer),
             "VertexBuffer")
-        .setInstanceCount(vertices.size())
+        .setInstanceCount(numVerts)
         .setInstanceSize(sizeof(Vertex))
         .build();
 }
@@ -31,7 +36,9 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
     vk::Device &device, VmaAllocator &allocator) const
 {
     uint32_t numVerts = 0; 
-    CastHelpers::SafeCast<size_t, uint32_t>(this->vertices.size(), numVerts); 
+    if (!CastHelpers::SafeCast<size_t, uint32_t>(this->vertices.size(), numVerts)){
+        throw std::runtime_error("Failed to cast numerical info for vert info creation"); 
+    } 
 
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
@@ -41,10 +48,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(Vertex) * vertices.size())
+                .setSize(sizeof(Vertex) * numVerts)
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "VertexBuffer_Stage")
-        .setInstanceCount(vertices.size())
+        .setInstanceCount(numVerts)
         .setInstanceSize(sizeof(Vertex))
         .build();
 }

@@ -4,7 +4,6 @@
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 #include "ManagerController_RenderResource_VertInfo.hpp"
-#include "exception/NeedsPrepared.hpp"
 
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout =
     std::unique_ptr<star::StarDescriptorSetLayout>();

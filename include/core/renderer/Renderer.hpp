@@ -7,7 +7,6 @@
 #include "InteractionSystem.hpp"
 #include "Light.hpp"
 #include "LightBufferObject.hpp"
-#include "LightManager.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "MapManager.hpp"
 #include "RenderResourceModifier.hpp"

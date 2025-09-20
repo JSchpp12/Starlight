@@ -1,4 +1,4 @@
-#include "device/managers/ManagerShader.hpp"
+#include "device/managers/Shader.hpp"
 
 #include "job/tasks/TaskFactory.hpp"
 #include "device/system/ShaderCompiledEvent.hpp"

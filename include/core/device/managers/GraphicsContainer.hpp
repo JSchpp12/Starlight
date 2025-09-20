@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ManagerShader.hpp"
+#include "Shader.hpp"
 #include "Pipeline.hpp"
 
 namespace star::core::device::manager
