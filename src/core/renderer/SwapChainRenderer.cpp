@@ -180,6 +180,14 @@ vk::PresentModeKHR star::core::renderer::SwapChainRenderer::chooseSwapPresentMod
         }
     }
 
+    for (const auto &availablePresentMode : availablePresentModes)
+    {
+        if (availablePresentMode == vk::PresentModeKHR::eImmediate)
+        {
+            return availablePresentMode;
+        }
+    }
+
     // only VK_PRESENT_MODE_FIFO_KHR is guaranteed to be available
     return vk::PresentModeKHR::eFifo;
 }
