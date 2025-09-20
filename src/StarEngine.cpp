@@ -142,6 +142,7 @@ void StarEngine::run()
 
     deviceManager.getContext().getDevice().getVulkanDevice().waitIdle();
     ManagerRenderResource::cleanup(star::core::device::DeviceID(0), deviceManager.getContext().getDevice());
+    currentScene->cleanupRender(deviceManager.getContext()); 
 }
 
 std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()

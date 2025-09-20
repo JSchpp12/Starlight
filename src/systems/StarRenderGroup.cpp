@@ -16,18 +16,24 @@ StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, std::share
 
 StarRenderGroup::~StarRenderGroup()
 {
+    assert(!m_pipelineLayout && "Pipeline layout for render group should be destroyed"); 
+}
+
+void StarRenderGroup::cleanupRender(core::device::DeviceContext &context){
     // cleanup objects
     for (auto &group : this->groups)
-    {
+    {        // cleanup base object last since it owns the pipeline
+        group.baseObject.object->cleanupRender(context);
+        
         for (auto &obj : group.objects)
         {
-            obj.object->cleanupRender(device);
+            obj.object->cleanupRender(context);
         }
-        // cleanup base object last since it owns the pipeline
-        group.baseObject.object->cleanupRender(device);
+
     }
 
-    this->device.getDevice().getVulkanDevice().destroyPipelineLayout(m_pipelineLayout);
+    context.getDevice().getVulkanDevice().destroyPipelineLayout(m_pipelineLayout);
+    m_pipelineLayout = VK_NULL_HANDLE;
 }
 
 void StarRenderGroup::frameUpdate(core::device::DeviceContext &context)

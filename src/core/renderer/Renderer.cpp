@@ -30,6 +30,12 @@ void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2
     }
 }
 
+void Renderer::cleanupRender(core::device::DeviceContext &context){
+    for (auto &group : this->renderGroups){
+        group->cleanupRender(context);
+    }
+}
+
 void Renderer::frameUpdate(core::device::DeviceContext &device)
 {
     updateRenderingGroups(device);

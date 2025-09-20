@@ -41,6 +41,8 @@ class StarRenderGroup
                     const uint8_t &numFramesInFlight, StarShaderInfo::Builder initEngineBuilder,
                     core::renderer::RenderingTargetInfo renderingInfo);
 
+    void cleanupRender(core::device::DeviceContext &context); 
+    
     virtual bool isObjectCompatible(StarObject &object);
 
     /// <summary>

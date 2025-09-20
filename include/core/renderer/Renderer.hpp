@@ -57,6 +57,8 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     virtual void prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                             const uint8_t &numFramesInFlight);
 
+    virtual void cleanupRender(core::device::DeviceContext &device); 
+
     virtual void frameUpdate(core::device::DeviceContext &context);
 
     StarDescriptorSetLayout &getGlobalShaderInfo()

@@ -20,7 +20,6 @@ namespace star
 class StarScene
 {
   public:
-
     StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
               std::shared_ptr<StarCamera> camera,
               std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer);
@@ -29,11 +28,21 @@ class StarScene
               std::shared_ptr<StarCamera> camera,
               std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer,
               std::vector<std::shared_ptr<core::renderer::Renderer>> additionalRenderers);
-    
-    ///Function called every frame
-    void frameUpdate(core::device::DeviceContext &context); 
 
-    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight); 
+    /// Function called every frame
+    void frameUpdate(core::device::DeviceContext &context);
+
+    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
+
+    void cleanupRender(core::device::DeviceContext &context)
+    {
+        m_presentationRenderer->cleanupRender(context);
+
+        for (auto &renderer : m_additionalRenderers)
+        {
+            renderer->cleanupRender(context);
+        }
+    }
 
     std::shared_ptr<core::renderer::SwapChainRenderer> getPresentationRenderer()
     {
@@ -44,6 +53,7 @@ class StarScene
     {
         return this->m_camera;
     }
+
   protected:
     std::shared_ptr<star::core::renderer::SwapChainRenderer> m_presentationRenderer;
     std::vector<std::shared_ptr<star::core::renderer::Renderer>> m_additionalRenderers;
