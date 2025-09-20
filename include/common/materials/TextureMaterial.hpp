@@ -9,9 +9,7 @@ namespace star
 class TextureMaterial : public StarMaterial
 {
   public:
-    TextureMaterial(std::string texturePath) : m_texturePath(std::move(texturePath))
-    {
-    }
+    TextureMaterial(std::string texturePath); 
 
     TextureMaterial(std::string texturePath, const glm::vec4 &surfaceColor, const glm::vec4 &highlightColor,
                     const glm::vec4 &ambient, const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny)

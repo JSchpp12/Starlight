@@ -253,6 +253,7 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
             .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
     allSets.emplace_back(updateSetBuilder.build());
 
+    assert(m_meshMaterials.size() > 0 && "Materials should always exist");
     m_meshMaterials.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
     auto staticSet = staticSetBuilder.build();
 

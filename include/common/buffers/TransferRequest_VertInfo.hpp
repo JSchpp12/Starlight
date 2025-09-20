@@ -10,7 +10,7 @@ class VertInfo : public Buffer
 {
   public:
     VertInfo(const uint32_t &graphicsQueueIndex, std::vector<Vertex> vertices)
-        : graphicsQueueIndex(graphicsQueueIndex), vertices(vertices)
+        : graphicsQueueIndex(graphicsQueueIndex), vertices(std::move(vertices))
     {
     }
 

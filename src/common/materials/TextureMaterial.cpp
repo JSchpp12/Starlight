@@ -3,6 +3,7 @@
 #include "ManagerRenderResource.hpp"
 #include "StarShaderInfo.hpp"
 
+#include "FileHelpers.hpp"
 #include "ManagerController_RenderResource_TextureFile.hpp"
 
 #include <cassert>
@@ -13,8 +14,15 @@ void star::TextureMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLay
                             vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 }
 
+star::TextureMaterial::TextureMaterial(std::string texturePath) : m_texturePath(std::move(texturePath))
+{
+    if (!FileHelpers::FileExists(m_texturePath)){
+        throw std::runtime_error("Provided texture path for material does not exist"); 
+    } 
+}
+
 void star::TextureMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                            star::StarShaderInfo::Builder frameBuilder)
+                                       star::StarShaderInfo::Builder frameBuilder)
 {
     assert(m_textureHandle.isInitialized() && "Should not be prepared for render more than once");
 
