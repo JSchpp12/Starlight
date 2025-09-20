@@ -3,8 +3,6 @@
 void star::StarMesh::prepRender(star::core::device::DeviceContext &context)
 {
     m_deviceID = context.getDeviceID(); 
-
-    this->material->prepRender(context);
 }
 
 bool star::StarMesh::isKnownToBeReady(const uint8_t &frameInFlightIndex)

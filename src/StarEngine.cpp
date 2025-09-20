@@ -104,6 +104,10 @@ void StarEngine::run()
 
     std::shared_ptr<StarScene> currentScene =
         this->application->loadScene(deviceManager.getContext(), *this->window, numFramesInFlight);
+    
+        assert(currentScene && "Application must provide a proper instance of a scene object"); 
+
+    currentScene->prepRender(deviceManager.getContext(), numFramesInFlight); 
 
     core::device::managers::ManagerDescriptorPool descriptorManager(deviceManager.getContext(), numFramesInFlight);
     RenderResourceSystem::init(deviceManager.getContext(), numFramesInFlight, this->window->getExtent());

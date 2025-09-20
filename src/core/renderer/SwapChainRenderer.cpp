@@ -10,7 +10,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
                                                            std::vector<std::shared_ptr<Light>> lights,
                                                            std::vector<Handle> &cameraInfoBuffers,
                                                            const StarWindow &window)
-    : Renderer(context, numFramesInFlight, objects, lights, cameraInfoBuffers), window(window),
+    : Renderer(context, numFramesInFlight, lights, cameraInfoBuffers, objects), window(window),
       numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain();
@@ -21,7 +21,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
                                                            std::vector<std::shared_ptr<StarObject>> objects,
                                                            std::vector<std::shared_ptr<Light>> lights,
                                                            std::shared_ptr<StarCamera> camera, const StarWindow &window)
-    : Renderer(context, numFramesInFlight, objects, lights, camera), window(window), numFramesInFlight(numFramesInFlight), device(context)
+    : Renderer(context, numFramesInFlight, lights, camera, objects), window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain();
 }
@@ -46,15 +46,16 @@ star::core::renderer::SwapChainRenderer::~SwapChainRenderer()
     }
 }
 
-void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &device,
-                                                      const vk::Extent2D &swapChainExtent, const int &numFramesInFlight)
+void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
+                            const uint8_t &numFramesInFlight)
 {
+    Renderer::prepRender(device, swapChainExtent, numFramesInFlight); 
+    
     const size_t numSwapChainImages =
-        this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
-    this->Renderer::prepRender(this->device, *this->swapChainExtent, numFramesInFlight);
+        context.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
 
-    this->imageAcquireSemaphores = CreateSemaphores(this->device, numFramesInFlight);
-    this->imageAvailableSemaphores = CreateSemaphores(this->device, numSwapChainImages);
+    this->imageAcquireSemaphores = CreateSemaphores(context, numFramesInFlight);
+    this->imageAvailableSemaphores = CreateSemaphores(context, numSwapChainImages);
 
     this->createFences();
     this->createFenceImageTracking();
@@ -280,8 +281,6 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     }
     // mark image as now being in use by this frame by assigning the fence to it
     imagesInFlight[this->currentSwapChainImageIndex] = inFlightFences[frameIndexToBeDrawn];
-
-    this->Renderer::prepareForSubmission(frameIndexToBeDrawn);
 
     // set fence to unsignaled state
     const vk::Result resetResult =

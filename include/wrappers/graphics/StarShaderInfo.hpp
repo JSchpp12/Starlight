@@ -134,18 +134,13 @@ class StarShaderInfo
 
     std::vector<vk::DescriptorSet> getDescriptors(const int &frameInFlight);
 
+    void cleanupRender(core::device::StarDevice &device);
+
     class Builder
     {
       public:
         Builder(core::device::DeviceID deviceID, core::device::StarDevice &device, const int numFramesInFlight)
             : m_deviceID(deviceID), device(device), sets(numFramesInFlight) {};
-
-        Builder(Builder &other) : device(other.device)
-        {
-            m_deviceID = other.m_deviceID;
-            this->layouts = other.layouts;
-            this->sets = other.sets;
-        };
 
         Builder &addSetLayout(std::shared_ptr<StarDescriptorSetLayout> layout)
         {

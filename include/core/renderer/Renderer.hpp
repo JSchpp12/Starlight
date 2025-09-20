@@ -31,19 +31,21 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 {
   public:
     Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-             std::vector<std::shared_ptr<StarObject>> objects, std::vector<std::shared_ptr<Light>> lights,
-             std::vector<Handle> &cameraInfoBuffers)
-        : m_objects(objects), m_lights(lights), m_cameraInfoBuffers(cameraInfoBuffers)
+             std::vector<std::shared_ptr<Light>> lights, std::vector<Handle> &cameraInfoBuffers,
+             std::vector<std::shared_ptr<StarObject>> objects)
+        : m_lights(lights), m_cameraInfoBuffers(cameraInfoBuffers)
     {
         initBuffers(context, numFramesInFlight);
+        createRenderingGroups(context, context.getRenderingSurface().getResolution(), objects);
     }
 
     Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-             std::vector<std::shared_ptr<StarObject>> objects, std::vector<std::shared_ptr<Light>> lights,
-             std::shared_ptr<StarCamera> camera)
-        : m_objects(objects), m_lights(lights)
+             std::vector<std::shared_ptr<Light>> lights, std::shared_ptr<StarCamera> camera,
+             std::vector<std::shared_ptr<StarObject>> objects)
+        : m_lights(lights)
     {
         initBuffers(context, numFramesInFlight, camera);
+        createRenderingGroups(context, context.getRenderingSurface().getResolution(), objects);
     }
 
     Renderer(Renderer &) = delete;
@@ -53,9 +55,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     virtual ~Renderer() = default;
 
     virtual void prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                         const int &numFramesInFlight);
-
-    virtual void update(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex);
+                            const uint8_t &numFramesInFlight);
 
     virtual void frameUpdate(core::device::DeviceContext &context);
 
@@ -93,13 +93,11 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     {
         return m_lightListBuffers;
     }
-
   protected:
     bool isReady = false;
     std::vector<Handle> m_cameraInfoBuffers, m_lightInfoBuffers, m_lightListBuffers;
 
     Handle m_commandBuffer;
-    std::vector<std::shared_ptr<star::StarObject>> m_objects;
     std::vector<std::shared_ptr<star::Light>> m_lights;
 
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
@@ -133,8 +131,8 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     /// <summary>
     /// Create vertex buffer + index buffers + any rendering groups for operations
     /// </summary>
-    virtual void createRenderingGroups(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                                       const int &numFramesInFlight, StarShaderInfo::Builder builder);
+    void createRenderingGroups(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+                               std::vector<std::shared_ptr<StarObject>> objects);
 
     vk::ImageView createImageView(core::device::DeviceContext &device, vk::Image image, vk::Format format,
                                   vk::ImageAspectFlags aspectFlags);
@@ -159,8 +157,6 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
     // Inherited via CommandBufferModifier
     virtual core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
-
-    virtual void prepareForSubmission(const int &frameIndexToBeDrawn);
 
     // Inherited via RenderResourceModifier
     virtual void initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
@@ -189,12 +185,15 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
     RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context)
     {
-        return RenderingTargetInfo({this->getColorAttachmentFormat(context)}, {this->getDepthAttachmentFormat(context)});
+        return RenderingTargetInfo({this->getColorAttachmentFormat(context)},
+                                   {this->getDepthAttachmentFormat(context)});
     }
 #pragma endregion
   private:
     // Inherited via DescriptorModifier
     std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int &numFramesInFlight) override;
     void createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight) override;
+
+    void updateRenderingGroups(core::device::DeviceContext &context);
 };
 } // namespace star::core::renderer

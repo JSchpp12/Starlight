@@ -1,11 +1,11 @@
 #pragma once
 
 #include "DescriptorModifier.hpp"
+#include "DeviceContext.hpp"
 #include "RenderResourceModifier.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
-#include "DeviceContext.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -15,10 +15,9 @@
 #include <string>
 #include <unordered_map>
 
-
 namespace star
 {
-class StarMaterial : private RenderResourceModifier, private star::DescriptorModifier
+class StarMaterial
 {
   public:
     glm::vec4 surfaceColor{0.5f, 0.5f, 0.5f, 1.0f};
@@ -38,60 +37,32 @@ class StarMaterial : private RenderResourceModifier, private star::DescriptorMod
     virtual ~StarMaterial() = default;
 
     /// <summary>
-    /// Engine entrypoint for cleanup operations
-    /// </summary>
-    void cleanupRender(core::device::DeviceContext &device);
-
-    /// <summary>
-    /// Entry point for rendering preparations
+    /// Entry point for rendering preparations. Ensure the base is called for every child instance
     /// </summary>
     /// <param name="device"></param>
-    void prepRender(core::device::DeviceContext &device);
+    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                            star::StarShaderInfo::Builder frameBuilder);
 
-    virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder &constBuilder) = 0;
-
-    /// @brief Create descriptor sets which will be used when this material is bound. Make sure that all global sets are
-    /// provided
-    /// @param device
-    /// @param groupLayout
-    /// @param groupPool
-    /// @param globalSets
-    /// @param numSwapChainImages
-    virtual void finalizeDescriptors(core::device::DeviceContext &device, StarShaderInfo::Builder builder,
-                                     int numSwapChainImages);
+    virtual void cleanupRender(core::device::DeviceContext &context);
 
     virtual void bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex);
 
     bool isKnownToBeReady(const uint8_t &swapChainImageIndex);
 
+    /// Add the descriptor types to be used in this material to the provided layout builder. The layout builder should
+    /// already contain parent descriptor information.
+    virtual void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &frameBuilder) const = 0;
+
+    virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
+      const int &numFramesInFlight) const;
+
   protected:
     std::unique_ptr<StarShaderInfo> shaderInfo;
-    virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
-        const int &numFramesInFlight) override;
 
-    virtual void createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight) override;
-
-    /// <summary>
-    /// Function which should contain processes to create all needed functionalities
-    /// for rendering operations. Example is creating needed rendering textures for
-    /// and gpu memory.
-    /// </summary>
-    /// <param name="device">Device that is being used in rendering operations</param>
-    virtual void prep(core::device::DeviceContext &device) = 0;
-
-    virtual void buildDescriptorSet(core::device::DeviceContext &device, StarShaderInfo::Builder &builder,
-                                    const int &imageInFlightIndex) = 0;
-
-    /// <summary>
-    /// Cleanup any vulkan objects created by this material
-    /// </summary>
-    /// <param name="device"></param>
-    virtual void cleanup(core::device::DeviceContext &device) = 0;
-
-    virtual void initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
-                               const vk::Extent2D &screensize) override {};
-
-    virtual void destroyResources(core::device::DeviceContext &device) override {};
+    /// @brief Create descriptor sets which will be used when this material is bound. Make sure that all global sets are
+    virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &device,
+                                                            const uint8_t &numFramesInFlight,
+                                                            StarShaderInfo::Builder builder) = 0;
 
   private:
 };

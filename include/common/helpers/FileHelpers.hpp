@@ -12,7 +12,7 @@
 
 namespace star {
 struct FileHelpers {
-    static bool FileExists(const std::string& filePath);
+    static bool FileExists(std::string_view filePath);
 
     ///Search through directory where the provided file is located, and see if another file exists of the same name, just different type/extension
     static std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const std::string& directoryPath, const std::string& name); 
@@ -40,9 +40,10 @@ struct FileHelpers {
         return mainFileName.substr(0, posOfExt);
     }
 
-    static std::string GetBaseFileDirectory(const std::string& pathToFile) {
+    static std::string GetParentDirectory(std::string_view pathToFile) {
         size_t found = pathToFile.find_last_of("/\\");
-        return pathToFile.substr(0, found) + "/";
+        std::string path = std::string(pathToFile.substr(0, found)); 
+        return path += "/"; 
     }
 
     //Get file type of provided file -- shaders

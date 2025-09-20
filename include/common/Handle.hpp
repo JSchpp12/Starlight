@@ -30,7 +30,11 @@ struct Handle
         return global_id == other.global_id && id == other.id && type == other.type;
     }
 
-    bool isInitialized() const
+    bool operator!() const noexcept{
+        return isInitialized(); 
+    }
+
+    bool isInitialized() const noexcept
     {
         return type != Handle_Type::null;
     }

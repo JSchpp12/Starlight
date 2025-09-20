@@ -209,4 +209,6 @@ void star::ManagerRenderResource::cleanup(const core::device::DeviceID &deviceID
 {
     bufferStorage.at(deviceID).reset();
     devices.at(deviceID).reset(); 
+
+    managerWorker.reset(); 
 }

@@ -1,26 +1,11 @@
 #include "StarMaterial.hpp"
 
-void star::StarMaterial::cleanupRender(core::device::DeviceContext& device)
-{
-
+void star::StarMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, star::StarShaderInfo::Builder frameBuilder){
+	shaderInfo = buildShaderInfo(context, numFramesInFlight, std::move(frameBuilder)); 
 }
 
-void star::StarMaterial::prepRender(core::device::DeviceContext& device)
-{
-	//since multiple meshes can share a material, ensure that the material has not already been prepared
-
-}
-
-void star::StarMaterial::finalizeDescriptors(core::device::DeviceContext& device, star::StarShaderInfo::Builder builder, int numSwapChainImages)
-{
-	//only build descriptor sets if this object hasnt already been initialized
-	for (int i = 0; i < numSwapChainImages; i++) {
-		builder.startOnFrameIndex(i); 
-		this->buildDescriptorSet(device, builder, i); 
-	}
-
-	this->shaderInfo = builder.build(); 
-
+void star::StarMaterial::cleanupRender(core::device::DeviceContext &context){
+	shaderInfo->cleanupRender(context.getDevice()); 
 }
 
 void star::StarMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
@@ -34,12 +19,7 @@ bool star::StarMaterial::isKnownToBeReady(const uint8_t& frameInFlightIndex){
 	return this->shaderInfo->isReady(frameInFlightIndex);
 }
 
-std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(const int& numFramesInFlight)
+std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(const int& numFramesInFlight) const
 {
 	return std::vector<std::pair<vk::DescriptorType, const int>>();
 }
-
-void star::StarMaterial::createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight)
-{
-}
-

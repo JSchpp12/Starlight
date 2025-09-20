@@ -73,6 +73,12 @@ class Manager
         return m_records;
     }
 
+    void cleanupRender(device::StarDevice &device){
+        for (auto &record : m_records){
+            record.cleanupRender(device); 
+        }
+    }
+
   protected:
     virtual Handle_Type getHandleType() const = 0;
 

@@ -1,33 +1,39 @@
 #pragma once
 
-#include "StarMaterial.hpp"
 #include "Handle.hpp"
+#include "StarMaterial.hpp"
+#include "core/device/DeviceID.hpp"
 
-namespace star {
-	class TextureMaterial : public StarMaterial {
-	public:
-		TextureMaterial(const Handle& texture) : texture(texture) {};
+namespace star
+{
+class TextureMaterial : public StarMaterial
+{
+  public:
+    TextureMaterial(std::string texturePath) : m_texturePath(std::move(texturePath))
+    {
+    }
 
-		TextureMaterial(const glm::vec4& surfaceColor, const glm::vec4& highlightColor,
-			const glm::vec4& ambient, const glm::vec4& diffuse, const glm::vec4& specular,
-			const int& shiny, const Handle& texture) 
-			: StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
-			texture(texture) {};
+    TextureMaterial(std::string texturePath, const glm::vec4 &surfaceColor, const glm::vec4 &highlightColor,
+                    const glm::vec4 &ambient, const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny)
+        : StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
+          m_texturePath(std::move(texturePath))
+    {
+    }
+    virtual ~TextureMaterial() = default;
 
-		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
-		void cleanup(core::device::DeviceContext& device) override;
-		void buildDescriptorSet(core::device::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
-		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
+    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                            star::StarShaderInfo::Builder frameBuilder) override;
 
-	protected:
-		Handle texture;
+    virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
+        const int &numFramesInFlight) const override;
 
-		void prep(core::device::DeviceContext& device) override;
+    virtual void addDescriptorSetLayoutsTo(StarDescriptorSetLayout::Builder &builder) const override;
 
-		virtual void initResources(core::device::DeviceContext& device, const int& numFramesInFlight, const vk::Extent2D& screensize) override;
+  protected:
+    std::string m_texturePath = "";
+    Handle m_textureHandle = Handle();
 
-		// Inherited via StarMaterial
-		void createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight) override;
-
-	};
-}
+    virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, 
+      StarShaderInfo::Builder builder); 
+};
+} // namespace star

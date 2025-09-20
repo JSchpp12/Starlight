@@ -25,7 +25,7 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     virtual ~SwapChainRenderer();
 
     virtual void prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                         const int &numFramesInFlight) override;
+                            const uint8_t &numFramesInFlight) override;
 
     void submitPresentation(const int &frameIndexToBeDrawn, const vk::Semaphore *mainGraphicsDoneSemaphore);
 
@@ -87,7 +87,7 @@ class SwapChainRenderer : public star::core::renderer::Renderer
 
     vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR &capabilities);
 
-    virtual void prepareForSubmission(const int &frameIndexToBeDrawn) override;
+    void prepareForSubmission(const int &frameIndexToBeDrawn);
 
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
                                std::vector<vk::Semaphore> mustWaitFor);

@@ -67,6 +67,10 @@ struct PipelineRecord
         return request.pipeline.isRenderReady();
     }
 
+    void cleanupRender(core::device::StarDevice &device){
+        request.pipeline.cleanupRender(device); 
+    }
+
     PipelineRequest request = PipelineRequest();
     uint8_t numCompiled = 0; 
 };

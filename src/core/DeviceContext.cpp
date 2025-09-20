@@ -43,14 +43,14 @@ star::core::device::DeviceContext::DeviceContext(
 
 star::core::device::DeviceContext::~DeviceContext()
 {
-    if (m_ownsWorkers)
+    if (m_ownsResources)
     {
         m_taskManager.stopAll();
-    }
-
-    if (m_commandBufferManager)
-    {
+        m_graphicsManagers.pipelineManager.cleanupRender(*m_device); 
+        m_graphicsManagers.shaderManager.cleanupRender(*m_device); 
         m_commandBufferManager->cleanup(*m_device);
+
+        ManagerRenderResource::cleanup(m_deviceID, *m_device); 
     }
 }
 

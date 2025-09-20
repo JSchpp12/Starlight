@@ -13,7 +13,7 @@ namespace star
 template <typename T> class ManagerStorageContainer
 {
   public:
-    ManagerStorageContainer() : allElements(std::vector<std::unique_ptr<T>>(2000)) {};
+    ManagerStorageContainer() : allElements(std::vector<std::unique_ptr<T>>(4000)) {};
     ~ManagerStorageContainer() = default;
 
     ManagerStorageContainer(const ManagerStorageContainer &) = delete;

@@ -9,12 +9,6 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    uint32_t numIndices = 0;
-    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
-
-    uint32_t numVerts = 0; 
-    CastHelpers::SafeCast<size_t, uint32_t>(vertices.size(), numVerts); 
-
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -24,11 +18,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eConcurrent)
                 .setPQueueFamilyIndices(indices.data())
-                .setQueueFamilyIndexCount(numIndices)
-                .setSize(sizeof(Vertex) * numVerts)
+                .setQueueFamilyIndexCount(indices.size())
+                .setSize(sizeof(Vertex) * vertices.size())
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer),
             "VertexBuffer")
-        .setInstanceCount(numVerts)
+        .setInstanceCount(vertices.size())
         .setInstanceSize(sizeof(Vertex))
         .build();
 }
@@ -47,10 +41,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(Vertex) * numVerts)
+                .setSize(sizeof(Vertex) * vertices.size())
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "VertexBuffer_Stage")
-        .setInstanceCount(numVerts)
+        .setInstanceCount(vertices.size())
         .setInstanceSize(sizeof(Vertex))
         .build();
 }
@@ -60,19 +54,15 @@ void star::TransferRequest::VertInfo::writeDataToStageBuffer(StarBuffers::Buffer
     void *mapped = nullptr;
     buffer.map(&mapped);
 
-    auto data = this->getVertices();
+    int numVerts = 0; 
+    CastHelpers::SafeCast<size_t, int>(vertices.size(), numVerts); 
 
-    for (size_t i = 0; i < data.size(); ++i)
+    for (int i = 0; i < numVerts; i++)
     {
-        int index = 0;
-        CastHelpers::SafeCast<size_t, int>(i, index); 
-        buffer.writeToIndex(&data.at(i), mapped, index);
+        Vertex vert = Vertex(vertices[i]); 
+
+        buffer.writeToIndex(&vert, mapped, i);
     }
 
     buffer.unmap();
-}
-
-std::vector<star::Vertex> star::TransferRequest::VertInfo::getVertices() const
-{
-    return this->vertices;
 }

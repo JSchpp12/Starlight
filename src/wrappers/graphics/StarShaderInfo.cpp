@@ -140,6 +140,13 @@ std::vector<vk::DescriptorSetLayout> star::StarShaderInfo::getDescriptorSetLayou
     return fLayouts;
 }
 
+void star::StarShaderInfo::cleanupRender(core::device::StarDevice &device){
+    for (auto &set : this->layouts)
+    {
+        set->cleanupRender(device); 
+    }
+}
+
 std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int &frameInFlight)
 {
     for (auto &set : this->shaderInfoSets[frameInFlight])

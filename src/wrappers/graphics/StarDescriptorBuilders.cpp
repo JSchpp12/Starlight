@@ -18,53 +18,23 @@ StarDescriptorSetLayout::Builder &StarDescriptorSetLayout::Builder::addBinding(u
     return *this;
 }
 
-std::unique_ptr<StarDescriptorSetLayout> StarDescriptorSetLayout::Builder::build() const
-{
-    return std::make_unique<StarDescriptorSetLayout>(m_device, this->bindings);
-}
-
-StarDescriptorSetLayout::StarDescriptorSetLayout(core::device::StarDevice &device,
-                                                 std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings)
-    : m_device(device), bindings{bindings}
-{
-}
-
-StarDescriptorSetLayout::~StarDescriptorSetLayout()
-{
-    m_device.getVulkanDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
-}
-
-bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout &compare)
+bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout &compare) const
 {
     if (compare.bindings.size() != this->bindings.size())
         return false;
 
-    for (auto &binding : this->bindings)
+    for (const auto &binding : this->bindings)
     {
         // check if the other layout has a binding of the same type
-        if (compare.bindings.find(binding.first) == compare.bindings.end())
+        if (compare.bindings.find(binding.first) == compare.bindings.end() || binding.second.descriptorType != compare.bindings.at(binding.first).descriptorType)
         {
-            return false;
-        }
-        else if (binding.second.descriptorType != compare.bindings.at(binding.first).descriptorType)
-        {
-            // contains a binding in the same place, check the type
             return false;
         }
     }
     return true;
 }
 
-vk::DescriptorSetLayout StarDescriptorSetLayout::getDescriptorSetLayout()
-{
-    if (!descriptorSetLayout)
-    {
-        this->build();
-    }
-    return this->descriptorSetLayout;
-}
-
-void StarDescriptorSetLayout::build()
+void StarDescriptorSetLayout::prepRender(core::device::StarDevice &device)
 {
     std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings;
 
@@ -78,11 +48,16 @@ void StarDescriptorSetLayout::build()
     createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
     createInfo.pBindings = setLayoutBindings.data();
 
-    this->descriptorSetLayout = m_device.getVulkanDevice().createDescriptorSetLayout(createInfo);
+    this->descriptorSetLayout = device.getVulkanDevice().createDescriptorSetLayout(createInfo);
     if (!this->descriptorSetLayout)
     {
         throw std::runtime_error("failed to create descriptor set layout");
     }
+}
+
+void StarDescriptorSetLayout::cleanupRender(core::device::StarDevice &device){
+    device.getVulkanDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
+    this->descriptorSetLayout = VK_NULL_HANDLE;
 }
 
 /* Descriptor Pool */
@@ -120,7 +95,8 @@ std::unique_ptr<StarDescriptorPool> StarDescriptorPool::Builder::build() const
     return std::make_unique<StarDescriptorPool>(m_device, this->maxSets, this->poolFlags, this->poolSizes);
 }
 
-StarDescriptorPool::StarDescriptorPool(core::device::StarDevice &device, uint32_t maxSets, vk::DescriptorPoolCreateFlags poolFlags,
+StarDescriptorPool::StarDescriptorPool(core::device::StarDevice &device, uint32_t maxSets,
+                                       vk::DescriptorPoolCreateFlags poolFlags,
                                        const std::vector<vk::DescriptorPoolSize> &poolSizes)
     : m_device(device)
 {

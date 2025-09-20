@@ -6,40 +6,33 @@
 #include "ManagerRenderResource.hpp"
 #include "exception/NeedsPrepared.hpp"
 
-
 namespace star::core::renderer
 {
 
 void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                       const int &numFramesInFlight)
-    {
-        m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
-
-        this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
-
-        auto globalBuilder = manualCreateDescriptors(device, numFramesInFlight);
-        this->renderToImages = createRenderToImages(device, numFramesInFlight);
-        assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering");
-        this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
-        assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
-        createRenderingGroups(device, swapChainExtent, numFramesInFlight, globalBuilder);
-}
-
-void Renderer::update(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex)
+                          const uint8_t &numFramesInFlight)
 {
+    m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
+
+    this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
+
+    auto rendererDescriptors = manualCreateDescriptors(device, numFramesInFlight);
+    this->renderToImages = createRenderToImages(device, numFramesInFlight);
+    assert(this->renderToImages.size() > 0 && "Need at least 1 image for rendering");
+    this->renderToDepthImages = createRenderToDepthImages(device, numFramesInFlight);
+    assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
+    RenderingTargetInfo renderInfo =
+        RenderingTargetInfo({this->getColorAttachmentFormat(device)}, this->getDepthAttachmentFormat(device));
+
+    for (auto &group : renderGroups)
+    {
+        group->prepRender(device, device.getRenderingSurface().getResolution(), numFramesInFlight, rendererDescriptors, renderInfo);
+    }
 }
 
 void Renderer::frameUpdate(core::device::DeviceContext &device)
 {
-    for (size_t i = 0; i < m_objects.size(); i++)
-    {
-        m_objects[i]->frameUpdate(device);
-        // try{
-        // m_objects[i]->frameUpdate(device);
-        // }catch (const core::exception::NeedsPrepared &err){
-        //     m_objects[i]->prepDraw()
-        // }
-    }
+    updateRenderingGroups(device);
 }
 
 void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
@@ -85,8 +78,8 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
     }
 
     vk::Format format = getColorAttachmentFormat(device);
-    uint32_t numIndices; 
-    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
+    uint32_t numIndices;
+    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
 
     auto builder =
         star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(),
@@ -246,9 +239,9 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
 }
 
 void Renderer::createRenderingGroups(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                                     const int &numFramesInFlight, star::StarShaderInfo::Builder builder)
+                                     std::vector<std::shared_ptr<StarObject>> objects)
 {
-    for (size_t i = 0; i < m_objects.size(); i++)
+    for (size_t i = 0; i < objects.size(); i++)
     {
         // check if the object is compatible with any render groups
         StarRenderGroup *match = nullptr;
@@ -256,7 +249,7 @@ void Renderer::createRenderingGroups(core::device::DeviceContext &device, const 
         // if it is not, create a new render group
         for (size_t j = 0; j < this->renderGroups.size(); j++)
         {
-            if (this->renderGroups[j]->isObjectCompatible(*m_objects[i]))
+            if (this->renderGroups[j]->isObjectCompatible(*objects[i]))
             {
                 match = this->renderGroups[j].get();
                 break;
@@ -265,22 +258,13 @@ void Renderer::createRenderingGroups(core::device::DeviceContext &device, const 
 
         if (match != nullptr)
         {
-            match->addObject(*m_objects[i]);
+            match->addObject(objects[i]);
         }
         else
         {
             // create a new one and add object
-            this->renderGroups.push_back(std::unique_ptr<StarRenderGroup>(
-                new StarRenderGroup(device, numFramesInFlight, swapChainExtent, *m_objects[i])));
+            this->renderGroups.push_back(std::unique_ptr<StarRenderGroup>(new StarRenderGroup(device, objects[i])));
         }
-    }
-
-    // init all groups
-    for (auto &group : this->renderGroups)
-    {
-        RenderingTargetInfo renderInfo =
-            RenderingTargetInfo({this->getColorAttachmentFormat(device)}, this->getDepthAttachmentFormat(device));
-        group->init(builder, renderInfo);
     }
 }
 
@@ -332,7 +316,7 @@ star::StarShaderInfo::Builder Renderer::manualCreateDescriptors(star::core::devi
 std::shared_ptr<star::StarDescriptorSetLayout> Renderer::createGlobalDescriptorSetLayout(
     device::DeviceContext &context, const uint8_t &numFramesInFlight)
 {
-    return StarDescriptorSetLayout::Builder(context.getDevice())
+    return StarDescriptorSetLayout::Builder()
         .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
         .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
         .addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
@@ -372,7 +356,7 @@ void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t w
 void Renderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
                              const vk::Extent2D &screensize)
 {
-    this->prepRender(device, screensize, numFramesInFlight);
+    // this->prepRender(device, screensize, numFramesInFlight);
 }
 
 void Renderer::destroyResources(core::device::DeviceContext &device)
@@ -518,11 +502,11 @@ void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int 
     }
 }
 
-void Renderer::prepareForSubmission(const int &frameIndexToBeDrawn)
+void Renderer::updateRenderingGroups(core::device::DeviceContext &context)
 {
-    for (size_t i = 0; i < m_objects.size(); i++)
+    for (auto &group : renderGroups)
     {
-        m_objects[i]->prepDraw(frameIndexToBeDrawn);
+        group->frameUpdate(context);
     }
 }
 

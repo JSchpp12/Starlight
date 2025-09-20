@@ -1,109 +1,103 @@
-#pragma once 
+#pragma once
 
 #include "CastHelpers.hpp"
-#include "StarObject.hpp"
-#include "Handle.hpp"
-#include "Enums.hpp"
-#include "StarShader.hpp"
-#include "Light.hpp"
-#include "VulkanVertex.hpp"
-#include "StarDescriptorBuilders.hpp"
+#include "DescriptorModifier.hpp"
 #include "DeviceContext.hpp"
+#include "Enums.hpp"
+#include "Handle.hpp"
+#include "Light.hpp"
+#include "StarCommandBuffer.hpp"
+#include "StarDescriptorBuilders.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "StarObject.hpp"
+#include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
-#include "StarCommandBuffer.hpp"
-#include "DescriptorModifier.hpp"
+#include "VulkanVertex.hpp"
 
 #include <vulkan/vulkan.hpp>
 
+#include <map>
 #include <memory>
 #include <vector>
-#include <map>
 
-namespace star {
-	/// <summary>
-	/// Class which contains a group of objects which share pipeline dependencies
-	/// which are compatible with one another. Implies that they can all share 
-	/// same pipeline layout but NOT the same pipeline.
-	/// </summary>
-	class StarRenderGroup{
-	public:
-		StarRenderGroup(core::device::DeviceContext& device, size_t numSwapChainImages,
-			vk::Extent2D swapChainExtent, StarObject& baseObject); 
+namespace star
+{
+/// <summary>
+/// Class which contains a group of objects which share pipeline dependencies
+/// which are compatible with one another. Implies that they can all share
+/// same pipeline layout but NOT the same pipeline.
+/// </summary>
+class StarRenderGroup
+{
+  public:
+    StarRenderGroup(core::device::DeviceContext &device, std::shared_ptr<StarObject> baseObject);
 
-		//no copy
-		StarRenderGroup(const StarRenderGroup& baseObject) = delete;
+    // no copy
+    StarRenderGroup(const StarRenderGroup &baseObject) = delete;
 
-		virtual ~StarRenderGroup();
+    virtual ~StarRenderGroup();
 
-		virtual void init(StarShaderInfo::Builder initEngineBuilder, core::renderer::RenderingTargetInfo renderingInfo);
+    void prepRender(core::device::DeviceContext &context, const vk::Extent2D &renderingResolution,
+                    const uint8_t &numFramesInFlight, StarShaderInfo::Builder initEngineBuilder,
+                    core::renderer::RenderingTargetInfo renderingInfo);
 
-		virtual bool isObjectCompatible(StarObject& object); 
+    virtual bool isObjectCompatible(StarObject &object);
 
-		/// <summary>
-		/// Add a new rendering object which will be rendered with the pipeline contained in this vulkan object.
-		/// </summary>
-		/// <param name="newObjectHandle"></param>
-		//virtual void addObject(Handle newObjectHandle, GameObject* newObject, size_t numSwapChainImages);
+    /// <summary>
+    /// Register a light color and location for rendering light effects on objects
+    /// </summary>
+    virtual void addObject(std::shared_ptr<StarObject> newRenderObject);
 
-		/// <summary>
-		/// Register a light color and location for rendering light effects on objects
-		/// </summary>
-		virtual void addObject(StarObject& newRenderObject);
+    virtual void addLight(Light *newLight)
+    {
+        this->lights.push_back(newLight);
+    }
 
-		virtual void addLight(Light* newLight) { this->lights.push_back(newLight); }
+    void frameUpdate(core::device::DeviceContext &context);
 
-		/// <summary>
-		/// Render the object
-		/// </summary>
-		virtual void recordRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, const int &swapChainImageIndex);
+    virtual void recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &swapChainImageIndex);
 
-		virtual void recordPreRenderPassCommands(vk::CommandBuffer& mainDrawBuffer, const int &swapChainImageIndex); 
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &swapChainImageIndex);
 
-		virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
+    virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
-		//TODO: remove
-		virtual vk::PipelineLayout getPipelineLayout() { return this->pipelineLayout; }
-		int getNumObjects() { return numObjects; }
+    int getNumObjects()
+    {
+        return numObjects;
+    }
 
-	protected:
-		struct RenderObjectInfo {
-			StarObject& object;
-			uint32_t startVBIndex, startIBIndex; 
+  protected:
+    struct RenderObjectInfo
+    {
+        std::shared_ptr<StarObject> object = nullptr;
+        uint32_t startVBIndex = 0, startIBIndex = 0;
+    };
 
-			RenderObjectInfo(StarObject& object)
-				: object(object){};
-		};
+    /// <summary>
+    /// Groups of objects that can share a pipeline -- they have the same shader
+    /// </summary>
+    struct Group
+    {
+        RenderObjectInfo baseObject;
+        std::vector<RenderObjectInfo> objects;
+    };
+    core::device::DeviceContext &device;
 
-		/// <summary>
-		/// Groups of objects that can share a pipeline -- they have the same shader
-		/// </summary>
-		struct Group {
-			RenderObjectInfo baseObject;
-			std::vector<RenderObjectInfo> objects;
+    int numObjects = 0;
 
-			Group(RenderObjectInfo baseObject) : baseObject(baseObject) {}
-		};
+    vk::PipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+    std::vector<std::shared_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
 
-		core::device::DeviceContext& device;
-		int numSwapChainImages = 0;
-		int numObjects = 0; 
-		int numMeshes = 0; 
-		vk::Extent2D swapChainExtent;
+    std::vector<Light *> lights;
 
-		vk::PipelineLayout pipelineLayout;
-		std::vector<std::shared_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
+    std::vector<Group> groups;
 
-		std::vector<Light*> lights;
+    /// <summary>
+    /// Create descriptors for binding render buffers to shaders.
+    /// </summary>
+    void prepareObjects(StarShaderInfo::Builder &groupBuilder, core::renderer::RenderingTargetInfo renderingInfo,
+                        const vk::Extent2D &swapChainExtent, const uint8_t &numFramesInFlight);
 
-		std::vector<Group> groups;
-
-		/// <summary>
-		/// Create descriptors for binding render buffers to shaders.
-		/// </summary>
-		virtual void prepareObjects(StarShaderInfo::Builder& groupBuilder, core::renderer::RenderingTargetInfo renderingInfo);
-
-		virtual void createPipelineLayout(std::vector<std::shared_ptr<StarDescriptorSetLayout>>& fullSetLayout);
-	};
-}
+    virtual vk::PipelineLayout createPipelineLayout(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout);
+};
+} // namespace star

@@ -2,7 +2,7 @@
 
 #include <boost/filesystem.hpp>
 
-bool star::FileHelpers::FileExists(const std::string& filePath){
+bool star::FileHelpers::FileExists(std::string_view filePath){
     if (boost::filesystem::exists(filePath)){
         if (boost::filesystem::is_regular_file(filePath)){
             return true;

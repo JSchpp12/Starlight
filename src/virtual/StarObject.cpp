@@ -108,35 +108,28 @@ void star::StarObject::initSharedResources(core::device::DeviceContext &device, 
 
 void star::StarObject::cleanupSharedResources(core::device::DeviceContext &device)
 {
-    instanceDescriptorLayout.reset();
-    device.getDevice().getVulkanDevice().destroyPipelineLayout(extrusionPipelineLayout);
-    StarObject::triAdj_normalExtrusionPipeline.reset();
-    StarObject::tri_normalExtrusionPipeline.reset();
+    // instanceDescriptorLayout.reset();
+    // device.getDevice().getVulkanDevice().destroyPipelineLayout(extrusionPipelineLayout);
+    // StarObject::triAdj_normalExtrusionPipeline.reset();
+    // StarObject::tri_normalExtrusionPipeline.reset();
 
-    boundDescriptorLayout.reset();
-    device.getDevice().getVulkanDevice().destroyPipelineLayout(boundPipelineLayout);
-    StarObject::boundBoxPipeline.reset();
+    // boundDescriptorLayout.reset();
+    // device.getDevice().getVulkanDevice().destroyPipelineLayout(boundPipelineLayout);
+    // StarObject::boundBoxPipeline.reset();
 }
 
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 {
-    normalExtrusionPipeline->cleanupRender(context.getDevice());
-    this->normalExtrusionPipeline.reset();
+    // normalExtrusionPipeline->cleanupRender(context.getDevice());
+    // this->normalExtrusionPipeline.reset();
 
-    this->setLayout.reset();
+    // this->setLayout.reset();
 
-    // cleanup any materials
-    for (auto &mesh : this->getMeshes())
-    {
-        mesh->getMaterial().cleanupRender(context);
+    // cleanup any material
+
+    for (auto &material : m_meshMaterials){
+        material->cleanupRender(context); 
     }
-
-    // // delete pipeline if owns one
-    // if (this->pipeline)
-    // {
-    //     this->pipeline->cleanupRender(context);
-    //     this->pipeline.reset();
-    // }
 }
 
 star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
@@ -153,10 +146,28 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
         swapChainExtent, renderInfo));
 }
 
-void star::StarObject::prepRender(star::core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
-                                  vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderInfo,
-                                  int numSwapChainImages, star::StarShaderInfo::Builder fullEngineBuilder)
+void star::StarObject::prepRender(star::core::device::DeviceContext& context, const vk::Extent2D &swapChainExtent, const uint8_t &numFramesInFlight, 
+			star::StarShaderInfo::Builder fullEngineBuilder, Handle sharedPipeline)
 {
+    this->sharedPipeline = sharedPipeline;
+
+    prepStarObject(context, numFramesInFlight, fullEngineBuilder); 
+}
+
+void star::StarObject::prepRender(star::core::device::DeviceContext& context, const vk::Extent2D &swapChainExtent,
+			const uint8_t &numFramesInFlight, StarShaderInfo::Builder fullEngineBuilder, 
+			vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo)
+{
+    this->pipeline = buildPipeline(context, swapChainExtent, pipelineLayout, renderingInfo);
+
+    prepStarObject(context, numFramesInFlight, fullEngineBuilder); 
+}
+
+void star::StarObject::prepStarObject(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, StarShaderInfo::Builder &frameBuilder){
+    createInstanceBuffers(context, numFramesInFlight);
+    prepMaterials(context, numFramesInFlight, frameBuilder);  
+    
+    this->meshes = loadMeshes(context); 
     m_deviceID = context.getDeviceID();
 
     std::vector<Vertex> bbVerts;
@@ -169,43 +180,15 @@ void star::StarObject::prepRender(star::core::device::DeviceContext &context, vk
     this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
         m_deviceID, std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
 
-    this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
-
-    this->pipeline = buildPipeline(context, swapChainExtent, pipelineLayout, renderInfo);
+    prepareMeshes(context);
 
     renderingContext = std::make_unique<core::renderer::RenderingContext>(buildRenderingContext(context));
-
-    createInstanceBuffers(context, numSwapChainImages);
-    prepareMeshes(context);
 }
 
 star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     star::core::device::DeviceContext &context)
 {
     return core::renderer::RenderingContext{context.getPipelineManager().get(pipeline)->request.pipeline};
-}
-
-void star::StarObject::prepRender(star::core::device::DeviceContext &context, int numSwapChainImages,
-                                  Handle sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
-{
-    m_deviceID = context.getDeviceID();
-
-    std::vector<Vertex> bbVerts;
-    std::vector<uint32_t> bbInds;
-
-    calculateBoundingBox(bbVerts, bbInds);
-
-    this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(
-        m_deviceID, std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
-    this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
-        m_deviceID, std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
-
-    this->engineBuilder = std::make_unique<StarShaderInfo::Builder>(fullEngineBuilder);
-
-    this->sharedPipeline = sharedPipeline;
-
-    createInstanceBuffers(context, numSwapChainImages);
-    prepareMeshes(context);
 }
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
@@ -216,9 +199,9 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
         return;
     }
 
-    for (auto &rmesh : this->getMeshes())
+    for (auto &rmesh : this->meshes)
     {
-        if (!rmesh.get()->isKnownToBeReady(swapChainIndexNum))
+        if (!rmesh->isKnownToBeReady(swapChainIndexNum))
         {
             return;
         }
@@ -226,7 +209,7 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
 
     renderingContext->pipeline.bind(commandBuffer);
 
-    for (auto &rmesh : this->getMeshes())
+    for (auto &rmesh : this->meshes)
     {
         uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
         rmesh.get()->recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
@@ -246,10 +229,6 @@ star::StarObjectInstance &star::StarObject::createInstance()
     return *this->instances.back();
 }
 
-void star::StarObject::prepDraw(int swapChainTarget)
-{
-}
-
 void star::StarObject::frameUpdate(core::device::DeviceContext &context)
 {
     if (isReady)
@@ -259,25 +238,23 @@ void star::StarObject::frameUpdate(core::device::DeviceContext &context)
 
     if (isRenderReady(context))
     {
-
         isReady = true;
     }
 }
 
 std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::getDescriptorSetLayouts(
-    core::device::DeviceContext &device)
+    core::device::DeviceContext &context)
 {
     auto allSets = std::vector<std::shared_ptr<star::StarDescriptorSetLayout>>();
-    auto staticSetBuilder = StarDescriptorSetLayout::Builder(device.getDevice());
-
-    this->getMeshes().front()->getMaterial().applyDescriptorSetLayouts(staticSetBuilder);
+    auto staticSetBuilder = StarDescriptorSetLayout::Builder();
 
     StarDescriptorSetLayout::Builder updateSetBuilder =
-        StarDescriptorSetLayout::Builder(device.getDevice())
+        StarDescriptorSetLayout::Builder()
             .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
             .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
     allSets.emplace_back(updateSetBuilder.build());
 
+    m_meshMaterials.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
     auto staticSet = staticSetBuilder.build();
 
     if (staticSet->getBindings().size() > 0)
@@ -288,16 +265,19 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
 
 void star::StarObject::prepareMeshes(star::core::device::DeviceContext &device)
 {
-    for (auto &mesh : this->getMeshes())
-    {
-        mesh->prepRender(device);
+    assert(this->meshes.size() > 0 && "Meshes need to be provided"); 
+
+    for (auto &mesh : this->meshes){
+        mesh->prepRender(device); 
     }
 }
 
-void star::StarObject::prepareDescriptors(star::core::device::DeviceContext &context, int numSwapChainImages,
-                                          star::StarShaderInfo::Builder frameBuilder)
+void star::StarObject::prepMaterials(star::core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                                          star::StarShaderInfo::Builder &frameBuilder)
 {
-    for (int i = 0; i < numSwapChainImages; i++)
+    assert(m_meshMaterials.size() > 0 && "Mesh materials should exist"); 
+
+    for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
@@ -305,10 +285,10 @@ void star::StarObject::prepareDescriptors(star::core::device::DeviceContext &con
         frameBuilder.add(this->instanceNormalInfos[i], false);
     }
 
-    for (auto &mesh : this->getMeshes())
+    for (auto &material : m_meshMaterials)
     {
         // descriptors
-        mesh->getMaterial().finalizeDescriptors(context, frameBuilder, numSwapChainImages);
+        material->prepRender(context, numFramesInFlight, frameBuilder);
     }
 }
 
@@ -406,14 +386,18 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex> &verts, std::vec
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarObject::getDescriptorRequests(
     const int &numFramesInFlight)
 {
-    return std::vector<std::pair<vk::DescriptorType, const int>>{std::make_pair(vk::DescriptorType::eUniformBuffer, 2)};
-}
+    std::vector<std::pair<vk::DescriptorType, const int>> requests {
+        std::make_pair(vk::DescriptorType::eUniformBuffer, 2)
+    };
 
-void star::StarObject::createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight)
-{
-    this->prepareDescriptors(device, numFramesInFlight, *this->engineBuilder);
+    for (auto &material : m_meshMaterials){
+        auto matRequests = material->getDescriptorRequests(numFramesInFlight); 
+        for (auto &type : matRequests){
+            requests.push_back(std::move(type)); 
+        }
+    }
 
-    this->engineBuilder.reset();
+    return requests;
 }
 
 bool star::StarObject::isRenderReady(core::device::DeviceContext &context)

@@ -2,18 +2,16 @@
 
 namespace star
 {
-StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, size_t numSwapChainImages,
-                                 vk::Extent2D swapChainExtent, StarObject &baseObject)
-    : device(device), numSwapChainImages(numSwapChainImages), swapChainExtent(swapChainExtent)
+StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, std::shared_ptr<StarObject> baseObject)
+    : device(device)
 {
     auto objInfo = RenderObjectInfo(baseObject);
     this->groups.push_back(Group(objInfo));
 
-    auto layoutBuilder = StarDescriptorSetLayout::Builder(device.getDevice());
-    this->largestDescriptorSet = this->groups.front().baseObject.object.getDescriptorSetLayouts(device);
+    auto layoutBuilder = StarDescriptorSetLayout::Builder();
+    this->largestDescriptorSet = this->groups.front().baseObject.object->getDescriptorSetLayouts(device);
 
     this->numObjects++;
-    CastHelpers::SafeCast<size_t, int>(baseObject.getMeshes().size(), this->numMeshes);
 }
 
 StarRenderGroup::~StarRenderGroup()
@@ -23,16 +21,45 @@ StarRenderGroup::~StarRenderGroup()
     {
         for (auto &obj : group.objects)
         {
-            obj.object.cleanupRender(device);
+            obj.object->cleanupRender(device);
         }
         // cleanup base object last since it owns the pipeline
-        group.baseObject.object.cleanupRender(device);
+        group.baseObject.object->cleanupRender(device);
     }
 
-    this->device.getDevice().getVulkanDevice().destroyPipelineLayout(this->pipelineLayout);
+    this->device.getDevice().getVulkanDevice().destroyPipelineLayout(m_pipelineLayout);
 }
 
-void StarRenderGroup::addObject(StarObject &newObject)
+void StarRenderGroup::frameUpdate(core::device::DeviceContext &context)
+{
+
+    for (auto &group : groups)
+    {
+        group.baseObject.object->frameUpdate(context);
+        for (auto &obj : group.objects)
+        {
+            obj.object->frameUpdate(context);
+        }
+    }
+}
+
+void StarRenderGroup::prepRender(core::device::DeviceContext &context, const vk::Extent2D &renderingResolution,
+                                 const uint8_t &numFramesInFlight, StarShaderInfo::Builder initEngineBuilder,
+                                 core::renderer::RenderingTargetInfo renderingInfo)
+{
+    auto fullSetLayout = initEngineBuilder.getCurrentSetLayouts();
+    for (auto &set : this->largestDescriptorSet)
+    {
+        fullSetLayout.emplace_back(set);
+
+        initEngineBuilder.addSetLayout(set);
+    }
+
+    m_pipelineLayout = createPipelineLayout(context, fullSetLayout);
+    prepareObjects(initEngineBuilder, renderingInfo, context.getRenderingSurface().getResolution(), numFramesInFlight);
+}
+
+void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
 {
     // check if any other object can share the same Pipeline
     Group *targetGroup = nullptr;
@@ -42,8 +69,8 @@ void StarRenderGroup::addObject(StarObject &newObject)
     {
         // check the first object in each group just to see if they have the same shaders
 
-        auto objectShaders = group.baseObject.object.getShaders();
-        auto newObjectShaders = newObject.getShaders();
+        auto objectShaders = group.baseObject.object->getShaders();
+        auto newObjectShaders = newObject->getShaders();
 
         bool isMatch = true;
         for (auto &it : objectShaders)
@@ -71,7 +98,7 @@ void StarRenderGroup::addObject(StarObject &newObject)
     if (targetGroup == nullptr)
     {
         // requires new pipeline -- and group
-        auto objInfo = RenderObjectInfo(newObject);
+        auto objInfo = RenderObjectInfo{newObject};
         this->groups.push_back(Group(objInfo));
     }
     else
@@ -81,7 +108,7 @@ void StarRenderGroup::addObject(StarObject &newObject)
     }
 
     // check if this new object has a larger descriptor set layout than the current one
-    auto newLayouts = newObject.getDescriptorSetLayouts(device);
+    auto newLayouts = newObject->getDescriptorSetLayouts(device);
 
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> combinedSet =
         std::vector<std::shared_ptr<StarDescriptorSetLayout>>();
@@ -113,24 +140,17 @@ void StarRenderGroup::addObject(StarObject &newObject)
     this->largestDescriptorSet = combinedSet;
 
     this->numObjects++;
-
-    {
-        int newMeshes = 0;
-        CastHelpers::SafeCast<size_t, int>(newObject.getMeshes().size(), newMeshes);
-
-        this->numMeshes += newMeshes;
-    }
 }
 
 void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &frameInFlightIndex)
 {
     for (auto &group : this->groups)
     {
-        group.baseObject.object.recordRenderPassCommands(mainDrawBuffer, pipelineLayout, frameInFlightIndex);
+        group.baseObject.object->recordRenderPassCommands(mainDrawBuffer, m_pipelineLayout, frameInFlightIndex);
         for (auto &obj : group.objects)
         {
             // record commands for each object
-            obj.object.recordRenderPassCommands(mainDrawBuffer, this->pipelineLayout, frameInFlightIndex);
+            obj.object->recordRenderPassCommands(mainDrawBuffer, m_pipelineLayout, frameInFlightIndex);
         }
     }
 }
@@ -139,10 +159,10 @@ void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuf
 {
     for (auto &group : this->groups)
     {
-        group.baseObject.object.recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex);
+        group.baseObject.object->recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex);
         for (auto &obj : group.objects)
         {
-            obj.object.recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex);
+            obj.object->recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex);
         }
     }
 }
@@ -151,26 +171,12 @@ void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer &commandBuf
 {
     for (auto &group : this->groups)
     {
-        group.baseObject.object.recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
+        group.baseObject.object->recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
         for (auto &obj : group.objects)
         {
-            obj.object.recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
+            obj.object->recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
         }
     }
-}
-
-void StarRenderGroup::init(StarShaderInfo::Builder initEngineBuilder, core::renderer::RenderingTargetInfo renderingInfo)
-{
-    auto fullSetLayout = initEngineBuilder.getCurrentSetLayouts();
-    for (auto &set : this->largestDescriptorSet)
-    {
-        fullSetLayout.emplace_back(set);
-
-        initEngineBuilder.addSetLayout(set);
-    }
-
-    createPipelineLayout(fullSetLayout);
-    prepareObjects(initEngineBuilder, renderingInfo);
 }
 
 bool StarRenderGroup::isObjectCompatible(StarObject &object)
@@ -197,30 +203,33 @@ bool StarRenderGroup::isObjectCompatible(StarObject &object)
 }
 
 void StarRenderGroup::prepareObjects(StarShaderInfo::Builder &groupBuilder,
-                                     core::renderer::RenderingTargetInfo renderingInfo)
+                                     core::renderer::RenderingTargetInfo renderingInfo,
+                                     const vk::Extent2D &swapChainExtent, const uint8_t &numFramesInFlight)
 {
     // get descriptor sets from objects and place into render structs
 
     for (auto &group : this->groups)
     {
         // prepare base object
-        group.baseObject.object.prepRender(device, swapChainExtent, pipelineLayout, renderingInfo, numSwapChainImages,
-                                           groupBuilder);
+        group.baseObject.object->prepRender(device, swapChainExtent, numFramesInFlight, groupBuilder, m_pipelineLayout,
+                                            renderingInfo);
 
         for (auto &renderObject : group.objects)
         {
-            renderObject.object.prepRender(device, numSwapChainImages, group.baseObject.object.getPipline(),
-                                           groupBuilder);
+            renderObject.object->prepRender(device, swapChainExtent, numFramesInFlight, groupBuilder,
+                                            group.baseObject.object->getPipline());
         }
     }
 }
 
-void StarRenderGroup::createPipelineLayout(std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout)
+vk::PipelineLayout StarRenderGroup::createPipelineLayout(
+    core::device::DeviceContext &context, std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout)
 {
 
     auto sets = std::vector<vk::DescriptorSetLayout>();
     for (auto &set : fullSetLayout)
     {
+        set->prepRender(context.getDevice());
         sets.emplace_back(set->getDescriptorSetLayout());
     }
 
@@ -233,11 +242,13 @@ void StarRenderGroup::createPipelineLayout(std::vector<std::shared_ptr<StarDescr
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-    this->pipelineLayout = this->device.getDevice().getVulkanDevice().createPipelineLayout(pipelineLayoutInfo);
+    auto result = this->device.getDevice().getVulkanDevice().createPipelineLayout(pipelineLayoutInfo);
 
-    if (!this->pipelineLayout)
+    if (!result)
     {
         throw std::runtime_error("failed to create pipeline layout");
     }
+
+    return result;
 }
 } // namespace star

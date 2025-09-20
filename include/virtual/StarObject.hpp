@@ -47,11 +47,9 @@ namespace star {
 
 		static void cleanupSharedResources(core::device::DeviceContext& device);
 
-		/// <summary>
-		/// Create an object from manually defined/generated mesh structures
-		/// </summary>
-		/// <param name="meshes"></param>
 		StarObject() = default; 
+
+		StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials) : m_meshMaterials(std::move(meshMaterials)){};
 
 		virtual ~StarObject() = default;
 
@@ -61,14 +59,14 @@ namespace star {
 			vk::Extent2D swapChainExtent, vk::PipelineLayout pipelineLayout, 
 			core::renderer::RenderingTargetInfo renderInfo);
 
-		virtual void prepRender(star::core::device::DeviceContext& context, vk::Extent2D swapChainExtent,
-			vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo, int numSwapChainImages, 
-			StarShaderInfo::Builder fullEngineBuilder);
+		virtual void prepRender(star::core::device::DeviceContext& context, const vk::Extent2D &swapChainExtent,
+			const uint8_t &numSwapChainImages, StarShaderInfo::Builder fullEngineBuilder, 
+			vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo);
+
+		virtual void prepRender(star::core::device::DeviceContext& context, const vk::Extent2D &swapChainExtent, const uint8_t &numSwapChainImages, 
+			star::StarShaderInfo::Builder fullEngineBuilder, Handle sharedPipeline);
 
 		virtual core::renderer::RenderingContext buildRenderingContext(star::core::device::DeviceContext &context); 
-
-		virtual void prepRender(star::core::device::DeviceContext& context, int numSwapChainImages, 
-			Handle sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder);
 
 		///Function to contain any commands to be submitted before the start of the rendering pass this object is contained in begins
 		virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) {};
@@ -88,12 +86,6 @@ namespace star {
 		/// @return A reference to the created instance. The object will own the instance. 
 		virtual StarObjectInstance& createInstance(); 
 
-		/// <summary>
-		/// Runtime update to allow object to update anything it needs to prepare for the next 
-		/// main draw command.
-		/// </summary>
-		virtual void prepDraw(int swapChainTarget); 
-
 		virtual void frameUpdate(core::device::DeviceContext &context); 
 
 		/// <summary>
@@ -108,11 +100,7 @@ namespace star {
 		/// @return 
 		virtual std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(core::device::DeviceContext& device);
 
-		virtual void prepareDescriptors(star::core::device::DeviceContext& device, int numSwapChainImages,
-			StarShaderInfo::Builder engineInfoBuilder);
-
 #pragma region getters
-		const std::vector<std::unique_ptr<StarMesh>>& getMeshes() { return this->meshes; }
 		Handle getPipline() {
 			return this->pipeline; 
 		}
@@ -121,6 +109,7 @@ namespace star {
 	protected:
 		///pipeline + rendering infos
 		// Pipeline* sharedPipeline = nullptr;
+		std::vector<std::shared_ptr<StarMaterial>> m_meshMaterials = std::vector<std::shared_ptr<StarMaterial>>(); 
 		Handle pipeline; 
 		Handle sharedPipeline;
 		std::unique_ptr<core::renderer::RenderingContext> renderingContext; 
@@ -130,10 +119,8 @@ namespace star {
 		std::vector<Handle> instanceModelInfos;
 		std::vector<std::unique_ptr<StarMesh>> meshes;
 		std::vector<std::unique_ptr<StarObjectInstance>> instances; 
-
-		std::unique_ptr<StarShaderInfo::Builder> engineBuilder;
 		
-		void prepareMeshes(star::core::device::DeviceContext& device); 
+		virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes(star::core::device::DeviceContext& device)=0; 
 
 		virtual void createInstanceBuffers(star::core::device::DeviceContext& device, int numImagesInFlight);
 
@@ -141,7 +128,7 @@ namespace star {
 
 		// Inherited via DescriptorModifier
 		virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int& numFramesInFlight) override;
-		virtual void createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight) override;
+		virtual void createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight) override{};
 
 		virtual bool isRenderReady(core::device::DeviceContext &context); 
 
@@ -164,10 +151,16 @@ namespace star {
 		Handle vertBuffer, indBuffer;
 		uint32_t boundingBoxIndsCount = 0; 
 
+		void prepStarObject(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, StarShaderInfo::Builder &frameBuilder); 
+
+		void prepMaterials(star::core::device::DeviceContext &context, const uint8_t &numFramesInFlight, StarShaderInfo::Builder &frameBuilder); 
+
 		void recordDrawCommandNormals(vk::CommandBuffer& commandBuffer);
 
-		void recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex);;
+		void recordDrawCommandBoundingBox(vk::CommandBuffer& commandBuffer, int inFlightIndex);
 
 		void calculateBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
+
+		void prepareMeshes(star::core::device::DeviceContext &context);
 };
 }

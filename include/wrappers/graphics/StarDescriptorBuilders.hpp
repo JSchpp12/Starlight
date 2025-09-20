@@ -16,40 +16,49 @@ class StarDescriptorSetLayout
     class Builder
     {
       public:
-        Builder(core::device::StarDevice &device) : m_device(device)
+        Builder()
         {
         }
 
         Builder &addBinding(uint32_t binding, vk::DescriptorType descriptorType, vk::ShaderStageFlags stageFlags,
                             uint32_t count = 1);
-        std::unique_ptr<StarDescriptorSetLayout> build() const;
+        std::unique_ptr<StarDescriptorSetLayout> build() const{
+              return std::make_unique<StarDescriptorSetLayout>(this->bindings);
+        }
+        std::unique_ptr<StarDescriptorSetLayout> build(core::device::StarDevice &device) const{
+          auto newLayout = std::make_unique<StarDescriptorSetLayout>(bindings); 
+          newLayout->prepRender(device);
+          return newLayout; 
+        }
 
-      protected:
       private:
-        core::device::StarDevice &m_device;
         std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings{};
     };
 
-    StarDescriptorSetLayout(core::device::StarDevice &device, std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings);
+    StarDescriptorSetLayout(std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings)
+        : bindings(std::move(bindings)) {};
 
-    ~StarDescriptorSetLayout();
+    bool isCompatibleWith(const StarDescriptorSetLayout &compare) const;
 
-    bool isCompatibleWith(const StarDescriptorSetLayout &compare);
+    vk::DescriptorSetLayout getDescriptorSetLayout()
+    {
+        assert(this->descriptorSetLayout != VK_NULL_HANDLE && "Descriptor set layout has not been built. Call build() on this object before attempting to get the layout");
 
-    vk::DescriptorSetLayout getDescriptorSetLayout();
+        return this->descriptorSetLayout;
+    };
 
     const std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> &getBindings()
     {
         return this->bindings;
     }
 
-  protected:
-    void build();
+    void prepRender(core::device::StarDevice &device);
+
+    void cleanupRender(core::device::StarDevice &device);
 
   private:
-    core::device::StarDevice &m_device;
-    vk::DescriptorSetLayout descriptorSetLayout;
     std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings;
+    vk::DescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 
     // allow access to the descriptor writer
     friend class StarDescriptorWriter;
@@ -100,7 +109,8 @@ class StarDescriptorPool
 class StarDescriptorWriter
 {
   public:
-    StarDescriptorWriter(core::device::StarDevice &device, StarDescriptorSetLayout &setLayout, StarDescriptorPool &pool);
+    StarDescriptorWriter(core::device::StarDevice &device, StarDescriptorSetLayout &setLayout,
+                         StarDescriptorPool &pool);
 
     StarDescriptorWriter &writeBuffer(uint32_t binding, vk::DescriptorBufferInfo &bufferInfos);
 

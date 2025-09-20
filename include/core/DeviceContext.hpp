@@ -74,7 +74,7 @@ class DeviceContext
           m_commandBufferManager(std::move(other.m_commandBufferManager)),
           m_transferWorker(std::move(other.m_transferWorker)), m_renderResourceManager(std::move(other.m_renderResourceManager))
     {
-        other.m_ownsWorkers = false;
+        other.m_ownsResources = false;
     };
     DeviceContext &operator=(DeviceContext &&other)
     {
@@ -89,9 +89,9 @@ class DeviceContext
             m_graphicsManagers = std::move(other.m_graphicsManagers); 
             m_transferWorker = std::move(other.m_transferWorker);
             m_renderResourceManager = std::move(other.m_renderResourceManager); 
-            m_ownsWorkers = true;
+            m_ownsResources = true;
 
-            other.m_ownsWorkers = false;
+            other.m_ownsResources = false;
         }
 
         return *this;
@@ -156,7 +156,7 @@ class DeviceContext
     }
 
   private:
-    bool m_ownsWorkers = true;
+    bool m_ownsResources = true;
     uint64_t m_frameCounter = 0;
     DeviceID m_deviceID;
     RenderingSurface m_surface;

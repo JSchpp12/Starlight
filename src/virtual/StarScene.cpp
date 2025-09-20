@@ -25,3 +25,12 @@ void star::StarScene::frameUpdate(core::device::DeviceContext &context){
         m_additionalRenderers[i]->frameUpdate(context); 
     }
 }
+
+void star::StarScene::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+{
+    m_presentationRenderer->prepRender(context, m_presentationRenderer->getMainExtent(), numFramesInFlight); 
+
+    for (auto &addRender : m_additionalRenderers){
+        addRender->prepRender(context, m_presentationRenderer->getMainExtent(), numFramesInFlight); 
+    }
+}

@@ -43,8 +43,10 @@ void star::StarPipeline::prepRender(vk::Device &device, const RenderResourceDepe
 
 void star::StarPipeline::cleanupRender(core::device::StarDevice &device)
 {
-    device.getVulkanDevice().destroyPipeline(m_pipeline);
-    m_pipeline = nullptr;
+    if (m_pipeline){
+        device.getVulkanDevice().destroyPipeline(m_pipeline);
+        m_pipeline = VK_NULL_HANDLE;
+    }
 }
 
 void star::StarPipeline::bind(vk::CommandBuffer &commandBuffer)

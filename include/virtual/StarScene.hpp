@@ -29,10 +29,11 @@ class StarScene
               std::shared_ptr<StarCamera> camera,
               std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer,
               std::vector<std::shared_ptr<core::renderer::Renderer>> additionalRenderers);
-
-    virtual ~StarScene() = default;
     
+    ///Function called every frame
     void frameUpdate(core::device::DeviceContext &context); 
+
+    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight); 
 
     std::shared_ptr<core::renderer::SwapChainRenderer> getPresentationRenderer()
     {

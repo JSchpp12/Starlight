@@ -24,7 +24,5 @@ class VertInfo : public Buffer
   protected:
     const uint32_t graphicsQueueIndex;
     std::vector<Vertex> vertices;
-
-    virtual std::vector<Vertex> getVertices() const;
 };
 } // namespace star::TransferRequest

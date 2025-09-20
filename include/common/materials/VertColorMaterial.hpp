@@ -14,14 +14,11 @@ namespace star {
 			const glm::vec4& specular, const int& shiny) 
 			: StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny) {};
 
-		virtual void applyDescriptorSetLayouts(star::StarDescriptorSetLayout::Builder& constBuilder) override;
-		void buildDescriptorSet(core::device::DeviceContext& device, StarShaderInfo::Builder& builder, const int& imageInFlightIndex) override;
-
+		void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder& constBuilder) const override;
+		
 	protected:
-		void cleanup(core::device::DeviceContext& device) override;
-		void prep(core::device::DeviceContext& device) override;
 
-		// Inherited via StarMaterial
-		void createDescriptors(star::core::device::DeviceContext& device, const int& numFramesInFlight) override;
+		std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context,
+                                               const uint8_t &numFramesInFlight, StarShaderInfo::Builder builder) override; 
 	};
 }

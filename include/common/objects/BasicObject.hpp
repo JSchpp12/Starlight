@@ -8,38 +8,36 @@
 #include <string>
 #include <vector>
 
-namespace star {
-	/// <summary>
-	/// Basic object for use with rendering. This object is loaded from an .obj file 
-	/// and is attached to a simple shader with textures and a graphics pipeline for 
-	/// those shader types.
-	/// </summary>
-	class BasicObject : public StarObject {
-	public:
-		static std::unique_ptr<BasicObject> New(const std::string objPath); 
+namespace star
+{
+/// <summary>
+/// Basic object for use with rendering. This object is loaded from an .obj file
+/// and is attached to a simple shader with textures and a graphics pipeline for
+/// those shader types.
+/// </summary>
+class BasicObject : public StarObject
+{
+  public:
+    BasicObject(std::string objFilePath)
+        : StarObject(LoadMaterials(objFilePath)), m_objFilePath(std::move(objFilePath)) 
+    {
+    }
 
-		virtual ~BasicObject() = default;
+    virtual ~BasicObject() = default;
 
-		virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
+    virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
 
-		virtual void prepRender(star::core::device::DeviceContext& context, vk::Extent2D swapChainExtent,
-			vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo, int numSwapChainImages, 
-			StarShaderInfo::Builder fullEngineBuilder) override; 
+  protected:
+    std::string m_objFilePath = "";
 
-		virtual void prepRender(star::core::device::DeviceContext& context, int numSwapChainImages, 
-			Handle sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder) override;
-	protected:
-		std::string filePath = "";
+    Handle primaryVertBuffer, primaryIndbuffer;
 
-		bool isBumpyMaterial = false; 
-		bool isTextureMaterial = false; 
+    std::string objectFilePath;
 
-		Handle primaryVertBuffer, primaryIndbuffer;
+    std::vector<std::unique_ptr<StarMesh>> loadMeshes(core::device::DeviceContext &context) override;
 
-		BasicObject(std::string objectFilePath) : objectFilePath(objectFilePath){}
+    std::vector<std::shared_ptr<StarMaterial>> LoadMaterials(std::string_view filePath);
 
-		std::string objectFilePath;
-		
-		void loadMesh(core::device::DeviceContext &context); 
-	};
-}
+    void getTypeOfMaterials(bool &isTextureMaterial, bool &isBumpMaterial) const; 
+};
+} // namespace star

@@ -38,6 +38,12 @@ struct ShaderRecord
         return compiledShader != nullptr;
     }
 
+    void cleanupRender(core::device::StarDevice &device){
+        if (compiledShader){
+            compiledShader.reset(); 
+        }
+    }
+
     StarShader shader = StarShader();
     std::unique_ptr<std::vector<uint32_t>> compiledShader = nullptr;
 };

@@ -12,16 +12,15 @@
 #include "StarGraphicsPipeline.hpp"
 #include "VertColorMaterial.hpp"
 
-std::unique_ptr<star::BasicObject> star::BasicObject::New(std::string objPath)
-{
-    return std::unique_ptr<BasicObject>(new BasicObject(objPath));
-}
-
 std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
 {
     std::unordered_map<star::Shader_Stage, StarShader> shaders;
 
-    if (this->isBumpyMaterial)
+    bool isBumpyMaterial = false;
+    bool isTextureMaterial = false;
+    getTypeOfMaterials(isTextureMaterial, isBumpyMaterial);
+
+    if (isBumpyMaterial)
     {
         // load vertex shader
         std::string vertShaderPath =
@@ -35,7 +34,7 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
         shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment,
                                                                  StarShader(fragShaderPath, Shader_Stage::fragment)));
     }
-    else if (this->isTextureMaterial)
+    else if (isTextureMaterial)
     {
         // load vertex shader
         std::string vertShaderPath =
@@ -67,30 +66,12 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
     return shaders;
 }
 
-void star::BasicObject::prepRender(star::core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
-                                   vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo,
-                                   int numSwapChainImages, StarShaderInfo::Builder fullEngineBuilder)
+std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core::device::DeviceContext &context)
 {
-    loadMesh(context);
-    prepRender(context, swapChainExtent, pipelineLayout, renderingInfo, numSwapChainImages, fullEngineBuilder);
-}
+    std::string texturePath = FileHelpers::GetParentDirectory(m_objFilePath);
+    std::string materialFile = FileHelpers::GetParentDirectory(m_objFilePath);
 
-void star::BasicObject::prepRender(star::core::device::DeviceContext &context, int numSwapChainImages,
-                                   Handle sharedPipeline, star::StarShaderInfo::Builder fullEngineBuilder)
-{
-    loadMesh(context);
-    prepRender(context, numSwapChainImages, sharedPipeline, fullEngineBuilder);
-}
-
-void star::BasicObject::loadMesh(core::device::DeviceContext &context)
-{
-    std::string texturePath = FileHelpers::GetBaseFileDirectory(objectFilePath);
-    std::string materialFile = FileHelpers::GetBaseFileDirectory(objectFilePath);
-
-    std::cout << "Loading object file: " << objectFilePath << std::endl;
-
-    std::vector<std::unique_ptr<std::vector<Vertex>>> meshVerts;
-    std::vector<std::unique_ptr<std::vector<uint32_t>>> meshInds;
+    std::cout << "Loading object file: " << m_objFilePath << std::endl;
 
     /* Load Object From File */
     tinyobj::attrib_t attrib;
@@ -98,8 +79,7 @@ void star::BasicObject::loadMesh(core::device::DeviceContext &context)
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
 
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, objectFilePath.c_str(), materialFile.c_str(),
-                          true))
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, m_objFilePath.c_str(), materialFile.c_str(), true))
     {
         throw std::runtime_error(warn + err);
     }
@@ -120,130 +100,151 @@ void star::BasicObject::loadMesh(core::device::DeviceContext &context)
     std::unique_ptr<StarMaterial> objectMaterial;
     std::vector<std::shared_ptr<StarMaterial>> preparedMaterials;
 
-    if (materials.size() > 0)
+    if (materials.size() != meshes.size() || materials.size() != m_meshMaterials.size())
     {
-        // create needed materials
-        for (size_t i = 0; i < materials.size(); i++)
+        throw std::runtime_error("All properties should match with the number of meshes contained in obj file");
+    }
+
+    // need to scale object so that it fits on screen
+    // combine all attributes into a single object
+    int dIndex = 0;
+    for (const auto &shape : shapes)
+    {
+        // tinyobj ensures three verticies per triangle  -- assuming unique vertices
+        const std::vector<tinyobj::index_t> &indicies = shape.mesh.indices;
+        auto fullInd = std::make_unique<std::vector<uint32_t>>(shape.mesh.indices.size());
+        auto vertices = std::make_unique<std::vector<Vertex>>(shape.mesh.indices.size());
+        size_t vertCounter = 0;
+        for (size_t faceIndex = 0; faceIndex < shape.mesh.material_ids.size(); faceIndex++)
         {
-            currMaterial = &materials.at(i);
-            Handle texture;
-            Handle bumpMap;
+            for (int i = 0; i < 3; i++)
+            {
+                dIndex = (3 * faceIndex) + i;
+                auto newVertex = Vertex();
+                newVertex.pos = glm::vec3{attrib.vertices[3 * indicies[dIndex].vertex_index + 0],
+                                          attrib.vertices[3 * indicies[dIndex].vertex_index + 1],
+                                          attrib.vertices[3 * indicies[dIndex].vertex_index + 2]};
+                newVertex.color = glm::vec3{
+                    attrib.colors[3 * indicies[dIndex].vertex_index + 0],
+                    attrib.colors[3 * indicies[dIndex].vertex_index + 1],
+                    attrib.colors[3 * indicies[dIndex].vertex_index + 2],
+                };
 
-            if (currMaterial->diffuse_texname != "")
-            {
-                texture = ManagerRenderResource::addRequest(
-                    context.getDeviceID(),
-                    std::make_unique<ManagerController::RenderResource::TextureFile>(
-                        texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->diffuse_texname)));
-            }
+                if (attrib.normals.size() > 0)
+                {
+                    newVertex.normal = {
+                        attrib.normals[3 * indicies[dIndex].normal_index + 0],
+                        attrib.normals[3 * indicies[dIndex].normal_index + 1],
+                        attrib.normals[3 * indicies[dIndex].normal_index + 2],
+                    };
+                }
 
-            // apply maps
-            if (currMaterial->bump_texname != "")
-            {
-                bumpMap = ManagerRenderResource::addRequest(
-                    context.getDeviceID(),
-                    std::make_unique<ManagerController::RenderResource::TextureFile>(
-                        texturePath + FileHelpers::GetFileNameWithExtension(currMaterial->bump_texname)));
-            }
+                newVertex.texCoord = {attrib.texcoords[2 * indicies[dIndex].texcoord_index + 0],
+                                      1.0f - attrib.texcoords[2 * indicies[dIndex].texcoord_index + 1]};
 
-            // check if any material values are 0 - ambient is important
-            if (currMaterial->ambient[0] == 0)
-            {
-                currMaterial->ambient[0] = 1.0;
-                currMaterial->ambient[1] = 1.0;
-                currMaterial->ambient[2] = 1.0;
-            }
-
-            if (bumpMap.isInitialized())
-            {
-                this->isBumpyMaterial = true;
-                preparedMaterials.push_back(std::shared_ptr<BumpMaterial>(new BumpMaterial(
-                    glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
-                    glm::vec4{currMaterial->diffuse[0], currMaterial->diffuse[1], currMaterial->diffuse[2], 1.0f},
-                    glm::vec4{currMaterial->specular[0], currMaterial->specular[1], currMaterial->specular[2], 1.0f},
-                    currMaterial->shininess, std::move(texture), std::move(bumpMap))));
-            }
-            else if (texture.isInitialized())
-            {
-                this->isTextureMaterial = true;
-                preparedMaterials.push_back(std::shared_ptr<TextureMaterial>(new TextureMaterial(
-                    glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
-                    glm::vec4{currMaterial->diffuse[0], currMaterial->diffuse[1], currMaterial->diffuse[2], 1.0f},
-                    glm::vec4{currMaterial->specular[0], currMaterial->specular[1], currMaterial->specular[2], 1.0f},
-                    currMaterial->shininess, texture)));
-            }
-            else
-            {
-                preparedMaterials.push_back(std::shared_ptr<VertColorMaterial>(new VertColorMaterial(
-                    glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
-                    glm::vec4{currMaterial->diffuse[0], currMaterial->diffuse[1], currMaterial->diffuse[2], 1.0f},
-                    glm::vec4{currMaterial->specular[0], currMaterial->specular[1], currMaterial->specular[2], 1.0f},
-                    currMaterial->shininess)));
+                vertices->at(vertCounter) = newVertex;
+                fullInd->at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter);
+                vertCounter++;
             }
         }
 
-        // need to scale object so that it fits on screen
-        // combine all attributes into a single object
-        int dIndex = 0;
-        for (const auto &shape : shapes)
+        if (shape.mesh.material_ids.at(shapeCounter) != -1)
         {
-            // tinyobj ensures three verticies per triangle  -- assuming unique vertices
-            const std::vector<tinyobj::index_t> &indicies = shape.mesh.indices;
-            auto fullInd = std::make_unique<std::vector<uint32_t>>(shape.mesh.indices.size());
-            auto vertices = std::make_unique<std::vector<Vertex>>(shape.mesh.indices.size());
-            size_t vertCounter = 0;
-            for (size_t faceIndex = 0; faceIndex < shape.mesh.material_ids.size(); faceIndex++)
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    dIndex = (3 * faceIndex) + i;
-                    auto newVertex = Vertex();
-                    newVertex.pos = glm::vec3{attrib.vertices[3 * indicies[dIndex].vertex_index + 0],
-                                              attrib.vertices[3 * indicies[dIndex].vertex_index + 1],
-                                              attrib.vertices[3 * indicies[dIndex].vertex_index + 2]};
-                    newVertex.color = glm::vec3{
-                        attrib.colors[3 * indicies[dIndex].vertex_index + 0],
-                        attrib.colors[3 * indicies[dIndex].vertex_index + 1],
-                        attrib.colors[3 * indicies[dIndex].vertex_index + 2],
-                    };
+            Handle meshVertBuffer = ManagerRenderResource::addRequest(
+                context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
+            Handle meshIndBuffer = ManagerRenderResource::addRequest(
+                context.getDeviceID(),
+                std::make_unique<star::ManagerController::RenderResource::IndicesInfo>(*fullInd));
 
-                    if (attrib.normals.size() > 0)
-                    {
-                        newVertex.normal = {
-                            attrib.normals[3 * indicies[dIndex].normal_index + 0],
-                            attrib.normals[3 * indicies[dIndex].normal_index + 1],
-                            attrib.normals[3 * indicies[dIndex].normal_index + 2],
-                        };
-                    }
+            // apply material from files to mesh -- will ignore passed values
+            meshes.at(shapeCounter) =
+                std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd,
+                                                       m_meshMaterials.at(shape.mesh.material_ids[0]), false));
+        }
+        shapeCounter++;
+    }
 
-                    newVertex.texCoord = {attrib.texcoords[2 * indicies[dIndex].texcoord_index + 0],
-                                          1.0f - attrib.texcoords[2 * indicies[dIndex].texcoord_index + 1]};
+    return meshes;
+}
 
-                    vertices->at(vertCounter) = newVertex;
-                    fullInd->at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter);
-                    vertCounter++;
-                };
-            }
+std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(std::string_view filePath)
+{
+    std::string parentDirectory = FileHelpers::GetParentDirectory(filePath);
 
-            if (shape.mesh.material_ids.at(shapeCounter) != -1)
-            {
-                Handle meshVertBuffer = ManagerRenderResource::addRequest(
-                    context.getDeviceID(),
-                    std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
-                Handle meshIndBuffer = ManagerRenderResource::addRequest(
-                    context.getDeviceID(),
-                    std::make_unique<star::ManagerController::RenderResource::IndicesInfo>(*fullInd));
-                // apply material from files to mesh -- will ignore passed values
-                meshes.at(shapeCounter) =
-                    std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd,
-                                                           preparedMaterials.at(shape.mesh.material_ids[0]), false));
-            }
+    if (!star::FileHelpers::FileExists(filePath))
+    {
+        throw std::runtime_error("Provided object file does not exist");
+    }
 
-            meshVerts.push_back(std::move(vertices));
-            meshInds.push_back(std::move(fullInd));
-            shapeCounter++;
+    /* Load Object From File */
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> fileMaterials;
+    std::string warn, err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &fileMaterials, &warn, &err, filePath.begin(), parentDirectory.c_str(),
+                          true))
+    {
+        throw std::runtime_error(warn + err);
+    }
+    if (warn != "")
+    {
+        std::cout << "An error occurred while loading obj file" << std::endl;
+        std::cout << warn << std::endl;
+        std::cout << "Loading will continue..." << std::endl;
+    }
+
+    std::vector<std::shared_ptr<StarMaterial>> materials;
+
+    for (auto &fMaterial : fileMaterials)
+    {
+        const bool isTextureMaterial = !fMaterial.diffuse_texname.empty();
+        const bool isBumpMaterial = isTextureMaterial && !fMaterial.bump_texname.empty();
+
+        if (fMaterial.ambient[0] == 0)
+        {
+            fMaterial.ambient[0] = 1.0;
+            fMaterial.ambient[1] = 1.0;
+            fMaterial.ambient[2] = 1.0;
+        }
+
+        if (isBumpMaterial)
+        {
+            materials.emplace_back(std::make_shared<star::BumpMaterial>(
+                parentDirectory + fMaterial.bump_texname, fMaterial.diffuse_texname, glm::vec4(1.0), glm::vec4(1.0),
+                glm::vec4(1.0), glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
+                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
+                fMaterial.shininess));
+        }
+        else if (isTextureMaterial)
+        {
+            materials.emplace_back(std::make_shared<star::TextureMaterial>(
+                parentDirectory + fMaterial.diffuse_texname, glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
+                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
+                fMaterial.shininess));
+        }
+        else
+        {
+            // fall back to vert color material
+            materials.emplace_back(std::make_shared<star::VertColorMaterial>(
+                glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
+                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
+                fMaterial.shininess));
         }
     }
 
-    this->meshes = std::move(meshes);
+    return materials;
+}
+
+void star::BasicObject::getTypeOfMaterials(bool &isTextureMaterial, bool &isBumpMaterial) const
+{
+    assert(m_meshMaterials.size() > 0 && "Mesh materials should always exist");
+
+    if (auto bumpDerived = std::dynamic_pointer_cast<BumpMaterial>(m_meshMaterials.front())){
+        isBumpMaterial = true;
+    }else if (auto textureDerived = std::dynamic_pointer_cast<TextureMaterial>(m_meshMaterials.front())){
+        isTextureMaterial = true; 
+    }
 }
