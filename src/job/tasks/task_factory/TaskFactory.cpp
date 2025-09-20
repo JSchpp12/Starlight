@@ -33,8 +33,7 @@ void ExecuteBuildPipeline(void *p)
     payload->pipeline->prepRender(payload->device, *payload->deps);
 }
 
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(
-    void *payload)
+std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(void *payload)
 {
     auto *p = static_cast<PipelineBuildPayload *>(payload);
 
@@ -44,8 +43,8 @@ std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(
         complete_tasks::task_factory::CreateBuildPipelineComplete(p->handleID, std::move(p->pipeline)));
 }
 
-star::job::tasks::Task<> CreateBuildPipeline(
-    vk::Device device, Handle handle, StarPipeline::RenderResourceDependencies deps, StarPipeline pipeline)
+star::job::tasks::Task<> CreateBuildPipeline(vk::Device device, Handle handle,
+                                             StarPipeline::RenderResourceDependencies deps, StarPipeline pipeline)
 {
     return job::tasks::Task<>::Builder<PipelineBuildPayload>()
         .setPayload(PipelineBuildPayload{
@@ -60,38 +59,4 @@ star::job::tasks::Task<> CreateBuildPipeline(
 
 #pragma endregion BuildPipeline
 
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateCompileComplete(void *p)
-{
-    auto *data = static_cast<CompileShaderPayload *>(p);
-
-    auto complete = job::complete_tasks::task_factory::CreateShaderCompileComplete(
-        data->handleID, std::move(data->finalizedShaderObject), std::move(data->compiledShaderCode));
-    data->compiledShaderCode = nullptr;
-
-    return std::make_optional<star::job::complete_tasks::CompleteTask<>>(std::move(complete));
-}
-
-void ExecuteCompileShader(void *p)
-{
-    auto *data = static_cast<CompileShaderPayload *>(p);
-
-    data->finalizedShaderObject = std::make_unique<StarShader>(data->path, data->stage);
-    std::cout << "Beginning compile shader: " << data->path << std::endl;
-    data->compiledShaderCode = star::Compiler::compile(data->path, true);
-}
-
-star::job::tasks::Task<> CreateCompileShader(const std::string &fileName,
-                                                                             const star::Shader_Stage &stage,
-                                                                             const Handle &shaderHandle)
-{
-    return star::job::tasks::Task<>::Builder<CompileShaderPayload>()
-        .setPayload(CompileShaderPayload{
-            .path = fileName,
-            .stage = stage,
-            .handleID = shaderHandle.getID(),
-        })
-        .setExecute(&ExecuteCompileShader)
-        .setCreateCompleteTaskFunction(&CreateCompileComplete)
-        .build();
-}
 } // namespace star::job::tasks::task_factory

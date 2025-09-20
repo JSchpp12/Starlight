@@ -1,10 +1,10 @@
 #pragma once
 
-#include "CompleteTask.hpp"
 #include "SharedCompressedTexture.hpp"
 #include "StarPipeline.hpp"
 #include "StarShader.hpp"
 #include "StarTextures/Texture.hpp"
+#include "job/tasks/task_factory/CompileShader.hpp"
 
 #include <vulkan/vulkan.hpp>
 namespace star::job::complete_tasks
@@ -64,11 +64,5 @@ star::job::complete_tasks::CompleteTask<> CreateShaderCompileComplete(
     uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
     std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader);
 
-#pragma endregion CompileShaders
-
-#pragma region WriteImageToDisk
-
-
-#pragma endregion WriteImageToDisk
 } // namespace task_factory
 }; // namespace star::job::complete_tasks

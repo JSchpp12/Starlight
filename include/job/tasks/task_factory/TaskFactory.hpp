@@ -8,6 +8,7 @@
 #include "tasks/Task.hpp"
 #include "renderer/RenderingTargetInfo.hpp"
 #include "StarPipeline.hpp"
+#include "tasks/task_factory/CompileShader.hpp"
 #include "tasks/task_factory/WriteImageToDisk.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -93,14 +94,7 @@ struct CompressedTextureMetadata : public TextureMetadata
     }
 };
 
-struct CompileShaderPayload
-{
-    std::string path;
-    star::Shader_Stage stage;
-    uint32_t handleID;
-    std::unique_ptr<StarShader> finalizedShaderObject = nullptr;
-    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
-};
+
 
 struct IODataPreparationPayload
 {
@@ -132,17 +126,6 @@ std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(voi
 
 star::job::tasks::Task<> CreateBuildPipeline(vk::Device device, Handle handle, star::StarPipeline::RenderResourceDependencies buildDeps, StarPipeline pipeline);
 #pragma endregion BuildPipeline
-
-#pragma region CompileShader
-
-void ExecuteCompileShader(void *p);
-
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateCompileComplete(void *p);
-
-star::job::tasks::Task<> CreateCompileShader(const std::string &fileName, const star::Shader_Stage &stage,
-                                             const Handle &shaderHandle);
-
-#pragma endregion CompileShader
 
 } // namespace task_factory
 } // namespace star::job::tasks

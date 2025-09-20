@@ -7,6 +7,6 @@ void star::core::device::manager::Shader::submitTask(const Handle &handle, devic
                                                      system::EventBus &eventBus, ShaderRecord *storedRecord)
 {
 
-    taskSystem.submitTask(job::tasks::task_factory::CreateCompileShader(storedRecord->shader.getPath(),
+    taskSystem.submitTask(job::tasks::task_factory::compile_shader::Create(storedRecord->shader.getPath(),
                                                                         storedRecord->shader.getStage(), handle));
 }
