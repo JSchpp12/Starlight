@@ -1,6 +1,6 @@
 #pragma once
 
-#include "device/system/Event.hpp"
+#include "device/system/event/EventBase.hpp"
 
 #include <functional>
 #include <typeindex>
@@ -12,7 +12,7 @@ namespace star::core::device::system
 
 class EventBus
 {
-    using Callback = std::function<void(const Event &, bool &)>;
+    using Callback = std::function<void(const EventBase &, bool &)>;
 
   public:
     template <typename TEventType> void subscribe(Callback callback)
@@ -25,7 +25,7 @@ class EventBus
     template<typename TEventType> void emit(const TEventType &event)
     {
         const size_t key = getKey<TEventType>(); 
-        const auto& base = static_cast<const Event &>(event); 
+        const auto& base = static_cast<const EventBase &>(event); 
 
         std::vector<Callback> aliveCallbacks = std::vector<Callback>(); 
 
@@ -43,11 +43,11 @@ class EventBus
     }
 
   private:
-    std::unordered_map<size_t, std::vector<std::function<void(const Event &, bool &)>>> m_listeners;
+    std::unordered_map<size_t, std::vector<std::function<void(const EventBase &, bool &)>>> m_listeners;
 
     template<typename TEventType>
     size_t getKey(){
-        static_assert(std::is_base_of_v<Event, TEventType>, "TEventType must derive from Event");
+        static_assert(std::is_base_of_v<EventBase, TEventType>, "TEventType must derive from Event");
         return typeid(TEventType).hash_code();
     }
 };

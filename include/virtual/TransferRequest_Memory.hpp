@@ -18,6 +18,8 @@ template <typename T> class Memory
     Memory() = default;
     ~Memory() = default;
 
+    virtual void prep(){}; 
+
     virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const = 0;
 
     virtual std::unique_ptr<T> createFinal(vk::Device &device, VmaAllocator &allocator,

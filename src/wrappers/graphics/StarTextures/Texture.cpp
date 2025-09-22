@@ -219,7 +219,9 @@ void star::StarTextures::Texture::CreateAllocation(vk::Device &device, const vk:
 
     if (result != VK_SUCCESS)
     {
-        throw std::runtime_error("Failed to create image: " + result);
+        std::string message = "Failed to create image: " + std::to_string(result); 
+
+        throw std::runtime_error(message);
     }
 
     std::string fullAllocationName = std::string(allocationName) + "_TEXTURE";

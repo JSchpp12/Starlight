@@ -1,14 +1,14 @@
 #include "core/device/managers/Pipeline.hpp"
 
-#include "core/device/system/ShaderCompiledEvent.hpp"
+#include "core/device/system/event/ShaderCompiled.hpp"
 
 namespace star::core::device::manager
 {
 void Pipeline::submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem,
                           system::EventBus &eventBus, PipelineRecord *storedRecord)
 {
-    eventBus.subscribe<system::ShaderCompiledEvent>([this, handle](const system::Event &e, bool &keepAlive) {
-        const auto &event = static_cast<const system::ShaderCompiledEvent &>(e);
+    eventBus.subscribe<system::event::ShaderCompiled>([this, handle](const system::EventBase &e, bool &keepAlive) {
+        const auto &event = static_cast<const system::event::ShaderCompiled &>(e);
 
         auto *record = this->get(handle);
         bool shouldKeepAlive = true;

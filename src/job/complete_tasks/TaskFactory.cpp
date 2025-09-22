@@ -8,7 +8,7 @@
 
 #include "core/device/managers/GraphicsContainer.hpp"
 #include "core/device/system/EventBus.hpp"
-#include "core/device/system/ShaderCompiledEvent.hpp"
+#include "core/device/system/event/ShaderCompiled.hpp"
 
 #pragma region BuildPipeline
 
@@ -24,7 +24,7 @@ void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void 
     handle.setID(p->handleID);
     handle.setType(Handle_Type::pipeline);
 
-    std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;  
+    std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;
 
     gm->pipelineManager.get(handle)->request.pipeline = std::move(*p->pipeline);
 }
@@ -58,7 +58,7 @@ void star::job::complete_tasks::task_factory::ExecuteShaderCompileComplete(void 
 
     std::cout << "Marking shader at index [" << p->handleID << "] as ready" << std::endl;
     gm->shaderManager.get(shader)->compiledShader = std::move(p->compiledShaderCode);
-    eb->emit<core::device::system::ShaderCompiledEvent>(core::device::system::ShaderCompiledEvent(shader));
+    eb->emit<core::device::system::event::ShaderCompiled>(core::device::system::event::ShaderCompiled{shader});
 
     ProcessPipelinesWhichAreNowReadyForBuild(device, taskSystem, graphicsManagers);
 }
@@ -75,7 +75,8 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
     for (size_t i = 0; i < gm->pipelineManager.getRecords().size(); i++)
     {
         auto &record = gm->pipelineManager.getRecords()[i];
-        if (!record.isReady() && record.numCompiled != 0 && record.numCompiled == record.request.pipeline.getShaders().size())
+        if (!record.isReady() && record.numCompiled != 0 &&
+            record.numCompiled == record.request.pipeline.getShaders().size())
         {
             uint32_t recordHandle = 0;
             if (!star::CastHelpers::SafeCast<size_t, uint32_t>(i, recordHandle))
@@ -91,7 +92,7 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
             for (auto &shader : record.request.pipeline.getShaders())
             {
                 compiledShaders.push_back(std::make_pair<StarShader, std::unique_ptr<std::vector<uint32_t>>>(
-                    StarShader(gm->shaderManager.get(shader)->shader),
+                    StarShader(gm->shaderManager.get(shader)->request.shader),
                     std::move(gm->shaderManager.get(shader)->compiledShader)));
             }
 
@@ -99,8 +100,8 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
                                                                 .renderingTargetInfo = record.request.renderingInfo,
                                                                 .swapChainExtent = record.request.resolution};
 
-            ts->submitTask(tasks::task_factory::CreateBuildPipeline(
-                d->getVulkanDevice(), handle, std::move(deps), std::move(record.request.pipeline)));
+            ts->submitTask(tasks::task_factory::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
+                                                                    std::move(record.request.pipeline)));
         }
     }
 }

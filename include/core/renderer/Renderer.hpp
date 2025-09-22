@@ -56,7 +56,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     virtual void prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                             const uint8_t &numFramesInFlight);
 
-    virtual void cleanupRender(core::device::DeviceContext &device); 
+    virtual void cleanupRender(core::device::DeviceContext &device);
 
     virtual void frameUpdate(core::device::DeviceContext &context);
 
@@ -94,6 +94,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     {
         return m_lightListBuffers;
     }
+
   protected:
     bool isReady = false;
     std::vector<Handle> m_cameraInfoBuffers, m_lightInfoBuffers, m_lightListBuffers;
@@ -186,8 +187,8 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
     RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context)
     {
-        return RenderingTargetInfo({this->getColorAttachmentFormat(context)},
-                                   {this->getDepthAttachmentFormat(context)});
+        return RenderingTargetInfo(std::vector<vk::Format>{this->getColorAttachmentFormat(context)},
+                                   this->getDepthAttachmentFormat(context));
     }
 #pragma endregion
   private:

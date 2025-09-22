@@ -167,7 +167,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
     return meshes;
 }
 
-std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(std::string_view filePath)
+std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(const std::string &filePath)
 {
     std::string parentDirectory = file_helpers::GetParentDirectory(filePath);
 
@@ -182,7 +182,7 @@ std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterial
     std::vector<tinyobj::material_t> fileMaterials;
     std::string warn, err;
 
-    if (!tinyobj::LoadObj(&attrib, &shapes, &fileMaterials, &warn, &err, filePath.begin(), parentDirectory.c_str(),
+    if (!tinyobj::LoadObj(&attrib, &shapes, &fileMaterials, &warn, &err, filePath.c_str(), parentDirectory.c_str(),
                           true))
     {
         throw std::runtime_error(warn + err);

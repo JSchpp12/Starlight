@@ -21,17 +21,18 @@ void Execute(void *p)
 
     data->finalizedShaderObject = std::make_unique<StarShader>(data->path, data->stage);
     std::cout << "Beginning compile shader: " << data->path << std::endl;
-    data->compiledShaderCode = star::Compiler::compile(data->path, true);
+    data->compiledShaderCode = data->compiler->compile(data->path, true); 
 }
 
 star::job::tasks::Task<> Create(const std::string &fileName, const star::Shader_Stage &stage,
-                                const Handle &shaderHandle)
+                                const Handle &shaderHandle, std::unique_ptr<Compiler> compiler)
 {
     return star::job::tasks::Task<>::Builder<CompileShaderPayload>()
         .setPayload(CompileShaderPayload{
             .path = fileName,
             .stage = stage,
             .handleID = shaderHandle.getID(),
+            .compiler = std::move(compiler)
         })
         .setExecute(&Execute)
         .setCreateCompleteTaskFunction(&CreateComplete)

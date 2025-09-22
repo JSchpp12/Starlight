@@ -9,5 +9,5 @@ void star::core::SystemContext::createDevice(const device::DeviceID &deviceID, c
                                              std::set<Rendering_Features> requiredFeatures, StarWindow &window, const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
 {
     m_deviceInfos.emplace_back(
-        std::move(device::DeviceContext(numOfFramesInFlight, deviceID, m_instance, requiredFeatures, window, requiredRenderingDeviceFeatures)));
+        device::DeviceContext(numOfFramesInFlight, deviceID, m_instance, requiredFeatures, window, requiredRenderingDeviceFeatures));
 }

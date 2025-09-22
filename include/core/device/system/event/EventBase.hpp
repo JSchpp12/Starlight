@@ -2,8 +2,8 @@
 
 namespace star::core::device::system
 {
-struct Event
+struct EventBase
 {
-    virtual ~Event() = default; 
+    virtual ~EventBase() = default; 
 };
 } // namespace star::core::device::system

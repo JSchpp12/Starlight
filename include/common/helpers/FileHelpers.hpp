@@ -19,7 +19,9 @@ bool FileExists(std::string_view filePath);
 std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const std::string &directoryPath,
                                                                          const std::string &name);
 
-std::string ReadFile(std::string pathToFile, bool includeCarriageReturns = true);
+std::string ReadFile(const std::string &pathToFile, bool includeCarriageReturns = true);
+
+std::string ReadFileBinary(const std::string &pathToFile); 
 
 std::string GetFileExtension(std::string_view pathToFile);
 
@@ -27,10 +29,10 @@ std::string GetFileNameWithExtension(std::string_view pathToFile);
 
 std::string GetFileNameWithoutExtension(std::string_view pathToFile);
 
-std::string GetParentDirectory(std::string_view pathToFile);
+std::string GetParentDirectory(const std::string &pathToFile, const bool appendDirectorySeparator = true);
 
 Shader_Stage GetStageOfShader(std::string_view pathToFile);
 
-void CreateDirectoryIfDoesNotExist(std::string_view pathToDirectory);
+void CreateDirectoryIfDoesNotExist(const std::string &pathToDirectory);
 
 } // namespace star::file_helpers

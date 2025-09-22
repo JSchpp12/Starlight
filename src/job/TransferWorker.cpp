@@ -16,9 +16,10 @@ void star::job::TransferManagerThread::startAsync(core::device::StarDevice &devi
 {
     this->shouldRun.store(true);
     this->thread = boost::thread(job::TransferManagerThread::mainLoop,
-                                 job::TransferManagerThread::SubThreadInfo(&this->shouldRun, device.getVulkanDevice(), this->myQueue,
-                                               device.getAllocator().get(), this->deviceProperties,
-                                               &this->requestQueues, this->allTransferQueueFamilyIndicesInUse));
+                                 job::TransferManagerThread::SubThreadInfo(&this->shouldRun, device.getVulkanDevice(),
+                                                                           this->myQueue, device.getAllocator().get(),
+                                                                           this->deviceProperties, &this->requestQueues,
+                                                                           this->allTransferQueueFamilyIndicesInUse));
 
     if (!this->thread.joinable())
         throw std::runtime_error("Failed to launch transfer thread");
@@ -41,7 +42,8 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
     for (int i = 0; i < 5; i++)
     {
         processRequestInfos.push(CreateProcessingInfo(
-            myInfo.device, std::make_unique<StarCommandPool>(myInfo.device, myInfo.queue.getParentQueueFamilyIndex(), true)));
+            myInfo.device,
+            std::make_unique<StarCommandPool>(myInfo.device, myInfo.queue.getParentQueueFamilyIndex(), true)));
     }
 
     while (myInfo.shouldRun->load())
@@ -78,6 +80,8 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
                 assert(request->resultingBuffer.has_value() && request->resultingBuffer.value() != nullptr &&
                        "Buffer request must contain both a request and a resulting address");
 
+                request->bufferTransferRequest->prep();
+
                 CreateBuffer(myInfo.device, myInfo.allocator, myInfo.queue, myInfo.deviceProperties,
                              myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
                              request->bufferTransferRequest.get(), request->resultingBuffer.value(),
@@ -88,6 +92,8 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
                 assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr &&
                        "Texture request must contain both a request and a resulting address");
 
+                request->textureTransferRequest->prep(); 
+                
                 CreateTexture(myInfo.device, myInfo.allocator, myInfo.queue, myInfo.deviceProperties,
                               myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
                               request->textureTransferRequest.get(), request->resultingTexture.value(),
@@ -113,20 +119,20 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
     }
 }
 
-std::unique_ptr<star::job::TransferManagerThread::ProcessRequestInfo> star::job::TransferManagerThread::CreateProcessingInfo(
-    vk::Device &device, std::shared_ptr<star::StarCommandPool> commandPool)
+std::unique_ptr<star::job::TransferManagerThread::ProcessRequestInfo> star::job::TransferManagerThread::
+    CreateProcessingInfo(vk::Device &device, std::shared_ptr<star::StarCommandPool> commandPool)
 {
     return std::make_unique<ProcessRequestInfo>(
         std::make_unique<StarCommandBuffer>(device, 1, commandPool, star::Queue_Type::Ttransfer, true, false));
 }
 
 void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
-                                               const vk::PhysicalDeviceProperties &deviceProperties,
-                                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                                               ProcessRequestInfo &processInfo,
-                                               TransferRequest::Buffer *newBufferRequest,
-                                               std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
-                                               boost::atomic<bool> *gpuDoneSignalMain)
+                                                    const vk::PhysicalDeviceProperties &deviceProperties,
+                                                    const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                                                    ProcessRequestInfo &processInfo,
+                                                    TransferRequest::Buffer *newBufferRequest,
+                                                    std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
+                                                    boost::atomic<bool> *gpuDoneSignalMain)
 {
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
 
@@ -151,12 +157,12 @@ void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAlloc
 }
 
 void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
-                                                const vk::PhysicalDeviceProperties &deviceProperties,
-                                                const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                                                ProcessRequestInfo &processInfo,
-                                                TransferRequest::Texture *newTextureRequest,
-                                                std::unique_ptr<StarTextures::Texture> *resultingTexture,
-                                                boost::atomic<bool> *gpuDoneSignalMain)
+                                                     const vk::PhysicalDeviceProperties &deviceProperties,
+                                                     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                                                     ProcessRequestInfo &processInfo,
+                                                     TransferRequest::Texture *newTextureRequest,
+                                                     std::unique_ptr<StarTextures::Texture> *resultingTexture,
+                                                     boost::atomic<bool> *gpuDoneSignalMain)
 {
 
     auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator);
@@ -185,8 +191,8 @@ void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllo
     processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain);
 }
 
-void star::job::TransferManagerThread::CheckForCleanups(vk::Device &device,
-                                                   std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos)
+void star::job::TransferManagerThread::CheckForCleanups(
+    vk::Device &device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos)
 {
     std::queue<std::unique_ptr<ProcessRequestInfo>> readyInfos = std::queue<std::unique_ptr<ProcessRequestInfo>>();
     std::queue<std::unique_ptr<ProcessRequestInfo>> notReadyInfos = std::queue<std::unique_ptr<ProcessRequestInfo>>();
@@ -251,7 +257,7 @@ star::job::TransferWorker::~TransferWorker()
 }
 
 star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device, bool overrideToSingleThreadMode,
-                                     std::vector<StarQueue> &queuesToUse)
+                                          std::vector<StarQueue> &queuesToUse)
 {
     bool runAsync = !overrideToSingleThreadMode;
 
@@ -265,8 +271,9 @@ star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device
 }
 
 void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
-                               std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
-                               std::unique_ptr<star::StarBuffers::Buffer> &resultingBuffer, const bool &isHighPriority)
+                                    std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
+                                    std::unique_ptr<star::StarBuffers::Buffer> &resultingBuffer,
+                                    const bool &isHighPriority)
 {
     auto newRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
         &isBeingWorkedOnByTransferThread, std::move(newBufferRequest), resultingBuffer);
@@ -275,8 +282,9 @@ void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransf
 }
 
 void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
-                               std::unique_ptr<star::TransferRequest::Texture> newTextureRequest,
-                               std::unique_ptr<StarTextures::Texture> &resultingTexture, const bool &isHighPriority)
+                                    std::unique_ptr<star::TransferRequest::Texture> newTextureRequest,
+                                    std::unique_ptr<StarTextures::Texture> &resultingTexture,
+                                    const bool &isHighPriority)
 {
     auto newRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
         &isBeingWorkedOnByTransferThread, std::move(newTextureRequest), resultingTexture);
@@ -292,8 +300,8 @@ void star::job::TransferWorker::update()
     }
 }
 
-void star::job::TransferWorker::insertRequest(std::unique_ptr<job::TransferManagerThread::InterThreadRequest> newRequest,
-                                         const bool &isHighPriority)
+void star::job::TransferWorker::insertRequest(
+    std::unique_ptr<job::TransferManagerThread::InterThreadRequest> newRequest, const bool &isHighPriority)
 {
     this->requests.push_back(std::move(newRequest));
 
@@ -308,9 +316,9 @@ void star::job::TransferWorker::insertRequest(std::unique_ptr<job::TransferManag
 }
 
 std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::TransferWorker::CreateThreads(
-        core::device::StarDevice &device, const std::vector<StarQueue> queuesToUse,
-        boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> &highPriorityQueue,
-        boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> &standardQueue)
+    core::device::StarDevice &device, const std::vector<StarQueue> queuesToUse,
+    boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> &highPriorityQueue,
+    boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> &standardQueue)
 {
     std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
 
@@ -347,7 +355,8 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
         else
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
-                std::vector<boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> *>{&highPriorityQueue},
+                std::vector<boost::lockfree::stack<job::TransferManagerThread::InterThreadRequest *> *>{
+                    &highPriorityQueue},
                 device.getPhysicalDevice().getProperties(), queue, allTransferQueueFamilyIndicesInUse));
             curNumHighThreads++;
         }

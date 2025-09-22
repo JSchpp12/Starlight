@@ -125,9 +125,9 @@ class DeviceContext
         return *m_renderResourceManager;
     }
 
-    ManagerWrapper<manager::Shader, StarShader, manager::ShaderRecord> getShaderManager()
+    ManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord> getShaderManager()
     {
-        return ManagerWrapper<manager::Shader, StarShader, manager::ShaderRecord>{m_graphicsManagers.shaderManager,
+        return ManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord>{m_graphicsManagers.shaderManager,
                                                                                   *this};
     }
 

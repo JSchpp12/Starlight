@@ -36,7 +36,7 @@ class BasicObject : public StarObject
 
     std::vector<std::unique_ptr<StarMesh>> loadMeshes(core::device::DeviceContext &context) override;
 
-    std::vector<std::shared_ptr<StarMaterial>> LoadMaterials(std::string_view filePath);
+    std::vector<std::shared_ptr<StarMaterial>> LoadMaterials(const std::string &filePath);
 
     void getTypeOfMaterials(bool &isTextureMaterial, bool &isBumpMaterial) const; 
 };

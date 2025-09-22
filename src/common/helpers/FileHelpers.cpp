@@ -42,8 +42,14 @@ std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const s
     return std::nullopt;
 }
 
-std::string ReadFile(std::string pathToFile, bool includeCarriageReturns)
+std::string ReadFile(const std::string &pathToFile, bool includeCarriageReturns)
 {
+    if (!FileExists(pathToFile)){
+        std::ostringstream oss; 
+        oss << "Provided file for reading does not exist: " << pathToFile;
+        throw std::runtime_error(oss.str()); 
+    }
+
     std::string line, text;
     std::ifstream fileReader(pathToFile);
 
@@ -53,6 +59,32 @@ std::string ReadFile(std::string pathToFile, bool includeCarriageReturns)
     }
 
     return (text);
+}
+
+std::string ReadFileBinary(const std::string &pathToFile){
+    if (!FileExists(pathToFile)){
+        std::ostringstream oss; 
+        oss << "Provided file for reading does not exist: " << pathToFile; 
+        throw std::runtime_error(oss.str()); 
+    }
+
+    std::ifstream file(pathToFile, std::ios::binary | std::ios::ate);
+
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file " << pathToFile << std::endl;
+        return "";
+    }
+
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<char> buffer(size);
+    if (!file.read(buffer.data(), size)) {
+        std::cerr << "Error: Could not read from file " << pathToFile << std::endl;
+        return "";
+    }
+
+    return std::string(buffer.begin(), buffer.end());
 }
 
 std::string GetFileExtension(std::string_view pathToFile)
@@ -74,11 +106,20 @@ std::string GetFileNameWithoutExtension(std::string_view pathToFile)
     return mainFileName.substr(0, posOfExt);
 }
 
-std::string GetParentDirectory(std::string_view pathToFile)
+std::string GetParentDirectory(const std::string &pathToFile, const bool appendDirectorySeparator)
 {
-    size_t found = pathToFile.find_last_of("/\\");
-    std::string path = std::string(pathToFile.substr(0, found));
-    return path += "/";
+    auto path = boost::filesystem::path(pathToFile); 
+    if (!boost::filesystem::path(pathToFile).has_parent_path()){
+        std::ostringstream oss; 
+        oss << "Requested path does not have a parent. Path: " << pathToFile; 
+        throw std::runtime_error(oss.str());
+    }
+
+    if (appendDirectorySeparator){
+        return boost::filesystem::canonical(path.parent_path()).string() + boost::filesystem::path::separator;
+    }else{
+        return boost::filesystem::canonical(path.parent_path()).string(); 
+    }
 }
 
 star::Shader_Stage GetStageOfShader(std::string_view pathToFile)
@@ -99,7 +140,7 @@ star::Shader_Stage GetStageOfShader(std::string_view pathToFile)
     throw std::runtime_error("Unsupported stage type for shader");
 }
 
-void CreateDirectoryIfDoesNotExist(std::string_view pathToDirectory)
+void CreateDirectoryIfDoesNotExist(const std::string &pathToDirectory)
 {
     boost::filesystem::path targetDir(pathToDirectory);
 
@@ -110,7 +151,7 @@ void CreateDirectoryIfDoesNotExist(std::string_view pathToDirectory)
     catch (const boost::filesystem::filesystem_error &e)
     {
         std::ostringstream oss;
-        oss << "Filesytem error: " << e.what();
+        oss << "Filesystem error: " << e.what();
 
         throw std::runtime_error(oss.str());
     }

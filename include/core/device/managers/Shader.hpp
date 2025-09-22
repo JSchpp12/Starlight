@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Compiler.hpp"
 #include "Handle.hpp"
 #include "StarShader.hpp"
 #include "device/managers/Manager.hpp"
@@ -11,23 +12,38 @@
 
 namespace star::core::device::manager
 {
+struct ShaderRequest
+{
+    ShaderRequest() = default;
+    ShaderRequest(StarShader shader) : shader(std::move(shader)), compiler(std::make_unique<Compiler>())
+    {
+    }
+    ShaderRequest(StarShader shader, std::unique_ptr<Compiler> compiler)
+        : shader(std::move(shader)), compiler(std::move(compiler))
+    {
+    }
+
+    StarShader shader;
+    std::unique_ptr<Compiler> compiler;
+};
 struct ShaderRecord
 {
     ShaderRecord() = default;
-    ShaderRecord(StarShader shader) : shader(std::move(shader))
+    ShaderRecord(ShaderRequest request) : request(std::move(request))
     {
     }
     ~ShaderRecord() = default;
     ShaderRecord(const ShaderRecord &) = delete;
     ShaderRecord &operator=(const ShaderRecord &) = delete;
-    ShaderRecord(ShaderRecord &&other) : shader(other.shader), compiledShader(std::move(other.compiledShader))
+    ShaderRecord(ShaderRecord &&other)
+        : request(std::move(other.request)), compiledShader(std::move(other.compiledShader))
     {
     }
     ShaderRecord &operator=(ShaderRecord &&other)
     {
         if (this != &other)
         {
-            shader = other.shader;
+            request = std::move(other.request);
             compiledShader = std::move(other.compiledShader);
         }
         return *this;
@@ -38,16 +54,18 @@ struct ShaderRecord
         return compiledShader != nullptr;
     }
 
-    void cleanupRender(core::device::StarDevice &device){
-        if (compiledShader){
-            compiledShader.reset(); 
+    void cleanupRender(core::device::StarDevice &device)
+    {
+        if (compiledShader)
+        {
+            compiledShader.reset();
         }
     }
 
-    StarShader shader = StarShader();
+    ShaderRequest request;
     std::unique_ptr<std::vector<uint32_t>> compiledShader = nullptr;
 };
-class Shader : public Manager<ShaderRecord, StarShader, 50>
+class Shader : public Manager<ShaderRecord, ShaderRequest, 50>
 {
   public:
   protected:
@@ -57,7 +75,7 @@ class Shader : public Manager<ShaderRecord, StarShader, 50>
     }
 
   private:
-    void submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
-                    ShaderRecord *storedRecord) override;
+    void submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem,
+                    system::EventBus &eventBus, ShaderRecord *storedRecord) override;
 };
 } // namespace star::core::device::manager
