@@ -15,9 +15,8 @@ void Execute(void *p)
     auto *payload = static_cast<WritePayload *>(p);
 
     auto parentDir = file_helpers::GetParentDirectory(payload->path);
-    if (!file_helpers::FileExists(parentDir))
-    {
-        file_helpers::CreateDirectoryIfDoesNotExist(parentDir);
+    if (!boost::filesystem::exists(parentDir)){
+        file_helpers::CreateDirectoryIfDoesNotExist(parentDir); 
     }
 }
 

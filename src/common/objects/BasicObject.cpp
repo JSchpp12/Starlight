@@ -12,6 +12,8 @@
 #include "StarGraphicsPipeline.hpp"
 #include "VertColorMaterial.hpp"
 
+#include <boost/filesystem.hpp>
+
 std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
 {
     std::unordered_map<star::Shader_Stage, StarShader> shaders;
@@ -68,8 +70,7 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
 
 std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core::device::DeviceContext &context)
 {
-    std::string texturePath = file_helpers::GetParentDirectory(m_objFilePath);
-    std::string materialFile = file_helpers::GetParentDirectory(m_objFilePath);
+    auto parent = file_helpers::GetParentDirectory(m_objFilePath).string();
 
     std::cout << "Loading object file: " << m_objFilePath << std::endl;
 
@@ -79,7 +80,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
 
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, m_objFilePath.c_str(), materialFile.c_str(), true))
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, m_objFilePath.c_str(), parent.c_str(), true))
     {
         throw std::runtime_error(warn + err);
     }
@@ -168,8 +169,8 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
 }
 
 std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(const std::string &filePath)
-{
-    std::string parentDirectory = file_helpers::GetParentDirectory(filePath);
+{ 
+    auto parentDirectory = file_helpers::GetParentDirectory(filePath).string(); 
 
     if (!star::file_helpers::FileExists(filePath))
     {
@@ -210,16 +211,18 @@ std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterial
 
         if (isBumpMaterial)
         {
+            auto path = parentDirectory / boost::filesystem::path(fMaterial.bump_texname);
             materials.emplace_back(std::make_shared<star::BumpMaterial>(
-                parentDirectory + fMaterial.bump_texname, fMaterial.diffuse_texname, glm::vec4(1.0), glm::vec4(1.0),
+                path.string(), fMaterial.diffuse_texname, glm::vec4(1.0), glm::vec4(1.0),
                 glm::vec4(1.0), glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
                 glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
                 fMaterial.shininess));
         }
         else if (isTextureMaterial)
         {
+            auto path = parentDirectory / boost::filesystem::path(fMaterial.diffuse_texname); 
             materials.emplace_back(std::make_shared<star::TextureMaterial>(
-                parentDirectory + fMaterial.diffuse_texname, glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                path.string(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
                 glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
                 glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
                 fMaterial.shininess));

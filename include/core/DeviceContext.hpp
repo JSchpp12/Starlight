@@ -99,6 +99,8 @@ class DeviceContext
     DeviceContext(const DeviceContext &) = delete;
     DeviceContext &operator=(const DeviceContext &) = delete;
 
+    void waitIdle(); 
+    
     void prepareForNextFrame();
 
     inline StarDevice &getDevice()

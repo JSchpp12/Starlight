@@ -29,6 +29,8 @@ void star::job::TransferManagerThread::stopAsync()
 {
     this->shouldRun.store(false);
 
+    std::cout << "Waiting for thread to exit" << std::endl; 
+
     // wait for thread to exit
     this->thread.join();
 }

@@ -5,7 +5,7 @@ SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME})
 
 include(CheckIncludeFile)
-
+enable_language(C CXX)
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,13 +14,13 @@ if (APPLE)
     set(CMAKE_MACOSX_RPATH 1)
 elseif(WIN32)
     set(CMAKE_FIND_LIBRARY_PREFIXES "")
+else()
+    set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 endif()
-enable_language(C CXX)
 
 set(VULKAN_VERSION "1.4.313.0")
 find_package(Vulkan ${VULKAN_VERSION} REQUIRED)
 
-set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
 

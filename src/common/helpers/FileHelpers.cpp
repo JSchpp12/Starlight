@@ -1,7 +1,5 @@
 #include "FileHelpers.hpp"
 
-#include <boost/filesystem.hpp>
-
 #include <iostream>
 #include <sstream>
 
@@ -106,19 +104,15 @@ std::string GetFileNameWithoutExtension(std::string_view pathToFile)
     return mainFileName.substr(0, posOfExt);
 }
 
-std::string GetParentDirectory(const std::string &pathToFile, const bool appendDirectorySeparator)
+boost::filesystem::path GetParentDirectory(const std::string &pathToFile)
 {
     auto path = boost::filesystem::path(pathToFile); 
-    if (!boost::filesystem::path(pathToFile).has_parent_path()){
+    if (!path.has_parent_path()){
         std::ostringstream oss; 
         oss << "Requested path does not have a parent. Path: " << pathToFile; 
         throw std::runtime_error(oss.str());
-    }
-
-    if (appendDirectorySeparator){
-        return boost::filesystem::canonical(path.parent_path()).string() + boost::filesystem::path::separator;
     }else{
-        return boost::filesystem::canonical(path.parent_path()).string(); 
+        return path.parent_path();
     }
 }
 
@@ -140,13 +134,10 @@ star::Shader_Stage GetStageOfShader(std::string_view pathToFile)
     throw std::runtime_error("Unsupported stage type for shader");
 }
 
-void CreateDirectoryIfDoesNotExist(const std::string &pathToDirectory)
-{
-    boost::filesystem::path targetDir(pathToDirectory);
-
+void CreateDirectoryIfDoesNotExist(boost::filesystem::path &pathToDirectory){
     try
     {
-        boost::filesystem::create_directories(targetDir);
+        boost::filesystem::create_directories(pathToDirectory);
     }
     catch (const boost::filesystem::filesystem_error &e)
     {

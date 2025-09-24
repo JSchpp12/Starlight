@@ -55,7 +55,7 @@ shaderc_include_result *BasicIncluder::GetInclude(const char *requestedSource, s
 
     // might want to check for cycle includes here later
 
-    std::ifstream file(resolved, std::ios::binary);
+    std::ifstream file(resolved.string(), std::ios::binary);
     std::string contents = file_helpers::ReadFileBinary(resolved.string()); 
 
     m_payload = std::unique_ptr<Payload>{new Payload{.name = resolved.string(), .data = std::move(contents)}};

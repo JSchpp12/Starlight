@@ -56,6 +56,11 @@ star::core::device::DeviceContext::~DeviceContext()
     }
 }
 
+void star::core::device::DeviceContext::waitIdle(){
+    m_taskManager.stopAll(); 
+    m_device->getVulkanDevice().waitIdle(); 
+}
+
 void star::core::device::DeviceContext::prepareForNextFrame()
 {
     handleCompleteMessages();

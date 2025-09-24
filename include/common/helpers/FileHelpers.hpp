@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/filesystem.hpp>
+
 namespace star::file_helpers
 {
 bool FileExists(std::string_view filePath);
@@ -29,10 +31,10 @@ std::string GetFileNameWithExtension(std::string_view pathToFile);
 
 std::string GetFileNameWithoutExtension(std::string_view pathToFile);
 
-std::string GetParentDirectory(const std::string &pathToFile, const bool appendDirectorySeparator = true);
+boost::filesystem::path GetParentDirectory(const std::string &pathToFile);
 
 Shader_Stage GetStageOfShader(std::string_view pathToFile);
 
-void CreateDirectoryIfDoesNotExist(const std::string &pathToDirectory);
+void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirectory); 
 
 } // namespace star::file_helpers

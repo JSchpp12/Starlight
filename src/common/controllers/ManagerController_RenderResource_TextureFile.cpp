@@ -52,7 +52,11 @@ std::string star::ManagerController::RenderResource::TextureFile::GetFilePath(co
     boost::filesystem::path parentDir = boost::filesystem::path(filePath);
     auto result = file_helpers::FindFileInDirectoryWithSameNameIgnoreFileType(parentDir.parent_path().string(), name);
 
-    assert(result.has_value() && "Unable to find matching file!");
+    if (!result.has_value()){
+        std::ostringstream oss; 
+        oss << "Failed to find matching file for texture copy: " << filePath; 
+        throw std::runtime_error(oss.str()); 
+    }
 
     return result.value();
 }

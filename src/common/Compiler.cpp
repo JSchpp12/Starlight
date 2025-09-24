@@ -88,7 +88,7 @@ shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath)
     if (compileDebug)
         options.SetGenerateDebugInfo();
 
-    std::string parent;
+    boost::filesystem::path parent;
     try
     {
         parent = file_helpers::GetParentDirectory(filePath);
@@ -98,7 +98,7 @@ shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath)
         std::cout << "Unable to find parent directory. Includes may not function" << "\n";
         parent = filePath;
     }
-    options.SetIncluder(std::make_unique<core::graphics::shader::BasicIncluder>(std::vector<std::string>{parent}));
+    options.SetIncluder(std::make_unique<core::graphics::shader::BasicIncluder>(std::vector<std::string>{parent.string()}));
 
     return options;
 }
