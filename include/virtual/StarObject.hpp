@@ -86,6 +86,8 @@ namespace star {
 		/// @return A reference to the created instance. The object will own the instance. 
 		virtual StarObjectInstance& createInstance(); 
 
+		virtual StarObjectInstance& getInstance(const size_t &index); 
+
 		virtual void frameUpdate(core::device::DeviceContext &context); 
 
 		/// <summary>
