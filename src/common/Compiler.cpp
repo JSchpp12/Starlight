@@ -16,7 +16,7 @@ std::unique_ptr<std::vector<uint32_t>> Compiler::compile(const std::string &path
     shaderc::CompileOptions compilerOptions = getCompileOptions(pathToFile);
 
     auto stageC = getShaderCStageFlag(pathToFile);
-    auto name = file_helpers::GetFileNameWithExtension(pathToFile);
+    auto name = file_helpers::GetFullPath(pathToFile);
     auto fileCode = file_helpers::ReadFile(pathToFile, true);
 
     std::string preprocessed = preprocessShader(shaderCompiler, compilerOptions, name, stageC, fileCode.c_str());

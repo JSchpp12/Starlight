@@ -92,14 +92,19 @@ std::string GetFileExtension(std::string_view pathToFile)
     return path.extension().string();
 }
 
-std::string GetFileNameWithExtension(std::string_view pathToFile)
+std::string GetFullPath(const std::string &pathToFile)
 {
-    return std::string(pathToFile.substr(pathToFile.find_last_of("/\\") + 1));
+    return boost::filesystem::canonical(boost::filesystem::path(pathToFile)).string(); 
 }
 
-std::string GetFileNameWithoutExtension(std::string_view pathToFile)
+std::string GetFileNameWithoutExtension(const std::string &pathToFile)
 {
-    const std::string mainFileName = GetFileNameWithExtension(pathToFile);
+    const auto path = boost::filesystem::path(pathToFile); 
+    if (!path.has_filename()){
+        throw std::runtime_error("No filename provided in path"); 
+    }
+
+    const std::string mainFileName = path.filename().string(); 
     auto posOfExt = mainFileName.find_last_of('.');
     return mainFileName.substr(0, posOfExt);
 }

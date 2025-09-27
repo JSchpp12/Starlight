@@ -27,9 +27,9 @@ std::string ReadFileBinary(const std::string &pathToFile);
 
 std::string GetFileExtension(std::string_view pathToFile);
 
-std::string GetFileNameWithExtension(std::string_view pathToFile);
+std::string GetFullPath(const std::string &pathToFile);
 
-std::string GetFileNameWithoutExtension(std::string_view pathToFile);
+std::string GetFileNameWithoutExtension(const std::string &pathToFile);
 
 boost::filesystem::path GetParentDirectory(const std::string &pathToFile);
 
