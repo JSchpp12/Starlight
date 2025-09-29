@@ -8,7 +8,6 @@
 
 star::StarCamera::StarCamera(const uint32_t &width, const uint32_t &height) : resolution(glm::ivec2{width, height})
 {
-    
 }
 star::StarCamera::StarCamera(const uint32_t &width, const uint32_t &height, const float &horizontalFieldOfView,
                              const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance)
@@ -25,8 +24,13 @@ glm::mat4 star::StarCamera::getViewMatrix() const
 
 glm::mat4 star::StarCamera::getProjectionMatrix() const
 {
-    return glm::perspective(getVerticalFieldOfView(true), (float)this->resolution.x / (float)this->resolution.y,
-                            this->nearClippingPlaneDistance, this->farClippingPlaneDistance);
+    auto projection =
+        glm::perspective(getVerticalFieldOfView(true), (float)this->resolution.x / (float)this->resolution.y,
+                         this->nearClippingPlaneDistance, this->farClippingPlaneDistance);
+
+    // vulkan is flipped along y axis
+    projection[1][1] *= -1;
+    return projection;
 }
 
 float star::StarCamera::getHorizontalFieldOfView(const bool &inRadians) const

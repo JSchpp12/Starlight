@@ -64,11 +64,19 @@ class BasicCamera : public StarCamera, public Interactivity
         return this->yaw;
     }
 
+    void setSensitivity(const float &newSensitivity){
+      sensitivity = newSensitivity; 
+    }
+
+    void setMovementSpeed(const float &newSpeed){
+      movementSpeed = newSpeed; 
+    }
+
   private:
     Time time = Time();
 
-    const float movementSpeed = 1000.0f;
-    const float sensitivity = 0.1f;
+    float movementSpeed = 1000.0f;
+    float sensitivity = 0.1f;
     bool init = false;
 
     // previous mouse coordinates from GLFW

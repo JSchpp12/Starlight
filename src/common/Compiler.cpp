@@ -7,8 +7,7 @@ namespace star
 #ifdef NDEBUG
 bool Compiler::compileDebug = false;
 #else
-bool Compiler::compileDebug = true;
-#endif
+bool Compiler::compileDebug = true; 
 
 std::unique_ptr<std::vector<uint32_t>> Compiler::compile(const std::string &pathToFile, bool optimize)
 {
