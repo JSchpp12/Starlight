@@ -105,7 +105,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
 
     std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const override
     {
-        const vk::DeviceSize size = m_width * m_height * TChannels * sizeof(TData);
+        const size_t size = getSizeOfData(); 
 
         return StarBuffers::Buffer::Builder(allocator)
             .setAllocationCreateInfo(
@@ -197,14 +197,22 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
     {
         assert(m_rawData && "Data needs to be loaded before trying to write to buffers");
 
+
+        const size_t size = getSizeOfData(); 
+
         void *mapped = nullptr;
         stagingBuffer.map(&mapped);
-        stagingBuffer.writeToBuffer(m_rawData->data(), mapped, m_rawData->size());
+        stagingBuffer.writeToBuffer(m_rawData->data(), mapped, size);
         stagingBuffer.unmap();
     }
 
   protected:
     virtual std::unique_ptr<std::vector<TData>> loadTexture(const uint32_t &width, const uint32_t &height) const = 0;
+
+    size_t getSizeOfData() const {
+        assert(m_rawData && "Data must be loaded before size can be computed"); 
+        return m_rawData->size() * sizeof(TData); 
+    }
 
   private:
     uint32_t m_width, m_height, m_consumingQueueFamilyIndex;
