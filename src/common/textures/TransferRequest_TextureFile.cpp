@@ -52,7 +52,9 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile:
 
     std::vector<uint32_t> indices = std::vector<uint32_t>{this->graphicsQueueFamilyIndex}; 
     for (auto &index : transferQueueFamilyIndex)
+    {
         indices.push_back(index);
+    }
 
     return star::StarTextures::Texture::Builder(device, allocator)
         .setCreateInfo(Allocator::AllocationBuilder()
@@ -122,7 +124,7 @@ void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffer
         }
     }
 
-    vk::DeviceSize imageSize = l_width * l_height * 4;
+    const vk::DeviceSize imageSize = l_width * l_height * 4;
 
     void *mapped = nullptr; 
     stagingBuffer.map(&mapped);

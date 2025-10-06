@@ -196,7 +196,7 @@ class StarShaderInfo
         }
 
         Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout,
-                     vk::Format &requestedImageViewFormat, const bool &willCheckForIfReady)
+                     const vk::Format &requestedImageViewFormat, const bool &willCheckForIfReady)
         {
             assert(textureHandle.getType() == Handle_Type::texture);
 
