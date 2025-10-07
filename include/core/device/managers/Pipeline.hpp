@@ -17,15 +17,16 @@ struct PipelineRequest
     {
     }
     PipelineRequest(StarPipeline pipeline, vk::Extent2D resolution, renderer::RenderingTargetInfo renderingInfo)
-        : pipeline(std::move(pipeline)), resolution(std::move(resolution)), renderingInfo(std::move(renderingInfo)) 
+        : pipeline(std::move(pipeline)), resolution(std::move(resolution)), renderingInfo(std::move(renderingInfo))
     {
     }
     ~PipelineRequest() = default;
     PipelineRequest(const PipelineRequest &) = delete;
     PipelineRequest &operator=(const PipelineRequest &) = delete;
     PipelineRequest(PipelineRequest &&other)
-        : pipeline(std::move(other.pipeline)), resolution(std::move(other.resolution)), renderingInfo(std::move(other.renderingInfo))
-          
+        : pipeline(std::move(other.pipeline)), resolution(std::move(other.resolution)),
+          renderingInfo(std::move(other.renderingInfo))
+
     {
     }
     PipelineRequest &operator=(PipelineRequest &&other)
@@ -33,9 +34,8 @@ struct PipelineRequest
         if (this != &other)
         {
             pipeline = std::move(other.pipeline);
-            resolution = other.resolution; 
-            renderingInfo = other.renderingInfo; 
-
+            resolution = other.resolution;
+            renderingInfo = other.renderingInfo;
         }
         return *this;
     }
@@ -57,7 +57,7 @@ struct PipelineRecord
         if (this != &other)
         {
             request = std::move(other.request);
-            numCompiled = other.numCompiled; 
+            numCompiled = other.numCompiled;
         }
         return *this;
     };
@@ -67,12 +67,13 @@ struct PipelineRecord
         return request.pipeline.isRenderReady();
     }
 
-    void cleanupRender(core::device::StarDevice &device){
-        request.pipeline.cleanupRender(device); 
+    void cleanupRender(core::device::StarDevice &device)
+    {
+        request.pipeline.cleanupRender(device);
     }
 
     PipelineRequest request = PipelineRequest();
-    uint8_t numCompiled = 0; 
+    uint8_t numCompiled = 0;
 };
 
 class Pipeline : public Manager<PipelineRecord, PipelineRequest, 50>
@@ -84,7 +85,13 @@ class Pipeline : public Manager<PipelineRecord, PipelineRequest, 50>
         return Handle_Type::pipeline;
     }
 
+    PipelineRecord createRecord(device::StarDevice &device, PipelineRequest &&request) const override
+    {
+        return PipelineRecord(std::move(request));
+    }
+
   private:
-    void submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus, PipelineRecord *storedRecord) override;
+    void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
+                    system::EventBus &eventBus, PipelineRecord *storedRecord) override;
 };
 } // namespace star::core::device::manager

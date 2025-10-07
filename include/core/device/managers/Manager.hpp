@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Handle.hpp"
-#include "job/TaskManager.hpp"
-#include "device/system/EventBus.hpp"
 #include "device/StarDevice.hpp"
+#include "device/system/EventBus.hpp"
+#include "job/TaskManager.hpp"
 
 #include <array>
 #include <cassert>
@@ -13,16 +13,21 @@
 namespace star::core::device::manager
 {
 template <typename T, typename TResourceRequest>
-concept RecordStructWithHasReady = requires(const T record) {
+concept RecordStructWithHasReady = requires(const T record, device::StarDevice &device) {
     { record.isReady() } -> std::same_as<bool>;
-} && std::constructible_from<T, TResourceRequest>;
+};
+template <typename T, typename TResourceRequest>
+concept RecordStructHasCleanup = requires(T record, device::StarDevice &device) {
+    { record.cleanupRender(device) } -> std::same_as<void>;
+};
 
 template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
-    requires RecordStructWithHasReady<TRecord, TResourceRequest>
+    requires RecordStructWithHasReady<TRecord, TResourceRequest> &&
+             RecordStructHasCleanup<TRecord, TResourceRequest>
 class Manager
 {
   public:
-    Manager() = default; 
+    Manager() = default;
     virtual ~Manager() = default;
     Manager(const Manager &) = delete;
     Manager(Manager &&other)
@@ -41,14 +46,15 @@ class Manager
         }
         return *this;
     }
-    
-    Handle submit(device::StarDevice& device, job::TaskManager &taskSystem, system::EventBus &eventBus, TResourceRequest resource)
+
+    Handle submit(device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
+                  TResourceRequest resource)
     {
         TRecord *record = nullptr;
         Handle newHandle;
-        insert(std::move(resource), newHandle, record);
+        insert(device, newHandle, std::move(resource), record);
 
-        submitTask(newHandle, device, taskSystem, eventBus, record);
+        submitTask(device, newHandle, taskSystem, eventBus, record);
 
         return newHandle;
     }
@@ -69,13 +75,16 @@ class Manager
         return rec->isReady();
     }
 
-    std::array<TRecord, TMaxRecordCount> &getRecords(){
+    std::array<TRecord, TMaxRecordCount> &getRecords()
+    {
         return m_records;
     }
 
-    void cleanupRender(device::StarDevice &device){
-        for (auto &record : m_records){
-            record.cleanupRender(device); 
+    void cleanupRender(device::StarDevice &device)
+    {
+        for (auto &record : m_records)
+        {
+            record.cleanupRender(device);
         }
     }
 
@@ -86,15 +95,12 @@ class Manager
     std::array<TRecord, TMaxRecordCount> m_records = std::array<TRecord, TMaxRecordCount>();
     uint32_t m_nextSpace = 0;
 
-    void insert(TResourceRequest request, Handle &handle, TRecord *&record)
+    void insert(device::StarDevice &device, Handle &handle, TResourceRequest request, TRecord *&record)
     {
         uint32_t nextSpace = getNextSpace();
-        Handle newHandle = Handle{
-            .type = getHandleType(), 
-            .id = nextSpace
-        };
+        Handle newHandle = Handle{.type = getHandleType(), .id = nextSpace};
 
-        m_records[nextSpace] = TRecord(std::move(request));
+        m_records[nextSpace] = createRecord(device, std::move(request));
 
         handle = newHandle;
         record = &m_records[nextSpace];
@@ -125,6 +131,9 @@ class Manager
         return nextSpace;
     }
 
-    virtual void submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus, TRecord *storedRecord) = 0;
+    virtual TRecord createRecord(device::StarDevice &device, TResourceRequest &&request) const = 0;
+
+    virtual void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
+                            system::EventBus &eventBus, TRecord *storedRecord) {};
 };
 } // namespace star::core::device::manager

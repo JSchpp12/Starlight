@@ -74,8 +74,13 @@ class Shader : public Manager<ShaderRecord, ShaderRequest, 50>
         return Handle_Type::shader;
     }
 
+    ShaderRecord createRecord(device::StarDevice &device, ShaderRequest &&request) const override
+    {
+        return ShaderRecord(std::move(request));
+    }
+
   private:
-    void submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem,
+    void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                     system::EventBus &eventBus, ShaderRecord *storedRecord) override;
 };
 } // namespace star::core::device::manager

@@ -4,7 +4,7 @@
 
 namespace star::core::device::manager
 {
-void Pipeline::submitTask(const Handle &handle, device::StarDevice &device, job::TaskManager &taskSystem,
+void Pipeline::submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                           system::EventBus &eventBus, PipelineRecord *storedRecord)
 {
     eventBus.subscribe<system::event::ShaderCompiled>([this, handle](const system::EventBase &e, bool &keepAlive) {
