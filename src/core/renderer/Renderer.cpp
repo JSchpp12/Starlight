@@ -11,7 +11,13 @@ namespace star::core::renderer
 void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
                           const uint8_t &numFramesInFlight)
 {
-    m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
+    {
+        auto commandRequest = getCommandBufferRequest();
+        commandRequest.getSemaphoresToWaitOnForSubmission =
+            std::bind(&Renderer::getSemaphoresWhichCommandsMustWaitOn, this, std::placeholders::_1);
+
+        m_commandBuffer = device.getManagerCommandBuffer().submit(std::move(commandRequest));
+    }
 
     this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
@@ -25,12 +31,15 @@ void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2
 
     for (auto &group : renderGroups)
     {
-        group->prepRender(device, device.getRenderingSurface().getResolution(), numFramesInFlight, rendererDescriptors, renderInfo);
+        group->prepRender(device, device.getRenderingSurface().getResolution(), numFramesInFlight, rendererDescriptors,
+                          renderInfo);
     }
 }
 
-void Renderer::cleanupRender(core::device::DeviceContext &context){
-    for (auto &group : this->renderGroups){
+void Renderer::cleanupRender(core::device::DeviceContext &context)
+{
+    for (auto &group : this->renderGroups)
+    {
         group->cleanupRender(context);
     }
 }
@@ -356,6 +365,11 @@ void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t w
 
     vmaCreateImage(device.getDevice().getAllocator().get(), (VkImageCreateInfo *)&imageInfo, &allocInfo,
                    (VkImage *)&image, &imageMemory, nullptr);
+}
+
+std::set<Handle> Renderer::getSemaphoresWhichCommandsMustWaitOn(const uint8_t &frameInFlightIndex)
+{
+    return std::set<Handle>();
 }
 
 void Renderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight,

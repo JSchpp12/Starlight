@@ -74,6 +74,8 @@ class SwapChainRenderer : public star::core::renderer::Renderer
 
     virtual star::core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
+    std::set<Handle> getSemaphoresToWaitOnBeforeSubmission(); 
+
     // std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer = nullptr;
     std::unique_ptr<std::string> screenshotPath = nullptr;
 

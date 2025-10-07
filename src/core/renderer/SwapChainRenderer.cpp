@@ -21,7 +21,8 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
                                                            std::vector<std::shared_ptr<StarObject>> objects,
                                                            std::vector<std::shared_ptr<Light>> lights,
                                                            std::shared_ptr<StarCamera> camera, const StarWindow &window)
-    : Renderer(context, numFramesInFlight, lights, camera, objects), window(window), numFramesInFlight(numFramesInFlight), device(context)
+    : Renderer(context, numFramesInFlight, lights, camera, objects), window(window),
+      numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain();
 }
@@ -46,11 +47,12 @@ star::core::renderer::SwapChainRenderer::~SwapChainRenderer()
     }
 }
 
-void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
-                            const uint8_t &numFramesInFlight)
+void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
+                                                         const vk::Extent2D &swapChainExtent,
+                                                         const uint8_t &numFramesInFlight)
 {
-    Renderer::prepRender(device, swapChainExtent, numFramesInFlight); 
-    
+    Renderer::prepRender(device, swapChainExtent, numFramesInFlight);
+
     const size_t numSwapChainImages =
         context.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
 
@@ -123,6 +125,10 @@ star::core::device::managers::ManagerCommandBuffer::Request star::core::renderer
             std::bind(&SwapChainRenderer::prepareForSubmission, this, std::placeholders::_1),
         .overrideBufferSubmissionCallback = std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1,
                                                       std::placeholders::_2, std::placeholders::_3)};
+}
+
+std::set<star::Handle> star::core::renderer::SwapChainRenderer::getSemaphoresToWaitOnBeforeSubmission(){
+
 }
 
 vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceFormat(

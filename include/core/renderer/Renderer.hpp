@@ -159,6 +159,8 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     // Inherited via CommandBufferModifier
     virtual core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
 
+    virtual std::set<Handle> getSemaphoresWhichCommandsMustWaitOn(const uint8_t &frameInFlightIndex); 
+
     // Inherited via RenderResourceModifier
     virtual void initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
                                const vk::Extent2D &screensize) override;

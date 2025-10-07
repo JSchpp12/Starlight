@@ -50,6 +50,7 @@ star::core::device::DeviceContext::~DeviceContext()
         m_taskManager.stopAll();
         m_graphicsManagers.pipelineManager.cleanupRender(*m_device); 
         m_graphicsManagers.shaderManager.cleanupRender(*m_device); 
+        m_graphicsManagers.semaphoreManager.cleanupRender(*m_device); 
         m_commandBufferManager->cleanup(*m_device);
 
         ManagerRenderResource::cleanup(m_deviceID, *m_device); 
