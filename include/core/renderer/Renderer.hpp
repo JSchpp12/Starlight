@@ -2,7 +2,6 @@
 
 #include "device/managers/ManagerCommandBuffer.hpp"
 
-#include "CommandBufferModifier.hpp"
 #include "DescriptorModifier.hpp"
 #include "InteractionSystem.hpp"
 #include "Light.hpp"

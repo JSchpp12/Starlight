@@ -1,6 +1,5 @@
 #pragma once
 
-#include "CommandBufferModifier.hpp"
 #include "DeviceContext.hpp"
 #include "Renderer.hpp"
 
