@@ -6,28 +6,9 @@ namespace star
 {
 struct Handle
 {
-    static Handle getDefault()
-    {
-        return Handle(Handle_Type::defaultHandle);
-    }
-
-    Handle() : Handle(Handle_Type::defaultHandle, 0)
-    {
-    }
-    Handle(Handle_Type type) : Handle(type, 0)
-    {
-    }
-    Handle(Handle_Type type, uint32_t id) : type(type), id(id), global_id(id_counter++)
-    {
-    }
-
-    Handle(const Handle &) = default;
-    Handle &operator=(const Handle &) = default;
-    ~Handle() = default;
-
     bool operator==(const Handle &other) const
     {
-        return global_id == other.global_id && id == other.id && type == other.type;
+        return id == other.id && type == other.type;
     }
 
     bool operator!() const noexcept{
@@ -36,16 +17,12 @@ struct Handle
 
     bool isInitialized() const noexcept
     {
-        return type != Handle_Type::null;
+        return type != Handle_Type::none;
     }
 
     uint32_t getID() const
     {
         return id;
-    }
-    uint32_t getGlobalID() const
-    {
-        return global_id;
     }
     Handle_Type getType() const
     {
@@ -56,20 +33,8 @@ struct Handle
         return type == other.type && id == other.id;
     }
 
-    void setType(Handle_Type newType)
-    {
-        type = newType;
-    }
-    void setID(uint32_t newID)
-    {
-        id = newID;
-    }
-
-  private:
-    static uint32_t id_counter;
-    Handle_Type type = Handle_Type::null;
+    Handle_Type type = Handle_Type::none;
     uint32_t id = 0;
-    uint32_t global_id = 0;
 };
 
 struct HandleHash
@@ -79,6 +44,6 @@ struct HandleHash
 
 inline bool operator<(const Handle &lhs, const Handle &rhs)
 {
-    return lhs.getGlobalID() < rhs.getGlobalID();
+    return lhs.getID() < rhs.getID();
 }
 } // namespace star

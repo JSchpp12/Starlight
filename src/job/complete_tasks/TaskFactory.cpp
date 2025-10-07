@@ -20,9 +20,10 @@ void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void 
 
     auto *p = static_cast<PipelineBuildCompletePayload *>(payload);
 
-    auto handle = Handle();
-    handle.setID(p->handleID);
-    handle.setType(Handle_Type::pipeline);
+    auto handle = Handle{
+        .id = p->handleID,
+        .type = Handle_Type::pipeline
+    };
 
     std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;
 
@@ -50,9 +51,10 @@ void star::job::complete_tasks::task_factory::ExecuteShaderCompileComplete(void 
     auto *eb = static_cast<star::core::device::system::EventBus *>(eventBus);
     auto *p = static_cast<CompileCompletePayload *>(payload);
 
-    Handle shader = Handle();
-    shader.setID(p->handleID);
-    shader.setType(Handle_Type::shader);
+    Handle shader = Handle{
+        .id = p->handleID,
+        .type = Handle_Type::shader
+    };
 
     assert(p->compiledShaderCode != nullptr && "Compiled shader data not properly set");
 
@@ -84,9 +86,10 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
                 throw std::runtime_error("Unknown error. Failed to process record handle");
             }
 
-            Handle handle = Handle();
-            handle.setType(Handle_Type::pipeline);
-            handle.setID(recordHandle);
+            Handle handle = Handle{
+                .id = recordHandle,
+                .type = Handle_Type::pipeline
+            };
 
             std::vector<std::pair<StarShader, std::unique_ptr<std::vector<uint32_t>>>> compiledShaders;
             for (auto &shader : record.request.pipeline.getShaders())

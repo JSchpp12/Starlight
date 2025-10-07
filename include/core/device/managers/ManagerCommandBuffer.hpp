@@ -8,6 +8,7 @@
 #include "internals/CommandBufferContainer.hpp"
 
 #include <functional>
+#include <set>
 #include <stack>
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
@@ -24,6 +25,7 @@ class ManagerCommandBuffer
         // callback function to record the buffer
         // is it dependent on another buffer to finish first?
         std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback;
+        std::function<std::set<vk::Semaphore>(const uint8_t &)> getSemaphoresToWaitOnForSubmission; 
         Command_Buffer_Order order;
         int orderIndex;
         star::Queue_Type type;

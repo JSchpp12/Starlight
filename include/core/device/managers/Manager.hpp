@@ -89,7 +89,10 @@ class Manager
     void insert(TResourceRequest request, Handle &handle, TRecord *&record)
     {
         uint32_t nextSpace = getNextSpace();
-        Handle newHandle = Handle(getHandleType(), nextSpace);
+        Handle newHandle = Handle{
+            .type = getHandleType(), 
+            .id = nextSpace
+        };
 
         m_records[nextSpace] = TRecord(std::move(request));
 

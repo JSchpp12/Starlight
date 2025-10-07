@@ -62,14 +62,14 @@ template <typename T> class ManagerStorageContainer
 
         if (isStatic)
         {
-            handle.setID(this->staticCounter);
+            handle.id = this->staticCounter;
             this->staticCounter += 2;
 
             this->handleToStaticMap.emplace(std::make_pair(handle, this->elementCounter));
         }
         else
         {
-            handle.setID(this->updateableCounter);
+            handle.id = this->updateableCounter;
             this->updateableCounter += 2;
 
             this->handleToDynamicMap.emplace(std::make_pair(handle, this->elementCounter));

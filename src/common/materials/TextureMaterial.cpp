@@ -24,7 +24,7 @@ star::TextureMaterial::TextureMaterial(std::string texturePath) : m_texturePath(
 void star::TextureMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                                        star::StarShaderInfo::Builder frameBuilder)
 {
-    assert(m_textureHandle.isInitialized() && "Should not be prepared for render more than once");
+    assert(!m_textureHandle.isInitialized() && "Should not be prepared for render more than once");
 
     m_textureHandle = star::ManagerRenderResource::addRequest(
         context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::TextureFile>(m_texturePath));

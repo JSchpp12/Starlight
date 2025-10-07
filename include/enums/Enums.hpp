@@ -66,9 +66,8 @@ namespace star {
         resolution_y
     };
 
-    enum Handle_Type {
-        null,
-        defaultHandle,
+    enum Handle_Type : uint8_t{
+        none,
         shader,
         object,
         texture,
