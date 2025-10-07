@@ -99,8 +99,8 @@ class DeviceContext
     DeviceContext(const DeviceContext &) = delete;
     DeviceContext &operator=(const DeviceContext &) = delete;
 
-    void waitIdle(); 
-    
+    void waitIdle();
+
     void prepareForNextFrame();
 
     inline StarDevice &getDevice()
@@ -129,14 +129,20 @@ class DeviceContext
 
     ManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord> getShaderManager()
     {
-        return ManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord>{m_graphicsManagers.shaderManager,
-                                                                                  *this};
+        return ManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord>{
+            m_graphicsManagers.shaderManager, *this};
     }
 
     ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord> getPipelineManager()
     {
         return ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord>(
             m_graphicsManagers.pipelineManager, *this);
+    }
+
+    ManagerWrapper<manager::Semaphore, manager::SemaphoreRequest, manager::SemaphoreRecord> getSemaphoreManager()
+    {
+        return ManagerWrapper<manager::Semaphore, manager::SemaphoreRequest, manager::SemaphoreRecord>(
+            m_graphicsManagers.semaphoreManager, *this);
     }
 
     job::TransferWorker &getTransferWorker()

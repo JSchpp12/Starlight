@@ -93,5 +93,7 @@ class Pipeline : public Manager<PipelineRecord, PipelineRequest, 50>
   private:
     void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                     system::EventBus &eventBus, PipelineRecord *storedRecord) override;
+
+    
 };
 } // namespace star::core::device::manager

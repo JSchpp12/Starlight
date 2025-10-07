@@ -75,7 +75,8 @@ namespace star {
         light,
         map,
         buffer,
-        pipeline
+        pipeline,
+        semaphore
     };
 
     enum KEY {
