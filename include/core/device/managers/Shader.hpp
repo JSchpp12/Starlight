@@ -3,7 +3,7 @@
 #include "Compiler.hpp"
 #include "Handle.hpp"
 #include "StarShader.hpp"
-#include "device/managers/Manager.hpp"
+#include "device/managers/TaskCreatedResourceManager.hpp"
 
 #include <array>
 #include <memory>
@@ -65,7 +65,7 @@ struct ShaderRecord
     ShaderRequest request;
     std::unique_ptr<std::vector<uint32_t>> compiledShader = nullptr;
 };
-class Shader : public Manager<ShaderRecord, ShaderRequest, 50>
+class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>
 {
   public:
   protected:

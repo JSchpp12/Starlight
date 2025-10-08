@@ -2,7 +2,7 @@
 
 #include "StarPipeline.hpp"
 #include "core/renderer/RenderingTargetInfo.hpp"
-#include "device/managers/Manager.hpp"
+#include "device/managers/TaskCreatedResourceManager.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -76,7 +76,7 @@ struct PipelineRecord
     uint8_t numCompiled = 0;
 };
 
-class Pipeline : public Manager<PipelineRecord, PipelineRequest, 50>
+class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>
 {
   public:
   protected:

@@ -12,18 +12,13 @@
 
 namespace star::core::device::manager
 {
-template <typename T, typename TResourceRequest>
-concept RecordStructWithHasReady = requires(const T record, device::StarDevice &device) {
-    { record.isReady() } -> std::same_as<bool>;
-};
-template <typename T, typename TResourceRequest>
+template <typename T>
 concept RecordStructHasCleanup = requires(T record, device::StarDevice &device) {
     { record.cleanupRender(device) } -> std::same_as<void>;
 };
 
 template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
-    requires RecordStructWithHasReady<TRecord, TResourceRequest> &&
-             RecordStructHasCleanup<TRecord, TResourceRequest>
+    requires RecordStructHasCleanup<TRecord>
 class Manager
 {
   public:
@@ -47,14 +42,11 @@ class Manager
         return *this;
     }
 
-    Handle submit(device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
+    virtual Handle submit(device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
                   TResourceRequest resource)
     {
-        TRecord *record = nullptr;
         Handle newHandle;
-        insert(device, newHandle, std::move(resource), record);
-
-        submitTask(device, newHandle, taskSystem, eventBus, record);
+        insert(device, newHandle, std::move(resource));
 
         return newHandle;
     }
@@ -89,13 +81,13 @@ class Manager
     }
 
   protected:
-    virtual Handle_Type getHandleType() const = 0;
-
     std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
     std::array<TRecord, TMaxRecordCount> m_records = std::array<TRecord, TMaxRecordCount>();
     uint32_t m_nextSpace = 0;
 
-    void insert(device::StarDevice &device, Handle &handle, TResourceRequest request, TRecord *&record)
+    virtual Handle_Type getHandleType() const = 0;
+
+    void insert(device::StarDevice &device, Handle &handle, TResourceRequest request)
     {
         uint32_t nextSpace = getNextSpace();
         Handle newHandle = Handle{.type = getHandleType(), .id = nextSpace};
@@ -103,7 +95,6 @@ class Manager
         m_records[nextSpace] = createRecord(device, std::move(request));
 
         handle = newHandle;
-        record = &m_records[nextSpace];
     }
 
     uint32_t getNextSpace()
@@ -132,8 +123,5 @@ class Manager
     }
 
     virtual TRecord createRecord(device::StarDevice &device, TResourceRequest &&request) const = 0;
-
-    virtual void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
-                            system::EventBus &eventBus, TRecord *storedRecord) {};
 };
 } // namespace star::core::device::manager
