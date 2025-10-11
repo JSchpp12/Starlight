@@ -109,10 +109,10 @@ void star::core::renderer::SwapChainRenderer::pollEvents()
     glfwPollEvents();
 }
 
-star::core::device::managers::ManagerCommandBuffer::Request star::core::renderer::SwapChainRenderer::
+star::core::device::manager::ManagerCommandBuffer::Request star::core::renderer::SwapChainRenderer::
     getCommandBufferRequest()
 {
-    return core::device::managers::ManagerCommandBuffer::Request{
+    return core::device::manager::ManagerCommandBuffer::Request{
         .recordBufferCallback =
             std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2),
         .order = Command_Buffer_Order::main_render_pass,
@@ -212,7 +212,7 @@ vk::Extent2D star::core::renderer::SwapChainRenderer::chooseSwapExtent(const vk:
     }
     else
     {
-        // vulkan requires that resultion be defined in pixels -- if a high DPI display is used, screen coordinates do
+        // vulkan requires that resolution be defined in pixels -- if a high DPI display is used, screen coordinates do
         // not match with pixels
         int width, height;
         glfwGetFramebufferSize(this->window.getGLFWwindow(), &width, &height);

@@ -24,7 +24,7 @@ class DeviceContext
   public:
     struct ManagerCommandBufferWrapper
     {
-        Handle submit(device::managers::ManagerCommandBuffer::Request request)
+        Handle submit(device::manager::ManagerCommandBuffer::Request request)
         {
             return m_manager.submit(m_device, request);
         }
@@ -35,7 +35,7 @@ class DeviceContext
         }
 
         StarDevice &m_device;
-        managers::ManagerCommandBuffer &m_manager;
+        manager::ManagerCommandBuffer &m_manager;
     };
     template <typename TManager, typename TRequest, typename TRecord> struct ManagerWrapper
     {
@@ -173,7 +173,7 @@ class DeviceContext
     system::EventBus m_eventBus;
     job::TaskManager m_taskManager;
     manager::GraphicsContainer m_graphicsManagers;
-    std::unique_ptr<managers::ManagerCommandBuffer> m_commandBufferManager;
+    std::unique_ptr<manager::ManagerCommandBuffer> m_commandBufferManager;
     std::shared_ptr<job::TransferWorker> m_transferWorker;
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager;
 

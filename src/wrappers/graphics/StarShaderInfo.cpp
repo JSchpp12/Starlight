@@ -54,7 +54,8 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const core::device::DeviceI
         if (shaderInfos[index].textureInfo.value().texture.has_value())
             texture = shaderInfos[index].textureInfo.value().texture.value();
         else if (shaderInfos[index].textureInfo.value().handle.has_value())
-            texture = &star::ManagerRenderResource::getTexture(deviceID, shaderInfos[index].textureInfo.value().handle.value());
+            texture = &star::ManagerRenderResource::getTexture(deviceID,
+                                                               shaderInfos[index].textureInfo.value().handle.value());
         else if (shaderInfos[index].textureInfo.value().texture.has_value())
         {
             texture = shaderInfos[index].textureInfo.value().texture.value();
@@ -63,7 +64,7 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const core::device::DeviceI
         {
             throw std::runtime_error("Unknown error regarding texture binding");
         }
-        assert(texture != nullptr && "Texture cannot be found"); 
+        assert(texture != nullptr && "Texture cannot be found");
 
         vk::DescriptorImageInfo textureInfo;
         textureInfo.sampler = texture->getSampler().has_value() ? texture->getSampler().value() : VK_NULL_HANDLE;
@@ -81,8 +82,8 @@ void star::StarShaderInfo::ShaderInfoSet::build(const core::device::DeviceID &de
 {
     this->isBuilt = true;
 
-    this->descriptorWriter =
-        std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
+    this->descriptorWriter = std::make_unique<StarDescriptorWriter>(
+        this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
     for (size_t i = 0; i < this->shaderInfos.size(); i++)
     {
         buildIndex(deviceID, i);
@@ -93,8 +94,8 @@ void star::StarShaderInfo::ShaderInfoSet::rebuildSet()
 {
     if (!this->descriptorWriter)
     {
-        this->descriptorWriter =
-            std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
+        this->descriptorWriter = std::make_unique<StarDescriptorWriter>(
+            this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
     }
 
     this->descriptorSet = std::make_shared<vk::DescriptorSet>(this->descriptorWriter->build());
@@ -103,31 +104,66 @@ void star::StarShaderInfo::ShaderInfoSet::rebuildSet()
 
 bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
 {
+    assert(frameInFlight <= shaderInfoSets.size());
+
     for (const auto &set : this->shaderInfoSets[frameInFlight])
     {
         for (size_t i = 0; i < set->shaderInfos.size(); i++)
         {
-            if (set->shaderInfos.at(i).willCheckForIfReady)
+            if (set->shaderInfos.at(i).m_willCheckForIfReady)
             {
                 if (set->shaderInfos.at(i).bufferInfo.has_value() &&
                     set->shaderInfos.at(i).bufferInfo.value().handle.has_value())
                 {
-                    if (!ManagerRenderResource::isReady(m_deviceID, set->shaderInfos.at(i).bufferInfo.value().handle.value()))
+                    if (!ManagerRenderResource::isReady(m_deviceID,
+                                                        set->shaderInfos.at(i).bufferInfo.value().handle.value()))
                         return false;
                 }
                 else if (set->shaderInfos.at(i).textureInfo.has_value())
                 {
                     if (set->shaderInfos.at(i).textureInfo.value().handle.has_value() &&
-                        !ManagerRenderResource::isReady(m_deviceID, set->shaderInfos.at(i).textureInfo.value().handle.value()))
+                        !ManagerRenderResource::isReady(m_deviceID,
+                                                        set->shaderInfos.at(i).textureInfo.value().handle.value()))
                     {
                         return false;
                     }
+                }
+                else
+                {
+                    throw std::runtime_error("Unknown shader info encountered while checking for ready status");
                 }
             }
         }
     }
 
     return true;
+}
+
+std::set<vk::Semaphore> star::StarShaderInfo::getDependentSemaphores(const uint8_t &frameInFlight)
+{
+    assert(frameInFlight <= shaderInfoSets.size());
+
+    std::set<vk::Semaphore> semaphores;
+
+    for (const auto &set : shaderInfoSets[frameInFlight])
+    {
+        for (size_t i = 0; i < set->shaderInfos.size(); i++)
+        {
+            if (!set->shaderInfos.at(i).m_willCheckForIfReady)
+            {
+                if (set->shaderInfos.at(i).bufferInfo.has_value() || set->shaderInfos.at(i).textureInfo.has_value())
+                {
+                    semaphores.insert(set->shaderInfos.at(i).m_resourceSemaphore);
+                }
+                else
+                {
+                    throw std::runtime_error("Unknown shader info encountered while gathering semaphores");
+                }
+            }
+        }
+    }
+
+    return semaphores;
 }
 
 std::vector<vk::DescriptorSetLayout> star::StarShaderInfo::getDescriptorSetLayouts()
@@ -140,10 +176,11 @@ std::vector<vk::DescriptorSetLayout> star::StarShaderInfo::getDescriptorSetLayou
     return fLayouts;
 }
 
-void star::StarShaderInfo::cleanupRender(core::device::StarDevice &device){
+void star::StarShaderInfo::cleanupRender(core::device::StarDevice &device)
+{
     for (auto &set : this->layouts)
     {
-        set->cleanupRender(device); 
+        set->cleanupRender(device);
     }
 }
 
@@ -176,7 +213,8 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int &f
                 {
                     auto &info = set->shaderInfos.at(i).textureInfo.value();
 
-                    const auto &texture = ManagerRenderResource::getTexture(m_deviceID, info.handle.value()).getVulkanImage();
+                    const auto &texture =
+                        ManagerRenderResource::getTexture(m_deviceID, info.handle.value()).getVulkanImage();
                     if (!info.currentImage.has_value() || info.currentImage.value() != texture)
                     {
                         info.currentImage = texture;

@@ -9,7 +9,7 @@ star::core::device::DeviceContext::DeviceContext(
     : m_deviceID(deviceID), m_surface(RenderingSurface(instance, window)),
       m_device(
           std::make_shared<StarDevice>(window, m_surface, instance, requiredFeatures, requiredRenderingDeviceFeatures)),
-      m_commandBufferManager(std::make_unique<managers::ManagerCommandBuffer>(*m_device, numFramesInFlight)),
+      m_commandBufferManager(std::make_unique<manager::ManagerCommandBuffer>(*m_device, numFramesInFlight)),
       m_transferWorker(CreateTransferWorker(*m_device)),
       m_renderResourceManager(std::make_unique<ManagerRenderResource>())
 {

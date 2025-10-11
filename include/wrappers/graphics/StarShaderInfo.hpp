@@ -69,13 +69,17 @@ class StarShaderInfo
             std::optional<vk::Format> requestedImageViewFormat = std::nullopt;
         };
 
-        ShaderInfo(const BufferInfo &bufferInfo, const bool willCheckForIfReady)
-            : bufferInfo(bufferInfo), willCheckForIfReady(willCheckForIfReady)
+        ShaderInfo(const BufferInfo &bufferInfo, vk::Semaphore *resourceSemaphore = nullptr)
+            : bufferInfo(bufferInfo),
+              m_resourceSemaphore(resourceSemaphore != nullptr ? vk::Semaphore(*resourceSemaphore) : VK_NULL_HANDLE),
+              m_willCheckForIfReady(resourceSemaphore != nullptr ? false : true)
         {
         }
 
-        ShaderInfo(const TextureInfo &textureInfo, const bool willCheckForIfReady)
-            : textureInfo(textureInfo), willCheckForIfReady(willCheckForIfReady)
+        ShaderInfo(const TextureInfo &textureInfo, vk::Semaphore *resourceSemaphore = nullptr)
+            : textureInfo(textureInfo),
+              m_resourceSemaphore(resourceSemaphore != nullptr ? vk::Semaphore(*resourceSemaphore) : VK_NULL_HANDLE),
+              m_willCheckForIfReady(resourceSemaphore != nullptr ? false : true)
         {
         }
 
@@ -83,7 +87,8 @@ class StarShaderInfo
 
         std::optional<BufferInfo> bufferInfo = std::nullopt;
         std::optional<TextureInfo> textureInfo = std::nullopt;
-        const bool willCheckForIfReady;
+        vk::Semaphore m_resourceSemaphore;
+        const bool m_willCheckForIfReady;
     };
 
     struct ShaderInfoSet
@@ -130,6 +135,8 @@ class StarShaderInfo
 
     bool isReady(const uint8_t &frameInFlight);
 
+    std::set<vk::Semaphore> getDependentSemaphores(const uint8_t &frameInFlight); 
+
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
     std::vector<vk::DescriptorSet> getDescriptors(const int &frameInFlight);
@@ -157,51 +164,52 @@ class StarShaderInfo
 
         Builder &startSet();
 
-        Builder &add(const Handle &bufferHandle, const bool willCheckForIfReady)
+        Builder &add(const Handle &bufferHandle, vk::Semaphore *resourceSemaphore = nullptr)
         {
             assert(bufferHandle.getType() == star::Handle_Type::buffer);
 
-            this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, willCheckForIfReady));
+            this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, resourceSemaphore));
             return *this;
         };
 
         Builder &add(const StarBuffers::Buffer &buffer)
         {
-            this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{&buffer}, false));
+            this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{&buffer}));
             return *this;
         };
 
         Builder &add(const StarTextures::Texture &texture, const vk::ImageLayout &desiredLayout,
-                     const vk::Format &requestedImageViewFormat, const bool willCheckForIfReady)
+                     const vk::Format &requestedImageViewFormat, vk::Semaphore *resourceSemaphore = nullptr)
         {
             this->activeSet->back()->add(ShaderInfo(
-                ShaderInfo::TextureInfo{&texture, desiredLayout, requestedImageViewFormat}, willCheckForIfReady));
+                ShaderInfo::TextureInfo{&texture, desiredLayout, requestedImageViewFormat}, resourceSemaphore));
             return *this;
         };
 
         Builder &add(const StarTextures::Texture &texture, const vk::ImageLayout &desiredLayout,
-                     const bool &willCheckForIfReady)
+                     vk::Semaphore *resourceSemaphore = nullptr)
         {
             this->activeSet->back()->add(
-                ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, willCheckForIfReady));
+                ShaderInfo(ShaderInfo::TextureInfo{&texture, desiredLayout}, resourceSemaphore));
             return *this;
         }
 
-        Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, const bool &willCheckForIfReady)
+        Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, vk::Semaphore *resourceSemaphore  = nullptr)
         {
             assert(textureHandle.getType() == Handle_Type::texture);
             this->activeSet->back()->add(
-                ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, willCheckForIfReady));
+                ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, resourceSemaphore));
             return *this;
         }
 
         Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout,
-                     const vk::Format &requestedImageViewFormat, const bool &willCheckForIfReady)
+                     const vk::Format &requestedImageViewFormat, vk::Semaphore *resourceSemaphore = nullptr)
         {
             assert(textureHandle.getType() == Handle_Type::texture);
 
-            this->activeSet->back()->add(ShaderInfo(
-                ShaderInfo::TextureInfo{textureHandle, desiredLayout, requestedImageViewFormat}, willCheckForIfReady));
+            this->activeSet->back()->add(
+                ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout, requestedImageViewFormat},
+                           resourceSemaphore));
             return *this;
         }
 

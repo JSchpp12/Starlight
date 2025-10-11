@@ -120,10 +120,10 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
                      std::shared_ptr<StarCamera> camera);
 
     virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(
-        core::device::DeviceContext &device, const int &numFramesInFlight);
+        core::device::DeviceContext &context, const int &numFramesInFlight);
 
     virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToDepthImages(
-        core::device::DeviceContext &device, const int &numFramesInFlight);
+        core::device::DeviceContext &context, const int &numFramesInFlight);
 
     /// Create the descriptor set layout that will be shared by all objects within this renderer
     virtual std::shared_ptr<StarDescriptorSetLayout> createGlobalDescriptorSetLayout(
@@ -156,8 +156,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
                              vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
                              vk::Image &image, VmaAllocation &imageMemory);
 
-    // Inherited via CommandBufferModifier
-    virtual core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
+    virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
 
     virtual std::set<Handle> getSemaphoresWhichCommandsMustWaitOn(const uint8_t &frameInFlightIndex); 
 

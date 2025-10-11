@@ -126,8 +126,9 @@ void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 
     // cleanup any material
 
-    for (auto &material : m_meshMaterials){
-        material->cleanupRender(context); 
+    for (auto &material : m_meshMaterials)
+    {
+        material->cleanupRender(context);
     }
 }
 
@@ -145,34 +146,38 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
         swapChainExtent, renderInfo));
 }
 
-star::StarObjectInstance &star::StarObject::getInstance(const size_t &index){
-    assert(instances.at(index)); 
+star::StarObjectInstance &star::StarObject::getInstance(const size_t &index)
+{
+    assert(instances.at(index));
 
     return *this->instances[index];
 }
 
-void star::StarObject::prepRender(star::core::device::DeviceContext& context, const vk::Extent2D &swapChainExtent, const uint8_t &numFramesInFlight, 
-			star::StarShaderInfo::Builder fullEngineBuilder, Handle sharedPipeline)
+void star::StarObject::prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
+                                  const uint8_t &numFramesInFlight, star::StarShaderInfo::Builder fullEngineBuilder,
+                                  Handle sharedPipeline)
 {
     this->sharedPipeline = sharedPipeline;
 
-    prepStarObject(context, numFramesInFlight, fullEngineBuilder); 
+    prepStarObject(context, numFramesInFlight, fullEngineBuilder);
 }
 
-void star::StarObject::prepRender(star::core::device::DeviceContext& context, const vk::Extent2D &swapChainExtent,
-			const uint8_t &numFramesInFlight, StarShaderInfo::Builder fullEngineBuilder, 
-			vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo)
+void star::StarObject::prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
+                                  const uint8_t &numFramesInFlight, StarShaderInfo::Builder fullEngineBuilder,
+                                  vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo)
 {
     this->pipeline = buildPipeline(context, swapChainExtent, pipelineLayout, renderingInfo);
 
-    prepStarObject(context, numFramesInFlight, fullEngineBuilder); 
+    prepStarObject(context, numFramesInFlight, fullEngineBuilder);
 }
 
-void star::StarObject::prepStarObject(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, StarShaderInfo::Builder &frameBuilder){
+void star::StarObject::prepStarObject(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                                      StarShaderInfo::Builder &frameBuilder)
+{
     createInstanceBuffers(context, numFramesInFlight);
-    prepMaterials(context, numFramesInFlight, frameBuilder);  
-    
-    this->meshes = loadMeshes(context); 
+    prepMaterials(context, numFramesInFlight, frameBuilder);
+
+    this->meshes = loadMeshes(context);
     m_deviceID = context.getDeviceID();
 
     std::vector<Vertex> bbVerts;
@@ -180,10 +185,19 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context, cons
 
     calculateBoundingBox(bbVerts, bbInds);
 
-    this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(
-        m_deviceID, std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
-    this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
-        m_deviceID, std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
+    {
+        auto bbSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+        this->boundingBoxVertBuffer =
+            ManagerRenderResource::addRequest(m_deviceID, context.getSemaphoreManager().get(bbSemaphore)->semaphore,
+                                              std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
+    }
+    {
+        auto bbIndSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+
+        this->boundingBoxIndexBuffer =
+            ManagerRenderResource::addRequest(m_deviceID, context.getSemaphoreManager().get(bbIndSemaphore)->semaphore,
+                                              std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
+    }
 
     prepareMeshes(context);
 
@@ -271,24 +285,29 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
 
 void star::StarObject::prepareMeshes(star::core::device::DeviceContext &device)
 {
-    assert(this->meshes.size() > 0 && "Meshes need to be provided"); 
+    assert(this->meshes.size() > 0 && "Meshes need to be provided");
 
-    for (auto &mesh : this->meshes){
-        mesh->prepRender(device); 
+    for (auto &mesh : this->meshes)
+    {
+        mesh->prepRender(device);
     }
 }
 
 void star::StarObject::prepMaterials(star::core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                                          star::StarShaderInfo::Builder &frameBuilder)
+                                     star::StarShaderInfo::Builder &frameBuilder)
 {
-    assert(m_meshMaterials.size() > 0 && "Mesh materials should exist"); 
+    assert(m_meshMaterials.size() > 0 && "Mesh materials should exist");
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
-        frameBuilder.add(this->instanceModelInfos[i], false);
-        frameBuilder.add(this->instanceNormalInfos[i], false);
+        frameBuilder.add(
+            this->instanceModelInfos[i],
+            &context.getManagerRenderResource().get(context.getDeviceID(), instanceModelInfos[i]).resourceSemaphore);
+        frameBuilder.add(
+            this->instanceNormalInfos[i],
+            &context.getManagerRenderResource().get(context.getDeviceID(), instanceNormalInfos[i]).resourceSemaphore);
     }
 
     for (auto &material : m_meshMaterials)
@@ -307,12 +326,22 @@ void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &
     // create a buffer for each image
     for (int i = 0; i < numImagesInFlight; i++)
     {
-        this->instanceModelInfos.emplace_back(ManagerRenderResource::addRequest(
-            context.getDeviceID(),
-            std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(this->instances, i)));
-        this->instanceNormalInfos.emplace_back(ManagerRenderResource::addRequest(
-            context.getDeviceID(),
-            std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(this->instances, i)));
+        {
+            const auto iSemaphore =
+                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+
+            this->instanceModelInfos.emplace_back(ManagerRenderResource::addRequest(
+                context.getDeviceID(), context.getSemaphoreManager().get(iSemaphore)->semaphore,
+                std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(this->instances, i)));
+        }
+
+        {
+            const auto iSemaphore =
+                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+            this->instanceNormalInfos.emplace_back(ManagerRenderResource::addRequest(
+                context.getDeviceID(), context.getSemaphoreManager().get(iSemaphore)->semaphore,
+                std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(this->instances, i)));
+        }
     }
 }
 
@@ -392,14 +421,15 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex> &verts, std::vec
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarObject::getDescriptorRequests(
     const int &numFramesInFlight)
 {
-    std::vector<std::pair<vk::DescriptorType, const int>> requests {
-        std::make_pair(vk::DescriptorType::eUniformBuffer, 2)
-    };
+    std::vector<std::pair<vk::DescriptorType, const int>> requests{
+        std::make_pair(vk::DescriptorType::eUniformBuffer, 2)};
 
-    for (auto &material : m_meshMaterials){
-        auto matRequests = material->getDescriptorRequests(numFramesInFlight); 
-        for (auto &type : matRequests){
-            requests.push_back(std::move(type)); 
+    for (auto &material : m_meshMaterials)
+    {
+        auto matRequests = material->getDescriptorRequests(numFramesInFlight);
+        for (auto &type : matRequests)
+        {
+            requests.push_back(std::move(type));
         }
     }
 

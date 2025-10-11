@@ -26,8 +26,12 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, con
 {
     assert(!m_textureHandle.isInitialized() && "Should not be prepared for render more than once");
 
+    const auto texSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false)); 
+
     m_textureHandle = star::ManagerRenderResource::addRequest(
-        context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::TextureFile>(m_texturePath));
+        context.getDeviceID(), 
+        context.getSemaphoreManager().get(texSemaphore)->semaphore,
+        std::make_unique<star::ManagerController::RenderResource::TextureFile>(m_texturePath));
         
     StarMaterial::prepRender(context, numFramesInFlight, frameBuilder); 
 }
@@ -40,7 +44,7 @@ std::unique_ptr<star::StarShaderInfo> star::TextureMaterial::buildShaderInfo(cor
     for (uint8_t i = 0; i < numFramesInFlight; i++){
         builder.startOnFrameIndex(i); 
         builder.startSet();
-        builder.add(m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal, true);
+        builder.add(m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal);
     }
 
     return builder.build(); 

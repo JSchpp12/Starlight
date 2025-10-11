@@ -151,10 +151,17 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
 
         if (shape.mesh.material_ids.at(shapeCounter) != -1)
         {
+            const auto meshVertSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false)); 
             Handle meshVertBuffer = ManagerRenderResource::addRequest(
-                context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
+                context.getDeviceID(),
+                context.getSemaphoreManager().get(meshVertSemaphore)->semaphore,
+                std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
+                
+            const auto indSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+
             Handle meshIndBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(),
+                context.getSemaphoreManager().get(indSemaphore)->semaphore,
                 std::make_unique<star::ManagerController::RenderResource::IndicesInfo>(*fullInd));
 
             // apply material from files to mesh -- will ignore passed values

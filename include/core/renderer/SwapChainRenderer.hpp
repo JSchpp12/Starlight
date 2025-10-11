@@ -72,7 +72,7 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     std::vector<vk::Semaphore> imageAvailableSemaphores;
     std::vector<vk::Semaphore> imageAcquireSemaphores;
 
-    virtual star::core::device::managers::ManagerCommandBuffer::Request getCommandBufferRequest() override;
+    virtual star::core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
     std::set<Handle> getSemaphoresToWaitOnBeforeSubmission(); 
 

@@ -1,4 +1,5 @@
 #include "managers/ManagerRenderResource.hpp"
+#include "ManagerRenderResource.hpp"
 
 std::unordered_map<star::core::device::DeviceID, std::shared_ptr<star::core::device::StarDevice>>
     star::ManagerRenderResource::devices =
@@ -18,7 +19,8 @@ void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
 {
     {
         core::device::DeviceID tmpDevice = deviceID;
-        devices.insert(std::make_pair<core::device::DeviceID, std::shared_ptr<core::device::StarDevice>>(std::move(tmpDevice), std::move(device))); 
+        devices.insert(std::make_pair<core::device::DeviceID, std::shared_ptr<core::device::StarDevice>>(
+            std::move(tmpDevice), std::move(device)));
     }
     {
         core::device::DeviceID tmpDevice = deviceID;
@@ -37,22 +39,23 @@ void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
 }
 
 star::Handle star::ManagerRenderResource::addRequest(
-    const core::device::DeviceID &deviceID, std::unique_ptr<star::ManagerController::RenderResource::Buffer> newRequest,
-    const bool &isHighPriority)
+    const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
+    std::unique_ptr<star::ManagerController::RenderResource::Buffer> newRequest, const bool &isHighPriority)
 {
-    assert(devices.contains(deviceID) && "Device has not been properly initialized"); 
+    assert(devices.contains(deviceID) && "Device has not been properly initialized");
 
     Handle newBufferHandle = Handle(Handle_Type::buffer);
 
     bool isStatic = !newRequest->getFrameInFlightIndexToUpdateOn().has_value();
 
-    auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest));
+    auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(resourceSemaphore), std::move(newRequest));
     if (isStatic)
     {
         newFull->cpuWorkDoneByTransferThread.store(false);
         managerWorker->add(newFull->cpuWorkDoneByTransferThread,
                            newFull->bufferRequest->createTransferRequest(*devices.at(deviceID)), newFull->buffer,
                            isHighPriority);
+
         newFull->bufferRequest.release();
     }
 
@@ -65,14 +68,14 @@ star::Handle star::ManagerRenderResource::addRequest(
 }
 
 star::Handle star::ManagerRenderResource::addRequest(
-    const core::device::DeviceID &deviceID, 
+    const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
     std::unique_ptr<star::ManagerController::RenderResource::Texture> newRequest, const bool &isHighPriority)
 {
     Handle newHandle = Handle(Handle_Type::texture);
 
     bool isStatic = !newRequest->getFrameInFlightIndexToUpdateOn().has_value();
 
-    auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(newRequest));
+    auto newFull = std::make_unique<FinalizedRenderRequest>(std::move(resourceSemaphore), std::move(newRequest));
 
     if (isStatic)
     {
@@ -208,7 +211,11 @@ void star::ManagerRenderResource::destroy(const core::device::DeviceID &deviceID
 void star::ManagerRenderResource::cleanup(const core::device::DeviceID &deviceID, core::device::StarDevice &device)
 {
     bufferStorage.at(deviceID).reset();
-    devices.at(deviceID).reset(); 
+    devices.at(deviceID).reset();
 
-    managerWorker.reset(); 
+    managerWorker.reset();
+}
+star::ManagerRenderResource::FinalizedRenderRequest &star::ManagerRenderResource::get(const core::device::DeviceID &deviceID, const Handle &handle)
+{
+    return *bufferStorage.at(deviceID)->get(handle); 
 }

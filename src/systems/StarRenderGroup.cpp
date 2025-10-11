@@ -208,6 +208,16 @@ bool StarRenderGroup::isObjectCompatible(StarObject &object)
     return true;
 }
 
+std::set<star::Handle> StarRenderGroup::getSemaphoresForDependentTransfers(){
+    std::set<Handle> semaphores; 
+
+    // for (auto &group : ren){
+    //     auto result = group.get
+    // }
+
+    return semaphores; 
+}
+
 void StarRenderGroup::prepareObjects(StarShaderInfo::Builder &groupBuilder,
                                      core::renderer::RenderingTargetInfo renderingInfo,
                                      const vk::Extent2D &swapChainExtent, const uint8_t &numFramesInFlight)

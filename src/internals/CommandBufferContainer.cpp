@@ -45,6 +45,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 
         if (!buffer->recordOnce)
         {
+            // std::set<Handle> dataSemaphores = buffer->
             buffer->commandBuffer->begin(frameInFlightIndex);
             buffer->recordBufferCallback(buffer->commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex);
             buffer->commandBuffer->buffer(frameInFlightIndex).end();

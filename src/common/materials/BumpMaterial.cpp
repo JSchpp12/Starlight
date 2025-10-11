@@ -11,8 +11,12 @@ void star::BumpMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout
 void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                             star::StarShaderInfo::Builder frameBuilder)
 {
+    auto bumpSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false)); 
+
     m_bumpMap = ManagerRenderResource::addRequest(
-        context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::TextureFile>(m_bumpMapFilePath));
+        context.getDeviceID(), 
+        context.getSemaphoreManager().get(bumpSemaphore)->semaphore,
+        std::make_unique<star::ManagerController::RenderResource::TextureFile>(m_bumpMapFilePath));
 
     TextureMaterial::prepRender(context, numFramesInFlight, frameBuilder);
 }
@@ -24,8 +28,8 @@ std::unique_ptr<star::StarShaderInfo> star::BumpMaterial::buildShaderInfo(core::
 
     for (uint8_t i = 0; i < numFramesInFlight; i++){
         builder.startOnFrameIndex(i); 
-        builder.add(m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal, true);
-        builder.add(m_bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal, true);
+        builder.add(m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal);
+        builder.add(m_bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal);
     }
 
     return builder.build(); 

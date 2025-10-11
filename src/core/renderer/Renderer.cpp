@@ -5,6 +5,8 @@
 #include "ManagerController_RenderResource_LightList.hpp"
 #include "ManagerRenderResource.hpp"
 
+#include <algorithm>
+
 namespace star::core::renderer
 {
 
@@ -56,11 +58,18 @@ void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &
 
     for (uint16_t i = 0; i < numFramesInFlight; i++)
     {
+        auto lightSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false}); 
+        auto lightInfoSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false}); 
+
         m_lightListBuffers[i] = ManagerRenderResource::addRequest(
-            context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::LightList>(i, m_lights));
+            context.getDeviceID(), 
+            context.getSemaphoreManager().get(lightSemaphore)->semaphore,
+            std::make_unique<star::ManagerController::RenderResource::LightList>(i, m_lights));
 
         m_lightInfoBuffers[i] = ManagerRenderResource::addRequest(
-            context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::LightInfo>(i, m_lights));
+            context.getDeviceID(), 
+            context.getSemaphoreManager().get(lightInfoSemaphore)->semaphore,
+            std::make_unique<star::ManagerController::RenderResource::LightInfo>(i, m_lights));
     }
 }
 
@@ -73,8 +82,12 @@ void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
+        auto camInfo = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+
         m_cameraInfoBuffers[i] = ManagerRenderResource::addRequest(
-            context.getDeviceID(), std::make_unique<star::ManagerController::RenderResource::GlobalInfo>(i, camera));
+            context.getDeviceID(), 
+            context.getSemaphoreManager().get(camInfo)->semaphore,
+            std::make_unique<star::ManagerController::RenderResource::GlobalInfo>(i, camera));
     }
 }
 
@@ -306,22 +319,23 @@ vk::ImageView Renderer::createImageView(star::core::device::DeviceContext &devic
     return imageView;
 }
 
-star::StarShaderInfo::Builder Renderer::manualCreateDescriptors(star::core::device::DeviceContext &device,
+star::StarShaderInfo::Builder Renderer::manualCreateDescriptors(star::core::device::DeviceContext &context,
                                                                 const int &numFramesInFlight)
 {
-    this->globalSetLayout = createGlobalDescriptorSetLayout(device, numFramesInFlight);
-    auto globalBuilder = StarShaderInfo::Builder(device.getDeviceID(), device.getDevice(), numFramesInFlight)
+    this->globalSetLayout = createGlobalDescriptorSetLayout(context, numFramesInFlight);
+    auto globalBuilder = StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), numFramesInFlight)
                              .addSetLayout(this->globalSetLayout);
 
     assert(m_cameraInfoBuffers.size() == numFramesInFlight && m_lightInfoBuffers.size() == numFramesInFlight &&
            m_lightListBuffers.size() == numFramesInFlight && "Shader info buffers not properly initialized.");
+    
     for (int i = 0; i < numFramesInFlight; i++)
     {
         globalBuilder.startOnFrameIndex(i)
             .startSet()
-            .add(m_cameraInfoBuffers[i], false)
-            .add(m_lightInfoBuffers[i], false)
-            .add(m_lightListBuffers[i], false);
+            .add(m_cameraInfoBuffers[i], &context.getManagerRenderResource().get(context.getDeviceID(), m_cameraInfoBuffers[i]).resourceSemaphore)
+            .add(m_lightInfoBuffers[i], &context.getManagerRenderResource().get(context.getDeviceID(), m_lightInfoBuffers[i]).resourceSemaphore)
+            .add(m_lightListBuffers[i], &context.getManagerRenderResource().get(context.getDeviceID(), m_lightListBuffers[i]).resourceSemaphore);
     }
 
     return globalBuilder;
@@ -369,7 +383,18 @@ void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t w
 
 std::set<Handle> Renderer::getSemaphoresWhichCommandsMustWaitOn(const uint8_t &frameInFlightIndex)
 {
-    return std::set<Handle>();
+    auto semaphores = std::set<Handle>();
+
+    for (const auto &group : renderGroups)
+    {
+        auto currentSemaphores = std::set<Handle>(semaphores);
+        auto result = group->getSemaphoresForDependentTransfers();
+
+        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), result.begin(), result.end(),
+                       std::inserter(semaphores, semaphores.begin()));
+    }
+
+    return semaphores;
 }
 
 void Renderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
