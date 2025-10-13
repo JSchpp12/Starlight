@@ -29,7 +29,7 @@ void star::job::TransferManagerThread::stopAsync()
 {
     this->shouldRun.store(false);
 
-    std::cout << "Waiting for thread to exit" << std::endl; 
+    std::cout << "Waiting for thread to exit" << std::endl;
 
     // wait for thread to exit
     this->thread.join();
@@ -84,8 +84,8 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
 
                 request->bufferTransferRequest->prep();
 
-                CreateBuffer(myInfo.device, myInfo.allocator, myInfo.queue, myInfo.deviceProperties,
-                             myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
+                CreateBuffer(myInfo.device, myInfo.allocator, myInfo.queue, request->gpuWorkDoneSemaphore,
+                             myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
                              request->bufferTransferRequest.get(), request->resultingBuffer.value(),
                              request->gpuDoneNotificationToMain);
             }
@@ -94,10 +94,10 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
                 assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr &&
                        "Texture request must contain both a request and a resulting address");
 
-                request->textureTransferRequest->prep(); 
-                
-                CreateTexture(myInfo.device, myInfo.allocator, myInfo.queue, myInfo.deviceProperties,
-                              myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
+                request->textureTransferRequest->prep();
+
+                CreateTexture(myInfo.device, myInfo.allocator, myInfo.queue, request->gpuWorkDoneSemaphore,
+                              myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
                               request->textureTransferRequest.get(), request->resultingTexture.value(),
                               request->gpuDoneNotificationToMain);
             }
@@ -129,6 +129,7 @@ std::unique_ptr<star::job::TransferManagerThread::ProcessRequestInfo> star::job:
 }
 
 void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+                                                    vk::Semaphore signalWhenDoneSemaphore,
                                                     const vk::PhysicalDeviceProperties &deviceProperties,
                                                     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                                     ProcessRequestInfo &processInfo,
@@ -153,12 +154,15 @@ void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAlloc
                                                processInfo.commandBuffer->buffer(0));
 
     processInfo.commandBuffer->buffer(0).end();
-    processInfo.commandBuffer->submit(0, queue.getVulkanQueue());
+
+    auto signalSemaphore = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
+    processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, &signalSemaphore);
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain);
 }
 
 void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+                                                     vk::Semaphore signalWhenDoneSemaphore,
                                                      const vk::PhysicalDeviceProperties &deviceProperties,
                                                      const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                                      ProcessRequestInfo &processInfo,
@@ -188,7 +192,8 @@ void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllo
                                                 processInfo.commandBuffer->buffer(0));
 
     processInfo.commandBuffer->buffer(0).end();
-    processInfo.commandBuffer->submit(0, queue.getVulkanQueue());
+    auto signalSemaphores = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
+    processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, &signalSemaphores);
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain);
 }
@@ -273,33 +278,37 @@ star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device
 }
 
 void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
+                                    vk::Semaphore signalWhenDoneSemaphore,
                                     std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
                                     std::unique_ptr<star::StarBuffers::Buffer> &resultingBuffer,
                                     const bool &isHighPriority)
 {
     auto newRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &isBeingWorkedOnByTransferThread, std::move(newBufferRequest), resultingBuffer);
+        &isBeingWorkedOnByTransferThread, std::move(signalWhenDoneSemaphore), std::move(newBufferRequest),
+        resultingBuffer);
 
     insertRequest(std::move(newRequest), isHighPriority);
 }
 
 void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
+                                    vk::Semaphore signalWhenDoneSemaphore,
                                     std::unique_ptr<star::TransferRequest::Texture> newTextureRequest,
                                     std::unique_ptr<StarTextures::Texture> &resultingTexture,
                                     const bool &isHighPriority)
 {
     auto newRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &isBeingWorkedOnByTransferThread, std::move(newTextureRequest), resultingTexture);
+        &isBeingWorkedOnByTransferThread, std::move(signalWhenDoneSemaphore), std::move(newTextureRequest),
+        resultingTexture);
 
     insertRequest(std::move(newRequest), isHighPriority);
 }
 
 void star::job::TransferWorker::update()
 {
-    for (auto &thread : this->threads)
-    {
-        // thread->cleanup();
-    }
+    // for (auto &thread : this->threads)
+    // {
+    //     // thread->cleanup();
+    // }
 }
 
 void star::job::TransferWorker::insertRequest(

@@ -41,7 +41,7 @@ class StarRenderGroup
                     const uint8_t &numFramesInFlight, StarShaderInfo::Builder initEngineBuilder,
                     core::renderer::RenderingTargetInfo renderingInfo);
 
-    std::set<Handle> getSemaphoresForDependentTransfers(); 
+    std::set<vk::Semaphore> getSemaphoresForDependentTransfers(const uint8_t &frameInFlightIndex); 
 
     void cleanupRender(core::device::DeviceContext &context); 
     

@@ -16,13 +16,17 @@ void star::core::device::manager::ManagerCommandBuffer::cleanup(StarDevice &devi
 
 star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevice &device, Request request)
 {
+    assert(request.getDependentSemaphores && "Functions not properly initialized");
+    
     star::Handle newHandle = this->buffers.add(
         std::make_unique<CommandBufferContainer::CompleteRequest>(
             request.recordBufferCallback,
             std::make_unique<StarCommandBuffer>(device.getVulkanDevice(), this->numFramesInFlight,
                                                 device.getCommandPool(request.type), request.type,
                                                 !request.overrideBufferSubmissionCallback.has_value(), true),
-            request.type, request.recordOnce, request.waitStage, request.order, request.beforeBufferSubmissionCallback,
+            request.type, request.recordOnce, request.waitStage, request.order, 
+            request.getDependentSemaphores,
+            request.beforeBufferSubmissionCallback,
             request.overrideBufferSubmissionCallback), request.willBeSubmittedEachFrame,
         request.type, request.order,
         static_cast<Command_Buffer_Order_Index>(request.orderIndex));
@@ -55,10 +59,6 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::update(StarDevi
     return submitCommandBuffers(device, frameIndexToBeDrawn);
 }
 
-void star::core::device::manager::ManagerCommandBuffer::callPreRecordFunctions(const uint8_t &frameInFlightIndex)
-{
-}
-
 vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex)
 {
     // determine the order of buffers to execute
@@ -84,6 +84,10 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     }
 
     vk::Semaphore mainGraphicsSemaphore = vk::Semaphore();
+    for (vk::Semaphore semaphore : mainGraphicsBuffer.getDependentHighPrioritySemaphores(swapChainIndex)){
+        beforeSemaphores.emplace_back(semaphore); 
+    }
+
     if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value())
     {
         mainGraphicsSemaphore = mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(
@@ -91,8 +95,16 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     }
     else
     {
+        auto semaphoreWaitInfo = std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>(beforeSemaphores.size()); 
+        for (const auto& semaphore : beforeSemaphores){
+            semaphoreWaitInfo.emplace_back(std::make_pair(semaphore, mainGraphicsBuffer.waitStage)); 
+        }
+        
         mainGraphicsBuffer.commandBuffer->submit(
-            swapChainIndex, device.getDefaultQueue(mainGraphicsBuffer.commandBuffer->getType()).getVulkanQueue());
+            swapChainIndex, 
+            device.getDefaultQueue(mainGraphicsBuffer.commandBuffer->getType()).getVulkanQueue(),
+            &semaphoreWaitInfo
+        );
         mainGraphicsSemaphore = mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
     }
 

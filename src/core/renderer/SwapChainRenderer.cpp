@@ -314,12 +314,14 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(StarCommandB
     for (auto &semaphore : mustWaitFor)
     {
         waitSemaphores.push_back(semaphore);
-        waitStages.push_back(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        waitStages.push_back(vk::PipelineStageFlagBits::eVertexShader);
     }
+    uint32_t waitSemaphoreCount = 0; 
+    CastHelpers::SafeCast<size_t, uint32_t>(waitSemaphores.size(), waitSemaphoreCount); 
 
     submitInfo.commandBufferCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores.data();
-    submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size());
+    submitInfo.waitSemaphoreCount = waitSemaphoreCount; 
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &this->imageAvailableSemaphores[this->currentSwapChainImageIndex];
     submitInfo.pWaitDstStageMask = waitStages.data();

@@ -22,7 +22,7 @@ void star::CommandBufferContainer::cleanup(core::device::StarDevice &device){
 }
 
 std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(core::device::StarDevice &device, 
-    const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex, std::vector<vk::Semaphore> *waitSemaphores)
+    const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex, std::vector<vk::Semaphore> *additionalWaitSemaphores)
 {
     if (!this->subOrderSemaphoresUpToDate)
     {
@@ -45,14 +45,20 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 
         if (!buffer->recordOnce)
         {
-            // std::set<Handle> dataSemaphores = buffer->
             buffer->commandBuffer->begin(frameInFlightIndex);
             buffer->recordBufferCallback(buffer->commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex);
             buffer->commandBuffer->buffer(frameInFlightIndex).end();
         }
 
+        std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>> waitInfos;
+
+        for (const auto &semaphore : buffer->getDependentHighPrioritySemaphores(frameInFlightIndex)){
+            waitInfos.emplace_back(std::make_pair(semaphore, buffer->waitStage));
+        } 
+
         buffer->commandBuffer->submit(frameInFlightIndex,
-                                      device.getDefaultQueue(buffer->commandBuffer->getType()).getVulkanQueue());
+                                      device.getDefaultQueue(buffer->commandBuffer->getType()).getVulkanQueue(), 
+                                    &waitInfos);
 
         if (i == star::Command_Buffer_Order_Index::fifth || this->bufferGroupsWithSubOrders[order][i] == nullptr)
         {
@@ -94,21 +100,44 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
 
             // submit
             {
-                std::vector<vk::CommandBuffer> buffers = std::vector<vk::CommandBuffer>();
+                auto waitSemaphores = std::set<vk::Semaphore>(); 
+                auto buffers = std::vector<vk::CommandBuffer>();
+                if (additionalWaitSemaphores != nullptr){
+                    for (auto& semaphore : *additionalWaitSemaphores){
+                        waitSemaphores.insert(semaphore);
+                    }
+                }
+
                 for (CompleteRequest &buffer : buffersToSubmit)
                 {
                     buffers.push_back(buffer.commandBuffer->buffer(frameInFlightIndex));
+
+                    for (auto& semaphore : buffer.getDependentHighPrioritySemaphores(frameInFlightIndex)){
+                        waitSemaphores.insert(semaphore); 
+                        waitPoints.push_back(buffer.waitStage); 
+                    }
                 }
 
-                vk::SubmitInfo submitInfo{};
+                auto submitInfo = vk::SubmitInfo{};
 
-                if (waitSemaphores != nullptr)
-                {
-                    submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores->size());
-                    submitInfo.pWaitSemaphores = waitSemaphores->data();
-                    submitInfo.pWaitDstStageMask = waitPoints.data();
+                auto semaphoreData = std::vector<vk::Semaphore>(); 
+                for (auto &info : waitSemaphores){
+                    semaphoreData.push_back(info); 
                 }
 
+                assert(waitPoints.size() == semaphoreData.size() && "Each semaphore needs a wait stage"); 
+                
+                    // waitSemaphores = std::vector<vk::Semaphore>(*additionalWaitSemaphores);
+                    // submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores->size());
+                    // submitInfo.pWaitSemaphores = waitSemaphores->data();
+                    // submitInfo.pWaitDstStageMask = waitPoints.data();
+
+                uint32_t waitCount = 0; 
+                CastHelpers::SafeCast<size_t, uint32_t>(semaphoreData.size(), waitCount); 
+
+                submitInfo.pWaitSemaphores = semaphoreData.data(); 
+                submitInfo.waitSemaphoreCount = waitCount;
+                submitInfo.pWaitDstStageMask = waitPoints.data(); 
                 submitInfo.signalSemaphoreCount = 1;
                 submitInfo.pSignalSemaphores =
                     &this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(

@@ -139,7 +139,7 @@ bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
     return true;
 }
 
-std::set<vk::Semaphore> star::StarShaderInfo::getDependentSemaphores(const uint8_t &frameInFlight)
+std::set<vk::Semaphore> star::StarShaderInfo::getDependentSemaphores(const uint8_t &frameInFlight) const
 {
     assert(frameInFlight <= shaderInfoSets.size());
 

@@ -5,6 +5,8 @@
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 #include "ManagerController_RenderResource_VertInfo.hpp"
 
+#include <algorithm>
+
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout =
     std::unique_ptr<star::StarDescriptorSetLayout>();
 vk::PipelineLayout star::StarObject::extrusionPipelineLayout = vk::PipelineLayout{};
@@ -115,6 +117,22 @@ void star::StarObject::cleanupSharedResources(core::device::DeviceContext &devic
     // boundDescriptorLayout.reset();
     // device.getDevice().getVulkanDevice().destroyPipelineLayout(boundPipelineLayout);
     // StarObject::boundBoxPipeline.reset();
+}
+
+std::set<vk::Semaphore> star::StarObject::getHighPriorityResourceSemaphores(const uint8_t &frameInFlightIndex)
+{
+    std::set<vk::Semaphore> semaphores;
+
+    for (const auto &material : m_meshMaterials)
+    {
+        const auto currentSemaphores = std::set<vk::Semaphore>(semaphores);
+        const auto matSemaphores = material->getDependentHighPriorityDataSemaphores(frameInFlightIndex);
+
+        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), matSemaphores.begin(), matSemaphores.end(),
+                       std::inserter(semaphores, semaphores.begin()));
+    }
+
+    return semaphores;
 }
 
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)

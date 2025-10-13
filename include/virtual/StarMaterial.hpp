@@ -53,6 +53,8 @@ class StarMaterial
     /// already contain parent descriptor information.
     virtual void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &frameBuilder) const = 0;
 
+    std::set<vk::Semaphore> getDependentHighPriorityDataSemaphores(const uint8_t &frameInFlightIndex) const; 
+
     virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
       const int &numFramesInFlight) const;
 

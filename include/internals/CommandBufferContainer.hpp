@@ -22,6 +22,7 @@ class CommandBufferContainer
         bool recordOnce;
         vk::PipelineStageFlags waitStage;
         Command_Buffer_Order order;
+        std::function<std::set<vk::Semaphore>(const uint8_t &)> getDependentHighPrioritySemaphores;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
         std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
             overrideBufferSubmissionCallback;
@@ -29,13 +30,14 @@ class CommandBufferContainer
         CompleteRequest(
             std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback,
             std::unique_ptr<StarCommandBuffer> commandBuffer, const Queue_Type &type, const bool &recordOnce,
-            const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order,
+            const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order, 
+            std::function<std::set<vk::Semaphore>(const uint8_t &)> getDependentHighPrioritySemaphores,
             std::optional<std::function<void(const int &)>> beforeSubmissionCallback =
                 std::optional<std::function<void(const int &)>>(),
             std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
                 overrideBufferSubmissionCallback = std::nullopt)
             : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
-              recordOnce(recordOnce), waitStage(waitStage), order(order),
+              recordOnce(recordOnce), waitStage(waitStage), order(order), getDependentHighPrioritySemaphores(std::move(getDependentHighPrioritySemaphores)),
               beforeBufferSubmissionCallback(beforeSubmissionCallback),
               overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
     };

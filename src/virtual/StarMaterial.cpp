@@ -4,6 +4,10 @@ void star::StarMaterial::prepRender(core::device::DeviceContext &context, const 
 	shaderInfo = buildShaderInfo(context, numFramesInFlight, std::move(frameBuilder)); 
 }
 
+std::set<vk::Semaphore> star::StarMaterial::getDependentHighPriorityDataSemaphores(const uint8_t &frameInFlightIndex) const {
+	return shaderInfo->getDependentSemaphores(frameInFlightIndex); 
+}
+
 void star::StarMaterial::cleanupRender(core::device::DeviceContext &context){
 	shaderInfo->cleanupRender(context.getDevice()); 
 }

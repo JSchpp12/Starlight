@@ -10,7 +10,6 @@
 #include <optional>
 #include <vector>
 
-
 namespace star
 {
 /// <summary>
@@ -61,9 +60,11 @@ class StarCommandBuffer
 
     void reset(int bufferIndex);
 
-    void submit(int bufferIndex, vk::Queue &targetQueue, std::pair<vk::Semaphore, vk::PipelineStageFlags> *overrideWait = nullptr, vk::Fence *overrideFence = nullptr); 
+    void submit(int bufferIndex, vk::Queue &targetQueue,
+                std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>> *additionalWaits = nullptr,
+                vk::Fence *additionalFences = nullptr, std::vector<vk::Semaphore> *additionalSignalSemaphores = nullptr);
 
-    bool isFenceReady(const int &bufferIndex); 
+    bool isFenceReady(const int &bufferIndex);
 
     /// <summary>
     /// Returns the semaphores that will be signaled once this buffer is done executing.

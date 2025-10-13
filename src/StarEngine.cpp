@@ -127,8 +127,10 @@ void StarEngine::run()
 
         currentScene->getPresentationRenderer()->pollEvents();
         InteractionSystem::callWorldUpdates(frameInFlightIndex);
-        ManagerRenderResource::update(deviceManager.getContext().getDeviceID(), frameInFlightIndex);
+
         currentScene->frameUpdate(deviceManager.getContext()); 
+        
+        ManagerRenderResource::update(deviceManager.getContext().getDeviceID(), frameInFlightIndex);
         vk::Semaphore allBuffersSubmitted =
             deviceManager.getContext().getManagerCommandBuffer().update(frameInFlightIndex);
         currentScene->getPresentationRenderer()->submitPresentation(frameInFlightIndex, &allBuffersSubmitted);

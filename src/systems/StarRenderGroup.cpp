@@ -1,5 +1,6 @@
 #include "StarRenderGroup.hpp"
 
+#include <algorithm>
 namespace star
 {
 StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, std::shared_ptr<StarObject> baseObject)
@@ -16,20 +17,20 @@ StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, std::share
 
 StarRenderGroup::~StarRenderGroup()
 {
-    assert(!m_pipelineLayout && "Pipeline layout for render group should be destroyed"); 
+    assert(!m_pipelineLayout && "Pipeline layout for render group should be destroyed");
 }
 
-void StarRenderGroup::cleanupRender(core::device::DeviceContext &context){
+void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
+{
     // cleanup objects
     for (auto &group : this->groups)
-    {        // cleanup base object last since it owns the pipeline
+    { // cleanup base object last since it owns the pipeline
         group.baseObject.object->cleanupRender(context);
-        
+
         for (auto &obj : group.objects)
         {
             obj.object->cleanupRender(context);
         }
-
     }
 
     context.getDevice().getVulkanDevice().destroyPipelineLayout(m_pipelineLayout);
@@ -208,14 +209,27 @@ bool StarRenderGroup::isObjectCompatible(StarObject &object)
     return true;
 }
 
-std::set<star::Handle> StarRenderGroup::getSemaphoresForDependentTransfers(){
-    std::set<Handle> semaphores; 
+std::set<vk::Semaphore> StarRenderGroup::getSemaphoresForDependentTransfers(const uint8_t &frameInFlightIndex)
+{
+    std::set<vk::Semaphore> semaphores;
 
-    // for (auto &group : ren){
-    //     auto result = group.get
-    // }
+    for (auto &group : groups)
+    {
+        const auto currentSemaphores = std::set<vk::Semaphore>(semaphores);
+        auto newSemaphores = group.baseObject.object->getHighPriorityResourceSemaphores(frameInFlightIndex);
 
-    return semaphores; 
+        for (auto &object : group.objects)
+        {
+            const auto otherObjectDeps = object.object->getHighPriorityResourceSemaphores(frameInFlightIndex);
+            std::set_union(newSemaphores.begin(), newSemaphores.end(), otherObjectDeps.begin(), otherObjectDeps.end(),
+                           std::inserter(newSemaphores, newSemaphores.begin()));
+        }
+
+        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), newSemaphores.begin(), newSemaphores.end(),
+                       std::inserter(semaphores, semaphores.begin()));
+    }
+
+    return semaphores;
 }
 
 void StarRenderGroup::prepareObjects(StarShaderInfo::Builder &groupBuilder,

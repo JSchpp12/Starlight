@@ -52,7 +52,7 @@ star::Handle star::ManagerRenderResource::addRequest(
     if (isStatic)
     {
         newFull->cpuWorkDoneByTransferThread.store(false);
-        managerWorker->add(newFull->cpuWorkDoneByTransferThread,
+        managerWorker->add(newFull->cpuWorkDoneByTransferThread, newFull->resourceSemaphore,
                            newFull->bufferRequest->createTransferRequest(*devices.at(deviceID)), newFull->buffer,
                            isHighPriority);
 
@@ -80,7 +80,7 @@ star::Handle star::ManagerRenderResource::addRequest(
     if (isStatic)
     {
         newFull->cpuWorkDoneByTransferThread.store(false);
-        managerWorker->add(newFull->cpuWorkDoneByTransferThread,
+        managerWorker->add(newFull->cpuWorkDoneByTransferThread, newFull->resourceSemaphore,
                            newFull->textureRequest->createTransferRequest(*devices.at(deviceID)), newFull->texture,
                            isHighPriority);
 
@@ -100,7 +100,7 @@ void star::ManagerRenderResource::update(const core::device::DeviceID &deviceID,
     // must wait for all high priority requests to complete
 
     // need to make sure any previous transfers have completed before submitting
-    std::vector<FinalizedRenderRequest *> requestsToUpdate = std::vector<FinalizedRenderRequest *>();
+    auto requestsToUpdate = std::vector<FinalizedRenderRequest *>();
     {
         // check if the request is still in processing by GPU -- wait if it is
         for (auto &request : bufferStorage.at(deviceID)->getDynamicMap())
@@ -129,15 +129,24 @@ void star::ManagerRenderResource::update(const core::device::DeviceID &deviceID,
         requestsToUpdate[i]->cpuWorkDoneByTransferThread.store(false);
         if (requestsToUpdate[i]->bufferRequest)
         {
-            managerWorker->add(requestsToUpdate[i]->cpuWorkDoneByTransferThread,
+            managerWorker->add(requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->resourceSemaphore,
                                requestsToUpdate[i]->bufferRequest->createTransferRequest(*devices.at(deviceID)),
                                requestsToUpdate[i]->buffer, true);
         }
         else if (requestsToUpdate[i]->textureRequest)
         {
-            managerWorker->add(requestsToUpdate[i]->cpuWorkDoneByTransferThread,
+            managerWorker->add(requestsToUpdate[i]->cpuWorkDoneByTransferThread, requestsToUpdate[i]->resourceSemaphore,
                                requestsToUpdate[i]->textureRequest->createTransferRequest(*devices.at(deviceID)),
                                requestsToUpdate[i]->texture, true);
+        }
+    }
+
+    //updated works MUST be submitted before command buffers using those semaphores can be used. 
+    for (auto &request : requestsToUpdate)
+    {
+        if (!request->cpuWorkDoneByTransferThread.load())
+        {
+            request->cpuWorkDoneByTransferThread.wait(false);
         }
     }
 }
@@ -157,7 +166,7 @@ void star::ManagerRenderResource::updateRequest(const core::device::DeviceID &de
 
     container->bufferRequest = std::move(newRequest);
 
-    managerWorker->add(container->cpuWorkDoneByTransferThread,
+    managerWorker->add(container->cpuWorkDoneByTransferThread, container->resourceSemaphore,
                        container->bufferRequest->createTransferRequest(*devices.at(deviceID)), container->buffer,
                        isHighPriority);
 
@@ -215,7 +224,8 @@ void star::ManagerRenderResource::cleanup(const core::device::DeviceID &deviceID
 
     managerWorker.reset();
 }
-star::ManagerRenderResource::FinalizedRenderRequest &star::ManagerRenderResource::get(const core::device::DeviceID &deviceID, const Handle &handle)
+star::ManagerRenderResource::FinalizedRenderRequest &star::ManagerRenderResource::get(
+    const core::device::DeviceID &deviceID, const Handle &handle)
 {
-    return *bufferStorage.at(deviceID)->get(handle); 
+    return *bufferStorage.at(deviceID)->get(handle);
 }

@@ -15,7 +15,7 @@ void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2
 {
     {
         auto commandRequest = getCommandBufferRequest();
-        commandRequest.getSemaphoresToWaitOnForSubmission =
+        commandRequest.getDependentSemaphores = 
             std::bind(&Renderer::getSemaphoresWhichCommandsMustWaitOn, this, std::placeholders::_1);
 
         m_commandBuffer = device.getManagerCommandBuffer().submit(std::move(commandRequest));
@@ -381,16 +381,16 @@ void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t w
                    (VkImage *)&image, &imageMemory, nullptr);
 }
 
-std::set<Handle> Renderer::getSemaphoresWhichCommandsMustWaitOn(const uint8_t &frameInFlightIndex)
+std::set<vk::Semaphore> Renderer::getSemaphoresWhichCommandsMustWaitOn(const uint8_t &frameInFlightIndex)
 {
-    auto semaphores = std::set<Handle>();
+    auto semaphores = std::set<vk::Semaphore>(); 
 
     for (const auto &group : renderGroups)
     {
-        auto currentSemaphores = std::set<Handle>(semaphores);
-        auto result = group->getSemaphoresForDependentTransfers();
+        auto currentSemaphores = std::set<vk::Semaphore>(semaphores);
+        const auto groupSemaphores = group->getSemaphoresForDependentTransfers(frameInFlightIndex);
 
-        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), result.begin(), result.end(),
+        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), groupSemaphores.begin(), groupSemaphores.end(),
                        std::inserter(semaphores, semaphores.begin()));
     }
 

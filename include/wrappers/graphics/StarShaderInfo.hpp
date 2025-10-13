@@ -135,7 +135,7 @@ class StarShaderInfo
 
     bool isReady(const uint8_t &frameInFlight);
 
-    std::set<vk::Semaphore> getDependentSemaphores(const uint8_t &frameInFlight); 
+    std::set<vk::Semaphore> getDependentSemaphores(const uint8_t &frameInFlight) const; 
 
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 

@@ -53,6 +53,8 @@ namespace star {
 
 		virtual ~StarObject() = default;
 
+		virtual std::set<vk::Semaphore> getHighPriorityResourceSemaphores(const uint8_t &frameInFlightIndex); 
+
 		virtual void cleanupRender(core::device::DeviceContext& device); 
 
 		virtual Handle buildPipeline(core::device::DeviceContext& device,
