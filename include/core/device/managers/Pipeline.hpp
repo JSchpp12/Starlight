@@ -76,15 +76,9 @@ struct PipelineRecord
     uint8_t numCompiled = 0;
 };
 
-class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>
+class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, Handle_Type::pipeline, 50>
 {
-  public:
   protected:
-    Handle_Type getHandleType() const override
-    {
-        return Handle_Type::pipeline;
-    }
-
     PipelineRecord createRecord(device::StarDevice &device, PipelineRequest &&request) const override
     {
         return PipelineRecord(std::move(request));
@@ -93,7 +87,5 @@ class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineReque
   private:
     void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                     system::EventBus &eventBus, PipelineRecord *storedRecord) override;
-
-    
 };
 } // namespace star::core::device::manager

@@ -13,13 +13,6 @@
 
 #include <assert.h>
 
-star::TransferRequest::TextureFile::TextureFile(const std::string &imagePath, const uint32_t &graphicsQueueFamilyIndex,
-                                                const vk::PhysicalDeviceProperties &deviceProperties)
-    : imagePath(imagePath), deviceProperties(deviceProperties), graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
-{
-    assert(star::file_helpers::FileExists(this->imagePath) && "Provided path does not exist");
-}
-
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
@@ -108,6 +101,10 @@ void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffer
     int l_width, l_height, l_channels = 0;
     unsigned char *pixelData(stbi_load(this->imagePath.c_str(), &l_width, &l_height, &l_channels, STBI_rgb_alpha));
 
+    if (!star::file_helpers::FileExists(this->imagePath)){
+        throw std::runtime_error("Provided file does not exist");
+    }
+    
     if (!pixelData)
     {
         throw std::runtime_error("Unable to load image");

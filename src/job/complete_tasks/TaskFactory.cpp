@@ -74,9 +74,9 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
     auto *gm = static_cast<core::device::manager::GraphicsContainer *>(graphicsManagers);
     auto *ts = static_cast<job::TaskManager *>(taskSystem);
 
-    for (size_t i = 0; i < gm->pipelineManager.getRecords().size(); i++)
+    for (size_t i = 0; i < gm->pipelineManager.getRecords().getData().size(); i++)
     {
-        auto &record = gm->pipelineManager.getRecords()[i];
+        auto &record = gm->pipelineManager.getRecords().getData()[i];
         if (!record.isReady() && record.numCompiled != 0 &&
             record.numCompiled == record.request.pipeline.getShaders().size())
         {

@@ -17,6 +17,7 @@
 #include "StarShaderInfo.hpp"
 #include "StarTextures/Texture.hpp"
 #include "StarWindow.hpp"
+#include "ManagerController_RenderResource_Buffer.hpp"
 
 #include <chrono>
 #include <memory>
@@ -31,7 +32,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
              std::vector<std::shared_ptr<Light>> lights, std::vector<Handle> &cameraInfoBuffers,
              std::vector<std::shared_ptr<StarObject>> objects)
-        : m_lights(lights), m_cameraInfoBuffers(cameraInfoBuffers)
+        : m_lights(lights)
     {
         initBuffers(context, numFramesInFlight);
         createRenderingGroups(context, context.getRenderingSurface().getResolution(), objects);
@@ -79,24 +80,24 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
                                    this->renderToDepthImages.at(0)->getBaseFormat());
     }
 
-    std::vector<Handle> getCameraInfoBuffers()
+    std::shared_ptr<ManagerController::RenderResource::Buffer> getCameraInfoBuffers()
     {
-        return m_cameraInfoBuffers;
+        return m_infoManagerCamera;
     }
 
-    std::vector<Handle> getLightInfoBuffers()
+    std::shared_ptr<ManagerController::RenderResource::Buffer> getLightInfoBuffers()
     {
-        return m_lightInfoBuffers;
+        return m_infoManagerLightData;
     }
 
-    std::vector<Handle> getLightListBuffers()
+    std::shared_ptr<ManagerController::RenderResource::Buffer> getLightListBuffers()
     {
-        return m_lightListBuffers;
+        return m_infoManagerLightList;
     }
 
   protected:
     bool isReady = false;
-    std::vector<Handle> m_cameraInfoBuffers, m_lightInfoBuffers, m_lightListBuffers;
+    std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList, m_infoManagerCamera; 
 
     Handle m_commandBuffer;
     std::vector<std::shared_ptr<star::Light>> m_lights;

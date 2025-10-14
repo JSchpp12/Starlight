@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Handle.hpp"
+#include "HandleContainer.hpp"
 #include "device/StarDevice.hpp"
 #include "device/system/EventBus.hpp"
 #include "job/TaskManager.hpp"
@@ -17,46 +18,28 @@ concept RecordStructHasCleanup = requires(T record, device::StarDevice &device) 
     { record.cleanupRender(device) } -> std::same_as<void>;
 };
 
-template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
+template <typename TRecord, typename TResourceRequest, star::Handle_Type THandleType, size_t TMaxRecordCount>
     requires RecordStructHasCleanup<TRecord>
 class Manager
 {
   public:
     Manager() = default;
-    virtual ~Manager() = default;
+    Manager(Manager &&) noexcept = default;
+    Manager &operator=(Manager &&) noexcept = default;
     Manager(const Manager &) = delete;
-    Manager(Manager &&other)
-        : m_skippedSpaces(std::move(other.m_skippedSpaces)), m_records(std::move(other.m_records)),
-          m_nextSpace(std::move(other.m_nextSpace))
-    {
-    }
     Manager &operator=(const Manager &) = delete;
-    Manager &operator=(Manager &&other)
-    {
-        if (this != &other)
-        {
-            m_nextSpace = std::move(other.m_nextSpace);
-            m_records = std::move(other.m_records);
-            m_skippedSpaces = std::move(other.m_skippedSpaces);
-        }
-        return *this;
-    }
+
+    virtual ~Manager() = default;
 
     virtual Handle submit(device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
-                  TResourceRequest resource)
+                          TResourceRequest resource)
     {
-        Handle newHandle;
-        insert(device, newHandle, std::move(resource));
-
-        return newHandle;
+        return insert(device, std::move(resource));
     }
 
     TRecord *get(const Handle &handle)
     {
-        assert(handle.getID() < m_records.size() && "Handle is outside of the available storage");
-        assert(handle.getType() == getHandleType() && "Invalid handle type provided");
-
-        return &m_records[handle.getID()];
+        return &m_records.get(handle);
     }
 
     bool isReady(const Handle &handle)
@@ -67,59 +50,23 @@ class Manager
         return rec->isReady();
     }
 
-    std::array<TRecord, TMaxRecordCount> &getRecords()
+    HandleContainer<TRecord, THandleType, TMaxRecordCount> &getRecords()
     {
         return m_records;
     }
 
     void cleanupRender(device::StarDevice &device)
     {
-        for (auto &record : m_records)
-        {
-            record.cleanupRender(device);
-        }
+        m_records.cleanupAll(&device);
     }
 
   protected:
-    std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
-    std::array<TRecord, TMaxRecordCount> m_records = std::array<TRecord, TMaxRecordCount>();
-    uint32_t m_nextSpace = 0;
+    star::core::HandleContainer<TRecord, THandleType, TMaxRecordCount> m_records;
 
-    virtual Handle_Type getHandleType() const = 0;
-
-    void insert(device::StarDevice &device, Handle &handle, TResourceRequest request)
+    Handle insert(device::StarDevice &device, TResourceRequest request)
     {
-        uint32_t nextSpace = getNextSpace();
-        Handle newHandle = Handle{.type = getHandleType(), .id = nextSpace};
-
-        m_records[nextSpace] = createRecord(device, std::move(request));
-
-        handle = newHandle;
-    }
-
-    uint32_t getNextSpace()
-    {
-        uint32_t nextSpace = 0;
-
-        if (m_nextSpace > m_records.size())
-        {
-            if (m_skippedSpaces.empty())
-            {
-                throw std::runtime_error("Storage is full");
-            }
-            else
-            {
-                nextSpace = m_skippedSpaces.top();
-                m_skippedSpaces.pop();
-            }
-        }
-        else
-        {
-            nextSpace = m_nextSpace;
-            m_nextSpace++;
-        }
-
-        return nextSpace;
+        TRecord record = createRecord(device, std::move(request));
+        return m_records.insert(std::move(record));
     }
 
     virtual TRecord createRecord(device::StarDevice &device, TResourceRequest &&request) const = 0;

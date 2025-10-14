@@ -14,6 +14,7 @@
 #include "ManagerDescriptorPool.hpp"
 #include "DescriptorModifier.hpp"
 #include "core/renderer/RenderingContext.hpp"
+#include "ManagerController_RenderResource_Buffer.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -119,14 +120,13 @@ namespace star {
 		std::unique_ptr<core::renderer::RenderingContext> renderingContext; 
 		std::unique_ptr<StarPipeline> normalExtrusionPipeline; 
 		std::unique_ptr<StarDescriptorSetLayout> setLayout; 
-		std::vector<Handle> instanceNormalInfos; 
-		std::vector<Handle> instanceModelInfos;
+		std::unique_ptr<ManagerController::RenderResource::Buffer> m_infoManagerInstanceModel, m_infoManagerInstanceNormal;
 		std::vector<std::unique_ptr<StarMesh>> meshes;
 		std::vector<std::unique_ptr<StarObjectInstance>> instances; 
 		
 		virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes(star::core::device::DeviceContext& device)=0; 
 
-		virtual void createInstanceBuffers(star::core::device::DeviceContext& device, int numImagesInFlight);
+		virtual void createInstanceBuffers(star::core::device::DeviceContext& context, const uint8_t &numImagesInFlight);
 
 		virtual void createBoundingBox(std::vector<Vertex>& verts, std::vector<uint32_t>& inds);
 

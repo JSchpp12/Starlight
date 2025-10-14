@@ -1,9 +1,9 @@
 #include "StarObject.hpp"
 
-#include "ManagerController_RenderResource_IndicesInfo.hpp"
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
-#include "ManagerController_RenderResource_VertInfo.hpp"
+#include "TransferRequest_IndicesInfo.hpp"
+#include "TransferRequest_VertInfo.hpp"
 
 #include <algorithm>
 
@@ -198,23 +198,29 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context, cons
     this->meshes = loadMeshes(context);
     m_deviceID = context.getDeviceID();
 
-    std::vector<Vertex> bbVerts;
-    std::vector<uint32_t> bbInds;
-
-    calculateBoundingBox(bbVerts, bbInds);
-
     {
-        auto bbSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
-        this->boundingBoxVertBuffer =
-            ManagerRenderResource::addRequest(m_deviceID, context.getSemaphoreManager().get(bbSemaphore)->semaphore,
-                                              std::make_unique<ManagerController::RenderResource::VertInfo>(bbVerts));
-    }
-    {
-        auto bbIndSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+        std::vector<Vertex> bbVerts;
+        std::vector<uint32_t> bbInds;
 
-        this->boundingBoxIndexBuffer =
-            ManagerRenderResource::addRequest(m_deviceID, context.getSemaphoreManager().get(bbIndSemaphore)->semaphore,
-                                              std::make_unique<ManagerController::RenderResource::IndicesInfo>(bbInds));
+        calculateBoundingBox(bbVerts, bbInds);
+
+        {
+            auto bbSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+            this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(
+                m_deviceID, context.getSemaphoreManager().get(bbSemaphore)->semaphore,
+                std::make_unique<TransferRequest::VertInfo>(
+                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
+                    std::move(bbVerts)));
+        }
+        {
+            auto bbIndSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+
+            this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
+                m_deviceID, context.getSemaphoreManager().get(bbIndSemaphore)->semaphore,
+                std::make_unique<TransferRequest::IndicesInfo>(
+                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
+                    std::move(bbInds)));
+        }
     }
 
     prepareMeshes(context);
@@ -318,14 +324,18 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
+        const auto &instanceModelHandle = m_infoManagerInstanceModel->getHandle(i);
+        const auto &instanceNormalHandle = m_infoManagerInstanceNormal->getHandle(i);
+
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
-        frameBuilder.add(
-            this->instanceModelInfos[i],
-            &context.getManagerRenderResource().get(context.getDeviceID(), instanceModelInfos[i]).resourceSemaphore);
-        frameBuilder.add(
-            this->instanceNormalInfos[i],
-            &context.getManagerRenderResource().get(context.getDeviceID(), instanceNormalInfos[i]).resourceSemaphore);
+        frameBuilder.add(instanceModelHandle, &context.getManagerRenderResource()
+                                                   .get<StarBuffers::Buffer>(context.getDeviceID(), instanceModelHandle)
+                                                   ->resourceSemaphore);
+        frameBuilder.add(instanceNormalHandle,
+                         &context.getManagerRenderResource()
+                              .get<StarBuffers::Buffer>(context.getDeviceID(), instanceNormalHandle)
+                              ->resourceSemaphore);
     }
 
     for (auto &material : m_meshMaterials)
@@ -335,32 +345,17 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
     }
 }
 
-void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &context, int numImagesInFlight)
+void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &context,
+                                             const uint8_t &numFramesInFlight)
 {
     assert(this->instances.size() > 0 &&
            "Call to create instance buffers made but this object does not have any instances");
     assert(this->instances.size() < 1024 && "Max number of supported instances is 1024");
 
-    // create a buffer for each image
-    for (int i = 0; i < numImagesInFlight; i++)
-    {
-        {
-            const auto iSemaphore =
-                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
-
-            this->instanceModelInfos.emplace_back(ManagerRenderResource::addRequest(
-                context.getDeviceID(), context.getSemaphoreManager().get(iSemaphore)->semaphore,
-                std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(this->instances, i)));
-        }
-
-        {
-            const auto iSemaphore =
-                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
-            this->instanceNormalInfos.emplace_back(ManagerRenderResource::addRequest(
-                context.getDeviceID(), context.getSemaphoreManager().get(iSemaphore)->semaphore,
-                std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(this->instances, i)));
-        }
-    }
+    m_infoManagerInstanceModel =
+        std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(numFramesInFlight, this->instances);
+    m_infoManagerInstanceNormal =
+        std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(numFramesInFlight, this->instances);
 }
 
 void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)

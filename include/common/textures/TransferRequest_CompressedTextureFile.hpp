@@ -14,11 +14,13 @@ namespace star::TransferRequest
 class CompressedTextureFile : public TransferRequest::Texture
 {
   public:
-    CompressedTextureFile(const uint32_t &graphicsQueueFamilyIndex,
-                          const vk::PhysicalDeviceProperties &deviceProperties,
-                          std::shared_ptr<SharedCompressedTexture> compressedTexture, const uint8_t &mipMapIndex);
+    CompressedTextureFile(uint32_t graphicsQueueFamilyIndex, vk::PhysicalDeviceProperties deviceProperties,
+                          std::shared_ptr<SharedCompressedTexture> compressedTexture)
+        : graphicsQueueFamilyIndex(std::move(graphicsQueueFamilyIndex)), deviceProperties(std::move(deviceProperties)),
+          compressedTexture(compressedTexture) {};
 
-    virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const override;
+    virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device,
+                                                                     VmaAllocator &allocator) const override;
 
     virtual std::unique_ptr<star::StarTextures::Texture> createFinal(
         vk::Device &device, VmaAllocator &allocator,
@@ -29,11 +31,12 @@ class CompressedTextureFile : public TransferRequest::Texture
 
     virtual void writeDataToStageBuffer(StarBuffers::Buffer &stagingBuffer) const override;
 
+    static bool IsFileCompressedTexture(const std::string &filePath);
+
   private:
+    uint32_t graphicsQueueFamilyIndex;
+    vk::PhysicalDeviceProperties deviceProperties;
     std::shared_ptr<SharedCompressedTexture> compressedTexture = nullptr;
-    const uint8_t mipMapIndex;
-    const uint32_t graphicsQueueFamilyIndex;
-    const vk::PhysicalDeviceProperties deviceProperties;
 
     static void getTextureInfo(const std::string &imagePath, int &width, int &height, int &channels);
 };

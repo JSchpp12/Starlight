@@ -21,14 +21,9 @@ struct SemaphoreRecord
     }
 };
 
-class Semaphore : public Manager<SemaphoreRecord, SemaphoreRequest, 200>
+class Semaphore : public Manager<SemaphoreRecord, SemaphoreRequest, Handle_Type::semaphore, 200>
 {
   protected:
-    Handle_Type getHandleType() const override
-    {
-        return Handle_Type::semaphore;
-    }
-
     SemaphoreRecord createRecord(device::StarDevice &device, SemaphoreRequest &&request) const override
     {
         return SemaphoreRecord{

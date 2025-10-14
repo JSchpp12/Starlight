@@ -130,7 +130,7 @@ void StarEngine::run()
 
         currentScene->frameUpdate(deviceManager.getContext()); 
         
-        ManagerRenderResource::update(deviceManager.getContext().getDeviceID(), frameInFlightIndex);
+        ManagerRenderResource::frameUpdate(deviceManager.getContext().getDeviceID(), frameInFlightIndex);
         vk::Semaphore allBuffersSubmitted =
             deviceManager.getContext().getManagerCommandBuffer().update(frameInFlightIndex);
         currentScene->getPresentationRenderer()->submitPresentation(frameInFlightIndex, &allBuffersSubmitted);

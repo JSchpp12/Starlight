@@ -174,13 +174,11 @@ class TransferWorker
     /// @param device Created star device from which vulkan objects can be made
     TransferWorker(core::device::StarDevice &device, bool overrideRunAsync, std::vector<StarQueue> &queuesToUse);
 
-    void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
-            vk::Semaphore signalWhenDoneSemaphore,
+    void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread, vk::Semaphore signalWhenDoneSemaphore,
              std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
              std::unique_ptr<StarBuffers::Buffer> &resultingBuffer, const bool &isHighPriority);
 
-    void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
-      vk::Semaphore signalWhenDoneSemaphore,
+    void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread, vk::Semaphore signalWhenDoneSemaphore,
              std::unique_ptr<TransferRequest::Texture> newTextureRequest,
              std::unique_ptr<StarTextures::Texture> &resultingTexture, const bool &isHighPriority);
 

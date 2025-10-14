@@ -3,22 +3,22 @@
 #include "ManagerController_Controller.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "TransferRequest_Buffer.hpp"
-
+#include "managers/ManagerRenderResource.hpp"
 
 namespace star::ManagerController::RenderResource
 {
 class Buffer : public star::ManagerController::Controller<TransferRequest::Buffer>
 {
   public:
-    Buffer() = default;
+    Buffer() = default; 
 
-    Buffer(const uint8_t &frameInFlightIndexToUpdateOn)
-        : star::ManagerController::Controller<TransferRequest::Buffer>(frameInFlightIndexToUpdateOn) {};
+    Buffer(bool shouldUpdateAfterCreation) : Controller<TransferRequest::Buffer>(std::move(shouldUpdateAfterCreation)){}
+
+    Buffer(bool shouldUpdateAfterCreation, const uint8_t &numFramesInFlight) : Controller<TransferRequest::Buffer>(std::move(shouldUpdateAfterCreation), numFramesInFlight){}
 
     virtual ~Buffer() = default; 
 
-    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device) override = 0;
-
   protected:
+      virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device, const uint8_t &frameInFlightIndex) override = 0;
 };
 } // namespace star::ManagerController::RenderResource

@@ -9,10 +9,14 @@ namespace star::TransferRequest
 class TextureFile : public Texture
 {
   public:
-    TextureFile(const std::string &imagePath, const uint32_t &graphicsQueueFamilyIndex,
-                const vk::PhysicalDeviceProperties &deviceProperties);
+    TextureFile(uint32_t graphicsQueueFamilyIndex, vk::PhysicalDeviceProperties deviceProperties, std::string imagePath)
+        : graphicsQueueFamilyIndex(std::move(graphicsQueueFamilyIndex)), deviceProperties(std::move(deviceProperties)),
+          imagePath(std::move(imagePath))
+    {
+    }
 
-    virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const override;
+    virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device,
+                                                                     VmaAllocator &allocator) const override;
 
     virtual std::unique_ptr<star::StarTextures::Texture> createFinal(
         vk::Device &device, VmaAllocator &allocator,
@@ -25,9 +29,9 @@ class TextureFile : public Texture
 
   protected:
   private:
-    const uint32_t graphicsQueueFamilyIndex;
-    const std::string imagePath;
-    const vk::PhysicalDeviceProperties deviceProperties;
+    uint32_t graphicsQueueFamilyIndex;
+    vk::PhysicalDeviceProperties deviceProperties;
+    std::string imagePath;
 
     static void GetTextureInfo(const std::string &imagePath, int &width, int &height, int &channels);
 };

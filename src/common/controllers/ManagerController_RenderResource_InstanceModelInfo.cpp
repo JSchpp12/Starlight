@@ -2,7 +2,7 @@
 
 #include "TransferRequest_InstanceModelInfo.hpp"
 
-std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceModelInfo::createTransferRequest(star::core::device::StarDevice &device){
+std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceModelInfo::createTransferRequest(star::core::device::StarDevice &device, const uint8_t &frameInFlightIndex){
     return std::make_unique<TransferRequest::InstanceModelInfo>(
         this->objectInstances,
         device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex(),

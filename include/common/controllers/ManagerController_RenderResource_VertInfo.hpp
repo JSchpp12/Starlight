@@ -1,16 +1,16 @@
-#pragma once
+// #pragma once
 
-#include "ManagerController_RenderResource_Buffer.hpp"
-#include "VulkanVertex.hpp"
+// #include "ManagerController_RenderResource_Buffer.hpp"
+// #include "VulkanVertex.hpp"
 
-namespace star::ManagerController::RenderResource{
-    class VertInfo : public ManagerController::RenderResource::Buffer{
-        public:
-        VertInfo(const std::vector<Vertex> vertices) : vertices(vertices){}
+// namespace star::ManagerController::RenderResource{
+//     class VertInfo : public ManagerController::RenderResource::Buffer{
+//         public:
+//         VertInfo(const std::vector<Vertex> vertices) : vertices(vertices){}
 
-        std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device) override;
+//         std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device) override;
 
-        protected:
-        const std::vector<Vertex> vertices;
-    };
-}
+//         protected:
+//         const std::vector<Vertex> vertices;
+//     };
+// }

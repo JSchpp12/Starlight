@@ -65,15 +65,9 @@ struct ShaderRecord
     ShaderRequest request;
     std::unique_ptr<std::vector<uint32_t>> compiledShader = nullptr;
 };
-class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>
+class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, Handle_Type::shader, 50>
 {
-  public:
   protected:
-    Handle_Type getHandleType() const override
-    {
-        return Handle_Type::shader;
-    }
-
     ShaderRecord createRecord(device::StarDevice &device, ShaderRequest &&request) const override
     {
         return ShaderRecord(std::move(request));

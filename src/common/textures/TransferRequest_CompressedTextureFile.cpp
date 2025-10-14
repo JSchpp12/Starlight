@@ -4,14 +4,6 @@
 
 #include <assert.h>
 
-star::TransferRequest::CompressedTextureFile::CompressedTextureFile(
-    const uint32_t &graphicsQueueFamilyIndex, const vk::PhysicalDeviceProperties &deviceProperties,
-    std::shared_ptr<SharedCompressedTexture> compressedTexture, const uint8_t &mipMapIndex)
-    : compressedTexture(compressedTexture), mipMapIndex(mipMapIndex), deviceProperties(deviceProperties),
-      graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
-{
-}
-
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
@@ -45,8 +37,8 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    uint32_t numIndices = 0; 
-    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
+    uint32_t numIndices = 0;
+    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
 
     return StarTextures::Texture::Builder(device, allocator)
         .setCreateInfo(
@@ -186,7 +178,7 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
 
 void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const
 {
-    void *mapped = nullptr; 
+    void *mapped = nullptr;
     buffer.map(&mapped);
 
     {
@@ -198,4 +190,9 @@ void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBu
     }
 
     buffer.unmap();
+}
+
+bool star::TransferRequest::CompressedTextureFile::IsFileCompressedTexture(const std::string &filePath)
+{
+    return file_helpers::GetFileNameWithoutExtension(filePath) == ".ktx2";
 }

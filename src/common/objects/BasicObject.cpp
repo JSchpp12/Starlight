@@ -1,8 +1,8 @@
 #include "BasicObject.hpp"
 
-#include "ManagerController_RenderResource_IndicesInfo.hpp"
 #include "ManagerController_RenderResource_TextureFile.hpp"
-#include "ManagerController_RenderResource_VertInfo.hpp"
+#include "TransferRequest_IndicesInfo.hpp"
+#include "TransferRequest_VertInfo.hpp"
 
 #include "BumpMaterial.hpp"
 #include "CastHelpers.hpp"
@@ -113,8 +113,8 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
     {
         // tinyobj ensures three verticies per triangle  -- assuming unique vertices
         const std::vector<tinyobj::index_t> &indicies = shape.mesh.indices;
-        auto fullInd = std::make_unique<std::vector<uint32_t>>(shape.mesh.indices.size());
-        auto vertices = std::make_unique<std::vector<Vertex>>(shape.mesh.indices.size());
+        auto fullInd = std::vector<uint32_t>(shape.mesh.indices.size());
+        auto vertices = std::vector<Vertex>(shape.mesh.indices.size());
         size_t vertCounter = 0;
         for (size_t faceIndex = 0; faceIndex < shape.mesh.material_ids.size(); faceIndex++)
         {
@@ -143,30 +143,34 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
                 newVertex.texCoord = {attrib.texcoords[2 * indicies[dIndex].texcoord_index + 0],
                                       1.0f - attrib.texcoords[2 * indicies[dIndex].texcoord_index + 1]};
 
-                vertices->at(vertCounter) = newVertex;
-                fullInd->at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter);
+                vertices.at(vertCounter) = newVertex;
+                fullInd.at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter);
                 vertCounter++;
             }
         }
 
         if (shape.mesh.material_ids.at(shapeCounter) != -1)
         {
-            const auto meshVertSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false)); 
-            Handle meshVertBuffer = ManagerRenderResource::addRequest(
-                context.getDeviceID(),
-                context.getSemaphoreManager().get(meshVertSemaphore)->semaphore,
-                std::make_unique<star::ManagerController::RenderResource::VertInfo>(*vertices));
-                
-            const auto indSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+            const auto meshVertSemaphore =
+                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+            const Handle meshVertBuffer = ManagerRenderResource::addRequest(
+                context.getDeviceID(), context.getSemaphoreManager().get(meshVertSemaphore)->semaphore,
+                std::make_unique<TransferRequest::VertInfo>(
+                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
+                    vertices));
 
-            Handle meshIndBuffer = ManagerRenderResource::addRequest(
-                context.getDeviceID(),
-                context.getSemaphoreManager().get(indSemaphore)->semaphore,
-                std::make_unique<star::ManagerController::RenderResource::IndicesInfo>(*fullInd));
+            const auto indSemaphore =
+                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+
+            const Handle meshIndBuffer = ManagerRenderResource::addRequest(
+                context.getDeviceID(), context.getSemaphoreManager().get(indSemaphore)->semaphore,
+                std::make_unique<TransferRequest::IndicesInfo>(
+                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
+                    fullInd));
 
             // apply material from files to mesh -- will ignore passed values
             meshes.at(shapeCounter) =
-                std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, *vertices, *fullInd,
+                std::unique_ptr<StarMesh>(new StarMesh(meshVertBuffer, meshIndBuffer, vertices, fullInd,
                                                        m_meshMaterials.at(shape.mesh.material_ids[0]), false));
         }
         shapeCounter++;
@@ -176,8 +180,8 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
 }
 
 std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(const std::string &filePath)
-{ 
-    auto parentDirectory = file_helpers::GetParentDirectory(filePath).string(); 
+{
+    auto parentDirectory = file_helpers::GetParentDirectory(filePath).string();
 
     if (!star::file_helpers::FileExists(filePath))
     {
@@ -220,14 +224,14 @@ std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterial
         {
             auto path = parentDirectory / boost::filesystem::path(fMaterial.bump_texname);
             materials.emplace_back(std::make_shared<star::BumpMaterial>(
-                path.string(), fMaterial.diffuse_texname, glm::vec4(1.0), glm::vec4(1.0),
-                glm::vec4(1.0), glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
+                path.string(), fMaterial.diffuse_texname, glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
                 glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
                 fMaterial.shininess));
         }
         else if (isTextureMaterial)
         {
-            auto path = parentDirectory / boost::filesystem::path(fMaterial.diffuse_texname); 
+            auto path = parentDirectory / boost::filesystem::path(fMaterial.diffuse_texname);
             materials.emplace_back(std::make_shared<star::TextureMaterial>(
                 path.string(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
                 glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
@@ -252,9 +256,12 @@ void star::BasicObject::getTypeOfMaterials(bool &isTextureMaterial, bool &isBump
 {
     assert(m_meshMaterials.size() > 0 && "Mesh materials should always exist");
 
-    if (auto bumpDerived = std::dynamic_pointer_cast<BumpMaterial>(m_meshMaterials.front())){
+    if (auto bumpDerived = std::dynamic_pointer_cast<BumpMaterial>(m_meshMaterials.front()))
+    {
         isBumpMaterial = true;
-    }else if (auto textureDerived = std::dynamic_pointer_cast<TextureMaterial>(m_meshMaterials.front())){
-        isTextureMaterial = true; 
+    }
+    else if (auto textureDerived = std::dynamic_pointer_cast<TextureMaterial>(m_meshMaterials.front()))
+    {
+        isTextureMaterial = true;
     }
 }
