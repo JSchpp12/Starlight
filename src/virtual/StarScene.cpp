@@ -18,11 +18,11 @@ star::StarScene::StarScene(const core::device::DeviceID &deviceID, const uint8_t
 {
 }
 
-void star::StarScene::frameUpdate(core::device::DeviceContext &context){
-    m_presentationRenderer->frameUpdate(context); 
+void star::StarScene::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex){
+    m_presentationRenderer->frameUpdate(context, frameInFlightIndex); 
 
     for (size_t i = 0; i < m_additionalRenderers.size(); i++){
-        m_additionalRenderers[i]->frameUpdate(context); 
+        m_additionalRenderers[i]->frameUpdate(context, frameInFlightIndex); 
     }
 }
 

@@ -33,15 +33,16 @@ class StarRenderGroup
     StarRenderGroup(core::device::DeviceContext &device, std::shared_ptr<StarObject> baseObject);
 
     // no copy
-    StarRenderGroup(const StarRenderGroup &baseObject) = delete;
+    StarRenderGroup(const StarRenderGroup &) = delete;
+    StarRenderGroup &operator=(const StarRenderGroup &) = delete;
+    StarRenderGroup(StarRenderGroup &&) = default;
+    StarRenderGroup &operator=(StarRenderGroup &&) = default;
 
     virtual ~StarRenderGroup();
 
     void prepRender(core::device::DeviceContext &context, const vk::Extent2D &renderingResolution,
                     const uint8_t &numFramesInFlight, StarShaderInfo::Builder initEngineBuilder,
                     core::renderer::RenderingTargetInfo renderingInfo);
-
-    std::set<vk::Semaphore> getSemaphoresForDependentTransfers(const uint8_t &frameInFlightIndex); 
 
     void cleanupRender(core::device::DeviceContext &context); 
     
@@ -57,13 +58,13 @@ class StarRenderGroup
         this->lights.push_back(newLight);
     }
 
-    void frameUpdate(core::device::DeviceContext &context);
+    void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer);
 
     virtual void recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &swapChainImageIndex);
 
     virtual void recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &swapChainImageIndex);
 
-    virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+    virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
 
     int getNumObjects()
     {

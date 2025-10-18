@@ -20,14 +20,7 @@ void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2
     {
         m_infoManagerCamera->prepRender(device, numFramesInFlight);
     }
-
-    {
-        auto commandRequest = getCommandBufferRequest();
-        commandRequest.getDependentSemaphores =
-            std::bind(&Renderer::getSemaphoresWhichCommandsMustWaitOn, this, std::placeholders::_1);
-
-        m_commandBuffer = device.getManagerCommandBuffer().submit(std::move(commandRequest));
-    }
+    m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
 
     this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
@@ -54,9 +47,10 @@ void Renderer::cleanupRender(core::device::DeviceContext &context)
     }
 }
 
-void Renderer::frameUpdate(core::device::DeviceContext &device)
+void Renderer::frameUpdate(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex)
 {
-    updateRenderingGroups(device);
+    updateDependentData(device, frameInFlightIndex);
+    updateRenderingGroups(device, frameInFlightIndex);
 }
 
 void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
@@ -326,8 +320,9 @@ star::StarShaderInfo::Builder Renderer::manualCreateDescriptors(star::core::devi
             .add(lightInfoHandle, &context.getManagerRenderResource()
                                        .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
                                        ->resourceSemaphore)
-            .add(lightListHandle,
-                 &context.getManagerRenderResource().get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)->resourceSemaphore);
+            .add(lightListHandle, &context.getManagerRenderResource()
+                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
+                                       ->resourceSemaphore);
     }
 
     return globalBuilder;
@@ -373,22 +368,6 @@ void Renderer::createImage(star::core::device::DeviceContext &device, uint32_t w
                    (VkImage *)&image, &imageMemory, nullptr);
 }
 
-std::set<vk::Semaphore> Renderer::getSemaphoresWhichCommandsMustWaitOn(const uint8_t &frameInFlightIndex)
-{
-    auto semaphores = std::set<vk::Semaphore>();
-
-    for (const auto &group : renderGroups)
-    {
-        auto currentSemaphores = std::set<vk::Semaphore>(semaphores);
-        const auto groupSemaphores = group->getSemaphoresForDependentTransfers(frameInFlightIndex);
-
-        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), groupSemaphores.begin(),
-                       groupSemaphores.end(), std::inserter(semaphores, semaphores.begin()));
-    }
-
-    return semaphores;
-}
-
 void Renderer::initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
                              const vk::Extent2D &screensize)
 {
@@ -431,6 +410,25 @@ vk::Format Renderer::getDepthAttachmentFormat(star::core::device::DeviceContext 
     }
 
     return selectedFormat;
+}
+
+void Renderer::updateDependentData(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex){
+    auto dataSemaphore = vk::Semaphore(); 
+
+    auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer); 
+
+    if (m_infoManagerCamera && m_infoManagerCamera->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore)){
+        record.oneTimeWaitSemaphores.insert(std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eVertexShader)); 
+    }
+
+    if (m_infoManagerLightData->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore)){
+        record.oneTimeWaitSemaphores.insert(std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eFragmentShader)); 
+    }
+
+    if (m_infoManagerLightList->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore)){
+        record.oneTimeWaitSemaphores.insert(std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eFragmentShader)); 
+    }
+
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> Renderer::getDescriptorRequests(const int &numFramesInFlight)
@@ -538,11 +536,11 @@ void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int 
     }
 }
 
-void Renderer::updateRenderingGroups(core::device::DeviceContext &context)
+void Renderer::updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
     for (auto &group : renderGroups)
     {
-        group->frameUpdate(context);
+        group->frameUpdate(context, frameInFlightIndex, m_commandBuffer);
     }
 }
 

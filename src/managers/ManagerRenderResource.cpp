@@ -33,6 +33,17 @@ void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
 }
 
 star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceID &deviceID,
+                                                     vk::Semaphore resourceSemaphore, const bool &isHighPriority)
+{
+    Handle newBufferHandle = bufferStorage.at(deviceID)->insert(
+        FinalizedResourceRequest<star::StarBuffers::Buffer>(std::move(resourceSemaphore)));
+
+    bufferStorage.at(deviceID)->get(newBufferHandle).cpuWorkDoneByTransferThread.store(true);
+
+    return newBufferHandle; 
+}
+
+star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceID &deviceID,
                                                      vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Buffer> newRequest,
                                                      const bool &isHighPriority)

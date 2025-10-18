@@ -14,6 +14,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <set>
 
 namespace star
 {
@@ -53,10 +54,10 @@ class StarMaterial
     /// already contain parent descriptor information.
     virtual void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &frameBuilder) const = 0;
 
-    std::set<vk::Semaphore> getDependentHighPriorityDataSemaphores(const uint8_t &frameInFlightIndex) const; 
-
     virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
       const int &numFramesInFlight) const;
+
+    std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> getDataSemaphores(const uint8_t &frameInFlightIndex) const; 
 
   protected:
     std::unique_ptr<StarShaderInfo> shaderInfo;
@@ -65,7 +66,5 @@ class StarMaterial
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &device,
                                                             const uint8_t &numFramesInFlight,
                                                             StarShaderInfo::Builder builder) = 0;
-
-  private:
 };
 } // namespace star

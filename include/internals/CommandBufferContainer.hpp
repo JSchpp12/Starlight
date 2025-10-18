@@ -4,6 +4,8 @@
 #include "StarCommandBuffer.hpp"
 #include "device/StarDevice.hpp"
 
+#include <vulkan/vulkan.hpp>
+
 #include <functional>
 #include <memory>
 #include <unordered_map>
@@ -22,24 +24,46 @@ class CommandBufferContainer
         bool recordOnce;
         vk::PipelineStageFlags waitStage;
         Command_Buffer_Order order;
-        std::function<std::set<vk::Semaphore>(const uint8_t &)> getDependentHighPrioritySemaphores;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
-        std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
+        std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const uint8_t &, std::vector<vk::Semaphore>*, std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>)>>
             overrideBufferSubmissionCallback;
+        std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> oneTimeWaitSemaphores;
 
         CompleteRequest(
             std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback,
             std::unique_ptr<StarCommandBuffer> commandBuffer, const Queue_Type &type, const bool &recordOnce,
             const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order, 
-            std::function<std::set<vk::Semaphore>(const uint8_t &)> getDependentHighPrioritySemaphores,
             std::optional<std::function<void(const int &)>> beforeSubmissionCallback =
                 std::optional<std::function<void(const int &)>>(),
-            std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
+            std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const uint8_t &, std::vector<vk::Semaphore>*, std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>)>>
                 overrideBufferSubmissionCallback = std::nullopt)
             : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
-              recordOnce(recordOnce), waitStage(waitStage), order(order), getDependentHighPrioritySemaphores(std::move(getDependentHighPrioritySemaphores)),
+              recordOnce(recordOnce), waitStage(waitStage), order(order),
               beforeBufferSubmissionCallback(beforeSubmissionCallback),
               overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
+
+        void giveMeOneTimeSemaphoreWaitInfo(std::vector<vk::Semaphore> &semaphores, std::vector<vk::PipelineStageFlags> &waitPoints){
+            for (const auto &waitInfo : oneTimeWaitSemaphores){
+                semaphores.push_back(waitInfo.first);
+                waitPoints.push_back(waitInfo.second);
+            }
+
+            oneTimeWaitSemaphores.clear(); 
+        }
+
+        vk::Semaphore submitCommandBuffer(core::device::StarDevice &device, const uint8_t &frameInFlightIndex, std::vector<vk::Semaphore> *beforeSemaphores = nullptr){
+            auto waits = std::vector<vk::Semaphore>(); 
+            auto waitPoints = std::vector<vk::PipelineStageFlags>(); 
+            giveMeOneTimeSemaphoreWaitInfo(waits, waitPoints);  
+            
+            if (overrideBufferSubmissionCallback.has_value()){
+                return overrideBufferSubmissionCallback.value()(*commandBuffer, frameInFlightIndex, beforeSemaphores, std::move(waits), std::move(waitPoints)); 
+            }
+
+            commandBuffer->submit(frameInFlightIndex, device.getDefaultQueue(commandBuffer->getType()).getVulkanQueue()); 
+            return commandBuffer->getCompleteSemaphores().at(frameInFlightIndex); 
+
+        }
     };
 
     CommandBufferContainer(const int &numImagesInFlight, core::device::StarDevice &device);
@@ -62,7 +86,7 @@ class CommandBufferContainer
 
     void setToSubmitThisBuffer(const size_t &bufferIndex);
 
-    CompleteRequest &getBuffer(const star::Handle &bufferHandle);
+    CompleteRequest &get(const star::Handle &bufferHandle);
 
     size_t size()
     {

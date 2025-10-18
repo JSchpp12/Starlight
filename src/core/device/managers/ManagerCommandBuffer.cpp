@@ -16,7 +16,6 @@ void star::core::device::manager::ManagerCommandBuffer::cleanup(StarDevice &devi
 
 star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevice &device, Request request)
 {
-    assert(request.getDependentSemaphores && "Functions not properly initialized");
     
     star::Handle newHandle = this->buffers.add(
         std::make_unique<CommandBufferContainer::CompleteRequest>(
@@ -25,7 +24,6 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
                                                 device.getCommandPool(request.type), request.type,
                                                 !request.overrideBufferSubmissionCallback.has_value(), true),
             request.type, request.recordOnce, request.waitStage, request.order, 
-            request.getDependentSemaphores,
             request.beforeBufferSubmissionCallback,
             request.overrideBufferSubmissionCallback), request.willBeSubmittedEachFrame,
         request.type, request.order,
@@ -38,9 +36,9 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
     {
         for (int i = 0; i < this->numFramesInFlight; i++)
         {
-            this->buffers.getBuffer(newHandle).commandBuffer->begin(i);
-            request.recordBufferCallback(this->buffers.getBuffer(newHandle).commandBuffer->buffer(i), i);
-            this->buffers.getBuffer(newHandle).commandBuffer->buffer(i).end();
+            this->buffers.get(newHandle).commandBuffer->begin(i);
+            request.recordBufferCallback(this->buffers.get(newHandle).commandBuffer->buffer(i), i);
+            this->buffers.get(newHandle).commandBuffer->buffer(i).end();
         }
     }
 
@@ -50,6 +48,10 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
 void star::core::device::manager::ManagerCommandBuffer::submitDynamicBuffer(Handle bufferHandle)
 {
     ManagerCommandBuffer::dynamicBuffersToSubmit.push(bufferHandle);
+}
+
+star::CommandBufferContainer::CompleteRequest &star::core::device::manager::ManagerCommandBuffer::get(const Handle& handle){
+    return buffers.get(handle); 
 }
 
 vk::Semaphore star::core::device::manager::ManagerCommandBuffer::update(StarDevice &device, const int &frameIndexToBeDrawn)
@@ -70,7 +72,7 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
 
     // need to submit each group of buffers depending on the queue family they are in
     CommandBufferContainer::CompleteRequest &mainGraphicsBuffer =
-        this->buffers.getBuffer(*this->mainGraphicsBufferHandle);
+        this->buffers.get(*this->mainGraphicsBufferHandle);
 
     if (mainGraphicsBuffer.beforeBufferSubmissionCallback.has_value())
         mainGraphicsBuffer.beforeBufferSubmissionCallback.value()(swapChainIndex);
@@ -83,30 +85,7 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
         mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex).end();
     }
 
-    vk::Semaphore mainGraphicsSemaphore = vk::Semaphore();
-    for (vk::Semaphore semaphore : mainGraphicsBuffer.getDependentHighPrioritySemaphores(swapChainIndex)){
-        beforeSemaphores.emplace_back(semaphore); 
-    }
-
-    if (mainGraphicsBuffer.overrideBufferSubmissionCallback.has_value())
-    {
-        mainGraphicsSemaphore = mainGraphicsBuffer.overrideBufferSubmissionCallback.value()(
-            *mainGraphicsBuffer.commandBuffer, swapChainIndex, beforeSemaphores);
-    }
-    else
-    {
-        auto semaphoreWaitInfo = std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>(beforeSemaphores.size()); 
-        for (const auto& semaphore : beforeSemaphores){
-            semaphoreWaitInfo.emplace_back(std::make_pair(semaphore, mainGraphicsBuffer.waitStage)); 
-        }
-        
-        mainGraphicsBuffer.commandBuffer->submit(
-            swapChainIndex, 
-            device.getDefaultQueue(mainGraphicsBuffer.commandBuffer->getType()).getVulkanQueue(),
-            &semaphoreWaitInfo
-        );
-        mainGraphicsSemaphore = mainGraphicsBuffer.commandBuffer->getCompleteSemaphores().at(swapChainIndex);
-    }
+    auto mainGraphicsSemaphore = mainGraphicsBuffer.submitCommandBuffer(device, swapChainIndex, &beforeSemaphores); 
 
     assert(mainGraphicsSemaphore && "The main graphics complete semaphore is not valid. This might happen if the "
                                     "override function does not return a valid semaphore");

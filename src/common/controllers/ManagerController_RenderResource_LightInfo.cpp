@@ -14,12 +14,8 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
     ); 
 }
 
-bool star::ManagerController::RenderResource::LightInfo::isValid(const uint8_t& currentFrameInFlightIndex) const{
+bool star::ManagerController::RenderResource::LightInfo::needsUpdated(const uint8_t& currentFrameInFlightIndex) const{
     assert(currentFrameInFlightIndex < lastWriteNumLights.size() && "Not enough resources were created for this"); 
 
-    if (!star::ManagerController::RenderResource::Buffer::isValid(currentFrameInFlightIndex) && this->lastWriteNumLights[currentFrameInFlightIndex] != this->lights.size()){
-		return false;
-	}
-
-	return true;
+    return lastWriteNumLights[currentFrameInFlightIndex] != lights.size(); 
 }

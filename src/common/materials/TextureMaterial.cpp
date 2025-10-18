@@ -10,6 +10,14 @@
 
 #include <cassert>
 
+star::TextureMaterial::TextureMaterial(std::string texturePath, const glm::vec4 &surfaceColor,
+                                       const glm::vec4 &highlightColor, const glm::vec4 &ambient,
+                                       const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny)
+    : StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
+      m_texturePath(GetMatchingFile(texturePath))
+{
+}
+
 void star::TextureMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &constBuilder) const
 {
     constBuilder.addBinding(0, vk::DescriptorType::eCombinedImageSampler,
@@ -38,11 +46,14 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, con
         auto texture = std::unique_ptr<TransferRequest::Texture>();
         if (TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_texturePath))
         {
-            texture = std::make_unique<TransferRequest::CompressedTextureFile>(std::move(graphicsIndex), std::move(deviceProperties), std::make_shared<SharedCompressedTexture>(m_texturePath));
+            texture = std::make_unique<TransferRequest::CompressedTextureFile>(
+                std::move(graphicsIndex), std::move(deviceProperties),
+                std::make_shared<SharedCompressedTexture>(m_texturePath));
         }
         else
         {
-            texture = std::make_unique<TransferRequest::TextureFile>(std::move(graphicsIndex), std::move(deviceProperties), m_texturePath);
+            texture = std::make_unique<TransferRequest::TextureFile>(std::move(graphicsIndex),
+                                                                     std::move(deviceProperties), m_texturePath);
         }
 
         m_textureHandle = star::ManagerRenderResource::addRequest(
@@ -73,4 +84,18 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::get
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1 * numFramesInFlight)};
+}
+
+std::string star::TextureMaterial::GetMatchingFile(const std::string &filePath)
+{
+    const auto foundPath = file_helpers::FindFileInDirectoryWithSameNameIgnoreFileType(
+        file_helpers::GetParentDirectory(filePath).string(),
+        file_helpers::GetFileNameWithoutExtension(filePath));
+
+    if (!foundPath.has_value())
+    {
+        throw std::runtime_error("Failed to find matching file for texture");
+    }
+
+    return foundPath.value();
 }

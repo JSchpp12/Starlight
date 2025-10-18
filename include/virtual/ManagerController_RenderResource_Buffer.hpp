@@ -10,15 +10,31 @@ namespace star::ManagerController::RenderResource
 class Buffer : public star::ManagerController::Controller<TransferRequest::Buffer>
 {
   public:
-    Buffer() = default; 
+    Buffer() = default;
 
-    Buffer(bool shouldUpdateAfterCreation) : Controller<TransferRequest::Buffer>(std::move(shouldUpdateAfterCreation)){}
+    virtual ~Buffer() = default;
 
-    Buffer(bool shouldUpdateAfterCreation, const uint8_t &numFramesInFlight) : Controller<TransferRequest::Buffer>(std::move(shouldUpdateAfterCreation), numFramesInFlight){}
+    virtual bool submitUpdateIfNeeded(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                                      vk::Semaphore &semaphore) override
+    {
+        if (!needsUpdated(frameInFlightIndex))
+        {
+            return false;
+        }
 
-    virtual ~Buffer() = default; 
+        context.getManagerRenderResource().updateRequest(context.getDeviceID(),
+                                                         createTransferRequest(context.getDevice(), frameInFlightIndex),
+                                                         m_resourceHandles[frameInFlightIndex], true);
+
+        semaphore = context.getManagerRenderResource()
+                        .get<StarBuffers::Buffer>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
+                        ->resourceSemaphore;
+
+        return true;
+    }
 
   protected:
-      virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device, const uint8_t &frameInFlightIndex) override = 0;
+    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(
+        core::device::StarDevice &device, const uint8_t &frameInFlightIndex) override = 0;
 };
 } // namespace star::ManagerController::RenderResource

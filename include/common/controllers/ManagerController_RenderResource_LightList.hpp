@@ -9,12 +9,13 @@ class LightList : public ManagerController::RenderResource::Buffer
 {
   public:
     LightList(const uint8_t &numFramesInFlight, const std::vector<std::shared_ptr<Light>> &lights)
-        : ManagerController::RenderResource::Buffer(true, numFramesInFlight), m_lights(lights),
-          m_lastWriteNumLights(std::vector<uint16_t>(numFramesInFlight))
+        : m_lights(lights), m_lastWriteNumLights(std::vector<uint16_t>(numFramesInFlight))
     {
     }
 
     virtual ~LightList() = default;
+
+    bool needsUpdated(const uint8_t &frameInFlightIndex) const override;
 
   private:
     const std::vector<std::shared_ptr<Light>> &m_lights;
@@ -23,8 +24,6 @@ class LightList : public ManagerController::RenderResource::Buffer
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device,
                                                                    const uint8_t &frameInFlightIndex) override;
 
-    bool isValid(const uint8_t &frameInFlightIndex) const override;
-
-    void storeLightCount(const uint8_t &frameInFlightIndex); 
+    void storeLightCount(const uint8_t &frameInFlightIndex);
 };
 } // namespace star::ManagerController::RenderResource

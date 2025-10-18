@@ -6,6 +6,7 @@
 #include "InteractionSystem.hpp"
 #include "Light.hpp"
 #include "LightBufferObject.hpp"
+#include "ManagerController_RenderResource_Buffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "MapManager.hpp"
 #include "RenderResourceModifier.hpp"
@@ -17,7 +18,6 @@
 #include "StarShaderInfo.hpp"
 #include "StarTextures/Texture.hpp"
 #include "StarWindow.hpp"
-#include "ManagerController_RenderResource_Buffer.hpp"
 
 #include <chrono>
 #include <memory>
@@ -58,7 +58,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
     virtual void cleanupRender(core::device::DeviceContext &device);
 
-    virtual void frameUpdate(core::device::DeviceContext &context);
+    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 
     StarDescriptorSetLayout &getGlobalShaderInfo()
     {
@@ -69,6 +69,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     {
         return &this->renderToImages;
     }
+
     std::vector<std::unique_ptr<StarTextures::Texture>> *getRenderToDepthImages()
     {
         return &this->renderToDepthImages;
@@ -97,7 +98,8 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
   protected:
     bool isReady = false;
-    std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList, m_infoManagerCamera; 
+    std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
+        m_infoManagerCamera;
 
     Handle m_commandBuffer;
     std::vector<std::shared_ptr<star::Light>> m_lights;
@@ -157,20 +159,19 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
                              vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
                              vk::Image &image, VmaAllocation &imageMemory);
 
-    virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
-
-    virtual std::set<vk::Semaphore> getSemaphoresWhichCommandsMustWaitOn(const uint8_t &frameInFlightIndex); 
-
     // Inherited via RenderResourceModifier
     virtual void initResources(core::device::DeviceContext &device, const int &numFramesInFlight,
                                const vk::Extent2D &screensize) override;
 
     virtual void destroyResources(core::device::DeviceContext &device) override;
 
-    virtual vk::Format getColorAttachmentFormat(star::core::device::DeviceContext &device) const;
+    virtual vk::Format getColorAttachmentFormat(star::core::device::DeviceContext &context) const;
 
-    virtual vk::Format getDepthAttachmentFormat(star::core::device::DeviceContext &device) const;
+    virtual vk::Format getDepthAttachmentFormat(star::core::device::DeviceContext &context) const;
 
+    virtual void updateDependentData(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex); 
+
+    virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
 #pragma region helpers
     vk::Viewport prepareRenderingViewport();
 
@@ -197,6 +198,6 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int &numFramesInFlight) override;
     void createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight) override;
 
-    void updateRenderingGroups(core::device::DeviceContext &context);
+    void updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 };
 } // namespace star::core::renderer

@@ -50,124 +50,115 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
             buffer->commandBuffer->buffer(frameInFlightIndex).end();
         }
 
-        std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>> waitInfos;
-
-        for (const auto &semaphore : buffer->getDependentHighPrioritySemaphores(frameInFlightIndex)){
-            waitInfos.emplace_back(std::make_pair(semaphore, buffer->waitStage));
-        } 
-
-        buffer->commandBuffer->submit(frameInFlightIndex,
-                                      device.getDefaultQueue(buffer->commandBuffer->getType()).getVulkanQueue(), 
-                                    &waitInfos);
+        buffer->submitCommandBuffer(device, frameInFlightIndex);
 
         if (i == star::Command_Buffer_Order_Index::fifth || this->bufferGroupsWithSubOrders[order][i] == nullptr)
         {
             semaphores.push_back(
-                this->bufferGroupsWithSubOrders[order][i - 1]->commandBuffer->getCompleteSemaphores().at(
-                    frameInFlightIndex));
+                this->bufferGroupsWithSubOrders[order][i - 1]->commandBuffer->getCompleteSemaphores().at(frameInFlightIndex));
         }
     }
 
-    // submit all other buffers second
-    for (int type = star::Queue_Type::Tgraphics; type != star::Queue_Type::Tcompute; type++)
-    {
-        std::vector<std::reference_wrapper<CompleteRequest>> buffersToSubmit =
-            this->getAllBuffersOfTypeAndOrderReadyToSubmit(order, static_cast<star::Queue_Type>(type), true);
+    // // submit all other buffers second
+    // for (int type = star::Queue_Type::Tgraphics; type != star::Queue_Type::Tcompute; type++)
+    // {
+    //     std::vector<std::reference_wrapper<CompleteRequest>> buffersToSubmit =
+    //         this->getAllBuffersOfTypeAndOrderReadyToSubmit(order, static_cast<star::Queue_Type>(type), true);
 
-        if (!buffersToSubmit.empty())
-        {
-            waitUntilOrderGroupReady(device, frameInFlightIndex, order, static_cast<Queue_Type>(type));
+    //     if (!buffersToSubmit.empty())
+    //     {
+    //         waitUntilOrderGroupReady(device, frameInFlightIndex, order, static_cast<Queue_Type>(type));
 
-            auto waitPoints = std::vector<vk::PipelineStageFlags>();
-            for (auto &buffer : buffersToSubmit)
-            {
-                waitPoints.push_back(buffer.get().waitStage);
-            }
+    //         auto waitPoints = std::vector<vk::PipelineStageFlags>();
+    //         for (auto &buffer : buffersToSubmit)
+    //         {
+    //             waitPoints.push_back(buffer.get().waitStage);
+    //         }
 
-            // before submission
-            for (CompleteRequest &buffer : buffersToSubmit)
-            {
-                if (buffer.beforeBufferSubmissionCallback.has_value())
-                    buffer.beforeBufferSubmissionCallback.value()(frameInFlightIndex);
+    //         // before submission
+    //         for (CompleteRequest &buffer : buffersToSubmit)
+    //         {
+    //             if (buffer.beforeBufferSubmissionCallback.has_value())
+    //                 buffer.beforeBufferSubmissionCallback.value()(frameInFlightIndex);
 
-                if (!buffer.recordOnce)
-                {
-                    buffer.commandBuffer->begin(frameInFlightIndex);
-                    buffer.recordBufferCallback(buffer.commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex);
-                    buffer.commandBuffer->buffer(frameInFlightIndex).end();
-                }
-            }
+    //             if (!buffer.recordOnce)
+    //             {
+    //                 buffer.commandBuffer->begin(frameInFlightIndex);
+    //                 buffer.recordBufferCallback(buffer.commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex);
+    //                 buffer.commandBuffer->buffer(frameInFlightIndex).end();
+    //             }
+    //         }
 
-            // submit
-            {
-                auto waitSemaphores = std::set<vk::Semaphore>(); 
-                auto buffers = std::vector<vk::CommandBuffer>();
-                if (additionalWaitSemaphores != nullptr){
-                    for (auto& semaphore : *additionalWaitSemaphores){
-                        waitSemaphores.insert(semaphore);
-                    }
-                }
+    //         // submit
+    //         {
+    //             auto waitSemaphores = std::set<vk::Semaphore>(); 
+    //             auto buffers = std::vector<vk::CommandBuffer>();
+    //             if (additionalWaitSemaphores != nullptr){
+    //                 for (auto& semaphore : *additionalWaitSemaphores){
+    //                     waitSemaphores.insert(semaphore);
+    //                 }
+    //             }
 
-                for (CompleteRequest &buffer : buffersToSubmit)
-                {
-                    buffers.push_back(buffer.commandBuffer->buffer(frameInFlightIndex));
+    //             for (CompleteRequest &buffer : buffersToSubmit)
+    //             {
+    //                 buffers.push_back(buffer.commandBuffer->buffer(frameInFlightIndex));
 
-                    for (auto& semaphore : buffer.getDependentHighPrioritySemaphores(frameInFlightIndex)){
-                        waitSemaphores.insert(semaphore); 
-                        waitPoints.push_back(buffer.waitStage); 
-                    }
-                }
+    //                 for (auto& semaphore : buffer.getDependentHighPrioritySemaphores(frameInFlightIndex)){
+    //                     waitSemaphores.insert(semaphore); 
+    //                     waitPoints.push_back(buffer.waitStage); 
+    //                 }
+    //             }
 
-                auto submitInfo = vk::SubmitInfo{};
+    //             auto submitInfo = vk::SubmitInfo{};
 
-                auto semaphoreData = std::vector<vk::Semaphore>(); 
-                for (auto &info : waitSemaphores){
-                    semaphoreData.push_back(info); 
-                }
+    //             auto semaphoreData = std::vector<vk::Semaphore>(); 
+    //             for (auto &info : waitSemaphores){
+    //                 semaphoreData.push_back(info); 
+    //             }
 
-                assert(waitPoints.size() == semaphoreData.size() && "Each semaphore needs a wait stage"); 
+    //             assert(waitPoints.size() == semaphoreData.size() && "Each semaphore needs a wait stage"); 
                 
-                    // waitSemaphores = std::vector<vk::Semaphore>(*additionalWaitSemaphores);
-                    // submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores->size());
-                    // submitInfo.pWaitSemaphores = waitSemaphores->data();
-                    // submitInfo.pWaitDstStageMask = waitPoints.data();
+    //                 // waitSemaphores = std::vector<vk::Semaphore>(*additionalWaitSemaphores);
+    //                 // submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores->size());
+    //                 // submitInfo.pWaitSemaphores = waitSemaphores->data();
+    //                 // submitInfo.pWaitDstStageMask = waitPoints.data();
 
-                uint32_t waitCount = 0; 
-                CastHelpers::SafeCast<size_t, uint32_t>(semaphoreData.size(), waitCount); 
+    //             uint32_t waitCount = 0; 
+    //             CastHelpers::SafeCast<size_t, uint32_t>(semaphoreData.size(), waitCount); 
 
-                submitInfo.pWaitSemaphores = semaphoreData.data(); 
-                submitInfo.waitSemaphoreCount = waitCount;
-                submitInfo.pWaitDstStageMask = waitPoints.data(); 
-                submitInfo.signalSemaphoreCount = 1;
-                submitInfo.pSignalSemaphores =
-                    &this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(
-                        frameInFlightIndex);
+    //             submitInfo.pWaitSemaphores = semaphoreData.data(); 
+    //             submitInfo.waitSemaphoreCount = waitCount;
+    //             submitInfo.pWaitDstStageMask = waitPoints.data(); 
+    //             submitInfo.signalSemaphoreCount = 1;
+    //             submitInfo.pSignalSemaphores =
+    //                 &this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(
+    //                     frameInFlightIndex);
 
-                // record for later
-                semaphores.push_back(
-                    this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(
-                        frameInFlightIndex));
+    //             // record for later
+    //             semaphores.push_back(
+    //                 this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(
+    //                     frameInFlightIndex));
 
-                submitInfo.pCommandBuffers = buffers.data();
-                submitInfo.commandBufferCount = buffers.size();
+    //             submitInfo.pCommandBuffers = buffers.data();
+    //             submitInfo.commandBufferCount = buffers.size();
 
-                std::unique_ptr<vk::Result> commandResult = std::unique_ptr<vk::Result>();
-                vk::Fence workingFence =
-                    this->bufferGroupsWithNoSubOrder[order]->fences[static_cast<Queue_Type>(type)].at(
-                        frameInFlightIndex);
-                commandResult = std::make_unique<vk::Result>(device.getDefaultQueue(static_cast<Queue_Type>(type))
-                                                                 .getVulkanQueue()
-                                                                 .submit(1, &submitInfo, workingFence));
+    //             std::unique_ptr<vk::Result> commandResult = std::unique_ptr<vk::Result>();
+    //             vk::Fence workingFence =
+    //                 this->bufferGroupsWithNoSubOrder[order]->fences[static_cast<Queue_Type>(type)].at(
+    //                     frameInFlightIndex);
+    //             commandResult = std::make_unique<vk::Result>(device.getDefaultQueue(static_cast<Queue_Type>(type))
+    //                                                              .getVulkanQueue()
+    //                                                              .submit(1, &submitInfo, workingFence));
 
-                assert(commandResult != nullptr && "Invalid command buffer type");
+    //             assert(commandResult != nullptr && "Invalid command buffer type");
 
-                if (*commandResult.get() != vk::Result::eSuccess)
-                {
-                    throw std::runtime_error("Failed to submit command buffer");
-                }
-            }
-        }
-    }
+    //             if (*commandResult.get() != vk::Result::eSuccess)
+    //             {
+    //                 throw std::runtime_error("Failed to submit command buffer");
+    //             }
+    //         }
+    //     }
+    // }
 
     return semaphores;
 }
@@ -222,7 +213,7 @@ void star::CommandBufferContainer::setToSubmitThisBuffer(const size_t &bufferInd
     this->bufferSubmissionStatus[bufferIndex] = 1;
 }
 
-star::CommandBufferContainer::CompleteRequest &star::CommandBufferContainer::getBuffer(const star::Handle &bufferHandle)
+star::CommandBufferContainer::CompleteRequest &star::CommandBufferContainer::get(const star::Handle &bufferHandle)
 {
     assert(bufferHandle.getID() < this->allBuffers.size() && "Requested index does not exist");
 

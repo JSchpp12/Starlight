@@ -194,5 +194,5 @@ void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBu
 
 bool star::TransferRequest::CompressedTextureFile::IsFileCompressedTexture(const std::string &filePath)
 {
-    return file_helpers::GetFileNameWithoutExtension(filePath) == ".ktx2";
+    return file_helpers::GetFileExtension(filePath) == ".ktx2";
 }

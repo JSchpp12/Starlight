@@ -139,32 +139,32 @@ bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
     return true;
 }
 
-std::set<vk::Semaphore> star::StarShaderInfo::getDependentSemaphores(const uint8_t &frameInFlight) const
-{
-    assert(frameInFlight <= shaderInfoSets.size());
+// std::set<vk::Semaphore> star::StarShaderInfo::getDependentSemaphores(const uint8_t &frameInFlight) const
+// {
+//     assert(frameInFlight <= shaderInfoSets.size());
 
-    std::set<vk::Semaphore> semaphores;
+//     std::set<vk::Semaphore> semaphores;
 
-    for (const auto &set : shaderInfoSets[frameInFlight])
-    {
-        for (size_t i = 0; i < set->shaderInfos.size(); i++)
-        {
-            if (!set->shaderInfos.at(i).m_willCheckForIfReady)
-            {
-                if (set->shaderInfos.at(i).bufferInfo.has_value() || set->shaderInfos.at(i).textureInfo.has_value())
-                {
-                    semaphores.insert(set->shaderInfos.at(i).m_resourceSemaphore);
-                }
-                else
-                {
-                    throw std::runtime_error("Unknown shader info encountered while gathering semaphores");
-                }
-            }
-        }
-    }
+//     for (const auto &set : shaderInfoSets[frameInFlight])
+//     {
+//         for (size_t i = 0; i < set->shaderInfos.size(); i++)
+//         {
+//             if (!set->shaderInfos.at(i).m_willCheckForIfReady)
+//             {
+//                 if (set->shaderInfos.at(i).bufferInfo.has_value() || set->shaderInfos.at(i).textureInfo.has_value())
+//                 {
+//                     semaphores.insert(set->shaderInfos.at(i).m_resourceSemaphore);
+//                 }
+//                 else
+//                 {
+//                     throw std::runtime_error("Unknown shader info encountered while gathering semaphores");
+//                 }
+//             }
+//         }
+//     }
 
-    return semaphores;
-}
+//     return semaphores;
+// }
 
 std::vector<vk::DescriptorSetLayout> star::StarShaderInfo::getDescriptorSetLayouts()
 {

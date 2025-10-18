@@ -37,15 +37,15 @@ void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
     m_pipelineLayout = VK_NULL_HANDLE;
 }
 
-void StarRenderGroup::frameUpdate(core::device::DeviceContext &context)
+void StarRenderGroup::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer)
 {
 
     for (auto &group : groups)
     {
-        group.baseObject.object->frameUpdate(context);
+        group.baseObject.object->frameUpdate(context, frameInFlightIndex, targetCommandBuffer);
         for (auto &obj : group.objects)
         {
-            obj.object->frameUpdate(context);
+            obj.object->frameUpdate(context, frameInFlightIndex, targetCommandBuffer);
         }
     }
 }
@@ -207,29 +207,6 @@ bool StarRenderGroup::isObjectCompatible(StarObject &object)
     }
 
     return true;
-}
-
-std::set<vk::Semaphore> StarRenderGroup::getSemaphoresForDependentTransfers(const uint8_t &frameInFlightIndex)
-{
-    std::set<vk::Semaphore> semaphores;
-
-    for (auto &group : groups)
-    {
-        const auto currentSemaphores = std::set<vk::Semaphore>(semaphores);
-        auto newSemaphores = group.baseObject.object->getHighPriorityResourceSemaphores(frameInFlightIndex);
-
-        for (auto &object : group.objects)
-        {
-            const auto otherObjectDeps = object.object->getHighPriorityResourceSemaphores(frameInFlightIndex);
-            std::set_union(newSemaphores.begin(), newSemaphores.end(), otherObjectDeps.begin(), otherObjectDeps.end(),
-                           std::inserter(newSemaphores, newSemaphores.begin()));
-        }
-
-        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), newSemaphores.begin(), newSemaphores.end(),
-                       std::inserter(semaphores, semaphores.begin()));
-    }
-
-    return semaphores;
 }
 
 void StarRenderGroup::prepareObjects(StarShaderInfo::Builder &groupBuilder,

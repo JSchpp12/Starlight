@@ -124,11 +124,7 @@ star::core::device::manager::ManagerCommandBuffer::Request star::core::renderer:
         .beforeBufferSubmissionCallback =
             std::bind(&SwapChainRenderer::prepareForSubmission, this, std::placeholders::_1),
         .overrideBufferSubmissionCallback = std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1,
-                                                      std::placeholders::_2, std::placeholders::_3)};
-}
-
-std::set<star::Handle> star::core::renderer::SwapChainRenderer::getSemaphoresToWaitOnBeforeSubmission(){
-
+                                                      std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)};
 }
 
 vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceFormat(
@@ -303,25 +299,37 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
         throw std::runtime_error("Failed to reset fences");
 }
 
-vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(StarCommandBuffer &buffer,
-                                                                    const int &frameIndexToBeDrawn,
-                                                                    std::vector<vk::Semaphore> mustWaitFor)
+vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
+    StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
+    std::vector<vk::Semaphore> *previousCommandBufferSemaphores, std::vector<vk::Semaphore> dataSemaphores,
+    std::vector<vk::PipelineStageFlags> dataWaitPoints)
 {
     vk::SubmitInfo submitInfo{};
     std::vector<vk::Semaphore> waitSemaphores = {this->imageAcquireSemaphores[frameIndexToBeDrawn]};
     std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
-    for (auto &semaphore : mustWaitFor)
+    if (previousCommandBufferSemaphores != nullptr)
     {
-        waitSemaphores.push_back(semaphore);
-        waitStages.push_back(vk::PipelineStageFlagBits::eVertexShader);
+        for (auto &semaphore : *previousCommandBufferSemaphores)
+        {
+            waitSemaphores.push_back(semaphore);
+            waitStages.push_back(vk::PipelineStageFlagBits::eVertexShader);
+        }
     }
-    uint32_t waitSemaphoreCount = 0; 
-    CastHelpers::SafeCast<size_t, uint32_t>(waitSemaphores.size(), waitSemaphoreCount); 
+
+    assert(dataSemaphores.size() == dataWaitPoints.size());
+    for (size_t i = 0; i < dataSemaphores.size(); i++)
+    {
+        waitSemaphores.push_back(dataSemaphores[i]);
+        waitStages.push_back(dataWaitPoints[i]);
+    }
+
+    uint32_t waitSemaphoreCount = 0;
+    CastHelpers::SafeCast<size_t, uint32_t>(waitSemaphores.size(), waitSemaphoreCount);
 
     submitInfo.commandBufferCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores.data();
-    submitInfo.waitSemaphoreCount = waitSemaphoreCount; 
+    submitInfo.waitSemaphoreCount = waitSemaphoreCount;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &this->imageAvailableSemaphores[this->currentSwapChainImageIndex];
     submitInfo.pWaitDstStageMask = waitStages.data();

@@ -12,11 +12,8 @@ class TextureMaterial : public StarMaterial
     TextureMaterial(std::string texturePath); 
 
     TextureMaterial(std::string texturePath, const glm::vec4 &surfaceColor, const glm::vec4 &highlightColor,
-                    const glm::vec4 &ambient, const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny)
-        : StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
-          m_texturePath(std::move(texturePath))
-    {
-    }
+                    const glm::vec4 &ambient, const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny);
+
     virtual ~TextureMaterial() = default;
 
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
@@ -33,5 +30,8 @@ class TextureMaterial : public StarMaterial
 
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, 
       StarShaderInfo::Builder builder) override; 
+
+  private:
+  static std::string GetMatchingFile(const std::string &filePath);
 };
 } // namespace star

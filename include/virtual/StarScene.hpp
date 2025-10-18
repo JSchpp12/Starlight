@@ -30,7 +30,7 @@ class StarScene
               std::vector<std::shared_ptr<core::renderer::Renderer>> additionalRenderers);
 
     /// Function called every frame
-    void frameUpdate(core::device::DeviceContext &context);
+    void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 
     void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
 

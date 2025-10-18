@@ -74,8 +74,6 @@ class SwapChainRenderer : public star::core::renderer::Renderer
 
     virtual star::core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
-    std::set<Handle> getSemaphoresToWaitOnBeforeSubmission(); 
-
     // std::unique_ptr<ScreenshotBuffer> screenshotCommandBuffer = nullptr;
     std::unique_ptr<std::string> screenshotPath = nullptr;
 
@@ -91,7 +89,7 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     void prepareForSubmission(const int &frameIndexToBeDrawn);
 
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
-                               std::vector<vk::Semaphore> mustWaitFor);
+                               std::vector<vk::Semaphore> *previousCommandBufferSemaphores, std::vector<vk::Semaphore> dataSemaphores, std::vector<vk::PipelineStageFlags> dataWaitPoints);
 
     virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(
         core::device::DeviceContext &device, const int &numFramesInFlight) override;

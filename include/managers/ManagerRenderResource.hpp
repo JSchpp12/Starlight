@@ -58,6 +58,8 @@ class ManagerRenderResource : public StarManager
     static void init(core::device::DeviceID deviceID, std::shared_ptr<core::device::StarDevice> device,
                      std::shared_ptr<job::TransferWorker> worker, const int &totalNumFramesInFlight);
 
+    static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore, const bool &isHighPriority = false);
+
     static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
                              std::unique_ptr<TransferRequest::Buffer> newRequest, const bool &isHighPriority = false);
 

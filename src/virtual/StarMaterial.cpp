@@ -4,10 +4,6 @@ void star::StarMaterial::prepRender(core::device::DeviceContext &context, const 
 	shaderInfo = buildShaderInfo(context, numFramesInFlight, std::move(frameBuilder)); 
 }
 
-std::set<vk::Semaphore> star::StarMaterial::getDependentHighPriorityDataSemaphores(const uint8_t &frameInFlightIndex) const {
-	return shaderInfo->getDependentSemaphores(frameInFlightIndex); 
-}
-
 void star::StarMaterial::cleanupRender(core::device::DeviceContext &context){
 	shaderInfo->cleanupRender(context.getDevice()); 
 }
@@ -26,4 +22,10 @@ bool star::StarMaterial::isKnownToBeReady(const uint8_t& frameInFlightIndex){
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(const int& numFramesInFlight) const
 {
 	return std::vector<std::pair<vk::DescriptorType, const int>>();
+}
+
+std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarMaterial::getDataSemaphores(const uint8_t &frameInFlightIndex) const{
+	auto semaphoreInfo = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>();
+
+	return semaphoreInfo;
 }

@@ -25,7 +25,6 @@ class ManagerCommandBuffer
         // callback function to record the buffer
         // is it dependent on another buffer to finish first?
         std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback;
-        std::function<std::set<vk::Semaphore>(const uint8_t &)> getDependentSemaphores; 
         Command_Buffer_Order order;
         int orderIndex;
         star::Queue_Type type;
@@ -33,19 +32,19 @@ class ManagerCommandBuffer
         bool willBeSubmittedEachFrame = false;
         bool recordOnce = false;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback = std::nullopt;
-        std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const int &, std::vector<vk::Semaphore>)>>
+        std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const uint8_t &, std::vector<vk::Semaphore>*, std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>)>>
             overrideBufferSubmissionCallback = std::nullopt;
     };
 
     ManagerCommandBuffer(StarDevice &device, const uint8_t &numFramesInFlight);
-
-    ~ManagerCommandBuffer() = default;
 
     void cleanup(StarDevice &device);
 
     Handle submit(StarDevice &device, Request requestFunction);
 
     void submitDynamicBuffer(Handle bufferHandle);
+
+    CommandBufferContainer::CompleteRequest &get(const Handle& handle); 
 
     /// @brief Process and submit all command buffers
     /// @param frameIndexToBeDrawn
@@ -63,4 +62,4 @@ class ManagerCommandBuffer
 
     void handleDynamicBufferRequests();
 };
-} // namespace star
+} // namespace star::core::device::manager

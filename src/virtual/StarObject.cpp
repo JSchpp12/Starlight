@@ -119,22 +119,6 @@ void star::StarObject::cleanupSharedResources(core::device::DeviceContext &devic
     // StarObject::boundBoxPipeline.reset();
 }
 
-std::set<vk::Semaphore> star::StarObject::getHighPriorityResourceSemaphores(const uint8_t &frameInFlightIndex)
-{
-    std::set<vk::Semaphore> semaphores;
-
-    for (const auto &material : m_meshMaterials)
-    {
-        const auto currentSemaphores = std::set<vk::Semaphore>(semaphores);
-        const auto matSemaphores = material->getDependentHighPriorityDataSemaphores(frameInFlightIndex);
-
-        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), matSemaphores.begin(), matSemaphores.end(),
-                       std::inserter(semaphores, semaphores.begin()));
-    }
-
-    return semaphores;
-}
-
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 {
     // normalExtrusionPipeline->cleanupRender(context.getDevice());
@@ -272,17 +256,14 @@ star::StarObjectInstance &star::StarObject::createInstance()
     return *this->instances.back();
 }
 
-void star::StarObject::frameUpdate(core::device::DeviceContext &context)
+void star::StarObject::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer)
 {
-    if (isReady)
-    {
-        return;
-    }
-
-    if (isRenderReady(context))
+    if (!isReady && isRenderReady(context))
     {
         isReady = true;
     }
+
+    updateInstanceData(context, frameInFlightIndex, targetCommandBuffer);
 }
 
 std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::getDescriptorSetLayouts(
@@ -354,8 +335,11 @@ void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &
 
     m_infoManagerInstanceModel =
         std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(numFramesInFlight, this->instances);
+    m_infoManagerInstanceModel->prepRender(context, numFramesInFlight);
+
     m_infoManagerInstanceNormal =
         std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(numFramesInFlight, this->instances);
+    m_infoManagerInstanceNormal->prepRender(context, numFramesInFlight);
 }
 
 void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)
@@ -455,4 +439,35 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
            "Meshes have not yet been prepared. Need to have been created in the constructors");
 
     return context.getPipelineManager().get(this->pipeline)->isReady();
+}
+
+std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarObject::submitDataUpdates(core::device::DeviceContext &context,
+    const uint8_t &frameInFlightIndex) const
+{
+    auto semaphoreInfo = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>();
+
+    for (const auto &material : m_meshMaterials)
+    {
+        const auto currentSemaphores = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>(semaphoreInfo);
+
+        const auto materialSemaphores = material->getDataSemaphores(frameInFlightIndex);
+
+        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), materialSemaphores.begin(),
+                       materialSemaphores.end(), std::inserter(semaphoreInfo, semaphoreInfo.begin()));
+    }
+
+    return semaphoreInfo;
+}
+
+void star::StarObject::updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer){
+    CommandBufferContainer::CompleteRequest &request = context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
+    vk::Semaphore doneSemaphore; 
+
+    if (m_infoManagerInstanceModel->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore)){
+        request.oneTimeWaitSemaphores.insert(std::make_pair(std::move(doneSemaphore), vk::PipelineStageFlagBits::eVertexShader));
+    }
+
+    if (m_infoManagerInstanceNormal->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore)){
+        request.oneTimeWaitSemaphores.insert(std::make_pair(std::move(doneSemaphore), vk::PipelineStageFlagBits::eFragmentShader)); 
+    }
 }
