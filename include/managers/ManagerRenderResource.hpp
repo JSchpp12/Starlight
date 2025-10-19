@@ -51,7 +51,7 @@ class ManagerRenderResource : public StarManager
         }
 
         void cleanup(){
-          resource->release(); 
+            resource.reset();
         }
     };
 

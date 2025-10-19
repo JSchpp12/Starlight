@@ -188,8 +188,11 @@ star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const core:
 
 void star::ManagerRenderResource::cleanup(const core::device::DeviceID &deviceID, core::device::StarDevice &device)
 {
+    bufferStorage.at(deviceID)->cleanupAll(&device); 
     bufferStorage.at(deviceID).reset();
-    devices.at(deviceID).reset();
+    textureStorage.at(deviceID)->cleanupAll(&device); 
+    textureStorage.at(deviceID).reset(); 
 
+    devices.at(deviceID).reset();
     managerWorker.reset();
 }
