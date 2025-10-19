@@ -21,8 +21,8 @@ void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void 
     auto *p = static_cast<PipelineBuildCompletePayload *>(payload);
 
     auto handle = Handle{
-        .id = p->handleID,
-        .type = Handle_Type::pipeline
+        .type = Handle_Type::pipeline,
+        .id = p->handleID
     };
 
     std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;
@@ -52,8 +52,8 @@ void star::job::complete_tasks::task_factory::ExecuteShaderCompileComplete(void 
     auto *p = static_cast<CompileCompletePayload *>(payload);
 
     Handle shader = Handle{
-        .id = p->handleID,
-        .type = Handle_Type::shader
+        .type = Handle_Type::shader,
+        .id = p->handleID
     };
 
     assert(p->compiledShaderCode != nullptr && "Compiled shader data not properly set");
@@ -87,8 +87,8 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
             }
 
             Handle handle = Handle{
-                .id = recordHandle,
-                .type = Handle_Type::pipeline
+                .type = Handle_Type::pipeline,
+                .id = recordHandle
             };
 
             std::vector<std::pair<StarShader, std::unique_ptr<std::vector<uint32_t>>>> compiledShaders;
