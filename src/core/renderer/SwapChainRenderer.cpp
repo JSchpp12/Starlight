@@ -114,7 +114,7 @@ star::core::device::manager::ManagerCommandBuffer::Request star::core::renderer:
 {
     return core::device::manager::ManagerCommandBuffer::Request{
         .recordBufferCallback =
-            std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2),
+            std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
         .order = Command_Buffer_Order::main_render_pass,
         .orderIndex = 0,
         .type = Queue_Type::Tgraphics,
@@ -381,7 +381,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         // device.endSingleTimeCommands(buffer);
         auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 
-        vk::ImageMemoryBarrier barrier{};
+        vk::ImageMemoryBarrier2 barrier{}; 
         barrier.sType = vk::StructureType::eImageMemoryBarrier;
         barrier.oldLayout = vk::ImageLayout::eUndefined;
         barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
@@ -389,8 +389,10 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
         barrier.image = newRenderToImages.back()->getVulkanImage();
-        barrier.srcAccessMask = vk::AccessFlagBits::eNone;
-        barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead;
+        barrier.srcAccessMask = vk::AccessFlagBits2::eNone;
+        barrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe);
+        barrier.dstAccessMask = vk::AccessFlagBits2::eNone;
+        barrier.setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput); 
 
         barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
         barrier.subresourceRange.baseMipLevel = 0; // image does not have any mipmap levels
@@ -398,13 +400,19 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup->buffer().pipelineBarrier(
-            vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
-                                                               // occurr before barrier
-            vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
-                                                               // which operations will
-                                                               // wait on the barrier
-            {}, {}, nullptr, barrier);
+        oneTimeSetup->buffer().pipelineBarrier2(
+            vk::DependencyInfo()
+                .setPImageMemoryBarriers(&barrier)
+                .setImageMemoryBarrierCount(1)
+        );
+
+        // oneTimeSetup->buffer().pipelineBarrier(
+        //     vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
+        //                                                        // occurr before barrier
+        //     vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
+        //                                                        // which operations will
+        //                                                        // wait on the barrier
+        //     {}, {}, nullptr, barrier);
 
         device.getDevice().endSingleTimeCommands(std::move(oneTimeSetup));
     }
@@ -426,7 +434,7 @@ vk::RenderingAttachmentInfo star::core::renderer::SwapChainRenderer::prepareDyna
 }
 
 void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer,
-                                                                  const int &frameInFlightIndex)
+                                                                  const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
 {
     // transition image layout
     vk::ImageMemoryBarrier setupBarrier{};
@@ -437,7 +445,7 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
     setupBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
     setupBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
     setupBarrier.srcAccessMask = vk::AccessFlagBits::eNone;
-    setupBarrier.dstAccessMask = vk::AccessFlagBits::eShaderWrite;
+    setupBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
     setupBarrier.subresourceRange.baseMipLevel = 0;
     setupBarrier.subresourceRange.levelCount = 1;
     setupBarrier.subresourceRange.baseArrayLayer = 0;
@@ -464,7 +472,7 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
     commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader,
                                   vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, nullptr, presentBarrier);
 
-    this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex);
+    this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex, frameIndex);
 }
 
 std::vector<vk::Semaphore> star::core::renderer::SwapChainRenderer::CreateSemaphores(

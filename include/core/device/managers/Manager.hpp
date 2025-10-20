@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Handle.hpp"
-#include "HandleContainer.hpp"
+#include "ManagedHandleContainer.hpp"
 #include "device/StarDevice.hpp"
 #include "device/system/EventBus.hpp"
 #include "job/TaskManager.hpp"
@@ -23,14 +23,6 @@ template <typename TRecord, typename TResourceRequest, star::Handle_Type THandle
 class Manager
 {
   public:
-    Manager() = default;
-    Manager(Manager &&) noexcept = default;
-    Manager &operator=(Manager &&) noexcept = default;
-    Manager(const Manager &) = delete;
-    Manager &operator=(const Manager &) = delete;
-
-    virtual ~Manager() = default;
-
     virtual Handle submit(device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
                           TResourceRequest resource)
     {
@@ -50,7 +42,7 @@ class Manager
         return rec->isReady();
     }
 
-    HandleContainer<TRecord, THandleType, TMaxRecordCount> &getRecords()
+    LinearHandleContainer<TRecord, THandleType, TMaxRecordCount> &getRecords()
     {
         return m_records;
     }
@@ -61,7 +53,7 @@ class Manager
     }
 
   protected:
-    star::core::HandleContainer<TRecord, THandleType, TMaxRecordCount> m_records;
+    star::core::ManagedHandleContainer<TRecord, THandleType, TMaxRecordCount> m_records;
 
     Handle insert(device::StarDevice &device, TResourceRequest request)
     {

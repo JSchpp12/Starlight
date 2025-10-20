@@ -14,7 +14,7 @@ void star::core::device::manager::ManagerCommandBuffer::cleanup(StarDevice &devi
     buffers.cleanup(device);
 }
 
-star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevice &device, Request request)
+star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevice &device, const uint64_t &currentFrameIndex, Request request)
 {
     
     star::Handle newHandle = this->buffers.add(
@@ -37,7 +37,7 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
         for (int i = 0; i < this->numFramesInFlight; i++)
         {
             this->buffers.get(newHandle).commandBuffer->begin(i);
-            request.recordBufferCallback(this->buffers.get(newHandle).commandBuffer->buffer(i), i);
+            request.recordBufferCallback(this->buffers.get(newHandle).commandBuffer->buffer(i), i, currentFrameIndex);
             this->buffers.get(newHandle).commandBuffer->buffer(i).end();
         }
     }
@@ -54,21 +54,21 @@ star::CommandBufferContainer::CompleteRequest &star::core::device::manager::Mana
     return buffers.get(handle); 
 }
 
-vk::Semaphore star::core::device::manager::ManagerCommandBuffer::update(StarDevice &device, const int &frameIndexToBeDrawn)
+vk::Semaphore star::core::device::manager::ManagerCommandBuffer::update(StarDevice &device, const uint8_t &frameInFlight, const uint64_t &currentFrameIndex)
 {
     handleDynamicBufferRequests();
 
-    return submitCommandBuffers(device, frameIndexToBeDrawn);
+    return submitCommandBuffers(device, frameInFlight, currentFrameIndex);
 }
 
-vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex)
+vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex, const uint64_t &currentFrameIndex)
 {
     // determine the order of buffers to execute
     assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- cannot happen");
 
     // submit before
     std::vector<vk::Semaphore> beforeSemaphores =
-        this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::before_render_pass, swapChainIndex);
+        this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::before_render_pass, swapChainIndex, currentFrameIndex);
 
     // need to submit each group of buffers depending on the queue family they are in
     CommandBufferContainer::CompleteRequest &mainGraphicsBuffer =
@@ -81,7 +81,7 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     {
         mainGraphicsBuffer.commandBuffer->begin(swapChainIndex);
         mainGraphicsBuffer.recordBufferCallback(mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex),
-                                                swapChainIndex);
+                                                swapChainIndex, currentFrameIndex);
         mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex).end();
     }
 
@@ -93,7 +93,7 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     std::vector<vk::Semaphore> waitSemaphores = {mainGraphicsSemaphore};
 
     std::vector<vk::Semaphore> finalSubmissionSemaphores =
-        this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::end_of_frame, swapChainIndex, &waitSemaphores);
+        this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::end_of_frame, swapChainIndex, currentFrameIndex, &waitSemaphores);
 
     if (finalSubmissionSemaphores.empty())
         return mainGraphicsSemaphore;

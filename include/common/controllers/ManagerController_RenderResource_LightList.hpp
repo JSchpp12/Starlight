@@ -15,7 +15,8 @@ class LightList : public ManagerController::RenderResource::Buffer
 
     virtual ~LightList() = default;
 
-    bool needsUpdated(const uint8_t &frameInFlightIndex) const override;
+    protected:
+    bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const override;
 
   private:
     const std::vector<std::shared_ptr<Light>> &m_lights;

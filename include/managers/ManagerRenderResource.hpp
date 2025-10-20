@@ -2,7 +2,7 @@
 
 #include "Enums.hpp"
 #include "Handle.hpp"
-#include "HandleContainer.hpp"
+#include "ManagedHandleContainer.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "StarManager.hpp"
 #include "TransferRequest_Buffer.hpp"
@@ -108,11 +108,11 @@ class ManagerRenderResource : public StarManager
     static std::unordered_map<core::device::DeviceID, std::shared_ptr<core::device::StarDevice>> devices;
     static std::unordered_map<
         core::device::DeviceID,
-        std::unique_ptr<core::HandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
+        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
                                               star::Handle_Type::texture, 50>>>
         textureStorage;
     static std::unordered_map<core::device::DeviceID,
-                              std::unique_ptr<core::HandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
+                              std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
                                                                     star::Handle_Type::buffer, 100>>>
         bufferStorage;
 

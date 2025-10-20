@@ -22,6 +22,20 @@ struct ShaderRequest
         : shader(std::move(shader)), compiler(std::move(compiler))
     {
     }
+    ShaderRequest(ShaderRequest &&other) : shader(std::move(other.shader)), compiler(std::move(other.compiler))
+    {
+    }
+    ShaderRequest &operator=(ShaderRequest &&other)
+    {
+        if (this != &other)
+        {
+            shader = std::move(other.shader);
+            compiler = std::move(other.compiler);
+        }
+        return *this;
+    }
+    ShaderRequest(const ShaderRequest &) = delete;
+    ShaderRequest &operator=(const ShaderRequest &) = delete;
 
     StarShader shader;
     std::unique_ptr<Compiler> compiler;

@@ -13,15 +13,13 @@ template <typename TRecord, typename TResourceRequest, star::Handle_Type THandle
 class TaskCreatedResourceManager : public Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>
 {
   public:
-  TaskCreatedResourceManager() = default;
-  
     Handle submit(device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
                   TResourceRequest request) override
     {
-        auto handle = Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>::submit(device, taskSystem, eventBus,
-                                                                                  std::move(request));
+        auto handle = Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>::submit(
+            device, taskSystem, eventBus, std::move(request));
 
-        TRecord *record = Manager<TRecord, TResourceRequest, THandleType,TMaxRecordCount>::get(handle);
+        TRecord *record = Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>::get(handle);
         submitTask(device, handle, taskSystem, eventBus, record);
 
         return handle;

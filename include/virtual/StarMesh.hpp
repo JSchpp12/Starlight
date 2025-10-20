@@ -1,13 +1,14 @@
 #pragma once
 
 #include "CastHelpers.hpp"
+#include "DeviceContext.hpp"
 #include "GeometryHelpers.hpp"
 #include "Handle.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
-#include "DeviceContext.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
+
 
 #include <vulkan/vulkan.hpp>
 
@@ -44,7 +45,7 @@ class StarMesh
     virtual void prepRender(core::device::DeviceContext &device);
 
     virtual void recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                          uint8_t &frameInFlightIndex, const uint32_t &instanceCount);
+                                          const uint8_t &frameInFlightIndex, const uint32_t &instanceCount);
 
     bool isKnownToBeReady(const uint8_t &frameInFlightIndex);
 
@@ -74,8 +75,8 @@ class StarMesh
         return this->numInds;
     }
 
-  protected:  
-    core::device::DeviceID m_deviceID; 
+  protected:
+    core::device::DeviceID m_deviceID;
     Handle vertBuffer, indBuffer;
     bool hasAdjacenciesPacked = false;
     bool triangular = false;

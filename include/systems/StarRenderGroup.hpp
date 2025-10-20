@@ -60,7 +60,7 @@ class StarRenderGroup
 
     void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer);
 
-    virtual void recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &swapChainImageIndex);
+    virtual void recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &swapChainImageIndex, const uint64_t &frameIndex);
 
     virtual void recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &swapChainImageIndex);
 

@@ -23,7 +23,7 @@ bool star::StarMesh::isKnownToBeReady(const uint8_t &frameInFlightIndex)
 }
 
 void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                              uint8_t &frameInFlightIndex, const uint32_t &instanceCount)
+                                              const uint8_t &frameInFlightIndex, const uint32_t &instanceCount)
 {
 
     this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex);

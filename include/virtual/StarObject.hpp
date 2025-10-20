@@ -16,6 +16,9 @@
 #include "StarShaderInfo.hpp"
 #include "core/renderer/RenderingContext.hpp"
 
+#include "ManagerController_RenderResource_InstanceModelInfo.hpp"
+#include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -85,7 +88,7 @@ class StarObject : private DescriptorModifier
     /// <param name="pipelineLayout"></param>
     /// <param name="swapChainIndexNum"></param>
     void recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                  uint8_t swapChainIndexNum);
+                                  const uint8_t &swapChainIndexNum, const uint64_t &frameIndex);
 
     /// @brief Create an instance of this object.
     /// @return A reference to the created instance. The object will own the instance.
@@ -93,7 +96,8 @@ class StarObject : private DescriptorModifier
 
     virtual StarObjectInstance &getInstance(const size_t &index);
 
-    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer);
+    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                             const Handle &targetCommandBuffer);
 
     /// @brief Create descriptor set layouts for this object.
     /// @param device
@@ -115,16 +119,31 @@ class StarObject : private DescriptorModifier
 #pragma endregion
 
   protected:
+    struct InstanceInfo
+    {
+        std::shared_ptr<std::vector<StarObjectInstance>> m_instances =
+            std::shared_ptr<std::vector<StarObjectInstance>>();
+        ManagerController::RenderResource::InstanceModelInfo m_infoManagerInstanceModel =
+            ManagerController::RenderResource::InstanceModelInfo();
+        ManagerController::RenderResource::InstanceNormalInfo m_infoManagerInstanceNormal =
+            ManagerController::RenderResource::InstanceNormalInfo();
+
+        InstanceInfo()
+            : m_instances(std::make_shared<std::vector<StarObjectInstance>>()), m_infoManagerInstanceModel(m_instances),
+              m_infoManagerInstanceNormal(m_instances)
+        {
+        }
+    };
     /// pipeline + rendering infos
     // Pipeline* sharedPipeline = nullptr;
     std::vector<std::shared_ptr<StarMaterial>> m_meshMaterials = std::vector<std::shared_ptr<StarMaterial>>();
     Handle pipeline, sharedPipeline;
-    std::unique_ptr<core::renderer::RenderingContext> renderingContext;
+    core::renderer::RenderingContext renderingContext;
     std::unique_ptr<StarPipeline> normalExtrusionPipeline;
     std::unique_ptr<StarDescriptorSetLayout> setLayout;
-    std::unique_ptr<ManagerController::RenderResource::Buffer> m_infoManagerInstanceModel, m_infoManagerInstanceNormal;
+    InstanceInfo m_instanceInfo = InstanceInfo();
+
     std::vector<std::unique_ptr<StarMesh>> meshes;
-    std::vector<std::unique_ptr<StarObjectInstance>> instances;
 
     virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes(star::core::device::DeviceContext &device) = 0;
 
@@ -175,7 +194,15 @@ class StarObject : private DescriptorModifier
 
     void prepareMeshes(star::core::device::DeviceContext &context);
 
-    void updateInstanceData(core::device::DeviceContext &context,
-                                                                                  const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer);
+    void updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                            const Handle &targetCommandBuffer);
+
+    bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex) const;
+
+    void addControllerInfoToRenderingContext(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                                             const ManagerController::RenderResource::Buffer &bufferController);
+
+    void recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+                                             const uint64_t &frameIndex);
 };
 } // namespace star

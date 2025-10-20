@@ -24,14 +24,14 @@ class DeviceContext
   public:
     struct ManagerCommandBufferWrapper
     {
-        Handle submit(device::manager::ManagerCommandBuffer::Request request)
+        Handle submit(device::manager::ManagerCommandBuffer::Request request, const uint64_t &frameIndex)
         {
-            return m_manager.submit(m_device, request);
+            return m_manager.submit(m_device, frameIndex, request);
         }
 
-        vk::Semaphore update(const int &frameIndexToBeDrawn)
+        vk::Semaphore update(const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
         {
-            return m_manager.update(m_device, frameIndexToBeDrawn);
+            return m_manager.update(m_device, frameInFlightIndex, frameIndex);
         }
 
         StarDevice &m_device;
@@ -162,6 +162,10 @@ class DeviceContext
     RenderingSurface &getRenderingSurface()
     {
         return m_surface;
+    }
+
+    const uint64_t &getCurrentFrameIndex() const{
+        return m_frameCounter; 
     }
 
   private:

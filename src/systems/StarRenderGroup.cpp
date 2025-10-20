@@ -149,15 +149,15 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
     this->numObjects++;
 }
 
-void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &frameInFlightIndex)
+void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
 {
     for (auto &group : this->groups)
     {
-        group.baseObject.object->recordRenderPassCommands(mainDrawBuffer, m_pipelineLayout, frameInFlightIndex);
+        group.baseObject.object->recordRenderPassCommands(mainDrawBuffer, m_pipelineLayout, frameInFlightIndex, frameIndex);
         for (auto &obj : group.objects)
         {
             // record commands for each object
-            obj.object->recordRenderPassCommands(mainDrawBuffer, m_pipelineLayout, frameInFlightIndex);
+            obj.object->recordRenderPassCommands(mainDrawBuffer, m_pipelineLayout, frameInFlightIndex, frameIndex);
         }
     }
 }

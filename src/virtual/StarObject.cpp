@@ -150,9 +150,9 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
 
 star::StarObjectInstance &star::StarObject::getInstance(const size_t &index)
 {
-    assert(instances.at(index));
+    assert(index < m_instanceInfo.m_instances->size() && "Index must be within bounds of available instances");
 
-    return *this->instances[index];
+    return m_instanceInfo.m_instances->at(index);
 }
 
 void star::StarObject::prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
@@ -208,37 +208,30 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context, cons
     }
 
     prepareMeshes(context);
-
-    renderingContext = std::make_unique<core::renderer::RenderingContext>(buildRenderingContext(context));
 }
 
 star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     star::core::device::DeviceContext &context)
 {
-    return core::renderer::RenderingContext{context.getPipelineManager().get(pipeline)->request.pipeline};
+    return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->request.pipeline};
 }
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                                uint8_t swapChainIndexNum)
+                                                const uint8_t &swapChainIndexNum, const uint64_t &frameIndex)
 {
-    if (!isReady)
+    if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
     {
         return;
     }
 
-    for (auto &rmesh : this->meshes)
-    {
-        if (!rmesh->isKnownToBeReady(swapChainIndexNum))
-        {
-            return;
-        }
-    }
+    assert(renderingContext.pipeline != nullptr && "Pipeline needs to be included in creating the rendering context");
 
-    renderingContext->pipeline.bind(commandBuffer);
+    recordDependentDataPipelineBarriers(commandBuffer, swapChainIndexNum, frameIndex);
+    renderingContext.pipeline->bind(commandBuffer);
 
     for (auto &rmesh : this->meshes)
     {
-        uint32_t instanceCount = static_cast<uint32_t>(this->instances.size());
+        uint32_t instanceCount = static_cast<uint32_t>(m_instanceInfo.m_instances->size());
         rmesh.get()->recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
     }
 
@@ -250,20 +243,24 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
 
 star::StarObjectInstance &star::StarObject::createInstance()
 {
-    int instanceCount = static_cast<int>(this->instances.size());
-
-    this->instances.push_back(std::make_unique<StarObjectInstance>(instanceCount));
-    return *this->instances.back();
+    m_instanceInfo.m_instances->emplace_back();
+    return m_instanceInfo.m_instances->back();
 }
 
-void star::StarObject::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer)
+void star::StarObject::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                                   const Handle &targetCommandBuffer)
 {
     if (!isReady && isRenderReady(context))
     {
         isReady = true;
     }
 
-    updateInstanceData(context, frameInFlightIndex, targetCommandBuffer);
+    if (isReady)
+    {
+        renderingContext = buildRenderingContext(context);
+
+        updateInstanceData(context, frameInFlightIndex, targetCommandBuffer);
+    }
 }
 
 std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::getDescriptorSetLayouts(
@@ -305,8 +302,8 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
-        const auto &instanceModelHandle = m_infoManagerInstanceModel->getHandle(i);
-        const auto &instanceNormalHandle = m_infoManagerInstanceNormal->getHandle(i);
+        const auto &instanceModelHandle = m_instanceInfo.m_infoManagerInstanceModel.getHandle(i);
+        const auto &instanceNormalHandle = m_instanceInfo.m_infoManagerInstanceNormal.getHandle(i);
 
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
@@ -329,17 +326,12 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &context,
                                              const uint8_t &numFramesInFlight)
 {
-    assert(this->instances.size() > 0 &&
+    assert(m_instanceInfo.m_instances->size() > 0 &&
            "Call to create instance buffers made but this object does not have any instances");
-    assert(this->instances.size() < 1024 && "Max number of supported instances is 1024");
+    assert(m_instanceInfo.m_instances->size() < 1024 && "Max number of supported instances is 1024");
 
-    m_infoManagerInstanceModel =
-        std::make_unique<ManagerController::RenderResource::InstanceModelInfo>(numFramesInFlight, this->instances);
-    m_infoManagerInstanceModel->prepRender(context, numFramesInFlight);
-
-    m_infoManagerInstanceNormal =
-        std::make_unique<ManagerController::RenderResource::InstanceNormalInfo>(numFramesInFlight, this->instances);
-    m_infoManagerInstanceNormal->prepRender(context, numFramesInFlight);
+    m_instanceInfo.m_infoManagerInstanceModel.prepRender(context, numFramesInFlight);
+    m_instanceInfo.m_infoManagerInstanceNormal.prepRender(context, numFramesInFlight);
 }
 
 void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)
@@ -441,8 +433,8 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
     return context.getPipelineManager().get(this->pipeline)->isReady();
 }
 
-std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarObject::submitDataUpdates(core::device::DeviceContext &context,
-    const uint8_t &frameInFlightIndex) const
+std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarObject::submitDataUpdates(
+    core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) const
 {
     auto semaphoreInfo = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>();
 
@@ -459,15 +451,116 @@ std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarObject::sub
     return semaphoreInfo;
 }
 
-void star::StarObject::updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer){
-    CommandBufferContainer::CompleteRequest &request = context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
-    vk::Semaphore doneSemaphore; 
+void star::StarObject::updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                                          const Handle &targetCommandBuffer)
+{
+    bool updateInstanceModel = false, updateInstanceNormal = false;
 
-    if (m_infoManagerInstanceModel->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore)){
-        request.oneTimeWaitSemaphores.insert(std::make_pair(std::move(doneSemaphore), vk::PipelineStageFlagBits::eVertexShader));
+    CommandBufferContainer::CompleteRequest &request =
+        context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
+    vk::Semaphore doneSemaphore;
+
+    if (m_instanceInfo.m_infoManagerInstanceModel.submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    {
+        updateInstanceModel = true;
+
+        request.oneTimeWaitSemaphores.insert(
+            std::make_pair(std::move(doneSemaphore),
+                           vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader));
     }
 
-    if (m_infoManagerInstanceNormal->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore)){
-        request.oneTimeWaitSemaphores.insert(std::make_pair(std::move(doneSemaphore), vk::PipelineStageFlagBits::eFragmentShader)); 
+    if (m_instanceInfo.m_infoManagerInstanceNormal.submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    {
+        updateInstanceNormal = true;
+
+        request.oneTimeWaitSemaphores.insert(
+            std::make_pair(std::move(doneSemaphore),
+                           vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader));
     }
+
+    if (updateInstanceNormal)
+    {
+        addControllerInfoToRenderingContext(context, frameInFlightIndex, m_instanceInfo.m_infoManagerInstanceModel);
+    }
+
+    if (updateInstanceModel)
+    {
+        addControllerInfoToRenderingContext(context, frameInFlightIndex, m_instanceInfo.m_infoManagerInstanceNormal); 
+    }
+}
+
+bool star::StarObject::isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex) const
+{
+    if (!isReady)
+    {
+        return false;
+    }
+
+    for (auto &rmesh : this->meshes)
+    {
+        if (!rmesh->isKnownToBeReady(frameInFlightIndex))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer,
+                                                           const uint8_t &frameInFlightIndex,
+                                                           const uint64_t &frameIndex)
+{
+    auto barriers = std::vector<vk::BufferMemoryBarrier2>();
+
+    if (m_instanceInfo.m_infoManagerInstanceModel.willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    {
+        barriers.emplace_back(
+            vk::BufferMemoryBarrier2()
+                .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                .setDstStageMask(vk::PipelineStageFlagBits2::eVertexShader |
+                                 vk::PipelineStageFlagBits2::eFragmentShader)
+                .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
+                .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                .setBuffer(renderingContext.bufferTransferRecords.get(
+                    m_instanceInfo.m_infoManagerInstanceModel.getHandle(frameInFlightIndex)))
+                .setSize(vk::WholeSize));
+    }
+
+    if (m_instanceInfo.m_infoManagerInstanceNormal.willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    {
+        barriers.emplace_back(
+            vk::BufferMemoryBarrier2()
+                .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                .setDstStageMask(vk::PipelineStageFlagBits2::eVertexShader |
+                                 vk::PipelineStageFlagBits2::eFragmentShader)
+                .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
+                .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                .setBuffer(renderingContext.bufferTransferRecords.get(
+                    m_instanceInfo.m_infoManagerInstanceNormal.getHandle(frameInFlightIndex)))
+                .setSize(vk::WholeSize));
+    }
+
+    if (barriers.size() > 0)
+    {
+        commandBuffer.pipelineBarrier2(vk::DependencyInfo()
+                                           .setBufferMemoryBarrierCount(barriers.size())
+                                           .setPBufferMemoryBarriers(barriers.data()));
+    }
+}
+
+void star::StarObject::addControllerInfoToRenderingContext(
+    core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+    const ManagerController::RenderResource::Buffer &bufferController)
+{
+    const Handle &handle = bufferController.getHandle(frameInFlightIndex);
+
+    context.getManagerRenderResource().waitForReady(context.getDeviceID(), handle);
+
+    renderingContext.bufferTransferRecords.manualInsert(
+        handle, context.getManagerRenderResource().getBuffer(context.getDeviceID(), handle).getVulkanBuffer());
 }

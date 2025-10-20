@@ -97,7 +97,7 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(
         const int &frameInFlightIndex) override;
 
-    virtual void recordCommandBuffer(vk::CommandBuffer &buffer, const int &frameIndexToBeDrawn) override;
+    virtual void recordCommandBuffer(vk::CommandBuffer &buffer, const uint8_t &frameIndexToBeDrawn, const uint64_t &frameIndex) override;
 
     /// <summary>
     /// If the swapchain is no longer compatible, it must be recreated.

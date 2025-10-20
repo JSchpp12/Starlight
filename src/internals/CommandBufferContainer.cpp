@@ -22,7 +22,7 @@ void star::CommandBufferContainer::cleanup(core::device::StarDevice &device){
 }
 
 std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(core::device::StarDevice &device, 
-    const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex, std::vector<vk::Semaphore> *additionalWaitSemaphores)
+    const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex, const uint64_t &currentFrameIndex, std::vector<vk::Semaphore> *additionalWaitSemaphores)
 {
     if (!this->subOrderSemaphoresUpToDate)
     {
@@ -46,7 +46,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
         if (!buffer->recordOnce)
         {
             buffer->commandBuffer->begin(frameInFlightIndex);
-            buffer->recordBufferCallback(buffer->commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex);
+            buffer->recordBufferCallback(buffer->commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex, currentFrameIndex);
             buffer->commandBuffer->buffer(frameInFlightIndex).end();
         }
 

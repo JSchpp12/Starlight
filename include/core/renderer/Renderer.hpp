@@ -81,26 +81,31 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
                                    this->renderToDepthImages.at(0)->getBaseFormat());
     }
 
-    std::shared_ptr<ManagerController::RenderResource::Buffer> getCameraInfoBuffers()
+    const ManagerController::RenderResource::Buffer &getCameraInfoBuffers() const
     {
-        return m_infoManagerCamera;
+        assert(m_infoManagerCamera && "Camera data must be initialized before use"); 
+
+        return *m_infoManagerCamera;
     }
 
-    std::shared_ptr<ManagerController::RenderResource::Buffer> getLightInfoBuffers()
+    const ManagerController::RenderResource::Buffer &getLightInfoBuffers() const
     {
-        return m_infoManagerLightData;
+        assert(m_infoManagerLightData && "Light data must be initialized before use"); 
+
+        return *m_infoManagerLightData;
     }
 
-    std::shared_ptr<ManagerController::RenderResource::Buffer> getLightListBuffers()
+    const ManagerController::RenderResource::Buffer &getLightListBuffers() const
     {
-        return m_infoManagerLightList;
+        assert(m_infoManagerLightList && "Light list data must be initialized before use"); 
+
+        return *m_infoManagerLightList;
     }
 
   protected:
     bool isReady = false;
-    std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
+    std::unique_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
-
     Handle m_commandBuffer;
     std::vector<std::shared_ptr<star::Light>> m_lights;
 
@@ -116,6 +121,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
     std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
     std::vector<std::unique_ptr<StarRenderGroup>> renderGroups = std::vector<std::unique_ptr<StarRenderGroup>>();
+    core::renderer::RenderingContext m_renderingContext = core::renderer::RenderingContext(); 
 
     void initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
 
@@ -179,19 +185,27 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const int &frameInFlightIndex);
 
-    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex);
+
+    void recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex); 
+
+    std::vector<vk::BufferMemoryBarrier2> getMemoryBarriersForThisFrame(const uint8_t &frameInFlightIndex, const uint64_t &frameIndex); 
 
     void recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
-    void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+    void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex);
 
     void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+
+
+    void addControllerInfoToRenderingContext(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const ManagerController::RenderResource::Buffer &controller); 
 
     RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context)
     {
         return RenderingTargetInfo(std::vector<vk::Format>{this->getColorAttachmentFormat(context)},
                                    this->getDepthAttachmentFormat(context));
     }
+
 #pragma endregion
   private:
     // Inherited via DescriptorModifier

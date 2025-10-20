@@ -10,15 +10,15 @@ namespace star::TransferRequest
 class InstanceModelInfo : public star::TransferRequest::Buffer
 {
   public:
-    InstanceModelInfo(const std::vector<std::unique_ptr<star::StarObjectInstance>> &objectInstances,
+    InstanceModelInfo(const std::vector<star::StarObjectInstance> &objectInstances,
                       const uint32_t &graphicsQueueFamilyIndex, const vk::DeviceSize &minUniformBufferOffsetAlignment)
         : displayMatrixInfo(std::vector<glm::mat4>(objectInstances.size())),
           graphicsQueueFamilyIndex(graphicsQueueFamilyIndex),
           minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment)
     {
-        for (int i = 0; i < objectInstances.size(); i++)
+        for (size_t i = 0; i < objectInstances.size(); i++)
         {
-            displayMatrixInfo[i] = objectInstances[i]->getDisplayMatrix();
+            displayMatrixInfo[i] = objectInstances[i].getDisplayMatrix();
         }
     }
 

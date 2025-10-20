@@ -11,14 +11,14 @@ namespace star::TransferRequest
 class InstanceNormalInfo : public Buffer
 {
   public:
-    InstanceNormalInfo(const std::vector<std::unique_ptr<StarObjectInstance>> &objectInstances,
+    InstanceNormalInfo(const std::vector<StarObjectInstance> &objectInstances,
                        const uint32_t &graphicsQueueFamilyIndex, const vk::DeviceSize &minUniformBufferOffsetAlignment)
         : graphicsQueueFamilyIndex(graphicsQueueFamilyIndex),
           minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment)
     {
-        for (auto &instance : objectInstances)
+        for (const auto &instance : objectInstances)
         {
-            this->normalMatrixInfo.push_back(instance->getDisplayMatrix());
+            this->normalMatrixInfo.push_back(instance.getDisplayMatrix());
         }
     }
 

@@ -8,11 +8,11 @@ std::unordered_map<star::core::device::DeviceID, std::set<boost::atomic<bool> *>
         std::unordered_map<star::core::device::DeviceID, std::set<boost::atomic<bool> *>>();
 auto star::ManagerRenderResource::bufferStorage =
     std::unordered_map<core::device::DeviceID,
-                       std::unique_ptr<core::HandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
+                       std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
                                                              star::Handle_Type::buffer, 100>>>();
 auto star::ManagerRenderResource::textureStorage =
     std::unordered_map<core::device::DeviceID,
-                       std::unique_ptr<core::HandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
+                       std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
                                                              star::Handle_Type::texture, 50>>>();
 
 void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
@@ -21,10 +21,10 @@ void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
 {
     devices.insert(std::make_pair(deviceID, std::move(device)));
     bufferStorage.insert(std::make_pair(
-        deviceID, std::make_unique<core::HandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
+        deviceID, std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
                                                          star::Handle_Type::buffer, 100>>()));
     textureStorage.insert(std::make_pair(
-        deviceID, std::make_unique<core::HandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
+        deviceID, std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
                                                          star::Handle_Type::texture, 50>>()));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));

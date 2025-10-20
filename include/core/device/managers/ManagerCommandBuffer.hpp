@@ -24,7 +24,7 @@ class ManagerCommandBuffer
         // type
         // callback function to record the buffer
         // is it dependent on another buffer to finish first?
-        std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback;
+        std::function<void(vk::CommandBuffer &, const uint8_t &, const uint64_t &)> recordBufferCallback;
         Command_Buffer_Order order;
         int orderIndex;
         star::Queue_Type type;
@@ -40,7 +40,7 @@ class ManagerCommandBuffer
 
     void cleanup(StarDevice &device);
 
-    Handle submit(StarDevice &device, Request requestFunction);
+    Handle submit(StarDevice &device, const uint64_t &currentFrameIndex, Request requestFunction);
 
     void submitDynamicBuffer(Handle bufferHandle);
 
@@ -49,7 +49,7 @@ class ManagerCommandBuffer
     /// @brief Process and submit all command buffers
     /// @param frameIndexToBeDrawn
     /// @return semaphore signaling completion of submission
-    vk::Semaphore update(StarDevice &device, const int &frameIndexToBeDrawn);
+    vk::Semaphore update(StarDevice &device, const uint8_t &frameIndexToBeDrawn, const uint64_t &currentFrameIndex);
 
   private:
     static std::stack<Handle> dynamicBuffersToSubmit;
@@ -58,7 +58,7 @@ class ManagerCommandBuffer
     CommandBufferContainer buffers;
     std::unique_ptr<star::Handle> mainGraphicsBufferHandle = std::unique_ptr<star::Handle>();
 
-    vk::Semaphore submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex);
+    vk::Semaphore submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex, const uint64_t &currentFrameIndex);
 
     void handleDynamicBufferRequests();
 };

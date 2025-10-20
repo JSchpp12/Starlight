@@ -24,13 +24,6 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
-    std::vector<uint32_t> indices = std::vector<uint32_t>{this->graphicsQueueFamilyIndex};
-    uint32_t numInds = 1; 
-    for (const auto &index : transferQueueFamilyIndex){
-        indices.push_back(index);
-        numInds++; 
-    }
-
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
@@ -38,9 +31,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
                 .setUsage(VMA_MEMORY_USAGE_AUTO)
                 .build(),
             vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eConcurrent)
-                .setPQueueFamilyIndices(indices.data())
-                .setQueueFamilyIndexCount(numInds)
+                .setSharingMode(vk::SharingMode::eExclusive)
                 .setSize(sizeof(int))
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
             "LightInfo")

@@ -20,7 +20,7 @@ void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2
     {
         m_infoManagerCamera->prepRender(device, numFramesInFlight);
     }
-    m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest());
+    m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest(), device.getCurrentFrameIndex());
 
     this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
@@ -49,6 +49,8 @@ void Renderer::cleanupRender(core::device::DeviceContext &context)
 
 void Renderer::frameUpdate(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex)
 {
+    m_renderingContext = core::renderer::RenderingContext{};
+
     updateDependentData(device, frameInFlightIndex);
     updateRenderingGroups(device, frameInFlightIndex);
 }
@@ -56,9 +58,9 @@ void Renderer::frameUpdate(core::device::DeviceContext &device, const uint8_t &f
 void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
 {
     m_infoManagerLightData =
-        std::make_shared<ManagerController::RenderResource::LightInfo>(numFramesInFlight, m_lights);
+        std::make_unique<ManagerController::RenderResource::LightInfo>(numFramesInFlight, m_lights);
     m_infoManagerLightList =
-        std::make_shared<ManagerController::RenderResource::LightList>(numFramesInFlight, m_lights);
+        std::make_unique<ManagerController::RenderResource::LightList>(numFramesInFlight, m_lights);
 }
 
 void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
@@ -66,7 +68,7 @@ void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &
 {
     initBuffers(context, numFramesInFlight);
 
-    m_infoManagerCamera = std::make_shared<ManagerController::RenderResource::GlobalInfo>(numFramesInFlight, camera);
+    m_infoManagerCamera = std::make_unique<ManagerController::RenderResource::GlobalInfo>(numFramesInFlight, camera);
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRenderToImages(
@@ -412,23 +414,61 @@ vk::Format Renderer::getDepthAttachmentFormat(star::core::device::DeviceContext 
     return selectedFormat;
 }
 
-void Renderer::updateDependentData(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex){
-    auto dataSemaphore = vk::Semaphore(); 
+void Renderer::updateDependentData(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
+{
+    bool updateCamera = false, updateLight = false, updateLightList = false;
 
-    auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer); 
+    auto dataSemaphore = vk::Semaphore();
 
-    if (m_infoManagerCamera && m_infoManagerCamera->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore)){
-        record.oneTimeWaitSemaphores.insert(std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eVertexShader)); 
+    auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer);
+
+    if (m_infoManagerCamera && m_infoManagerCamera->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+    {
+        record.oneTimeWaitSemaphores.insert(
+            std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eVertexShader));
+        updateCamera = true;
     }
 
-    if (m_infoManagerLightData->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore)){
-        record.oneTimeWaitSemaphores.insert(std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eFragmentShader)); 
+    if (m_infoManagerLightData->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+    {
+        record.oneTimeWaitSemaphores.insert(
+            std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eFragmentShader));
+        updateLight = true;
     }
 
-    if (m_infoManagerLightList->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore)){
-        record.oneTimeWaitSemaphores.insert(std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eFragmentShader)); 
+    if (m_infoManagerLightList->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+    {
+        record.oneTimeWaitSemaphores.insert(
+            std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eFragmentShader));
+        updateLightList = true;
     }
 
+    if (updateCamera)
+    {
+        addControllerInfoToRenderingContext(context, frameInFlightIndex, *m_infoManagerCamera);
+    }
+
+    if (updateLight)
+    {
+        addControllerInfoToRenderingContext(context, frameInFlightIndex, *m_infoManagerLightData);
+    }
+
+    if (updateLightList)
+    {
+        addControllerInfoToRenderingContext(context, frameInFlightIndex, *m_infoManagerLightList);
+    }
+}
+
+void Renderer::addControllerInfoToRenderingContext(core::device::DeviceContext &context,
+                                                   const uint8_t &frameInFlightIndex,
+                                                   const ManagerController::RenderResource::Buffer &controller)
+{
+    const Handle &handle = controller.getHandle(frameInFlightIndex);
+
+    context.getManagerRenderResource().waitForReady(context.getDeviceID(), handle);
+
+    m_renderingContext.bufferTransferRecords.manualInsert(
+        handle, context.getManagerRenderResource().getBuffer(context.getDeviceID(), handle).getVulkanBuffer());
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> Renderer::getDescriptorRequests(const int &numFramesInFlight)
@@ -442,12 +482,15 @@ void Renderer::createDescriptors(star::core::device::DeviceContext &device, cons
 {
 }
 
-void Renderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void Renderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+                                   const uint64_t &frameIndex)
 {
     vk::Viewport viewport = this->prepareRenderingViewport();
     commandBuffer.setViewport(0, viewport);
 
     recordPreRenderingCalls(commandBuffer, frameInFlightIndex);
+
+    recordCommandBufferDependencies(commandBuffer, frameInFlightIndex, frameIndex); 
 
     {
         // dynamic rendering used...so dont need all that extra stuff
@@ -466,11 +509,58 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const int &
         commandBuffer.beginRendering(renderInfo);
     }
 
-    recordRenderingCalls(commandBuffer, frameInFlightIndex);
+    recordRenderingCalls(commandBuffer, frameInFlightIndex, frameIndex);
 
     commandBuffer.endRendering();
 
     recordPostRenderingCalls(commandBuffer, frameInFlightIndex);
+}
+
+void Renderer::recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex){
+    auto memoryBarriers = getMemoryBarriersForThisFrame(frameInFlightIndex, frameIndex); 
+
+    commandBuffer.pipelineBarrier2(vk::DependencyInfo().setBufferMemoryBarrierCount(memoryBarriers.size()).setPBufferMemoryBarriers(memoryBarriers.data())); 
+}
+
+std::vector<vk::BufferMemoryBarrier2> Renderer::getMemoryBarriersForThisFrame(const uint8_t &frameInFlightIndex, const uint64_t &frameIndex){
+    auto barriers = std::vector<vk::BufferMemoryBarrier2>(); 
+
+    if (m_infoManagerCamera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex)){
+        barriers.emplace_back(vk::BufferMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader | vk::PipelineStageFlagBits2::eVertexShader)
+            .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
+            .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setBuffer(m_renderingContext.bufferTransferRecords.get(m_infoManagerCamera->getHandle(frameInFlightIndex)))
+            .setSize(vk::WholeSize));
+    }
+
+    if (m_infoManagerLightData->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex)){
+        barriers.emplace_back(vk::BufferMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader | vk::PipelineStageFlagBits2::eVertexShader)
+            .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
+            .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setBuffer(m_renderingContext.bufferTransferRecords.get(m_infoManagerLightData->getHandle(frameInFlightIndex)))
+            .setSize(vk::WholeSize));
+    }
+
+    if (m_infoManagerLightList->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex)){
+        barriers.emplace_back(vk::BufferMemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader | vk::PipelineStageFlagBits2::eVertexShader)
+            .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setBuffer(m_renderingContext.bufferTransferRecords.get(m_infoManagerLightList->getHandle(frameInFlightIndex)))
+            .setSize(vk::WholeSize));
+    }
+
+    return barriers; 
 }
 
 vk::RenderingAttachmentInfo star::core::renderer::Renderer::prepareDynamicRenderingInfoColorAttachment(
@@ -528,11 +618,12 @@ void Renderer::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const 
     }
 }
 
-void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+                                    const uint64_t &frameIndex)
 {
     for (auto &group : this->renderGroups)
     {
-        group->recordRenderPassCommands(commandBuffer, frameInFlightIndex);
+        group->recordRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
     }
 }
 

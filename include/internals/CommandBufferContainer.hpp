@@ -18,7 +18,7 @@ class CommandBufferContainer
   public:
     struct CompleteRequest
     {
-        std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback;
+        std::function<void(vk::CommandBuffer &, const uint8_t &, const uint64_t &)> recordBufferCallback;
         std::unique_ptr<StarCommandBuffer> commandBuffer;
         Queue_Type type;
         bool recordOnce;
@@ -30,7 +30,7 @@ class CommandBufferContainer
         std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> oneTimeWaitSemaphores;
 
         CompleteRequest(
-            std::function<void(vk::CommandBuffer &, const int &)> recordBufferCallback,
+            std::function<void(vk::CommandBuffer &, const uint8_t &, const uint64_t &)> recordBufferCallback,
             std::unique_ptr<StarCommandBuffer> commandBuffer, const Queue_Type &type, const bool &recordOnce,
             const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order, 
             std::optional<std::function<void(const int &)>> beforeSubmissionCallback =
@@ -73,7 +73,7 @@ class CommandBufferContainer
     void cleanup(core::device::StarDevice &device);
 
     std::vector<vk::Semaphore> submitGroupWhenReady(core::device::StarDevice &device, const star::Command_Buffer_Order &order,
-                                                    const uint8_t &frameInFlightIndex,
+                                                    const uint8_t &frameInFlightIndex, const uint64_t &currentFrameIndex,
                                                     std::vector<vk::Semaphore> *waitSemaphores = nullptr);
 
     star::Handle add(std::unique_ptr<CompleteRequest> newRequest, const bool &willBeSubmittedEachFrame,

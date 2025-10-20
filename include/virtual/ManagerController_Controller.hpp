@@ -13,14 +13,17 @@
 namespace star::ManagerController
 {
 
-template <typename T> class Controller
+template <typename TTransferType, typename TDataType> class Controller
 {
   public:
     Controller() = default;
-
     virtual ~Controller() = default;
 
-    virtual bool needsUpdated(const uint8_t &currentFrameInFlightIndex) const = 0;
+    bool willBeUpdatedThisFrame(const uint64_t &currentFrameCount, const uint8_t &currentFrameInFlightIndex) const
+    {
+        return hasAlreadyBeenUpdatedThisFrame(currentFrameCount) ||
+               doesFrameInFlightDataNeedUpdated(currentFrameInFlightIndex);
+    }
 
     void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
     {
@@ -44,13 +47,38 @@ template <typename T> class Controller
     }
 
     /// Call any frame updates. Returns true if the controller submitted an update
-    virtual bool submitUpdateIfNeeded(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                      vk::Semaphore &semaphore) = 0;
+    bool submitUpdateIfNeeded(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                              vk::Semaphore &semaphore)
+    {
+        assert(frameInFlightIndex < m_resourceHandles.size() && m_resourceHandles[frameInFlightIndex].isInitialized() &&
+               "Resources must be properly prepared before use");
+        if (!doesFrameInFlightDataNeedUpdated(frameInFlightIndex))
+        {
+            return false;
+        }
+
+        m_lastFrameUpdate = context.getCurrentFrameIndex();
+        context.getManagerRenderResource().updateRequest(context.getDeviceID(),
+                                                         createTransferRequest(context.getDevice(), frameInFlightIndex),
+                                                         m_resourceHandles[frameInFlightIndex], true);
+        semaphore = context.getManagerRenderResource()
+                        .get<TDataType>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
+                        ->resourceSemaphore;
+        return true;
+    };
 
   protected:
+    uint64_t m_lastFrameUpdate = 0;
     std::vector<Handle> m_resourceHandles = std::vector<Handle>();
 
-    virtual std::unique_ptr<T> createTransferRequest(core::device::StarDevice &device,
+    virtual std::unique_ptr<TTransferType> createTransferRequest(core::device::StarDevice &device,
                                                      const uint8_t &frameInFlightIndex) = 0;
+
+    bool hasAlreadyBeenUpdatedThisFrame(const uint64_t &currentFrameCount) const
+    {
+        return m_lastFrameUpdate == currentFrameCount;
+    }
+
+    virtual bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const = 0;
 };
 } // namespace star::ManagerController
