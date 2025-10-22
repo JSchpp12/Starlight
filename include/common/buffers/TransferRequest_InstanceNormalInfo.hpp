@@ -16,9 +16,9 @@ class InstanceNormalInfo : public Buffer
           minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment),
           normalMatrixInfo(std::vector<glm::mat4>(objectInstances.size()))
     {
-        for (const auto &instance : objectInstances)
+        for (size_t i = 0; i < objectInstances.size(); i++)
         {
-            this->normalMatrixInfo.push_back(instance.getDisplayMatrix());
+            normalMatrixInfo[i] = objectInstances[i].getDisplayMatrix();
         }
     }
 
