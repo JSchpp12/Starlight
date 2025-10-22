@@ -1,21 +1,20 @@
 #include "managers/ManagerRenderResource.hpp"
 
-std::unordered_map<star::core::device::DeviceID, std::shared_ptr<star::core::device::StarDevice>>
-    star::ManagerRenderResource::devices =
-        std::unordered_map<core::device::DeviceID, std::shared_ptr<star::core::device::StarDevice>>();
-std::unordered_map<star::core::device::DeviceID, std::set<boost::atomic<bool> *>>
+auto star::ManagerRenderResource::devices =
+    std::unordered_map<star::Handle, std::shared_ptr<star::core::device::StarDevice>, star::HandleHash>();
+auto
     star::ManagerRenderResource::highPriorityRequestCompleteFlags =
-        std::unordered_map<star::core::device::DeviceID, std::set<boost::atomic<bool> *>>();
+        std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>();
 auto star::ManagerRenderResource::bufferStorage =
-    std::unordered_map<core::device::DeviceID,
+    std::unordered_map<star::Handle,
                        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
-                                                                    star::Handle_Type::buffer, 100>>>();
+                                                                    star::Handle_Type::buffer, 100>>, star::HandleHash>();
 auto star::ManagerRenderResource::textureStorage =
-    std::unordered_map<core::device::DeviceID,
+    std::unordered_map<star::Handle,
                        std::unique_ptr<core::ManagedHandleContainer<
-                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 50>>>();
+                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 50>>, star::HandleHash>();
 
-void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
+void star::ManagerRenderResource::init(const Handle &deviceID,
                                        std::shared_ptr<star::core::device::StarDevice> device,
                                        std::shared_ptr<star::job::TransferWorker> worker, const int &numFramesInFlight)
 {
@@ -32,8 +31,8 @@ void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
     managerWorker = worker;
 }
 
-star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceID &deviceID,
-                                                     vk::Semaphore resourceSemaphore, const bool &isHighPriority)
+star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
+                                                     const bool &isHighPriority)
 {
     Handle newBufferHandle = bufferStorage.at(deviceID)->insert(
         FinalizedResourceRequest<star::StarBuffers::Buffer>(std::move(resourceSemaphore)));
@@ -43,8 +42,7 @@ star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceI
     return newBufferHandle;
 }
 
-star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceID &deviceID,
-                                                     vk::Semaphore resourceSemaphore,
+star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Buffer> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
                                                      const bool &isHighPriority)
@@ -65,8 +63,7 @@ star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceI
     return newBufferHandle;
 }
 
-star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceID &deviceID,
-                                                     vk::Semaphore resourceSemaphore,
+star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Texture> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
                                                      const bool &isHighPriority)
@@ -85,7 +82,7 @@ star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceI
     return newHandle;
 }
 
-void star::ManagerRenderResource::frameUpdate(const core::device::DeviceID &deviceID, const uint8_t &frameInFlightIndex)
+void star::ManagerRenderResource::frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex)
 {
     for (auto &request : highPriorityRequestCompleteFlags.at(deviceID))
     {
@@ -98,7 +95,7 @@ void star::ManagerRenderResource::frameUpdate(const core::device::DeviceID &devi
     highPriorityRequestCompleteFlags.at(deviceID).clear();
 }
 
-void star::ManagerRenderResource::updateRequest(const core::device::DeviceID &deviceID,
+void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                                 std::unique_ptr<TransferRequest::Buffer> newRequest,
                                                 const star::Handle &handle, const bool &isHighPriority)
 {
@@ -118,7 +115,7 @@ void star::ManagerRenderResource::updateRequest(const core::device::DeviceID &de
     highPriorityRequestCompleteFlags.at(deviceID).insert(&container.cpuWorkDoneByTransferThread);
 }
 
-bool star::ManagerRenderResource::isReady(const core::device::DeviceID &deviceID, const Handle &handle)
+bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &handle)
 {
     switch (handle.getType())
     {
@@ -138,7 +135,7 @@ bool star::ManagerRenderResource::isReady(const core::device::DeviceID &deviceID
     return false;
 }
 
-void star::ManagerRenderResource::waitForReady(const core::device::DeviceID &deviceID, const Handle &handle)
+void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Handle &handle)
 {
     boost::atomic<bool> *fence = nullptr;
 
@@ -162,8 +159,7 @@ void star::ManagerRenderResource::waitForReady(const core::device::DeviceID &dev
     }
 }
 
-star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const core::device::DeviceID &deviceID,
-                                                                  const star::Handle &handle)
+star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &deviceID, const star::Handle &handle)
 {
     assert(handle.getType() == star::Handle_Type::buffer && "Handle provided is not a buffer handle");
     const auto &container = bufferStorage.at(deviceID)->get(handle).resource;
@@ -175,8 +171,7 @@ star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const core::de
     return *container;
 }
 
-star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const core::device::DeviceID &deviceID,
-                                                                     const star::Handle &handle)
+star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const Handle &deviceID, const star::Handle &handle)
 {
     assert(handle.getType() == star::Handle_Type::texture && "Handle provided is not a texture handle");
     const auto &container = textureStorage.at(deviceID)->get(handle).resource;
@@ -188,7 +183,7 @@ star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const core:
     return *container;
 }
 
-void star::ManagerRenderResource::cleanup(const core::device::DeviceID &deviceID, core::device::StarDevice &device)
+void star::ManagerRenderResource::cleanup(const Handle &deviceID, core::device::StarDevice &device)
 {
     bufferStorage.at(deviceID)->cleanupAll(&device);
     bufferStorage.at(deviceID).reset();

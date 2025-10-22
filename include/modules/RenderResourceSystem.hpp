@@ -1,7 +1,7 @@
 #pragma once
 
 #include "BufferHandle.hpp"
-#include "DeviceContext.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "StarCommandBuffer.hpp"
 #include "Vertex.hpp"

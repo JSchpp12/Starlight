@@ -9,12 +9,10 @@
 #include "job/TaskManager.hpp"
 #include "renderer/SwapChainRenderer.hpp"
 
-
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
 #include <stdexcept>
 #include <vk_mem_alloc.h>
-
 
 namespace star
 {
@@ -44,37 +42,37 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
             throw std::runtime_error("Invalid number of frames in flight in config file");
         }
     }
-
-    deviceManager.createDevice(core::device::DeviceID{.id = uint8_t(0)}, frameCounter, framesInFlight, features,
-                               *this->window, renderingFeatures);
+    deviceManager.createDevice(defaultDevice, frameCounter, framesInFlight, features, *this->window, renderingFeatures);
 
     // try and get a transfer queue from different queue fams
     {
         std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
         std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
 
-        const auto transferFams =
-            this->deviceManager.getContext().getDevice().getQueueOwnershipTracker().getQueueFamiliesWhichSupport(
-                vk::QueueFlagBits::eTransfer);
+        const auto transferFams = this->deviceManager.getContext(defaultDevice)
+                                      .getDevice()
+                                      .getQueueOwnershipTracker()
+                                      .getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
 
         for (const auto &fam : transferFams)
         {
             if (selectedFamilyIndices.size() > 1)
                 break;
 
-            if (fam != deviceManager.getContext()
+            if (fam != deviceManager.getContext(defaultDevice)
                            .getDevice()
                            .getDefaultQueue(Queue_Type::Tgraphics)
                            .getParentQueueFamilyIndex() &&
-                fam != deviceManager.getContext()
+                fam != deviceManager.getContext(defaultDevice)
                            .getDevice()
                            .getDefaultQueue(Queue_Type::Tcompute)
                            .getParentQueueFamilyIndex() &&
                 !selectedFamilyIndices.contains(fam))
             {
-                auto nQueue =
-                    deviceManager.getContext().getDevice().getQueueOwnershipTracker().giveMeQueueWithProperties(
-                        vk::QueueFlagBits::eTransfer, false, fam);
+                auto nQueue = deviceManager.getContext(defaultDevice)
+                                  .getDevice()
+                                  .getQueueOwnershipTracker()
+                                  .giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false, fam);
 
                 if (nQueue.has_value())
                 {
@@ -91,8 +89,8 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
 
 StarEngine::~StarEngine()
 {
-    RenderResourceSystem::cleanup(deviceManager.getContext());
-    StarObject::cleanupSharedResources(deviceManager.getContext());
+    RenderResourceSystem::cleanup(deviceManager.getContext(defaultDevice));
+    StarObject::cleanupSharedResources(deviceManager.getContext(defaultDevice));
 }
 
 void StarEngine::run()
@@ -100,18 +98,19 @@ void StarEngine::run()
     const uint8_t numFramesInFlight = GetNumFramesInFlight();
 
     std::shared_ptr<StarScene> currentScene =
-        this->application->loadScene(deviceManager.getContext(), *this->window, numFramesInFlight);
-    
-        assert(currentScene && "Application must provide a proper instance of a scene object"); 
+        this->application->loadScene(deviceManager.getContext(defaultDevice), *this->window, numFramesInFlight);
 
-    currentScene->prepRender(deviceManager.getContext(), numFramesInFlight); 
+    assert(currentScene && "Application must provide a proper instance of a scene object");
 
-    core::device::managers::ManagerDescriptorPool descriptorManager(deviceManager.getContext(), numFramesInFlight);
-    RenderResourceSystem::init(deviceManager.getContext(), numFramesInFlight, this->window->getExtent());
+    currentScene->prepRender(deviceManager.getContext(defaultDevice), numFramesInFlight);
+
+    core::device::managers::ManagerDescriptorPool descriptorManager(deviceManager.getContext(defaultDevice),
+                                                                    numFramesInFlight);
+    RenderResourceSystem::init(deviceManager.getContext(defaultDevice), numFramesInFlight, this->window->getExtent());
 
     // prepare any shared resources
-    StarObject::initSharedResources(deviceManager.getContext(), this->window->getExtent(), numFramesInFlight,
-                                    currentScene->getPresentationRenderer()->getGlobalShaderInfo(),
+    StarObject::initSharedResources(deviceManager.getContext(defaultDevice), this->window->getExtent(),
+                                    numFramesInFlight, currentScene->getPresentationRenderer()->getGlobalShaderInfo(),
                                     currentScene->getPresentationRenderer()->getRenderTargetInfo());
 
     uint8_t frameInFlightIndex = 0;
@@ -120,25 +119,28 @@ void StarEngine::run()
         frameInFlightIndex = currentScene->getPresentationRenderer()->getFrameToBeDrawn();
 
         // check if any new objects have been added
-        deviceManager.getContext().prepareForNextFrame(frameInFlightIndex); 
+        deviceManager.getContext(defaultDevice).prepareForNextFrame(frameInFlightIndex);
 
-        RenderResourceSystem::runInits(deviceManager.getContext(), numFramesInFlight, this->window->getExtent());
+        RenderResourceSystem::runInits(deviceManager.getContext(defaultDevice), numFramesInFlight,
+                                       this->window->getExtent());
         descriptorManager.update(numFramesInFlight);
 
         currentScene->getPresentationRenderer()->pollEvents();
         InteractionSystem::callWorldUpdates(frameInFlightIndex);
 
-        currentScene->frameUpdate(deviceManager.getContext(), frameInFlightIndex); 
-        
-        ManagerRenderResource::frameUpdate(deviceManager.getContext().getDeviceID(), frameInFlightIndex);
+        currentScene->frameUpdate(deviceManager.getContext(defaultDevice), frameInFlightIndex);
+
+        ManagerRenderResource::frameUpdate(deviceManager.getContext(defaultDevice).getDeviceID(), frameInFlightIndex);
         vk::Semaphore allBuffersSubmitted =
-            deviceManager.getContext().getManagerCommandBuffer().update(frameInFlightIndex, deviceManager.getContext().getCurrentFrameIndex());
+            deviceManager.getContext(defaultDevice)
+                .getManagerCommandBuffer()
+                .update(frameInFlightIndex, deviceManager.getContext(defaultDevice).getCurrentFrameIndex());
         currentScene->getPresentationRenderer()->submitPresentation(frameInFlightIndex, &allBuffersSubmitted);
-        this->deviceManager.getContext().getTransferWorker().update();
+        this->deviceManager.getContext(defaultDevice).getTransferWorker().update();
     }
 
-    deviceManager.getContext().waitIdle(); 
-    currentScene->cleanupRender(deviceManager.getContext()); 
+    deviceManager.getContext(defaultDevice).waitIdle();
+    currentScene->cleanupRender(deviceManager.getContext(defaultDevice));
 }
 
 std::unique_ptr<star::StarWindow> star::StarEngine::CreateStarWindow()
@@ -162,11 +164,12 @@ uint8_t StarEngine::GetNumFramesInFlight()
     uint8_t num;
     {
         int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-        if (!star::CastHelpers::SafeCast<int, uint8_t>(framesInFlight, num)){
-            throw std::runtime_error("Faled to process number of frames in flight"); 
-        } 
+        if (!star::CastHelpers::SafeCast<int, uint8_t>(framesInFlight, num))
+        {
+            throw std::runtime_error("Faled to process number of frames in flight");
+        }
     }
 
-    return num; 
+    return num;
 }
 } // namespace star

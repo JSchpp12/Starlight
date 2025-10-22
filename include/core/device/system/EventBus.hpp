@@ -6,10 +6,10 @@
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
+#include <stdexcept>
 
 namespace star::core::device::system
 {
-
 class EventBus
 {
     using Callback = std::function<void(const EventBase &, bool &)>;
@@ -28,6 +28,10 @@ class EventBus
         const auto& base = static_cast<const EventBase &>(event); 
 
         std::vector<Callback> aliveCallbacks = std::vector<Callback>(); 
+
+        if (!m_listeners.contains(key)){
+            throw std::runtime_error("Provided event type does not have a registered handler");
+        }
 
         for (auto &cb : m_listeners[key])
         {

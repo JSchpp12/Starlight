@@ -10,8 +10,7 @@ namespace star::core
 class RenderingSurface
 {
   public:
-    RenderingSurface(RenderingInstance &instance, StarWindow &window)
-        : m_resolution(window.getExtent()), m_surface(CreateSurface(instance, window)) {};
+    RenderingSurface() = default;
 
     RenderingSurface(const RenderingSurface &) = delete;
     RenderingSurface &operator=(const RenderingSurface &) = delete;
@@ -27,6 +26,11 @@ class RenderingSurface
             m_surface = std::move(other.m_surface);
         }
         return *this;
+    }
+
+    void init(RenderingInstance &instance, StarWindow &window){
+        m_resolution = window.getExtent(); 
+        m_surface = CreateSurface(instance, window); 
     }
 
     vk::SurfaceKHR &getVulkanSurface()

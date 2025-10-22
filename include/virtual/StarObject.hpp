@@ -171,7 +171,7 @@ class StarObject : private DescriptorModifier
 
     bool isReady = false;
 
-    core::device::DeviceID m_deviceID;
+    Handle m_deviceID;
     std::unique_ptr<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>> groupLayout;
     std::unique_ptr<std::vector<std::vector<vk::DescriptorSet>>> globalSets;
 

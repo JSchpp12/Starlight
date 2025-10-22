@@ -2,7 +2,6 @@
 
 #include "Handle.hpp"
 #include "StarMaterial.hpp"
-#include "core/device/DeviceID.hpp"
 
 namespace star
 {

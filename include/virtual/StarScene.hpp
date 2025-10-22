@@ -5,7 +5,6 @@
 #include "StarObject.hpp"
 #include "StarWindow.hpp"
 #include "core/renderer/SwapChainRenderer.hpp"
-#include "device/DeviceID.hpp"
 
 #include <map>
 #include <memory>
@@ -20,11 +19,11 @@ namespace star
 class StarScene
 {
   public:
-    StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
+    StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
               std::shared_ptr<StarCamera> camera,
               std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer);
 
-    StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
+    StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
               std::shared_ptr<StarCamera> camera,
               std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer,
               std::vector<std::shared_ptr<core::renderer::Renderer>> additionalRenderers);

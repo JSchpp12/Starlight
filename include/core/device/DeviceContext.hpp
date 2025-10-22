@@ -4,14 +4,13 @@
 #include "RenderingSurface.hpp"
 #include "SwapChainSupportDetails.hpp"
 #include "TaskManager.hpp"
-#include "device/DeviceID.hpp"
+#include "core/device/FrameInFlightTracking.hpp"
 #include "device/StarDevice.hpp"
 #include "device/managers/GraphicsContainer.hpp"
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
 #include "device/system/EventBus.hpp"
 #include "tasks/task_factory/TaskFactory.hpp"
-#include "core/device/FrameInFlightTracking.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -61,10 +60,7 @@ class DeviceContext
         job::TaskManager &taskManager;
         system::EventBus &eventBus;
     };
-
-    DeviceContext(const uint8_t &numFramesInFlight, const DeviceID &deviceID, RenderingInstance &instance,
-                  std::set<Rendering_Features> requiredFeatures, StarWindow &window,
-                  const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
+    DeviceContext() = default;
 
     ~DeviceContext();
     DeviceContext(DeviceContext &&other)
@@ -93,7 +89,9 @@ class DeviceContext
             m_graphicsManagers = std::move(other.m_graphicsManagers);
             m_transferWorker = std::move(other.m_transferWorker);
             m_renderResourceManager = std::move(other.m_renderResourceManager);
-            m_ownsResources = true;
+            if (other.m_ownsResources){
+                m_ownsResources = std::move(other.m_ownsResources);
+            }
 
             other.m_ownsResources = false;
         }
@@ -102,6 +100,10 @@ class DeviceContext
     };
     DeviceContext(const DeviceContext &) = delete;
     DeviceContext &operator=(const DeviceContext &) = delete;
+
+    void init(const Handle &deviceID, const uint8_t &numFramesInFlight, RenderingInstance &instance,
+              std::set<Rendering_Features> requiredFeatures, StarWindow &window,
+              const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
 
     void waitIdle();
 
@@ -158,7 +160,7 @@ class DeviceContext
 
     SwapChainSupportDetails getSwapchainSupportDetails();
 
-    DeviceID getDeviceID()
+    Handle getDeviceID()
     {
         return m_deviceID;
     }
@@ -179,10 +181,10 @@ class DeviceContext
     }
 
   private:
-    bool m_ownsResources = true;
+    bool m_ownsResources = false;
     uint64_t m_frameCounter = 0;
     std::vector<FrameInFlightTracking> m_frameInFlightTrackingInfo;
-    DeviceID m_deviceID;
+    Handle m_deviceID;
     RenderingSurface m_surface;
     std::shared_ptr<StarDevice> m_device;
     system::EventBus m_eventBus;
@@ -197,5 +199,7 @@ class DeviceContext
     void handleCompleteMessages(const uint8_t maxMessageCounter = 0);
 
     void processCompleteMessage(job::complete_tasks::CompleteTask<> completeTask);
+
+    void initWorkers(const uint8_t &numFramesInFlight);
 };
 } // namespace star::core::device

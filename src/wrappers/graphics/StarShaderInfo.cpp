@@ -17,7 +17,7 @@ void star::StarShaderInfo::ShaderInfoSet::add(const star::StarShaderInfo::Shader
     this->shaderInfos.push_back(shaderInfo);
 }
 
-void star::StarShaderInfo::ShaderInfoSet::buildIndex(const core::device::DeviceID &deviceID, const int &index)
+void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceID, const int &index)
 {
     assert(this->descriptorWriter && "Dependencies must have been built first");
     this->setNeedsRebuild = true;
@@ -78,7 +78,7 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const core::device::DeviceI
     }
 }
 
-void star::StarShaderInfo::ShaderInfoSet::build(const core::device::DeviceID &deviceID)
+void star::StarShaderInfo::ShaderInfoSet::build(const star::Handle &deviceID)
 {
     this->isBuilt = true;
 

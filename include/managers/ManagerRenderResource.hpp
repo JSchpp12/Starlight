@@ -7,7 +7,6 @@
 #include "StarManager.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
-#include "device/DeviceID.hpp"
 #include "device/StarDevice.hpp"
 
 #include <vulkan/vulkan.hpp>
@@ -56,18 +55,18 @@ class ManagerRenderResource : public StarManager
         }
     };
 
-    static void init(core::device::DeviceID deviceID, std::shared_ptr<core::device::StarDevice> device,
+    static void init(const Handle &deviceID, std::shared_ptr<core::device::StarDevice> device,
                      std::shared_ptr<job::TransferWorker> worker, const int &totalNumFramesInFlight);
 
-    static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
+    static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                              const bool &isHighPriority = false);
 
-    static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
+    static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                              std::unique_ptr<TransferRequest::Buffer> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
                              const bool &isHighPriority = false);
 
-    static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
+    static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                              std::unique_ptr<TransferRequest::Texture> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
                              const bool &isHighPriorirty = false);
@@ -75,24 +74,22 @@ class ManagerRenderResource : public StarManager
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
     /// @param handle Handle to resource
-    static void updateRequest(const core::device::DeviceID &deviceID,
-                              std::unique_ptr<TransferRequest::Buffer> newRequest, const Handle &handle,
-                              const bool &isHighPriority = false);
+    static void updateRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
+                              const Handle &handle, const bool &isHighPriority = false);
 
-    static void frameUpdate(const core::device::DeviceID &deviceID, const uint8_t &frameInFlightIndex);
+    static void frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex);
 
-    static bool isReady(const core::device::DeviceID &deviceID, const Handle &handle);
+    static bool isReady(const Handle &deviceID, const Handle &handle);
 
-    static void waitForReady(const core::device::DeviceID &deviceID, const Handle &handle);
+    static void waitForReady(const Handle &deviceID, const Handle &handle);
 
-    static StarBuffers::Buffer &getBuffer(const core::device::DeviceID &deviceID, const Handle &handle);
+    static StarBuffers::Buffer &getBuffer(const Handle &deviceID, const Handle &handle);
 
-    static StarTextures::Texture &getTexture(const core::device::DeviceID &deviceID, const Handle &handle);
+    static StarTextures::Texture &getTexture(const Handle &deviceID, const Handle &handle);
 
-    static void cleanup(const core::device::DeviceID &deviceID, core::device::StarDevice &device);
+    static void cleanup(const Handle &deviceID, core::device::StarDevice &device);
 
-    template <typename T>
-    static FinalizedResourceRequest<T> *get(const core::device::DeviceID &deviceID, const Handle &handle)
+    template <typename T> static FinalizedResourceRequest<T> *get(const Handle &deviceID, const Handle &handle)
     {
         if constexpr (std::is_same_v<T, StarTextures::Texture>)
         {
@@ -111,17 +108,20 @@ class ManagerRenderResource : public StarManager
     }
 
   protected:
-    static std::unordered_map<core::device::DeviceID, std::shared_ptr<core::device::StarDevice>> devices;
+    static std::unordered_map<Handle, std::shared_ptr<core::device::StarDevice>, star::HandleHash> devices;
     static std::unordered_map<
-        core::device::DeviceID,
+        Handle,
         std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
-                                                     star::Handle_Type::texture, 50>>>
+                                                     star::Handle_Type::texture, 50>>,
+        star::HandleHash>
         textureStorage;
-    static std::unordered_map<core::device::DeviceID,
+    static std::unordered_map<Handle,
                               std::unique_ptr<core::ManagedHandleContainer<
-                                  FinalizedResourceRequest<star::StarBuffers::Buffer>, star::Handle_Type::buffer, 100>>>
+                                  FinalizedResourceRequest<star::StarBuffers::Buffer>, star::Handle_Type::buffer, 100>>,
+                              star::HandleHash>
         bufferStorage;
 
-    static std::unordered_map<core::device::DeviceID, std::set<boost::atomic<bool> *>> highPriorityRequestCompleteFlags;
+    static std::unordered_map<Handle, std::set<boost::atomic<bool> *>, star::HandleHash>
+        highPriorityRequestCompleteFlags;
 };
 } // namespace star

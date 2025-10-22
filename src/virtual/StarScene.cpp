@@ -3,14 +3,14 @@
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
 
-star::StarScene::StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
+star::StarScene::StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
                            std::shared_ptr<StarCamera> camera,
                            std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer)
     : m_presentationRenderer(presentationRenderer), m_camera(camera)
 {
 }
 
-star::StarScene::StarScene(const core::device::DeviceID &deviceID, const uint8_t &numFramesInFlight,
+star::StarScene::StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
                            std::shared_ptr<StarCamera> camera,
                            std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer,
                            std::vector<std::shared_ptr<core::renderer::Renderer>> renderers)

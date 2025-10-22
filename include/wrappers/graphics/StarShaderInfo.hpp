@@ -100,9 +100,9 @@ class StarShaderInfo
 
         void add(const ShaderInfo &shaderInfo);
 
-        void buildIndex(const core::device::DeviceID &deviceID, const int &index);
+        void buildIndex(const star::Handle &deviceID, const int &index);
 
-        void build(const core::device::DeviceID &deviceID);
+        void build(const star::Handle &deviceID);
 
         vk::DescriptorSet getDescriptorSet();
 
@@ -128,7 +128,7 @@ class StarShaderInfo
         std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>();
 
   public:
-    StarShaderInfo(core::device::DeviceID deviceID, core::device::StarDevice &device,
+    StarShaderInfo(Handle deviceID, core::device::StarDevice &device,
                    const std::vector<std::shared_ptr<StarDescriptorSetLayout>> &layouts,
                    const std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> &shaderInfoSets)
         : m_deviceID(deviceID), layouts(layouts), shaderInfoSets(shaderInfoSets) {};
@@ -146,7 +146,7 @@ class StarShaderInfo
     class Builder
     {
       public:
-        Builder(core::device::DeviceID deviceID, core::device::StarDevice &device, const int numFramesInFlight)
+        Builder(Handle deviceID, core::device::StarDevice &device, const int numFramesInFlight)
             : m_deviceID(deviceID), device(device), sets(numFramesInFlight) {};
 
         Builder &addSetLayout(std::shared_ptr<StarDescriptorSetLayout> layout)
@@ -225,7 +225,7 @@ class StarShaderInfo
         };
 
       private:
-        core::device::DeviceID m_deviceID;
+       star::Handle m_deviceID;
         core::device::StarDevice &device;
         std::vector<std::shared_ptr<ShaderInfoSet>> *activeSet = nullptr;
 
@@ -236,6 +236,6 @@ class StarShaderInfo
     };
 
   private:
-    core::device::DeviceID m_deviceID;
+   star::Handle m_deviceID;
 };
 } // namespace star

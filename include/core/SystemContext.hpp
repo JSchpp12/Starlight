@@ -1,9 +1,10 @@
 #pragma once
 
-#include "core/device/DeviceContext.hpp"
+#include "LinearHandleContainer.hpp"
 #include "RenderingInstance.hpp"
 #include "RenderingSurface.hpp"
 #include "StarWindow.hpp"
+#include "core/device/DeviceContext.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -14,14 +15,13 @@ class SystemContext
   public:
     SystemContext(RenderingInstance &&renderingInstance);
 
-    void createDevice(const device::DeviceID &deviceID, const uint64_t &frameIndex, const uint8_t &numOfFramesInFlight, std::set<star::Rendering_Features> requiredFeatures,
-                      StarWindow &window, const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
-
-    device::DeviceContext &getContext()
+    void createDevice(const Handle &deviceID, const uint64_t &frameIndex, const uint8_t &numOfFramesInFlight,
+                      std::set<star::Rendering_Features> requiredFeatures, StarWindow &window,
+                      const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
+                      
+    device::DeviceContext &getContext(const Handle &handle)
     {
-        assert(m_deviceInfos.size() > 0 && "No devices have been added to the manager yet");
-
-        return m_deviceInfos.front();
+        return m_contexts.get(handle);
     }
     RenderingInstance &getRenderingInstance()
     {
@@ -30,6 +30,7 @@ class SystemContext
 
   private:
     RenderingInstance m_instance;
-    std::vector<device::DeviceContext> m_deviceInfos = std::vector<device::DeviceContext>();
+    LinearHandleContainer<device::DeviceContext, Handle_Type::device, 1> m_contexts =
+        LinearHandleContainer<device::DeviceContext, Handle_Type::device, 1>();
 };
 } // namespace star::core
