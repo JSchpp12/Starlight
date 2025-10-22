@@ -113,8 +113,8 @@ star::core::device::manager::ManagerCommandBuffer::Request star::core::renderer:
     getCommandBufferRequest()
 {
     return core::device::manager::ManagerCommandBuffer::Request{
-        .recordBufferCallback =
-            std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+        .recordBufferCallback = std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1,
+                                          std::placeholders::_2, std::placeholders::_3),
         .order = Command_Buffer_Order::main_render_pass,
         .orderIndex = 0,
         .type = Queue_Type::Tgraphics,
@@ -123,8 +123,9 @@ star::core::device::manager::ManagerCommandBuffer::Request star::core::renderer:
         .recordOnce = false,
         .beforeBufferSubmissionCallback =
             std::bind(&SwapChainRenderer::prepareForSubmission, this, std::placeholders::_1),
-        .overrideBufferSubmissionCallback = std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1,
-                                                      std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)};
+        .overrideBufferSubmissionCallback =
+            std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)};
 }
 
 vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceFormat(
@@ -381,7 +382,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         // device.endSingleTimeCommands(buffer);
         auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 
-        vk::ImageMemoryBarrier2 barrier{}; 
+        vk::ImageMemoryBarrier2 barrier{};
         barrier.sType = vk::StructureType::eImageMemoryBarrier2;
         barrier.oldLayout = vk::ImageLayout::eUndefined;
         barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
@@ -392,7 +393,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         barrier.srcAccessMask = vk::AccessFlagBits2::eNone;
         barrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe);
         barrier.dstAccessMask = vk::AccessFlagBits2::eNone;
-        barrier.setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput); 
+        barrier.setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
 
         barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
         barrier.subresourceRange.baseMipLevel = 0; // image does not have any mipmap levels
@@ -401,10 +402,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         barrier.subresourceRange.layerCount = 1;
 
         oneTimeSetup->buffer().pipelineBarrier2(
-            vk::DependencyInfo()
-                .setPImageMemoryBarriers(&barrier)
-                .setImageMemoryBarrierCount(1)
-        );
+            vk::DependencyInfo().setPImageMemoryBarriers(&barrier).setImageMemoryBarrierCount(1));
 
         // oneTimeSetup->buffer().pipelineBarrier(
         //     vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
@@ -434,43 +432,38 @@ vk::RenderingAttachmentInfo star::core::renderer::SwapChainRenderer::prepareDyna
 }
 
 void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer,
-                                                                  const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
+                                                                  const uint8_t &frameInFlightIndex,
+                                                                  const uint64_t &frameIndex)
 {
-    // transition image layout
-    vk::ImageMemoryBarrier setupBarrier{};
-    setupBarrier.sType = vk::StructureType::eImageMemoryBarrier;
-    setupBarrier.oldLayout = vk::ImageLayout::ePresentSrcKHR;
-    setupBarrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
-    setupBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-    setupBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-    setupBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-    setupBarrier.srcAccessMask = vk::AccessFlagBits::eNone;
-    setupBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-    setupBarrier.subresourceRange.baseMipLevel = 0;
-    setupBarrier.subresourceRange.levelCount = 1;
-    setupBarrier.subresourceRange.baseArrayLayer = 0;
-    setupBarrier.subresourceRange.layerCount = 1;
-    setupBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage();
 
-    commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput, {},
-                                  {}, nullptr, setupBarrier);
+    auto barriers = std::vector<vk::ImageMemoryBarrier2>{
+        vk::ImageMemoryBarrier2()
+            .setOldLayout(vk::ImageLayout::ePresentSrcKHR)
+            .setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+            .setSubresourceRange(
+                vk::ImageSubresourceRange().setAspectMask(vk::ImageAspectFlagBits::eColor).setBaseMipLevel(0).setLevelCount(1).setBaseArrayLayer(0).setLayerCount(1))
+            .setImage(this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage())
+            .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+            .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+            .setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite),
+        vk::ImageMemoryBarrier2()
+            .setOldLayout(vk::ImageLayout::eColorAttachmentOptimal)
+            .setNewLayout(vk::ImageLayout::ePresentSrcKHR)
+            .setSubresourceRange(
+                vk::ImageSubresourceRange().setAspectMask(vk::ImageAspectFlagBits::eColor).setBaseMipLevel(0).setLevelCount(1).setBaseArrayLayer(0).setLayerCount(1))
+            .setImage(this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage())
+            .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+            .setSrcAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eBottomOfPipe)
+            .setDstAccessMask(vk::AccessFlagBits2::eNone)
+    };
 
-    ////for presentation will need to change layout of the image to presentation
-    vk::ImageMemoryBarrier presentBarrier{};
-    presentBarrier.sType = vk::StructureType::eImageMemoryBarrier;
-    presentBarrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
-    presentBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
-    presentBarrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-    presentBarrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-    presentBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage();
-    presentBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-    presentBarrier.subresourceRange.baseMipLevel = 0;
-    presentBarrier.subresourceRange.levelCount = 1;
-    presentBarrier.subresourceRange.baseArrayLayer = 0;
-    presentBarrier.subresourceRange.layerCount = 1;
-
-    commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader,
-                                  vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, nullptr, presentBarrier);
+    commandBuffer.pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarrierCount(2).setPImageMemoryBarriers(barriers.data())); 
 
     this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex, frameIndex);
 }
