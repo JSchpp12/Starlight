@@ -50,7 +50,8 @@ class ManagerRenderResource : public StarManager
         {
         }
 
-        void cleanup(){
+        void cleanup()
+        {
             resource.reset();
         }
     };
@@ -58,13 +59,18 @@ class ManagerRenderResource : public StarManager
     static void init(core::device::DeviceID deviceID, std::shared_ptr<core::device::StarDevice> device,
                      std::shared_ptr<job::TransferWorker> worker, const int &totalNumFramesInFlight);
 
-    static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore, const bool &isHighPriority = false);
+    static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
+                             const bool &isHighPriority = false);
 
     static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
-                             std::unique_ptr<TransferRequest::Buffer> newRequest, const bool &isHighPriority = false);
+                             std::unique_ptr<TransferRequest::Buffer> newRequest,
+                             vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
+                             const bool &isHighPriority = false);
 
     static Handle addRequest(const core::device::DeviceID &deviceID, vk::Semaphore resourceSemaphore,
-                             std::unique_ptr<TransferRequest::Texture> newRequest, const bool &isHighPriorirty = false);
+                             std::unique_ptr<TransferRequest::Texture> newRequest,
+                             vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
+                             const bool &isHighPriorirty = false);
 
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
@@ -109,11 +115,11 @@ class ManagerRenderResource : public StarManager
     static std::unordered_map<
         core::device::DeviceID,
         std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
-                                              star::Handle_Type::texture, 50>>>
+                                                     star::Handle_Type::texture, 50>>>
         textureStorage;
     static std::unordered_map<core::device::DeviceID,
-                              std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
-                                                                    star::Handle_Type::buffer, 100>>>
+                              std::unique_ptr<core::ManagedHandleContainer<
+                                  FinalizedResourceRequest<star::StarBuffers::Buffer>, star::Handle_Type::buffer, 100>>>
         bufferStorage;
 
     static std::unordered_map<core::device::DeviceID, std::set<boost::atomic<bool> *>> highPriorityRequestCompleteFlags;

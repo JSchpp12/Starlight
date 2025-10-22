@@ -2,7 +2,7 @@
 
 #include "CastHelpers.hpp"
 #include "DescriptorModifier.hpp"
-#include "DeviceContext.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "Enums.hpp"
 #include "Handle.hpp"
 #include "Light.hpp"

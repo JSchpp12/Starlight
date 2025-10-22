@@ -425,7 +425,7 @@ void Renderer::updateDependentData(star::core::device::DeviceContext &context, c
     if (m_infoManagerCamera && m_infoManagerCamera->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
     {
         record.oneTimeWaitSemaphores.insert(
-            std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eVertexShader));
+            std::make_pair(std::move(dataSemaphore), vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader));
         updateCamera = true;
     }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DeviceContext.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "Renderer.hpp"
 
 #include <memory>

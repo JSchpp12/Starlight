@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DeviceContext.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "RenderingInstance.hpp"
 #include "RenderingSurface.hpp"
 #include "StarWindow.hpp"

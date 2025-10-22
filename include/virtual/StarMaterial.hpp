@@ -1,20 +1,21 @@
 #pragma once
 
 #include "DescriptorModifier.hpp"
-#include "DeviceContext.hpp"
 #include "RenderResourceModifier.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
+#include "core/device/DeviceContext.hpp"
 
 #include <vulkan/vulkan.hpp>
 
 #include <glm/glm.hpp>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <set>
+
 
 namespace star
 {
@@ -55,9 +56,10 @@ class StarMaterial
     virtual void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &frameBuilder) const = 0;
 
     virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
-      const int &numFramesInFlight) const;
+        const int &numFramesInFlight) const;
 
-    std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> getDataSemaphores(const uint8_t &frameInFlightIndex) const; 
+    std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> getDataSemaphores(
+        const uint8_t &frameInFlightIndex) const;
 
   protected:
     std::unique_ptr<StarShaderInfo> shaderInfo;

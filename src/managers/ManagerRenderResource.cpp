@@ -9,11 +9,11 @@ std::unordered_map<star::core::device::DeviceID, std::set<boost::atomic<bool> *>
 auto star::ManagerRenderResource::bufferStorage =
     std::unordered_map<core::device::DeviceID,
                        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
-                                                             star::Handle_Type::buffer, 100>>>();
+                                                                    star::Handle_Type::buffer, 100>>>();
 auto star::ManagerRenderResource::textureStorage =
     std::unordered_map<core::device::DeviceID,
-                       std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
-                                                             star::Handle_Type::texture, 50>>>();
+                       std::unique_ptr<core::ManagedHandleContainer<
+                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 50>>>();
 
 void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
                                        std::shared_ptr<star::core::device::StarDevice> device,
@@ -22,10 +22,10 @@ void star::ManagerRenderResource::init(core::device::DeviceID deviceID,
     devices.insert(std::make_pair(deviceID, std::move(device)));
     bufferStorage.insert(std::make_pair(
         deviceID, std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
-                                                         star::Handle_Type::buffer, 100>>()));
+                                                                star::Handle_Type::buffer, 100>>()));
     textureStorage.insert(std::make_pair(
         deviceID, std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
-                                                         star::Handle_Type::texture, 50>>()));
+                                                                star::Handle_Type::texture, 50>>()));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
 
@@ -40,12 +40,13 @@ star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceI
 
     bufferStorage.at(deviceID)->get(newBufferHandle).cpuWorkDoneByTransferThread.store(true);
 
-    return newBufferHandle; 
+    return newBufferHandle;
 }
 
 star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceID &deviceID,
                                                      vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Buffer> newRequest,
+                                                     vk::Semaphore *consumingQueueCompleteSemaphore,
                                                      const bool &isHighPriority)
 {
     assert(devices.contains(deviceID) && "Device has not been properly initialized");
@@ -67,6 +68,7 @@ star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceI
 star::Handle star::ManagerRenderResource::addRequest(const core::device::DeviceID &deviceID,
                                                      vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Texture> newRequest,
+                                                     vk::Semaphore *consumingQueueCompleteSemaphore,
                                                      const bool &isHighPriority)
 {
     Handle newHandle = textureStorage.at(deviceID)->insert(
@@ -188,10 +190,10 @@ star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const core:
 
 void star::ManagerRenderResource::cleanup(const core::device::DeviceID &deviceID, core::device::StarDevice &device)
 {
-    bufferStorage.at(deviceID)->cleanupAll(&device); 
+    bufferStorage.at(deviceID)->cleanupAll(&device);
     bufferStorage.at(deviceID).reset();
-    textureStorage.at(deviceID)->cleanupAll(&device); 
-    textureStorage.at(deviceID).reset(); 
+    textureStorage.at(deviceID)->cleanupAll(&device);
+    textureStorage.at(deviceID).reset();
 
     devices.at(deviceID).reset();
     managerWorker.reset();

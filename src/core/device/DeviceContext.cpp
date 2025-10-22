@@ -1,4 +1,4 @@
-#include "DeviceContext.hpp"
+#include "core/device/DeviceContext.hpp"
 
 #include <cassert>
 
@@ -6,7 +6,7 @@ star::core::device::DeviceContext::DeviceContext(
     const uint8_t &numFramesInFlight, const DeviceID &deviceID, RenderingInstance &instance,
     std::set<Rendering_Features> requiredFeatures, StarWindow &window,
     const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
-    : m_deviceID(deviceID), m_surface(RenderingSurface(instance, window)),
+    : m_frameInFlightTrackingInfo(std::vector<FrameInFlightTracking>(numFramesInFlight)), m_deviceID(deviceID), m_surface(RenderingSurface(instance, window)),
       m_device(
           std::make_shared<StarDevice>(window, m_surface, instance, requiredFeatures, requiredRenderingDeviceFeatures)),
       m_commandBufferManager(std::make_unique<manager::ManagerCommandBuffer>(*m_device, numFramesInFlight)),
@@ -62,10 +62,13 @@ void star::core::device::DeviceContext::waitIdle(){
     m_device->getVulkanDevice().waitIdle(); 
 }
 
-void star::core::device::DeviceContext::prepareForNextFrame()
+void star::core::device::DeviceContext::prepareForNextFrame(const uint8_t &frameInFlightIndex)
 {
+    assert(frameInFlightIndex < m_frameInFlightTrackingInfo.size());
+
     handleCompleteMessages();
 
+    m_frameInFlightTrackingInfo[frameInFlightIndex].numOfTimesFrameProcessed++;
     m_frameCounter++;
 }
 

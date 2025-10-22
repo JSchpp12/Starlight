@@ -11,6 +11,7 @@
 #include "device/managers/Pipeline.hpp"
 #include "device/system/EventBus.hpp"
 #include "tasks/task_factory/TaskFactory.hpp"
+#include "core/device/FrameInFlightTracking.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -67,7 +68,8 @@ class DeviceContext
 
     ~DeviceContext();
     DeviceContext(DeviceContext &&other)
-        : m_deviceID(std::move(other.m_deviceID)), m_surface(std::move(other.m_surface)),
+        : m_frameInFlightTrackingInfo(std::move(other.m_frameInFlightTrackingInfo)),
+          m_deviceID(std::move(other.m_deviceID)), m_surface(std::move(other.m_surface)),
           m_device(std::move(other.m_device)), m_eventBus(std::move(other.m_eventBus)),
           m_taskManager(std::move(other.m_taskManager)), m_graphicsManagers(std::move(other.m_graphicsManagers)),
           m_commandBufferManager(std::move(other.m_commandBufferManager)),
@@ -80,6 +82,8 @@ class DeviceContext
     {
         if (this != &other)
         {
+            m_frameInFlightTrackingInfo = std::move(other.m_frameInFlightTrackingInfo);
+            m_frameCounter = std::move(other.m_frameCounter);
             m_deviceID = std::move(other.m_deviceID);
             m_surface = std::move(other.m_surface);
             m_device = std::move(other.m_device);
@@ -101,7 +105,7 @@ class DeviceContext
 
     void waitIdle();
 
-    void prepareForNextFrame();
+    void prepareForNextFrame(const uint8_t &frameInFlightIndex);
 
     inline StarDevice &getDevice()
     {
@@ -164,13 +168,20 @@ class DeviceContext
         return m_surface;
     }
 
-    const uint64_t &getCurrentFrameIndex() const{
-        return m_frameCounter; 
+    const uint64_t &getCurrentFrameIndex() const
+    {
+        return m_frameCounter;
+    }
+
+    const FrameInFlightTracking &getFrameInFlightTracking(const uint8_t &frameInFlightIndex) const
+    {
+        return m_frameInFlightTrackingInfo[frameInFlightIndex];
     }
 
   private:
     bool m_ownsResources = true;
     uint64_t m_frameCounter = 0;
+    std::vector<FrameInFlightTracking> m_frameInFlightTrackingInfo;
     DeviceID m_deviceID;
     RenderingSurface m_surface;
     std::shared_ptr<StarDevice> m_device;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DeviceContext.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarTextures/Texture.hpp"

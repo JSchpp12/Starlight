@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CastHelpers.hpp"
-#include "DeviceContext.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "GeometryHelpers.hpp"
 #include "Handle.hpp"
 #include "StarCommandBuffer.hpp"

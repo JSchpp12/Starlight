@@ -120,7 +120,7 @@ void StarEngine::run()
         frameInFlightIndex = currentScene->getPresentationRenderer()->getFrameToBeDrawn();
 
         // check if any new objects have been added
-        deviceManager.getContext().prepareForNextFrame(); 
+        deviceManager.getContext().prepareForNextFrame(frameInFlightIndex); 
 
         RenderResourceSystem::runInits(deviceManager.getContext(), numFramesInFlight, this->window->getExtent());
         descriptorManager.update(numFramesInFlight);
@@ -135,8 +135,6 @@ void StarEngine::run()
             deviceManager.getContext().getManagerCommandBuffer().update(frameInFlightIndex, deviceManager.getContext().getCurrentFrameIndex());
         currentScene->getPresentationRenderer()->submitPresentation(frameInFlightIndex, &allBuffersSubmitted);
         this->deviceManager.getContext().getTransferWorker().update();
-
-        frameCounter++;
     }
 
     deviceManager.getContext().waitIdle(); 

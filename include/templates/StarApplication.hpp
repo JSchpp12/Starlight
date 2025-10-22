@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/DeviceContext.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "Interactivity.hpp"
 #include "StarScene.hpp"
 #include "core/renderer/SwapChainRenderer.hpp"
