@@ -3,6 +3,7 @@
 #include "Handle.hpp"
 #include "StarCommandBuffer.hpp"
 #include "core/device/DeviceContext.hpp"
+#include "core/device/system/event/ManagerRequest.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -33,7 +34,11 @@ template <typename TTransferType, typename TDataType> class Controller
 
         for (uint8_t i = 0; i < numFramesInFlight; i++)
         {
-            const auto semaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+            Handle semaphore;
+            context.getEventBus().emit(
+                core::device::system::event::ManagerRequest<core::device::manager::SemaphoreRequest>(
+                    semaphore, core::device::manager::SemaphoreRequest{false}));
+
             m_resourceHandles[i] = context.getManagerRenderResource().addRequest(
                 context.getDeviceID(), context.getSemaphoreManager().get(semaphore)->semaphore, true);
         }
@@ -72,7 +77,7 @@ template <typename TTransferType, typename TDataType> class Controller
     std::vector<Handle> m_resourceHandles = std::vector<Handle>();
 
     virtual std::unique_ptr<TTransferType> createTransferRequest(core::device::StarDevice &device,
-                                                     const uint8_t &frameInFlightIndex) = 0;
+                                                                 const uint8_t &frameInFlightIndex) = 0;
 
     bool hasAlreadyBeenUpdatedThisFrame(const uint64_t &currentFrameCount) const
     {

@@ -37,9 +37,9 @@ class DeviceContext
         StarDevice &m_device;
         manager::ManagerCommandBuffer &m_manager;
     };
-    template <typename TManager, typename TRequest, typename TRecord> struct ManagerWrapper
+    template <typename TManager, typename TRequest, typename TRecord> struct TaskManagerWrapper
     {
-        ManagerWrapper(TManager &manager, DeviceContext &context)
+        TaskManagerWrapper(TManager &manager, DeviceContext &context)
             : manager(manager), device(*context.m_device), taskManager(context.m_taskManager),
               eventBus(context.m_eventBus)
         {
@@ -47,7 +47,7 @@ class DeviceContext
 
         Handle submit(TRequest request)
         {
-            return manager.submit(device, taskManager, eventBus, std::move(request));
+            return manager.submit(device, std::move(request), taskManager, eventBus);
         }
 
         TRecord *get(const Handle &handle)
@@ -60,6 +60,26 @@ class DeviceContext
         job::TaskManager &taskManager;
         system::EventBus &eventBus;
     };
+    template <typename TManager, typename TRequest, typename TRecord> struct ManagerWrapper
+    {
+        ManagerWrapper(TManager &manager, DeviceContext &context) : manager(manager), device(*context.m_device)
+        {
+        }
+
+        Handle submit(TRequest request)
+        {
+            return manager.submit(device, std::move(request));
+        }
+
+        TRecord *get(const Handle &handle)
+        {
+            return manager.get(handle);
+        }
+
+        TManager &manager;
+        device::StarDevice &device;
+    };
+
     DeviceContext() = default;
 
     ~DeviceContext();
@@ -89,7 +109,8 @@ class DeviceContext
             m_graphicsManagers = std::move(other.m_graphicsManagers);
             m_transferWorker = std::move(other.m_transferWorker);
             m_renderResourceManager = std::move(other.m_renderResourceManager);
-            if (other.m_ownsResources){
+            if (other.m_ownsResources)
+            {
                 m_ownsResources = std::move(other.m_ownsResources);
             }
 
@@ -114,6 +135,11 @@ class DeviceContext
         return *m_device;
     }
 
+    core::device::system::EventBus &getEventBus()
+    {
+        return m_eventBus;
+    }
+
     job::TaskManager &getManager()
     {
         return m_taskManager;
@@ -133,22 +159,22 @@ class DeviceContext
         return *m_renderResourceManager;
     }
 
-    ManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord> getShaderManager()
+    TaskManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord> getShaderManager()
     {
-        return ManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord>{
+        return TaskManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord>{
             m_graphicsManagers.shaderManager, *this};
     }
 
-    ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord> getPipelineManager()
+    TaskManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord> getPipelineManager()
     {
-        return ManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord>(
+        return TaskManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord>(
             m_graphicsManagers.pipelineManager, *this);
     }
 
-    ManagerWrapper<manager::Semaphore, manager::SemaphoreRequest, manager::SemaphoreRecord> getSemaphoreManager()
+    ManagerWrapper<manager::Semaphore &, manager::SemaphoreRequest, manager::SemaphoreRecord> getSemaphoreManager()
     {
-        return ManagerWrapper<manager::Semaphore, manager::SemaphoreRequest, manager::SemaphoreRecord>(
-            m_graphicsManagers.semaphoreManager, *this);
+        return ManagerWrapper<manager::Semaphore &, manager::SemaphoreRequest, manager::SemaphoreRecord>(
+            *m_graphicsManagers.semaphoreManager, *this);
     }
 
     job::TransferWorker &getTransferWorker()

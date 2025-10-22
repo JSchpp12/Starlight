@@ -23,8 +23,7 @@ template <typename TRecord, typename TResourceRequest, star::Handle_Type THandle
 class Manager
 {
   public:
-    virtual Handle submit(device::StarDevice &device, job::TaskManager &taskSystem, system::EventBus &eventBus,
-                          TResourceRequest resource)
+    virtual Handle submit(device::StarDevice &device, TResourceRequest resource)
     {
         return insert(device, std::move(resource));
     }

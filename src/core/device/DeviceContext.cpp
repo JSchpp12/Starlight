@@ -9,7 +9,7 @@ star::core::device::DeviceContext::~DeviceContext()
         m_taskManager.stopAll();
         m_graphicsManagers.pipelineManager.cleanupRender(*m_device);
         m_graphicsManagers.shaderManager.cleanupRender(*m_device);
-        m_graphicsManagers.semaphoreManager.cleanupRender(*m_device);
+        m_graphicsManagers.semaphoreManager->cleanupRender(*m_device);
         m_commandBufferManager->cleanup(*m_device);
 
         ManagerRenderResource::cleanup(m_deviceID, *m_device);
@@ -31,6 +31,8 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8
     m_renderResourceManager = std::make_unique<ManagerRenderResource>(); 
 
     initWorkers(numFramesInFlight); 
+
+    m_graphicsManagers.init(m_device, m_eventBus); 
    
     m_ownsResources = true; 
 }

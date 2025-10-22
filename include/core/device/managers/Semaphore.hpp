@@ -1,9 +1,8 @@
 #pragma once
 
 #include "core/device/system/EventBus.hpp"
-#include "core/device/system/event/CreateSemaphore.hpp"
+#include "core/device/system/event/ManagerRequest.hpp"
 #include "device/managers/Manager.hpp"
-
 
 namespace star::core::device::manager
 {
@@ -26,10 +25,30 @@ struct SemaphoreRecord
     }
 };
 
-class Semaphore : public Manager<SemaphoreRecord, SemaphoreRequest, Handle_Type::semaphore, 200>
+class Semaphore : public Manager<SemaphoreRecord, SemaphoreRequest, Handle_Type::semaphore, 200>,
+                  public std::enable_shared_from_this<Semaphore>
 {
+  public:
+    void init(std::shared_ptr<device::StarDevice> device, core::device::system::EventBus &bus)
+    {
+        m_device = std::move(device); 
+
+        auto weakSelf = weak_from_this();
+        bus.subscribe<core::device::system::event::ManagerRequest<SemaphoreRequest>>(
+            [weakSelf](const core::device::system::EventBase &e, bool &keepAlive) {
+                if (auto self = weakSelf.lock()){
+                    const auto &semaphoreEvent = static_cast<const core::device::system::event::ManagerRequest<SemaphoreRequest>&>(e);
+                    auto handle = self->insert(*self->m_device, semaphoreEvent.giveMeRequest()); 
+
+                    semaphoreEvent.getResultingHandle() = handle;
+                }
+
+                keepAlive = true; 
+            });
+    }
+
   protected:
-    SemaphoreRecord createRecord(device::StarDevice & device, SemaphoreRequest && request) const override
+    SemaphoreRecord createRecord(device::StarDevice &device, SemaphoreRequest &&request) const override
     {
         return SemaphoreRecord{.semaphore = CreateSemaphore(device, request.isTimelineSemaphore),
                                .isTimelineSemaphore = request.isTimelineSemaphore};
