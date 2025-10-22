@@ -76,7 +76,7 @@ class StarObject : private DescriptorModifier
 
     /// Function to contain any commands to be submitted before the start of the rendering pass this object is contained
     /// in begins
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) {};
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex);
 
     /// Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
     virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) {};

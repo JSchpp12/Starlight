@@ -488,7 +488,7 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8
     vk::Viewport viewport = this->prepareRenderingViewport();
     commandBuffer.setViewport(0, viewport);
 
-    recordPreRenderingCalls(commandBuffer, frameInFlightIndex);
+    recordPreRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
 
     recordCommandBufferDependencies(commandBuffer, frameInFlightIndex, frameIndex); 
 
@@ -602,11 +602,11 @@ vk::Viewport Renderer::prepareRenderingViewport()
     return viewport;
 }
 
-void Renderer::recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void Renderer::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
 {
     for (auto &group : this->renderGroups)
     {
-        group->recordPreRenderPassCommands(commandBuffer, frameInFlightIndex);
+        group->recordPreRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
     }
 }
 

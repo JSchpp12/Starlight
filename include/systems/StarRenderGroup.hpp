@@ -62,7 +62,7 @@ class StarRenderGroup
 
     virtual void recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &swapChainImageIndex, const uint64_t &frameIndex);
 
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const int &swapChainImageIndex);
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &swapChainImageIndex, const uint64_t &frameIndex);
 
     virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
 

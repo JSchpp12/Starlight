@@ -191,7 +191,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
     std::vector<vk::BufferMemoryBarrier2> getMemoryBarriersForThisFrame(const uint8_t &frameInFlightIndex, const uint64_t &frameIndex); 
 
-    void recordPreRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+    void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex);
 
     void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex);
 

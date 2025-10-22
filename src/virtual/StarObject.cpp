@@ -216,6 +216,16 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->request.pipeline};
 }
 
+void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &swapChainIndexNum,
+                                                   const uint64_t &frameIndex)
+{
+    if (!isKnownToBeReadyForRecordRender(swapChainIndexNum)){
+        return;
+    }
+
+    recordDependentDataPipelineBarriers(commandBuffer, swapChainIndexNum, frameIndex);
+}
+
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
                                                 const uint8_t &swapChainIndexNum, const uint64_t &frameIndex)
 {
@@ -226,7 +236,6 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
 
     assert(renderingContext.pipeline != nullptr && "Pipeline needs to be included in creating the rendering context");
 
-    recordDependentDataPipelineBarriers(commandBuffer, swapChainIndexNum, frameIndex);
     renderingContext.pipeline->bind(commandBuffer);
 
     for (auto &rmesh : this->meshes)
@@ -485,7 +494,7 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
 
     if (updateInstanceModel)
     {
-        addControllerInfoToRenderingContext(context, frameInFlightIndex, m_instanceInfo.m_infoManagerInstanceNormal); 
+        addControllerInfoToRenderingContext(context, frameInFlightIndex, m_instanceInfo.m_infoManagerInstanceNormal);
     }
 }
 

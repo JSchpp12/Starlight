@@ -382,7 +382,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 
         vk::ImageMemoryBarrier2 barrier{}; 
-        barrier.sType = vk::StructureType::eImageMemoryBarrier;
+        barrier.sType = vk::StructureType::eImageMemoryBarrier2;
         barrier.oldLayout = vk::ImageLayout::eUndefined;
         barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
         barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
@@ -452,7 +452,7 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
     setupBarrier.subresourceRange.layerCount = 1;
     setupBarrier.image = this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage();
 
-    commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eVertexShader, {},
+    commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput, {},
                                   {}, nullptr, setupBarrier);
 
     ////for presentation will need to change layout of the image to presentation
