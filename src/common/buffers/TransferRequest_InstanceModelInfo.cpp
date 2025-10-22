@@ -28,7 +28,6 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelI
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelInfo::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
-
     std::vector<uint32_t> indices = {this->graphicsQueueFamilyIndex};
 	for (auto &index : transferQueueFamilyIndex)
 		indices.push_back(index);
@@ -59,7 +58,8 @@ void star::TransferRequest::InstanceModelInfo::writeDataToStageBuffer(star::Star
 {
     void *mapped = nullptr;
     buffer.map(&mapped);
-    for (int i = 0; i < this->displayMatrixInfo.size(); ++i)
+
+    for (size_t i = 0; i < this->displayMatrixInfo.size(); ++i)
     {
         glm::mat4 info = glm::mat4(this->displayMatrixInfo[i]);
         buffer.writeToIndex(&info, mapped, i);

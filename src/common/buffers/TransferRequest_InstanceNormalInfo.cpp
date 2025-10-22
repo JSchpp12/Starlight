@@ -29,8 +29,8 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices = {this->graphicsQueueFamilyIndex};
-	for (const auto &queueFamilyIndex : transferQueueFamilyIndex)
-		indices.push_back(queueFamilyIndex);
+    for (const auto &queueFamilyIndex : transferQueueFamilyIndex)
+        indices.push_back(queueFamilyIndex);
 
     const vk::DeviceSize alignmentSize =
         StarBuffers::Buffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
@@ -59,13 +59,11 @@ void star::TransferRequest::InstanceNormalInfo::writeDataToStageBuffer(star::Sta
     void *mapped = nullptr;
     buffer.map(&mapped);
 
-    std::vector<glm::mat4> inverseTranspose = std::vector<glm::mat4>(this->normalMatrixInfo.size());
-
-    for (int i = 0; i < this->normalMatrixInfo.size(); i++)
+    for (size_t i = 0; i < this->normalMatrixInfo.size(); i++)
     {
-        inverseTranspose[i] = glm::inverse(glm::transpose(this->normalMatrixInfo[i]));
+        glm::mat4 inverseTranspose = glm::inverse(glm::transpose(this->normalMatrixInfo[i]));
+        buffer.writeToIndex(&inverseTranspose, mapped, i);
     }
 
-    buffer.writeToBuffer(mapped, inverseTranspose.data());
     buffer.unmap();
 }
