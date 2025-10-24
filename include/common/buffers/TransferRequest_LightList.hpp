@@ -26,7 +26,7 @@ class LightList : public Buffer
     LightList(const std::vector<std::shared_ptr<Light>> &lights, const uint32_t &graphicsQueueFamilyIndex)
         : graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
     {
-        for (int i = 0; i < lights.size(); ++i)
+        for (size_t i = 0; i < lights.size(); ++i)
         {
             myLights.push_back(Light(*lights[i].get()));
         }

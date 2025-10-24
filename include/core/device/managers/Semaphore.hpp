@@ -29,21 +29,25 @@ class Semaphore : public Manager<SemaphoreRecord, SemaphoreRequest, Handle_Type:
                   public std::enable_shared_from_this<Semaphore>
 {
   public:
+    virtual ~Semaphore() = default;
+
     void init(std::shared_ptr<device::StarDevice> device, core::device::system::EventBus &bus)
     {
-        m_device = std::move(device); 
+        m_device = std::move(device);
 
         auto weakSelf = weak_from_this();
         bus.subscribe<core::device::system::event::ManagerRequest<SemaphoreRequest>>(
             [weakSelf](const core::device::system::EventBase &e, bool &keepAlive) {
-                if (auto self = weakSelf.lock()){
-                    const auto &semaphoreEvent = static_cast<const core::device::system::event::ManagerRequest<SemaphoreRequest>&>(e);
-                    auto handle = self->insert(*self->m_device, semaphoreEvent.giveMeRequest()); 
+                if (auto self = weakSelf.lock())
+                {
+                    const auto &semaphoreEvent =
+                        static_cast<const core::device::system::event::ManagerRequest<SemaphoreRequest> &>(e);
+                    auto handle = self->insert(*self->m_device, semaphoreEvent.giveMeRequest());
 
                     semaphoreEvent.getResultingHandle() = handle;
                 }
 
-                keepAlive = true; 
+                keepAlive = true;
             });
     }
 

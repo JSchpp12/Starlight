@@ -71,12 +71,12 @@ class StarCommandBuffer
     /// </summary>
     std::vector<vk::Semaphore> &getCompleteSemaphores();
 
-    vk::CommandBuffer &buffer(int buffIndex = 0)
+    vk::CommandBuffer &buffer(const size_t &buffIndex = 0)
     {
         return this->commandBuffers.at(buffIndex);
     }
 
-    vk::Fence &getFence(const int &bufferIndex)
+    vk::Fence &getFence(const size_t &bufferIndex = 0)
     {
         return this->readyFence.at(bufferIndex);
     }
