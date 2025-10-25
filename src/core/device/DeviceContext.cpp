@@ -21,6 +21,9 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8
                                              const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
 {
     assert(!m_ownsResources && "Dont call init twice"); 
+    assert(deviceID.getType() == Handle_Type::device); 
+    
+    m_deviceID = deviceID; 
 
     m_frameInFlightTrackingInfo.resize(numFramesInFlight); 
 

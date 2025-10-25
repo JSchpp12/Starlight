@@ -8,18 +8,6 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
                                                            const uint8_t &numFramesInFlight,
                                                            std::vector<std::shared_ptr<StarObject>> objects,
                                                            std::vector<std::shared_ptr<Light>> lights,
-                                                           std::vector<Handle> &cameraInfoBuffers,
-                                                           const StarWindow &window)
-    : Renderer(context, numFramesInFlight, lights, cameraInfoBuffers, objects), window(window),
-      numFramesInFlight(numFramesInFlight), device(context)
-{
-    createSwapChain();
-}
-
-star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceContext &context,
-                                                           const uint8_t &numFramesInFlight,
-                                                           std::vector<std::shared_ptr<StarObject>> objects,
-                                                           std::vector<std::shared_ptr<Light>> lights,
                                                            std::shared_ptr<StarCamera> camera, const StarWindow &window)
     : Renderer(context, numFramesInFlight, lights, camera, objects), window(window),
       numFramesInFlight(numFramesInFlight), device(context)

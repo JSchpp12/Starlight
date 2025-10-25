@@ -219,7 +219,8 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
 void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &swapChainIndexNum,
                                                    const uint64_t &frameIndex)
 {
-    if (!isKnownToBeReadyForRecordRender(swapChainIndexNum)){
+    if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
+    {
         return;
     }
 
@@ -268,7 +269,7 @@ void star::StarObject::frameUpdate(core::device::DeviceContext &context, const u
     {
         renderingContext = buildRenderingContext(context);
 
-        updateInstanceData(context, frameInFlightIndex, targetCommandBuffer);
+        updateDependentData(context, frameInFlightIndex, targetCommandBuffer);
     }
 }
 
@@ -442,22 +443,9 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
     return context.getPipelineManager().get(this->pipeline)->isReady();
 }
 
-std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarObject::submitDataUpdates(
-    core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) const
+void star::StarObject::updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer)
 {
-    auto semaphoreInfo = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>();
-
-    for (const auto &material : m_meshMaterials)
-    {
-        const auto currentSemaphores = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>(semaphoreInfo);
-
-        const auto materialSemaphores = material->getDataSemaphores(frameInFlightIndex);
-
-        std::set_union(currentSemaphores.begin(), currentSemaphores.end(), materialSemaphores.begin(),
-                       materialSemaphores.end(), std::inserter(semaphoreInfo, semaphoreInfo.begin()));
-    }
-
-    return semaphoreInfo;
+    updateInstanceData(context, frameInFlightIndex, targetCommandBuffer);
 }
 
 void star::StarObject::updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
@@ -473,28 +461,28 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
     {
         updateInstanceModel = true;
 
-        request.oneTimeWaitSemaphores.insert(
-            std::make_pair(std::move(doneSemaphore),
-                           vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader));
+        request.oneTimeWaitSemaphoreInfo.insert(
+            m_instanceInfo.m_infoManagerInstanceModel.getHandle(frameInFlightIndex), std::move(doneSemaphore),
+            vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
     if (m_instanceInfo.m_infoManagerInstanceNormal.submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
     {
         updateInstanceNormal = true;
 
-        request.oneTimeWaitSemaphores.insert(
-            std::make_pair(std::move(doneSemaphore),
-                           vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader));
+        request.oneTimeWaitSemaphoreInfo.insert(
+            m_instanceInfo.m_infoManagerInstanceNormal.getHandle(frameInFlightIndex), std::move(doneSemaphore),
+                           vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
     if (updateInstanceNormal)
     {
-        addControllerInfoToRenderingContext(context, frameInFlightIndex, m_instanceInfo.m_infoManagerInstanceModel);
+        renderingContext.addBufferToRenderingContext(context, m_instanceInfo.m_infoManagerInstanceModel.getHandle(frameInFlightIndex));
     }
 
     if (updateInstanceModel)
     {
-        addControllerInfoToRenderingContext(context, frameInFlightIndex, m_instanceInfo.m_infoManagerInstanceNormal);
+        renderingContext.addBufferToRenderingContext(context, m_instanceInfo.m_infoManagerInstanceNormal.getHandle(frameInFlightIndex));
     }
 }
 
@@ -560,16 +548,4 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                                            .setBufferMemoryBarrierCount(barriers.size())
                                            .setPBufferMemoryBarriers(barriers.data()));
     }
-}
-
-void star::StarObject::addControllerInfoToRenderingContext(
-    core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-    const ManagerController::RenderResource::Buffer &bufferController)
-{
-    const Handle &handle = bufferController.getHandle(frameInFlightIndex);
-
-    context.getManagerRenderResource().waitForReady(context.getDeviceID(), handle);
-
-    renderingContext.bufferTransferRecords.manualInsert(
-        handle, context.getManagerRenderResource().getBuffer(context.getDeviceID(), handle).getVulkanBuffer());
 }

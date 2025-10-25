@@ -30,15 +30,6 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 {
   public:
     Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-             std::vector<std::shared_ptr<Light>> lights, std::vector<Handle> &cameraInfoBuffers,
-             std::vector<std::shared_ptr<StarObject>> objects)
-        : m_lights(lights)
-    {
-        initBuffers(context, numFramesInFlight);
-        createRenderingGroups(context, context.getRenderingSurface().getResolution(), objects);
-    }
-
-    Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
              std::vector<std::shared_ptr<Light>> lights, std::shared_ptr<StarCamera> camera,
              std::vector<std::shared_ptr<StarObject>> objects)
         : m_lights(lights)
@@ -104,7 +95,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
 
   protected:
     bool isReady = false;
-    std::unique_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
+    std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
     Handle m_commandBuffer;
     std::vector<std::shared_ptr<star::Light>> m_lights;
@@ -196,9 +187,6 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier
     void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex);
 
     void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
-
-
-    void addControllerInfoToRenderingContext(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const ManagerController::RenderResource::Buffer &controller); 
 
     RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context)
     {

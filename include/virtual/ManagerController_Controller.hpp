@@ -26,7 +26,7 @@ template <typename TTransferType, typename TDataType> class Controller
                doesFrameInFlightDataNeedUpdated(currentFrameInFlightIndex);
     }
 
-    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
     {
         assert(m_resourceHandles.size() == 0 && "Should not be initialized more than once");
 

@@ -2,20 +2,20 @@
 
 auto star::ManagerRenderResource::devices =
     std::unordered_map<star::Handle, std::shared_ptr<star::core::device::StarDevice>, star::HandleHash>();
-auto
-    star::ManagerRenderResource::highPriorityRequestCompleteFlags =
-        std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>();
+auto star::ManagerRenderResource::highPriorityRequestCompleteFlags =
+    std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>();
 auto star::ManagerRenderResource::bufferStorage =
     std::unordered_map<star::Handle,
                        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
-                                                                    star::Handle_Type::buffer, 100>>, star::HandleHash>();
+                                                                    star::Handle_Type::buffer, 100>>,
+                       star::HandleHash>();
 auto star::ManagerRenderResource::textureStorage =
     std::unordered_map<star::Handle,
                        std::unique_ptr<core::ManagedHandleContainer<
-                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 50>>, star::HandleHash>();
+                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 50>>,
+                       star::HandleHash>();
 
-void star::ManagerRenderResource::init(const Handle &deviceID,
-                                       std::shared_ptr<star::core::device::StarDevice> device,
+void star::ManagerRenderResource::init(const Handle &deviceID, std::shared_ptr<star::core::device::StarDevice> device,
                                        std::shared_ptr<star::job::TransferWorker> worker, const int &numFramesInFlight)
 {
     devices.insert(std::make_pair(deviceID, std::move(device)));
@@ -112,7 +112,10 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     managerWorker->add(container.cpuWorkDoneByTransferThread, container.resourceSemaphore, std::move(newRequest),
                        container.resource, isHighPriority);
 
-    highPriorityRequestCompleteFlags.at(deviceID).insert(&container.cpuWorkDoneByTransferThread);
+    if (isHighPriority)
+    {
+        highPriorityRequestCompleteFlags.at(deviceID).insert(&container.cpuWorkDoneByTransferThread);
+    }
 }
 
 bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &handle)
@@ -137,6 +140,8 @@ bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &
 
 void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Handle &handle)
 {
+    assert(deviceID.getType() == Handle_Type::device); 
+    
     boost::atomic<bool> *fence = nullptr;
 
     switch (handle.getType())
@@ -165,7 +170,9 @@ star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &
     const auto &container = bufferStorage.at(deviceID)->get(handle).resource;
     if (!container)
     {
-        throw std::runtime_error("Buffer has not been created yet. It must be waited on");
+        throw std::runtime_error("Buffer has not been created yet. It is either still waiting to be processed by "
+                                 "transfer queues or has not been submitted yet. The latter is due to a blank request "
+                                 "which is never updated by controllers");
     }
 
     return *container;

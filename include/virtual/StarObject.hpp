@@ -158,9 +158,7 @@ class StarObject : private DescriptorModifier
 
     virtual bool isRenderReady(core::device::DeviceContext &context);
 
-    std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> submitDataUpdates(
-        core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) const;
-
+    virtual void updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer); 
   private:
     static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
     static vk::PipelineLayout extrusionPipelineLayout;
@@ -198,9 +196,6 @@ class StarObject : private DescriptorModifier
                             const Handle &targetCommandBuffer);
 
     bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex) const;
-
-    void addControllerInfoToRenderingContext(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                             const ManagerController::RenderResource::Buffer &bufferController);
 
     void recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                              const uint64_t &frameIndex);
