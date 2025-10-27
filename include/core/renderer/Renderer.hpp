@@ -176,14 +176,6 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     std::vector<vk::BufferMemoryBarrier2> getMemoryBarriersForThisFrame(const uint8_t &frameInFlightIndex,
                                                                         const uint64_t &frameIndex);
 
-    void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                     const uint64_t &frameIndex);
-
-    void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                              const uint64_t &frameIndex);
-
-    void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
-
     RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context)
     {
         return RenderingTargetInfo(std::vector<vk::Format>{this->getColorAttachmentFormat(context)},

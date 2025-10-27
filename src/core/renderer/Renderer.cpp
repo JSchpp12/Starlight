@@ -12,8 +12,8 @@ namespace star::core::renderer
 
 void Renderer::prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
-    RendererBase::prepRender(device, numFramesInFlight); 
-    
+    RendererBase::prepRender(device, numFramesInFlight);
+
     m_infoManagerLightData->prepRender(device, numFramesInFlight);
     m_infoManagerLightList->prepRender(device, numFramesInFlight);
 
@@ -29,11 +29,17 @@ void Renderer::prepRender(core::device::DeviceContext &device, const uint8_t &nu
     assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
     RenderingTargetInfo renderInfo =
         RenderingTargetInfo({this->getColorAttachmentFormat(device)}, this->getDepthAttachmentFormat(device));
+
+    for (auto &group : m_renderGroups)
+    {
+        group->prepRender(device, device.getRenderingSurface().getResolution(), numFramesInFlight, rendererDescriptors,
+                          renderInfo);
+    }
 }
 
 void Renderer::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
-    RendererBase::frameUpdate(context, frameInFlightIndex); 
+    RendererBase::frameUpdate(context, frameInFlightIndex);
 
     m_renderingContext =
         core::renderer::RenderingContext{.targetResolution = context.getRenderingSurface().getResolution()};
@@ -42,16 +48,15 @@ void Renderer::frameUpdate(core::device::DeviceContext &context, const uint8_t &
     updateRenderingGroups(context, frameInFlightIndex);
 }
 
-void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, std::shared_ptr<std::vector<Light>> lights)
+void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                           std::shared_ptr<std::vector<Light>> lights)
 {
-    m_infoManagerLightData =
-        std::make_shared<ManagerController::RenderResource::LightInfo>(numFramesInFlight, lights);
-    m_infoManagerLightList =
-        std::make_shared<ManagerController::RenderResource::LightList>(numFramesInFlight, lights);
+    m_infoManagerLightData = std::make_shared<ManagerController::RenderResource::LightInfo>(numFramesInFlight, lights);
+    m_infoManagerLightList = std::make_shared<ManagerController::RenderResource::LightList>(numFramesInFlight, lights);
 }
 
-void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, std::shared_ptr<std::vector<Light>> lights,
-                           std::shared_ptr<StarCamera> camera)
+void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                           std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera)
 {
     initBuffers(context, numFramesInFlight, std::move(lights));
 
@@ -557,32 +562,6 @@ vk::Viewport Renderer::prepareRenderingViewport(const vk::Extent2D &resolution)
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     return viewport;
-}
-
-void Renderer::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                           const uint64_t &frameIndex)
-{
-    for (auto &group : this->renderGroups)
-    {
-        group->recordPreRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
-    }
-}
-
-void Renderer::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
-{
-    for (auto &group : this->renderGroups)
-    {
-        group->recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
-    }
-}
-
-void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                    const uint64_t &frameIndex)
-{
-    for (auto &group : this->renderGroups)
-    {
-        group->recordRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
-    }
 }
 
 } // namespace star::core::renderer
