@@ -8,6 +8,15 @@ void RendererBase::cleanupRender(core::device::DeviceContext &context){
     }
 }
 
+void RendererBase::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+{
+    m_commandBuffer = context.getManagerCommandBuffer().submit(getCommandBufferRequest(), context.getCurrentFrameIndex());
+}
+
+void RendererBase::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex){
+    updateRenderingGroups(context, frameInFlightIndex); 
+}
+
 std::vector<std::unique_ptr<star::StarRenderGroup>> RendererBase::CreateRenderingGroups(
     core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
     std::vector<std::shared_ptr<StarObject>> objects)
@@ -41,5 +50,12 @@ std::vector<std::unique_ptr<star::StarRenderGroup>> RendererBase::CreateRenderin
     }
 
     return renderingGroups;
+}
+
+void RendererBase::updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex){
+    for (auto &group : m_renderGroups)
+    {
+        group->frameUpdate(context, frameInFlightIndex, m_commandBuffer);
+    }
 }
 } // namespace star::core::renderer

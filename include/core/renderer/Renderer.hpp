@@ -98,7 +98,6 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     bool isReady = false;
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
-    Handle m_commandBuffer;
 
     std::vector<std::unique_ptr<StarTextures::Texture>> renderToImages =
         std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -109,7 +108,6 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
         std::vector<std::unique_ptr<StarTextures::Texture>>();
 
     std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
-    std::vector<std::unique_ptr<StarRenderGroup>> renderGroups = std::vector<std::unique_ptr<StarRenderGroup>>();
     core::renderer::RenderingContext m_renderingContext = core::renderer::RenderingContext();
 
     void initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
@@ -161,7 +159,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
 
     virtual void updateDependentData(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 
-    virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
+    virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override = 0;
 #pragma region helpers
     vk::Viewport prepareRenderingViewport(const vk::Extent2D &resolution);
 
@@ -197,7 +195,5 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     // Inherited via DescriptorModifier
     std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int &numFramesInFlight) override;
     void createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight) override;
-
-    void updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 };
 } // namespace star::core::renderer

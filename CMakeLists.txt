@@ -14,7 +14,7 @@ if (APPLE)
     set(CMAKE_MACOSX_RPATH 1)
 elseif(WIN32)
     set(CMAKE_FIND_LIBRARY_PREFIXES "")
-else()
+else() 
     set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 endif()
 

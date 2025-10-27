@@ -14,11 +14,15 @@ class RendererBase
     virtual ~RendererBase() = default;
 
     virtual void cleanupRender(core::device::DeviceContext &context);
-    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) = 0;
-    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) = 0;
+    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
+    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
+    virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
 
   protected:
     std::vector<std::unique_ptr<StarRenderGroup>> m_renderGroups;
+    Handle m_commandBuffer;
+
+    void updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 
     static std::vector<std::unique_ptr<StarRenderGroup>> CreateRenderingGroups(
         core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,

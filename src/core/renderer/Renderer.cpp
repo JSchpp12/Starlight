@@ -12,6 +12,8 @@ namespace star::core::renderer
 
 void Renderer::prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
+    RendererBase::prepRender(device, numFramesInFlight); 
+    
     m_infoManagerLightData->prepRender(device, numFramesInFlight);
     m_infoManagerLightList->prepRender(device, numFramesInFlight);
 
@@ -19,7 +21,6 @@ void Renderer::prepRender(core::device::DeviceContext &device, const uint8_t &nu
     {
         m_infoManagerCamera->prepRender(device, numFramesInFlight);
     }
-    m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest(), device.getCurrentFrameIndex());
 
     auto rendererDescriptors = manualCreateDescriptors(device, numFramesInFlight);
     this->renderToImages = createRenderToImages(device, numFramesInFlight);
@@ -28,16 +29,12 @@ void Renderer::prepRender(core::device::DeviceContext &device, const uint8_t &nu
     assert(this->renderToDepthImages.size() > 0 && "Need at least 1 depth image for rendering");
     RenderingTargetInfo renderInfo =
         RenderingTargetInfo({this->getColorAttachmentFormat(device)}, this->getDepthAttachmentFormat(device));
-
-    for (auto &group : renderGroups)
-    {
-        group->prepRender(device, device.getRenderingSurface().getResolution(), numFramesInFlight, rendererDescriptors,
-                          renderInfo);
-    }
 }
 
 void Renderer::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
+    RendererBase::frameUpdate(context, frameInFlightIndex); 
+
     m_renderingContext =
         core::renderer::RenderingContext{.targetResolution = context.getRenderingSurface().getResolution()};
 
@@ -585,14 +582,6 @@ void Renderer::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint
     for (auto &group : this->renderGroups)
     {
         group->recordRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
-    }
-}
-
-void Renderer::updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
-{
-    for (auto &group : renderGroups)
-    {
-        group->frameUpdate(context, frameInFlightIndex, m_commandBuffer);
     }
 }
 
