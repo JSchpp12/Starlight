@@ -7,7 +7,7 @@
 star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceContext &context,
                                                            const uint8_t &numFramesInFlight,
                                                            std::vector<std::shared_ptr<StarObject>> objects,
-                                                           std::vector<std::shared_ptr<Light>> lights,
+                                                           std::shared_ptr<std::vector<Light>> lights,
                                                            std::shared_ptr<StarCamera> camera, const StarWindow &window)
     : Renderer(context, numFramesInFlight, lights, camera, objects), window(window),
       numFramesInFlight(numFramesInFlight), device(context)
@@ -36,10 +36,9 @@ star::core::renderer::SwapChainRenderer::~SwapChainRenderer()
 }
 
 void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
-                                                         const vk::Extent2D &swapChainExtent,
                                                          const uint8_t &numFramesInFlight)
 {
-    Renderer::prepRender(device, swapChainExtent, numFramesInFlight);
+    Renderer::prepRender(context, numFramesInFlight);
 
     const size_t numSwapChainImages =
         context.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
@@ -339,7 +338,7 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::SwapChainRenderer::createRenderToImages(
-    star::core::device::DeviceContext &device, const int &numFramesInFlight)
+    star::core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages =
         std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -428,8 +427,12 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
         vk::ImageMemoryBarrier2()
             .setOldLayout(vk::ImageLayout::ePresentSrcKHR)
             .setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
-            .setSubresourceRange(
-                vk::ImageSubresourceRange().setAspectMask(vk::ImageAspectFlagBits::eColor).setBaseMipLevel(0).setLevelCount(1).setBaseArrayLayer(0).setLayerCount(1))
+            .setSubresourceRange(vk::ImageSubresourceRange()
+                                     .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                     .setBaseMipLevel(0)
+                                     .setLevelCount(1)
+                                     .setBaseArrayLayer(0)
+                                     .setLayerCount(1))
             .setImage(this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage())
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
@@ -440,18 +443,22 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
         vk::ImageMemoryBarrier2()
             .setOldLayout(vk::ImageLayout::eColorAttachmentOptimal)
             .setNewLayout(vk::ImageLayout::ePresentSrcKHR)
-            .setSubresourceRange(
-                vk::ImageSubresourceRange().setAspectMask(vk::ImageAspectFlagBits::eColor).setBaseMipLevel(0).setLevelCount(1).setBaseArrayLayer(0).setLayerCount(1))
+            .setSubresourceRange(vk::ImageSubresourceRange()
+                                     .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                     .setBaseMipLevel(0)
+                                     .setLevelCount(1)
+                                     .setBaseArrayLayer(0)
+                                     .setLayerCount(1))
             .setImage(this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage())
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
             .setSrcAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite)
             .setDstStageMask(vk::PipelineStageFlagBits2::eBottomOfPipe)
-            .setDstAccessMask(vk::AccessFlagBits2::eNone)
-    };
+            .setDstAccessMask(vk::AccessFlagBits2::eNone)};
 
-    commandBuffer.pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarrierCount(2).setPImageMemoryBarriers(barriers.data())); 
+    commandBuffer.pipelineBarrier2(
+        vk::DependencyInfo().setImageMemoryBarrierCount(2).setPImageMemoryBarriers(barriers.data()));
 
     this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex, frameIndex);
 }

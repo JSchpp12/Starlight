@@ -312,8 +312,8 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
-        const auto &instanceModelHandle = m_instanceInfo.m_infoManagerInstanceModel.getHandle(i);
-        const auto &instanceNormalHandle = m_instanceInfo.m_infoManagerInstanceNormal.getHandle(i);
+        const auto &instanceModelHandle = m_instanceInfo.m_infoManagerInstanceModel->getHandle(i);
+        const auto &instanceNormalHandle = m_instanceInfo.m_infoManagerInstanceNormal->getHandle(i);
 
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
@@ -340,8 +340,8 @@ void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &
            "Call to create instance buffers made but this object does not have any instances");
     assert(m_instanceInfo.m_instances->size() < 1024 && "Max number of supported instances is 1024");
 
-    m_instanceInfo.m_infoManagerInstanceModel.prepRender(context, numFramesInFlight);
-    m_instanceInfo.m_infoManagerInstanceNormal.prepRender(context, numFramesInFlight);
+    m_instanceInfo.m_infoManagerInstanceModel->prepRender(context, numFramesInFlight);
+    m_instanceInfo.m_infoManagerInstanceNormal->prepRender(context, numFramesInFlight);
 }
 
 void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)
@@ -443,7 +443,8 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
     return context.getPipelineManager().get(this->pipeline)->isReady();
 }
 
-void star::StarObject::updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer)
+void star::StarObject::updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                                           const Handle &targetCommandBuffer)
 {
     updateInstanceData(context, frameInFlightIndex, targetCommandBuffer);
 }
@@ -457,32 +458,34 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
         context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
     vk::Semaphore doneSemaphore;
 
-    if (m_instanceInfo.m_infoManagerInstanceModel.submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    if (m_instanceInfo.m_infoManagerInstanceModel->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
     {
         updateInstanceModel = true;
 
         request.oneTimeWaitSemaphoreInfo.insert(
-            m_instanceInfo.m_infoManagerInstanceModel.getHandle(frameInFlightIndex), std::move(doneSemaphore),
+            m_instanceInfo.m_infoManagerInstanceModel->getHandle(frameInFlightIndex), std::move(doneSemaphore),
             vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
-    if (m_instanceInfo.m_infoManagerInstanceNormal.submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    if (m_instanceInfo.m_infoManagerInstanceNormal->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
     {
         updateInstanceNormal = true;
 
         request.oneTimeWaitSemaphoreInfo.insert(
-            m_instanceInfo.m_infoManagerInstanceNormal.getHandle(frameInFlightIndex), std::move(doneSemaphore),
-                           vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
+            m_instanceInfo.m_infoManagerInstanceNormal->getHandle(frameInFlightIndex), std::move(doneSemaphore),
+            vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
     if (updateInstanceNormal)
     {
-        renderingContext.addBufferToRenderingContext(context, m_instanceInfo.m_infoManagerInstanceModel.getHandle(frameInFlightIndex));
+        renderingContext.addBufferToRenderingContext(
+            context, m_instanceInfo.m_infoManagerInstanceModel->getHandle(frameInFlightIndex));
     }
 
     if (updateInstanceModel)
     {
-        renderingContext.addBufferToRenderingContext(context, m_instanceInfo.m_infoManagerInstanceNormal.getHandle(frameInFlightIndex));
+        renderingContext.addBufferToRenderingContext(
+            context, m_instanceInfo.m_infoManagerInstanceNormal->getHandle(frameInFlightIndex));
     }
 }
 
@@ -510,7 +513,7 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
 {
     auto barriers = std::vector<vk::BufferMemoryBarrier2>();
 
-    if (m_instanceInfo.m_infoManagerInstanceModel.willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.m_infoManagerInstanceModel->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()
@@ -522,11 +525,11 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setBuffer(renderingContext.bufferTransferRecords.get(
-                    m_instanceInfo.m_infoManagerInstanceModel.getHandle(frameInFlightIndex)))
+                    m_instanceInfo.m_infoManagerInstanceModel->getHandle(frameInFlightIndex)))
                 .setSize(vk::WholeSize));
     }
 
-    if (m_instanceInfo.m_infoManagerInstanceNormal.willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.m_infoManagerInstanceNormal->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()
@@ -538,7 +541,7 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setBuffer(renderingContext.bufferTransferRecords.get(
-                    m_instanceInfo.m_infoManagerInstanceNormal.getHandle(frameInFlightIndex)))
+                    m_instanceInfo.m_infoManagerInstanceNormal->getHandle(frameInFlightIndex)))
                 .setSize(vk::WholeSize));
     }
 

@@ -23,12 +23,12 @@ class LightList : public Buffer
         glm::uvec4 settings = glm::uvec4(0); // container for single uint values
     };
 
-    LightList(const std::vector<std::shared_ptr<Light>> &lights, const uint32_t &graphicsQueueFamilyIndex)
+    LightList(const std::vector<Light> &lights, const uint32_t &graphicsQueueFamilyIndex)
         : graphicsQueueFamilyIndex(graphicsQueueFamilyIndex)
     {
         for (size_t i = 0; i < lights.size(); ++i)
         {
-            myLights.push_back(Light(*lights[i].get()));
+            myLights.push_back(Light(lights[i]));
         }
     }
 

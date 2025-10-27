@@ -12,12 +12,12 @@ namespace star::core::renderer
 class RenderingContext
 {
   public:
+    vk::Extent2D targetResolution;
     StarPipeline *pipeline = nullptr;
     MappedHandleContainer<vk::Buffer, star::Handle_Type::buffer> bufferTransferRecords =
         MappedHandleContainer<vk::Buffer, star::Handle_Type::buffer>();
 
-    void addBufferToRenderingContext(core::device::DeviceContext &context,
-                                     const Handle &handle)
+    void addBufferToRenderingContext(core::device::DeviceContext &context, const Handle &handle)
     {
         assert(handle.getType() == star::Handle_Type::buffer);
 

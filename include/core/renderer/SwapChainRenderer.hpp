@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/device/DeviceContext.hpp"
 #include "Renderer.hpp"
+#include "core/device/DeviceContext.hpp"
 
 #include <memory>
 #include <vulkan/vulkan.hpp>
@@ -12,15 +12,14 @@ class SwapChainRenderer : public star::core::renderer::Renderer
 {
   public:
     SwapChainRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                      std::vector<std::shared_ptr<StarObject>> objects, std::vector<std::shared_ptr<Light>> lights,
+                      std::vector<std::shared_ptr<StarObject>> objects, std::shared_ptr<std::vector<Light>> lights,
                       std::shared_ptr<StarCamera> camera, const StarWindow &window);
 
     SwapChainRenderer(const SwapChainRenderer &other) = delete;
 
     virtual ~SwapChainRenderer();
 
-    virtual void prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                            const uint8_t &numFramesInFlight) override;
+    virtual void prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
 
     void submitPresentation(const int &frameIndexToBeDrawn, const vk::Semaphore *mainGraphicsDoneSemaphore);
 
@@ -85,15 +84,18 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     void prepareForSubmission(const int &frameIndexToBeDrawn);
 
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
-                               std::vector<vk::Semaphore> *previousCommandBufferSemaphores, std::vector<vk::Semaphore> dataSemaphores, std::vector<vk::PipelineStageFlags> dataWaitPoints);
+                               std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
+                               std::vector<vk::Semaphore> dataSemaphores,
+                               std::vector<vk::PipelineStageFlags> dataWaitPoints);
 
     virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(
-        core::device::DeviceContext &device, const int &numFramesInFlight) override;
+        core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(
         const int &frameInFlightIndex) override;
 
-    virtual void recordCommandBuffer(vk::CommandBuffer &buffer, const uint8_t &frameIndexToBeDrawn, const uint64_t &frameIndex) override;
+    virtual void recordCommandBuffer(vk::CommandBuffer &buffer, const uint8_t &frameIndexToBeDrawn,
+                                     const uint64_t &frameIndex) override;
 
     /// <summary>
     /// If the swapchain is no longer compatible, it must be recreated.

@@ -13,8 +13,8 @@ star::StarScene::StarScene(const Handle &deviceID, const uint8_t &numFramesInFli
 star::StarScene::StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
                            std::shared_ptr<StarCamera> camera,
                            std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer,
-                           std::vector<std::shared_ptr<core::renderer::Renderer>> renderers)
-    : m_presentationRenderer(presentationRenderer), m_additionalRenderers(renderers), m_camera(camera)
+                           std::vector<std::shared_ptr<core::renderer::RendererBase>> renderers)
+    : m_presentationRenderer(presentationRenderer), m_additionalRenderers(std::move(renderers)), m_camera(camera)
 {
 }
 
@@ -28,9 +28,9 @@ void star::StarScene::frameUpdate(core::device::DeviceContext &context, const ui
 
 void star::StarScene::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
 {
-    m_presentationRenderer->prepRender(context, m_presentationRenderer->getMainExtent(), numFramesInFlight); 
+    m_presentationRenderer->prepRender(context, numFramesInFlight); 
 
     for (auto &addRender : m_additionalRenderers){
-        addRender->prepRender(context, m_presentationRenderer->getMainExtent(), numFramesInFlight); 
+        addRender->prepRender(context, numFramesInFlight); 
     }
 }

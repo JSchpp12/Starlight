@@ -10,8 +10,7 @@
 namespace star::core::renderer
 {
 
-void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                          const uint8_t &numFramesInFlight)
+void Renderer::prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
     m_infoManagerLightData->prepRender(device, numFramesInFlight);
     m_infoManagerLightList->prepRender(device, numFramesInFlight);
@@ -21,8 +20,6 @@ void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2
         m_infoManagerCamera->prepRender(device, numFramesInFlight);
     }
     m_commandBuffer = device.getManagerCommandBuffer().submit(getCommandBufferRequest(), device.getCurrentFrameIndex());
-
-    this->swapChainExtent = std::make_unique<vk::Extent2D>(swapChainExtent);
 
     auto rendererDescriptors = manualCreateDescriptors(device, numFramesInFlight);
     this->renderToImages = createRenderToImages(device, numFramesInFlight);
@@ -39,40 +36,33 @@ void Renderer::prepRender(core::device::DeviceContext &device, const vk::Extent2
     }
 }
 
-void Renderer::cleanupRender(core::device::DeviceContext &context)
+void Renderer::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
-    for (auto &group : this->renderGroups)
-    {
-        group->cleanupRender(context);
-    }
+    m_renderingContext =
+        core::renderer::RenderingContext{.targetResolution = context.getRenderingSurface().getResolution()};
+
+    updateDependentData(context, frameInFlightIndex);
+    updateRenderingGroups(context, frameInFlightIndex);
 }
 
-void Renderer::frameUpdate(core::device::DeviceContext &device, const uint8_t &frameInFlightIndex)
-{
-    m_renderingContext = core::renderer::RenderingContext{};
-
-    updateDependentData(device, frameInFlightIndex);
-    updateRenderingGroups(device, frameInFlightIndex);
-}
-
-void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, std::shared_ptr<std::vector<Light>> lights)
 {
     m_infoManagerLightData =
-        std::make_shared<ManagerController::RenderResource::LightInfo>(numFramesInFlight, m_lights);
+        std::make_shared<ManagerController::RenderResource::LightInfo>(numFramesInFlight, lights);
     m_infoManagerLightList =
-        std::make_shared<ManagerController::RenderResource::LightList>(numFramesInFlight, m_lights);
+        std::make_shared<ManagerController::RenderResource::LightList>(numFramesInFlight, lights);
 }
 
-void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, std::shared_ptr<std::vector<Light>> lights,
                            std::shared_ptr<StarCamera> camera)
 {
-    initBuffers(context, numFramesInFlight);
+    initBuffers(context, numFramesInFlight, std::move(lights));
 
     m_infoManagerCamera = std::make_unique<ManagerController::RenderResource::GlobalInfo>(numFramesInFlight, camera);
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRenderToImages(
-    star::core::device::DeviceContext &device, const int &numFramesInFlight)
+    star::core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages =
         std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -88,6 +78,13 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
     uint32_t numIndices;
     CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
 
+    int width, height;
+    {
+        const auto &resolution = device.getRenderingSurface().getResolution();
+        CastHelpers::SafeCast<vk::DeviceSize, int>(resolution.width, width);
+        CastHelpers::SafeCast<vk::DeviceSize, int>(resolution.height, height);
+    }
+
     auto builder =
         star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(),
                                              device.getDevice().getAllocator().get())
@@ -97,10 +94,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
                     .setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
                     .build(),
                 vk::ImageCreateInfo()
-                    .setExtent(vk::Extent3D()
-                                   .setWidth(static_cast<int>(this->swapChainExtent->width))
-                                   .setHeight(static_cast<int>(this->swapChainExtent->height))
-                                   .setDepth(1))
+                    .setExtent(vk::Extent3D().setWidth(width).setHeight(height).setDepth(1))
                     .setPQueueFamilyIndices(indices.data())
                     .setQueueFamilyIndexCount(numIndices)
                     .setSharingMode(indices.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent)
@@ -160,7 +154,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::Renderer::createRenderToDepthImages(
-    core::device::DeviceContext &device, const int &numFramesInFlight)
+    core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
     std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages =
         std::vector<std::unique_ptr<StarTextures::Texture>>();
@@ -174,6 +168,13 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
     }
 
+    int width, height;
+    {
+        const auto &resolution = device.getRenderingSurface().getResolution();
+        CastHelpers::SafeCast<vk::DeviceSize, int>(resolution.width, width);
+        CastHelpers::SafeCast<vk::DeviceSize, int>(resolution.height, height);
+    }
+
     auto builder =
         star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(),
                                              device.getDevice().getAllocator().get())
@@ -183,10 +184,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
                     .setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
                     .build(),
                 vk::ImageCreateInfo()
-                    .setExtent(vk::Extent3D()
-                                   .setWidth(static_cast<int>(this->swapChainExtent->width))
-                                   .setHeight(static_cast<int>(this->swapChainExtent->height))
-                                   .setDepth(1))
+                    .setExtent(vk::Extent3D().setWidth(width).setHeight(height).setDepth(1))
                     .setArrayLayers(1)
                     .setQueueFamilyIndexCount(indices.size())
                     .setPQueueFamilyIndices(indices.data())
@@ -243,36 +241,6 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
     }
 
     return newRenderToImages;
-}
-
-void Renderer::createRenderingGroups(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                                     std::vector<std::shared_ptr<StarObject>> objects)
-{
-    for (size_t i = 0; i < objects.size(); i++)
-    {
-        // check if the object is compatible with any render groups
-        StarRenderGroup *match = nullptr;
-
-        // if it is not, create a new render group
-        for (size_t j = 0; j < this->renderGroups.size(); j++)
-        {
-            if (this->renderGroups[j]->isObjectCompatible(*objects[i]))
-            {
-                match = this->renderGroups[j].get();
-                break;
-            }
-        }
-
-        if (match != nullptr)
-        {
-            match->addObject(objects[i]);
-        }
-        else
-        {
-            // create a new one and add object
-            this->renderGroups.push_back(std::unique_ptr<StarRenderGroup>(new StarRenderGroup(device, objects[i])));
-        }
-    }
 }
 
 vk::ImageView Renderer::createImageView(star::core::device::DeviceContext &device, vk::Image image, vk::Format format,
@@ -434,14 +402,14 @@ void Renderer::updateDependentData(star::core::device::DeviceContext &context, c
         record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightData->getHandle(frameInFlightIndex),
                                                std::move(dataSemaphore), vk::PipelineStageFlagBits::eFragmentShader);
 
-        m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightData->getHandle(frameInFlightIndex)); 
+        m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightData->getHandle(frameInFlightIndex));
     }
 
     if (m_infoManagerLightList->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
     {
         record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightList->getHandle(frameInFlightIndex),
                                                std::move(dataSemaphore), vk::PipelineStageFlagBits::eFragmentShader);
-        
+
         m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightList->getHandle(frameInFlightIndex));
     }
 }
@@ -460,7 +428,7 @@ void Renderer::createDescriptors(star::core::device::DeviceContext &device, cons
 void Renderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                    const uint64_t &frameIndex)
 {
-    vk::Viewport viewport = this->prepareRenderingViewport();
+    vk::Viewport viewport = this->prepareRenderingViewport(m_renderingContext.targetResolution);
     commandBuffer.setViewport(0, viewport);
 
     recordPreRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
@@ -474,7 +442,7 @@ void Renderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8
         vk::RenderingAttachmentInfo depthAttachmentInfo =
             prepareDynamicRenderingInfoDepthAttachment(frameInFlightIndex);
 
-        auto renderArea = vk::Rect2D{vk::Offset2D{}, *this->swapChainExtent};
+        auto renderArea = vk::Rect2D{vk::Offset2D{}, m_renderingContext.targetResolution};
         vk::RenderingInfoKHR renderInfo{};
         renderInfo.renderArea = renderArea;
         renderInfo.layerCount = 1;
@@ -581,13 +549,13 @@ vk::RenderingAttachmentInfo star::core::renderer::Renderer::prepareDynamicRender
     return depthAttachmentInfo;
 }
 
-vk::Viewport Renderer::prepareRenderingViewport()
+vk::Viewport Renderer::prepareRenderingViewport(const vk::Extent2D &resolution)
 {
     vk::Viewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float)this->swapChainExtent->width;
-    viewport.height = (float)this->swapChainExtent->height;
+    viewport.width = (float)resolution.width;
+    viewport.height = (float)resolution.height;
     // Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;

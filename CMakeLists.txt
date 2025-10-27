@@ -65,6 +65,8 @@ add_subdirectory("extern/shaderc")
 set(${STARLIGHT_NAME}_SOURCE
     "src/StarEngine.cpp" 
     "src/graphics/PipelineFactory.cpp"
+    "src/core/renderer/LightRenderer.cpp"
+    "src/core/renderer/RendererBase.cpp"
     "src/core/renderer/Renderer.cpp"
     "src/core/renderer/SwapChainRenderer.cpp"
     "src/core/renderer/RenderingTargetInfo.cpp"
@@ -194,6 +196,8 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 set(${STARLIGHT_NAME}_HEADERS
     "include/StarEngine.hpp"
     "include/graphics/PipelineFactory.hpp"
+    "include/core/renderer/RendererBase.hpp"
+    "include/core/renderer/LightRenderer.hpp"
     "include/core/renderer/Renderer.hpp"
     "include/core/renderer/SwapChainRenderer.hpp"
     "include/core/renderer/RenderingTargetInfo.hpp"

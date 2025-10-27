@@ -26,7 +26,7 @@ class StarScene
     StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
               std::shared_ptr<StarCamera> camera,
               std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer,
-              std::vector<std::shared_ptr<core::renderer::Renderer>> additionalRenderers);
+              std::vector<std::shared_ptr<core::renderer::RendererBase>> additionalRenderers);
 
     /// Function called every frame
     void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
@@ -55,7 +55,7 @@ class StarScene
 
   protected:
     std::shared_ptr<star::core::renderer::SwapChainRenderer> m_presentationRenderer;
-    std::vector<std::shared_ptr<star::core::renderer::Renderer>> m_additionalRenderers;
+    std::vector<std::shared_ptr<star::core::renderer::RendererBase>> m_additionalRenderers;
     std::shared_ptr<StarCamera> m_camera = std::shared_ptr<StarCamera>();
 };
 } // namespace star

@@ -10,14 +10,14 @@ namespace star::ManagerController::RenderResource
 class LightInfo : public ManagerController::RenderResource::Buffer
 {
   public:
-    LightInfo(const uint8_t &numFramesInFlight, const std::vector<std::shared_ptr<Light>> &lights)
+    LightInfo(const uint8_t &numFramesInFlight, const std::shared_ptr<std::vector<Light>> lights)
         : lights(lights), lastWriteNumLights(std::vector<uint32_t>(numFramesInFlight))
     {
     }
     virtual ~LightInfo() = default;
 
   protected:
-    const std::vector<std::shared_ptr<Light>> &lights;
+    const std::shared_ptr<std::vector<Light>> lights;
     std::vector<uint32_t> lastWriteNumLights;
 
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device,

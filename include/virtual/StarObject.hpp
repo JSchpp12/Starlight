@@ -2,7 +2,6 @@
 
 #include "ConfigFile.hpp"
 #include "DescriptorModifier.hpp"
-#include "core/device/DeviceContext.hpp"
 #include "ManagerController_RenderResource_Buffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "StarCommandBuffer.hpp"
@@ -14,6 +13,7 @@
 #include "StarPipeline.hpp"
 #include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "core/renderer/RenderingContext.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
@@ -76,7 +76,8 @@ class StarObject : private DescriptorModifier
 
     /// Function to contain any commands to be submitted before the start of the rendering pass this object is contained
     /// in begins
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex, const uint64_t &frameIndex);
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+                                             const uint64_t &frameIndex);
 
     /// Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
     virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) {};
@@ -123,14 +124,17 @@ class StarObject : private DescriptorModifier
     {
         std::shared_ptr<std::vector<StarObjectInstance>> m_instances =
             std::shared_ptr<std::vector<StarObjectInstance>>();
-        ManagerController::RenderResource::InstanceModelInfo m_infoManagerInstanceModel =
-            ManagerController::RenderResource::InstanceModelInfo();
-        ManagerController::RenderResource::InstanceNormalInfo m_infoManagerInstanceNormal =
-            ManagerController::RenderResource::InstanceNormalInfo();
+        std::shared_ptr<ManagerController::RenderResource::InstanceModelInfo> m_infoManagerInstanceModel =
+            std::make_shared<ManagerController::RenderResource::InstanceModelInfo>();
+        std::shared_ptr<ManagerController::RenderResource::InstanceNormalInfo> m_infoManagerInstanceNormal =
+            std::make_shared<ManagerController::RenderResource::InstanceNormalInfo>();
 
         InstanceInfo()
-            : m_instances(std::make_shared<std::vector<StarObjectInstance>>()), m_infoManagerInstanceModel(m_instances),
-              m_infoManagerInstanceNormal(m_instances)
+            : m_instances(std::make_shared<std::vector<StarObjectInstance>>()),
+              m_infoManagerInstanceModel(
+                  std::make_shared<ManagerController::RenderResource::InstanceModelInfo>(m_instances)),
+              m_infoManagerInstanceNormal(
+                  std::make_shared<ManagerController::RenderResource::InstanceNormalInfo>(m_instances))
         {
         }
     };
@@ -158,7 +162,9 @@ class StarObject : private DescriptorModifier
 
     virtual bool isRenderReady(core::device::DeviceContext &context);
 
-    virtual void updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer); 
+    virtual void updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                                     const Handle &targetCommandBuffer);
+
   private:
     static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
     static vk::PipelineLayout extrusionPipelineLayout;
