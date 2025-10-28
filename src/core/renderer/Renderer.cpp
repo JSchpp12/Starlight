@@ -45,7 +45,6 @@ void Renderer::frameUpdate(core::device::DeviceContext &context, const uint8_t &
         core::renderer::RenderingContext{.targetResolution = context.getRenderingSurface().getResolution()};
 
     updateDependentData(context, frameInFlightIndex);
-    updateRenderingGroups(context, frameInFlightIndex);
 }
 
 void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,

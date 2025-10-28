@@ -92,9 +92,16 @@ class CommandBufferContainer
                 return overrideBufferSubmissionCallback.value()(*commandBuffer, frameInFlightIndex, beforeSemaphores,
                                                                 std::move(waits), std::move(waitPoints));
             }
+            else
+            {
+                auto additionalWaits = std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>(waits.size()); 
+                for (size_t i = 0; i < waits.size(); i++){
+                    additionalWaits[i] = std::make_pair(waits[i], waitPoints[i]); 
+                }
+                commandBuffer->submit(frameInFlightIndex,
+                                      device.getDefaultQueue(commandBuffer->getType()).getVulkanQueue(), &additionalWaits);
+            }
 
-            commandBuffer->submit(frameInFlightIndex,
-                                  device.getDefaultQueue(commandBuffer->getType()).getVulkanQueue());
             return commandBuffer->getCompleteSemaphores().at(frameInFlightIndex);
         }
     };

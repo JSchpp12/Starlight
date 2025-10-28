@@ -119,6 +119,8 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
             workingInfo->markAsAvailble();
         }
     }
+
+    CheckForCleanups(myInfo.device, processRequestInfos);
 }
 
 std::unique_ptr<star::job::TransferManagerThread::ProcessRequestInfo> star::job::TransferManagerThread::
