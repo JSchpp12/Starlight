@@ -45,18 +45,23 @@ void Pipeline::submitTask(device::StarDevice &device, const Handle &handle, job:
             keepAlive = shouldKeepAlive;
         },
         [this, handle]() -> Handle * {
-            assert(handle.getID() < this->m_subscriberShaderBuildInfo.size() && "Handle unknown");
+            assert(handle.getID() <= this->m_subscriberShaderBuildInfo.size() && "Handle unknown");
             return &this->m_subscriberShaderBuildInfo[handle.getID()];
         },
         [this](const Handle &noLongerNeededHandle) {
-            for (auto it = this->m_subscriberShaderBuildInfo.begin(); it != this->m_subscriberShaderBuildInfo.end();
-                 it++)
-            {
-                if (*it == noLongerNeededHandle)
-                {
-                    it = this->m_subscriberShaderBuildInfo.erase(it);
-                    break;
+            size_t freedNum = 0;
+            for (size_t i = 0; i < this->m_subscriberShaderBuildInfo.size(); i++){
+                if (!this->m_subscriberShaderBuildInfo[i].isInitialized()){
+                    freedNum++;
                 }
+                if (this->m_subscriberShaderBuildInfo[i] == noLongerNeededHandle){
+                    this->m_subscriberShaderBuildInfo[i] = Handle(); 
+                    freedNum++;
+                }
+            }
+
+            if (freedNum == this->m_subscriberShaderBuildInfo.size()){
+                this->m_subscriberShaderBuildInfo.clear();
             }
         });
 }

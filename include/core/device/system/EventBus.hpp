@@ -49,19 +49,30 @@ class EventBus
         {
             throw std::runtime_error("Provided event type does not have a registered handler");
         }
+        auto indicesToRemove = std::vector<size_t>();
 
-        for (auto &cb : m_listeners[key])
+        for (size_t i = 0; i < m_listeners[key].size(); i++)
         {
             bool keepAlive = false;
-            cb.first(base, keepAlive);
+            m_listeners[key][i].first(base, keepAlive);
 
-            // if (keepAlive)
-            // {
-            //     aliveCallbacks.push_back(cb);
-            // }
+            if (!keepAlive)
+            {
+                indicesToRemove.push_back(i);
+            }
         }
 
-        // m_listeners[key] = aliveCallbacks;
+        if (indicesToRemove.size() > 0)
+        {
+            for (int i = indicesToRemove.size() - 1; i >= 0; i--)
+            {
+                const Handle *subHandle = m_listeners[key][indicesToRemove[i]].second.getHandleForUpdateCallback();
+                if (subHandle != nullptr)
+                {
+                    removeSubscriber(*subHandle, key, m_listeners[key]);
+                }
+            }
+        }
     }
 
     template <typename TEventType> void unsubscribe(const Handle &subscriberHandle)
@@ -88,56 +99,37 @@ class EventBus
     }
 
     void removeSubscriber(const Handle &subscriberHandle, const size_t &key,
-                          std::vector<std::pair<Callback, HandleUpdateInfo>> &resultingSubscribers)
+                          std::vector<std::pair<Callback, HandleUpdateInfo>> &subs)
     {
-
-        assert(subscriberHandle.getID() < m_listeners[key].size() &&
-               "Hande does not corelate to any listener registered for the template type");
-        assert(m_listeners.contains(key) && "No listeners are registered for the template type");
-
-        size_t handleID;
+        // Validate the handle index
+        size_t handleID = 0;
         CastHelpers::SafeCast<uint32_t, size_t>(subscriberHandle.getID(), handleID);
+        assert(handleID < subs.size() && "Handle does not correlate to any listener registered for the template type");
 
-        auto currentSubscribers = std::vector<std::pair<Callback, HandleUpdateInfo>>(resultingSubscribers.size() - 1);
-        bool isBeyondChanged = false;
-        for (size_t i = 0; i < resultingSubscribers.size(); i++)
+        // Notify the removed subscriber that its handle can be deleted
         {
-            if (!isBeyondChanged)
-            {
-                if (i == handleID)
-                {
-                    // this is the one to remove
-                    isBeyondChanged = true;
-                    uint32_t id = 0;
-                    CastHelpers::SafeCast<size_t, uint32_t>(i, id);
+            uint32_t removedId32 = 0;
+            CastHelpers::SafeCast<size_t, uint32_t>(handleID, removedId32);
+            subs[handleID].second.deleteHandleCallback(Handle{.type = Handle_Type::subscriber, .id = removedId32});
+        }
 
-                    currentSubscribers[i].second.deleteHandleCallback(
-                        Handle{.type = Handle_Type::subscriber, .id = id});
-                }
-                else
-                {
-                    currentSubscribers[i] = std::move(currentSubscribers[i]);
-                }
-            }
-            else
+        // Shift elements left from handleID+1 to end
+        for (size_t i = handleID + 1; i < subs.size(); ++i)
+        {
+            subs[i - 1] = std::move(subs[i]); // move to avoid copying std::function
+
+            // Update the moved subscriber's handle (its index decreased by 1)
+            if (Handle *h = subs[i - 1].second.getHandleForUpdateCallback())
             {
-                currentSubscribers[i - 1] = currentSubscribers[i];
-                auto *handleToUpdate = currentSubscribers[i - 1].second.getHandleForUpdateCallback();
-                handleToUpdate->id--;
+                if (h->id > 0)
+                {
+                    h->id -= 1;
+                }
             }
         }
 
-        resultingSubscribers = std::move(currentSubscribers);
-    }
-
-    void updateHandle(const Handle &newHandleValues, CallbackGetSubscriberHandleForUpdate &callback)
-    {
-        Handle *containerHandle = callback();
-        if (containerHandle != nullptr)
-        {
-            containerHandle->id = newHandleValues.getID();
-            containerHandle->type = newHandleValues.getType();
-        }
+        // Actually remove the trailing duplicate after the shift
+        subs.pop_back();
     }
 };
 } // namespace star::core::device::system

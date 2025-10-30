@@ -28,8 +28,8 @@ class LinearHandleContainer : public HandleContainer<TData, THandleType>
 
     Handle storeRecord(TData newData) override
     {
-        uint32_t nextSpace = getNextSpace();
-        Handle newHandle = Handle{.type = THandleType, .id = nextSpace};
+        const uint32_t nextSpace = getNextSpace();
+        const Handle newHandle = Handle{.type = THandleType, .id = nextSpace};
 
         m_records[nextSpace] = std::move(newData);
 
@@ -38,8 +38,6 @@ class LinearHandleContainer : public HandleContainer<TData, THandleType>
 
     uint32_t getNextSpace()
     {
-        uint32_t nextSpace = 0;
-
         if (!m_skippedSpaces.empty())
         {
             const uint32_t id = m_skippedSpaces.back();

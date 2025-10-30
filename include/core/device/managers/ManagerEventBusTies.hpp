@@ -27,11 +27,12 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, THandleTyp
         submitSubscribeToEventBus(bus);
     }
 
-    virtual void cleanup(core::device::system::EventBus &bus){
-        assert(m_subscriberInfo.isInitialized() && "Should not call cleanup twice"); 
-        bus.unsubscribe<core::device::system::event::ManagerRequest<TResourceRequest>>(m_subscriberInfo); 
+    virtual void cleanup(core::device::system::EventBus &bus)
+    {
+        assert(m_subscriberInfo.isInitialized() && "Should not call cleanup twice");
+        bus.unsubscribe<core::device::system::event::ManagerRequest<TResourceRequest>>(m_subscriberInfo);
 
-        m_subscriberInfo = Handle(); 
+        m_subscriberInfo = Handle();
     }
 
   protected:
@@ -45,11 +46,15 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, THandleTyp
                 const auto &requestEvent =
                     static_cast<const core::device::system::event::ManagerRequest<TResourceRequest> &>(e);
                 requestEvent.getResultingHandle() = this->submit(*this->m_device, requestEvent.giveMeRequest());
+                keepAlive = true;
             },
-            [this]() -> Handle * { return &this->m_subscriberInfo; }, 
-        [](const Handle &noLongerNeededSubscriberHandle){
-
-        });
+            [this]() -> Handle * { return &this->m_subscriberInfo; },
+            [this](const Handle &noLongerNeededSubscriberHandle) {
+                if (this->m_subscriberInfo == noLongerNeededSubscriberHandle)
+                {
+                    this->m_subscriberInfo = Handle();
+                }
+            });
     };
 };
 } // namespace star::core::device::manager
