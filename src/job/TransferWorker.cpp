@@ -120,7 +120,7 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
         if (!workingInfo->isMarkedAsAvailable())
         {
             workingInfo->commandBuffer->wait(0);
-            workingInfo->markAsAvailble();
+            workingInfo->markAsAvailable();
         }
     }
 
@@ -172,7 +172,7 @@ void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAlloc
     auto signalSemaphore = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
     processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, &signalSemaphore);
 
-    processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain);
+    processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
 void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
@@ -187,7 +187,7 @@ void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllo
 
     auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator);
 
-    // should eventually implement option to jsut re-use existing image
+    // should eventually implement option to just re-use existing image
     bool newImageCreated = true;
 
     auto finalTexture = newTextureRequest->createFinal(device, allocator, allTransferQueueFamilyIndicesInUse);
@@ -209,7 +209,7 @@ void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllo
     auto signalSemaphores = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
     processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, &signalSemaphores);
 
-    processInfo.setInProcessDeps(std::move(transferSrcBuffer), gpuDoneSignalMain);
+    processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
 void star::job::TransferManagerThread::CheckForCleanups(
@@ -225,7 +225,7 @@ void star::job::TransferManagerThread::CheckForCleanups(
 
         if (!workingInfo->isMarkedAsAvailable() && workingInfo->commandBuffer->isFenceReady(0))
         {
-            workingInfo->markAsAvailble();
+            workingInfo->markAsAvailable();
             readyInfos.push(std::move(workingInfo));
         }
         else
@@ -252,7 +252,7 @@ void star::job::TransferManagerThread::EnsureInfoReady(vk::Device &device, Proce
     if (!info.isMarkedAsAvailable())
     {
         info.commandBuffer->begin(0);
-        info.markAsAvailble();
+        info.markAsAvailable();
     }
     else
     {
@@ -277,8 +277,6 @@ star::job::TransferWorker::~TransferWorker()
 star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device, bool overrideToSingleThreadMode,
                                           std::vector<StarQueue> &queuesToUse)
 {
-    bool runAsync = !overrideToSingleThreadMode;
-
     this->threads = CreateThreads(device, queuesToUse, this->highPriorityRequests, this->standardRequests);
 
     if (this->threads.size() == 0)
@@ -364,8 +362,6 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
 
     for (const auto &queue : queuesToUse)
     {
-        int targetIndex = 0;
-
         if (curNumHighThreads > curNumStandardThreads)
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(

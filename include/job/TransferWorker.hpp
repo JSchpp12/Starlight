@@ -63,27 +63,24 @@ class TransferManagerThread
         ProcessRequestInfo(std::unique_ptr<StarCommandBuffer> commandBuffer)
             : commandBuffer(std::move(commandBuffer)) {};
 
-        void setInProcessDeps(std::unique_ptr<StarBuffers::Buffer> nInProcessTransferSrcBuffer,
-                              boost::atomic<bool> *nGpuDoneNotificationToMain)
+        void setInProcessDeps(std::unique_ptr<StarBuffers::Buffer> nInProcessTransferSrcBuffer)
         {
             this->inProcessTransferSrcBuffer = std::move(nInProcessTransferSrcBuffer);
-            this->gpuDoneNotificationToMain = nGpuDoneNotificationToMain;
         }
 
-        void markAsAvailble()
+        void markAsAvailable()
         {
             this->inProcessTransferSrcBuffer.reset();
-            this->gpuDoneNotificationToMain = nullptr;
+            this->inProcessTransferSrcBuffer = nullptr;
         }
 
         bool isMarkedAsAvailable() const
         {
-            return this->gpuDoneNotificationToMain == nullptr;
+          return  this->inProcessTransferSrcBuffer == nullptr;
         }
 
       private:
         std::unique_ptr<StarBuffers::Buffer> inProcessTransferSrcBuffer = nullptr;
-        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
     };
 
     struct SubThreadInfo
