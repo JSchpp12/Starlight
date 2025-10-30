@@ -2,6 +2,7 @@
 
 #include "CastHelpers.hpp"
 
+#include <syncstream>
 #include <thread>
 
 star::job::TransferManagerThread::~TransferManagerThread()
@@ -103,6 +104,9 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
             }
 
             processRequestInfos.push(std::move(workingInfo));
+
+            request->gpuDoneNotificationToMain->store(true);
+            request->gpuDoneNotificationToMain->notify_all();
         }
     }
 
@@ -140,9 +144,17 @@ void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAlloc
                                                     boost::atomic<bool> *gpuDoneSignalMain)
 {
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
+    if (transferSrcBuffer->getBufferSize() == 0)
+    {
+        throw std::runtime_error("Failed to create transfer src buffer");
+    }
 
     {
         auto newResult = newBufferRequest->createFinal(device, allocator, allTransferQueueFamilyIndicesInUse);
+        if (newResult->getBufferSize() == 0)
+        {
+            throw std::runtime_error("Failed to create final buffer");
+        }
         if (!*resultingBuffer ||
             (resultingBuffer->get() && newResult->getBufferSize() > resultingBuffer->get()->getBufferSize()))
         {
@@ -259,10 +271,7 @@ star::job::TransferManagerThread::TransferManagerThread(
 
 star::job::TransferWorker::~TransferWorker()
 {
-    for (auto &thread : this->threads)
-    {
-        thread->stopAsync();
-    }
+    stopAll();
 }
 
 star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device, bool overrideToSingleThreadMode,
@@ -376,4 +385,12 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
     }
 
     return newThreads;
+}
+
+void star::job::TransferWorker::stopAll()
+{
+    for (auto &thread : this->threads)
+    {
+        thread->stopAsync();
+    }
 }

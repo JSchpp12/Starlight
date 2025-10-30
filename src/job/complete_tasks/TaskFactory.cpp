@@ -27,7 +27,7 @@ void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void 
 
     std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;
 
-    gm->pipelineManager.get(handle)->request.pipeline = std::move(*p->pipeline);
+    gm->pipelineManager->get(handle)->request.pipeline = std::move(*p->pipeline);
 }
 
 star::job::complete_tasks::CompleteTask<> star::job::complete_tasks::task_factory::CreateBuildPipelineComplete(
@@ -55,11 +55,10 @@ void star::job::complete_tasks::task_factory::ExecuteShaderCompileComplete(void 
         .type = Handle_Type::shader,
         .id = p->handleID
     };
-
     assert(p->compiledShaderCode != nullptr && "Compiled shader data not properly set");
 
     std::cout << "Marking shader at index [" << p->handleID << "] as ready" << std::endl;
-    gm->shaderManager.get(shader)->compiledShader = std::move(p->compiledShaderCode);
+    gm->shaderManager->get(shader)->compiledShader = std::move(p->compiledShaderCode);
     eb->emit<core::device::system::event::ShaderCompiled>(core::device::system::event::ShaderCompiled{shader});
 
     ProcessPipelinesWhichAreNowReadyForBuild(device, taskSystem, graphicsManagers);
@@ -74,9 +73,9 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
     auto *gm = static_cast<core::device::manager::GraphicsContainer *>(graphicsManagers);
     auto *ts = static_cast<job::TaskManager *>(taskSystem);
 
-    for (size_t i = 0; i < gm->pipelineManager.getRecords().getData().size(); i++)
+    for (size_t i = 0; i < gm->pipelineManager->getRecords().getData().size(); i++)
     {
-        auto &record = gm->pipelineManager.getRecords().getData()[i];
+        auto &record = gm->pipelineManager->getRecords().getData()[i];
         if (!record.isReady() && record.numCompiled != 0 &&
             record.numCompiled == record.request.pipeline.getShaders().size())
         {
@@ -95,8 +94,8 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
             for (auto &shader : record.request.pipeline.getShaders())
             {
                 compiledShaders.push_back(std::make_pair<StarShader, std::unique_ptr<std::vector<uint32_t>>>(
-                    StarShader(gm->shaderManager.get(shader)->request.shader),
-                    std::move(gm->shaderManager.get(shader)->compiledShader)));
+                    StarShader(gm->shaderManager->get(shader)->request.shader),
+                    std::move(gm->shaderManager->get(shader)->compiledShader)));
             }
 
             star::StarPipeline::RenderResourceDependencies deps{.compiledShaders = std::move(compiledShaders),

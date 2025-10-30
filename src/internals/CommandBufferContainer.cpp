@@ -1,5 +1,7 @@
 #include "internals/CommandBufferContainer.hpp"
 
+#include <syncstream>
+
 star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFlight, core::device::StarDevice &device)
     : bufferGroupsWithSubOrders(
           {std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<CompleteRequest *>(5)),

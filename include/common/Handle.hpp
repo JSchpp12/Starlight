@@ -12,7 +12,7 @@ struct Handle
     }
 
     bool operator!() const noexcept{
-        return isInitialized(); 
+        return !isInitialized(); 
     }
 
     bool isInitialized() const noexcept

@@ -1,6 +1,8 @@
 #include "renderer/SwapChainRenderer.hpp"
 
 #include "ConfigFile.hpp"
+#include "core/device/managers/Semaphore.hpp"
+#include "core/device/system/event/ManagerRequest.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -15,24 +17,21 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
     createSwapChain();
 }
 
+star::core::renderer::SwapChainRenderer::SwapChainRenderer(
+    core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+    std::vector<std::shared_ptr<StarObject>> objects,
+    std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
+    std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
+    std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window)
+    : Renderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
+               std::move(cameraData)),
+      window(window), numFramesInFlight(numFramesInFlight), device(context)
+{
+    createSwapChain();
+}
+
 star::core::renderer::SwapChainRenderer::~SwapChainRenderer()
 {
-    cleanupSwapChain();
-
-    for (auto &semaphore : this->imageAvailableSemaphores)
-    {
-        this->device.getDevice().getVulkanDevice().destroySemaphore(semaphore);
-    }
-
-    for (auto &semaphore : this->imageAcquireSemaphores)
-    {
-        this->device.getDevice().getVulkanDevice().destroySemaphore(semaphore);
-    }
-
-    for (size_t i = 0; i < this->numFramesInFlight; i++)
-    {
-        this->device.getDevice().getVulkanDevice().destroyFence(inFlightFences[i]);
-    }
 }
 
 void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
@@ -46,8 +45,23 @@ void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceCon
     this->imageAcquireSemaphores = CreateSemaphores(context, numFramesInFlight);
     this->imageAvailableSemaphores = CreateSemaphores(context, numSwapChainImages);
 
-    this->createFences();
+    this->createFences(context);
     this->createFenceImageTracking();
+}
+
+void star::core::renderer::SwapChainRenderer::cleanupRender(core::device::DeviceContext &context)
+{
+    Renderer::cleanupRender(context);
+
+    cleanupSwapChain(context);
+}
+
+void star::core::renderer::SwapChainRenderer::frameUpdate(core::device::DeviceContext &context,
+                                                          const uint8_t &frameInFlightIndex)
+{
+    Renderer::frameUpdate(context, frameInFlightIndex);
+
+    prepareRenderingContext(context);
 }
 
 void star::core::renderer::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
@@ -234,8 +248,8 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     //  4. timeout
 
     {
-        auto result = this->device.getDevice().getVulkanDevice().waitForFences(inFlightFences[frameIndexToBeDrawn],
-                                                                               VK_TRUE, UINT64_MAX);
+        auto result = this->device.getDevice().getVulkanDevice().waitForFences(
+            m_renderingContext.recordDependentFence.get(inFlightFences[frameIndexToBeDrawn]), VK_TRUE, UINT64_MAX);
         if (result != vk::Result::eSuccess)
             throw std::runtime_error("Failed to wait for fences");
     }
@@ -252,7 +266,8 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     //  longer match
     {
         auto result = this->device.getDevice().getVulkanDevice().acquireNextImageKHR(
-            swapChain, UINT64_MAX, this->imageAcquireSemaphores[frameIndexToBeDrawn]);
+            swapChain, UINT64_MAX,
+            m_renderingContext.recordDependentSemaphores.get(this->imageAcquireSemaphores[frameIndexToBeDrawn]));
 
         if (result.result == vk::Result::eErrorOutOfDateKHR)
         {
@@ -270,10 +285,11 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     }
 
     // check if a previous frame is using the current image
-    if (imagesInFlight[this->currentSwapChainImageIndex])
+    if (imagesInFlight[this->currentSwapChainImageIndex].isInitialized())
     {
         const vk::Result result = this->device.getDevice().getVulkanDevice().waitForFences(
-            1, &imagesInFlight[this->currentSwapChainImageIndex], VK_TRUE, UINT64_MAX);
+            1, &m_renderingContext.recordDependentFence.get(imagesInFlight[this->currentSwapChainImageIndex]), VK_TRUE,
+            UINT64_MAX);
         if (result != vk::Result::eSuccess)
             throw std::runtime_error("Failed to wait for fences");
     }
@@ -281,8 +297,8 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     imagesInFlight[this->currentSwapChainImageIndex] = inFlightFences[frameIndexToBeDrawn];
 
     // set fence to unsignaled state
-    const vk::Result resetResult =
-        this->device.getDevice().getVulkanDevice().resetFences(1, &inFlightFences[frameIndexToBeDrawn]);
+    const vk::Result resetResult = this->device.getDevice().getVulkanDevice().resetFences(
+        1, &m_renderingContext.recordDependentFence.get(imagesInFlight[this->currentSwapChainImageIndex]));
     if (resetResult != vk::Result::eSuccess)
         throw std::runtime_error("Failed to reset fences");
 }
@@ -293,7 +309,8 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     std::vector<vk::PipelineStageFlags> dataWaitPoints)
 {
     vk::SubmitInfo submitInfo{};
-    std::vector<vk::Semaphore> waitSemaphores = {this->imageAcquireSemaphores[frameIndexToBeDrawn]};
+    std::vector<vk::Semaphore> waitSemaphores = {
+        m_renderingContext.recordDependentSemaphores.get(this->imageAcquireSemaphores[frameIndexToBeDrawn])};
     std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
     if (previousCommandBufferSemaphores != nullptr)
@@ -319,22 +336,26 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     submitInfo.pWaitSemaphores = waitSemaphores.data();
     submitInfo.waitSemaphoreCount = waitSemaphoreCount;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &this->imageAvailableSemaphores[this->currentSwapChainImageIndex];
+    submitInfo.pSignalSemaphores = &m_renderingContext.recordDependentSemaphores.get(
+        this->imageAvailableSemaphores[this->currentSwapChainImageIndex]);
     submitInfo.pWaitDstStageMask = waitStages.data();
     submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
     submitInfo.commandBufferCount = 1;
 
+    const auto &fence = m_renderingContext.recordDependentFence.get(inFlightFences[frameIndexToBeDrawn]);
+
     auto commandResult = std::make_unique<vk::Result>(this->device.getDevice()
                                                           .getDefaultQueue(star::Queue_Type::Tpresent)
                                                           .getVulkanQueue()
-                                                          .submit(1, &submitInfo, inFlightFences[frameIndexToBeDrawn]));
+                                                          .submit(1, &submitInfo, fence));
 
     if (*commandResult != vk::Result::eSuccess)
     {
         throw std::runtime_error("Failed to submit command buffer");
     }
 
-    return this->imageAvailableSemaphores[this->currentSwapChainImageIndex];
+    return m_renderingContext.recordDependentSemaphores.get(
+        this->imageAvailableSemaphores[this->currentSwapChainImageIndex]);
 }
 
 std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::SwapChainRenderer::createRenderToImages(
@@ -463,19 +484,20 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
     this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex, frameIndex);
 }
 
-std::vector<vk::Semaphore> star::core::renderer::SwapChainRenderer::CreateSemaphores(
-    star::core::device::DeviceContext &device, const int &numToCreate)
+std::vector<star::Handle> star::core::renderer::SwapChainRenderer::CreateSemaphores(
+    star::core::device::DeviceContext &context, const uint8_t &numToCreate)
 {
-    std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>(numToCreate);
+    auto semaphores = std::vector<Handle>(numToCreate);
 
     vk::SemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
 
     for (int i = 0; i < numToCreate; i++)
     {
-        semaphores[i] = device.getDevice().getVulkanDevice().createSemaphore(semaphoreInfo);
+        context.getEventBus().emit(
+            core::device::system::event::ManagerRequest(semaphores[i], core::device::manager::SemaphoreRequest{false}));
 
-        if (!semaphores[i])
+        if (!semaphores[i].isInitialized())
         {
             throw std::runtime_error("failed to create semaphores for a frame");
         }
@@ -484,20 +506,15 @@ std::vector<vk::Semaphore> star::core::renderer::SwapChainRenderer::CreateSemaph
     return semaphores;
 }
 
-void star::core::renderer::SwapChainRenderer::createFences()
+void star::core::renderer::SwapChainRenderer::createFences(core::device::DeviceContext &context)
 {
     // note: fence creation can be rolled into semaphore creation. Seperated for understanding
     inFlightFences.resize(this->numFramesInFlight);
 
-    vk::FenceCreateInfo fenceInfo{};
-    fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
-
-    // create the fence in a signaled state
-    fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
-
     for (size_t i = 0; i < this->numFramesInFlight; i++)
     {
-        this->inFlightFences[i] = this->device.getDevice().getVulkanDevice().createFence(fenceInfo);
+        context.getEventBus().emit(
+            core::device::system::event::ManagerRequest(inFlightFences[i], core::device::manager::FenceRequest{true}));
         if (!this->inFlightFences[i])
         {
             throw std::runtime_error("failed to create fence object for a frame");
@@ -511,7 +528,7 @@ void star::core::renderer::SwapChainRenderer::createFenceImageTracking()
 
     // need to ensure the frame that is going to be drawn to, is the one linked to the expected fence.
     // If, for any reason, vulkan returns an image out of order, we will be able to handle that with this link
-    imagesInFlight.resize(this->renderToImages.size(), VK_NULL_HANDLE);
+    imagesInFlight.resize(this->renderToImages.size());
 
     // initially, no frame is using any image so this is going to be created without an explicit link
 }
@@ -607,22 +624,67 @@ void star::core::renderer::SwapChainRenderer::recreateSwapChain()
     // wait for device to finish any current actions
     vkDeviceWaitIdle(this->device.getDevice().getVulkanDevice());
 
-    cleanupSwapChain();
+    cleanupSwapChain(device);
 
     // create swap chain itself
     createSwapChain();
 }
 
-void star::core::renderer::SwapChainRenderer::cleanupSwapChain()
+void star::core::renderer::SwapChainRenderer::cleanupSwapChain(core::device::DeviceContext &context)
 {
     for (auto &image : this->renderToImages)
     {
-        image.release();
+        if (image)
+        {
+            image->cleanupRender(context.getDevice().getVulkanDevice());
+            image.release();
+        }
     }
     for (auto &image : this->renderToDepthImages)
     {
-        image.release();
+        if (image)
+        {
+            image->cleanupRender(context.getDevice().getVulkanDevice());
+            image.release();
+        }
     }
 
-    this->device.getDevice().getVulkanDevice().destroySwapchainKHR(this->swapChain);
+    context.getDevice().getVulkanDevice().destroySwapchainKHR(this->swapChain);
+}
+
+void star::core::renderer::SwapChainRenderer::prepareRenderingContext(core::device::DeviceContext &context)
+{
+    addSemaphoresToRenderingContext(context);
+    addFencesToRenderingContext(context);
+}
+
+void star::core::renderer::SwapChainRenderer::addSemaphoresToRenderingContext(core::device::DeviceContext &context)
+{
+    for (const auto &semaphore : this->imageAcquireSemaphores)
+    {
+        m_renderingContext.recordDependentSemaphores.manualInsert(
+            semaphore, context.getSemaphoreManager().get(semaphore)->semaphore);
+    }
+
+    for (const auto &semaphore : this->imageAvailableSemaphores)
+    {
+        m_renderingContext.recordDependentSemaphores.manualInsert(
+            semaphore, context.getSemaphoreManager().get(semaphore)->semaphore);
+    }
+}
+
+void star::core::renderer::SwapChainRenderer::addFencesToRenderingContext(core::device::DeviceContext &context)
+{
+    for (const auto &fence : inFlightFences)
+    {
+        m_renderingContext.recordDependentFence.manualInsert(fence, context.getFenceManager().get(fence)->fence);
+    }
+
+    for (const auto &fence : imagesInFlight)
+    {
+        if (fence.isInitialized() && !m_renderingContext.recordDependentFence.contains(fence))
+        {
+            m_renderingContext.recordDependentFence.manualInsert(fence, context.getFenceManager().get(fence)->fence);
+        }
+    }
 }

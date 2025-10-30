@@ -16,6 +16,10 @@ class MappedHandleContainer : public HandleContainer<TData, THandleType>
         store(handle, std::move(record));
     }
 
+    bool contains(const Handle &handle) const{
+        return m_records.contains(handle);
+    }
+
   protected:
     Handle storeRecord(TData newData) override
     {

@@ -15,11 +15,21 @@ class SwapChainRenderer : public star::core::renderer::Renderer
                       std::vector<std::shared_ptr<StarObject>> objects, std::shared_ptr<std::vector<Light>> lights,
                       std::shared_ptr<StarCamera> camera, const StarWindow &window);
 
+    SwapChainRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                      std::vector<std::shared_ptr<StarObject>> objects,
+                      std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
+                      std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
+                      std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window);
+
     SwapChainRenderer(const SwapChainRenderer &other) = delete;
 
     virtual ~SwapChainRenderer();
 
     virtual void prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
+
+    virtual void cleanupRender(core::device::DeviceContext &device) override;
+
+    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) override;
 
     void submitPresentation(const int &frameIndexToBeDrawn, const vk::Semaphore *mainGraphicsDoneSemaphore);
 
@@ -36,12 +46,6 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     uint8_t getFrameToBeDrawn() const
     {
         return this->currentFrameInFlightCounter;
-    }
-
-    vk::Fence getframeStatusFlag(const uint8_t &frameIndex)
-    {
-        assert(frameIndex < this->imagesInFlight.size() && "Out of range.");
-        return this->imagesInFlight[frameIndex];
     }
 
   protected:
@@ -62,10 +66,8 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     std::unique_ptr<vk::Extent2D> swapChainExtent = std::unique_ptr<vk::Extent2D>();
 
     // Sync obj storage
-    std::vector<vk::Fence> inFlightFences;
-    std::vector<vk::Fence> imagesInFlight;
-    std::vector<vk::Semaphore> imageAvailableSemaphores;
-    std::vector<vk::Semaphore> imageAcquireSemaphores;
+    std::vector<Handle> inFlightFences, imagesInFlight;
+    std::vector<Handle> imageAvailableSemaphores, imageAcquireSemaphores;
 
     virtual star::core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
@@ -102,17 +104,17 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     /// </summary>
     virtual void recreateSwapChain();
 
-    void cleanupSwapChain();
+    void cleanupSwapChain(core::device::DeviceContext &context);
 
     /// <summary>
     /// Create semaphores that are going to be used to sync rendering and presentation queues
     /// </summary>
-    static std::vector<vk::Semaphore> CreateSemaphores(core::device::DeviceContext &device, const int &numToCreate);
+    static std::vector<Handle> CreateSemaphores(core::device::DeviceContext &context, const uint8_t &numToCreate);
 
     /// <summary>
     /// Fences are needed for CPU-GPU sync. Creates these required objects
     /// </summary>
-    void createFences();
+    void createFences(core::device::DeviceContext &context);
 
     /// <summary>
     /// Create tracking information in order to link fences with the swap chain images using
@@ -123,5 +125,11 @@ class SwapChainRenderer : public star::core::renderer::Renderer
     /// Create a swap chain that will be used in rendering images
     /// </summary>
     virtual void createSwapChain();
+
+    void prepareRenderingContext(core::device::DeviceContext &context);
+
+    void addSemaphoresToRenderingContext(core::device::DeviceContext &context);
+
+    void addFencesToRenderingContext(core::device::DeviceContext &context);
 };
 } // namespace star::core::renderer

@@ -7,12 +7,12 @@ auto star::ManagerRenderResource::highPriorityRequestCompleteFlags =
 auto star::ManagerRenderResource::bufferStorage =
     std::unordered_map<star::Handle,
                        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
-                                                                    star::Handle_Type::buffer, 100>>,
+                                                                    star::Handle_Type::buffer, 3000>>,
                        star::HandleHash>();
 auto star::ManagerRenderResource::textureStorage =
     std::unordered_map<star::Handle,
                        std::unique_ptr<core::ManagedHandleContainer<
-                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 50>>,
+                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 550>>,
                        star::HandleHash>();
 
 void star::ManagerRenderResource::init(const Handle &deviceID, std::shared_ptr<star::core::device::StarDevice> device,
@@ -21,10 +21,10 @@ void star::ManagerRenderResource::init(const Handle &deviceID, std::shared_ptr<s
     devices.insert(std::make_pair(deviceID, std::move(device)));
     bufferStorage.insert(std::make_pair(
         deviceID, std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>,
-                                                                star::Handle_Type::buffer, 100>>()));
+                                                                star::Handle_Type::buffer, 3000>>()));
     textureStorage.insert(std::make_pair(
         deviceID, std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
-                                                                star::Handle_Type::texture, 50>>()));
+                                                                star::Handle_Type::texture, 550>>()));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
 
@@ -101,9 +101,7 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
 {
     auto &container = bufferStorage.at(deviceID)->get(handle);
 
-    // possible race condition....need to make sure the request on the secondary thread has been finished first before
-    // replacing
-    if (container.cpuWorkDoneByTransferThread.load())
+    if (!container.cpuWorkDoneByTransferThread.load())
     {
         container.cpuWorkDoneByTransferThread.wait(false);
     }
@@ -140,8 +138,8 @@ bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &
 
 void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Handle &handle)
 {
-    assert(deviceID.getType() == Handle_Type::device); 
-    
+    assert(deviceID.getType() == Handle_Type::device);
+
     boost::atomic<bool> *fence = nullptr;
 
     switch (handle.getType())
@@ -167,27 +165,45 @@ void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Han
 star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &deviceID, const star::Handle &handle)
 {
     assert(handle.getType() == star::Handle_Type::buffer && "Handle provided is not a buffer handle");
-    const auto &container = bufferStorage.at(deviceID)->get(handle).resource;
-    if (!container)
+    auto &container = bufferStorage.at(deviceID)->get(handle);
+    if (!container.resource)
     {
-        throw std::runtime_error("Buffer has not been created yet. It is either still waiting to be processed by "
-                                 "transfer queues or has not been submitted yet. The latter is due to a blank request "
-                                 "which is never updated by controllers");
+        if (!container.cpuWorkDoneByTransferThread.load())
+        {
+            container.cpuWorkDoneByTransferThread.wait(false);
+        }
+        else
+        {
+            throw std::runtime_error("Unknown error has occurred during getBuffer. This can happen if the transfer "
+                                     "flag is not properly reset");
+        }
     }
 
-    return *container;
+    assert(container.resource && "Resource should always exist before returning"); 
+
+    return *container.resource;
 }
 
 star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const Handle &deviceID, const star::Handle &handle)
 {
     assert(handle.getType() == star::Handle_Type::texture && "Handle provided is not a texture handle");
-    const auto &container = textureStorage.at(deviceID)->get(handle).resource;
-    if (!container)
+    const auto &container = textureStorage.at(deviceID)->get(handle);
+    if (!container.resource)
     {
-        throw std::runtime_error("Texture has not been created yet. It must be waited on");
+        if (!container.cpuWorkDoneByTransferThread.load())
+        {
+            container.cpuWorkDoneByTransferThread.wait(false);
+        }
+        else
+        {
+            throw std::runtime_error("Unknown error has occurred during getBuffer. This can happen if the transfer "
+                                     "flag is not properly reset");
+        }
     }
 
-    return *container;
+    assert(container.resource && "Resource should always exist before returning"); 
+
+    return *container.resource;
 }
 
 void star::ManagerRenderResource::cleanup(const Handle &deviceID, core::device::StarDevice &device)

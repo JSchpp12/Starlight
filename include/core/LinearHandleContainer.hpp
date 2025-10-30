@@ -20,6 +20,7 @@ class LinearHandleContainer : public HandleContainer<TData, THandleType>
     {
         return m_records;
     }
+
   protected:
     std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
     std::array<TData, TMaxDataCount> m_records = std::array<TData, TMaxDataCount>();
@@ -69,7 +70,8 @@ class LinearHandleContainer : public HandleContainer<TData, THandleType>
         return m_records[index];
     }
 
-    virtual void removeRecord(const Handle &handle, device::StarDevice *device) override{
+    virtual void removeRecord(const Handle &handle, device::StarDevice *device) override
+    {
         assert(handle.getID() < m_records.size() && "Requested index is beyond max storage space in remove()");
 
         m_skippedSpaces.push(handle.getID());

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Manager.hpp"
+#include "ManagerEventBusTies.hpp"
 
 namespace star::core::device::manager
 {
@@ -10,11 +10,18 @@ concept RecordStructWithHasReady = requires(const T record) {
 };
 template <typename TRecord, typename TResourceRequest, star::Handle_Type THandleType, size_t TMaxRecordCount>
     requires RecordStructWithHasReady<TRecord>
-class TaskCreatedResourceManager : public Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>
+class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResourceRequest, THandleType, TMaxRecordCount>
 {
   public:
-    Handle submit(device::StarDevice &device, TResourceRequest request, job::TaskManager &taskSystem,
-                  system::EventBus &eventBus)
+    TaskCreatedResourceManager() = default;
+    virtual ~TaskCreatedResourceManager() = default;
+    TaskCreatedResourceManager(const TaskCreatedResourceManager &) noexcept = delete;
+    TaskCreatedResourceManager &operator=(const TaskCreatedResourceManager &) noexcept = delete;
+    TaskCreatedResourceManager(TaskCreatedResourceManager &&) noexcept = delete;
+    TaskCreatedResourceManager &operator=(TaskCreatedResourceManager &&) noexcept = delete;
+
+    virtual Handle submit(device::StarDevice &device, TResourceRequest request, job::TaskManager &taskSystem,
+                          system::EventBus &eventBus)
     {
         auto handle =
             Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>::submit(device, std::move(request));
@@ -26,6 +33,7 @@ class TaskCreatedResourceManager : public Manager<TRecord, TResourceRequest, THa
     }
 
   protected:
+    using Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>::submit;
     virtual void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                             system::EventBus &eventBus, TRecord *storedRecord) {};
 

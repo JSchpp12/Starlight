@@ -148,6 +148,8 @@ class StarObject : private DescriptorModifier
     InstanceInfo m_instanceInfo = InstanceInfo();
 
     std::vector<std::unique_ptr<StarMesh>> meshes;
+    bool isReady = false;
+
 
     virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes(star::core::device::DeviceContext &device) = 0;
 
@@ -172,8 +174,6 @@ class StarObject : private DescriptorModifier
     static std::unique_ptr<StarDescriptorSetLayout> boundDescriptorLayout;
     static vk::PipelineLayout boundPipelineLayout;
     static std::unique_ptr<Handle> boundBoxPipeline;
-
-    bool isReady = false;
 
     Handle m_deviceID;
     std::unique_ptr<std::vector<std::reference_wrapper<StarDescriptorSetLayout>>> groupLayout;

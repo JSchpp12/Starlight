@@ -14,19 +14,19 @@ namespace star
 {
 class StarEngine
 {
-  public:
-    StarEngine(std::unique_ptr<StarApplication> application);
+public:
+    StarEngine(StarApplication &application);
 
     virtual ~StarEngine();
 
     void run();
 
   protected:
+    StarApplication &m_application; 
     Handle defaultDevice = Handle{.type = star::Handle_Type::device, .id = 0};
     uint64_t frameCounter = 0;
     std::unique_ptr<StarWindow> window = nullptr;
     core::SystemContext deviceManager;
-    std::unique_ptr<StarApplication> application = nullptr;
     std::shared_ptr<StarScene> currentScene = nullptr;
 
   private:

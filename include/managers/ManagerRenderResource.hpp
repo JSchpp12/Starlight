@@ -32,7 +32,8 @@ class ManagerRenderResource : public StarManager
         FinalizedResourceRequest(const FinalizedResourceRequest &) = delete;
         FinalizedResourceRequest operator=(const FinalizedResourceRequest &) = delete;
         FinalizedResourceRequest(FinalizedResourceRequest &&other)
-            : resourceSemaphore(std::move(other.resourceSemaphore)), resource(std::move(other.resource))
+            : resourceSemaphore(std::move(other.resourceSemaphore)),
+              resource(other.resource ? std::move(other.resource) : nullptr)
         {
         }
         FinalizedResourceRequest &operator=(FinalizedResourceRequest &&other)
@@ -40,7 +41,10 @@ class ManagerRenderResource : public StarManager
             if (this != &other)
             {
                 resourceSemaphore = std::move(other.resourceSemaphore);
-                resource = std::move(other.resource);
+                if (other.resource)
+                {
+                    resource = std::move(other.resource);
+                }
             }
             return *this;
         }
@@ -49,9 +53,12 @@ class ManagerRenderResource : public StarManager
         {
         }
 
-        void cleanup()
+        void cleanupRender(vk::Device &device)
         {
-            resource.reset();
+            if (resource)
+            {
+                resource->cleanupRender(device);
+            }
         }
     };
 
@@ -69,7 +76,7 @@ class ManagerRenderResource : public StarManager
     static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                              std::unique_ptr<TransferRequest::Texture> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
-                             const bool &isHighPriorirty = false);
+                             const bool &isHighPriority = false);
 
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
@@ -112,12 +119,12 @@ class ManagerRenderResource : public StarManager
     static std::unordered_map<
         Handle,
         std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
-                                                     star::Handle_Type::texture, 50>>,
+                                                     star::Handle_Type::texture, 550>>,
         star::HandleHash>
         textureStorage;
     static std::unordered_map<Handle,
                               std::unique_ptr<core::ManagedHandleContainer<
-                                  FinalizedResourceRequest<star::StarBuffers::Buffer>, star::Handle_Type::buffer, 100>>,
+                                  FinalizedResourceRequest<star::StarBuffers::Buffer>, star::Handle_Type::buffer, 3000>>,
                               star::HandleHash>
         bufferStorage;
 

@@ -252,25 +252,27 @@ class StarDevice
         other.vulkanDevice = VK_NULL_HANDLE;
     }
 
-    StarDevice &operator=(StarDevice &&other){
-        if (this != &other){
-            vulkanDevice = other.vulkanDevice; 
+    StarDevice &operator=(StarDevice &&other)
+    {
+        if (this != &other)
+        {
+            vulkanDevice = other.vulkanDevice;
             allocator = std::move(other.allocator);
-            physicalDevice = other.physicalDevice; 
-            starWindow = other.starWindow; 
-            extraFamilies = std::move(other.extraFamilies); 
-            currentDeviceQueues = std::move(other.currentDeviceQueues); 
-            defaultQueue = std::move(other.defaultQueue); 
+            physicalDevice = other.physicalDevice;
+            starWindow = other.starWindow;
+            extraFamilies = std::move(other.extraFamilies);
+            currentDeviceQueues = std::move(other.currentDeviceQueues);
+            defaultQueue = std::move(other.defaultQueue);
             dedicatedComputeQueue = std::move(other.dedicatedComputeQueue);
-            dedicatedTransferQueue = std::move(other.dedicatedTransferQueue); 
+            dedicatedTransferQueue = std::move(other.dedicatedTransferQueue);
             defaultCommandPool = std::move(other.defaultCommandPool);
             transferCommandPool = std::move(other.transferCommandPool);
-            computeCommandPool = std::move(other.computeCommandPool); 
+            computeCommandPool = std::move(other.computeCommandPool);
 
-            other.vulkanDevice = VK_NULL_HANDLE; 
+            other.vulkanDevice = VK_NULL_HANDLE;
         }
 
-        return *this; 
+        return *this;
     }
 
     /// <summary>

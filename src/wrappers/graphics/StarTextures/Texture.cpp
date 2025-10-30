@@ -126,10 +126,6 @@ star::StarTextures::Texture::Texture(const Texture &other)
 {
 }
 
-star::StarTextures::Texture::~Texture()
-{
-}
-
 vk::ImageView star::StarTextures::Texture::getImageView(const vk::Format *requestedFormat) const
 {
     if (requestedFormat != nullptr)
@@ -175,9 +171,8 @@ star::StarTextures::Texture::Texture(vk::Device &device, vk::Image &vulkanImage,
                                      const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
                                      const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo)
     : device(device), baseFormat(baseFormat),
-      memoryResources(std::make_shared<StarTextures::Resources>(device, vulkanImage,
-                                                                CreateImageViews(device, vulkanImage, imageViewInfos),
-                                                                CreateImageSampler(device, samplerInfo))),
+      memoryResources(std::make_shared<StarTextures::Resources>(
+          vulkanImage, CreateImageViews(device, vulkanImage, imageViewInfos), CreateImageSampler(device, samplerInfo))),
       mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
 {
 }
@@ -186,7 +181,7 @@ star::StarTextures::Texture::Texture(vk::Device &device, vk::Image &vulkanImage,
                                      const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
                                      const vk::Format &baseFormat)
     : device(device), memoryResources(std::make_shared<StarTextures::Resources>(
-                          device, vulkanImage, CreateImageViews(device, vulkanImage, imageViewInfos))),
+                          vulkanImage, CreateImageViews(device, vulkanImage, imageViewInfos))),
       baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
 {
 }
@@ -219,7 +214,7 @@ void star::StarTextures::Texture::CreateAllocation(vk::Device &device, const vk:
 
     if (result != VK_SUCCESS)
     {
-        std::string message = "Failed to create image: " + std::to_string(result); 
+        std::string message = "Failed to create image: " + std::to_string(result);
 
         throw std::runtime_error(message);
     }
@@ -279,7 +274,7 @@ std::shared_ptr<star::StarTextures::Resources> star::StarTextures::Texture::Crea
     CreateAllocation(device, baseFormat, allocator, allocationCreateInfo, imageCreateInfo, allocation, image,
                      allocationName);
 
-    return std::make_shared<StarTextures::AllocatedResources>(device, image, allocator, allocation);
+    return std::make_shared<StarTextures::AllocatedResources>(image, allocation, allocator);
 }
 
 std::shared_ptr<star::StarTextures::Resources> star::StarTextures::Texture::CreateResource(
@@ -297,7 +292,7 @@ std::shared_ptr<star::StarTextures::Resources> star::StarTextures::Texture::Crea
 
     const auto views = CreateImageViews(device, image, imageViewCreateInfos);
 
-    return std::make_shared<StarTextures::AllocatedResources>(device, image, views, allocator, allocation);
+    return std::make_shared<StarTextures::AllocatedResources>(image, views, allocation, allocator);
 }
 
 std::shared_ptr<star::StarTextures::Resources> star::StarTextures::Texture::CreateResource(
@@ -318,7 +313,7 @@ std::shared_ptr<star::StarTextures::Resources> star::StarTextures::Texture::Crea
 
     const auto sampler = CreateImageSampler(device, samplerCreateInfo);
 
-    return std::make_shared<StarTextures::AllocatedResources>(device, image, views, sampler, allocator, allocation);
+    return std::make_shared<StarTextures::AllocatedResources>(image, views, sampler, allocation, allocator);
 }
 
 vk::ImageView star::StarTextures::Texture::CreateImageView(vk::Device &device,
@@ -388,11 +383,11 @@ std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builde
     {
         if (this->samplerInfo.has_value())
         {
-            return std::unique_ptr<Texture>(new Texture(this->device, this->createNewAllocationInfo.value().allocator,
-                           this->createNewAllocationInfo.value().createInfo,
-                           this->createNewAllocationInfo.value().allocationName,
-                           this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos,
-                           this->format.value(), this->samplerInfo.value()));
+            return std::unique_ptr<Texture>(new Texture(
+                this->device, this->createNewAllocationInfo.value().allocator,
+                this->createNewAllocationInfo.value().createInfo, this->createNewAllocationInfo.value().allocationName,
+                this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos, this->format.value(),
+                this->samplerInfo.value()));
         }
         else
         {
@@ -406,12 +401,13 @@ std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builde
     {
         if (this->samplerInfo.has_value())
         {
-            return std::unique_ptr<Texture>(new Texture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value(),
-                           this->samplerInfo.value()));
+            return std::unique_ptr<Texture>(new Texture(this->device, this->vulkanImage.value(), this->viewInfos,
+                                                        this->format.value(), this->samplerInfo.value()));
         }
         else
         {
-            return std::unique_ptr<Texture>(new Texture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()));
+            return std::unique_ptr<Texture>(
+                new Texture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()));
         }
     }
     else

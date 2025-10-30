@@ -1,7 +1,7 @@
 #pragma once
 
-#include "device/StarDevice.hpp"
 #include "StarTextures/Resources.hpp"
+#include "device/StarDevice.hpp"
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
@@ -64,19 +64,26 @@ class Texture
 
     Texture(const Texture &other);
 
-    //copy assignment operator
-    Texture& operator=(const Texture& other){
-        if (this != &other){
+    // copy assignment operator
+    Texture &operator=(const Texture &other)
+    {
+        if (this != &other)
+        {
             this->memoryResources = other.memoryResources;
-            this->device = other.device; 
+            this->device = other.device;
             this->baseFormat = other.baseFormat;
             this->mipmapLevels = other.mipmapLevels;
         }
 
-        return *this; 
+        return *this;
     }
 
-    virtual ~Texture();
+    virtual ~Texture() = default;
+
+    void cleanupRender(vk::Device &device)
+    {
+        memoryResources->cleanupRender(device);
+    }
 
     const vk::Image &getVulkanImage() const
     {

@@ -16,12 +16,14 @@ class RenderingContext
     StarPipeline *pipeline = nullptr;
     MappedHandleContainer<vk::Buffer, star::Handle_Type::buffer> bufferTransferRecords =
         MappedHandleContainer<vk::Buffer, star::Handle_Type::buffer>();
+    MappedHandleContainer<vk::Semaphore, star::Handle_Type::semaphore> recordDependentSemaphores =
+        MappedHandleContainer<vk::Semaphore, star::Handle_Type::semaphore>();
+    MappedHandleContainer<vk::Fence, star::Handle_Type::fence> recordDependentFence =
+        MappedHandleContainer<vk::Fence, star::Handle_Type::fence>();
 
     void addBufferToRenderingContext(core::device::DeviceContext &context, const Handle &handle)
     {
         assert(handle.getType() == star::Handle_Type::buffer);
-
-        context.getManagerRenderResource().waitForReady(context.getDeviceID(), handle);
 
         bufferTransferRecords.manualInsert(
             handle, context.getManagerRenderResource().getBuffer(context.getDeviceID(), handle).getVulkanBuffer());

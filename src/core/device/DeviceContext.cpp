@@ -6,9 +6,9 @@ star::core::device::DeviceContext::~DeviceContext()
 {
     if (m_ownsResources)
     {
-        m_taskManager.stopAll();
-        m_graphicsManagers.pipelineManager.cleanupRender(*m_device);
-        m_graphicsManagers.shaderManager.cleanupRender(*m_device);
+        m_graphicsManagers.fenceManager->cleanupRender(*m_device); 
+        m_graphicsManagers.pipelineManager->cleanupRender(*m_device);
+        m_graphicsManagers.shaderManager->cleanupRender(*m_device);
         m_graphicsManagers.semaphoreManager->cleanupRender(*m_device);
         m_commandBufferManager->cleanup(*m_device);
 
@@ -16,33 +16,40 @@ star::core::device::DeviceContext::~DeviceContext()
     }
 }
 
-void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8_t &numFramesInFlight, RenderingInstance &instance,
-                                             std::set<Rendering_Features> requiredFeatures, StarWindow &window,
+void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8_t &numFramesInFlight,
+                                             RenderingInstance &instance, std::set<Rendering_Features> requiredFeatures,
+                                             StarWindow &window,
                                              const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
 {
-    assert(!m_ownsResources && "Dont call init twice"); 
-    assert(deviceID.getType() == Handle_Type::device); 
-    
-    m_deviceID = deviceID; 
+    assert(!m_ownsResources && "Dont call init twice");
+    assert(deviceID.getType() == Handle_Type::device);
 
-    m_frameInFlightTrackingInfo.resize(numFramesInFlight); 
+    m_deviceID = deviceID;
+
+    m_frameInFlightTrackingInfo.resize(numFramesInFlight);
 
     m_surface.init(instance, window);
-    m_device = std::make_shared<StarDevice>(window, m_surface, instance, requiredFeatures, requiredRenderingDeviceFeatures);
-    m_commandBufferManager = std::make_unique<manager::ManagerCommandBuffer>(*m_device, numFramesInFlight); 
-    m_transferWorker = CreateTransferWorker(*m_device); 
-    m_renderResourceManager = std::make_unique<ManagerRenderResource>(); 
+    m_device =
+        std::make_shared<StarDevice>(window, m_surface, instance, requiredFeatures, requiredRenderingDeviceFeatures);
+    m_commandBufferManager = std::make_unique<manager::ManagerCommandBuffer>(*m_device, numFramesInFlight);
+    m_transferWorker = CreateTransferWorker(*m_device);
+    m_renderResourceManager = std::make_unique<ManagerRenderResource>();
 
-    initWorkers(numFramesInFlight); 
+    initWorkers(numFramesInFlight);
 
-    m_graphicsManagers.init(m_device, m_eventBus); 
-   
-    m_ownsResources = true; 
+    m_graphicsManagers.init(m_device, m_eventBus);
+
+    m_ownsResources = true;
 }
 
 void star::core::device::DeviceContext::waitIdle()
 {
-    m_taskManager.stopAll();
+    if (m_ownsResources)
+    {
+        m_taskManager.stopAll();
+        m_transferWorker->stopAll();
+    }
+
     m_device->getVulkanDevice().waitIdle();
 }
 
@@ -106,8 +113,9 @@ void star::core::device::DeviceContext::processCompleteMessage(job::complete_tas
                      static_cast<void *>(&m_eventBus), static_cast<void *>(&m_graphicsManagers));
 }
 
-void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFlight){
-     ManagerRenderResource::init(m_deviceID, m_device, m_transferWorker, numFramesInFlight);
+void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFlight)
+{
+    ManagerRenderResource::init(m_deviceID, m_device, m_transferWorker, numFramesInFlight);
 
     const auto transferFams =
         m_device->getQueueOwnershipTracker().getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);

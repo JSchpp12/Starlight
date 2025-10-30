@@ -28,19 +28,21 @@ template <typename TTransferType, typename TDataType> class Controller
 
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
     {
-        assert(m_resourceHandles.size() == 0 && "Should not be initialized more than once");
-
-        m_resourceHandles.resize(numFramesInFlight);
-
-        for (uint8_t i = 0; i < numFramesInFlight; i++)
+        if (m_resourceHandles.size() == 0)
         {
-            Handle semaphore;
-            context.getEventBus().emit(
-                core::device::system::event::ManagerRequest<core::device::manager::SemaphoreRequest>(
-                    semaphore, core::device::manager::SemaphoreRequest{false}));
+            m_resourceHandles.resize(numFramesInFlight);
 
-            m_resourceHandles[i] = context.getManagerRenderResource().addRequest(
-                context.getDeviceID(), context.getSemaphoreManager().get(semaphore)->semaphore, true);
+            for (uint8_t i = 0; i < numFramesInFlight; i++)
+            {
+                Handle semaphore;
+                context.getEventBus().emit(
+                    core::device::system::event::ManagerRequest<core::device::manager::SemaphoreRequest>(
+                        semaphore, core::device::manager::SemaphoreRequest{false}));
+
+                auto fullSemaphore = context.getSemaphoreManager().get(semaphore)->semaphore;
+                m_resourceHandles[i] =
+                    context.getManagerRenderResource().addRequest(context.getDeviceID(), fullSemaphore, true);
+            }
         }
     }
 
@@ -57,6 +59,13 @@ template <typename TTransferType, typename TDataType> class Controller
     {
         assert(frameInFlightIndex < m_resourceHandles.size() && m_resourceHandles[frameInFlightIndex].isInitialized() &&
                "Resources must be properly prepared before use");
+        if (hasAlreadyBeenUpdatedThisFrame(context.getCurrentFrameIndex()))
+        {
+            semaphore = context.getManagerRenderResource()
+                            .get<TDataType>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
+                            ->resourceSemaphore;
+            return true;
+        }
         if (!doesFrameInFlightDataNeedUpdated(frameInFlightIndex))
         {
             return false;
@@ -70,10 +79,11 @@ template <typename TTransferType, typename TDataType> class Controller
                         .get<TDataType>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
                         ->resourceSemaphore;
         return true;
-    };
+    }
 
   protected:
-    uint64_t m_lastFrameUpdate = 0;
+    uint64_t m_lastFrameUpdate = 10000000; // counter for last index in which data was updated. Initialized to arb large
+                                           // value to avoid start at 0.
     std::vector<Handle> m_resourceHandles = std::vector<Handle>();
 
     virtual std::unique_ptr<TTransferType> createTransferRequest(core::device::StarDevice &device,

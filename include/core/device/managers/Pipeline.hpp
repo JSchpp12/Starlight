@@ -78,7 +78,18 @@ struct PipelineRecord
 
 class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, Handle_Type::pipeline, 50>
 {
+  public:
+    Pipeline() = default;
+    virtual ~Pipeline() = default;
+
+    Pipeline(const Pipeline &) = delete;
+    Pipeline &operator=(const Pipeline &) = delete;
+    Pipeline(Pipeline &&) = delete;
+    Pipeline &operator=(Pipeline &&) = delete;
+
+    virtual void cleanup(core::device::system::EventBus &bus) override;
   protected:
+    std::vector<Handle> m_subscriberShaderBuildInfo;
     PipelineRecord createRecord(device::StarDevice &device, PipelineRequest &&request) const override
     {
         return PipelineRecord(std::move(request));

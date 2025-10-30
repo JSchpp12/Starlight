@@ -18,7 +18,8 @@ StarDevice::StarDevice(StarWindow &window, core::RenderingSurface &renderingSurf
     requiredPhysicalDeviceFeatures.logicOp = VK_TRUE;
 
     pickPhysicalDevice(renderingInstance, renderingSurface, requiredPhysicalDeviceFeatures);
-    createLogicalDevice(renderingInstance, renderingSurface, requiredPhysicalDeviceFeatures, requiredRenderingDeviceFeatures);
+    createLogicalDevice(renderingInstance, renderingSurface, requiredPhysicalDeviceFeatures,
+                        requiredRenderingDeviceFeatures);
     createAllocator(renderingInstance);
 }
 
@@ -117,8 +118,9 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::Ren
     }
 }
 
-void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface, 
-    const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const std::set<Rendering_Device_Features> &deviceFeatures)
+void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::RenderingSurface &renderingSurface,
+                                     const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
+                                     const std::set<Rendering_Device_Features> &deviceFeatures)
 {
     QueueFamilyIndicies indicies = FindQueueFamilies(this->physicalDevice, renderingSurface.getVulkanSurface());
 
@@ -135,14 +137,15 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
     }
 
     auto dynamicRenderingFeatures = vk::PhysicalDeviceDynamicRenderingFeatures().setDynamicRendering(true);
-    
-    auto timelineSemaphoreFeature = vk::PhysicalDeviceTimelineSemaphoreFeatures().setTimelineSemaphore(true).setPNext(&dynamicRenderingFeatures); 
+
+    auto timelineSemaphoreFeature =
+        vk::PhysicalDeviceTimelineSemaphoreFeatures().setTimelineSemaphore(true).setPNext(&dynamicRenderingFeatures);
     void *next = &dynamicRenderingFeatures;
-    if (deviceFeatures.contains(Rendering_Device_Features::timeline_semaphores)){
-        next = &timelineSemaphoreFeature; 
+    if (deviceFeatures.contains(Rendering_Device_Features::timeline_semaphores))
+    {
+        next = &timelineSemaphoreFeature;
     }
-    auto syncFeatures =
-        vk::PhysicalDeviceSynchronization2Features().setSynchronization2(true).setPNext(next);
+    auto syncFeatures = vk::PhysicalDeviceSynchronization2Features().setSynchronization2(true).setPNext(next);
 
     {
         uint32_t numDeviceExtensions = uint32_t();
@@ -605,7 +608,8 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
         // resize vector in order to hold all available formats
         details.formats.resize(formatCount);
 
-        const auto result = device.getSurfaceFormatsKHR(surface.getVulkanSurface(), &formatCount, details.formats.data());
+        const auto result =
+            device.getSurfaceFormatsKHR(surface.getVulkanSurface(), &formatCount, details.formats.data());
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");
@@ -617,8 +621,8 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
         // resize for same reasons as format
         details.presentModes.resize(presentModeCount);
 
-        const auto result =
-            device.getSurfacePresentModesKHR(surface.getVulkanSurface(), &presentModeCount, details.presentModes.data());
+        const auto result = device.getSurfacePresentModesKHR(surface.getVulkanSurface(), &presentModeCount,
+                                                             details.presentModes.data());
         if (result != vk::Result::eSuccess)
         {
             throw std::runtime_error("Failed to get surface present modes from device");

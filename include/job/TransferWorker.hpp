@@ -73,10 +73,6 @@ class TransferManagerThread
         void markAsAvailble()
         {
             this->inProcessTransferSrcBuffer.reset();
-
-            this->gpuDoneNotificationToMain->store(true);
-            this->gpuDoneNotificationToMain->notify_one();
-
             this->gpuDoneNotificationToMain = nullptr;
         }
 
@@ -120,9 +116,10 @@ class TransferManagerThread
 
     // no copy
     TransferManagerThread(const TransferManagerThread &) = delete;
-    TransferManagerThread &operator=(TransferManagerThread &&) = delete;
+    TransferManagerThread &operator=(const TransferManagerThread &) = delete;
     // no move
     TransferManagerThread(TransferManagerThread &&) = delete;
+    TransferManagerThread &operator=(TransferManagerThread &&) = delete;
 
     void startAsync(core::device::StarDevice &device);
 
@@ -183,6 +180,8 @@ class TransferWorker
              std::unique_ptr<StarTextures::Texture> &resultingTexture, const bool &isHighPriority);
 
     void update();
+
+    void stopAll(); 
 
     ~TransferWorker();
 

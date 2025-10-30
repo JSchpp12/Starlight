@@ -16,8 +16,8 @@
 
 namespace star
 {
-StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
-    : application(std::move(nApplication)), window(CreateStarWindow()),
+StarEngine::StarEngine(StarApplication &application)
+    : m_application(application), window(CreateStarWindow()),
       deviceManager(core::RenderingInstance(ConfigFile::getSetting(star::Config_Settings::app_name)))
 {
     std::set<star::Rendering_Features> features;
@@ -84,7 +84,7 @@ StarEngine::StarEngine(std::unique_ptr<StarApplication> nApplication)
         }
     }
 
-    this->application->init();
+    m_application.init();
 }
 
 StarEngine::~StarEngine()
@@ -98,7 +98,7 @@ void StarEngine::run()
     const uint8_t numFramesInFlight = GetNumFramesInFlight();
 
     std::shared_ptr<StarScene> currentScene =
-        this->application->loadScene(deviceManager.getContext(defaultDevice), *this->window, numFramesInFlight);
+        m_application.loadScene(deviceManager.getContext(defaultDevice), *this->window, numFramesInFlight);
 
     assert(currentScene && "Application must provide a proper instance of a scene object");
 

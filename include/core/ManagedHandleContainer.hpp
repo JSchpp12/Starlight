@@ -13,7 +13,11 @@ concept TDataHasCleanup = requires(T record) {
     { record.cleanup() } -> std::same_as<void>;
 };
 template <typename T>
-concept TDataHasProperCleanup = TDataHasCleanupRender<T> || TDataHasCleanup<T>;
+concept TDataHasVKCleanup = requires(T record, vk::Device &device) {
+    { record.cleanupRender(device) } -> std::same_as<void>;
+};
+template <typename T>
+concept TDataHasProperCleanup = TDataHasCleanupRender<T> || TDataHasCleanup<T> || TDataHasVKCleanup<T>;
 
 template <typename TData, star::Handle_Type THandleType, size_t TMaxDataCount>
     requires TDataHasProperCleanup<TData>
@@ -45,6 +49,11 @@ class ManagedHandleContainer : public LinearHandleContainer<TData, THandleType, 
         {
             assert(device != nullptr && "Device must be provided for types which require it in their cleanup");
             this->m_records[handle.getID()].cleanupRender(*device);
+        }
+        else if constexpr (TDataHasVKCleanup<TData>)
+        {
+            assert(device != nullptr && "Device must be provided for types which require it in their cleanup");
+            this->m_records[handle.getID()].cleanupRender(device->getVulkanDevice());
         }
         else if constexpr (TDataHasCleanup<TData>)
         {

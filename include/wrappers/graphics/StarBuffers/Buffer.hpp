@@ -54,6 +54,11 @@ class Buffer
 
     void writeToBuffer(void *data, void *mapped, vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 
+    void cleanupRender(vk::Device &device)
+    {
+        resources->cleanupRender(); 
+    }
+
     vk::Result flush(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 
     vk::DescriptorBufferInfo descriptorInfo(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);

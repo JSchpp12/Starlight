@@ -2,28 +2,31 @@
 
 #include "Handle.hpp"
 #include "ManagedHandleContainer.hpp"
+#include "ManagerBase.hpp"
 #include "device/StarDevice.hpp"
 #include "device/system/EventBus.hpp"
 #include "job/TaskManager.hpp"
 
 #include <array>
 #include <cassert>
-#include <concepts>
+
 #include <stack>
 
 namespace star::core::device::manager
 {
-template <typename T>
-concept RecordStructHasCleanup = requires(T record, device::StarDevice &device) {
-    { record.cleanupRender(device) } -> std::same_as<void>;
-};
 
 template <typename TRecord, typename TResourceRequest, star::Handle_Type THandleType, size_t TMaxRecordCount>
-    requires RecordStructHasCleanup<TRecord>
-class Manager
+class Manager : public ManagerBase<TRecord, TResourceRequest, THandleType>
 {
   public:
-    virtual Handle submit(device::StarDevice &device, TResourceRequest resource)
+    Manager() = default;
+    virtual ~Manager() = default;
+    Manager(const Manager &) = delete;
+    Manager &operator=(const Manager &) = delete;
+    Manager(Manager &&) = default;
+    Manager &operator=(Manager &&) = default;
+
+    virtual Handle submit(device::StarDevice &device, TResourceRequest resource) override
     {
         return insert(device, std::move(resource));
     }

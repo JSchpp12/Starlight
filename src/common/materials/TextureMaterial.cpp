@@ -56,6 +56,8 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, con
                                                                      std::move(deviceProperties), m_texturePath);
         }
 
+        assert(texture && "Texture MUST be created");
+
         m_textureHandle = star::ManagerRenderResource::addRequest(
             context.getDeviceID(), context.getSemaphoreManager().get(texSemaphore)->semaphore, std::move(texture));
     }

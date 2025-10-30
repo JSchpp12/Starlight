@@ -111,13 +111,16 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/core/LinearHandleContainer.cpp"
     "src/core/MappedHandleContainer.cpp"
     "src/core/ManagedHandleContainer.cpp"
+    "src/core/device/managers/ManagerBase.cpp"
     "src/core/device/managers/ManagerCommandBuffer.cpp"
     "src/core/device/managers/Shader.cpp"
     "src/core/device/managers/Pipeline.cpp"
     "src/core/device/managers/Manager.cpp"
+    "src/core/device/managers/ManagerEventBusTies.cpp"
     "src/core/device/managers/TaskCreatedResourceManager.cpp"
     "src/core/device/managers/GraphicsContainer.cpp"
     "src/core/device/managers/Semaphore.cpp"
+    "src/core/device/managers/Fence.cpp"
     "src/core/device/system/EventBus.cpp"
     "src/core/device/system/event/EventBase.cpp"
     "src/core/device/system/event/ShaderCompiled.cpp"
@@ -262,12 +265,15 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/wrappers/Allocator.hpp"
     "include/managers/MapManager.hpp"
     "include/managers/ManagerDescriptorPool.hpp"
+    "include/core/device/managers/ManagerBase.hpp"
     "include/core/device/managers/ManagerCommandBuffer.hpp"
     "include/core/device/managers/Shader.hpp"
     "include/core/device/managers/Pipeline.hpp"
     "include/core/device/managers/Manager.hpp"
     "include/core/device/managers/TaskCreatedResourceManager.hpp"
+    "include/core/device/managers/ManagerEventBusTies.hpp"
     "include/core/device/managers/Semaphore.hpp"
+    "include/core/device/managers/Fence.hpp"
     "include/core/device/managers/GraphicsContainer.hpp"
     "include/core/device/system/EventBus.hpp"
     "include/core/device/system/event/EventBase.hpp"
@@ -337,8 +343,6 @@ set(${STARLIGHT_NAME}_HEADERS
 set(${STARLIGHT_NAME}_TARGET_HEADERS ${${STARLIGHT_NAME}_HEADERS} PARENT_SCOPE)
 
 add_library(${STARLIGHT_NAME} "${${STARLIGHT_NAME}_SOURCE};${${STARLIGHT_NAME}_HEADERS}")
-
-
 
 if (NOT ${HEADLESS})
     set(${STARLIGHT_NAME}_INCLUDE_DIRS

@@ -79,9 +79,7 @@ class DeviceContext
         TManager &manager;
         device::StarDevice &device;
     };
-
     DeviceContext() = default;
-
     ~DeviceContext();
     DeviceContext(DeviceContext &&other)
         : m_frameInFlightTrackingInfo(std::move(other.m_frameInFlightTrackingInfo)),
@@ -162,19 +160,23 @@ class DeviceContext
     TaskManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord> getShaderManager()
     {
         return TaskManagerWrapper<manager::Shader, manager::ShaderRequest, manager::ShaderRecord>{
-            m_graphicsManagers.shaderManager, *this};
+            *m_graphicsManagers.shaderManager, *this};
     }
 
     TaskManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord> getPipelineManager()
     {
         return TaskManagerWrapper<manager::Pipeline, manager::PipelineRequest, manager::PipelineRecord>(
-            m_graphicsManagers.pipelineManager, *this);
+            *m_graphicsManagers.pipelineManager, *this);
     }
 
     ManagerWrapper<manager::Semaphore &, manager::SemaphoreRequest, manager::SemaphoreRecord> getSemaphoreManager()
     {
         return ManagerWrapper<manager::Semaphore &, manager::SemaphoreRequest, manager::SemaphoreRecord>(
             *m_graphicsManagers.semaphoreManager, *this);
+    }
+
+    ManagerWrapper<manager::Fence &, manager::FenceRequest, manager::FenceRecord> getFenceManager(){
+        return {*m_graphicsManagers.fenceManager, *this}; 
     }
 
     job::TransferWorker &getTransferWorker()

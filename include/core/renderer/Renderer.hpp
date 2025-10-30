@@ -33,7 +33,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
              std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera,
              std::vector<std::shared_ptr<StarObject>> objects)
-        : RendererBase(context, numFramesInFlight, std::move(objects))
+        : RendererBase(context, numFramesInFlight, std::move(objects)), ownsRenderResourceControllers(true)
     {
         initBuffers(context, numFramesInFlight, std::move(lights), camera);
     }
@@ -44,7 +44,8 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
              std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
              std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData)
         : RendererBase(context, numFramesInFlight, std::move(objects)), m_infoManagerLightData(std::move(lightData)),
-          m_infoManagerLightList(std::move(lightListData)), m_infoManagerCamera(std::move(cameraData))
+          ownsRenderResourceControllers(false), m_infoManagerLightList(std::move(lightListData)),
+          m_infoManagerCamera(std::move(cameraData))
     {
     }
 
@@ -55,7 +56,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     virtual ~Renderer() = default;
 
     virtual void prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
-
+    virtual void cleanupRender(core::device::DeviceContext &device) override; 
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) override;
 
     StarDescriptorSetLayout &getGlobalShaderInfo()
@@ -95,6 +96,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     }
 
   protected:
+    bool ownsRenderResourceControllers = false;
     bool isReady = false;
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
