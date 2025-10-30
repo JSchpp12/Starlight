@@ -101,22 +101,17 @@ class EventBus
     void removeSubscriber(const Handle &subscriberHandle, const size_t &key,
                           std::vector<std::pair<Callback, HandleUpdateInfo>> &subs)
     {
-        // Validate the handle index
         size_t handleID = 0;
         CastHelpers::SafeCast<uint32_t, size_t>(subscriberHandle.getID(), handleID);
+
         assert(handleID < subs.size() && "Handle does not correlate to any listener registered for the template type");
 
-        // Notify the removed subscriber that its handle can be deleted
-        {
-            uint32_t removedId32 = 0;
-            CastHelpers::SafeCast<size_t, uint32_t>(handleID, removedId32);
-            subs[handleID].second.deleteHandleCallback(Handle{.type = Handle_Type::subscriber, .id = removedId32});
-        }
+        subs[handleID].second.deleteHandleCallback(subscriberHandle);
 
         // Shift elements left from handleID+1 to end
         for (size_t i = handleID + 1; i < subs.size(); ++i)
         {
-            subs[i - 1] = std::move(subs[i]); // move to avoid copying std::function
+            subs[i - 1] = std::move(subs[i]);
 
             // Update the moved subscriber's handle (its index decreased by 1)
             if (Handle *h = subs[i - 1].second.getHandleForUpdateCallback())
