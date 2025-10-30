@@ -7,7 +7,7 @@
 #include "device/StarDevice.hpp"
 
 #include <array>
-#include <stack>
+#include <vector>
 
 namespace star::core
 {
@@ -22,7 +22,7 @@ class LinearHandleContainer : public HandleContainer<TData, THandleType>
     }
 
   protected:
-    std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
+    std::vector<uint32_t> m_skippedSpaces = std::vector<uint32_t>();
     std::array<TData, TMaxDataCount> m_records = std::array<TData, TMaxDataCount>();
     uint32_t m_nextSpace = 0;
 
@@ -40,25 +40,19 @@ class LinearHandleContainer : public HandleContainer<TData, THandleType>
     {
         uint32_t nextSpace = 0;
 
-        if (m_nextSpace > m_records.size())
+        if (!m_skippedSpaces.empty())
         {
-            if (m_skippedSpaces.empty())
-            {
-                throw std::runtime_error("Storage is full");
-            }
-            else
-            {
-                nextSpace = m_skippedSpaces.top();
-                m_skippedSpaces.pop();
-            }
-        }
-        else
-        {
-            nextSpace = m_nextSpace;
-            m_nextSpace++;
+            const uint32_t id = m_skippedSpaces.back();
+            m_skippedSpaces.pop_back();
+            return id;
         }
 
-        return nextSpace;
+        if (m_nextSpace >= m_records.size())
+        {
+            throw std::runtime_error("Storage is full");
+        }
+
+        return m_nextSpace++;
     }
 
     TData &getRecord(const Handle &handle) override
@@ -74,7 +68,7 @@ class LinearHandleContainer : public HandleContainer<TData, THandleType>
     {
         assert(handle.getID() < m_records.size() && "Requested index is beyond max storage space in remove()");
 
-        m_skippedSpaces.push(handle.getID());
+        m_skippedSpaces.push_back(handle.getID());
     }
 };
 } // namespace star::core
