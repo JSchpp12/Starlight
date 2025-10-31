@@ -328,7 +328,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/structs/Vertex.hpp"
     "include/structs/Color.hpp"
     "include/structs/Ray.hpp"
-    "include/templates/StarMemoryManager.hpp"
     "include/templates/StarApplication.hpp"
     "include/templates/StarResourceContainer.hpp"
     "include/templates/FileResourceManager.hpp"
