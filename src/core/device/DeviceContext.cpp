@@ -6,7 +6,7 @@ star::core::device::DeviceContext::~DeviceContext()
 {
     if (m_ownsResources)
     {
-        m_graphicsManagers.fenceManager->cleanupRender(*m_device); 
+        m_graphicsManagers.fenceManager->cleanupRender(*m_device);
         m_graphicsManagers.pipelineManager->cleanupRender(*m_device);
         m_graphicsManagers.shaderManager->cleanupRender(*m_device);
         m_graphicsManagers.semaphoreManager->cleanupRender(*m_device);
@@ -89,6 +89,12 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::Cr
                 transferWorkerQueues.push_back(nQueue.value());
 
                 selectedFamilyIndices.insert(fam);
+
+                // only want 2, one for each of transfer operation
+                if (selectedFamilyIndices.size() == 1)
+                {
+                    break;
+                }
             }
         }
     }

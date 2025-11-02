@@ -42,7 +42,7 @@ endif()
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS container thread filesystem)
+find_package(Boost REQUIRED COMPONENTS container thread filesystem log log_setup)
 find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 
@@ -65,6 +65,7 @@ add_subdirectory("extern/shaderc")
 set(${STARLIGHT_NAME}_SOURCE
     "src/StarEngine.cpp" 
     "src/graphics/PipelineFactory.cpp"
+    "src/core/logging/LoggingFactory.cpp"
     "src/core/renderer/LightRenderer.cpp"
     "src/core/renderer/RendererBase.cpp"
     "src/core/renderer/Renderer.cpp"
@@ -199,6 +200,7 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 set(${STARLIGHT_NAME}_HEADERS
     "include/StarEngine.hpp"
     "include/graphics/PipelineFactory.hpp"
+    "include/core/logging/LoggingFactory.hpp"
     "include/core/renderer/RendererBase.hpp"
     "include/core/renderer/LightRenderer.hpp"
     "include/core/renderer/Renderer.hpp"
@@ -390,6 +392,8 @@ if (NOT ${HEADLESS})
             GPUOpen::VulkanMemoryAllocator
             Vulkan::Vulkan
             nlohmann_json::nlohmann_json
+            Boost::log
+            Boost::log_setup
             Boost::thread
             Boost::container
             Boost::filesystem
@@ -435,6 +439,8 @@ else()
             spirv-reflect-static
             GPUOpen::VulkanMemoryAllocator
             nlohmann_json::nlohmann_json
+            Boost::log
+            Boost::log_setup
             Boost::thread
             Boost::container
             Boost::filesystem

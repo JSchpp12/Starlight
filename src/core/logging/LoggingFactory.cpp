@@ -1,0 +1,1 @@
+#include "core/logging/LoggingFactory.hpp"
