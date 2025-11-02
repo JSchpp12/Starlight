@@ -50,7 +50,6 @@ class ManagerCommandBuffer
     /// @param frameIndexToBeDrawn
     /// @return semaphore signaling completion of submission
     vk::Semaphore update(StarDevice &device, const uint8_t &frameIndexToBeDrawn, const uint64_t &currentFrameIndex);
-
   private:
     static std::stack<Handle> dynamicBuffersToSubmit;
 

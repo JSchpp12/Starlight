@@ -54,6 +54,13 @@ class Manager : public ManagerBase<TRecord, TResourceRequest, THandleType>
         m_records.cleanupAll(&device);
     }
 
+    void deleteRequest(device::StarDevice &device, const Handle &requestHandle)
+    {
+        assert(requestHandle.getType() == THandleType);
+        m_records.cleanup(requestHandle, &device); 
+        m_records.removeRecord(requestHandle); 
+    }
+
   protected:
     star::core::ManagedHandleContainer<TRecord, THandleType, TMaxRecordCount> m_records;
 

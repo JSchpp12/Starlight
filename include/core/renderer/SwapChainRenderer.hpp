@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer.hpp"
+#include "CaptureCapableRenderer.hpp"
 #include "core/device/DeviceContext.hpp"
 
 #include <memory>
@@ -8,7 +9,7 @@
 
 namespace star::core::renderer
 {
-class SwapChainRenderer : public star::core::renderer::Renderer
+class SwapChainRenderer : public CaptureCapableRenderer
 {
   public:
     SwapChainRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
@@ -21,9 +22,10 @@ class SwapChainRenderer : public star::core::renderer::Renderer
                       std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
                       std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window);
 
-    SwapChainRenderer(const SwapChainRenderer &other) = delete;
-
-    virtual ~SwapChainRenderer();
+    SwapChainRenderer(const SwapChainRenderer &other) noexcept = delete;
+    SwapChainRenderer &operator=(const SwapChainRenderer & ) noexcept = delete;
+    
+    virtual ~SwapChainRenderer() = default;
 
     virtual void prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
 

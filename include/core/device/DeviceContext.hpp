@@ -55,6 +55,11 @@ class DeviceContext
             return manager.get(handle);
         }
 
+        void deleteRecord(const Handle &handle)
+        {
+            manager.deleteRecord(handle);
+        }
+
         TManager &manager;
         device::StarDevice &device;
         job::TaskManager &taskManager;
@@ -74,6 +79,11 @@ class DeviceContext
         TRecord *get(const Handle &handle)
         {
             return manager.get(handle);
+        }
+
+        void deleteRecord(const Handle &handle)
+        {
+            manager.deleteRecord(handle);
         }
 
         TManager &manager;
@@ -175,8 +185,9 @@ class DeviceContext
             *m_graphicsManagers.semaphoreManager, *this);
     }
 
-    ManagerWrapper<manager::Fence &, manager::FenceRequest, manager::FenceRecord> getFenceManager(){
-        return {*m_graphicsManagers.fenceManager, *this}; 
+    ManagerWrapper<manager::Fence &, manager::FenceRequest, manager::FenceRecord> getFenceManager()
+    {
+        return {*m_graphicsManagers.fenceManager, *this};
     }
 
     job::TransferWorker &getTransferWorker()

@@ -11,8 +11,8 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
                                                            std::vector<std::shared_ptr<StarObject>> objects,
                                                            std::shared_ptr<std::vector<Light>> lights,
                                                            std::shared_ptr<StarCamera> camera, const StarWindow &window)
-    : Renderer(context, numFramesInFlight, lights, camera, objects), window(window),
-      numFramesInFlight(numFramesInFlight), device(context)
+    : CaptureCapableRenderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects)),
+      window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain();
 }
@@ -23,15 +23,11 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window)
-    : Renderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
+    : CaptureCapableRenderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
                std::move(cameraData)),
       window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain();
-}
-
-star::core::renderer::SwapChainRenderer::~SwapChainRenderer()
-{
 }
 
 void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
