@@ -1,5 +1,8 @@
 #include "core/device/DeviceContext.hpp"
 
+
+#include "core/logging/LoggingFactory.hpp"
+
 #include <cassert>
 
 star::core::device::DeviceContext::~DeviceContext()
@@ -70,6 +73,8 @@ star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapch
 
 std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device)
 {
+    star::core::logging::log(boost::log::trivial::info, "Initializing transfer workers"); 
+    
     std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
     std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
 
