@@ -32,6 +32,8 @@ public:
   private:
     const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
 
+    static void initLogger();
+
     static std::unique_ptr<StarWindow> CreateStarWindow();
 
     static std::unique_ptr<job::TaskManager> CreateManager();

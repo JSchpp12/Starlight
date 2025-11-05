@@ -8,6 +8,7 @@
 #include "StarRenderGroup.hpp"
 #include "job/TaskManager.hpp"
 #include "renderer/SwapChainRenderer.hpp"
+#include "core/logging/LoggingFactory.hpp"
 
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
@@ -20,6 +21,9 @@ StarEngine::StarEngine(StarApplication &application)
     : m_application(application), window(CreateStarWindow()),
       deviceManager(core::RenderingInstance(ConfigFile::getSetting(star::Config_Settings::app_name)))
 {
+    core::logging::init();
+    core::logging::log(boost::log::trivial::info, "Logger initialized"); 
+
     std::set<star::Rendering_Features> features;
     {
         bool setting = false;
@@ -171,5 +175,9 @@ uint8_t StarEngine::GetNumFramesInFlight()
     }
 
     return num;
+}
+
+void star::StarEngine::initLogger(){
+
 }
 } // namespace star

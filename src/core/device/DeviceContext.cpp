@@ -1,12 +1,15 @@
 #include "core/device/DeviceContext.hpp"
 
+
+#include "core/logging/LoggingFactory.hpp"
+
 #include <cassert>
 
 star::core::device::DeviceContext::~DeviceContext()
 {
     if (m_ownsResources)
     {
-        m_graphicsManagers.fenceManager->cleanupRender(*m_device); 
+        m_graphicsManagers.fenceManager->cleanupRender(*m_device);
         m_graphicsManagers.pipelineManager->cleanupRender(*m_device);
         m_graphicsManagers.shaderManager->cleanupRender(*m_device);
         m_graphicsManagers.semaphoreManager->cleanupRender(*m_device);
@@ -70,6 +73,8 @@ star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapch
 
 std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device)
 {
+    star::core::logging::log(boost::log::trivial::info, "Initializing transfer workers"); 
+    
     std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
     std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
 
@@ -89,6 +94,12 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::Cr
                 transferWorkerQueues.push_back(nQueue.value());
 
                 selectedFamilyIndices.insert(fam);
+
+                // only want 2, one for each of transfer operation
+                if (selectedFamilyIndices.size() == 1)
+                {
+                    break;
+                }
             }
         }
     }
