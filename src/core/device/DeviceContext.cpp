@@ -1,9 +1,9 @@
 #include "core/device/DeviceContext.hpp"
 
+#include "core/logging/LoggingFactory.hpp"
+#include "job/tasks/task_factory/TaskFactory.hpp"
 #include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
-#include "job/tasks/task_factory/TaskFactory.hpp"
-#include "core/logging/LoggingFactory.hpp"
 
 #include <cassert>
 
@@ -28,6 +28,8 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8
 {
     assert(!m_ownsResources && "Dont call init twice");
     assert(deviceID.getType() == Handle_Type::device);
+
+    logInit(numFramesInFlight);
 
     m_deviceID = deviceID;
 
@@ -75,8 +77,8 @@ star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapch
 
 std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device)
 {
-    star::core::logging::log(boost::log::trivial::info, "Initializing transfer workers"); 
-    
+    star::core::logging::log(boost::log::trivial::info, "Initializing transfer workers");
+
     std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
     std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
 
@@ -111,7 +113,7 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::Cr
 
 void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t maxMessagesCounter)
 {
-    std::vector<job::complete_tasks::CompleteTask<>> completeMessages;
+    std::vector<job::complete_tasks::CompleteTask> completeMessages;
 
     if (maxMessagesCounter == 0)
     {
@@ -120,7 +122,7 @@ void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t max
     }
 }
 
-void star::core::device::DeviceContext::processCompleteMessage(job::complete_tasks::CompleteTask<> completeTask)
+void star::core::device::DeviceContext::processCompleteMessage(job::complete_tasks::CompleteTask completeTask)
 {
     completeTask.run(static_cast<void *>(m_device.get()), static_cast<void *>(&m_taskManager),
                      static_cast<void *>(&m_eventBus), static_cast<void *>(&m_graphicsManagers));
@@ -153,13 +155,26 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
         }
     }
 
-    //create worker for pipeline building
-    job::worker::Worker pipelineWorker{job::worker::DefaultWorker<job::tasks::task_factory::build_pipeline::BuildPipelineTask, 64>{"Pipeline Builder"}};
-    m_taskManager.registerWorker(typeid(job::tasks::task_factory::build_pipeline::BuildPipelineTask), std::move(pipelineWorker));
+    // create worker for pipeline building
+    job::worker::Worker pipelineWorker{
+        job::worker::DefaultWorker<job::tasks::task_factory::build_pipeline::BuildPipelineTask, 64>{
+            "Pipeline Builder"}};
+    m_taskManager.registerWorker(typeid(job::tasks::task_factory::build_pipeline::BuildPipelineTask),
+                                 std::move(pipelineWorker));
 
-    //create worker for shader compilation
-    job::worker::Worker shaderWorker{job::worker::DefaultWorker<job::tasks::task_factory::compile_shader::CompileShaderTask, 64>{"Shader Compiler"}};
-    m_taskManager.registerWorker(typeid(job::tasks::task_factory::compile_shader::CompileShaderTask), std::move(shaderWorker));
+    // create worker for shader compilation
+    job::worker::Worker shaderWorker{
+        job::worker::DefaultWorker<job::tasks::task_factory::compile_shader::CompileShaderTask, 64>{"Shader Compiler"}};
+    m_taskManager.registerWorker(typeid(job::tasks::task_factory::compile_shader::CompileShaderTask),
+                                 std::move(shaderWorker));
 
     m_taskManager.startAll();
+}
+
+void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight) const
+{
+    std::ostringstream oss;
+    oss << "Initializing device context. \n \tNumber of frames in flight: ";
+    oss << std::to_string(numFramesInFlight);
+    core::logging::log(boost::log::trivial::info, oss.str());
 }

@@ -10,12 +10,13 @@ using DestroyPayloadFunction = void (*)(void *);
 using MovePayloadFunction = void (*)(void *, void *);
 using EngineOnCompleteFunction = void (*)(void *, void *, void *, void *, void *);
 
-template <size_t StorageBytes =
-              128 - sizeof(EngineOnCompleteFunction) - sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction),
-          size_t StorageAlign = alignof(std::max_align_t)>
+#define MAX_COMPLETE_TASK_SIZE 128
 class CompleteTask
 {
   public:
+    static const size_t StorageBytes = size_t(MAX_COMPLETE_TASK_SIZE - sizeof(EngineOnCompleteFunction) -
+                                        sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction));
+    static const size_t StorageAlign = alignof(std::max_align_t);
     template <typename PayloadType> class Builder
     {
       public:
@@ -52,11 +53,12 @@ class CompleteTask
             m_movePayloadFunction = movePayloadFunction;
             return *this;
         }
-        Builder &setEngineExecuteFunction(EngineOnCompleteFunction onCompleteFunction){
-            m_engineOnCompleteFunction = onCompleteFunction; 
+        Builder &setEngineExecuteFunction(EngineOnCompleteFunction onCompleteFunction)
+        {
+            m_engineOnCompleteFunction = onCompleteFunction;
             return *this;
         }
-        CompleteTask<> build()
+        CompleteTask build()
         {
             static_assert(sizeof(PayloadType) <= StorageBytes,
                           "Payload too large for message inline storage restrictions");
@@ -72,7 +74,7 @@ class CompleteTask
             if (!m_movePayloadFunction)
                 m_movePayloadFunction = &Builder<PayloadType>::DefaultMovePayload;
 
-            CompleteTask<> complete;
+            CompleteTask complete{};
             new (complete.m_data) PayloadType(std::forward<PayloadType>(m_data));
             complete.m_engineOnCompleteFunction = m_engineOnCompleteFunction;
             complete.m_movePayloadFunction = m_movePayloadFunction;
@@ -133,7 +135,7 @@ class CompleteTask
             m_destroyPayloadFunction(m_data);
     }
 
-    //will be run on the MAIN engine thread
+    // will be run on the MAIN engine thread
     void run(void *device, void *taskSystem, void *eventBus, void *graphicsManagers)
     {
         m_engineOnCompleteFunction(device, taskSystem, eventBus, graphicsManagers, payload());

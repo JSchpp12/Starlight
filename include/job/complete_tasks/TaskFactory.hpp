@@ -49,7 +49,7 @@ namespace task_factory
 void ExecuteBuildPipelineComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers,
                                   void *payload);
 
-complete_tasks::CompleteTask<> CreateBuildPipelineComplete(uint32_t handleID, std::unique_ptr<StarPipeline> pipeline);
+complete_tasks::CompleteTask CreateBuildPipelineComplete(uint32_t handleID, std::unique_ptr<StarPipeline> pipeline);
 
 #pragma endregion BuildPipeline
 
@@ -60,7 +60,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
 void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers,
                                   void *payload);
 
-star::job::complete_tasks::CompleteTask<> CreateShaderCompileComplete(
+star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(
     uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
     std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader);
 

@@ -18,7 +18,7 @@ class Worker
         virtual void doStop() = 0;
         virtual void doQueueTask(void *task) = 0;
         virtual void doSetCompleteMessageCommunicationStructure(
-            boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>>
+            boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>>
                 *completeMessages) = 0;
     };
 
@@ -50,7 +50,7 @@ class Worker
         }
 
         void doSetCompleteMessageCommunicationStructure(
-            boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
+            boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages)
             override
         {
             m_worker.setCompleteMessageCommunicationStructure(completeMessages);
@@ -89,7 +89,7 @@ class Worker
     }
 
     void setCompleteMessageCommunicationStructure(
-        boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
+        boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages)
     {
         m_impl->doSetCompleteMessageCommunicationStructure(completeMessages);
     }

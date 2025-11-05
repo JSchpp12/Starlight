@@ -5,7 +5,7 @@
 
 namespace star::job::tasks::task_factory::compile_shader
 {
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateComplete(void *p)
+std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
 {
     auto *data = static_cast<CompileShaderPayload *>(p);
 
@@ -13,7 +13,7 @@ std::optional<star::job::complete_tasks::CompleteTask<>> CreateComplete(void *p)
         data->handleID, std::move(data->finalizedShaderObject), std::move(data->compiledShaderCode));
     data->compiledShaderCode = nullptr;
 
-    return std::make_optional<star::job::complete_tasks::CompleteTask<>>(std::move(complete));
+    return std::make_optional<star::job::complete_tasks::CompleteTask>(std::move(complete));
 }
 
 void Execute(void *p)

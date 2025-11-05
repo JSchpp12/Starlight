@@ -14,9 +14,11 @@ namespace star::job::tasks
 using ExecuteFunction = void (*)(void *);
 using DestructorFunction = void (*)(void *);
 using MovePayloadFunction = void (*)(void *, void *);
-using CreateCompleteTaskFunction = std::optional<star::job::complete_tasks::CompleteTask<>> (*)(void *);
+using CreateCompleteTaskFunction = std::optional<star::job::complete_tasks::CompleteTask> (*)(void *);
 
-template <size_t StorageBytes = 128 - sizeof(ExecuteFunction) - sizeof(DestructorFunction) -
+#define MAX_TASK_SIZE 128
+
+template <size_t StorageBytes = MAX_TASK_SIZE - sizeof(ExecuteFunction) - sizeof(DestructorFunction) -
                                 sizeof(MovePayloadFunction) - sizeof(CreateCompleteTaskFunction) - sizeof(uint16_t) - 8,
           size_t StorageAlign = alignof(std::max_align_t)>
 class Task
@@ -168,7 +170,7 @@ class Task
         m_executeFunction(payload());
     }
 
-    std::optional<complete_tasks::CompleteTask<>> getCompleteMessage()
+    std::optional<complete_tasks::CompleteTask> getCompleteMessage()
     {
         if (m_createCompleteFunction)
             return m_createCompleteFunction(payload());

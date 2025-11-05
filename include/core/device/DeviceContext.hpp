@@ -244,8 +244,10 @@ class DeviceContext
 
     void handleCompleteMessages(const uint8_t maxMessageCounter = 0);
 
-    void processCompleteMessage(job::complete_tasks::CompleteTask<> completeTask);
+    void processCompleteMessage(job::complete_tasks::CompleteTask completeTask);
 
     void initWorkers(const uint8_t &numFramesInFlight);
+
+    void logInit(const uint8_t &numFramesInFlight) const; 
 };
 } // namespace star::core::device

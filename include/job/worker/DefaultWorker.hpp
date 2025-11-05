@@ -33,7 +33,7 @@ template <typename TTask, size_t TQueueSize> class DefaultWorker
     }
 
     void setCompleteMessageCommunicationStructure(
-        boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
+        boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages)
     {
         m_completeMessages = completeMessages;
     }
@@ -56,7 +56,7 @@ template <typename TTask, size_t TQueueSize> class DefaultWorker
     std::shared_ptr<job::TaskContainer<TTask, TQueueSize>> m_tasks;
     std::shared_ptr<boost::atomic<bool>> shouldRun =
         std::shared_ptr<boost::atomic<bool>>(new boost::atomic<bool>(true));
-    boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *m_completeMessages =
+    boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *m_completeMessages =
         nullptr;
     boost::thread thread = boost::thread();
 

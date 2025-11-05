@@ -18,7 +18,7 @@ class TaskManager
     TaskManager()
         : m_completeTasks(
               std::make_unique<
-                  boost::lockfree::stack<job::complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>>>()) {};
+                  boost::lockfree::stack<job::complete_tasks::CompleteTask, boost::lockfree::capacity<128>>>()) {};
     ~TaskManager() = default;
 
     TaskManager(const TaskManager &) = delete;
@@ -114,7 +114,7 @@ class TaskManager
     //     }
     // }
 
-    boost::lockfree::stack<job::complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *getCompleteMessages()
+    boost::lockfree::stack<job::complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *getCompleteMessages()
     {
         return m_completeTasks.get();
     }
@@ -134,7 +134,7 @@ class TaskManager
     std::unordered_map<std::type_index, std::vector<worker::Worker>> m_workers =
         std::unordered_map<std::type_index, std::vector<worker::Worker>>();
 
-    std::unique_ptr<boost::lockfree::stack<job::complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>>>
+    std::unique_ptr<boost::lockfree::stack<job::complete_tasks::CompleteTask, boost::lockfree::capacity<128>>>
         m_completeTasks = nullptr;
 
     // std::unordered_map<std::type_index, FrameScheduler> m_frameSchedulers;

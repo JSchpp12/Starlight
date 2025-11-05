@@ -19,7 +19,7 @@ using BuildPipelineTask = star::job::tasks::Task<sizeof(PipelineBuildPayload), a
 
 void ExecuteBuildPipeline(void *p); 
 
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(void *p); 
+std::optional<star::job::complete_tasks::CompleteTask> CreateBuildComplete(void *p); 
 
 BuildPipelineTask CreateBuildPipeline(vk::Device device, Handle handle, star::StarPipeline::RenderResourceDependencies buildDeps, StarPipeline pipeline);
 }

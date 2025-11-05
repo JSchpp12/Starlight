@@ -18,7 +18,7 @@ struct WritePayload
 
 using WriteImageTask = star::job::tasks::Task<sizeof(WritePayload), alignof(WritePayload)>;
 
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateComplete(void *p);
+std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p);
 
 void Execute(void *p);
 

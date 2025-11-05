@@ -30,10 +30,10 @@ void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void 
     gm->pipelineManager->get(handle)->request.pipeline = std::move(*p->pipeline);
 }
 
-star::job::complete_tasks::CompleteTask<> star::job::complete_tasks::task_factory::CreateBuildPipelineComplete(
+star::job::complete_tasks::CompleteTask star::job::complete_tasks::task_factory::CreateBuildPipelineComplete(
     uint32_t handleID, std::unique_ptr<StarPipeline> pipeline)
 {
-    return CompleteTask<>::Builder<PipelineBuildCompletePayload>()
+    return CompleteTask::Builder<PipelineBuildCompletePayload>()
         .setPayload(PipelineBuildCompletePayload{.handleID = std::move(handleID), .pipeline = std::move(pipeline)})
         .setEngineExecuteFunction(&ExecuteBuildPipelineComplete)
         .build();
@@ -108,11 +108,11 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
     }
 }
 
-star::job::complete_tasks::CompleteTask<> star::job::complete_tasks::task_factory::CreateShaderCompileComplete(
+star::job::complete_tasks::CompleteTask star::job::complete_tasks::task_factory::CreateShaderCompileComplete(
     uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
     std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader)
 {
-    return complete_tasks::CompleteTask<>::Builder<CompileCompletePayload>()
+    return complete_tasks::CompleteTask::Builder<CompileCompletePayload>()
         .setPayload(CompileCompletePayload{.handleID = std::move(handleID),
                                            .finalizedShaderObject = std::move(finalizedShaderObject),
                                            .compiledShaderCode = std::move(finalizedCompiledShader)})

@@ -12,13 +12,13 @@ void ExecuteBuildPipeline(void *p)
     payload->pipeline->prepRender(payload->device, *payload->deps);
 }
 
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(void *payload)
+std::optional<star::job::complete_tasks::CompleteTask> CreateBuildComplete(void *payload)
 {
     auto *p = static_cast<PipelineBuildPayload *>(payload);
 
     assert(p->pipeline && "Pipeline not a valid object in the payload");
 
-    return std::make_optional<complete_tasks::CompleteTask<>>(
+    return std::make_optional<complete_tasks::CompleteTask>(
         job::complete_tasks::task_factory::CreateBuildPipelineComplete(p->handleID, std::move(p->pipeline)));
 }
 

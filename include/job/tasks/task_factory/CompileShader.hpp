@@ -21,7 +21,7 @@ struct CompileShaderPayload
 
 using CompileShaderTask = star::job::tasks::Task<sizeof(CompileShaderPayload), alignof(CompileShaderPayload)>;
 
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateComplete(void *p); 
+std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p); 
 
 void Execute(void *p);
 

@@ -5,7 +5,7 @@
 namespace star::job::tasks::task_factory::write_image_to_disk
 {
 
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateComplete(void *p)
+std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
 {
     return std::nullopt;
 }
