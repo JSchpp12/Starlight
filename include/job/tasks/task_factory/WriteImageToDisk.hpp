@@ -16,9 +16,11 @@ struct WritePayload
     std::string path = std::string(); 
 };
 
+using WriteImageTask = star::job::tasks::Task<sizeof(WritePayload), alignof(WritePayload)>;
+
 std::optional<star::job::complete_tasks::CompleteTask<>> CreateComplete(void *p);
 
 void Execute(void *p);
 
-star::job::tasks::Task<> Create(std::unique_ptr<StarTextures::Texture> texture, std::string filePath);
+WriteImageTask Create(std::unique_ptr<StarTextures::Texture> texture, std::string filePath);
 } // namespace star::job::task_factory::write_image_to_disk

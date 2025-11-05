@@ -14,7 +14,7 @@ namespace star::job
 template <typename TTask, size_t TMaxSize> class TaskContainer
 {
   public:
-    TaskContainer() : m_tasks(std::vector<tasks::Task<>>(TMaxSize))
+    TaskContainer() : m_tasks(std::vector<TTask>(TMaxSize))
     {
         initAvailableSpaces(TMaxSize);
     }
@@ -53,7 +53,7 @@ template <typename TTask, size_t TMaxSize> class TaskContainer
     }
 
   private:
-    std::vector<tasks::Task<>> m_tasks = std::vector<tasks::Task<>>(TMaxSize);
+    std::vector<TTask> m_tasks = std::vector<TTask>(TMaxSize);
     boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>> m_availableSpaces =
         boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>>();
     boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>> m_queuedTasks =

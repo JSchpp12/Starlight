@@ -1,6 +1,7 @@
 #include "TransferRequest_CompressedTextureFile.hpp"
 
 #include "FileHelpers.hpp"
+#include "logging/LoggingFactory.hpp"
 
 #include <assert.h>
 
@@ -29,6 +30,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedText
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTextureFile::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
+    {
+        const std::string msg = "Beginning compressed texture transcode" + compressedTexture->getPathToFile();
+        core::logging::log(boost::log::trivial::info, msg);
+    }
+    
     boost::unique_lock<boost::mutex> lock;
     ktxTexture2 *texture = nullptr;
     this->compressedTexture->giveMeTranscodedImage(lock, texture);
@@ -39,6 +45,8 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
 
     uint32_t numIndices = 0;
     CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
+
+    core::logging::log(boost::log::trivial::info, "Done");
 
     return StarTextures::Texture::Builder(device, allocator)
         .setCreateInfo(

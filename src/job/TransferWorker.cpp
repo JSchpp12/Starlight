@@ -1,6 +1,7 @@
 #include "job/TransferWorker.hpp"
 
 #include "CastHelpers.hpp"
+#include "logging/LoggingFactory.hpp"
 
 #include <syncstream>
 #include <thread>
@@ -30,7 +31,7 @@ void star::job::TransferManagerThread::stopAsync()
 {
     this->shouldRun.store(false);
 
-    std::cout << "Waiting for thread to exit" << std::endl;
+    core::logging::log(boost::log::trivial::info, "Waiting for transfer thread to exit"); 
 
     // wait for thread to exit
     this->thread.join();
@@ -38,7 +39,8 @@ void star::job::TransferManagerThread::stopAsync()
 
 void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubThreadInfo myInfo)
 {
-    std::cout << "Transfer thread started..." << std::endl;
+    core::logging::log(boost::log::trivial::info, "Transfer thread started"); 
+
     std::queue<std::unique_ptr<ProcessRequestInfo>> processRequestInfos =
         std::queue<std::unique_ptr<ProcessRequestInfo>>();
 
@@ -97,6 +99,8 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
 
                 request->textureTransferRequest->prep();
 
+                core::logging::log(boost::log::trivial::info, "Creating Texture");
+
                 CreateTexture(myInfo.device, myInfo.allocator, myInfo.queue, request->gpuWorkDoneSemaphore,
                               myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
                               request->textureTransferRequest.get(), request->resultingTexture.value(),
@@ -110,7 +114,7 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
         }
     }
 
-    std::cout << "Transfer Thread exiting..." << std::endl;
+    core::logging::log(boost::log::trivial::info, "Transfer thread exiting"); 
 
     while (!processRequestInfos.empty())
     {

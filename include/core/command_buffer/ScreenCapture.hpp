@@ -9,27 +9,20 @@ namespace star::core::command_buffer
 class ScreenCapture : public CommandBufferBase
 {
   public:
-    ScreenCapture(const std::vector<StarTextures::Texture> targetTextures) : m_targetTextures(std::move(targetTextures))
+    ScreenCapture(std::vector<StarTextures::Texture> targetTextures) : m_targetTextures(std::move(targetTextures))
     {
     }
     ScreenCapture(const ScreenCapture &) noexcept = delete;
     ScreenCapture &operator=(const ScreenCapture &) noexcept = delete;
-    ScreenCapture(ScreenCapture &&other) noexcept : m_targetTextures(std::move(other.m_targetTextures)) {};
-    ScreenCapture &operator=(ScreenCapture &&other) noexcept
-    {
-        if (this != &other)
-        {
-            std::destroy_at(&m_targetTextures);
-            std::construct_at(&m_targetTextures, other.m_targetTextures);
-        }
-        return *this;
-    }
+    ScreenCapture(ScreenCapture &&) = default;
+    ScreenCapture &operator=(ScreenCapture &&) = default;
+
     virtual ~ScreenCapture() = default;
 
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
 
   private:
-    const std::vector<StarTextures::Texture> m_targetTextures;
+    std::vector<StarTextures::Texture> m_targetTextures;
     virtual Handle registerCommandBuffer(core::device::DeviceContext &context,
                                          const uint8_t &numFramesInFlight) override;
 };

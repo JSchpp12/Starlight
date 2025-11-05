@@ -1,6 +1,7 @@
 #include "job/tasks/task_factory/CompileShader.hpp"
 
 #include "job/complete_tasks/TaskFactory.hpp"
+#include "logging/LoggingFactory.hpp"
 
 namespace star::job::tasks::task_factory::compile_shader
 {
@@ -20,20 +21,23 @@ void Execute(void *p)
     auto *data = static_cast<CompileShaderPayload *>(p);
 
     data->finalizedShaderObject = std::make_unique<StarShader>(data->path, data->stage);
-    std::cout << "Beginning compile shader: " << data->path << std::endl;
-    data->compiledShaderCode = data->compiler->compile(data->path, true); 
+
+    {
+        const std::string msg = "Beginning compile shader: " + data->path;
+        core::logging::log(boost::log::trivial::info, msg);
+    }
+
+    data->compiledShaderCode = data->compiler->compile(data->path, true);
+
+    core::logging::log(boost::log::trivial::info, "Done");
 }
 
-star::job::tasks::Task<> Create(const std::string &fileName, const star::Shader_Stage &stage,
-                                const Handle &shaderHandle, std::unique_ptr<Compiler> compiler)
+CompileShaderTask Create(const std::string &fileName, const star::Shader_Stage &stage, const Handle &shaderHandle,
+                         std::unique_ptr<Compiler> compiler)
 {
-    return star::job::tasks::Task<>::Builder<CompileShaderPayload>()
+    return CompileShaderTask::Builder<CompileShaderPayload>()
         .setPayload(CompileShaderPayload{
-            .path = fileName,
-            .stage = stage,
-            .handleID = shaderHandle.getID(),
-            .compiler = std::move(compiler)
-        })
+            .path = fileName, .stage = stage, .handleID = shaderHandle.getID(), .compiler = std::move(compiler)})
         .setExecute(&Execute)
         .setCreateCompleteTaskFunction(&CreateComplete)
         .build();

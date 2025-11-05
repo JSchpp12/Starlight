@@ -1,6 +1,8 @@
 #include "core/device/DeviceContext.hpp"
 
-
+#include "job/worker/DefaultWorker.hpp"
+#include "job/worker/Worker.hpp"
+#include "job/tasks/task_factory/TaskFactory.hpp"
 #include "core/logging/LoggingFactory.hpp"
 
 #include <cassert>
@@ -96,7 +98,7 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::Cr
                 selectedFamilyIndices.insert(fam);
 
                 // only want 2, one for each of transfer operation
-                if (selectedFamilyIndices.size() == 1)
+                if (selectedFamilyIndices.size() == 2)
                 {
                     break;
                 }
@@ -151,8 +153,13 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
         }
     }
 
-    m_taskManager.registerWorker(typeid(star::job::tasks::ImageWritePayload),
-                                 std::make_shared<star::job::worker::Worker<512>>());
+    //create worker for pipeline building
+    job::worker::Worker pipelineWorker{job::worker::DefaultWorker<job::tasks::task_factory::build_pipeline::BuildPipelineTask, 64>{"Pipeline Builder"}};
+    m_taskManager.registerWorker(typeid(job::tasks::task_factory::build_pipeline::BuildPipelineTask), std::move(pipelineWorker));
+
+    //create worker for shader compilation
+    job::worker::Worker shaderWorker{job::worker::DefaultWorker<job::tasks::task_factory::compile_shader::CompileShaderTask, 64>{"Shader Compiler"}};
+    m_taskManager.registerWorker(typeid(job::tasks::task_factory::compile_shader::CompileShaderTask), std::move(shaderWorker));
 
     m_taskManager.startAll();
 }

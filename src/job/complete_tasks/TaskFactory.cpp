@@ -102,11 +102,12 @@ void star::job::complete_tasks::task_factory::ProcessPipelinesWhichAreNowReadyFo
                                                                 .renderingTargetInfo = record.request.renderingInfo,
                                                                 .swapChainExtent = record.request.resolution};
 
-            ts->submitTask(tasks::task_factory::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
+            ts->submitTask(tasks::task_factory::build_pipeline::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
                                                                     std::move(record.request.pipeline)));
         }
     }
 }
+
 star::job::complete_tasks::CompleteTask<> star::job::complete_tasks::task_factory::CreateShaderCompileComplete(
     uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
     std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader)

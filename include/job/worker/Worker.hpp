@@ -1,130 +1,97 @@
 #pragma once
 
-#include "TaskContainer.hpp"
-#include "WorkerBase.hpp"
 #include "complete_tasks/CompleteTask.hpp"
-#include <boost/lockfree/stack.hpp>
-#include <boost/thread.hpp>
 
-#include <iostream>
+#include <boost/lockfree/stack.hpp>
+
 #include <memory>
-#include <type_traits>
-#include <vulkan/vulkan.hpp>
 
 namespace star::job::worker
 {
-template <size_t TQueueSize = 128> class Worker : public WorkerBase
+class Worker
 {
-  public:
-    Worker() = default;
-    Worker(
-        boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<TQueueSize>> *completeMessages)
-        : m_completeMessages(completeMessages)
+  private:
+    struct WorkerConcept
     {
-    }
-    virtual ~Worker() = default;
-    Worker(const Worker &other) : m_tasks(other.m_tasks), m_completeMessages(other.m_completeMessages)
-    {
-        // create shared resources
-        if (other.shouldRun->load())
-        {
-            start();
-        }
-    }
-    Worker &operator=(const Worker &other)
-    {
-        if (this != &other)
-        {
-            m_tasks = other.m_tasks;
-            m_completeMessages = other.m_completeMessages;
-
-            if (other.shouldRun->load())
-            {
-                start();
-            }
-        }
-
-        return *this;
+        virtual ~WorkerConcept() = default;
+        virtual void doStart() = 0;
+        virtual void doStop() = 0;
+        virtual void doQueueTask(void *task) = 0;
+        virtual void doSetCompleteMessageCommunicationStructure(
+            boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>>
+                *completeMessages) = 0;
     };
-    Worker(Worker &&other)
-        : m_tasks(std::move(other.m_tasks)), shouldRun(std::move(other.shouldRun)),
-          m_completeMessages(std::move(other.m_completeMessages)), thread(std::move(other.thread))
+
+    template <typename TWorker> struct WorkerModel : public WorkerConcept
     {
-    }
-    Worker &operator=(Worker &&other)
-    {
-        if (this != &other)
+        TWorker m_worker;
+        explicit WorkerModel(TWorker worker) : m_worker(std::move(worker))
         {
-            m_tasks = std::move(other.m_tasks);
-            shouldRun = std::move(other.shouldRun);
-            m_completeMessages = std::move(other.m_completeMessages);
-            thread = std::move(other.thread);
+        }
+        WorkerModel(const WorkerModel &) = delete;
+        WorkerModel &operator=(const WorkerModel &) = delete;
+        WorkerModel(WorkerModel &&) = default;
+        WorkerModel &operator=(WorkerModel &&) = default;
+        virtual ~WorkerModel() = default;
+
+        void doStart() override
+        {
+            m_worker.start();
         }
 
-        return *this;
+        void doStop() override
+        {
+            m_worker.stop();
+        }
+
+        void doQueueTask(void *task) override
+        {
+            m_worker.queueTask(task);
+        }
+
+        void doSetCompleteMessageCommunicationStructure(
+            boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
+            override
+        {
+            m_worker.setCompleteMessageCommunicationStructure(completeMessages);
+        }
+    };
+
+    std::unique_ptr<WorkerConcept> m_impl;
+
+  public:
+    template <typename TWorker>
+    Worker(TWorker worker){
+        m_impl = std::unique_ptr<WorkerConcept>(new WorkerModel<TWorker>(std::move(worker)));
     }
 
-    void stop() override
+
+    Worker() = delete;
+    Worker(const Worker &) = delete;
+    Worker &operator=(const Worker &) = delete;
+    Worker(Worker &&) noexcept = default;
+    Worker &operator=(Worker &&) noexcept = default;
+    ~Worker() = default;
+
+    void stop()
     {
-        this->shouldRun->store(false);
-        if (this->thread.joinable())
-            this->thread.join();
+        m_impl->doStop();
     }
 
-    void start() override
+    void start()
     {
-        this->shouldRun->store(true);
-        this->thread = boost::thread(&Worker::threadFunction, this);
+        m_impl->doStart();
     }
 
-    void queueTask(tasks::Task<> task) override
+    void queueTask(void *task)
     {
-        m_tasks->queueTask(std::move(task));
+        m_impl->doQueueTask(task);
     }
 
     void setCompleteMessageCommunicationStructure(
-        boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages) override
+        boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *completeMessages)
     {
-        m_completeMessages = completeMessages;
-    }
-
-  protected:
-    std::shared_ptr<job::TaskContainer<tasks::Task<>, TQueueSize>> m_tasks =
-        std::shared_ptr<job::TaskContainer<tasks::Task<>, TQueueSize>>(
-            new job::TaskContainer<tasks::Task<>, TQueueSize>());
-    std::unique_ptr<boost::atomic<bool>> shouldRun =
-        std::unique_ptr<boost::atomic<bool>>(new boost::atomic<bool>(true));
-    boost::lockfree::stack<complete_tasks::CompleteTask<>, boost::lockfree::capacity<128>> *m_completeMessages =
-        nullptr;
-    boost::thread thread = boost::thread();
-
-    virtual void threadFunction()
-    {
-        assert(m_completeMessages != nullptr);
-
-        std::cout << "Beginning work" << std::endl;
-
-        while (this->shouldRun->load())
-        {
-            std::optional<tasks::Task<>> task = m_tasks->getQueuedTask();
-
-            if (task.has_value())
-            {
-                task.value().run();
-
-                auto message = task.value().getCompleteMessage();
-                if (message.has_value())
-                {
-                    m_completeMessages->push(std::move(message.value()));
-                }
-            }
-            else
-            {
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(2));
-            }
-        }
-
-        std::cout << "Exiting" << std::endl;
+        m_impl->doSetCompleteMessageCommunicationStructure(completeMessages);
     }
 };
 } // namespace star::job::worker

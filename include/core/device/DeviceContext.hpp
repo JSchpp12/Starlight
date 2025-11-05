@@ -209,6 +209,13 @@ class DeviceContext
         return m_surface;
     }
 
+    job::TaskManager &getTaskManager(){
+        return m_taskManager;
+    }
+    const job::TaskManager &getTaskManager() const{
+        return m_taskManager;
+    }
+
     const uint64_t &getCurrentFrameIndex() const
     {
         return m_frameCounter;

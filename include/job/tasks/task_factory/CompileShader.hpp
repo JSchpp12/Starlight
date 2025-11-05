@@ -19,11 +19,13 @@ struct CompileShaderPayload
     std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
 };
 
+using CompileShaderTask = star::job::tasks::Task<sizeof(CompileShaderPayload), alignof(CompileShaderPayload)>;
+
 std::optional<star::job::complete_tasks::CompleteTask<>> CreateComplete(void *p); 
 
 void Execute(void *p);
 
-star::job::tasks::Task<> Create(const std::string &fileName, const star::Shader_Stage &stage,
+CompileShaderTask Create(const std::string &fileName, const star::Shader_Stage &stage,
                                              const Handle &shaderHandle, std::unique_ptr<Compiler> compiler);
 
 

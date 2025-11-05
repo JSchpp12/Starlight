@@ -30,8 +30,10 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
 };
 
 void star::ConfigFile::load(const std::string& configFilePath) {
-    assert(file_helpers::FileExists(configFilePath));
-
+    if (!file_helpers::FileExists(configFilePath)){
+        throw std::runtime_error("No config file found"); 
+    }
+    
     json configJson;
 
     try{

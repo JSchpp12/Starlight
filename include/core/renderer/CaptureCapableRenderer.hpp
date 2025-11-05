@@ -32,5 +32,7 @@ class CaptureCapableRenderer : public Renderer
 
   private:
     Handle m_screenCaptureCommandBuffer;
+
+    void createWorker(core::device::DeviceContext &context); 
 };
 } // namespace star::core::renderer

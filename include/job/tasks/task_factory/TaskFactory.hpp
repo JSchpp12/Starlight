@@ -8,8 +8,9 @@
 #include "tasks/Task.hpp"
 #include "renderer/RenderingTargetInfo.hpp"
 #include "StarPipeline.hpp"
-#include "tasks/task_factory/CompileShader.hpp"
-#include "tasks/task_factory/WriteImageToDisk.hpp"
+#include "CompileShader.hpp"
+#include "WriteImageToDisk.hpp"
+#include "BuildPipeline.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -102,12 +103,7 @@ struct IODataPreparationPayload
     std::variant<std::monostate, std::unique_ptr<star::SharedCompressedTexture>> preparedData;
 };
 
-struct PipelineBuildPayload{
-    vk::Device device; 
-    uint32_t handleID; 
-    std::unique_ptr<star::StarPipeline::RenderResourceDependencies> deps = nullptr; 
-    std::unique_ptr<star::StarPipeline> pipeline = nullptr; 
-};
+
 
 namespace task_factory
 {
@@ -120,11 +116,7 @@ star::job::tasks::Task<> createRecordCommandBufferTask(
     uint8_t frameInFlightIndex);
 
 #pragma region BuildPipeline
-void ExecuteBuildPipeline(void *p); 
 
-std::optional<star::job::complete_tasks::CompleteTask<>> CreateBuildComplete(void *p); 
-
-star::job::tasks::Task<> CreateBuildPipeline(vk::Device device, Handle handle, star::StarPipeline::RenderResourceDependencies buildDeps, StarPipeline pipeline);
 #pragma endregion BuildPipeline
 
 } // namespace task_factory

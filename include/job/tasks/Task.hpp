@@ -78,7 +78,7 @@ class Task
             m_createCompleteTaskFunction = completeTaskFunction;
             return *this;
         }
-        Task<> build()
+        Task<StorageBytes, StorageAlign> build()
         {
             static_assert(sizeof(PayloadType) <= StorageBytes, "Payload too large for job inline storage");
             static_assert(alignof(PayloadType) <= StorageAlign, "Payload alignment too strict");
@@ -95,13 +95,13 @@ class Task
             if (!m_movePayloadFunction)
                 m_movePayloadFunction = &Builder<PayloadType>::DefaultMovePayload;
 
-            Task<> task;
+            Task<StorageBytes, StorageAlign> task{typeid(PayloadType)};
             new (task.m_data) PayloadType(std::forward<PayloadType>(m_data));
             task.m_executeFunction = m_executeFunction;
             task.m_destroyPayloadFunction = m_destroyPayloadFunction;
             task.m_movePayloadFunction = m_movePayloadFunction;
             task.m_createCompleteFunction = m_createCompleteTaskFunction;
-            task.m_type = std::make_unique<std::type_index>(typeid(PayloadType)); 
+            task.m_type = typeid(PayloadType); 
 
             return task;
         }
@@ -115,9 +115,9 @@ class Task
         bool m_hasData = false;
         PayloadType m_data;
     };
-
     Task() = default;
-    Task(Task &&other) noexcept
+    Task(std::type_index type) : m_type(std::move(type)){};
+    Task(Task &&other) : m_type(std::move(other.m_type))
     {
         if (other.m_movePayloadFunction)
             other.m_movePayloadFunction(m_data, other.m_data);
@@ -126,7 +126,6 @@ class Task
         m_movePayloadFunction = other.m_movePayloadFunction;
         m_destroyPayloadFunction = other.m_destroyPayloadFunction;
         m_createCompleteFunction = other.m_createCompleteFunction;
-        m_type = std::move(other.m_type); 
 
         other.m_executeFunction = nullptr;
         other.m_destroyPayloadFunction = nullptr;
@@ -191,17 +190,17 @@ class Task
     }
 
     const std::type_index &getType() const{
-        assert(m_type != nullptr && "Type was not properly initialized"); 
-        
-        return *m_type;
+        assert(m_type.has_value());
+        return m_type.value();
     }
 
   private:
+    std::optional<std::type_index> m_type{std::nullopt}; 
     ExecuteFunction m_executeFunction = nullptr;
     DestructorFunction m_destroyPayloadFunction = nullptr;
     MovePayloadFunction m_movePayloadFunction = nullptr;
     CreateCompleteTaskFunction m_createCompleteFunction = nullptr;
-    std::unique_ptr<std::type_index> m_type = nullptr; 
+
     alignas(StorageAlign) std::byte m_data[StorageBytes];
 
     void *payload() noexcept
