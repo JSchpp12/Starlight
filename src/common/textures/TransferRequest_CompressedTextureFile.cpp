@@ -94,7 +94,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
                             .setMipLodBias(0.0f)
                             .setMinLod(0.0f)
                             .setMaxLod(static_cast<float>(texture->numLevels)))
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer,

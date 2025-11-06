@@ -93,7 +93,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile:
                             .setMipLodBias(0.0f)
                             .setMinLod(0.0f)
                             .setMaxLod(0.0f))
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffers::Buffer &stagingBuffer) const

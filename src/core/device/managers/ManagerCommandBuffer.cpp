@@ -1,7 +1,5 @@
 #include "device/managers/ManagerCommandBuffer.hpp"
 
-#include "tasks/task_factory/TaskFactory.hpp"
-
 std::stack<star::Handle> star::core::device::manager::ManagerCommandBuffer::dynamicBuffersToSubmit = std::stack<star::Handle>();
 
 star::core::device::manager::ManagerCommandBuffer::ManagerCommandBuffer(StarDevice &device, const uint8_t &numFramesInFlight)

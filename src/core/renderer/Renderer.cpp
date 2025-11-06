@@ -133,7 +133,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
 
     for (int i = 0; i < numFramesInFlight; i++)
     {
-        newRenderToImages.emplace_back(builder.build());
+        newRenderToImages.emplace_back(builder.buildUnique());
 
         auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 
@@ -225,7 +225,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
 
     for (int i = 0; i < numFramesInFlight; i++)
     {
-        newRenderToImages.emplace_back(builder.build());
+        newRenderToImages.emplace_back(builder.buildUnique());
 
         auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 

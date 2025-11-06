@@ -375,7 +375,7 @@ star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setB
     return *this;
 }
 
-std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builder::build()
+std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builder::buildUnique()
 {
     assert(this->format.has_value());
 

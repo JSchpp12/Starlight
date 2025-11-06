@@ -1,7 +1,7 @@
 #include "device/managers/Shader.hpp"
 
 #include "device/system/event/ShaderCompiled.hpp"
-#include "job/tasks/task_factory/TaskFactory.hpp"
+#include "job/tasks/TaskFactory.hpp"
 
 void star::core::device::manager::Shader::submitTask(device::StarDevice &device, const Handle &handle,
                                                      job::TaskManager &taskSystem, system::EventBus &eventBus,

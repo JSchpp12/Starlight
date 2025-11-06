@@ -38,7 +38,7 @@ class Texture
 
         Builder &setBaseFormat(const vk::Format &nFormat);
 
-        std::unique_ptr<Texture> build();
+        std::unique_ptr<Texture> buildUnique();
 
       private:
         struct Creators

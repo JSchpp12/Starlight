@@ -23,8 +23,8 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window)
-    : CaptureCapableRenderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
-               std::move(cameraData)),
+    : CaptureCapableRenderer(context, numFramesInFlight, std::move(objects), std::move(lightData),
+                             std::move(lightListData), std::move(cameraData)),
       window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain();
@@ -33,7 +33,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
 void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
                                                          const uint8_t &numFramesInFlight)
 {
-    Renderer::prepRender(context, numFramesInFlight);
+    CaptureCapableRenderer::prepRender(context, numFramesInFlight);
 
     const size_t numSwapChainImages =
         context.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
@@ -377,7 +377,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
                                                                      .setBaseMipLevel(0)
                                                                      .setLevelCount(1)));
 
-        newRenderToImages.emplace_back(builder.build());
+        newRenderToImages.emplace_back(builder.buildUnique());
 
         // auto buffer = device.beginSingleTimeCommands();
         // newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR,

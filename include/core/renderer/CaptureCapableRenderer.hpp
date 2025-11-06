@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Renderer.hpp"
+#include "core/command_buffer/ScreenCapture.hpp"
 
 #include <string>
 
@@ -28,11 +29,13 @@ class CaptureCapableRenderer : public Renderer
 
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
 
+    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) override;
+
     void triggerCapture(std::string_view imageName);
 
   private:
-    Handle m_screenCaptureCommandBuffer;
+    core::command_buffer::ScreenCapture m_screenCaptureCommands;
 
-    void createWorker(core::device::DeviceContext &context); 
+    void createWorker(core::device::DeviceContext &context);
 };
 } // namespace star::core::renderer

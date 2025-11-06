@@ -166,7 +166,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
                                                       .setLayerCount(1)
                                                       .setBaseMipLevel(0)
                                                       .setLevelCount(1)))
-            .build();
+            .buildUnique();
     }
 
     virtual void copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer, star::StarTextures::Texture &dst,
