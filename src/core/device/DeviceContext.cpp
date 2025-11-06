@@ -174,7 +174,7 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
 void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight) const
 {
     std::ostringstream oss;
-    oss << "Initializing device context. \n \tNumber of frames in flight: ";
+    oss << "Initializing device context: \n \tNumber of frames in flight: ";
     oss << std::to_string(numFramesInFlight);
     core::logging::log(boost::log::trivial::info, oss.str());
 }
