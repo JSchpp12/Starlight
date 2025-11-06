@@ -1,15 +1,16 @@
-#include "job/tasks/task_factory/CompileShader.hpp"
+#include "job/tasks/CompileShader.hpp"
 
+#include "job/complete_tasks/CompileShader.hpp"
 #include "job/complete_tasks/TaskFactory.hpp"
 #include "logging/LoggingFactory.hpp"
 
-namespace star::job::tasks::task_factory::compile_shader
+namespace star::job::tasks::compile_shader
 {
 std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
 {
     auto *data = static_cast<CompileShaderPayload *>(p);
 
-    auto complete = job::complete_tasks::task_factory::CreateShaderCompileComplete(
+    auto complete = job::complete_tasks::compile_shader::CreateShaderCompileComplete(
         data->handleID, std::move(data->finalizedShaderObject), std::move(data->compiledShaderCode));
     data->compiledShaderCode = nullptr;
 
@@ -42,4 +43,4 @@ CompileShaderTask Create(const std::string &fileName, const star::Shader_Stage &
         .setCreateCompleteTaskFunction(&CreateComplete)
         .build();
 }
-} // namespace star::job::tasks::task_factory::compile_shader
+} // namespace star::job::tasks::compile_shader

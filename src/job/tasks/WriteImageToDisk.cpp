@@ -1,8 +1,8 @@
-#include "job/tasks/task_factory/WriteImageToDisk.hpp"
+#include "job/tasks/WriteImageToDisk.hpp"
 
 #include "FileHelpers.hpp"
 
-namespace star::job::tasks::task_factory::write_image_to_disk
+namespace star::job::tasks::write_image_to_disk
 {
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
@@ -15,8 +15,9 @@ void Execute(void *p)
     auto *payload = static_cast<WritePayload *>(p);
 
     auto parentDir = file_helpers::GetParentDirectory(payload->path);
-    if (!boost::filesystem::exists(parentDir)){
-        file_helpers::CreateDirectoryIfDoesNotExist(parentDir); 
+    if (!boost::filesystem::exists(parentDir))
+    {
+        file_helpers::CreateDirectoryIfDoesNotExist(parentDir);
     }
 }
 
@@ -29,4 +30,4 @@ WriteImageTask Create(std::unique_ptr<StarTextures::Texture> texture, std::strin
         .build();
 }
 
-} // namespace star::job::tasks::task_factory::write_image_to_disk
+} // namespace star::job::tasks::write_image_to_disk

@@ -1,7 +1,7 @@
 #include "core/renderer/CaptureCapableRenderer.hpp"
 
 #include "core/command_buffer/ScreenCapture.hpp"
-#include "job/tasks/task_factory/TaskFactory.hpp"
+#include "job/tasks/TaskFactory.hpp"
 #include "job/worker/DefaultWorker.hpp"
 
 namespace star::core::renderer

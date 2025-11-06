@@ -1,7 +1,7 @@
 #include "core/device/DeviceContext.hpp"
 
 #include "core/logging/LoggingFactory.hpp"
-#include "job/tasks/task_factory/TaskFactory.hpp"
+#include "job/tasks/TaskFactory.hpp"
 #include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
 
@@ -157,15 +157,15 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
 
     // create worker for pipeline building
     job::worker::Worker pipelineWorker{
-        job::worker::DefaultWorker<job::tasks::task_factory::build_pipeline::BuildPipelineTask, 64>{
+        job::worker::DefaultWorker<job::tasks::build_pipeline::BuildPipelineTask, 64>{
             "Pipeline Builder"}};
-    m_taskManager.registerWorker(typeid(job::tasks::task_factory::build_pipeline::BuildPipelineTask),
+    m_taskManager.registerWorker(typeid(job::tasks::build_pipeline::BuildPipelineTask),
                                  std::move(pipelineWorker));
 
     // create worker for shader compilation
     job::worker::Worker shaderWorker{
-        job::worker::DefaultWorker<job::tasks::task_factory::compile_shader::CompileShaderTask, 64>{"Shader Compiler"}};
-    m_taskManager.registerWorker(typeid(job::tasks::task_factory::compile_shader::CompileShaderTask),
+        job::worker::DefaultWorker<job::tasks::compile_shader::CompileShaderTask, 64>{"Shader Compiler"}};
+    m_taskManager.registerWorker(typeid(job::tasks::compile_shader::CompileShaderTask),
                                  std::move(shaderWorker));
 
     m_taskManager.startAll();

@@ -4,7 +4,7 @@
 #include "StarPipeline.hpp"
 #include "StarShader.hpp"
 #include "StarTextures/Texture.hpp"
-#include "job/tasks/task_factory/CompileShader.hpp"
+#include "job/tasks/CompileShader.hpp"
 
 #include <vulkan/vulkan.hpp>
 namespace star::job::complete_tasks
@@ -17,13 +17,6 @@ struct SuccessPayload
 struct TextureTransferCompletePayload
 {
     vk::Semaphore gpuResourceReady;
-};
-
-struct CompileCompletePayload
-{
-    uint32_t handleID;
-    std::unique_ptr<star::StarShader> finalizedShaderObject = nullptr;
-    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
 };
 
 struct PipelineBuildCompletePayload
@@ -52,17 +45,6 @@ void ExecuteBuildPipelineComplete(void *device, void *taskSystem, void *eventBus
 complete_tasks::CompleteTask CreateBuildPipelineComplete(uint32_t handleID, std::unique_ptr<StarPipeline> pipeline);
 
 #pragma endregion BuildPipeline
-
-#pragma region CompileShaders
-
-void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, void *graphicsManagers);
-
-void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers,
-                                  void *payload);
-
-star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(
-    uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
-    std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader);
 
 } // namespace task_factory
 }; // namespace star::job::complete_tasks

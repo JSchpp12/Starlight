@@ -1,8 +1,8 @@
-#include "job/tasks/task_factory/BuildPipeline.hpp"
+#include "job/tasks/BuildPipeline.hpp"
 
 #include "complete_tasks/TaskFactory.hpp"
 
-namespace star::job::tasks::task_factory::build_pipeline
+namespace star::job::tasks::build_pipeline
 {
 
 void ExecuteBuildPipeline(void *p)
@@ -35,4 +35,4 @@ BuildPipelineTask CreateBuildPipeline(vk::Device device, Handle handle, StarPipe
         .setCreateCompleteTaskFunction(&CreateBuildComplete)
         .build();
 }
-} // namespace star::job::tasks::task_factory::build_pipeline
+} // namespace star::job::tasks::build_pipeline

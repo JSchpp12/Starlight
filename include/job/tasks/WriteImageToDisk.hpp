@@ -7,7 +7,7 @@
 
 #include <optional>
 
-namespace star::job::tasks::task_factory::write_image_to_disk
+namespace star::job::tasks::write_image_to_disk
 {
 
 struct WritePayload

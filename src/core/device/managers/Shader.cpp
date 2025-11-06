@@ -8,7 +8,7 @@ void star::core::device::manager::Shader::submitTask(device::StarDevice &device,
                                                      ShaderRecord *storedRecord)
 {
 
-    taskSystem.submitTask(job::tasks::task_factory::compile_shader::Create(
+    taskSystem.submitTask(job::tasks::compile_shader::Create(
         storedRecord->request.shader.getPath(), storedRecord->request.shader.getStage(), handle,
         std::move(storedRecord->request.compiler)));
 }
