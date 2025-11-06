@@ -40,6 +40,8 @@ class Texture
 
         std::unique_ptr<Texture> buildUnique();
 
+        Texture build();
+
       private:
         struct Creators
         {

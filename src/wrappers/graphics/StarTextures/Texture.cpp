@@ -377,37 +377,47 @@ star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setB
 
 std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builder::buildUnique()
 {
+    return std::make_unique<StarTextures::Texture>(build());
+}
+
+star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
+{
     assert(this->format.has_value());
 
     if (this->createNewAllocationInfo.has_value())
     {
         if (this->samplerInfo.has_value())
         {
-            return std::unique_ptr<Texture>(new Texture(
-                this->device, this->createNewAllocationInfo.value().allocator,
-                this->createNewAllocationInfo.value().createInfo, this->createNewAllocationInfo.value().allocationName,
-                this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos, this->format.value(),
-                this->samplerInfo.value()));
+            return {this->device,
+                    this->createNewAllocationInfo.value().allocator,
+                    this->createNewAllocationInfo.value().createInfo,
+                    this->createNewAllocationInfo.value().allocationName,
+                    this->createNewAllocationInfo.value().allocationCreateInfo,
+                    this->viewInfos,
+                    this->format.value(),
+                    this->samplerInfo.value()};
         }
         else
         {
-            return std::unique_ptr<Texture>(new Texture(
-                this->device, this->createNewAllocationInfo.value().allocator,
-                this->createNewAllocationInfo.value().createInfo, this->createNewAllocationInfo.value().allocationName,
-                this->createNewAllocationInfo.value().allocationCreateInfo, this->viewInfos, this->format.value()));
+            return {this->device,
+                    this->createNewAllocationInfo.value().allocator,
+                    this->createNewAllocationInfo.value().createInfo,
+                    this->createNewAllocationInfo.value().allocationName,
+                    this->createNewAllocationInfo.value().allocationCreateInfo,
+                    this->viewInfos,
+                    this->format.value()};
         }
     }
     else if (this->vulkanImage.has_value())
     {
         if (this->samplerInfo.has_value())
         {
-            return std::unique_ptr<Texture>(new Texture(this->device, this->vulkanImage.value(), this->viewInfos,
-                                                        this->format.value(), this->samplerInfo.value()));
+            return {this->device, this->vulkanImage.value(), this->viewInfos, this->format.value(),
+                    this->samplerInfo.value()};
         }
         else
         {
-            return std::unique_ptr<Texture>(
-                new Texture(this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()));
+            return {this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()};
         }
     }
     else
