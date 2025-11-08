@@ -29,7 +29,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
             "VertexBuffer")
         .setInstanceCount(numVerts)
         .setInstanceSize(sizeof(Vertex))
-        .build();
+        .buildUnique();
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::createStagingBuffer(
@@ -53,7 +53,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
             "VertexBuffer_Stage")
         .setInstanceCount(numVerts)
         .setInstanceSize(sizeof(Vertex))
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::VertInfo::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const

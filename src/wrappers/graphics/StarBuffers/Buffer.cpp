@@ -153,11 +153,16 @@ StarBuffers::Buffer::Builder &StarBuffers::Buffer::Builder::setMinOffsetAlignmen
     return *this;
 }
 
-std::unique_ptr<StarBuffers::Buffer> StarBuffers::Buffer::Builder::build()
+std::unique_ptr<StarBuffers::Buffer> StarBuffers::Buffer::Builder::buildUnique()
+{
+    return std::make_unique<StarBuffers::Buffer>(build());
+}
+
+StarBuffers::Buffer StarBuffers::Buffer::Builder::build()
 {
     assert(this->instanceCount != 0 && this->instanceSize != 0 && "Instance info must be provided");
 
-    return std::unique_ptr<StarBuffers::Buffer>(new StarBuffers::Buffer(this->allocator, this->instanceCount, this->instanceSize, this->minOffsetAlignment,
-                                this->allocInfo, this->buffInfo, this->allocName));
+    return StarBuffers::Buffer(this->allocator, this->instanceCount, this->instanceSize, this->minOffsetAlignment,
+                               this->allocInfo, this->buffInfo, this->allocName);
 }
 } // namespace star

@@ -24,7 +24,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedText
                 .setSharingMode(vk::SharingMode::eExclusive)
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "CompressedTexture_TransferSRCBuffer")
-        .build();
+        .buildUnique();
 }
 
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTextureFile::createFinal(

@@ -18,7 +18,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
             "LightList_Stage")
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(1))
         .setInstanceSize(sizeof(int))
-        .build();
+        .buildUnique();
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::createFinal(
@@ -37,7 +37,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
             "LightInfo")
         .setInstanceCount(1)
         .setInstanceSize(sizeof(int))
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::LightInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const

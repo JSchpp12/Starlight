@@ -5,6 +5,7 @@
 #include "logging/LoggingFactory.hpp"
 
 #include <cassert>
+#include <cmath>
 #include <stdexcept>
 
 void star::StarTextures::Texture::TransitionImageLayout(Texture &image, vk::CommandBuffer &commandBuffer,
@@ -123,7 +124,7 @@ vk::Filter star::StarTextures::Texture::SelectTextureFiltering(const vk::Physica
 
 star::StarTextures::Texture::Texture(const Texture &other)
     : memoryResources(other.memoryResources), device(other.device), baseFormat(other.baseFormat),
-      mipmapLevels(other.mipmapLevels)
+      mipmapLevels(other.mipmapLevels), size(other.size)
 {
 }
 
@@ -153,7 +154,8 @@ star::StarTextures::Texture::Texture(vk::Device &device, VmaAllocator &allocator
                                      const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo)
     : device(device), memoryResources(CreateResource(device, baseFormat, allocator, allocationCreateInfo, createInfo,
                                                      allocationName, imageViewInfos, samplerInfo)),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos))
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)),
+      size(CalculateSize(baseFormat, createInfo.extent, createInfo.arrayLayers, createInfo.imageType, mipmapLevels))
 {
 }
 
@@ -164,7 +166,8 @@ star::StarTextures::Texture::Texture(vk::Device &device, VmaAllocator &allocator
                                      const vk::Format &baseFormat)
     : device(device), memoryResources(CreateResource(device, baseFormat, allocator, allocationCreateInfo, createInfo,
                                                      allocationName, imageViewInfos)),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos))
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)),
+      size(CalculateSize(baseFormat, createInfo.extent, createInfo.arrayLayers, createInfo.imageType, mipmapLevels))
 {
 }
 
@@ -339,7 +342,7 @@ uint32_t star::StarTextures::Texture::ExtractMipmapLevels(const std::vector<vk::
     {
         return imageViewInfo[0].subresourceRange.levelCount;
     }
-    return 0;
+    return 1;
 }
 
 star::StarTextures::Texture::Builder::Builder(vk::Device &device, const vk::Image &vulkanImage)
@@ -448,4 +451,61 @@ void star::StarTextures::Texture::LogImageCreateFailure(const vk::Result &result
     }
 
     core::logging::log(boost::log::trivial::error, ss.str());
+}
+
+vk::DeviceSize star::StarTextures::Texture::CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
+                                                          const uint32_t &arrayLayers, const vk::ImageType &imageType,
+                                                          const uint32_t &mipmapLevels)
+{
+    const FormatInfo info = FormatInfo::Create(baseFormat);
+    vk::DeviceSize totalSize = 0;
+
+    for (uint32_t i = 0; i < mipmapLevels; i++)
+    {
+        auto levelExtent = GetLevelExtent(baseExtent, i);
+
+        if (imageType == vk::ImageType::e1D)
+        {
+            levelExtent.height = 1;
+            levelExtent.width = 1;
+        }
+        else if (imageType == vk::ImageType::e2D)
+        {
+            levelExtent.depth = 1;
+        }
+
+        vk::DeviceSize levelBytes = 0;
+
+        if (info.blockCompressed)
+        {
+            const uint32_t bx = CeilDiv(levelExtent.width, info.blockExtent.width);
+            const uint32_t by = CeilDiv(levelExtent.height, info.blockExtent.height);
+            const uint32_t bz = CeilDiv(levelExtent.depth, info.blockExtent.depth);
+            levelBytes = static_cast<vk::DeviceSize>(bx) * static_cast<vk::DeviceSize>(by) *
+                         static_cast<vk::DeviceSize>(bz) * static_cast<vk::DeviceSize>(info.blockBytes);
+        }
+        else
+        {
+            levelBytes =
+                static_cast<vk::DeviceSize>(levelExtent.width) * static_cast<vk::DeviceSize>(levelExtent.height) *
+                static_cast<vk::DeviceSize>(levelExtent.depth) * static_cast<vk::DeviceSize>(info.bytesPerPixel);
+        }
+
+        totalSize += levelBytes;
+    }
+
+    return totalSize;
+}
+
+uint32_t star::StarTextures::Texture::CeilDiv(const uint32_t &width, const uint32_t &height)
+{
+    return (width + height - 1) / height;
+}
+
+vk::Extent3D star::StarTextures::Texture::GetLevelExtent(const vk::Extent3D &baseExtent, const uint32_t &level)
+{
+    return vk::Extent3D()
+        .setWidth(std::max(1u, baseExtent.width >> level))
+        .setHeight(std::max(1u, baseExtent.height >> level))
+        .setDepth(std::max(1u, baseExtent.depth >> level));
 }

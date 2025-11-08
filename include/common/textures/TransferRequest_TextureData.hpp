@@ -120,7 +120,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
                 "GeneratedTextureData")
             .setInstanceCount(1)
             .setInstanceSize(size)
-            .build();
+            .buildUnique();
     }
 
     std::unique_ptr<star::StarTextures::Texture> createFinal(

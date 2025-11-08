@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FormatInfo.hpp"
 #include "StarTextures/Resources.hpp"
 #include "device/StarDevice.hpp"
 
@@ -105,6 +106,13 @@ class Texture
         return this->mipmapLevels;
     }
 
+    vk::DeviceSize getSize() const
+    {
+        assert(size != 0 && "getSize() called on image that does not support size");
+
+        return size;
+    }
+
   protected:
     Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
             const vk::Format &baseFormat);
@@ -126,6 +134,15 @@ class Texture
     vk::Device &device;
     vk::Format baseFormat = vk::Format();
     uint32_t mipmapLevels = 0;
+    vk::DeviceSize size;
+
+    static vk::DeviceSize CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
+                                        const uint32_t &arrayLayers, const vk::ImageType &imageType,
+                                        const uint32_t &mipmapLevels);
+
+    static vk::Extent3D GetLevelExtent(const vk::Extent3D &baseExtent, const uint32_t &level);
+
+    static uint32_t CeilDiv(const uint32_t &width, const uint32_t &height);
 
     static std::shared_ptr<StarTextures::Resources> CreateResource(vk::Device &device, const vk::Format &baseFormat,
                                                                    VmaAllocator &allocator,

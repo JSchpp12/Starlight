@@ -9,10 +9,12 @@ void ScreenCapture::prepRender(core::device::DeviceContext &context, const uint8
     CommandBufferBase::prepRender(context, numFramesInFlight);
 
     m_transferDstTextures = createTransferDstTextures(context, numFramesInFlight, renderingResolution);
-    m_hostVisibleBuffers = createHostVisibleBuffers(context, numFramesInFlight, renderingResolution);
+    m_hostVisibleBuffers = createHostVisibleBuffers(context, numFramesInFlight, renderingResolution,
+                                                    m_transferDstTextures.front().getSize());
 }
 
-void ScreenCapture::cleanupRender(core::device::DeviceContext &context){
+void ScreenCapture::cleanupRender(core::device::DeviceContext &context)
+{
     cleanupIntermediateImages(context);
     cleanupBuffers(context);
 
@@ -70,10 +72,31 @@ std::vector<StarTextures::Texture> ScreenCapture::createTransferDstTextures(
 }
 
 std::vector<StarBuffers::Buffer> star::core::command_buffer::ScreenCapture::createHostVisibleBuffers(
-    core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-    const vk::Extent2D &renderingResolution) const
+    core::device::DeviceContext &context, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution,
+    const vk::DeviceSize &bufferSize) const
 {
-    return std::vector<StarBuffers::Buffer>();
+    auto buffers = std::vector<StarBuffers::Buffer>();
+
+    auto builder = StarBuffers::Buffer::Builder(context.getDevice().getAllocator().get())
+                       .setAllocationCreateInfo(Allocator::AllocationBuilder()
+                                                    .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
+                                                              VMA_ALLOCATION_CREATE_MAPPED_BIT)
+                                                    .setUsage(VMA_MEMORY_USAGE_AUTO_PREFER_HOST)
+                                                    .build(),
+                                                vk::BufferCreateInfo()
+                                                    .setSharingMode(vk::SharingMode::eExclusive)
+                                                    .setSize(bufferSize)
+                                                    .setUsage(vk::BufferUsageFlagBits::eTransferDst),
+                                                "ScreenCapture_DstBuffer")
+                       .setInstanceCount(uint32_t{1})
+                       .setInstanceSize(bufferSize);
+
+    for (uint8_t i = 0; i < numFramesInFlight; i++)
+    {
+        buffers.emplace_back(builder.build());
+    }
+
+    return buffers;
 }
 
 void ScreenCapture::cleanupBuffers(core::device::DeviceContext &context)

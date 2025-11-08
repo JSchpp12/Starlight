@@ -38,7 +38,8 @@ class ScreenCapture : public CommandBufferBase
 
     std::vector<StarBuffers::Buffer> createHostVisibleBuffers(core::device::DeviceContext &context,
                                                               const uint8_t &numFramesInFlight,
-                                                              const vk::Extent2D &renderingResolution) const;
+                                                              const vk::Extent2D &renderingResolution,
+                                                              const vk::DeviceSize &size) const;
 
     void cleanupBuffers(core::device::DeviceContext &context);
 

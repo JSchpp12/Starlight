@@ -21,7 +21,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
             "IndicesInfoBuffer_Src")
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->indices.size()))
         .setInstanceSize(sizeof(uint32_t))
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const
@@ -61,5 +61,5 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
             "IndicesInfoBuffer_Src")
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->indices.size()))
         .setInstanceSize(sizeof(uint32_t))
-        .build();
+        .buildUnique();
 }

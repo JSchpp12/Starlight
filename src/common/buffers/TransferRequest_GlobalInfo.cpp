@@ -16,7 +16,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::cr
             "GlobalInfo_TransferSRC")
         .setInstanceCount(1)
         .setInstanceSize(sizeof(GlobalUniformBufferObject))
-        .build();
+        .buildUnique();
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::createFinal(
@@ -41,7 +41,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::cr
             "GlobalInfo")
         .setInstanceCount(1)
         .setInstanceSize(sizeof(GlobalUniformBufferObject))
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::GlobalInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const

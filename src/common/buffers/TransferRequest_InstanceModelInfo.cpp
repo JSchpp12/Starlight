@@ -22,7 +22,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelI
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->displayMatrixInfo.size()))
         .setInstanceSize(sizeof(glm::mat4))
         .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
-        .build();
+        .buildUnique();
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelInfo::createFinal(
@@ -51,7 +51,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelI
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->displayMatrixInfo.size()))
         .setInstanceSize(sizeof(glm::mat4))
         .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::InstanceModelInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const

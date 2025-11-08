@@ -34,7 +34,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::c
             this->imagePath + "_TransferSRCBuffer")
         .setInstanceCount(1)
         .setInstanceSize(size)
-        .build();
+        .buildUnique();
 }
 
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile::createFinal(

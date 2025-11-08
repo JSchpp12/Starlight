@@ -20,7 +20,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
             "LightList_Stage")
         .setInstanceCount(numLights)
         .setInstanceSize(sizeof(LightBufferObject))
-        .build();
+        .buildUnique();
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createFinal(vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
@@ -48,7 +48,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
             "LightInfo")
         .setInstanceCount(numLights)
         .setInstanceSize(sizeof(LightBufferObject))
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::LightList::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const

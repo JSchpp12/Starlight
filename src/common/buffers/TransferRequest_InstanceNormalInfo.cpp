@@ -22,7 +22,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
         .setInstanceSize(sizeof(glm::mat4))
         .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
-        .build();
+        .buildUnique();
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormalInfo::createFinal(
@@ -51,7 +51,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
         .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
         .setInstanceSize(sizeof(glm::mat4))
         .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
-        .build();
+        .buildUnique();
 }
 
 void star::TransferRequest::InstanceNormalInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const

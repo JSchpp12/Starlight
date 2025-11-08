@@ -25,7 +25,8 @@ class Buffer
         Builder &setInstanceCount(const uint32_t &nInstanceCount);
         Builder &setInstanceSize(const vk::DeviceSize &nInstanceSize);
         Builder &setMinOffsetAlignment(const vk::DeviceSize &nMinOffsetAlignment);
-        std::unique_ptr<Buffer> build();
+        std::unique_ptr<Buffer> buildUnique();
+        Buffer build();
 
       private:
         VmaAllocator &allocator;
