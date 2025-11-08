@@ -27,7 +27,8 @@ class RenderingSurface
         }
         return *this;
     }
-
+    ~RenderingSurface() = default;
+    
     void init(RenderingInstance &instance, StarWindow &window){
         m_resolution = window.getExtent(); 
         m_surface = CreateSurface(instance, window); 

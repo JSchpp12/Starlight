@@ -17,18 +17,17 @@ star::StarTextures::Resources::Resources(const vk::Image &image,
 {
 }
 
-star::StarTextures::Resources::~Resources()
-{
-}
-
 void star::StarTextures::Resources::cleanupRender(vk::Device &device){
     if (this->sampler.has_value()){
         device.destroySampler(sampler.value());
     }
+    sampler = std::nullopt; 
 
     for (auto &view : views){
         if (view.second){
             device.destroyImageView(view.second);
         }
     }
+
+    views.clear();
 }

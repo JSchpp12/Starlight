@@ -39,8 +39,7 @@ void Renderer::prepRender(core::device::DeviceContext &device, const uint8_t &nu
 
 void Renderer::cleanupRender(core::device::DeviceContext &context){
     for (size_t i = 0; i < this->renderToImages.size(); i++){
-        this->renderToImages[i]->cleanupRender(context.getDevice().getVulkanDevice());
-        this->renderToImages[i].release();
+        this->renderToImages[i].cleanupRender(context.getDevice().getVulkanDevice());
     }
 
     for (size_t i = 0; i < this->renderToDepthImages.size(); i++){
@@ -76,11 +75,11 @@ void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &
     m_infoManagerCamera = std::make_unique<ManagerController::RenderResource::GlobalInfo>(numFramesInFlight, camera);
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRenderToImages(
+std::vector<star::StarTextures::Texture> Renderer::createRenderToImages(
     star::core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
-    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages =
-        std::vector<std::unique_ptr<StarTextures::Texture>>();
+    std::vector<StarTextures::Texture> newRenderToImages =
+        std::vector<StarTextures::Texture>();
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
     indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
@@ -133,7 +132,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
 
     for (int i = 0; i < numFramesInFlight; i++)
     {
-        newRenderToImages.emplace_back(builder.buildUnique());
+        newRenderToImages.emplace_back(builder.build());
 
         auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 
@@ -144,7 +143,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> Renderer::createRender
         barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
         barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
-        barrier.image = newRenderToImages.back()->getVulkanImage();
+        barrier.image = newRenderToImages.back().getVulkanImage();
         barrier.srcAccessMask = vk::AccessFlagBits::eNone;
         barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
 
@@ -361,11 +360,6 @@ void Renderer::initResources(core::device::DeviceContext &device, const int &num
 
 void Renderer::destroyResources(core::device::DeviceContext &device)
 {
-    for (auto &image : this->renderToImages)
-    {
-        image.reset();
-    }
-
     for (auto &image : this->renderToDepthImages)
     {
         image.reset();
@@ -553,7 +547,7 @@ vk::RenderingAttachmentInfo star::core::renderer::Renderer::prepareDynamicRender
     const int &frameInFlightIndex)
 {
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-    colorAttachmentInfo.imageView = this->renderToImages[frameInFlightIndex]->getImageView();
+    colorAttachmentInfo.imageView = this->renderToImages[frameInFlightIndex].getImageView();
     colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
     colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;

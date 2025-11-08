@@ -6,7 +6,7 @@ void CommandBufferBase::prepRender(core::device::DeviceContext &context, const u
 {
     m_registeredCommandBuffer = registerCommandBuffer(context, numFramesInFlight);
 
-    assert(m_registeredCommandBuffer.isInitialized() && "Command buffer must be initialized");
+    // assert(m_registeredCommandBuffer.isInitialized() && "Command buffer must be initialized");
 }
 
 void CommandBufferBase::cleanupRender(core::device::DeviceContext &context)

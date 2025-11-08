@@ -10,12 +10,29 @@ namespace star::core::renderer
 void CaptureCapableRenderer::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
 {
     Renderer::prepRender(context, numFramesInFlight);
-    
+
     if (!context.getTaskManager().isThereWorkerForTask(typeid(job::tasks::write_image_to_disk::WriteImageTask)))
     {
         logging::log(boost::log::trivial::info, "No worker found for image writes. Creating a new one.");
         createWorker(context);
     }
+    
+    m_screenCaptureCommands = createScreenCaptureCommands(context, numFramesInFlight);
+}
+
+void CaptureCapableRenderer::cleanupRender(core::device::DeviceContext &context){
+    m_screenCaptureCommands.cleanupRender(context);
+
+    Renderer::cleanupRender(context);
+}
+
+core::command_buffer::ScreenCapture CaptureCapableRenderer::createScreenCaptureCommands(core::device::DeviceContext &context, const uint8_t &numFramesInFlight){
+    assert(this->renderToImages.size() > 0 && "Rendering target images must be created first"); 
+
+    auto m_capture = core::command_buffer::ScreenCapture{this->renderToImages};
+    m_capture.prepRender(context, numFramesInFlight, context.getRenderingSurface().getResolution());
+
+    return m_capture;
 }
 
 void CaptureCapableRenderer::createWorker(core::device::DeviceContext &context)

@@ -25,7 +25,7 @@ class Resources
 
     virtual void cleanupRender(vk::Device &device);
 
-    virtual ~Resources();
+    virtual ~Resources() = default;
 };
 
 } // namespace star::StarTextures

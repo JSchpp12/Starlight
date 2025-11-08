@@ -125,7 +125,7 @@ class Texture
 
     vk::Device &device;
     vk::Format baseFormat = vk::Format();
-    uint32_t mipmapLevels = 1;
+    uint32_t mipmapLevels = 0;
 
     static std::shared_ptr<StarTextures::Resources> CreateResource(vk::Device &device, const vk::Format &baseFormat,
                                                                    VmaAllocator &allocator,
@@ -153,12 +153,14 @@ class Texture
 
     static vk::ImageView CreateImageView(vk::Device &device, const vk::ImageViewCreateInfo &imageViewCreateInfo);
 
-    static uint32_t ExtractMipmapLevels(const vk::ImageViewCreateInfo &imageViewInfo);
+    static uint32_t ExtractMipmapLevels(const std::vector<vk::ImageViewCreateInfo> &imageViewInfo);
 
     static std::unordered_map<vk::Format, vk::ImageView> CreateImageViews(
         vk::Device &device, vk::Image vulkanImage, std::vector<vk::ImageViewCreateInfo> imageViewCreateInfo);
 
     static void VerifyImageCreateInfo(const vk::ImageCreateInfo &createInfo);
+
+    static void LogImageCreateFailure(const vk::Result &result);
 
     friend class Builder;
 };

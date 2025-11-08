@@ -64,9 +64,9 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
         return *this->globalSetLayout;
     }
 
-    std::vector<std::unique_ptr<StarTextures::Texture>> *getRenderToColorImages()
+    std::vector<StarTextures::Texture> &getRenderToColorImages()
     {
-        return &this->renderToImages;
+        return this->renderToImages;
     }
 
     std::vector<std::unique_ptr<StarTextures::Texture>> *getRenderToDepthImages()
@@ -76,7 +76,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
 
     virtual RenderingTargetInfo getRenderTargetInfo() const
     {
-        return RenderingTargetInfo({this->renderToImages.at(0)->getBaseFormat()},
+        return RenderingTargetInfo({this->renderToImages.at(0).getBaseFormat()},
                                    this->renderToDepthImages.at(0)->getBaseFormat());
     }
 
@@ -101,8 +101,8 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
 
-    std::vector<std::unique_ptr<StarTextures::Texture>> renderToImages =
-        std::vector<std::unique_ptr<StarTextures::Texture>>();
+    std::vector<StarTextures::Texture> renderToImages =
+        std::vector<StarTextures::Texture>();
     std::vector<vk::Framebuffer> renderToFramebuffers = std::vector<vk::Framebuffer>();
 
     // depth testing storage
@@ -118,7 +118,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     void initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                      std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera);
 
-    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(
+    virtual std::vector<StarTextures::Texture> createRenderToImages(
         core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
 
     virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToDepthImages(
@@ -178,7 +178,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     std::vector<vk::BufferMemoryBarrier2> getMemoryBarriersForThisFrame(const uint8_t &frameInFlightIndex,
                                                                         const uint64_t &frameIndex);
 
-    RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context)
+    RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context) const
     {
         return RenderingTargetInfo(std::vector<vk::Format>{this->getColorAttachmentFormat(context)},
                                    this->getDepthAttachmentFormat(context));

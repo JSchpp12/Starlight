@@ -78,6 +78,8 @@ class SwapChainRenderer : public CaptureCapableRenderer
 
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats) const;
 
+    bool doesSwapChainSupportTransferOperations(core::device::DeviceContext &context) const;
+
     vk::Format getColorAttachmentFormat(core::device::DeviceContext &context) const override;
 
     // Look through givent present modes and pick the "best" one
@@ -92,7 +94,7 @@ class SwapChainRenderer : public CaptureCapableRenderer
                                std::vector<vk::Semaphore> dataSemaphores,
                                std::vector<vk::PipelineStageFlags> dataWaitPoints);
 
-    virtual std::vector<std::unique_ptr<StarTextures::Texture>> createRenderToImages(
+    virtual std::vector<StarTextures::Texture> createRenderToImages(
         core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(
@@ -126,7 +128,7 @@ class SwapChainRenderer : public CaptureCapableRenderer
     /// <summary>
     /// Create a swap chain that will be used in rendering images
     /// </summary>
-    virtual void createSwapChain();
+    void createSwapChain(core::device::DeviceContext &context);
 
     void prepareRenderingContext(core::device::DeviceContext &context);
 

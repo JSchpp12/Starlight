@@ -2,6 +2,7 @@
 
 #include "ConfigFile.hpp"
 #include "StarTextures/AllocatedResources.hpp"
+#include "logging/LoggingFactory.hpp"
 
 #include <cassert>
 #include <stdexcept>
@@ -152,7 +153,7 @@ star::StarTextures::Texture::Texture(vk::Device &device, VmaAllocator &allocator
                                      const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo)
     : device(device), memoryResources(CreateResource(device, baseFormat, allocator, allocationCreateInfo, createInfo,
                                                      allocationName, imageViewInfos, samplerInfo)),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos))
 {
 }
 
@@ -163,7 +164,7 @@ star::StarTextures::Texture::Texture(vk::Device &device, VmaAllocator &allocator
                                      const vk::Format &baseFormat)
     : device(device), memoryResources(CreateResource(device, baseFormat, allocator, allocationCreateInfo, createInfo,
                                                      allocationName, imageViewInfos)),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos))
 {
 }
 
@@ -173,7 +174,7 @@ star::StarTextures::Texture::Texture(vk::Device &device, vk::Image &vulkanImage,
     : device(device), baseFormat(baseFormat),
       memoryResources(std::make_shared<StarTextures::Resources>(
           vulkanImage, CreateImageViews(device, vulkanImage, imageViewInfos), CreateImageSampler(device, samplerInfo))),
-      mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos))
 {
 }
 
@@ -182,7 +183,7 @@ star::StarTextures::Texture::Texture(vk::Device &device, vk::Image &vulkanImage,
                                      const vk::Format &baseFormat)
     : device(device), memoryResources(std::make_shared<StarTextures::Resources>(
                           vulkanImage, CreateImageViews(device, vulkanImage, imageViewInfos))),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos.at(0)))
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos))
 {
 }
 
@@ -209,13 +210,18 @@ void star::StarTextures::Texture::CreateAllocation(vk::Device &device, const vk:
 {
     vk::ImageCreateInfo addFormat = vk::ImageCreateInfo(imageCreateInfo).setFormat(baseFormat);
 
-    auto result = vmaCreateImage(allocator, (VkImageCreateInfo *)&addFormat, &allocationCreateInfo,
-                                 (VkImage *)&textureImage, &allocation, nullptr);
-
-    if (result != VK_SUCCESS)
+    vk::Result result;
     {
-        std::string message = "Failed to create image: " + std::to_string(result);
+        auto tmpResult = vmaCreateImage(allocator, (VkImageCreateInfo *)&addFormat, &allocationCreateInfo,
+                                        (VkImage *)&textureImage, &allocation, nullptr);
+        result = static_cast<vk::Result>(tmpResult);
+    }
 
+    if (result != vk::Result::eSuccess)
+    {
+        LogImageCreateFailure(result);
+
+        std::string message = "Failed to create image";
         throw std::runtime_error(message);
     }
 
@@ -226,8 +232,6 @@ void star::StarTextures::Texture::CreateAllocation(vk::Device &device, const vk:
 std::unordered_map<vk::Format, vk::ImageView> star::StarTextures::Texture::CreateImageViews(
     vk::Device &device, vk::Image vulkanImage, std::vector<vk::ImageViewCreateInfo> imageCreateInfos)
 {
-    assert(imageCreateInfos.size() > 0 && "An image view is required for every image");
-
     std::unordered_map<vk::Format, vk::ImageView> nViews = std::unordered_map<vk::Format, vk::ImageView>();
 
     for (auto &info : imageCreateInfos)
@@ -329,9 +333,13 @@ vk::ImageView star::StarTextures::Texture::CreateImageView(vk::Device &device,
     return imageView;
 }
 
-uint32_t star::StarTextures::Texture::ExtractMipmapLevels(const vk::ImageViewCreateInfo &imageViewInfo)
+uint32_t star::StarTextures::Texture::ExtractMipmapLevels(const std::vector<vk::ImageViewCreateInfo> &imageViewInfo)
 {
-    return imageViewInfo.subresourceRange.levelCount;
+    if (imageViewInfo.size() > 0)
+    {
+        return imageViewInfo[0].subresourceRange.levelCount;
+    }
+    return 0;
 }
 
 star::StarTextures::Texture::Builder::Builder(vk::Device &device, const vk::Image &vulkanImage)
@@ -425,4 +433,19 @@ star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
         std::cerr << "Invalid builder config" << std::endl;
         throw std::runtime_error("Invalid builder config");
     }
+}
+
+void star::StarTextures::Texture::LogImageCreateFailure(const vk::Result &result)
+{
+    std::stringstream ss;
+    ss << "Failed to create image with error: ";
+
+    switch (result)
+    {
+    case vk::Result::eErrorFeatureNotPresent:
+        ss << "Feature not present";
+        break;
+    }
+
+    core::logging::log(boost::log::trivial::error, ss.str());
 }

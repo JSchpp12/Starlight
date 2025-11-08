@@ -14,7 +14,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
     : CaptureCapableRenderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects)),
       window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
-    createSwapChain();
+    createSwapChain(context);
 }
 
 star::core::renderer::SwapChainRenderer::SwapChainRenderer(
@@ -27,7 +27,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
                              std::move(lightListData), std::move(cameraData)),
       window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
-    createSwapChain();
+    createSwapChain(context);
 }
 
 void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
@@ -47,7 +47,7 @@ void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceCon
 
 void star::core::renderer::SwapChainRenderer::cleanupRender(core::device::DeviceContext &context)
 {
-    Renderer::cleanupRender(context);
+    CaptureCapableRenderer::cleanupRender(context);
 
     cleanupSwapChain(context);
 }
@@ -142,6 +142,17 @@ vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceF
 
     // if nothing matches what we are looking for, just take what is available
     return availableFormats[0];
+}
+
+bool star::core::renderer::SwapChainRenderer::doesSwapChainSupportTransferOperations(
+    core::device::DeviceContext &context) const
+{
+    core::SwapChainSupportDetails swapChainSupport = device.getSwapchainSupportDetails();
+
+    if (swapChainSupport.capabilities.supportedUsageFlags & vk::ImageUsageFlagBits::eTransferSrc)
+        return true;
+
+    return false;
 }
 
 vk::Format star::core::renderer::SwapChainRenderer::getColorAttachmentFormat(
@@ -354,11 +365,11 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
         this->imageAvailableSemaphores[this->currentSwapChainImageIndex]);
 }
 
-std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::SwapChainRenderer::createRenderToImages(
+std::vector<star::StarTextures::Texture> star::core::renderer::SwapChainRenderer::createRenderToImages(
     star::core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
-    std::vector<std::unique_ptr<StarTextures::Texture>> newRenderToImages =
-        std::vector<std::unique_ptr<StarTextures::Texture>>();
+    std::vector<StarTextures::Texture> newRenderToImages =
+        std::vector<StarTextures::Texture>();
 
     vk::Format format = getColorAttachmentFormat(device);
 
@@ -377,7 +388,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
                                                                      .setBaseMipLevel(0)
                                                                      .setLevelCount(1)));
 
-        newRenderToImages.emplace_back(builder.buildUnique());
+        newRenderToImages.emplace_back(builder.build());
 
         // auto buffer = device.beginSingleTimeCommands();
         // newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR,
@@ -393,7 +404,7 @@ std::vector<std::unique_ptr<star::StarTextures::Texture>> star::core::renderer::
         barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
         barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
 
-        barrier.image = newRenderToImages.back()->getVulkanImage();
+        barrier.image = newRenderToImages.back().getVulkanImage();
         barrier.srcAccessMask = vk::AccessFlagBits2::eNone;
         barrier.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe);
         barrier.dstAccessMask = vk::AccessFlagBits2::eNone;
@@ -426,7 +437,7 @@ vk::RenderingAttachmentInfo star::core::renderer::SwapChainRenderer::prepareDyna
     const int &frameInFlightIndex)
 {
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-    colorAttachmentInfo.imageView = this->renderToImages[this->currentSwapChainImageIndex]->getImageView();
+    colorAttachmentInfo.imageView = this->renderToImages[this->currentSwapChainImageIndex].getImageView();
     colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
     colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
@@ -450,7 +461,7 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
                                      .setLevelCount(1)
                                      .setBaseArrayLayer(0)
                                      .setLayerCount(1))
-            .setImage(this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage())
+            .setImage(this->renderToImages[this->currentSwapChainImageIndex].getVulkanImage())
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
@@ -466,7 +477,7 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
                                      .setLevelCount(1)
                                      .setBaseArrayLayer(0)
                                      .setLayerCount(1))
-            .setImage(this->renderToImages[this->currentSwapChainImageIndex]->getVulkanImage())
+            .setImage(this->renderToImages[this->currentSwapChainImageIndex].getVulkanImage())
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
@@ -529,7 +540,7 @@ void star::core::renderer::SwapChainRenderer::createFenceImageTracking()
     // initially, no frame is using any image so this is going to be created without an explicit link
 }
 
-void star::core::renderer::SwapChainRenderer::createSwapChain()
+void star::core::renderer::SwapChainRenderer::createSwapChain(core::device::DeviceContext &context)
 {
     // TODO: current implementation requires halting to all rendering when recreating swapchain. Can place old swap
     // chain in oldSwapChain field
@@ -559,10 +570,17 @@ void star::core::renderer::SwapChainRenderer::createSwapChain()
     createInfo.imageColorSpace = surfaceFormat.colorSpace;
     createInfo.imageExtent = extent;
     createInfo.imageArrayLayers = 1; // 1 unless using 3D display
-    createInfo.imageUsage =
-        vk::ImageUsageFlagBits::eColorAttachment |
-        vk::ImageUsageFlagBits::eTransferSrc; // how are these images going to be used? Color attachment since we are
-                                              // rendering to them (can change for postprocessing effects)
+    if (doesSwapChainSupportTransferOperations(context))
+    {
+        createInfo.imageUsage =
+            vk::ImageUsageFlagBits::eColorAttachment |
+            vk::ImageUsageFlagBits::eTransferSrc; // how are these images going to be used? Color attachment since we
+                                                  // are rendering to them (can change for postprocessing effects)
+    }
+    else
+    {
+        createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+    }
 
     std::vector<uint32_t> queueFamilyIndicies =
         this->device.getDevice().getQueueOwnershipTracker().getAllQueueFamilyIndices();
@@ -623,18 +641,14 @@ void star::core::renderer::SwapChainRenderer::recreateSwapChain()
     cleanupSwapChain(device);
 
     // create swap chain itself
-    createSwapChain();
+    createSwapChain(device);
 }
 
 void star::core::renderer::SwapChainRenderer::cleanupSwapChain(core::device::DeviceContext &context)
 {
     for (auto &image : this->renderToImages)
     {
-        if (image)
-        {
-            image->cleanupRender(context.getDevice().getVulkanDevice());
-            image.release();
-        }
+        image.cleanupRender(context.getDevice().getVulkanDevice());
     }
     for (auto &image : this->renderToDepthImages)
     {

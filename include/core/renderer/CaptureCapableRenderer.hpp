@@ -29,6 +29,8 @@ class CaptureCapableRenderer : public Renderer
 
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
 
+    virtual void cleanupRender(core::device::DeviceContext &context);
+
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) override;
 
     void triggerCapture(std::string_view imageName);
@@ -36,6 +38,9 @@ class CaptureCapableRenderer : public Renderer
   private:
     core::command_buffer::ScreenCapture m_screenCaptureCommands;
 
+    core::command_buffer::ScreenCapture createScreenCaptureCommands(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
+
     void createWorker(core::device::DeviceContext &context);
+
 };
 } // namespace star::core::renderer

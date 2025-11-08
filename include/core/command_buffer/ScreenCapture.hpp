@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CommandBufferBase.hpp"
+#include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
 namespace star::core::command_buffer
@@ -19,14 +20,28 @@ class ScreenCapture : public CommandBufferBase
 
     virtual ~ScreenCapture() = default;
 
-    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
+    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                    const vk::Extent2D &renderingResolution);
+
+    void cleanupRender(core::device::DeviceContext &context) override;
 
   private:
-    std::vector<StarTextures::Texture> m_targetTextures;
-    std::vector<StarTextures::Texture> m_transferDstTextures;
+    std::vector<StarTextures::Texture> m_targetTextures, m_transferDstTextures;
+    std::vector<StarBuffers::Buffer> m_hostVisibleBuffers;
+
     virtual Handle registerCommandBuffer(core::device::DeviceContext &context,
                                          const uint8_t &numFramesInFlight) override;
 
-    std::vector<StarTextures::Texture> createTransferDstTextures(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) const;
+    std::vector<StarTextures::Texture> createTransferDstTextures(core::device::DeviceContext &context,
+                                                                 const uint8_t &numFramesInFlight,
+                                                                 const vk::Extent2D &renderingResolution) const;
+
+    std::vector<StarBuffers::Buffer> createHostVisibleBuffers(core::device::DeviceContext &context,
+                                                              const uint8_t &numFramesInFlight,
+                                                              const vk::Extent2D &renderingResolution) const;
+
+    void cleanupBuffers(core::device::DeviceContext &context);
+
+    void cleanupIntermediateImages(core::device::DeviceContext &context);
 };
 } // namespace star::core::command_buffer
