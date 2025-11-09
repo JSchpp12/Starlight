@@ -18,6 +18,8 @@ else()
     set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 endif()
 
+find_package(StarlightCommon REQUIRED)
+
 set(VULKAN_VERSION "1.4.313.0")
 find_package(Vulkan ${VULKAN_VERSION} REQUIRED)
 
@@ -128,8 +130,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/core/device/system/event/EventBase.cpp"
     "src/core/device/system/event/ShaderCompiled.cpp"
     "src/core/device/system/event/ManagerRequest.cpp"
-    "src/core/command_buffer/CommandBufferBase.cpp"
-    "src/core/command_buffer/ScreenCapture.cpp"
+    "src/core/service/Service.cpp"
+    "src/core/service/ScreenCapture.cpp"
     "src/managers/ManagerRenderResource.cpp"
     "src/templates/StarApplication.cpp"
     "src/modules/InteractionSystem.cpp"
@@ -290,8 +292,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/core/device/system/event/ShaderCompiled.hpp"
     "include/core/device/system/event/ManagerRequest.hpp"
     "include/core/graphics/shader/BasicIncluder.hpp"
-    "include/core/command_buffer/CommandBufferBase.hpp"
-    "include/core/command_buffer/ScreenCapture.hpp"
+    "include/core/service/Service.hpp"
+    "include/core/service/ScreenCapture.hpp"
     "include/managers/ManagerRenderResource.hpp"
     "include/modules/InteractionSystem.hpp"
     "include/modules/RenderResourceSystem.hpp"
@@ -395,6 +397,7 @@ if (NOT ${HEADLESS})
 
     target_link_libraries(${STARLIGHT_NAME}
         PUBLIC
+            Starlight::StarlightCommon
             glslang
             SPIRV-Tools-opt
             SPIRV-Tools

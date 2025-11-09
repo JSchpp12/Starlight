@@ -11,8 +11,8 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
                                                            std::vector<std::shared_ptr<StarObject>> objects,
                                                            std::shared_ptr<std::vector<Light>> lights,
                                                            std::shared_ptr<StarCamera> camera, const StarWindow &window)
-    : CaptureCapableRenderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects)),
-      window(window), numFramesInFlight(numFramesInFlight), device(context)
+    : Renderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects)), window(window),
+      numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain(context);
 }
@@ -23,8 +23,8 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window)
-    : CaptureCapableRenderer(context, numFramesInFlight, std::move(objects), std::move(lightData),
-                             std::move(lightListData), std::move(cameraData)),
+    : Renderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
+               std::move(cameraData)),
       window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain(context);
@@ -33,7 +33,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
 void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
                                                          const uint8_t &numFramesInFlight)
 {
-    CaptureCapableRenderer::prepRender(context, numFramesInFlight);
+    Renderer::prepRender(context, numFramesInFlight);
 
     const size_t numSwapChainImages =
         context.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
@@ -47,7 +47,7 @@ void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceCon
 
 void star::core::renderer::SwapChainRenderer::cleanupRender(core::device::DeviceContext &context)
 {
-    CaptureCapableRenderer::cleanupRender(context);
+    Renderer::cleanupRender(context);
 
     cleanupSwapChain(context);
 }
@@ -368,8 +368,7 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
 std::vector<star::StarTextures::Texture> star::core::renderer::SwapChainRenderer::createRenderToImages(
     star::core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
-    std::vector<StarTextures::Texture> newRenderToImages =
-        std::vector<StarTextures::Texture>();
+    std::vector<StarTextures::Texture> newRenderToImages = std::vector<StarTextures::Texture>();
 
     vk::Format format = getColorAttachmentFormat(device);
 
@@ -450,7 +449,6 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
                                                                   const uint8_t &frameInFlightIndex,
                                                                   const uint64_t &frameIndex)
 {
-
     auto barriers = std::vector<vk::ImageMemoryBarrier2>{
         vk::ImageMemoryBarrier2()
             .setOldLayout(vk::ImageLayout::ePresentSrcKHR)

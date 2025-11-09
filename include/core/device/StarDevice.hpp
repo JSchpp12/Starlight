@@ -11,6 +11,8 @@
 #include "StarWindow.hpp"
 #include "SwapChainSupportDetails.hpp"
 
+#include <starlight/common/IRenderDevice.hpp>
+
 #include <vulkan/vulkan.hpp>
 
 #include <iostream>
@@ -140,7 +142,7 @@ class QueueFamilyIndicies
     std::set<uint32_t> computeFamilies = std::set<uint32_t>();
 };
 
-class StarDevice
+class StarDevice : public star::common::IRenderDevice
 {
   public:
     class QueueOwnershipTracker
@@ -304,6 +306,10 @@ class StarDevice
     inline vk::Device &getVulkanDevice()
     {
         return this->vulkanDevice;
+    }
+    void *getNativeDevice() override
+    {
+        return static_cast<void *>(vulkanDevice);
     }
     Allocator &getAllocator()
     {

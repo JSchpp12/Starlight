@@ -128,6 +128,11 @@ void star::core::device::DeviceContext::processCompleteMessage(job::complete_tas
                      static_cast<void *>(&m_eventBus), static_cast<void *>(&m_graphicsManagers));
 }
 
+void star::core::device::DeviceContext::initServices(const uint8_t &numFramesInFlight)
+{
+    
+}
+
 void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFlight)
 {
     ManagerRenderResource::init(m_deviceID, m_device, m_transferWorker, numFramesInFlight);
@@ -157,16 +162,13 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
 
     // create worker for pipeline building
     job::worker::Worker pipelineWorker{
-        job::worker::DefaultWorker<job::tasks::build_pipeline::BuildPipelineTask, 64>{
-            "Pipeline Builder"}};
-    m_taskManager.registerWorker(typeid(job::tasks::build_pipeline::BuildPipelineTask),
-                                 std::move(pipelineWorker));
+        job::worker::DefaultWorker<job::tasks::build_pipeline::BuildPipelineTask, 64>{"Pipeline Builder"}};
+    m_taskManager.registerWorker(typeid(job::tasks::build_pipeline::BuildPipelineTask), std::move(pipelineWorker));
 
     // create worker for shader compilation
     job::worker::Worker shaderWorker{
         job::worker::DefaultWorker<job::tasks::compile_shader::CompileShaderTask, 64>{"Shader Compiler"}};
-    m_taskManager.registerWorker(typeid(job::tasks::compile_shader::CompileShaderTask),
-                                 std::move(shaderWorker));
+    m_taskManager.registerWorker(typeid(job::tasks::compile_shader::CompileShaderTask), std::move(shaderWorker));
 
     m_taskManager.startAll();
 }

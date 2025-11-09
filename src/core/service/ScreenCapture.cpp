@@ -1,13 +1,11 @@
-#include "core/command_buffer/ScreenCapture.hpp"
+#include "core/service/ScreenCapture.hpp"
 
-namespace star::core::command_buffer
+namespace star::core::service
 {
 
 void ScreenCapture::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                                const vk::Extent2D &renderingResolution)
 {
-    CommandBufferBase::prepRender(context, numFramesInFlight);
-
     m_transferDstTextures = createTransferDstTextures(context, numFramesInFlight, renderingResolution);
     m_hostVisibleBuffers = createHostVisibleBuffers(context, numFramesInFlight, renderingResolution,
                                                     m_transferDstTextures.front().getSize());
@@ -17,8 +15,6 @@ void ScreenCapture::cleanupRender(core::device::DeviceContext &context)
 {
     cleanupIntermediateImages(context);
     cleanupBuffers(context);
-
-    CommandBufferBase::cleanupRender(context);
 }
 
 star::Handle ScreenCapture::registerCommandBuffer(core::device::DeviceContext &context,
@@ -71,7 +67,7 @@ std::vector<StarTextures::Texture> ScreenCapture::createTransferDstTextures(
     return textures;
 }
 
-std::vector<StarBuffers::Buffer> star::core::command_buffer::ScreenCapture::createHostVisibleBuffers(
+std::vector<StarBuffers::Buffer> ScreenCapture::createHostVisibleBuffers(
     core::device::DeviceContext &context, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution,
     const vk::DeviceSize &bufferSize) const
 {
@@ -113,5 +109,17 @@ void ScreenCapture::cleanupIntermediateImages(core::device::DeviceContext &conte
     {
         image.cleanupRender(context.getDevice().getVulkanDevice());
     }
+}
+
+void ScreenCapture::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+                                        const uint64_t &frameIndex)
+{
+    // commandBuffer
+}
+
+void ScreenCapture::addMemoryDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+                                          const uint64_t &frameIndex) const
+{
+
 }
 } // namespace star::core::command_buffer

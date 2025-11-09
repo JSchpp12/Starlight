@@ -11,6 +11,7 @@
 #include "device/managers/Pipeline.hpp"
 #include "device/system/EventBus.hpp"
 #include "tasks/TaskFactory.hpp"
+#include "core/service/Service.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -239,12 +240,15 @@ class DeviceContext
     std::unique_ptr<manager::ManagerCommandBuffer> m_commandBufferManager;
     std::shared_ptr<job::TransferWorker> m_transferWorker;
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager;
+    std::vector<core::service::Service> m_services;
 
     std::shared_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device);
 
     void handleCompleteMessages(const uint8_t maxMessageCounter = 0);
 
     void processCompleteMessage(job::complete_tasks::CompleteTask completeTask);
+
+    void initServices(const uint8_t &numFramesInFlight); 
 
     void initWorkers(const uint8_t &numFramesInFlight);
 
