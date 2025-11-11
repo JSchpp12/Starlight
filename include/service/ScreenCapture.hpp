@@ -5,29 +5,22 @@
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
-
-namespace star::core::service
+namespace star::service
 {
 class ScreenCapture
 {
   public:
-    ScreenCapture() = default;
     ScreenCapture(std::vector<StarTextures::Texture> targetTextures, std::vector<Handle> textureReadySemaphore)
         : m_targetTextures(std::move(targetTextures)),
           m_targetTexturesReadySemaphores(std::move(m_targetTexturesReadySemaphores))
     {
     }
-    ScreenCapture(const ScreenCapture &) = default;
-    ScreenCapture &operator=(const ScreenCapture &) = default;
-    ScreenCapture(ScreenCapture &&) = default;
-    ScreenCapture &operator=(ScreenCapture &&) = default;
 
-    virtual ~ScreenCapture() = default;
+    void init(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
+              core::device::manager::GraphicsContainer &graphicsResources);
 
-    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                    const vk::Extent2D &renderingResolution);
-
-    void cleanupRender(core::device::DeviceContext &context);
+    void shutdown(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
+                  core::device::manager::GraphicsContainer &graphicsResources);
 
   private:
     std::vector<StarTextures::Texture> m_targetTextures;
@@ -55,5 +48,7 @@ class ScreenCapture
 
     void addMemoryDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                const uint64_t &frameIndex) const;
+
+    void registerWithEventBus(core::device::system::EventBus &eventBus); 
 };
 } // namespace star::core::service

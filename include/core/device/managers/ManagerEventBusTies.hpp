@@ -42,7 +42,7 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, THandleTyp
     void submitSubscribeToEventBus(core::device::system::EventBus &bus)
     {
         bus.subscribe<core::device::system::event::ManagerRequest<TResourceRequest>>(
-            [this](const core::device::system::EventBase &e, bool &keepAlive) {
+            [this](const star::common::IEvent &e, bool &keepAlive) {
                 const auto &requestEvent =
                     static_cast<const core::device::system::event::ManagerRequest<TResourceRequest> &>(e);
                 requestEvent.getResultingHandle() = this->submit(*this->m_device, requestEvent.giveMeRequest());

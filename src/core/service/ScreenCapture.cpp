@@ -1,20 +1,31 @@
-#include "core/service/ScreenCapture.hpp"
+#include "service/ScreenCapture.hpp"
 
-namespace star::core::service
+namespace star::service
 {
 
-void ScreenCapture::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                               const vk::Extent2D &renderingResolution)
+// void ScreenCapture::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+//                                const vk::Extent2D &renderingResolution)
+// {
+//     m_transferDstTextures = createTransferDstTextures(context, numFramesInFlight, renderingResolution);
+//     m_hostVisibleBuffers = createHostVisibleBuffers(context, numFramesInFlight, renderingResolution,
+//                                                     m_transferDstTextures.front().getSize());
+// }
+
+// void ScreenCapture::cleanupRender(core::device::DeviceContext &context)
+// {
+//     cleanupIntermediateImages(context);
+//     cleanupBuffers(context);
+// }
+
+void ScreenCapture::init(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
+                         core::device::manager::GraphicsContainer &graphicsResources)
 {
-    m_transferDstTextures = createTransferDstTextures(context, numFramesInFlight, renderingResolution);
-    m_hostVisibleBuffers = createHostVisibleBuffers(context, numFramesInFlight, renderingResolution,
-                                                    m_transferDstTextures.front().getSize());
+    registerWithEventBus(eventBus);
 }
 
-void ScreenCapture::cleanupRender(core::device::DeviceContext &context)
+void ScreenCapture::shutdown(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
+                             core::device::manager::GraphicsContainer &graphicsResources)
 {
-    cleanupIntermediateImages(context);
-    cleanupBuffers(context);
 }
 
 star::Handle ScreenCapture::registerCommandBuffer(core::device::DeviceContext &context,
@@ -67,9 +78,10 @@ std::vector<StarTextures::Texture> ScreenCapture::createTransferDstTextures(
     return textures;
 }
 
-std::vector<StarBuffers::Buffer> ScreenCapture::createHostVisibleBuffers(
-    core::device::DeviceContext &context, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution,
-    const vk::DeviceSize &bufferSize) const
+std::vector<StarBuffers::Buffer> ScreenCapture::createHostVisibleBuffers(core::device::DeviceContext &context,
+                                                                         const uint8_t &numFramesInFlight,
+                                                                         const vk::Extent2D &renderingResolution,
+                                                                         const vk::DeviceSize &bufferSize) const
 {
     auto buffers = std::vector<StarBuffers::Buffer>();
 
@@ -120,6 +132,9 @@ void ScreenCapture::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const 
 void ScreenCapture::addMemoryDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                           const uint64_t &frameIndex) const
 {
-
 }
-} // namespace star::core::command_buffer
+
+void ScreenCapture::registerWithEventBus(core::device::system::EventBus &eventBus)
+{
+}
+} // namespace star::core::service

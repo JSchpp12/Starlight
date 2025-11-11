@@ -11,6 +11,7 @@ star::core::device::DeviceContext::~DeviceContext()
 {
     if (m_ownsResources)
     {
+        shutdownServices(); 
         m_graphicsManagers.fenceManager->cleanupRender(*m_device);
         m_graphicsManagers.pipelineManager->cleanupRender(*m_device);
         m_graphicsManagers.shaderManager->cleanupRender(*m_device);
@@ -128,9 +129,10 @@ void star::core::device::DeviceContext::processCompleteMessage(job::complete_tas
                      static_cast<void *>(&m_eventBus), static_cast<void *>(&m_graphicsManagers));
 }
 
-void star::core::device::DeviceContext::initServices(const uint8_t &numFramesInFlight)
-{
-    
+void star::core::device::DeviceContext::shutdownServices(){
+    for (auto &service : m_services){
+        service.shutdown(m_deviceID, m_eventBus, m_taskManager, m_graphicsManagers);
+    }
 }
 
 void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFlight)

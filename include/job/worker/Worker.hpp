@@ -18,8 +18,7 @@ class Worker
         virtual void doStop() = 0;
         virtual void doQueueTask(void *task) = 0;
         virtual void doSetCompleteMessageCommunicationStructure(
-            boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>>
-                *completeMessages) = 0;
+            boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages) = 0;
     };
 
     template <typename TWorker> struct WorkerModel : public WorkerConcept
@@ -61,11 +60,9 @@ class Worker
 
   public:
     template <typename TWorker>
-    Worker(TWorker worker){
-        m_impl = std::unique_ptr<WorkerConcept>(new WorkerModel<TWorker>(std::move(worker)));
+    Worker(TWorker worker) : m_impl(std::make_unique<WorkerModel<TWorker>>(std::move(worker)))
+    {
     }
-
-
     Worker() = delete;
     Worker(const Worker &) = delete;
     Worker &operator=(const Worker &) = delete;

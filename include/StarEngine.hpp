@@ -17,7 +17,7 @@ class StarEngine
 public:
     StarEngine(StarApplication &application);
 
-    virtual ~StarEngine();
+    ~StarEngine();
 
     void run();
 
@@ -32,12 +32,12 @@ public:
   private:
     const bool OVERRIDE_APPLY_SINGLE_THREAD_MODE = false;
 
-    static void initLogger();
-
     static std::unique_ptr<StarWindow> CreateStarWindow();
 
     static std::unique_ptr<job::TaskManager> CreateManager();
 
     static uint8_t GetNumFramesInFlight();
+
+    void initServices(star::core::renderer::SwapChainRenderer &presentationRenderer); 
 };
 } // namespace star

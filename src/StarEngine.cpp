@@ -6,14 +6,17 @@
 #include "RenderingInstance.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
+#include "core/logging/LoggingFactory.hpp"
 #include "job/TaskManager.hpp"
 #include "renderer/SwapChainRenderer.hpp"
-#include "core/logging/LoggingFactory.hpp"
+
+#include "service/ScreenCapture.hpp"
 
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
-#include <stdexcept>
 #include <vk_mem_alloc.h>
+
+#include <stdexcept>
 
 namespace star
 {
@@ -22,7 +25,7 @@ StarEngine::StarEngine(StarApplication &application)
       deviceManager(core::RenderingInstance(ConfigFile::getSetting(star::Config_Settings::app_name)))
 {
     core::logging::init();
-    core::logging::log(boost::log::trivial::info, "Logger initialized"); 
+    core::logging::log(boost::log::trivial::info, "Logger initialized");
 
     std::set<star::Rendering_Features> features;
     {
@@ -117,6 +120,8 @@ void StarEngine::run()
                                     numFramesInFlight, currentScene->getPresentationRenderer()->getGlobalShaderInfo(),
                                     currentScene->getPresentationRenderer()->getRenderTargetInfo());
 
+    initServices(*currentScene->getPresentationRenderer());
+
     uint8_t frameInFlightIndex = 0;
     while (!window->shouldClose())
     {
@@ -177,7 +182,11 @@ uint8_t StarEngine::GetNumFramesInFlight()
     return num;
 }
 
-void star::StarEngine::initLogger(){
-
+void star::StarEngine::initServices(star::core::renderer::SwapChainRenderer &presentationRenderer)
+{
+    star::service::ScreenCapture capture{presentationRenderer.getRenderToColorImages(),
+                                               presentationRenderer.getDoneSemaphores()};
+    deviceManager.getContext(defaultDevice).registerService(star::service::Service{std::move(capture)});
 }
+
 } // namespace star

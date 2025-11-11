@@ -11,7 +11,7 @@
 #include "device/managers/Pipeline.hpp"
 #include "device/system/EventBus.hpp"
 #include "tasks/TaskFactory.hpp"
-#include "core/service/Service.hpp"
+#include "service/Service.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -99,7 +99,7 @@ class DeviceContext
           m_taskManager(std::move(other.m_taskManager)), m_graphicsManagers(std::move(other.m_graphicsManagers)),
           m_commandBufferManager(std::move(other.m_commandBufferManager)),
           m_transferWorker(std::move(other.m_transferWorker)),
-          m_renderResourceManager(std::move(other.m_renderResourceManager))
+          m_renderResourceManager(std::move(other.m_renderResourceManager)), m_services(std::move(other.m_services))
     {
         other.m_ownsResources = false;
     };
@@ -118,6 +118,7 @@ class DeviceContext
             m_graphicsManagers = std::move(other.m_graphicsManagers);
             m_transferWorker = std::move(other.m_transferWorker);
             m_renderResourceManager = std::move(other.m_renderResourceManager);
+            m_services = std::move(other.m_services);
             if (other.m_ownsResources)
             {
                 m_ownsResources = std::move(other.m_ownsResources);
@@ -210,10 +211,12 @@ class DeviceContext
         return m_surface;
     }
 
-    job::TaskManager &getTaskManager(){
+    job::TaskManager &getTaskManager()
+    {
         return m_taskManager;
     }
-    const job::TaskManager &getTaskManager() const{
+    const job::TaskManager &getTaskManager() const
+    {
         return m_taskManager;
     }
 
@@ -225,6 +228,13 @@ class DeviceContext
     const FrameInFlightTracking &getFrameInFlightTracking(const uint8_t &frameInFlightIndex) const
     {
         return m_frameInFlightTrackingInfo[frameInFlightIndex];
+    }
+
+    void registerService(service::Service service)
+    {
+        m_services.emplace_back(std::move(service));
+
+        m_services.back().init(m_deviceID, m_eventBus, m_taskManager, m_graphicsManagers);
     }
 
   private:
@@ -240,7 +250,7 @@ class DeviceContext
     std::unique_ptr<manager::ManagerCommandBuffer> m_commandBufferManager;
     std::shared_ptr<job::TransferWorker> m_transferWorker;
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager;
-    std::vector<core::service::Service> m_services;
+    std::vector<service::Service> m_services;
 
     std::shared_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device);
 
@@ -248,10 +258,12 @@ class DeviceContext
 
     void processCompleteMessage(job::complete_tasks::CompleteTask completeTask);
 
-    void initServices(const uint8_t &numFramesInFlight); 
+    void initServices(const uint8_t &numFramesInFlight);
 
     void initWorkers(const uint8_t &numFramesInFlight);
 
-    void logInit(const uint8_t &numFramesInFlight) const; 
+    void shutdownServices();
+
+    void logInit(const uint8_t &numFramesInFlight) const;
 };
 } // namespace star::core::device

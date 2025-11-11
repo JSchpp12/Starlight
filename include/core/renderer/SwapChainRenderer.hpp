@@ -49,6 +49,10 @@ class SwapChainRenderer : public Renderer
         return this->currentFrameInFlightCounter;
     }
 
+    std::vector<Handle> getDoneSemaphores() {
+        return imageAvailableSemaphores;
+    }
+
   protected:
     const StarWindow &window;
     core::device::DeviceContext &device;

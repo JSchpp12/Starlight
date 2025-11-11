@@ -2,7 +2,8 @@
 
 #include "CastHelpers.hpp"
 #include "Handle.hpp"
-#include "device/system/event/EventBase.hpp"
+
+#include <starlight/common/IEvent.hpp>
 
 #include <cassert>
 #include <functional>
@@ -15,7 +16,7 @@ namespace star::core::device::system
 {
 class EventBus
 {
-    using Callback = std::function<void(const EventBase &, bool &)>;
+    using Callback = std::function<void(const star::common::IEvent &, bool &)>;
     using CallbackGetSubscriberHandleForUpdate = std::function<Handle *(void)>;
     using CallbackNotifySubscriberHandleCanBeDeleted = std::function<void(const Handle &)>;
 
@@ -41,7 +42,7 @@ class EventBus
     template <typename TEventType> void emit(const TEventType &event)
     {
         const size_t key = getKey<TEventType>();
-        const auto &base = static_cast<const EventBase &>(event);
+        const auto &base = static_cast<const star::common::IEvent &>(event);
 
         std::vector<Callback> aliveCallbacks = std::vector<Callback>();
 
@@ -94,7 +95,7 @@ class EventBus
 
     template <typename TEventType> size_t getKey()
     {
-        static_assert(std::is_base_of_v<EventBase, TEventType>, "TEventType must derive from Event");
+        static_assert(std::is_base_of_v<star::common::IEvent, TEventType>, "TEventType must derive from Event");
         return typeid(TEventType).hash_code();
     }
 
