@@ -184,9 +184,9 @@ uint8_t StarEngine::GetNumFramesInFlight()
 
 void star::StarEngine::initServices(star::core::renderer::SwapChainRenderer &presentationRenderer)
 {
-    star::service::ScreenCapture capture{presentationRenderer.getRenderToColorImages(),
-                                               presentationRenderer.getDoneSemaphores()};
-    deviceManager.getContext(defaultDevice).registerService(star::service::Service{std::move(capture)});
+    deviceManager.getContext(defaultDevice)
+        .registerService(star::service::Service{star::service::ScreenCapture{
+            presentationRenderer.getRenderToColorImages(), presentationRenderer.getDoneSemaphores()}});
 }
 
 } // namespace star

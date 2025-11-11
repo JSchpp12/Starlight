@@ -28,6 +28,7 @@ void ScreenCapture::init(const Handle &deviceID, core::device::system::EventBus 
 void ScreenCapture::shutdown(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
                              core::device::manager::GraphicsContainer &graphicsResources)
 {
+    
 }
 
 star::Handle ScreenCapture::registerCommandBuffer(core::device::DeviceContext &context,
@@ -138,5 +139,6 @@ void ScreenCapture::addMemoryDependencies(vk::CommandBuffer &commandBuffer, cons
 
 void ScreenCapture::registerWithEventBus(core::device::system::EventBus &eventBus)
 {
+
 }
 } // namespace star::core::service

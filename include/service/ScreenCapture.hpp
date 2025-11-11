@@ -11,8 +11,7 @@ class ScreenCapture
 {
   public:
     ScreenCapture(std::vector<StarTextures::Texture> targetTextures, std::vector<Handle> textureReadySemaphore)
-        : m_targetTextures(std::move(targetTextures)),
-          m_targetTexturesReadySemaphores(std::move(m_targetTexturesReadySemaphores))
+        : m_targetTextures(std::move(targetTextures)), m_targetTexturesReadySemaphores(std::move(textureReadySemaphore))
     {
     }
 
@@ -23,6 +22,7 @@ class ScreenCapture
                   core::device::manager::GraphicsContainer &graphicsResources);
 
   private:
+    Handle m_subscriberHandle;
     std::vector<StarTextures::Texture> m_targetTextures;
     std::vector<Handle> m_targetTexturesReadySemaphores;
     std::vector<StarTextures::Texture> m_transferDstTextures;
@@ -49,6 +49,6 @@ class ScreenCapture
     void addMemoryDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                const uint64_t &frameIndex) const;
 
-    void registerWithEventBus(core::device::system::EventBus &eventBus); 
+    void registerWithEventBus(core::device::system::EventBus &eventBus);
 };
-} // namespace star::core::service
+} // namespace star::service
