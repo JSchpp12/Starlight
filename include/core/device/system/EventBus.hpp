@@ -2,6 +2,7 @@
 
 #include "CastHelpers.hpp"
 #include "Handle.hpp"
+#include "SubscriberCallbackInfo.hpp"
 
 #include <starlight/common/IEvent.hpp>
 
@@ -16,26 +17,19 @@ namespace star::core::device::system
 {
 class EventBus
 {
-    using Callback = std::function<void(const star::common::IEvent &, bool &)>;
-    using CallbackGetSubscriberHandleForUpdate = std::function<Handle *(void)>;
-    using CallbackNotifySubscriberHandleCanBeDeleted = std::function<void(const Handle &)>;
-
   public:
     template <typename TEventType>
-    void subscribe(Callback callback, CallbackGetSubscriberHandleForUpdate getHandleCallback,
-                   CallbackNotifySubscriberHandleCanBeDeleted notifySubscriberOfDeleteHandle)
+    void subscribe(SubscriberCallbackInfo callbackInfo)
     {
         const size_t key = getKey<TEventType>();
 
-        m_listeners[key].push_back(
-            std::make_pair(callback, HandleUpdateInfo{.getHandleForUpdateCallback = getHandleCallback,
-                                                      .deleteHandleCallback = notifySubscriberOfDeleteHandle}));
+        m_listeners[key].push_back(callbackInfo);
 
         uint32_t id;
         CastHelpers::SafeCast<size_t, uint32_t>(m_listeners[key].size(), id);
         id--;
 
-        auto *handle = getHandleCallback();
+        auto *handle = callbackInfo.doCallbackGetSubscriberHandleForUpdate();
         *handle = Handle{.type = Handle_Type::subscriber, .id = id};
     }
 
@@ -52,10 +46,11 @@ class EventBus
         }
         auto indicesToRemove = std::vector<size_t>();
 
+
         for (size_t i = 0; i < m_listeners[key].size(); i++)
         {
             bool keepAlive = false;
-            m_listeners[key][i].first(base, keepAlive);
+            m_listeners[key][i].doCallback(base, keepAlive);
 
             if (!keepAlive)
             {
@@ -67,7 +62,7 @@ class EventBus
         {
             for (int i = indicesToRemove.size() - 1; i >= 0; i--)
             {
-                const Handle *subHandle = m_listeners[key][indicesToRemove[i]].second.getHandleForUpdateCallback();
+                const Handle *subHandle = m_listeners[key][indicesToRemove[i]].doCallbackGetSubscriberHandleForUpdate();
                 if (subHandle != nullptr)
                 {
                     removeSubscriber(*subHandle, key, m_listeners[key]);
@@ -86,12 +81,7 @@ class EventBus
     }
 
   private:
-    struct HandleUpdateInfo
-    {
-        CallbackGetSubscriberHandleForUpdate getHandleForUpdateCallback;
-        CallbackNotifySubscriberHandleCanBeDeleted deleteHandleCallback;
-    };
-    std::unordered_map<size_t, std::vector<std::pair<Callback, HandleUpdateInfo>>> m_listeners;
+    std::unordered_map<size_t, std::vector<SubscriberCallbackInfo>> m_listeners;
 
     template <typename TEventType> size_t getKey()
     {
@@ -100,14 +90,14 @@ class EventBus
     }
 
     void removeSubscriber(const Handle &subscriberHandle, const size_t &key,
-                          std::vector<std::pair<Callback, HandleUpdateInfo>> &subs)
+                          std::vector<SubscriberCallbackInfo> &subs)
     {
         size_t handleID = 0;
         CastHelpers::SafeCast<uint32_t, size_t>(subscriberHandle.getID(), handleID);
 
         assert(handleID < subs.size() && "Handle does not correlate to any listener registered for the template type");
 
-        subs[handleID].second.deleteHandleCallback(subscriberHandle);
+        subs[handleID].doCallbackNotifySubscriberHandleCanBeDeleted(subscriberHandle);
 
         // Shift elements left from handleID+1 to end
         for (size_t i = handleID + 1; i < subs.size(); ++i)
@@ -115,7 +105,7 @@ class EventBus
             subs[i - 1] = std::move(subs[i]);
 
             // Update the moved subscriber's handle (its index decreased by 1)
-            if (Handle *h = subs[i - 1].second.getHandleForUpdateCallback())
+            if (Handle *h = subs[i - 1].doCallbackGetSubscriberHandleForUpdate())
             {
                 if (h->id > 0)
                 {

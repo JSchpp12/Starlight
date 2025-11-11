@@ -1,16 +1,16 @@
 #include "ConfigFile.hpp"
 
 #include "FileHelpers.hpp"
+#include "logging/LoggingFactory.hpp"
+
+#include <nlohmann/json.hpp>
 
 #include <iostream> 
-
 #include <sstream>
 #include <map> 
 #include <memory> 
 #include <assert.h>
 #include <fstream>
-
-#include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
@@ -31,6 +31,7 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
 
 void star::ConfigFile::load(const std::string& configFilePath) {
     if (!file_helpers::FileExists(configFilePath)){
+        core::logging::log(boost::log::trivial::error, "No config file found");
         throw std::runtime_error("No config file found"); 
     }
     

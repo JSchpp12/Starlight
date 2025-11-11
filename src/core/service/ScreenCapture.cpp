@@ -1,5 +1,7 @@
 #include "service/ScreenCapture.hpp"
 
+#include "event/TriggerScreenshot.hpp"
+
 namespace star::service
 {
 

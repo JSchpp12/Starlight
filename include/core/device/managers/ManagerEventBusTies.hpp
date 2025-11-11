@@ -39,22 +39,40 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, THandleTyp
     std::shared_ptr<device::StarDevice> m_device;
     Handle m_subscriberInfo;
 
+    void eventCallback(const star::common::IEvent &e, bool &keepAlive)
+    {
+        const auto &requestEvent =
+            static_cast<const core::device::system::event::ManagerRequest<TResourceRequest> &>(e);
+        requestEvent.getResultingHandle() = this->submit(*this->m_device, requestEvent.giveMeRequest());
+        keepAlive = true;
+    }
+
+    Handle *getHandleForUpdate()
+    {
+        return &m_subscriberInfo;
+    }
+
+    void notificationFromEventBusHandleDelete(const Handle &noLongerNeededSubscriberHandle)
+    {
+        if (this->m_subscriberInfo == noLongerNeededSubscriberHandle)
+        {
+            this->m_subscriberInfo = Handle();
+        }
+    }
+
     void submitSubscribeToEventBus(core::device::system::EventBus &bus)
     {
         bus.subscribe<core::device::system::event::ManagerRequest<TResourceRequest>>(
-            [this](const star::common::IEvent &e, bool &keepAlive) {
-                const auto &requestEvent =
-                    static_cast<const core::device::system::event::ManagerRequest<TResourceRequest> &>(e);
-                requestEvent.getResultingHandle() = this->submit(*this->m_device, requestEvent.giveMeRequest());
-                keepAlive = true;
-            },
-            [this]() -> Handle * { return &this->m_subscriberInfo; },
-            [this](const Handle &noLongerNeededSubscriberHandle) {
-                if (this->m_subscriberInfo == noLongerNeededSubscriberHandle)
-                {
-                    this->m_subscriberInfo = Handle();
-                }
-            });
+            {[this](const star::common::IEvent &e, bool &keepAlive){
+                this->eventCallback(e, keepAlive);
+            }, 
+            [this]() -> Handle* {
+                return this->getHandleForUpdate();
+            }, 
+            [this](const Handle &noLongerNeededHandle){
+                this->notificationFromEventBusHandleDelete(noLongerNeededHandle);
+            }
+        });
     };
 };
 } // namespace star::core::device::manager

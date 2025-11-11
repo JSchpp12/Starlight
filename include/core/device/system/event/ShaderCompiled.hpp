@@ -1,13 +1,14 @@
 #pragma once
 
 #include "Handle.hpp"
-#include "device/system/event/EventBase.hpp"
+
+#include <starlight/common/IEvent.hpp>
 
 #include <utility>
 
 namespace star::core::device::system::event
 {
-struct ShaderCompiled : public EventBase
+struct ShaderCompiled : public star::common::IEvent
 {
     ShaderCompiled(Handle shaderHandle) : shaderHandle(std::move(shaderHandle))
     {
