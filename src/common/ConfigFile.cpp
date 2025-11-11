@@ -11,6 +11,7 @@
 #include <memory> 
 #include <assert.h>
 #include <fstream>
+#include <ostream>
 
 using json = nlohmann::json;
 
@@ -41,7 +42,12 @@ void star::ConfigFile::load(const std::string& configFilePath) {
         std::fstream configStream(configFilePath);
         configStream >> configJson;
     }catch(std::exception& e){
-		std::cerr << "Error reading config file: " << e.what() << std::endl;
+        std::ostringstream oss; 
+        oss << "Error reading config file: ";
+        oss << e.what(); 
+        core::logging::log(boost::log::trivial::error, oss.str()); 
+
+		std::cerr << oss.str() << std::endl;
 	}
 
     for (auto& setting : availableSettings) {

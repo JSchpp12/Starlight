@@ -14,7 +14,7 @@ namespace star
 {
 class StarEngine
 {
-public:
+  public:
     StarEngine(StarApplication &application);
 
     ~StarEngine();
@@ -22,7 +22,7 @@ public:
     void run();
 
   protected:
-    StarApplication &m_application; 
+    StarApplication &m_application;
     Handle defaultDevice = Handle{.type = star::Handle_Type::device, .id = 0};
     uint64_t frameCounter = 0;
     std::unique_ptr<StarWindow> window = nullptr;
@@ -38,6 +38,6 @@ public:
 
     static uint8_t GetNumFramesInFlight();
 
-    void initServices(star::core::renderer::SwapChainRenderer &presentationRenderer); 
+    void initServices(star::core::renderer::SwapChainRenderer &presentationRenderer, const uint8_t &numFramesInFlight);
 };
 } // namespace star

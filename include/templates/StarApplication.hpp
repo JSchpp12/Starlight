@@ -1,10 +1,11 @@
 #pragma once
 
-#include "core/device/DeviceContext.hpp"
 #include "Interactivity.hpp"
 #include "StarScene.hpp"
-#include "core/renderer/SwapChainRenderer.hpp"
 #include "Time.hpp"
+#include "core/SystemContext.hpp"
+#include "core/renderer/SwapChainRenderer.hpp"
+
 
 #include <GLFW/glfw3.h>
 #include <memory>
@@ -19,13 +20,14 @@ class StarApplication : public Interactivity
     StarApplication() = default;
     virtual ~StarApplication() = default;
 
-    void init(){
+    void init()
+    {
         this->registerInteractions();
     }
 
     void cleanup();
 
-    virtual void onWorldUpdate(const uint32_t &frameInFlightIndex) override = 0;
+    virtual void frameUpdate(star::core::SystemContext &context, const uint8_t &frameInFlightIndex) = 0;
 
     virtual void onKeyPress(int key, int scancode, int mods) override {};
 
@@ -37,7 +39,8 @@ class StarApplication : public Interactivity
 
     virtual void onScroll(double xoffset, double yoffset) override {};
 
-    virtual std::shared_ptr<StarScene> loadScene(core::device::DeviceContext &context, const StarWindow &window, const uint8_t &numFramesInFlight) = 0; 
+    virtual std::shared_ptr<StarScene> loadScene(core::device::DeviceContext &context, const StarWindow &window,
+                                                 const uint8_t &numFramesInFlight) = 0;
 
   protected:
 };

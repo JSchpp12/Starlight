@@ -120,7 +120,7 @@ void StarEngine::run()
                                     numFramesInFlight, currentScene->getPresentationRenderer()->getGlobalShaderInfo(),
                                     currentScene->getPresentationRenderer()->getRenderTargetInfo());
 
-    initServices(*currentScene->getPresentationRenderer());
+    initServices(*currentScene->getPresentationRenderer(), numFramesInFlight);
 
     uint8_t frameInFlightIndex = 0;
     while (!window->shouldClose())
@@ -136,6 +136,7 @@ void StarEngine::run()
 
         currentScene->getPresentationRenderer()->pollEvents();
         InteractionSystem::callWorldUpdates(frameInFlightIndex);
+        m_application.frameUpdate(deviceManager, frameInFlightIndex);
 
         currentScene->frameUpdate(deviceManager.getContext(defaultDevice), frameInFlightIndex);
 
@@ -182,11 +183,13 @@ uint8_t StarEngine::GetNumFramesInFlight()
     return num;
 }
 
-void star::StarEngine::initServices(star::core::renderer::SwapChainRenderer &presentationRenderer)
+void star::StarEngine::initServices(star::core::renderer::SwapChainRenderer &presentationRenderer,
+                                    const uint8_t &numFramesInFlight)
 {
     deviceManager.getContext(defaultDevice)
         .registerService(star::service::Service{star::service::ScreenCapture{
-            presentationRenderer.getRenderToColorImages(), presentationRenderer.getDoneSemaphores()}});
+                             presentationRenderer.getRenderToColorImages(), presentationRenderer.getDoneSemaphores()}},
+                         numFramesInFlight);
 }
 
 } // namespace star

@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "InitParameters.hpp"
 #include "core/device/managers/GraphicsContainer.hpp"
 #include "core/device/system/EventBus.hpp"
 #include "job/TaskManager.hpp"
@@ -14,12 +15,9 @@ class Service
     struct ServiceConcept
     {
         virtual ~ServiceConcept() = default;
-        virtual void doInit(const Handle &deviceID, core::device::system::EventBus &eventBus,
-                            job::TaskManager &taskManager,
-                            core::device::manager::GraphicsContainer &graphicsContainer) = 0;
-        virtual void doShutdown(const Handle &deviceID, core::device::system::EventBus &eventBus,
-                                job::TaskManager &taskManager,
-                                core::device::manager::GraphicsContainer &graphicsContainer) = 0;
+        virtual void doSetInitParameters(InitParameters &params) = 0;
+        virtual void doInit(const uint8_t &numFramesInFlight) = 0;
+        virtual void doShutdown() = 0;
     };
 
     template <typename TService> struct ServiceModel : public ServiceConcept
@@ -30,16 +28,18 @@ class Service
         }
         virtual ~ServiceModel() = default;
 
-        void doInit(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
-                    core::device::manager::GraphicsContainer &graphicsResources) override
+        void doSetInitParameters(InitParameters &params) override
         {
-            m_service.init(deviceID, eventBus, taskManager, graphicsResources);
+            m_service.setInitParameters(params);
+        }
+        void doInit(const uint8_t &numFramesInFlight) override
+        {
+            m_service.init(numFramesInFlight);
         }
 
-        void doShutdown(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
-                        core::device::manager::GraphicsContainer &graphicsResources) override
+        void doShutdown() override
         {
-            m_service.shutdown(deviceID, eventBus, taskManager, graphicsResources);
+            m_service.shutdown();
         }
     };
 
@@ -56,16 +56,19 @@ class Service
     Service &operator=(Service &&) = default;
     ~Service() = default;
 
-    void init(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
-              core::device::manager::GraphicsContainer &graphicsResources)
+    void init(InitParameters &params, const uint8_t &numFramesInFlight)
     {
-        m_impl->doInit(deviceID, eventBus, taskManager, graphicsResources);
+        setInitParameters(params);
+        m_impl->doInit(numFramesInFlight);
     }
 
-    void shutdown(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
-                  core::device::manager::GraphicsContainer &graphicsResources)
+    void setInitParameters(InitParameters &params){
+        m_impl->doSetInitParameters(params);
+    }
+
+    void shutdown()
     {
-        m_impl->doShutdown(deviceID, eventBus, taskManager, graphicsResources);
+        m_impl->doShutdown();
     }
 };
 } // namespace star::service

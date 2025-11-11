@@ -2,8 +2,10 @@
 
 #include "Handle.hpp"
 #include "core/device/DeviceContext.hpp"
+#include "service/InitParameters.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
+
 
 namespace star::service
 {
@@ -15,29 +17,48 @@ class ScreenCapture
     {
     }
 
-    void init(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
-              core::device::manager::GraphicsContainer &graphicsResources);
+    void init(const uint8_t &numFramesInFlight);
 
-    void shutdown(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
-                  core::device::manager::GraphicsContainer &graphicsResources);
+    void setInitParameters(InitParameters &params);
+
+    void shutdown();
 
   private:
+    struct DeviceInfo
+    {
+        core::device::StarDevice *device = nullptr;
+        core::RenderingSurface *surface = nullptr;
+        core::device::system::EventBus *eventBus = nullptr;
+        job::TaskManager *taskManager = nullptr;
+    };
+
     Handle m_subscriberHandle;
     std::vector<StarTextures::Texture> m_targetTextures;
     std::vector<Handle> m_targetTexturesReadySemaphores;
     std::vector<StarTextures::Texture> m_transferDstTextures;
     std::vector<StarBuffers::Buffer> m_hostVisibleBuffers;
+    DeviceInfo m_deviceInfo;
 
     virtual Handle registerCommandBuffer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
 
-    std::vector<StarTextures::Texture> createTransferDstTextures(core::device::DeviceContext &context,
+    std::vector<StarTextures::Texture> createTransferDstTextures(core::device::StarDevice &device,
                                                                  const uint8_t &numFramesInFlight,
                                                                  const vk::Extent2D &renderingResolution) const;
 
-    std::vector<StarBuffers::Buffer> createHostVisibleBuffers(core::device::DeviceContext &context,
+    void initBuffers(const uint8_t &numFramesInFlight);
+
+    std::vector<StarBuffers::Buffer> createHostVisibleBuffers(core::device::StarDevice &device,
                                                               const uint8_t &numFramesInFlight,
                                                               const vk::Extent2D &renderingResolution,
                                                               const vk::DeviceSize &size) const;
+
+    void trigger();
+
+    void eventCallback(const star::common::IEvent &e, bool &keepAlive);
+
+    Handle *notificationFromEventBusGetHandle();
+
+    void notificationFromEventBusDeleteHandle(const Handle &handle);
 
     void cleanupBuffers(core::device::DeviceContext &context);
 

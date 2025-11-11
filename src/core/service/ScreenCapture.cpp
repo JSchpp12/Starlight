@@ -1,6 +1,7 @@
 #include "service/ScreenCapture.hpp"
 
 #include "event/TriggerScreenshot.hpp"
+#include "logging/LoggingFactory.hpp"
 
 namespace star::service
 {
@@ -19,16 +20,33 @@ namespace star::service
 //     cleanupBuffers(context);
 // }
 
-void ScreenCapture::init(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
-                         core::device::manager::GraphicsContainer &graphicsResources)
+void ScreenCapture::init(const uint8_t &numFramesInFlight)
 {
-    registerWithEventBus(eventBus);
+    assert(m_deviceInfo.eventBus != nullptr && "Event bus must be initialized");
+    registerWithEventBus(*m_deviceInfo.eventBus);
+
+    initBuffers(numFramesInFlight);
 }
 
-void ScreenCapture::shutdown(const Handle &deviceID, core::device::system::EventBus &eventBus, job::TaskManager &taskManager,
-                             core::device::manager::GraphicsContainer &graphicsResources)
+void ScreenCapture::initBuffers(const uint8_t &numFramesInFlight)
 {
-    
+    assert(m_deviceInfo.device != nullptr && "Device must be initialized"); 
+    assert(m_deviceInfo.surface != nullptr && "Surface must be initialized"); 
+    assert(m_deviceInfo.taskManager != nullptr && "Task manager must be initalized"); 
+
+        // createHostVisibleBuffers(device, )
+}
+
+void ScreenCapture::setInitParameters(InitParameters &params)
+{
+    m_deviceInfo = DeviceInfo{.device = &params.device,
+                              .surface = &params.surface,
+                              .eventBus = &params.eventBus,
+                              .taskManager = &params.taskManager};
+}
+
+void ScreenCapture::shutdown()
+{
 }
 
 star::Handle ScreenCapture::registerCommandBuffer(core::device::DeviceContext &context,
@@ -38,21 +56,19 @@ star::Handle ScreenCapture::registerCommandBuffer(core::device::DeviceContext &c
 }
 
 std::vector<StarTextures::Texture> ScreenCapture::createTransferDstTextures(
-    core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-    const vk::Extent2D &renderingResolution) const
+    core::device::StarDevice &device, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution) const
 {
     auto textures = std::vector<StarTextures::Texture>();
     const vk::Format format = m_targetTextures.front().getBaseFormat();
 
-    const auto queueFamilyInds = std::vector<uint32_t>{
-        context.getDevice().getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
-        context.getDevice().getDefaultQueue(star::Queue_Type::Ttransfer).getParentQueueFamilyIndex()};
+    const auto queueFamilyInds =
+        std::vector<uint32_t>{device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
+                              device.getDefaultQueue(star::Queue_Type::Ttransfer).getParentQueueFamilyIndex()};
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
         textures.emplace_back(
-            StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                           context.getDevice().getAllocator().get())
+            StarTextures::Texture::Builder(device.getVulkanDevice(), device.getAllocator().get())
                 .setBaseFormat(format)
                 .setCreateInfo(
                     Allocator::AllocationBuilder()
@@ -81,14 +97,14 @@ std::vector<StarTextures::Texture> ScreenCapture::createTransferDstTextures(
     return textures;
 }
 
-std::vector<StarBuffers::Buffer> ScreenCapture::createHostVisibleBuffers(core::device::DeviceContext &context,
+std::vector<StarBuffers::Buffer> ScreenCapture::createHostVisibleBuffers(core::device::StarDevice &device,
                                                                          const uint8_t &numFramesInFlight,
                                                                          const vk::Extent2D &renderingResolution,
                                                                          const vk::DeviceSize &bufferSize) const
 {
     auto buffers = std::vector<StarBuffers::Buffer>();
 
-    auto builder = StarBuffers::Buffer::Builder(context.getDevice().getAllocator().get())
+    auto builder = StarBuffers::Buffer::Builder(device.getAllocator().get())
                        .setAllocationCreateInfo(Allocator::AllocationBuilder()
                                                     .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
                                                               VMA_ALLOCATION_CREATE_MAPPED_BIT)
@@ -108,6 +124,11 @@ std::vector<StarBuffers::Buffer> ScreenCapture::createHostVisibleBuffers(core::d
     }
 
     return buffers;
+}
+
+void ScreenCapture::trigger()
+{
+    core::logging::log(boost::log::trivial::info, "Trigger screenshot");
 }
 
 void ScreenCapture::cleanupBuffers(core::device::DeviceContext &context)
@@ -139,6 +160,25 @@ void ScreenCapture::addMemoryDependencies(vk::CommandBuffer &commandBuffer, cons
 
 void ScreenCapture::registerWithEventBus(core::device::system::EventBus &eventBus)
 {
-
+    eventBus.subscribe<event::TriggerScreenshot>(
+        {[this](const star::common::IEvent &e, bool &keepAlive) { this->eventCallback(e, keepAlive); },
+         [this]() -> Handle * { return this->notificationFromEventBusGetHandle(); },
+         [this](const Handle &handle) { this->notificationFromEventBusDeleteHandle(handle); }});
 }
-} // namespace star::core::service
+
+void ScreenCapture::eventCallback(const star::common::IEvent &e, bool &keepAlive)
+{
+    const auto &screenEvent = static_cast<const event::TriggerScreenshot &>(e);
+    trigger();
+    keepAlive = true;
+}
+
+star::Handle *ScreenCapture::notificationFromEventBusGetHandle()
+{
+    return &m_subscriberHandle;
+}
+
+void ScreenCapture::notificationFromEventBusDeleteHandle(const Handle &handle)
+{
+}
+} // namespace star::service

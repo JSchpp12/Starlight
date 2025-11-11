@@ -18,7 +18,7 @@ class SystemContext
     void createDevice(const Handle &deviceID, const uint64_t &frameIndex, const uint8_t &numOfFramesInFlight,
                       std::set<star::Rendering_Features> requiredFeatures, StarWindow &window,
                       const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures);
-                      
+
     device::DeviceContext &getContext(const Handle &handle)
     {
         return m_contexts.get(handle);
@@ -26,6 +26,11 @@ class SystemContext
     RenderingInstance &getRenderingInstance()
     {
         return m_instance;
+    }
+
+    LinearHandleContainer<device::DeviceContext, Handle_Type::device, 1> &getAllDevices()
+    {
+        return m_contexts;
     }
 
   private:

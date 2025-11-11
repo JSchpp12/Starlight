@@ -44,7 +44,7 @@ public:
 	/// <summary>
 	/// Function that will be called before the user defined application world update function
 	/// </summary>
-	virtual void onWorldUpdate(const uint32_t& frameInFlightIndex) = 0;
+	virtual void onWorldUpdate(const uint32_t& frameInFlightIndex){};
 
 	/// <summary>
 	/// Register all ineractions in this class with the interaction system. This function MUST be called from every inheriting class

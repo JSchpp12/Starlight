@@ -5,6 +5,8 @@
 #include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
 
+#include "service/InitParameters.hpp"
+
 #include <cassert>
 
 star::core::device::DeviceContext::~DeviceContext()
@@ -131,7 +133,7 @@ void star::core::device::DeviceContext::processCompleteMessage(job::complete_tas
 
 void star::core::device::DeviceContext::shutdownServices(){
     for (auto &service : m_services){
-        service.shutdown(m_deviceID, m_eventBus, m_taskManager, m_graphicsManagers);
+        service.shutdown();
     }
 }
 
@@ -181,4 +183,28 @@ void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight
     oss << "Initializing device context: \n \tNumber of frames in flight: ";
     oss << std::to_string(numFramesInFlight);
     core::logging::log(boost::log::trivial::info, oss.str());
+}
+
+void star::core::device::DeviceContext::registerService(service::Service service, const uint8_t &numFramesInFlight){
+    m_services.emplace_back(std::move(service));
+
+    service::InitParameters params{
+        m_deviceID,
+        m_surface,
+        *m_device,
+        m_eventBus,
+        m_taskManager,
+        m_graphicsManagers,
+        *m_commandBufferManager,
+        *m_transferWorker,
+        *m_renderResourceManager
+    };
+    
+    m_services.back().init(params, numFramesInFlight);
+}
+
+void star::core::device::DeviceContext::setAllServiceParameters(){
+    for (auto &service : m_services){
+
+    }
 }

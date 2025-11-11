@@ -122,6 +122,8 @@ class DeviceContext
             if (other.m_ownsResources)
             {
                 m_ownsResources = std::move(other.m_ownsResources);
+
+                initServices();
             }
 
             other.m_ownsResources = false;
@@ -230,13 +232,7 @@ class DeviceContext
         return m_frameInFlightTrackingInfo[frameInFlightIndex];
     }
 
-    void registerService(service::Service service)
-    {
-        m_services.emplace_back(std::move(service));
-
-        m_services.back().init(m_deviceID, m_eventBus, m_taskManager, m_graphicsManagers);
-    }
-
+    void registerService(service::Service service, const uint8_t &numFramesInFlight);
   private:
     bool m_ownsResources = false;
     uint64_t m_frameCounter = 0;
@@ -260,10 +256,14 @@ class DeviceContext
 
     void initServices(const uint8_t &numFramesInFlight);
 
+    void setAllServiceParameters();
+
     void initWorkers(const uint8_t &numFramesInFlight);
 
     void shutdownServices();
 
     void logInit(const uint8_t &numFramesInFlight) const;
+
+    void setServiceParameters(Service::InitParameters &params)
 };
 } // namespace star::core::device
