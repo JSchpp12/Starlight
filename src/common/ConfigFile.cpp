@@ -31,7 +31,7 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
 
 void star::ConfigFile::load(const std::string& configFilePath) {
     if (!file_helpers::FileExists(configFilePath)){
-        core::logging::log(boost::log::trivial::error, "No config file found");
+        core::logging::log(boost::log::trivial::error, "No config file found. A default one can be generated with the prepare media cmake target");
         throw std::runtime_error("No config file found"); 
     }
     
