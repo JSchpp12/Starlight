@@ -38,6 +38,6 @@ class StarEngine
 
     static uint8_t GetNumFramesInFlight();
 
-    void initServices(star::core::renderer::SwapChainRenderer &presentationRenderer, const uint8_t &numFramesInFlight);
+    void registerScreenshotService(star::core::renderer::SwapChainRenderer &presentationRenderer, const uint8_t &numFramesInFlight);
 };
 } // namespace star

@@ -13,7 +13,7 @@ star::core::device::DeviceContext::~DeviceContext()
 {
     if (m_ownsResources)
     {
-        shutdownServices(); 
+        shutdownServices();
         m_graphicsManagers.fenceManager->cleanupRender(*m_device);
         m_graphicsManagers.pipelineManager->cleanupRender(*m_device);
         m_graphicsManagers.shaderManager->cleanupRender(*m_device);
@@ -31,11 +31,9 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8
 {
     assert(!m_ownsResources && "Dont call init twice");
     assert(deviceID.getType() == Handle_Type::device);
-
     logInit(numFramesInFlight);
 
     m_deviceID = deviceID;
-
     m_frameInFlightTrackingInfo.resize(numFramesInFlight);
 
     m_surface.init(instance, window);
@@ -44,6 +42,8 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8
     m_commandBufferManager = std::make_unique<manager::ManagerCommandBuffer>(*m_device, numFramesInFlight);
     m_transferWorker = CreateTransferWorker(*m_device);
     m_renderResourceManager = std::make_unique<ManagerRenderResource>();
+
+    initServices(numFramesInFlight);
 
     initWorkers(numFramesInFlight);
 
@@ -131,8 +131,10 @@ void star::core::device::DeviceContext::processCompleteMessage(job::complete_tas
                      static_cast<void *>(&m_eventBus), static_cast<void *>(&m_graphicsManagers));
 }
 
-void star::core::device::DeviceContext::shutdownServices(){
-    for (auto &service : m_services){
+void star::core::device::DeviceContext::shutdownServices()
+{
+    for (auto &service : m_services)
+    {
         service.shutdown();
     }
 }
@@ -185,26 +187,55 @@ void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight
     core::logging::log(boost::log::trivial::info, oss.str());
 }
 
-void star::core::device::DeviceContext::registerService(service::Service service, const uint8_t &numFramesInFlight){
+void star::core::device::DeviceContext::registerService(service::Service service, const uint8_t &numFramesInFlight)
+{
     m_services.emplace_back(std::move(service));
 
-    service::InitParameters params{
-        m_deviceID,
-        m_surface,
-        *m_device,
-        m_eventBus,
-        m_taskManager,
-        m_graphicsManagers,
-        *m_commandBufferManager,
-        *m_transferWorker,
-        *m_renderResourceManager
-    };
-    
+    service::InitParameters params{m_deviceID,
+                                   m_surface,
+                                   *m_device,
+                                   m_eventBus,
+                                   m_taskManager,
+                                   m_graphicsManagers,
+                                   *m_commandBufferManager,
+                                   *m_transferWorker,
+                                   *m_renderResourceManager};
+
     m_services.back().init(params, numFramesInFlight);
 }
 
-void star::core::device::DeviceContext::setAllServiceParameters(){
-    for (auto &service : m_services){
+void star::core::device::DeviceContext::setAllServiceParameters()
+{
+    service::InitParameters params{m_deviceID,
+                                   m_surface,
+                                   *m_device,
+                                   m_eventBus,
+                                   m_taskManager,
+                                   m_graphicsManagers,
+                                   *m_commandBufferManager,
+                                   *m_transferWorker,
+                                   *m_renderResourceManager};
 
+    for (auto &service : m_services)
+    {
+        service.setInitParameters(params);
+    }
+}
+
+void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesInFlight)
+{
+    service::InitParameters params{m_deviceID,
+                                   m_surface,
+                                   *m_device,
+                                   m_eventBus,
+                                   m_taskManager,
+                                   m_graphicsManagers,
+                                   *m_commandBufferManager,
+                                   *m_transferWorker,
+                                   *m_renderResourceManager};
+
+    for (auto &service : m_services)
+    {
+        service.init(params, numOfFramesInFlight);
     }
 }

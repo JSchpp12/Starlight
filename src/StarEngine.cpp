@@ -120,7 +120,7 @@ void StarEngine::run()
                                     numFramesInFlight, currentScene->getPresentationRenderer()->getGlobalShaderInfo(),
                                     currentScene->getPresentationRenderer()->getRenderTargetInfo());
 
-    initServices(*currentScene->getPresentationRenderer(), numFramesInFlight);
+    registerScreenshotService(*currentScene->getPresentationRenderer(), numFramesInFlight);
 
     uint8_t frameInFlightIndex = 0;
     while (!window->shouldClose())
@@ -183,7 +183,7 @@ uint8_t StarEngine::GetNumFramesInFlight()
     return num;
 }
 
-void star::StarEngine::initServices(star::core::renderer::SwapChainRenderer &presentationRenderer,
+void star::StarEngine::registerScreenshotService(star::core::renderer::SwapChainRenderer &presentationRenderer,
                                     const uint8_t &numFramesInFlight)
 {
     deviceManager.getContext(defaultDevice)

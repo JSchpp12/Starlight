@@ -123,7 +123,7 @@ class DeviceContext
             {
                 m_ownsResources = std::move(other.m_ownsResources);
 
-                initServices();
+                setAllServiceParameters();
             }
 
             other.m_ownsResources = false;
@@ -254,8 +254,6 @@ class DeviceContext
 
     void processCompleteMessage(job::complete_tasks::CompleteTask completeTask);
 
-    void initServices(const uint8_t &numFramesInFlight);
-
     void setAllServiceParameters();
 
     void initWorkers(const uint8_t &numFramesInFlight);
@@ -263,7 +261,7 @@ class DeviceContext
     void shutdownServices();
 
     void logInit(const uint8_t &numFramesInFlight) const;
-
-    void setServiceParameters(Service::InitParameters &params)
+    
+    void initServices(const uint8_t &numFramesInFlight);
 };
 } // namespace star::core::device
