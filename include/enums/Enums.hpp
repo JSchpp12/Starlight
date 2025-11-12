@@ -79,7 +79,8 @@ namespace star {
         semaphore,
         fence,
         device,
-        subscriber
+        subscriber,
+        service_callee
     };
 
     enum KEY {

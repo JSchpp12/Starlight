@@ -1,0 +1,74 @@
+#pragma once
+
+#include "ScreenCapture.hpp"
+#include "Service.hpp"
+#include "detail/screenshot/CreateDependenciesPolicies.hpp"
+#include "detail/screenshot/WorkerControllerPolicies.hpp"
+#include "job/tasks/WriteImageToDisk.hpp"
+
+#include "job/worker/DefaultWorker.hpp"
+#include "job/worker/Worker.hpp"
+#include "logging/LoggingFactory.hpp"
+
+#include <ostream>
+
+namespace star::service::screen_capture
+{
+class Builder
+{
+  public:
+    Builder(core::device::StarDevice &device, job::TaskManager &taskManager)
+        : m_device(device), m_taskManager(taskManager)
+    {
+    }
+
+    Builder &setNumWorkers(const uint8_t &numWorkers)
+    {
+        m_numWorkers = m_numWorkers;
+    }
+
+    Service build()
+    {
+        assert(m_numWorkers > 0 && "Must have at least one worker");
+
+        if (m_numWorkers > 1)
+        {
+            std::ostringstream oss;
+            oss << "More than one worker is not currently supported";
+            core::logging::log(boost::log::trivial::error, oss.str());
+
+            throw std::runtime_error(oss.str());
+        }
+
+        auto newWorkers = registerWorkers();
+
+        return Service{ScreenCapture{detail::screenshot::WorkerControllerPolicy{std::move(newWorkers)},
+                                     detail::screenshot::DefaultCreatePolicy{}}};
+    }
+
+  private:
+    core::device::StarDevice &m_device;
+    job::TaskManager &m_taskManager;
+    uint8_t m_numWorkers = 1;
+
+    std::vector<job::worker::Worker::WorkerConcept *> registerWorkers()
+    {
+        auto newWorkers = std::vector<job::worker::Worker::WorkerConcept *>(m_numWorkers);
+        for (uint8_t i = 0; i < m_numWorkers; i++)
+        {
+            std::ostringstream oss;
+            oss << "ImageWriter_";
+            oss << std::to_string(i);
+
+            newWorkers[i] =
+                m_taskManager
+                    .registerWorker(
+                        typeid(job::tasks::write_image_to_disk::WriteImageTask),
+                        {job::worker::DefaultWorker<job::tasks::write_image_to_disk::WriteImageTask, 500>(oss.str())})
+                    .getRawConcept();
+        }
+
+        return newWorkers;
+    }
+};
+} // namespace star::service::screen_capture

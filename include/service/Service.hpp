@@ -32,6 +32,7 @@ class Service
         {
             m_service.setInitParameters(params);
         }
+        
         void doInit(const uint8_t &numFramesInFlight) override
         {
             m_service.init(numFramesInFlight);

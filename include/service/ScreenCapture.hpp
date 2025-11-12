@@ -1,27 +1,44 @@
 #pragma once
 
 #include "Handle.hpp"
+#include "core/MappedHandleContainer.hpp"
 #include "core/device/DeviceContext.hpp"
+#include "event/TriggerScreenshot.hpp"
+#include "logging/LoggingFactory.hpp"
 #include "service/InitParameters.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
-
 namespace star::service
 {
-class ScreenCapture
+template <typename TWorkerControllerPolicy, typename TCreateDependenciesPolicy> class ScreenCapture
 {
   public:
-    ScreenCapture(std::vector<StarTextures::Texture> targetTextures, std::vector<Handle> textureReadySemaphore)
-        : m_targetTextures(std::move(targetTextures)), m_targetTexturesReadySemaphores(std::move(textureReadySemaphore))
+    ScreenCapture(TWorkerControllerPolicy workerPolicy, TCreateDependenciesPolicy createDependenciesPolicy)
+        : m_workerPolicy(std::move(workerPolicy)), m_createDependenciesPolicy(std::move(createDependenciesPolicy))
     {
     }
 
-    void init(const uint8_t &numFramesInFlight);
+    void init(const uint8_t &numFramesInFlight)
+    {
+      assert(m_deviceInfo.eventBus != nullptr);
+      registerWithEventBus(*m_deviceInfo.eventBus);
+    }
 
-    void setInitParameters(InitParameters &params);
+    void setInitParameters(InitParameters &params)
+    {
+        m_deviceInfo = DeviceInfo{.device = &params.device,
+                                  .surface = &params.surface,
+                                  .eventBus = &params.eventBus,
+                                  .taskManager = &params.taskManager};
+    }
 
-    void shutdown();
+    void shutdown()
+    {
+        assert(m_deviceInfo.device != nullptr && "Device must be valid");
+        cleanupIntermediateImages(*m_deviceInfo.device);
+        cleanupBuffers(*m_deviceInfo.device);
+    }
 
   private:
     struct DeviceInfo
@@ -32,37 +49,63 @@ class ScreenCapture
         job::TaskManager *taskManager = nullptr;
     };
 
+    struct CalleeRenderRequirenments
+    {
+        std::vector<StarTextures::Texture> m_transferDstTextures;
+        std::vector<StarBuffers::Buffer> m_hostVisibleBuffers;
+        std::vector<Handle> m_targetTexturesReadySemaphores;
+    };
+
+    TWorkerControllerPolicy m_workerPolicy;
+    TCreateDependenciesPolicy m_createDependenciesPolicy;
     Handle m_subscriberHandle;
     std::vector<StarTextures::Texture> m_targetTextures;
-    std::vector<Handle> m_targetTexturesReadySemaphores;
-    std::vector<StarTextures::Texture> m_transferDstTextures;
-    std::vector<StarBuffers::Buffer> m_hostVisibleBuffers;
     DeviceInfo m_deviceInfo;
+    core::MappedHandleContainer<CalleeRenderRequirenments, star::Handle_Type::service_callee> m_calleeDependencyTracker;
 
-    virtual Handle registerCommandBuffer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
+    virtual Handle registerCommandBuffer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+    {
+        return Handle();
+    }
 
-    std::vector<StarTextures::Texture> createTransferDstTextures(core::device::StarDevice &device,
-                                                                 const uint8_t &numFramesInFlight,
-                                                                 const vk::Extent2D &renderingResolution) const;
+    void trigger()
+    {
+        core::logging::log(boost::log::trivial::info, "Trigger screenshot");
+    }
 
-    void initBuffers(const uint8_t &numFramesInFlight);
+    void eventCallback(const star::common::IEvent &e, bool &keepAlive)
+    {
+        const auto &screenEvent = static_cast<const event::TriggerScreenshot &>(e);
 
-    std::vector<StarBuffers::Buffer> createHostVisibleBuffers(core::device::StarDevice &device,
-                                                              const uint8_t &numFramesInFlight,
-                                                              const vk::Extent2D &renderingResolution,
-                                                              const vk::DeviceSize &size) const;
+        assert(m_deviceInfo.taskManager != nullptr && "Task manager must be initialized");
+        m_workerPolicy.addWriteTask();
+        keepAlive = true;
+    }
 
-    void trigger();
+    Handle *notificationFromEventBusGetHandle()
+    {
+        return &m_subscriberHandle;
+    }
 
-    void eventCallback(const star::common::IEvent &e, bool &keepAlive);
+    void notificationFromEventBusDeleteHandle(const Handle &handle){
 
-    Handle *notificationFromEventBusGetHandle();
+    };
 
-    void notificationFromEventBusDeleteHandle(const Handle &handle);
+    void cleanupBuffers(core::device::StarDevice &device)
+    {
+        // for (auto &buffer : m_hostVisibleBuffers)
+        // {
+        //     buffer.cleanupRender(device.getVulkanDevice());
+        // }
+    }
 
-    void cleanupBuffers(core::device::DeviceContext &context);
-
-    void cleanupIntermediateImages(core::device::DeviceContext &context);
+    void cleanupIntermediateImages(core::device::StarDevice &device)
+    {
+        // for (auto &image : m_transferDstTextures)
+        // {
+        //     image.cleanupRender(device.getVulkanDevice());
+        // }
+    }
 
     void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                              const uint64_t &frameIndex);
@@ -70,6 +113,12 @@ class ScreenCapture
     void addMemoryDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                const uint64_t &frameIndex) const;
 
-    void registerWithEventBus(core::device::system::EventBus &eventBus);
+    void registerWithEventBus(core::device::system::EventBus &eventBus)
+    {
+        eventBus.subscribe<event::TriggerScreenshot>(
+            {[this](const star::common::IEvent &e, bool &keepAlive) { this->eventCallback(e, keepAlive); },
+             [this]() -> Handle * { return this->notificationFromEventBusGetHandle(); },
+             [this](const Handle &handle) { this->notificationFromEventBusDeleteHandle(handle); }});
+    }
 };
 } // namespace star::service

@@ -9,8 +9,7 @@
 #include "core/logging/LoggingFactory.hpp"
 #include "job/TaskManager.hpp"
 #include "renderer/SwapChainRenderer.hpp"
-
-#include "service/ScreenCapture.hpp"
+#include "service/ScreenCaptureFactory.hpp"
 
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
@@ -120,7 +119,7 @@ void StarEngine::run()
                                     numFramesInFlight, currentScene->getPresentationRenderer()->getGlobalShaderInfo(),
                                     currentScene->getPresentationRenderer()->getRenderTargetInfo());
 
-    registerScreenshotService(*currentScene->getPresentationRenderer(), numFramesInFlight);
+    registerScreenshotService(deviceManager.getContext(defaultDevice), numFramesInFlight);
 
     uint8_t frameInFlightIndex = 0;
     while (!window->shouldClose())
@@ -183,12 +182,10 @@ uint8_t StarEngine::GetNumFramesInFlight()
     return num;
 }
 
-void star::StarEngine::registerScreenshotService(star::core::renderer::SwapChainRenderer &presentationRenderer,
-                                    const uint8_t &numFramesInFlight)
+void star::StarEngine::registerScreenshotService(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
 {
     deviceManager.getContext(defaultDevice)
-        .registerService(star::service::Service{star::service::ScreenCapture{
-                             presentationRenderer.getRenderToColorImages(), presentationRenderer.getDoneSemaphores()}},
+        .registerService(service::screen_capture::Builder(context.getDevice(), context.getTaskManager()).build(),
                          numFramesInFlight);
 }
 

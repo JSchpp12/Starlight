@@ -10,7 +10,7 @@ namespace star::job::worker
 {
 class Worker
 {
-  private:
+  public:
     struct WorkerConcept
     {
         virtual ~WorkerConcept() = default;
@@ -21,6 +21,43 @@ class Worker
             boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages) = 0;
     };
 
+    template <typename TWorker>
+    Worker(TWorker worker) : m_impl(std::make_unique<WorkerModel<TWorker>>(std::move(worker)))
+    {
+    }
+    Worker() = delete;
+    Worker(const Worker &) = delete;
+    Worker &operator=(const Worker &) = delete;
+    Worker(Worker &&) noexcept = default;
+    Worker &operator=(Worker &&) noexcept = default;
+    ~Worker() = default;
+
+    WorkerConcept *getRawConcept()
+    {
+        return m_impl.get();
+    }
+    void stop()
+    {
+        m_impl->doStop();
+    }
+
+    void start()
+    {
+        m_impl->doStart();
+    }
+
+    void queueTask(void *task)
+    {
+        m_impl->doQueueTask(task);
+    }
+
+    void setCompleteMessageCommunicationStructure(
+        boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages)
+    {
+        m_impl->doSetCompleteMessageCommunicationStructure(completeMessages);
+    }
+
+  private:
     template <typename TWorker> struct WorkerModel : public WorkerConcept
     {
         TWorker m_worker;
@@ -57,38 +94,5 @@ class Worker
     };
 
     std::unique_ptr<WorkerConcept> m_impl;
-
-  public:
-    template <typename TWorker>
-    Worker(TWorker worker) : m_impl(std::make_unique<WorkerModel<TWorker>>(std::move(worker)))
-    {
-    }
-    Worker() = delete;
-    Worker(const Worker &) = delete;
-    Worker &operator=(const Worker &) = delete;
-    Worker(Worker &&) noexcept = default;
-    Worker &operator=(Worker &&) noexcept = default;
-    ~Worker() = default;
-
-    void stop()
-    {
-        m_impl->doStop();
-    }
-
-    void start()
-    {
-        m_impl->doStart();
-    }
-
-    void queueTask(void *task)
-    {
-        m_impl->doQueueTask(task);
-    }
-
-    void setCompleteMessageCommunicationStructure(
-        boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages)
-    {
-        m_impl->doSetCompleteMessageCommunicationStructure(completeMessages);
-    }
 };
 } // namespace star::job::worker
