@@ -1,6 +1,6 @@
 #include "service/detail/screenshot/CreateDependenciesPolicies.hpp"
 
-namespace star::service::detail::screenshot
+namespace star::service::detail::screen_capture
 {
 std::vector<StarTextures::Texture> DefaultCreatePolicy::createTransferDstTextures(
     core::device::StarDevice &device, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution,
@@ -43,9 +43,8 @@ std::vector<StarTextures::Texture> DefaultCreatePolicy::createTransferDstTexture
 
     return textures;
 }
-} // namespace star::service::detail::screenshot
 
-std::vector<star::StarBuffers::Buffer> star::service::detail::screenshot::DefaultCreatePolicy::createHostVisibleBuffers(
+std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuffers(
     core::device::StarDevice &device, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution,
     const vk::DeviceSize &bufferSize)
 {
@@ -72,3 +71,5 @@ std::vector<star::StarBuffers::Buffer> star::service::detail::screenshot::Defaul
 
     return buffers;
 }
+
+} // namespace star::service::detail::screen_capture

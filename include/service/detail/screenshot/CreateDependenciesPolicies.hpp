@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace star::service::detail::screenshot
+namespace star::service::detail::screen_capture
 {
 struct CreateDependenciesPolicies
 {
@@ -33,4 +33,4 @@ struct DefaultCreatePolicy : public CreateDependenciesPolicies
                                                                       const vk::Extent2D &renderingResolution,
                                                                       const vk::DeviceSize &bufferSize) override;
 };
-} // namespace star::service::detail::screenshot
+} // namespace star::service::detail::screen_capture

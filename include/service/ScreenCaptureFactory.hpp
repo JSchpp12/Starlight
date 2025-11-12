@@ -42,8 +42,8 @@ class Builder
 
         auto newWorkers = registerWorkers();
 
-        return Service{ScreenCapture{detail::screenshot::WorkerControllerPolicy{std::move(newWorkers)},
-                                     detail::screenshot::DefaultCreatePolicy{}}};
+        return Service{ScreenCapture{detail::screen_capture::WorkerControllerPolicy{std::move(newWorkers)},
+                                     detail::screen_capture::DefaultCreatePolicy{}}};
     }
 
   private:
