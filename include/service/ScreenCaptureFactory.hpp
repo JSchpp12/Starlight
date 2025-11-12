@@ -2,8 +2,9 @@
 
 #include "ScreenCapture.hpp"
 #include "Service.hpp"
-#include "detail/screenshot/CreateDependenciesPolicies.hpp"
-#include "detail/screenshot/WorkerControllerPolicies.hpp"
+#include "detail/screen_capture/CreateDependenciesPolicies.hpp"
+#include "detail/screen_capture/WorkerControllerPolicies.hpp"
+#include "detail/screen_capture/CopyPolicies.hpp"
 #include "job/tasks/WriteImageToDisk.hpp"
 
 #include "job/worker/DefaultWorker.hpp"
@@ -43,7 +44,7 @@ class Builder
         auto newWorkers = registerWorkers();
 
         return Service{ScreenCapture{detail::screen_capture::WorkerControllerPolicy{std::move(newWorkers)},
-                                     detail::screen_capture::DefaultCreatePolicy{}}};
+                                     detail::screen_capture::DefaultCreatePolicy{}, detail::screen_capture::DefaultCopyPolicy{}}};
     }
 
   private:

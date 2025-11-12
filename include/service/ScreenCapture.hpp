@@ -3,26 +3,41 @@
 #include "Handle.hpp"
 #include "core/MappedHandleContainer.hpp"
 #include "core/device/DeviceContext.hpp"
+#include "detail/screen_capture/CalleeRenderDependencies.hpp"
 #include "event/TriggerScreenshot.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "service/InitParameters.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
+
+#include <concepts>
+
 namespace star::service
 {
-template <typename TWorkerControllerPolicy, typename TCreateDependenciesPolicy> class ScreenCapture
+template <typename TCopyPolicy>
+concept CopyPolicyLike =
+    requires(TCopyPolicy c, detail::screen_capture::CalleeRenderDependencies &deps, vk::CommandBuffer &commandBuffer,
+             const uint8_t &frameInFlightIndex, const uint64_t &frameIndex) {
+        { c.recordCommandBuffer(deps, commandBuffer, frameInFlightIndex, frameIndex) } -> std::same_as<void>;
+        { c.addMemoryDependencies(deps, commandBuffer, frameInFlightIndex, frameIndex) } -> std::same_as<void>;
+    };
+
+template <typename TWorkerControllerPolicy, typename TCreateDependenciesPolicy, CopyPolicyLike TCopyPolicy>
+class ScreenCapture
 {
   public:
-    ScreenCapture(TWorkerControllerPolicy workerPolicy, TCreateDependenciesPolicy createDependenciesPolicy)
-        : m_workerPolicy(std::move(workerPolicy)), m_createDependenciesPolicy(std::move(createDependenciesPolicy))
+    ScreenCapture(TWorkerControllerPolicy workerPolicy, TCreateDependenciesPolicy createDependenciesPolicy,
+                  TCopyPolicy copyPolicy)
+        : m_workerPolicy(std::move(workerPolicy)), m_createDependenciesPolicy(std::move(createDependenciesPolicy)),
+          m_copyPolicy(std::move(copyPolicy))
     {
     }
 
     void init(const uint8_t &numFramesInFlight)
     {
-      assert(m_deviceInfo.eventBus != nullptr);
-      registerWithEventBus(*m_deviceInfo.eventBus);
+        assert(m_deviceInfo.eventBus != nullptr);
+        registerWithEventBus(*m_deviceInfo.eventBus);
     }
 
     void setInitParameters(InitParameters &params)
@@ -49,19 +64,15 @@ template <typename TWorkerControllerPolicy, typename TCreateDependenciesPolicy> 
         job::TaskManager *taskManager = nullptr;
     };
 
-    struct CalleeRenderRequirenments
-    {
-        std::vector<StarTextures::Texture> m_transferDstTextures;
-        std::vector<StarBuffers::Buffer> m_hostVisibleBuffers;
-        std::vector<Handle> m_targetTexturesReadySemaphores;
-    };
-
     TWorkerControllerPolicy m_workerPolicy;
     TCreateDependenciesPolicy m_createDependenciesPolicy;
+    TCopyPolicy m_copyPolicy;
+
     Handle m_subscriberHandle;
     std::vector<StarTextures::Texture> m_targetTextures;
     DeviceInfo m_deviceInfo;
-    core::MappedHandleContainer<CalleeRenderRequirenments, star::Handle_Type::service_callee> m_calleeDependencyTracker;
+    core::MappedHandleContainer<detail::screen_capture::CalleeRenderDependencies, star::Handle_Type::service_callee>
+        m_calleeDependencyTracker;
 
     virtual Handle registerCommandBuffer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
     {
@@ -87,7 +98,7 @@ template <typename TWorkerControllerPolicy, typename TCreateDependenciesPolicy> 
         return &m_subscriberHandle;
     }
 
-    void notificationFromEventBusDeleteHandle(const Handle &handle){
+    void notificationFromEventBusDeleteHandle(const Handle &handle) {
 
     };
 
@@ -106,12 +117,6 @@ template <typename TWorkerControllerPolicy, typename TCreateDependenciesPolicy> 
         //     image.cleanupRender(device.getVulkanDevice());
         // }
     }
-
-    void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                             const uint64_t &frameIndex);
-
-    void addMemoryDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                               const uint64_t &frameIndex) const;
 
     void registerWithEventBus(core::device::system::EventBus &eventBus)
     {
