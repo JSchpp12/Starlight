@@ -21,10 +21,11 @@ void Execute(void *p)
     }
 }
 
-WriteImageTask Create(std::unique_ptr<StarTextures::Texture> texture, std::string filePath)
+WriteImageTask Create(StarTextures::Texture texture, std::string filePath)
 {
     return WriteImageTask::Builder<WritePayload>()
-        .setPayload(WritePayload{.texture = std::move(texture), .path = std::move(filePath)})
+        .setPayload(WritePayload{.texture = std::make_unique<StarTextures::Texture>(std::move(texture)),
+                                 .path = std::move(filePath)})
         .setCreateCompleteTaskFunction(&CreateComplete)
         .setExecute(&Execute)
         .build();

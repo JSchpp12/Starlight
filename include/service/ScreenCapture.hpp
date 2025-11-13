@@ -10,7 +10,6 @@
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
-
 #include <concepts>
 
 namespace star::service
@@ -23,7 +22,13 @@ concept CopyPolicyLike =
         { c.addMemoryDependencies(deps, commandBuffer, frameInFlightIndex, frameIndex) } -> std::same_as<void>;
     };
 
-template <typename TWorkerControllerPolicy, typename TCreateDependenciesPolicy, CopyPolicyLike TCopyPolicy>
+template <typename TWorkerControllerPolicy>
+concept WorkerPolicyLike =
+    requires(TWorkerControllerPolicy c, star::job::tasks::write_image_to_disk::WriteImageTask task) {
+        { c.addWriteTask(std::move(task)) } -> std::same_as<void>;
+    };
+
+template <WorkerPolicyLike TWorkerControllerPolicy, typename TCreateDependenciesPolicy, CopyPolicyLike TCopyPolicy>
 class ScreenCapture
 {
   public:
@@ -87,9 +92,8 @@ class ScreenCapture
     void eventCallback(const star::common::IEvent &e, bool &keepAlive)
     {
         const auto &screenEvent = static_cast<const event::TriggerScreenshot &>(e);
-
         assert(m_deviceInfo.taskManager != nullptr && "Task manager must be initialized");
-        m_workerPolicy.addWriteTask();
+        m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(screenEvent.getTexture(), screenEvent->getName()));
         keepAlive = true;
     }
 

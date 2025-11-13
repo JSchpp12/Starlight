@@ -22,5 +22,5 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p);
 
 void Execute(void *p);
 
-WriteImageTask Create(std::unique_ptr<StarTextures::Texture> texture, std::string filePath);
+WriteImageTask Create(StarTextures::Texture texture, std::string filePath);
 } // namespace star::job::task_factory::write_image_to_disk

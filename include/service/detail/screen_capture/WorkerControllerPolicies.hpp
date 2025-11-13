@@ -13,7 +13,7 @@ class WorkerControllerPolicy
     WorkerControllerPolicy(std::vector<job::worker::Worker::WorkerConcept *> workers) : m_workers(std::move(workers))
     {
     }
-    void addWriteTask();
+    void addWriteTask(star::job::tasks::write_image_to_disk::WriteImageTask newTask);
 
   private:
     std::vector<job::worker::Worker::WorkerConcept *> m_workers;

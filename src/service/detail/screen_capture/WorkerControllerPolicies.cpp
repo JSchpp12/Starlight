@@ -1,11 +1,12 @@
-#include "service/detail/screenshot/WorkerControllerPolicies.hpp"
+#include "service/detail/screen_capture/WorkerControllerPolicies.hpp"
 
 #include "logging/LoggingFactory.hpp"
 
 namespace star::service::detail::screen_capture
 {
-void WorkerControllerPolicy::addWriteTask()
+void WorkerControllerPolicy::addWriteTask(star::job::tasks::write_image_to_disk::WriteImageTask newTask)
 {
     core::logging::log(boost::log::trivial::info, "Adding write to disk task");
+
 }
 } // namespace star::service::detail::screen_capture
