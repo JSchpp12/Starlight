@@ -73,6 +73,7 @@ class TaskManager
 
         TTask *storedTask = new TTask(std::move(newTask));
         worker->queueTask(static_cast<void *>(storedTask));
+        delete storedTask;
     }
 
     job::TaskContainer<job::complete_tasks::CompleteTask, 128> *getCompleteMessages()

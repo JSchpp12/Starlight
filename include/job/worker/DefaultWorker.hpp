@@ -30,7 +30,6 @@ template <typename TTask, size_t TQueueSize> class DefaultWorker
     {
         TTask *typedTask = static_cast<TTask *>(task);
         m_tasks->queueTask(std::move(*typedTask));
-        delete typedTask;
     }
 
     void setCompleteMessageCommunicationStructure(TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)

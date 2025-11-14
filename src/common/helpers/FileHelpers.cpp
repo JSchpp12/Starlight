@@ -1,5 +1,7 @@
 #include "helpers/FileHelpers.hpp"
 
+#include "logging/LoggingFactory.hpp"
+
 #include <iostream>
 #include <sstream>
 
@@ -115,6 +117,7 @@ boost::filesystem::path GetParentDirectory(const std::string &pathToFile)
     if (!path.has_parent_path()){
         std::ostringstream oss; 
         oss << "Requested path does not have a parent. Path: " << pathToFile; 
+        core::logging::log(boost::log::trivial::error, oss.str());
         throw std::runtime_error(oss.str());
     }else{
         return path.parent_path();

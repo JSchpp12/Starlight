@@ -1,6 +1,7 @@
 #include "job/tasks/WriteImageToDisk.hpp"
 
 #include "FileHelpers.hpp"
+#include "logging/LoggingFactory.hpp"
 
 namespace star::job::tasks::write_image_to_disk
 {
@@ -12,6 +13,8 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
 
 void Execute(void *p)
 {
+    core::logging::log(boost::log::trivial::info, "Beginning image write");
+
     auto *payload = static_cast<WritePayload *>(p);
 
     auto parentDir = file_helpers::GetParentDirectory(payload->path);
