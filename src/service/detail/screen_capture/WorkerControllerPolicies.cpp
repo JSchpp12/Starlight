@@ -8,6 +8,6 @@ void WorkerControllerPolicy::addWriteTask(star::job::tasks::write_image_to_disk:
 {
     core::logging::log(boost::log::trivial::info, "Adding write to disk task");
     void *t = static_cast<void *>(&newTask);
-    m_workers.front()->doQueueTask(t);
+    // m_workers.front()->doQueueTask(t);
 }
 } // namespace star::service::detail::screen_capture

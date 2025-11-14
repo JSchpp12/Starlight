@@ -120,11 +120,13 @@ void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t max
 
     if (maxMessagesCounter == 0)
     {
-        std::optional<job::complete_tasks::CompleteTask> complete = m_taskManager.getCompleteMessages()->getQueuedTask();
-        while (complete.has_value()){
+        std::optional<job::complete_tasks::CompleteTask> complete =
+            m_taskManager.getCompleteMessages()->getQueuedTask();
+        while (complete.has_value())
+        {
             processCompleteMessage(std::move(complete.value()));
             complete = m_taskManager.getCompleteMessages()->getQueuedTask();
-        } 
+        }
     }
 }
 
@@ -202,7 +204,8 @@ void star::core::device::DeviceContext::registerService(service::Service service
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_transferWorker,
-                                   *m_renderResourceManager};
+                                   *m_renderResourceManager,
+                                   m_frameCounter};
 
     m_services.back().init(params, numFramesInFlight);
 }
@@ -217,7 +220,8 @@ void star::core::device::DeviceContext::setAllServiceParameters()
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_transferWorker,
-                                   *m_renderResourceManager};
+                                   *m_renderResourceManager,
+                                   m_frameCounter};
 
     for (auto &service : m_services)
     {
@@ -235,7 +239,8 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_transferWorker,
-                                   *m_renderResourceManager};
+                                   *m_renderResourceManager,
+                                   m_frameCounter};
 
     for (auto &service : m_services)
     {

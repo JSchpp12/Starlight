@@ -7,24 +7,28 @@ star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFligh
           {std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<CompleteRequest *>(5)),
            std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<CompleteRequest *>(5)),
            std::make_pair(star::Command_Buffer_Order::after_render_pass, std::vector<CompleteRequest *>(5)),
-           std::make_pair(star::Command_Buffer_Order::end_of_frame, std::vector<CompleteRequest *>(5))})
+           std::make_pair(star::Command_Buffer_Order::end_of_frame, std::vector<CompleteRequest *>(5)),
+           std::make_pair(star::Command_Buffer_Order::after_presentation, std::vector<CompleteRequest *>(1))})
 {
 
     for (int i = Command_Buffer_Order::before_render_pass; i != Command_Buffer_Order::presentation; i++)
     {
         this->bufferGroupsWithNoSubOrder[static_cast<star::Command_Buffer_Order>(i)] =
-            std::make_unique<GenericBufferGroupInfo>(numImagesInFlight, device );
+            std::make_unique<GenericBufferGroupInfo>(numImagesInFlight, device);
     }
 }
 
-void star::CommandBufferContainer::cleanup(core::device::StarDevice &device){
-    for (auto &[order, group] : this->bufferGroupsWithNoSubOrder){
+void star::CommandBufferContainer::cleanup(core::device::StarDevice &device)
+{
+    for (auto &[order, group] : this->bufferGroupsWithNoSubOrder)
+    {
         group->cleanup(device);
     }
 }
 
-std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(core::device::StarDevice &device, 
-    const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex, const uint64_t &currentFrameIndex, std::vector<vk::Semaphore> *additionalWaitSemaphores)
+std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
+    core::device::StarDevice &device, const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex,
+    const uint64_t &currentFrameIndex, std::vector<vk::Semaphore> *additionalWaitSemaphores)
 {
     if (!this->subOrderSemaphoresUpToDate)
     {
@@ -48,7 +52,8 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
         if (!buffer->recordOnce)
         {
             buffer->commandBuffer->begin(frameInFlightIndex);
-            buffer->recordBufferCallback(buffer->commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex, currentFrameIndex);
+            buffer->recordBufferCallback(buffer->commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex,
+                                         currentFrameIndex);
             buffer->commandBuffer->buffer(frameInFlightIndex).end();
         }
 
@@ -57,7 +62,8 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
         if (i == star::Command_Buffer_Order_Index::fifth || this->bufferGroupsWithSubOrders[order][i] == nullptr)
         {
             semaphores.push_back(
-                this->bufferGroupsWithSubOrders[order][i - 1]->commandBuffer->getCompleteSemaphores().at(frameInFlightIndex));
+                this->bufferGroupsWithSubOrders[order][i - 1]->commandBuffer->getCompleteSemaphores().at(
+                    frameInFlightIndex));
         }
     }
 
@@ -86,14 +92,14 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
     //             if (!buffer.recordOnce)
     //             {
     //                 buffer.commandBuffer->begin(frameInFlightIndex);
-    //                 buffer.recordBufferCallback(buffer.commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex);
-    //                 buffer.commandBuffer->buffer(frameInFlightIndex).end();
+    //                 buffer.recordBufferCallback(buffer.commandBuffer->buffer(frameInFlightIndex),
+    //                 frameInFlightIndex); buffer.commandBuffer->buffer(frameInFlightIndex).end();
     //             }
     //         }
 
     //         // submit
     //         {
-    //             auto waitSemaphores = std::set<vk::Semaphore>(); 
+    //             auto waitSemaphores = std::set<vk::Semaphore>();
     //             auto buffers = std::vector<vk::CommandBuffer>();
     //             if (additionalWaitSemaphores != nullptr){
     //                 for (auto& semaphore : *additionalWaitSemaphores){
@@ -106,31 +112,31 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(co
     //                 buffers.push_back(buffer.commandBuffer->buffer(frameInFlightIndex));
 
     //                 for (auto& semaphore : buffer.getDependentHighPrioritySemaphores(frameInFlightIndex)){
-    //                     waitSemaphores.insert(semaphore); 
-    //                     waitPoints.push_back(buffer.waitStage); 
+    //                     waitSemaphores.insert(semaphore);
+    //                     waitPoints.push_back(buffer.waitStage);
     //                 }
     //             }
 
     //             auto submitInfo = vk::SubmitInfo{};
 
-    //             auto semaphoreData = std::vector<vk::Semaphore>(); 
+    //             auto semaphoreData = std::vector<vk::Semaphore>();
     //             for (auto &info : waitSemaphores){
-    //                 semaphoreData.push_back(info); 
+    //                 semaphoreData.push_back(info);
     //             }
 
-    //             assert(waitPoints.size() == semaphoreData.size() && "Each semaphore needs a wait stage"); 
-                
+    //             assert(waitPoints.size() == semaphoreData.size() && "Each semaphore needs a wait stage");
+
     //                 // waitSemaphores = std::vector<vk::Semaphore>(*additionalWaitSemaphores);
     //                 // submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores->size());
     //                 // submitInfo.pWaitSemaphores = waitSemaphores->data();
     //                 // submitInfo.pWaitDstStageMask = waitPoints.data();
 
-    //             uint32_t waitCount = 0; 
-    //             CastHelpers::SafeCast<size_t, uint32_t>(semaphoreData.size(), waitCount); 
+    //             uint32_t waitCount = 0;
+    //             CastHelpers::SafeCast<size_t, uint32_t>(semaphoreData.size(), waitCount);
 
-    //             submitInfo.pWaitSemaphores = semaphoreData.data(); 
+    //             submitInfo.pWaitSemaphores = semaphoreData.data();
     //             submitInfo.waitSemaphoreCount = waitCount;
-    //             submitInfo.pWaitDstStageMask = waitPoints.data(); 
+    //             submitInfo.pWaitDstStageMask = waitPoints.data();
     //             submitInfo.signalSemaphoreCount = 1;
     //             submitInfo.pSignalSemaphores =
     //                 &this->bufferGroupsWithNoSubOrder[order]->semaphores[static_cast<Queue_Type>(type)].at(
@@ -187,6 +193,9 @@ star::Handle star::CommandBufferContainer::add(
     }
     else
     {
+        assert(bufferGroupsWithNoSubOrder.contains(order) &&
+               "The buffer groups container should contain information for every order type other than submission");
+
         this->bufferGroupsWithNoSubOrder[order]->bufferOrderGroupsIndices[type].push_back(bufferIndex);
     }
 

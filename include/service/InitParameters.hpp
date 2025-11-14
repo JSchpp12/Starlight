@@ -25,5 +25,6 @@ struct InitParameters
     core::device::manager::ManagerCommandBuffer &commandBufferManager;
     job::TransferWorker &transferWorker;
     ManagerRenderResource &renderResourceManager;
+    const uint64_t &currentFrameCounter;
 };
 } // namespace star::service

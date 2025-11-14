@@ -36,4 +36,4 @@ class Fence : public ManagerEventBusTies<FenceRecord, FenceRequest, Handle_Type:
                 request.createSignalState ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlagBits()))};
     }
 };
-} // namespace star::core::device::managers
+} // namespace star::core::device::manager
