@@ -23,7 +23,7 @@ std::optional<std::string> FindFileInDirectoryWithSameNameIgnoreFileType(const s
 
 std::string ReadFile(const std::string &pathToFile, bool includeCarriageReturns = true);
 
-std::string ReadFileBinary(const std::string &pathToFile); 
+std::string ReadFileBinary(const std::string &pathToFile);
 
 std::string GetFileExtension(std::string_view pathToFile);
 
@@ -35,6 +35,6 @@ boost::filesystem::path GetParentDirectory(const std::string &pathToFile);
 
 Shader_Stage GetStageOfShader(std::string_view pathToFile);
 
-void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirectory); 
+void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirectory);
 
 } // namespace star::file_helpers

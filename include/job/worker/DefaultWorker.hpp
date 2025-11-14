@@ -16,7 +16,8 @@ namespace star::job::worker
 template <typename TTask, size_t TQueueSize> class DefaultWorker
 {
   public:
-    DefaultWorker(std::string workerName) : m_workerName(std::move(workerName)), m_tasks(std::make_shared<job::TaskContainer<TTask, TQueueSize>>())
+    DefaultWorker(std::string workerName)
+        : m_workerName(std::move(workerName)), m_tasks(std::make_shared<job::TaskContainer<TTask, TQueueSize>>())
     {
     }
     DefaultWorker(const DefaultWorker &) = delete;
@@ -32,8 +33,7 @@ template <typename TTask, size_t TQueueSize> class DefaultWorker
         delete typedTask;
     }
 
-    void setCompleteMessageCommunicationStructure(
-        boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages)
+    void setCompleteMessageCommunicationStructure(TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
     {
         m_completeMessages = completeMessages;
     }
@@ -56,8 +56,7 @@ template <typename TTask, size_t TQueueSize> class DefaultWorker
     std::shared_ptr<job::TaskContainer<TTask, TQueueSize>> m_tasks;
     std::shared_ptr<boost::atomic<bool>> shouldRun =
         std::shared_ptr<boost::atomic<bool>>(new boost::atomic<bool>(true));
-    boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *m_completeMessages =
-        nullptr;
+    TaskContainer<complete_tasks::CompleteTask, 128> *m_completeMessages = nullptr;
     boost::thread thread = boost::thread();
 
     virtual void threadFunction()
@@ -77,7 +76,7 @@ template <typename TTask, size_t TQueueSize> class DefaultWorker
                 auto message = task.value().getCompleteMessage();
                 if (message.has_value())
                 {
-                    m_completeMessages->push(std::move(message.value()));
+                    m_completeMessages->queueTask(std::move(message.value()));
                 }
             }
             else

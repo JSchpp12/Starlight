@@ -9,14 +9,13 @@
 #include <cstring>
 #include <string>
 
-
 namespace star::event
 {
 class TriggerScreenshot : public star::common::IEvent
 {
   public:
-    TriggerScreenshot(StarTextures::Texture targetTexture, const char *inputName)
-        : m_targetTexture(std::move(targetTexture))
+    TriggerScreenshot(StarTextures::Texture targetTexture, vk::Semaphore textureReadyForCopy, const char *inputName)
+        : m_targetTexture(std::move(targetTexture)), m_textureReadyForCopy(std::move(textureReadyForCopy))
     {
         std::memset(m_screenshotName.data(), 0, NameSize); // zero out the array
         std::size_t len = std::min(std::strlen(inputName), NameSize - 1);
@@ -30,14 +29,20 @@ class TriggerScreenshot : public star::common::IEvent
         return {m_screenshotName.begin(), m_screenshotName.begin() + NameSize};
     }
 
-    StarTextures::Texture getTexture()
+    StarTextures::Texture getTexture() const
     {
         return m_targetTexture;
+    }
+
+    vk::Semaphore getTextureReadySemaphore() const
+    {
+        return m_textureReadyForCopy;
     }
 
   private:
     static constexpr std::size_t NameSize = 25;
     StarTextures::Texture m_targetTexture;
+    vk::Semaphore m_textureReadyForCopy;
     std::array<unsigned char, NameSize> m_screenshotName;
 };
 } // namespace star::event

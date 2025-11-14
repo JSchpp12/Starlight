@@ -10,8 +10,8 @@
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
 #include "device/system/EventBus.hpp"
-#include "tasks/TaskFactory.hpp"
 #include "service/Service.hpp"
+#include "tasks/TaskFactory.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -233,6 +233,7 @@ class DeviceContext
     }
 
     void registerService(service::Service service, const uint8_t &numFramesInFlight);
+
   private:
     bool m_ownsResources = false;
     uint64_t m_frameCounter = 0;
@@ -261,7 +262,7 @@ class DeviceContext
     void shutdownServices();
 
     void logInit(const uint8_t &numFramesInFlight) const;
-    
+
     void initServices(const uint8_t &numFramesInFlight);
 };
 } // namespace star::core::device

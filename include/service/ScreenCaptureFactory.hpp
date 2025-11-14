@@ -58,7 +58,7 @@ class Builder
         for (uint8_t i = 0; i < m_numWorkers; i++)
         {
             std::ostringstream oss;
-            oss << "ImageWriter_";
+            oss << "Image Writer_";
             oss << std::to_string(i);
 
             newWorkers[i] =

@@ -12,7 +12,7 @@ auto star::ManagerRenderResource::bufferStorage =
 auto star::ManagerRenderResource::textureStorage =
     std::unordered_map<star::Handle,
                        std::unique_ptr<core::ManagedHandleContainer<
-                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 550>>,
+                           FinalizedResourceRequest<star::StarTextures::Texture>, star::Handle_Type::texture, 1000>>,
                        star::HandleHash>();
 
 void star::ManagerRenderResource::init(const Handle &deviceID, std::shared_ptr<star::core::device::StarDevice> device,
@@ -24,7 +24,7 @@ void star::ManagerRenderResource::init(const Handle &deviceID, std::shared_ptr<s
                                                                 star::Handle_Type::buffer, 3000>>()));
     textureStorage.insert(std::make_pair(
         deviceID, std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
-                                                                star::Handle_Type::texture, 550>>()));
+                                                                star::Handle_Type::texture, 1000>>()));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
 

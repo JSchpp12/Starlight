@@ -1,6 +1,7 @@
 #pragma once
 
 #include "complete_tasks/CompleteTask.hpp"
+#include "job/TaskContainer.hpp"
 
 #include <boost/lockfree/stack.hpp>
 
@@ -18,7 +19,7 @@ class Worker
         virtual void doStop() = 0;
         virtual void doQueueTask(void *task) = 0;
         virtual void doSetCompleteMessageCommunicationStructure(
-            boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages) = 0;
+            TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages) = 0;
     };
 
     template <typename TWorker>
@@ -51,8 +52,7 @@ class Worker
         m_impl->doQueueTask(task);
     }
 
-    void setCompleteMessageCommunicationStructure(
-        boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages)
+    void setCompleteMessageCommunicationStructure(TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
     {
         m_impl->doSetCompleteMessageCommunicationStructure(completeMessages);
     }
@@ -86,8 +86,7 @@ class Worker
         }
 
         void doSetCompleteMessageCommunicationStructure(
-            boost::lockfree::stack<complete_tasks::CompleteTask, boost::lockfree::capacity<128>> *completeMessages)
-            override
+            TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages) override
         {
             m_worker.setCompleteMessageCommunicationStructure(completeMessages);
         }

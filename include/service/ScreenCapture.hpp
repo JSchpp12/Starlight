@@ -93,7 +93,8 @@ class ScreenCapture
     {
         const auto &screenEvent = static_cast<const event::TriggerScreenshot &>(e);
         assert(m_deviceInfo.taskManager != nullptr && "Task manager must be initialized");
-        m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(screenEvent.getTexture(), screenEvent->getName()));
+        m_workerPolicy.addWriteTask(
+            job::tasks::write_image_to_disk::Create(screenEvent.getTexture(), screenEvent.getName()));
         keepAlive = true;
     }
 

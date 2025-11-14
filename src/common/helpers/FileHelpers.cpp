@@ -1,4 +1,4 @@
-#include "FileHelpers.hpp"
+#include "helpers/FileHelpers.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -139,7 +139,7 @@ star::Shader_Stage GetStageOfShader(std::string_view pathToFile)
     throw std::runtime_error("Unsupported stage type for shader");
 }
 
-void CreateDirectoryIfDoesNotExist(boost::filesystem::path &pathToDirectory){
+void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirectory){
     try
     {
         boost::filesystem::create_directories(pathToDirectory);

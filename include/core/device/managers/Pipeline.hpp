@@ -89,7 +89,7 @@ class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineReque
 
     virtual void cleanup(core::device::system::EventBus &bus) override;
   protected:
-    std::vector<Handle> m_subscriberShaderBuildInfo;
+    std::unordered_map<Handle, Handle, star::HandleHash> m_subscriberShaderBuildInfo;
     PipelineRecord createRecord(device::StarDevice &device, PipelineRequest &&request) const override
     {
         return PipelineRecord(std::move(request));

@@ -120,8 +120,11 @@ void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t max
 
     if (maxMessagesCounter == 0)
     {
-        size_t count = m_taskManager.getCompleteMessages()->consume_all(
-            [this](auto msg) { processCompleteMessage(std::move(msg)); });
+        std::optional<job::complete_tasks::CompleteTask> complete = m_taskManager.getCompleteMessages()->getQueuedTask();
+        while (complete.has_value()){
+            processCompleteMessage(std::move(complete.value()));
+            complete = m_taskManager.getCompleteMessages()->getQueuedTask();
+        } 
     }
 }
 

@@ -1,4 +1,4 @@
-#include "service/detail/screenshot/CreateDependenciesPolicies.hpp"
+#include "service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 
 namespace star::service::detail::screen_capture
 {
