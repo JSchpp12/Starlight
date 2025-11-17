@@ -11,6 +11,8 @@
 #include "renderer/SwapChainRenderer.hpp"
 #include "service/ScreenCaptureFactory.hpp"
 
+#include <starlight/common/HandleTypeRegistry.hpp>
+
 #include <vulkan/vulkan.hpp>
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
@@ -20,7 +22,7 @@
 namespace star
 {
 StarEngine::StarEngine(StarApplication &application)
-    : m_application(application), window(CreateStarWindow()),
+    : m_application(application), defaultDevice(CreateDefaultDeviceHandle()), window(CreateStarWindow()),
       deviceManager(core::RenderingInstance(ConfigFile::getSetting(star::Config_Settings::app_name)))
 {
     core::logging::init();
@@ -181,7 +183,7 @@ uint8_t StarEngine::GetNumFramesInFlight()
         int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
         if (!star::CastHelpers::SafeCast<int, uint8_t>(framesInFlight, num))
         {
-            throw std::runtime_error("Faled to process number of frames in flight");
+            throw std::runtime_error("Failed to process number of frames in flight");
         }
     }
 
@@ -193,6 +195,13 @@ void star::StarEngine::registerScreenshotService(core::device::DeviceContext &co
     deviceManager.getContext(defaultDevice)
         .registerService(service::screen_capture::Builder(context.getDevice(), context.getTaskManager()).build(),
                          numFramesInFlight);
+}
+
+star::Handle star::StarEngine::CreateDefaultDeviceHandle()
+{
+    return Handle{.type =
+                      common::HandleTypeRegistry::instance().getType(common::special_types::DeviceTypeName()).value(),
+                  .id = 0};
 }
 
 } // namespace star

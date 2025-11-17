@@ -20,25 +20,7 @@ struct PipelineRequest
         : pipeline(std::move(pipeline)), resolution(std::move(resolution)), renderingInfo(std::move(renderingInfo))
     {
     }
-    ~PipelineRequest() = default;
-    PipelineRequest(const PipelineRequest &) = delete;
-    PipelineRequest &operator=(const PipelineRequest &) = delete;
-    PipelineRequest(PipelineRequest &&other)
-        : pipeline(std::move(other.pipeline)), resolution(std::move(other.resolution)),
-          renderingInfo(std::move(other.renderingInfo))
 
-    {
-    }
-    PipelineRequest &operator=(PipelineRequest &&other)
-    {
-        if (this != &other)
-        {
-            pipeline = std::move(other.pipeline);
-            resolution = other.resolution;
-            renderingInfo = other.renderingInfo;
-        }
-        return *this;
-    }
     StarPipeline pipeline = StarPipeline();
     vk::Extent2D resolution = vk::Extent2D();
     star::core::renderer::RenderingTargetInfo renderingInfo = star::core::renderer::RenderingTargetInfo();
@@ -47,20 +29,7 @@ struct PipelineRequest
 struct PipelineRecord
 {
     PipelineRecord() = default;
-    PipelineRecord(PipelineRequest pipeline) : request(std::move(pipeline)) {};
-    ~PipelineRecord() = default;
-    PipelineRecord(const PipelineRecord &) = delete;
-    PipelineRecord &operator=(const PipelineRecord &) = delete;
-    PipelineRecord(PipelineRecord &&other) : request(std::move(other.request)) {};
-    PipelineRecord &operator=(PipelineRecord &&other)
-    {
-        if (this != &other)
-        {
-            request = std::move(other.request);
-            numCompiled = other.numCompiled;
-        }
-        return *this;
-    };
+    PipelineRecord(PipelineRequest pipeline) : request(std::move(pipeline)){};
 
     bool isReady() const
     {
@@ -76,10 +45,14 @@ struct PipelineRecord
     uint8_t numCompiled = 0;
 };
 
-class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, Handle_Type::pipeline, 50>
+class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>
 {
   public:
-    Pipeline() = default;
+    Pipeline()
+        : TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>(common::special_types::PipelineTypeName(),
+                                                                          "pipline_event_callback")
+    {
+    }
     virtual ~Pipeline() = default;
 
     Pipeline(const Pipeline &) = delete;
@@ -87,9 +60,14 @@ class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineReque
     Pipeline(Pipeline &&) = delete;
     Pipeline &operator=(Pipeline &&) = delete;
 
+    void init(std::shared_ptr<device::StarDevice> device, core::device::system::EventBus &bus) override;
+
     virtual void cleanup(core::device::system::EventBus &bus) override;
+
   protected:
     std::unordered_map<Handle, Handle, star::HandleHash> m_subscriberShaderBuildInfo;
+    uint16_t m_shaderBuiltCallbackEventType;
+
     PipelineRecord createRecord(device::StarDevice &device, PipelineRequest &&request) const override
     {
         return PipelineRecord(std::move(request));

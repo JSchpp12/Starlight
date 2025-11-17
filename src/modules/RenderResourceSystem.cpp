@@ -41,15 +41,10 @@ void star::RenderResourceSystem::registerSetDrawInfoCallback(
 
 void star::RenderResourceSystem::bind(const Handle &resource, vk::CommandBuffer &commandBuffer)
 {
-    switch (resource.getType())
-    {
-    case (Handle_Type::buffer):
-        bindBuffer(resource.getID(), commandBuffer);
-        break;
-    default:
-        throw std::runtime_error(
-            "Unsupported resource type requested for bind operation. Handle must have a buffer type");
-    }
+    assert(common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName()) &&
+           "Must be a buffer handle type");
+
+    bindBuffer(resource.getID(), commandBuffer);
 }
 
 void star::RenderResourceSystem::bind(const BufferHandle &buffer, vk::CommandBuffer &commandBuffer)

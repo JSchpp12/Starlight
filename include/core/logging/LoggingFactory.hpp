@@ -12,7 +12,7 @@ static void init(){
     boost::log::add_common_attributes();
 }
 
-static boost::log::sources::severity_logger<boost::log::trivial::severity_level>& getLoggerForThread(){
+static inline boost::log::sources::severity_logger<boost::log::trivial::severity_level>& getLoggerForThread(){
     thread_local boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
     return logger;
 }

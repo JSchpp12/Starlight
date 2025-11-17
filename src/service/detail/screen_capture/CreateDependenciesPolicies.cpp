@@ -1,5 +1,7 @@
 #include "service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 
+#include <cassert>
+
 namespace star::service::detail::screen_capture
 {
 std::vector<StarTextures::Texture> DefaultCreatePolicy::createTransferDstTextures(
@@ -70,6 +72,19 @@ std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuf
     }
 
     return buffers;
+}
+
+CalleeRenderDependencies DefaultCreatePolicy::create(DeviceInfo &deviceInfo, const StarTextures::Texture &targetTexture,
+                                                     const Handle &commandBufferContainingTarget,
+                                                     const Handle &targetTextureReadySemaphore,
+                                                     const uint8_t &numFramesInFlight)
+{
+    assert(deviceInfo.device != nullptr);
+
+    return CalleeRenderDependencies{
+        .commandBufferContainingTarget = commandBufferContainingTarget,
+        .hostVisibleBuffers = createHostVisibleBuffers(*deviceInfo.device, numFramesInFlight, deviceInfo.surface->getResolution(), targetTexture.getSize())
+    };
 }
 
 } // namespace star::service::detail::screen_capture

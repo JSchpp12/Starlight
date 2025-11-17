@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
 #include "StarMaterial.hpp"
 
 namespace star

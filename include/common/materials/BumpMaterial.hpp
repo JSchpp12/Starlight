@@ -2,7 +2,7 @@
 
 #include "TextureMaterial.hpp"
 
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
 
 #include <glm/glm.hpp>
 

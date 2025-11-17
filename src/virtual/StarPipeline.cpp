@@ -23,11 +23,6 @@ star::StarPipeline::StarPipeline(
 {
 }
 
-star::StarPipeline::~StarPipeline()
-{
-    assert(!m_pipeline && "Pipeline was not properly destroyed");
-}
-
 bool star::StarPipeline::isRenderReady() const
 {
     return m_pipeline != VK_NULL_HANDLE;

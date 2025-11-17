@@ -11,7 +11,7 @@ struct CompileCompletePayload
 {
     uint32_t handleID;
     std::unique_ptr<star::StarShader> finalizedShaderObject = nullptr;
-    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
+    std::shared_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
 };
 
 
@@ -22,5 +22,5 @@ void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus
 
 star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(
     uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
-    std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader);
+    std::shared_ptr<std::vector<uint32_t>> finalizedCompiledShader);
 }

@@ -24,9 +24,19 @@ struct SemaphoreRecord
         device.getVulkanDevice().destroySemaphore(semaphore);
     }
 };
-class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, Handle_Type::semaphore, 3000>
+
+constexpr std::string SemaphoreEventTypeName()
 {
-  public: 
+    return "semaphore_event_callback";
+}
+class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 3000>
+{
+  public:
+    Semaphore()
+        : ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 3000>(common::special_types::SemaphoreTypeName(),
+                                                                       SemaphoreEventTypeName())
+    {
+    }
     virtual ~Semaphore() = default;
 
   protected:

@@ -264,5 +264,7 @@ class DeviceContext
     void logInit(const uint8_t &numFramesInFlight) const;
 
     void initServices(const uint8_t &numFramesInFlight);
+
+    void broadcastFrameStart(); 
 };
 } // namespace star::core::device

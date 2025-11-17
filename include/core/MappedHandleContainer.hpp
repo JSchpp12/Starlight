@@ -7,16 +7,19 @@
 
 namespace star::core
 {
-template <typename TData, star::Handle_Type THandleType>
-class MappedHandleContainer : public HandleContainer<TData, THandleType>
+template <typename TData> class MappedHandleContainer : public HandleContainer<TData>
 {
   public:
+    MappedHandleContainer(const std::string &handleTypeName) : HandleContainer<TData>(handleTypeName)
+    {
+    }
     void manualInsert(const Handle &handle, TData record)
     {
         store(handle, std::move(record));
     }
 
-    bool contains(const Handle &handle) const{
+    bool contains(const Handle &handle) const
+    {
         return m_records.contains(handle);
     }
 
@@ -49,14 +52,14 @@ class MappedHandleContainer : public HandleContainer<TData, THandleType>
         uint32_t newId = 0;
         CastHelpers::SafeCast<size_t, uint32_t>(m_records.size(), newId);
 
-        Handle newHandle{.type = THandleType, .id = std::move(newId)};
+        Handle newHandle{.type = this->getHandleType(), .id = std::move(newId)};
 
         return newHandle;
     }
 
     void store(const Handle &recordHandle, TData record)
     {
-        assert(recordHandle.getType() == THandleType && "Ensure proper handle type for container");
+        assert(recordHandle.getType() == this->getHandleType() && "Ensure proper handle type for container");
         assert(!m_records.contains(recordHandle) && "Handle must be unique and not already used");
 
         m_records.insert(std::make_pair(recordHandle, std::move(record)));

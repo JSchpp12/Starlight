@@ -49,7 +49,10 @@ class SwapChainRenderer : public Renderer
         return this->currentFrameInFlightCounter;
     }
 
-    std::vector<Handle> getDoneSemaphores() {
+    std::vector<Handle> &getDoneSemaphores(){
+        return imageAvailableSemaphores;
+    }
+    std::vector<Handle> getDoneSemaphores() const {
         return imageAvailableSemaphores;
     }
 

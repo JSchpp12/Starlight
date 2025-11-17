@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Handle.hpp"
-#include "core/MappedHandleContainer.hpp"
-#include "core/device/DeviceContext.hpp"
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
+#include "detail/screen_capture/DeviceInfo.hpp"
+#include <starlight/common/Handle.hpp>
+
 #include "event/TriggerScreenshot.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "service/InitParameters.hpp"
@@ -15,15 +15,13 @@
 namespace star::service
 {
 template <typename TCopyPolicy>
-concept CopyPolicyLike = requires(TCopyPolicy c, core::device::manager::ManagerCommandBuffer &commandManager,
-                                  core::device::system::EventBus &eventBus, core::device::StarDevice &device,
-                                  detail::screen_capture::CalleeRenderDependencies deps, const uint64_t &frameIndex,
-                                  const uint8_t &numFramesInFlight) {
-    { c.init(eventBus, numFramesInFlight) } -> std::same_as<void>;
-    { c.registerWithCommandBufferManager(device, commandManager, frameIndex) } -> std::same_as<void>;
-    { c.registerCalleeDependency(deps) } -> std::same_as<void>;
-    { c.triggerSubmission(commandManager) } -> std::same_as<void>;
-};
+concept CopyPolicyLike =
+    requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
+             detail::screen_capture::CalleeRenderDependencies &deps, const uint8_t &numFramesInFlight) {
+        { c.init(deviceInfo, numFramesInFlight) } -> std::same_as<void>;
+        { c.registerWithCommandBufferManager() } -> std::same_as<void>;
+        { c.triggerSubmission(deps) } -> std::same_as<void>;
+    };
 
 template <typename TWorkerControllerPolicy>
 concept WorkerPolicyLike =
@@ -31,6 +29,14 @@ concept WorkerPolicyLike =
         { c.addWriteTask(std::move(task)) } -> std::same_as<void>;
     };
 
+template <typename TCreateDependenciesPolicy>
+concept CreateDepsPolicyLike = requires(TCreateDependenciesPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
+                                        const StarTextures::Texture &targetTexture, const Handle &calleeCommandBuffer,
+                                        const uint8_t &numFramesInFlight) {
+    {
+        c.create(deviceInfo, targetTexture, calleeCommandBuffer, calleeCommandBuffer, numFramesInFlight)
+    } -> std::same_as<detail::screen_capture::CalleeRenderDependencies>;
+};
 template <WorkerPolicyLike TWorkerControllerPolicy, typename TCreateDependenciesPolicy, CopyPolicyLike TCopyPolicy>
 class ScreenCapture
 {
@@ -47,45 +53,35 @@ class ScreenCapture
         registerWithEventBus();
 
         assert(m_deviceInfo.eventBus != nullptr);
-        m_copyPolicy.init(*m_deviceInfo.eventBus, numFramesInFlight);
+        m_copyPolicy.init(m_deviceInfo, numFramesInFlight);
         initCommandBuffer();
     }
 
     void setInitParameters(InitParameters &params)
     {
-        m_deviceInfo = DeviceInfo{.device = &params.device,
-                                  .commandManager = &params.commandBufferManager,
-                                  .surface = &params.surface,
-                                  .eventBus = &params.eventBus,
-                                  .taskManager = &params.taskManager,
-                                  .currentFrameCounter = &params.currentFrameCounter};
+        m_deviceInfo =
+            detail::screen_capture::DeviceInfo{.device = &params.device,
+                                               .commandManager = &params.commandBufferManager,
+                                               .surface = &params.surface,
+                                               .eventBus = &params.eventBus,
+                                               .semaphoreManager = params.graphicsManagers.semaphoreManager.get(),
+                                               .taskManager = &params.taskManager,
+                                               .currentFrameCounter = &params.currentFrameCounter};
     }
 
     void shutdown()
     {
         assert(m_deviceInfo.device != nullptr && "Device must be valid");
-        cleanupIntermediateImages(*m_deviceInfo.device);
-        cleanupBuffers(*m_deviceInfo.device);
+        cleanupDependencies(m_deviceInfo.device->getVulkanDevice());
     }
 
   private:
-    struct DeviceInfo
-    {
-        core::device::StarDevice *device = nullptr;
-        core::device::manager::ManagerCommandBuffer *commandManager = nullptr;
-        core::RenderingSurface *surface = nullptr;
-        core::device::system::EventBus *eventBus = nullptr;
-        job::TaskManager *taskManager = nullptr;
-        const uint64_t *currentFrameCounter = nullptr;
-    };
-
     TWorkerControllerPolicy m_workerPolicy;
     TCreateDependenciesPolicy m_createDependenciesPolicy;
     TCopyPolicy m_copyPolicy;
 
     Handle m_subscriberHandle;
-    std::vector<StarTextures::Texture> m_targetTextures;
-    DeviceInfo m_deviceInfo;
+    detail::screen_capture::DeviceInfo m_deviceInfo;
     detail::screen_capture::CalleeRenderDependencies m_calleeDependencyTracker;
 
     void eventCallback(const star::common::IEvent &e, bool &keepAlive)
@@ -94,7 +90,7 @@ class ScreenCapture
         assert(m_deviceInfo.taskManager != nullptr && "Task manager must be initialized");
 
         // need way to wait for commands to be submitted BEFORE telling worker to start?
-        m_copyPolicy.triggerSubmission(*m_deviceInfo.commandManager);
+        m_copyPolicy.triggerSubmission(m_calleeDependencyTracker);
 
         m_workerPolicy.addWriteTask(
             job::tasks::write_image_to_disk::Create(screenEvent.getTexture(), screenEvent.getName()));
@@ -111,26 +107,24 @@ class ScreenCapture
 
     };
 
-    void cleanupBuffers(core::device::StarDevice &device)
+    void cleanupDependencies(vk::Device &device)
     {
-        // for (auto &buffer : m_hostVisibleBuffers)
-        // {
-        //     buffer.cleanupRender(device.getVulkanDevice());
-        // }
-    }
+        for (auto &buffer : m_calleeDependencyTracker.hostVisibleBuffers)
+        {
+            buffer.cleanupRender(device);
+        }
 
-    void cleanupIntermediateImages(core::device::StarDevice &device)
-    {
-        // for (auto &image : m_transferDstTextures)
-        // {
-        //     image.cleanupRender(device.getVulkanDevice());
-        // }
+        for (auto &texture : m_calleeDependencyTracker.transferDstTextures)
+        {
+            texture.cleanupRender(device);
+        }
     }
 
     void registerWithEventBus()
     {
         assert(m_deviceInfo.eventBus != nullptr);
-        this->m_deviceInfo.eventBus->template subscribe<event::TriggerScreenshot>(
+        this->m_deviceInfo.eventBus->subscribe(
+            star::event::TriggerScreenshotTypeName(),
             {[this](const star::common::IEvent &e, bool &keepAlive) { this->eventCallback(e, keepAlive); },
              [this]() -> Handle * { return this->notificationFromEventBusGetHandle(); },
              [this](const Handle &handle) { this->notificationFromEventBusDeleteHandle(handle); }});
@@ -141,8 +135,7 @@ class ScreenCapture
         assert(m_deviceInfo.commandManager != nullptr);
         assert(m_deviceInfo.device != nullptr);
 
-        m_copyPolicy.registerWithCommandBufferManager(
-            *m_deviceInfo.device, *m_deviceInfo.commandManager, *m_deviceInfo.currentFrameCounter);
+        m_copyPolicy.registerWithCommandBufferManager();
     }
 };
 } // namespace star::service

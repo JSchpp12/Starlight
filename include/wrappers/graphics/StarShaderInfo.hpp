@@ -5,7 +5,8 @@
 #include "StarDescriptorBuilders.hpp"
 #include "StarTextures/Texture.hpp"
 
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
+#include <starlight/common/HandleTypeRegistry.hpp>
 
 #include <memory>
 #include <optional>
@@ -166,7 +167,7 @@ class StarShaderInfo
 
         Builder &add(const Handle &bufferHandle, vk::Semaphore *resourceSemaphore = nullptr)
         {
-            assert(bufferHandle.getType() == star::Handle_Type::buffer);
+            assert(bufferHandle.getType() == common::HandleTypeRegistry::instance().getType(common::special_types::BufferTypeName()));
 
             this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, resourceSemaphore));
             return *this;
@@ -196,7 +197,7 @@ class StarShaderInfo
 
         Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, vk::Semaphore *resourceSemaphore  = nullptr)
         {
-            assert(textureHandle.getType() == Handle_Type::texture);
+            assert(textureHandle.getType() == common::HandleTypeRegistry::instance().getType(common::special_types::TextureTypeName()));
             this->activeSet->back()->add(
                 ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, resourceSemaphore));
             return *this;
@@ -205,7 +206,7 @@ class StarShaderInfo
         Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout,
                      const vk::Format &requestedImageViewFormat, vk::Semaphore *resourceSemaphore = nullptr)
         {
-            assert(textureHandle.getType() == Handle_Type::texture);
+            assert(textureHandle.getType() == common::HandleTypeRegistry::instance().getType(common::special_types::TextureTypeName()));
 
             this->activeSet->back()->add(
                 ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout, requestedImageViewFormat},

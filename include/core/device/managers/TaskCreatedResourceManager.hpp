@@ -8,12 +8,13 @@ template <typename T>
 concept RecordStructWithHasReady = requires(const T record) {
     { record.isReady() } -> std::same_as<bool>;
 };
-template <typename TRecord, typename TResourceRequest, star::Handle_Type THandleType, size_t TMaxRecordCount>
+template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
     requires RecordStructWithHasReady<TRecord>
-class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResourceRequest, THandleType, TMaxRecordCount>
+class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>
 {
   public:
-    TaskCreatedResourceManager() = default;
+    TaskCreatedResourceManager(const std::string &handleTypeName, const std::string &eventTypeName)
+        : ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>(handleTypeName, eventTypeName){};
     virtual ~TaskCreatedResourceManager() = default;
     TaskCreatedResourceManager(const TaskCreatedResourceManager &) noexcept = delete;
     TaskCreatedResourceManager &operator=(const TaskCreatedResourceManager &) noexcept = delete;
@@ -23,17 +24,16 @@ class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResource
     virtual Handle submit(device::StarDevice &device, TResourceRequest request, job::TaskManager &taskSystem,
                           system::EventBus &eventBus)
     {
-        auto handle =
-            Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>::submit(device, std::move(request));
+        auto handle = this->submit(device, std::move(request));
 
-        TRecord *record = Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>::get(handle);
+        TRecord *record = this->get(handle);
         submitTask(device, handle, taskSystem, eventBus, record);
 
         return handle;
     }
 
   protected:
-    using Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>::submit;
+    using Manager<TRecord, TResourceRequest, TMaxRecordCount>::submit;
     virtual void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                             system::EventBus &eventBus, TRecord *storedRecord) {};
 

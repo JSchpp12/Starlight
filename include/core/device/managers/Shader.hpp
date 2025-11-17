@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Compiler.hpp"
-#include "Handle.hpp"
 #include "StarShader.hpp"
 #include "device/managers/TaskCreatedResourceManager.hpp"
+
+#include <starlight/common/Handle.hpp>
+#include <starlight/common/HandleTypeRegistry.hpp>
 
 #include <array>
 #include <memory>
@@ -15,52 +17,22 @@ namespace star::core::device::manager
 struct ShaderRequest
 {
     ShaderRequest() = default;
-    ShaderRequest(StarShader shader) : shader(std::move(shader)), compiler(std::make_unique<Compiler>())
+    ShaderRequest(StarShader shader) : shader(std::move(shader))
     {
     }
-    ShaderRequest(StarShader shader, std::unique_ptr<Compiler> compiler)
+    ShaderRequest(StarShader shader, Compiler compiler)
         : shader(std::move(shader)), compiler(std::move(compiler))
     {
     }
-    ShaderRequest(ShaderRequest &&other) : shader(std::move(other.shader)), compiler(std::move(other.compiler))
-    {
-    }
-    ShaderRequest &operator=(ShaderRequest &&other)
-    {
-        if (this != &other)
-        {
-            shader = std::move(other.shader);
-            compiler = std::move(other.compiler);
-        }
-        return *this;
-    }
-    ShaderRequest(const ShaderRequest &) = delete;
-    ShaderRequest &operator=(const ShaderRequest &) = delete;
 
     StarShader shader;
-    std::unique_ptr<Compiler> compiler;
+    Compiler compiler;
 };
 struct ShaderRecord
 {
     ShaderRecord() = default;
     ShaderRecord(ShaderRequest request) : request(std::move(request))
     {
-    }
-    ~ShaderRecord() = default;
-    ShaderRecord(const ShaderRecord &) = delete;
-    ShaderRecord &operator=(const ShaderRecord &) = delete;
-    ShaderRecord(ShaderRecord &&other)
-        : request(std::move(other.request)), compiledShader(std::move(other.compiledShader))
-    {
-    }
-    ShaderRecord &operator=(ShaderRecord &&other)
-    {
-        if (this != &other)
-        {
-            request = std::move(other.request);
-            compiledShader = std::move(other.compiledShader);
-        }
-        return *this;
     }
 
     bool isReady() const
@@ -77,10 +49,15 @@ struct ShaderRecord
     }
 
     ShaderRequest request;
-    std::unique_ptr<std::vector<uint32_t>> compiledShader = nullptr;
+    std::shared_ptr<std::vector<uint32_t>> compiledShader = nullptr;
 };
-class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, Handle_Type::shader, 50>
+class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>
 {
+  public:
+    Shader() : TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>(star::common::special_types::ShaderTypeName(), "shader_event_callback")
+    {
+    }
+
   protected:
     ShaderRecord createRecord(device::StarDevice &device, ShaderRequest &&request) const override
     {

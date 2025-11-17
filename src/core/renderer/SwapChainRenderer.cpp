@@ -4,6 +4,8 @@
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 
+#include <starlight/common/HandleTypeRegistry.hpp>
+
 #include <GLFW/glfw3.h>
 
 star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceContext &context,
@@ -315,7 +317,6 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     std::vector<vk::Semaphore> *previousCommandBufferSemaphores, std::vector<vk::Semaphore> dataSemaphores,
     std::vector<vk::PipelineStageFlags> dataWaitPoints)
 {
-    vk::SubmitInfo submitInfo{};
     std::vector<vk::Semaphore> waitSemaphores = {
         m_renderingContext.recordDependentSemaphores.get(this->imageAcquireSemaphores[frameIndexToBeDrawn])};
     std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
@@ -339,6 +340,7 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     uint32_t waitSemaphoreCount = 0;
     CastHelpers::SafeCast<size_t, uint32_t>(waitSemaphores.size(), waitSemaphoreCount);
 
+    vk::SubmitInfo submitInfo{};
     submitInfo.commandBufferCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores.data();
     submitInfo.waitSemaphoreCount = waitSemaphoreCount;
@@ -499,8 +501,9 @@ std::vector<star::Handle> star::core::renderer::SwapChainRenderer::CreateSemapho
 
     for (int i = 0; i < numToCreate; i++)
     {
-        context.getEventBus().emit(
-            core::device::system::event::ManagerRequest(semaphores[i], core::device::manager::SemaphoreRequest{false}));
+        context.getEventBus().emit(core::device::system::event::ManagerRequest(
+            common::HandleTypeRegistry::instance().getType(core::device::manager::SemaphoreEventTypeName()).value(),
+            core::device::manager::SemaphoreRequest{false}, semaphores[i]));
 
         if (!semaphores[i].isInitialized())
         {
@@ -518,8 +521,9 @@ void star::core::renderer::SwapChainRenderer::createFences(core::device::DeviceC
 
     for (size_t i = 0; i < this->numFramesInFlight; i++)
     {
-        context.getEventBus().emit(
-            core::device::system::event::ManagerRequest(inFlightFences[i], core::device::manager::FenceRequest{true}));
+        context.getEventBus().emit(core::device::system::event::ManagerRequest(
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(core::device::manager::FenceEventName()),
+            core::device::manager::FenceRequest{true}, inFlightFences[i]));
         if (!this->inFlightFences[i])
         {
             throw std::runtime_error("failed to create fence object for a frame");

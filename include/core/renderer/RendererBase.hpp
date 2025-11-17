@@ -10,7 +10,7 @@ class RendererBase
   public:
     RendererBase(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                  std::vector<std::shared_ptr<StarObject>> objects)
-        : m_renderGroups(CreateRenderingGroups(context, context.getRenderingSurface().getResolution(), objects)) {};
+        : m_renderGroups(CreateRenderingGroups(context, context.getRenderingSurface().getResolution(), objects)){};
     virtual ~RendererBase() = default;
 
     virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
@@ -22,6 +22,16 @@ class RendererBase
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
     virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
+
+    Handle getCommandBuffer() const
+    {
+        return m_commandBuffer;
+    }
+
+    Handle &getCommandBuffer()
+    {
+        return m_commandBuffer;
+    }
 
   protected:
     std::vector<std::unique_ptr<StarRenderGroup>> m_renderGroups;

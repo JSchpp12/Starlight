@@ -28,17 +28,19 @@ void Execute(void *p)
         core::logging::log(boost::log::trivial::info, msg);
     }
 
-    data->compiledShaderCode = data->compiler->compile(data->path, true);
+    data->compiledShaderCode = std::make_shared<std::vector<uint32_t>>(data->compiler->compile(data->path, true));
 
     core::logging::log(boost::log::trivial::info, "Done");
 }
 
 CompileShaderTask Create(const std::string &fileName, const star::Shader_Stage &stage, const Handle &shaderHandle,
-                         std::unique_ptr<Compiler> compiler)
+                         Compiler compiler)
 {
     return CompileShaderTask::Builder<CompileShaderPayload>()
-        .setPayload(CompileShaderPayload{
-            .path = fileName, .stage = stage, .handleID = shaderHandle.getID(), .compiler = std::move(compiler)})
+        .setPayload(CompileShaderPayload{.path = fileName,
+                                         .stage = stage,
+                                         .handleID = shaderHandle.getID(),
+                                         .compiler = std::make_unique<Compiler>(std::move(compiler))})
         .setExecute(&Execute)
         .setCreateCompleteTaskFunction(&CreateComplete)
         .build();

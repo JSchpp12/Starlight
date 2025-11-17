@@ -92,7 +92,7 @@ template <typename TTask, size_t TQueueSize> class DefaultWorker
         const std::string msg = m_workerName + " - " + message;
         core::logging::log(std::move(level), msg);
     }
-
+    
     void logStart()
     {
         writeLog(boost::log::trivial::info, "Beginning Work");

@@ -23,7 +23,7 @@ class StarEngine
 
   protected:
     StarApplication &m_application;
-    Handle defaultDevice = Handle{.type = star::Handle_Type::device, .id = 0};
+    Handle defaultDevice;
     uint64_t frameCounter = 0;
     std::unique_ptr<StarWindow> window = nullptr;
     core::SystemContext deviceManager;
@@ -37,6 +37,8 @@ class StarEngine
     static std::unique_ptr<job::TaskManager> CreateManager();
 
     static uint8_t GetNumFramesInFlight();
+
+    static Handle CreateDefaultDeviceHandle();
 
     void registerScreenshotService(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
 };

@@ -4,7 +4,7 @@
 #include "DescriptorModifier.hpp"
 #include "core/device/DeviceContext.hpp"
 #include "Enums.hpp"
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
 #include "Light.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"

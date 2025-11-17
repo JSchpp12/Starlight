@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Handle.hpp"
 #include "StarCommandBuffer.hpp"
 #include "core/device/DeviceContext.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
+
+#include <starlight/common/Handle.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -37,7 +38,10 @@ template <typename TTransferType, typename TDataType> class Controller
                 Handle semaphore;
                 context.getEventBus().emit(
                     core::device::system::event::ManagerRequest<core::device::manager::SemaphoreRequest>(
-                        semaphore, core::device::manager::SemaphoreRequest{false}));
+                        common::HandleTypeRegistry::instance()
+                            .getType(core::device::manager::SemaphoreEventTypeName())
+                            .value(),
+                        core::device::manager::SemaphoreRequest{false}, semaphore));
 
                 auto fullSemaphore = context.getSemaphoreManager().get(semaphore)->semaphore;
                 m_resourceHandles[i] =

@@ -3,25 +3,27 @@
 #include "Enums.hpp"
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
+#include "core/device/system/event/StartOfNextFrame.hpp"
 #include "logging/LoggingFactory.hpp"
 
 namespace star::service::detail::screen_capture
 {
-void DefaultCopyPolicy::init(core::device::system::EventBus &eventBus, const uint8_t &numFramesInFlight)
+void DefaultCopyPolicy::init(DeviceInfo &deviceInfo, const uint8_t &numFramesInFlight)
 {
-    m_doneSemaphores = createSemaphores(eventBus, numFramesInFlight);
+    m_deviceInfo = &deviceInfo;
+    m_doneSemaphores = createSemaphores(*m_deviceInfo->eventBus, numFramesInFlight);
 }
 
-void DefaultCopyPolicy::triggerSubmission(core::device::manager::ManagerCommandBuffer &commandManager)
+void DefaultCopyPolicy::triggerSubmission(CalleeRenderDependencies &targetDeps)
 {
-    commandManager.submitDynamicBuffer(m_commandBuffer);
+    m_deviceInfo->commandManager->submitDynamicBuffer(m_commandBuffer);
+    registerListenerForNextFrameStart(targetDeps);
 }
 
 void DefaultCopyPolicy::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                             const uint64_t &frameIndex)
 {
-    core::logging::log(boost::log::trivial::info, "Beginnign record"); 
-    
+    core::logging::log(boost::log::trivial::info, "Start record");
 }
 
 void DefaultCopyPolicy::addMemoryDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
@@ -29,12 +31,10 @@ void DefaultCopyPolicy::addMemoryDependencies(vk::CommandBuffer &commandBuffer, 
 {
 }
 
-void DefaultCopyPolicy::registerWithCommandBufferManager(core::device::StarDevice &device,
-                                                         core::device::manager::ManagerCommandBuffer &commandManager,
-                                                         const uint64_t &currentFrameIndex)
+void DefaultCopyPolicy::registerWithCommandBufferManager()
 {
-    m_commandBuffer = commandManager.submit(
-        device, currentFrameIndex,
+    m_commandBuffer = m_deviceInfo->commandManager->submit(
+        *m_deviceInfo->device, *m_deviceInfo->currentFrameCounter,
         core::device::manager::ManagerCommandBuffer::Request{
             .recordBufferCallback = std::bind(&DefaultCopyPolicy::recordCommandBuffer, this, std::placeholders::_1,
                                               std::placeholders::_2, std::placeholders::_3),
@@ -63,10 +63,37 @@ std::vector<Handle> DefaultCopyPolicy::createSemaphores(core::device::system::Ev
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
-        eventBus.emit(
-            core::device::system::event::ManagerRequest{result[i], core::device::manager::SemaphoreRequest{true}});
+        eventBus.emit(core::device::system::event::ManagerRequest{
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::SemaphoreTypeName()),
+            core::device::manager::SemaphoreRequest{true}, result[i]});
     }
 
     return result;
+}
+
+void DefaultCopyPolicy::registerListenerForNextFrameStart(CalleeRenderDependencies &deps)
+{
+    Handle calleeHandle = deps.commandBufferContainingTarget;
+    m_deviceInfo->eventBus->subscribe(
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+            core::device::system::event::StartOfNextFrameName()),
+        {[this, calleeHandle](const star::common::IEvent &e, bool &keepAlive) {
+             this->startOfFrameEventCallback(calleeHandle, e, keepAlive);
+         },
+         [this]() -> Handle * { return &this->m_startOfFrameListener; },
+         [this](const Handle &noLongerNeededHandle) { this->m_startOfFrameListener = Handle(); }});
+}
+
+void DefaultCopyPolicy::startOfFrameEventCallback(const Handle &calleeCommandBuffer, const star::common::IEvent &e,
+                                                  bool &keepAlive)
+{
+    assert(calleeCommandBuffer.isInitialized() && "Callee information must be provided");
+
+    const auto &startEvent = static_cast<const core::device::system::event::StartOfNextFrame &>(e);
+    m_deviceInfo->commandManager->get(calleeCommandBuffer)
+        .oneTimeWaitSemaphoreInfo.insert(m_doneSemaphores.front(),
+                                         m_deviceInfo->semaphoreManager->get(m_doneSemaphores.front())->semaphore,
+                                         vk::PipelineStageFlagBits::eColorAttachmentOutput);
+    keepAlive = false;
 }
 } // namespace star::service::detail::screen_capture

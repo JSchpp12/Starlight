@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Allocator.hpp"
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
 #include "StarBuffers/Buffer.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"

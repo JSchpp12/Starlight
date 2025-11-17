@@ -12,7 +12,7 @@ namespace star::core::device::manager
 {
 struct GraphicsContainer
 {
-    GraphicsContainer() : semaphoreManager(std::make_shared<Semaphore>()) {};
+    GraphicsContainer() = default;
     GraphicsContainer(const GraphicsContainer &) noexcept = delete;
     GraphicsContainer &operator=(const GraphicsContainer &) noexcept = delete;
     GraphicsContainer(GraphicsContainer &&) noexcept = default;
@@ -22,13 +22,16 @@ struct GraphicsContainer
     void init(std::shared_ptr<StarDevice> device, core::device::system::EventBus &bus)
     {
         semaphoreManager->init(device, bus);
+        shaderManager->init(device, bus);
+        pipelineManager->init(device, bus);
         fenceManager->init(device, bus);
     }
 
     void cleanup(core::device::system::EventBus &bus){
         fenceManager->cleanup(bus);
         pipelineManager->cleanup(bus); 
-        fenceManager->cleanup(bus); 
+        shaderManager->cleanup(bus);
+        semaphoreManager->cleanup(bus);
     }
 
     std::shared_ptr<Semaphore> semaphoreManager = std::make_shared<Semaphore>();

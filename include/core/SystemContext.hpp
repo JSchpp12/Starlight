@@ -6,6 +6,8 @@
 #include "StarWindow.hpp"
 #include "core/device/DeviceContext.hpp"
 
+#include <starlight/common/HandleTypeRegistry.hpp>
+
 #include <vulkan/vulkan.hpp>
 
 namespace star::core
@@ -28,14 +30,14 @@ class SystemContext
         return m_instance;
     }
 
-    LinearHandleContainer<device::DeviceContext, Handle_Type::device, 1> &getAllDevices()
+    LinearHandleContainer<device::DeviceContext, 1> &getAllDevices()
     {
         return m_contexts;
     }
 
   private:
     RenderingInstance m_instance;
-    LinearHandleContainer<device::DeviceContext, Handle_Type::device, 1> m_contexts =
-        LinearHandleContainer<device::DeviceContext, Handle_Type::device, 1>();
+    LinearHandleContainer<device::DeviceContext, 1> m_contexts =
+        LinearHandleContainer<device::DeviceContext, 1>(common::special_types::DeviceTypeName());
 };
 } // namespace star::core

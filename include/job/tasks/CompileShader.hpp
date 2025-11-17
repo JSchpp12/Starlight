@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
 #include "StarShader.hpp"
 #include "job/complete_tasks/CompleteTask.hpp"
 #include "job/tasks/Task.hpp"
@@ -16,7 +16,7 @@ struct CompileShaderPayload
     uint32_t handleID;
     std::unique_ptr<Compiler> compiler = nullptr;
     std::unique_ptr<StarShader> finalizedShaderObject = nullptr;
-    std::unique_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
+    std::shared_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
 };
 
 using CompileShaderTask = star::job::tasks::Task<sizeof(CompileShaderPayload), alignof(CompileShaderPayload)>;
@@ -26,6 +26,6 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p);
 void Execute(void *p);
 
 CompileShaderTask Create(const std::string &fileName, const star::Shader_Stage &stage, const Handle &shaderHandle,
-                         std::unique_ptr<Compiler> compiler);
+                         Compiler compiler);
 
 } // namespace star::job::tasks::compile_shader

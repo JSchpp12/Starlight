@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Handle.hpp"
 #include "ManagedHandleContainer.hpp"
 #include "ManagerBase.hpp"
 #include "device/StarDevice.hpp"
 #include "device/system/EventBus.hpp"
 #include "job/TaskManager.hpp"
+#include <starlight/common/Handle.hpp>
 
 #include <array>
 #include <cassert>
@@ -15,17 +15,21 @@
 namespace star::core::device::manager
 {
 
-template <typename TRecord, typename TResourceRequest, star::Handle_Type THandleType, size_t TMaxRecordCount>
-class Manager : public ManagerBase<TRecord, TResourceRequest, THandleType>
+template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
+class Manager : public ManagerBase<TRecord, TResourceRequest>
 {
   public:
-    Manager() = default;
+    Manager(const std::string &resourceHandleName)
+        : ManagerBase<TRecord, TResourceRequest>(resourceHandleName), m_records(resourceHandleName){};
+        
     virtual ~Manager() = default;
     Manager(const Manager &) = delete;
     Manager &operator=(const Manager &) = delete;
     Manager(Manager &&) = default;
     Manager &operator=(Manager &&) = default;
 
+    virtual void init(std::shared_ptr<device::StarDevice> device, core::device::system::EventBus &bus) = 0;
+    
     virtual Handle submit(device::StarDevice &device, TResourceRequest resource) override
     {
         return insert(device, std::move(resource));
@@ -44,7 +48,7 @@ class Manager : public ManagerBase<TRecord, TResourceRequest, THandleType>
         return rec->isReady();
     }
 
-    LinearHandleContainer<TRecord, THandleType, TMaxRecordCount> &getRecords()
+    auto &getRecords()
     {
         return m_records;
     }
@@ -56,13 +60,13 @@ class Manager : public ManagerBase<TRecord, TResourceRequest, THandleType>
 
     void deleteRequest(device::StarDevice &device, const Handle &requestHandle)
     {
-        assert(requestHandle.getType() == THandleType);
-        m_records.cleanup(requestHandle, &device); 
-        m_records.removeRecord(requestHandle); 
+        assert(requestHandle.getType() == this->getHandleType());
+        m_records.cleanup(requestHandle, &device);
+        m_records.removeRecord(requestHandle);
     }
 
   protected:
-    star::core::ManagedHandleContainer<TRecord, THandleType, TMaxRecordCount> m_records;
+    star::core::ManagedHandleContainer<TRecord, TMaxRecordCount> m_records;
 
     Handle insert(device::StarDevice &device, TResourceRequest request)
     {

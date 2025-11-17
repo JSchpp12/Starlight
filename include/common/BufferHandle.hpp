@@ -1,17 +1,21 @@
 #pragma once
 
-#include "Handle.hpp"
 #include "device/StarDevice.hpp"
+
+#include <starlight/common/Handle.hpp>
+#include <starlight/common/HandleTypeRegistry.hpp>
 
 namespace star
 {
 struct BufferHandle : public Handle
 {
-    BufferHandle(const uint32_t &id, const size_t &targetBufferOffset)
-        : Handle(star::Handle_Type::buffer, id), targetBufferOffset(targetBufferOffset)
+    BufferHandle(uint32_t id, size_t targetBufferOffset)
+        : Handle(common::HandleTypeRegistry::instance().getType(common::special_types::BufferTypeName()).value(), id),
+          targetBufferOffset(std::move(targetBufferOffset))
     {
     }
-    BufferHandle(const uint32_t id) : Handle(star::Handle_Type::buffer, id) {};
+    BufferHandle(uint32_t id)
+        : Handle(common::HandleTypeRegistry::instance().getType(common::special_types::BufferTypeName()).value(), id){};
 
     size_t targetBufferOffset = 0;
 };

@@ -23,9 +23,17 @@ struct FenceRecord
         device.getVulkanDevice().destroyFence(fence);
     }
 };
-class Fence : public ManagerEventBusTies<FenceRecord, FenceRequest, Handle_Type::fence, 50>
+constexpr std::string FenceEventName()
+{
+    return "fence_event_callback";
+}
+class Fence : public ManagerEventBusTies<FenceRecord, FenceRequest, 50>
 {
   public:
+    Fence()
+        : ManagerEventBusTies<FenceRecord, FenceRequest, 50>(common::special_types::FenceTypeName(), FenceEventName())
+    {
+    }
     virtual ~Fence() = default;
 
   protected:

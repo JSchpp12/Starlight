@@ -1,13 +1,14 @@
 #pragma once
 
 #include "Enums.hpp"
-#include "Handle.hpp"
 #include "ManagedHandleContainer.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "StarManager.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
 #include "device/StarDevice.hpp"
+
+#include <starlight/common/Handle.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -20,8 +21,12 @@
 
 namespace star
 {
+// constexpr const char *BUFFER_CONTAINER_TYPE = "buffer";
+// constexpr const char *TEXTURE_CONTAINER_TYPE = "texture";
+
 class ManagerRenderResource : public StarManager
 {
+  private:
   public:
     template <typename T> struct FinalizedResourceRequest : public StarManager::FinalizedRequest
     {
@@ -116,15 +121,14 @@ class ManagerRenderResource : public StarManager
 
   protected:
     static std::unordered_map<Handle, std::shared_ptr<core::device::StarDevice>, star::HandleHash> devices;
-    static std::unordered_map<
-        Handle,
-        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>,
-                                                     star::Handle_Type::texture, 1000>>,
-        star::HandleHash>
+    static std::unordered_map<Handle,
+                              std::unique_ptr<core::ManagedHandleContainer<
+                                  FinalizedResourceRequest<star::StarTextures::Texture>, 1000>>,
+                              star::HandleHash>
         textureStorage;
     static std::unordered_map<Handle,
                               std::unique_ptr<core::ManagedHandleContainer<
-                                  FinalizedResourceRequest<star::StarBuffers::Buffer>, star::Handle_Type::buffer, 3000>>,
+                                  FinalizedResourceRequest<star::StarBuffers::Buffer>, 3000>>,
                               star::HandleHash>
         bufferStorage;
 

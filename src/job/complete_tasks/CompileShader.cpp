@@ -6,7 +6,8 @@
 #include "core/device/system/event/ShaderCompiled.hpp"
 #include "job/tasks/TaskFactory.hpp"
 
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
+#include <starlight/common/HandleTypeRegistry.hpp>
 
 namespace star::job::complete_tasks::compile_shader
 {
@@ -17,7 +18,9 @@ void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus
     auto *eb = static_cast<star::core::device::system::EventBus *>(eventBus);
     auto *p = static_cast<CompileCompletePayload *>(payload);
 
-    Handle shader = Handle{.type = Handle_Type::shader, .id = p->handleID};
+    Handle shader = Handle{
+        .type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::ShaderTypeName()),
+        .id = p->handleID};
     assert(p->compiledShaderCode != nullptr && "Compiled shader data not properly set");
 
     std::cout << "Marking shader at index [" << p->handleID << "] as ready" << std::endl;
@@ -47,12 +50,14 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
                 throw std::runtime_error("Unknown error. Failed to process record handle");
             }
 
-            Handle handle = Handle{.type = Handle_Type::pipeline, .id = recordHandle};
+            Handle handle = Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                       common::special_types::PipelineTypeName()),
+                                   .id = recordHandle};
 
-            std::vector<std::pair<StarShader, std::unique_ptr<std::vector<uint32_t>>>> compiledShaders;
+            std::vector<std::pair<StarShader, std::shared_ptr<std::vector<uint32_t>>>> compiledShaders;
             for (auto &shader : record.request.pipeline.getShaders())
             {
-                compiledShaders.push_back(std::make_pair<StarShader, std::unique_ptr<std::vector<uint32_t>>>(
+                compiledShaders.push_back(std::make_pair<StarShader, std::shared_ptr<std::vector<uint32_t>>>(
                     StarShader(gm->shaderManager->get(shader)->request.shader),
                     std::move(gm->shaderManager->get(shader)->compiledShader)));
             }
@@ -69,7 +74,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
 
 star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(
     uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
-    std::unique_ptr<std::vector<uint32_t>> finalizedCompiledShader)
+    std::shared_ptr<std::vector<uint32_t>> finalizedCompiledShader)
 {
     return complete_tasks::CompleteTask::Builder<CompileCompletePayload>()
         .setPayload(CompileCompletePayload{.handleID = std::move(handleID),

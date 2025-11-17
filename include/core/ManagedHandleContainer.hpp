@@ -19,16 +19,24 @@ concept TDataHasVKCleanup = requires(T record, vk::Device &device) {
 template <typename T>
 concept TDataHasProperCleanup = TDataHasCleanupRender<T> || TDataHasCleanup<T> || TDataHasVKCleanup<T>;
 
-template <typename TData, star::Handle_Type THandleType, size_t TMaxDataCount>
+template <typename TData, size_t TMaxDataCount>
     requires TDataHasProperCleanup<TData>
-class ManagedHandleContainer : public LinearHandleContainer<TData, THandleType, TMaxDataCount>
+class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount>
 {
   public:
+    ManagedHandleContainer(const std::string &handleTypeName)
+        : LinearHandleContainer<TData, TMaxDataCount>(handleTypeName)
+    {
+    }
+    ManagedHandleContainer(uint16_t registeredHandleType)
+        : LinearHandleContainer<TData, TMaxDataCount>(std::move(registeredHandleType))
+    {
+    }
     void cleanupAll(device::StarDevice *device = nullptr)
     {
         for (uint32_t i = 0; i < this->m_records.size(); i++)
         {
-            auto handle = Handle{.type = THandleType, .id = i};
+            auto handle = Handle{.type = this->getHandleType(), .id = i};
             cleanup(handle, device);
         }
     }
@@ -36,7 +44,7 @@ class ManagedHandleContainer : public LinearHandleContainer<TData, THandleType, 
   protected:
     void removeRecord(const Handle &handle, device::StarDevice *device = nullptr) override
     {
-        LinearHandleContainer<TData, THandleType, TMaxDataCount>::remove(handle, device);
+        this->remove(handle, device);
 
         cleanup(handle, device);
     }

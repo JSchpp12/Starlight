@@ -3,7 +3,7 @@
 #include "CastHelpers.hpp"
 #include "core/device/DeviceContext.hpp"
 #include "GeometryHelpers.hpp"
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarMaterial.hpp"

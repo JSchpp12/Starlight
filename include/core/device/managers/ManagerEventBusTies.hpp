@@ -8,11 +8,16 @@
 
 namespace star::core::device::manager
 {
-template <typename TRecord, typename TResourceRequest, star::Handle_Type THandleType, size_t TMaxRecordCount>
-class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, THandleType, TMaxRecordCount>
+template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
+class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecordCount>
 {
   public:
-    ManagerEventBusTies() = default;
+    ManagerEventBusTies(const std::string &handleTypeName, const std::string &eventTypeName)
+        : Manager<TRecord, TResourceRequest, TMaxRecordCount>(handleTypeName),
+          m_registeredHandleEventType(common::HandleTypeRegistry::instance().registerType(eventTypeName))
+    {
+    }
+
     virtual ~ManagerEventBusTies() = default;
 
     ManagerEventBusTies(const ManagerEventBusTies &) = delete;
@@ -20,7 +25,7 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, THandleTyp
     ManagerEventBusTies(ManagerEventBusTies &&) = delete;
     ManagerEventBusTies &operator=(ManagerEventBusTies &&) = delete;
 
-    void init(std::shared_ptr<device::StarDevice> device, core::device::system::EventBus &bus)
+    void init(std::shared_ptr<device::StarDevice> device, core::device::system::EventBus &bus) override
     {
         m_device = device;
 
@@ -30,7 +35,7 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, THandleTyp
     virtual void cleanup(core::device::system::EventBus &bus)
     {
         assert(m_subscriberInfo.isInitialized() && "Should not call cleanup twice");
-        bus.unsubscribe<core::device::system::event::ManagerRequest<TResourceRequest>>(m_subscriberInfo);
+        bus.unsubscribe(m_registeredHandleEventType, m_subscriberInfo);
 
         m_subscriberInfo = Handle();
     }
@@ -62,17 +67,16 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, THandleTyp
 
     void submitSubscribeToEventBus(core::device::system::EventBus &bus)
     {
-        bus.subscribe<core::device::system::event::ManagerRequest<TResourceRequest>>(
-            {[this](const star::common::IEvent &e, bool &keepAlive){
-                this->eventCallback(e, keepAlive);
-            }, 
-            [this]() -> Handle* {
-                return this->getHandleForUpdate();
-            }, 
-            [this](const Handle &noLongerNeededHandle){
-                this->notificationFromEventBusHandleDelete(noLongerNeededHandle);
-            }
-        });
+        bus.subscribe(
+            m_registeredHandleEventType, 
+            {[this](const star::common::IEvent &e, bool &keepAlive) { this->eventCallback(e, keepAlive); },
+             [this]() -> Handle * { return this->getHandleForUpdate(); },
+             [this](const Handle &noLongerNeededHandle) {
+                 this->notificationFromEventBusHandleDelete(noLongerNeededHandle);
+             }});
     };
+
+  private:
+    uint16_t m_registeredHandleEventType;
 };
 } // namespace star::core::device::manager

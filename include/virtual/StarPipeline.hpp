@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Handle.hpp"
 #include "StarShader.hpp"
 #include "VulkanVertex.hpp"
 #include "core/device/StarDevice.hpp"
 #include "core/renderer/RenderingTargetInfo.hpp"
 
+#include <starlight/common/Handle.hpp>
 #include <vulkan/vulkan.hpp>
 
 #include <string>
@@ -21,22 +21,13 @@ class StarPipeline
   public:
     struct RenderResourceDependencies
     {
-        std::vector<std::pair<star::StarShader, std::unique_ptr<std::vector<uint32_t>>>> compiledShaders;
+        std::vector<std::pair<star::StarShader, std::shared_ptr<std::vector<uint32_t>>>> compiledShaders;
         core::renderer::RenderingTargetInfo renderingTargetInfo;
         vk::Extent2D swapChainExtent;
     };
 
     struct GraphicsPipelineConfigSettings
     {
-        GraphicsPipelineConfigSettings() = default;
-        ~GraphicsPipelineConfigSettings() = default;
-        // no copy
-        GraphicsPipelineConfigSettings(const GraphicsPipelineConfigSettings &) = delete;
-        GraphicsPipelineConfigSettings &operator=(const GraphicsPipelineConfigSettings &) = delete;
-
-        GraphicsPipelineConfigSettings(GraphicsPipelineConfigSettings &&) = default;
-        GraphicsPipelineConfigSettings &operator=(GraphicsPipelineConfigSettings &&) = default;
-
         vk::Rect2D scissor;
         vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
         vk::PipelineRasterizationStateCreateInfo rasterizationInfo;
@@ -71,9 +62,24 @@ class StarPipeline
     }
     StarPipeline(std::variant<GraphicsPipelineConfigSettings, ComputePipelineConfigSettings> configSettings,
                  vk::PipelineLayout pipelineLayout, std::vector<Handle> shaders);
-    virtual ~StarPipeline();
-    StarPipeline(const StarPipeline &) = delete;
-    StarPipeline &operator=(const StarPipeline &) = delete;
+    StarPipeline(const StarPipeline &other)
+        : m_pipelineLayout(other.m_pipelineLayout), m_configSettings(std::move(other.m_configSettings)),
+          m_shaders(other.m_shaders), m_isGraphicsPipeline(other.m_isGraphicsPipeline), m_pipeline(other.m_pipeline)
+    {
+    }
+    StarPipeline &operator=(const StarPipeline &other)
+    {
+        if (this != &other)
+        {
+            m_pipelineLayout = other.m_pipelineLayout;
+            m_configSettings = other.m_configSettings;
+            m_shaders = other.m_shaders;
+            m_isGraphicsPipeline = other.m_isGraphicsPipeline;
+            m_pipeline = other.m_pipeline;
+        }
+
+        return *this;
+    };
     StarPipeline(StarPipeline &&other)
         : m_pipelineLayout(std::move(other.m_pipelineLayout)), m_configSettings(std::move(other.m_configSettings)),
           m_shaders(std::move(other.m_shaders)), m_isGraphicsPipeline(std::move(other.m_isGraphicsPipeline)),

@@ -5,6 +5,10 @@
 #include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
 
+#include "core/device/system/event/StartOfNextFrame.hpp"
+
+#include <starlight/common/HandleTypeRegistry.hpp>
+
 #include "service/InitParameters.hpp"
 
 #include <cassert>
@@ -30,7 +34,8 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8
                                              const std::set<Rendering_Device_Features> &requiredRenderingDeviceFeatures)
 {
     assert(!m_ownsResources && "Dont call init twice");
-    assert(deviceID.getType() == Handle_Type::device);
+    assert(deviceID.getType() ==
+           common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::DeviceTypeName()));
     logInit(numFramesInFlight);
 
     m_deviceID = deviceID;
@@ -68,6 +73,7 @@ void star::core::device::DeviceContext::prepareForNextFrame(const uint8_t &frame
     assert(frameInFlightIndex < m_frameInFlightTrackingInfo.size());
 
     handleCompleteMessages();
+    broadcastFrameStart();
 
     m_frameInFlightTrackingInfo[frameInFlightIndex].numOfTimesFrameProcessed++;
     m_frameCounter++;
@@ -246,4 +252,9 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
     {
         service.init(params, numOfFramesInFlight);
     }
+}
+
+void star::core::device::DeviceContext::broadcastFrameStart()
+{
+    m_eventBus.emit(star::core::device::system::event::StartOfNextFrame{m_frameCounter});
 }

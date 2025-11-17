@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Enums.hpp"
-#include "Handle.hpp"
+#include <starlight/common/Handle.hpp>
 #include "StarEntity.hpp"
 #include "StarObject.hpp"
 

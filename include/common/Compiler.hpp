@@ -19,11 +19,13 @@ namespace star
 class Compiler
 {
   public:
-    Compiler() = default; 
-    Compiler(std::string precompilerMacros) : m_precompilerMacros(std::move(precompilerMacros)){}
+    Compiler() = default;
+    Compiler(std::string precompilerMacros) : m_precompilerMacros(std::move(precompilerMacros))
+    {
+    }
 
     // compile provided shader to spirv
-    std::unique_ptr<std::vector<uint32_t>> compile(const std::string &pathToFile, bool optimize);
+    std::vector<uint32_t> compile(const std::string &pathToFile, bool optimize);
 
   private:
     static bool compileDebug;
@@ -34,8 +36,7 @@ class Compiler
 
     // preprocess shader code before compilation
     std::string preprocessShader(shaderc::Compiler &compiler, shaderc::CompileOptions options,
-                                        const std::string &sourceName, shaderc_shader_kind stage,
-                                        const std::string &source);
+                                 const std::string &sourceName, shaderc_shader_kind stage, const std::string &source);
 
     shaderc::CompileOptions getCompileOptions(const std::string &filePath);
 };

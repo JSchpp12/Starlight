@@ -2,9 +2,9 @@
 
 #include "CastHelpers.hpp"
 #include "Enums.hpp"
-#include "Handle.hpp"
 #include "HandleContainer.hpp"
 #include "device/StarDevice.hpp"
+#include <starlight/common/Handle.hpp>
 
 #include <array>
 #include <vector>
@@ -12,10 +12,15 @@
 namespace star::core
 {
 
-template <typename TData, star::Handle_Type THandleType, size_t TMaxDataCount>
-class LinearHandleContainer : public HandleContainer<TData, THandleType>
+template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : public HandleContainer<TData>
 {
   public:
+    LinearHandleContainer(const std::string &handleTypeName) : HandleContainer<TData>(handleTypeName)
+    {
+    }
+    LinearHandleContainer(uint16_t registeredHandleType) : HandleContainer<TData>(std::move(registeredHandleType))
+    {
+    }
     std::array<TData, TMaxDataCount> &getData()
     {
         return m_records;
@@ -29,7 +34,7 @@ class LinearHandleContainer : public HandleContainer<TData, THandleType>
     Handle storeRecord(TData newData) override
     {
         const uint32_t nextSpace = getNextSpace();
-        const Handle newHandle = Handle{.type = THandleType, .id = nextSpace};
+        const Handle newHandle = Handle{.type = this->getHandleType(), .id = nextSpace};
 
         m_records[nextSpace] = std::move(newData);
 

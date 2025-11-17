@@ -10,7 +10,7 @@ bool Compiler::compileDebug = false;
 bool Compiler::compileDebug = true; 
 #endif
 
-std::unique_ptr<std::vector<uint32_t>> Compiler::compile(const std::string &pathToFile, bool optimize)
+std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool optimize)
 {
     shaderc::Compiler shaderCompiler;
     shaderc::CompileOptions compilerOptions = getCompileOptions(pathToFile);
@@ -29,7 +29,7 @@ std::unique_ptr<std::vector<uint32_t>> Compiler::compile(const std::string &path
         std::cerr << compileResult.GetErrorMessage();
         throw std::runtime_error("Failed to compile shader");
     }
-    return std::make_unique<std::vector<uint32_t>>(std::vector<uint32_t>{compileResult.cbegin(), compileResult.cend()});
+    return std::vector<uint32_t>{compileResult.cbegin(), compileResult.cend()};
 }
 
 shaderc_shader_kind Compiler::getShaderCStageFlag(const std::string &pathToFile)

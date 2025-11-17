@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Handle.hpp"
-
+#include <starlight/common/Handle.hpp>
+#include <starlight/common/HandleTypeRegistry.hpp>
 #include <starlight/common/IEvent.hpp>
 
+#include <cassert>
 #include <utility>
 
 namespace star::core::device::system::event
@@ -11,8 +12,11 @@ namespace star::core::device::system::event
 template <typename TManagerRequest> class ManagerRequest : public star::common::IEvent
 {
   public:
-    ManagerRequest(Handle &resultingHandle, TManagerRequest request)
-        : m_resultingHandle(resultingHandle), m_request(std::move(request)) {};
+    ManagerRequest(uint16_t registeredEventType, TManagerRequest request, Handle &resultingHandle)
+        : star::common::IEvent(std::move(registeredEventType)), m_request(std::move(request)),
+          m_resultingHandle(resultingHandle)
+    {
+    }
 
     TManagerRequest giveMeRequest() const
     {
@@ -24,7 +28,7 @@ template <typename TManagerRequest> class ManagerRequest : public star::common::
     }
 
   private:
-    Handle &m_resultingHandle;
     TManagerRequest m_request;
+    Handle &m_resultingHandle;
 };
 } // namespace star::core::device::system::event

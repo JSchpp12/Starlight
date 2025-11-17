@@ -67,23 +67,6 @@ namespace star {
         resolution_y
     };
 
-    enum Handle_Type : uint8_t{
-        none,
-        shader,
-        object,
-        texture,
-        material,
-        light,
-        map,
-        buffer,
-        pipeline,
-        semaphore,
-        fence,
-        device,
-        subscriber,
-        service_callee
-    };
-
     enum KEY {
         A = GLFW_KEY_A,
         B = GLFW_KEY_B,

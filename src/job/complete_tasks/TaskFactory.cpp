@@ -9,6 +9,8 @@
 #include "core/device/system/EventBus.hpp"
 #include "core/device/system/event/ShaderCompiled.hpp"
 
+#include <starlight/common/HandleTypeRegistry.hpp>
+
 #pragma region BuildPipeline
 
 void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void *device, void *taskSystem,
@@ -19,10 +21,9 @@ void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void 
 
     auto *p = static_cast<PipelineBuildCompletePayload *>(payload);
 
-    auto handle = Handle{
-        .type = Handle_Type::pipeline,
-        .id = p->handleID
-    };
+    auto handle = Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                             common::special_types::PipelineTypeName()),
+                         .id = p->handleID};
 
     std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;
 
@@ -41,6 +42,5 @@ star::job::complete_tasks::CompleteTask star::job::complete_tasks::task_factory:
 #pragma endregion BuildPipeline
 
 #pragma region CompileShaders
-
 
 #pragma endregion CompileShaders
