@@ -76,15 +76,14 @@ std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuf
 
 CalleeRenderDependencies DefaultCreatePolicy::create(DeviceInfo &deviceInfo, const StarTextures::Texture &targetTexture,
                                                      const Handle &commandBufferContainingTarget,
-                                                     const Handle &targetTextureReadySemaphore,
-                                                     const uint8_t &numFramesInFlight)
+                                                     const Handle &targetTextureReadySemaphore)
 {
     assert(deviceInfo.device != nullptr);
 
     return CalleeRenderDependencies{
         .commandBufferContainingTarget = commandBufferContainingTarget,
-        .hostVisibleBuffers = createHostVisibleBuffers(*deviceInfo.device, numFramesInFlight, deviceInfo.surface->getResolution(), targetTexture.getSize())
-    };
+        .hostVisibleBuffers = createHostVisibleBuffers(*deviceInfo.device, deviceInfo.numFramesInFlight,
+                                                       deviceInfo.surface->getResolution(), targetTexture.getSize())};
 }
 
 } // namespace star::service::detail::screen_capture

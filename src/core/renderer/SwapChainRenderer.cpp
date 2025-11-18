@@ -371,6 +371,8 @@ std::vector<star::StarTextures::Texture> star::core::renderer::SwapChainRenderer
     star::core::device::DeviceContext &device, const uint8_t &numFramesInFlight)
 {
     std::vector<StarTextures::Texture> newRenderToImages = std::vector<StarTextures::Texture>();
+    const vk::Extent3D resolution =
+        vk::Extent3D().setWidth(swapChainExtent->width).setHeight(swapChainExtent->height).setDepth(1);
 
     vk::Format format = getColorAttachmentFormat(device);
 
@@ -378,6 +380,7 @@ std::vector<star::StarTextures::Texture> star::core::renderer::SwapChainRenderer
     for (vk::Image &image : this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain))
     {
         auto builder = star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(), image)
+                           .setSizeInfo(star::StarTextures::Texture::CalculateSize(format, resolution, 1, vk::ImageType::e2D, 1), resolution)
                            .setBaseFormat(format)
                            .addViewInfo(vk::ImageViewCreateInfo()
                                             .setViewType(vk::ImageViewType::e2D)

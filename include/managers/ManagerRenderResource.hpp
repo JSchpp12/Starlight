@@ -54,7 +54,7 @@ class ManagerRenderResource : public StarManager
             return *this;
         }
 
-        FinalizedResourceRequest(vk::Semaphore resourceSemaphore) : resourceSemaphore(std::move(resourceSemaphore))
+        explicit FinalizedResourceRequest(vk::Semaphore resourceSemaphore) : resourceSemaphore(std::move(resourceSemaphore))
         {
         }
 

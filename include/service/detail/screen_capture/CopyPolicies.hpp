@@ -1,21 +1,15 @@
 #pragma once
 
 #include "DeviceInfo.hpp"
-
 #include "CalleeRenderDependencies.hpp"
-#include "core/device/managers/ManagerCommandBuffer.hpp"
-#include "core/device/system/EventBus.hpp"
-#include "service/InitParameters.hpp"
 #include "wrappers/graphics/StarCommandBuffer.hpp"
-
-#include <vulkan/vulkan.hpp>
 
 namespace star::service::detail::screen_capture
 {
 class DefaultCopyPolicy
 {
   public:
-    void init(DeviceInfo &deviceInfo, const uint8_t &numFramesInFlight);
+    void init(DeviceInfo &deviceInfo);
 
     void triggerSubmission(CalleeRenderDependencies &targetDeps);
 

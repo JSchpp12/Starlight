@@ -2,14 +2,14 @@
 
 #include "CastHelpers.hpp"
 #include "SubscriberCallbackInfo.hpp"
-#include <starlight/common/Handle.hpp>
+#include "logging/LoggingFactory.hpp"
 
+#include <starlight/common/Handle.hpp>
 #include <starlight/common/HandleTypeRegistry.hpp>
 #include <starlight/common/IEvent.hpp>
 
 #include <cassert>
 #include <functional>
-#include <stdexcept>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>

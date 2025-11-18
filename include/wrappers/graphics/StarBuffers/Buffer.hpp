@@ -121,6 +121,8 @@ class Buffer
 
     static std::string AllocationName(const std::string &allocationName);
 
+    static void LogAllocationFailure(const vk::Result &allocationResult);
+
     friend class Builder;
 };
 } // namespace star::StarBuffers

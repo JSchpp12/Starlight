@@ -39,6 +39,8 @@ class Texture
 
         Builder &setBaseFormat(const vk::Format &nFormat);
 
+        Builder &setSizeInfo(vk::DeviceSize size, vk::Extent3D resolution);
+
         std::unique_ptr<Texture> buildUnique();
 
         Texture build();
@@ -63,6 +65,8 @@ class Texture
 
         std::vector<vk::ImageViewCreateInfo> viewInfos = std::vector<vk::ImageViewCreateInfo>();
         std::optional<vk::SamplerCreateInfo> samplerInfo = std::nullopt;
+        std::optional<vk::DeviceSize> overrideSize = std::nullopt;
+        std::optional<vk::Extent3D> overrideResolution = std::nullopt;
     };
 
     Texture(const Texture &other);
@@ -113,9 +117,13 @@ class Texture
         return size;
     }
 
+    static vk::DeviceSize CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
+                                    const uint32_t &arrayLayers, const vk::ImageType &imageType,
+                                    const uint32_t &mipmapLevels);
+
   protected:
     Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-            const vk::Format &baseFormat);
+            const vk::Format &baseFormat, const vk::Extent3D &baseExtent, vk::DeviceSize size);
 
     Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
             const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo);
@@ -132,13 +140,9 @@ class Texture
     std::shared_ptr<Resources> memoryResources = std::shared_ptr<Resources>();
 
     vk::Device &device;
-    vk::Format baseFormat = vk::Format();
+    vk::Format baseFormat;
     uint32_t mipmapLevels = 0;
-    vk::DeviceSize size;
-
-    static vk::DeviceSize CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
-                                        const uint32_t &arrayLayers, const vk::ImageType &imageType,
-                                        const uint32_t &mipmapLevels);
+    vk::DeviceSize size = 0;
 
     static vk::Extent3D GetLevelExtent(const vk::Extent3D &baseExtent, const uint32_t &level);
 

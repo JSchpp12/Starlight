@@ -2,23 +2,28 @@
 
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
-#include <starlight/common/Handle.hpp>
-
 #include "event/TriggerScreenshot.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "service/InitParameters.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
+#include <starlight/common/Handle.hpp>
+
 #include <concepts>
 
 namespace star::service
 {
+constexpr const std::string ScreenCaptureServiceCalleeTypeName()
+{
+    return "star::service::screen_capture::callee";
+};
+
 template <typename TCopyPolicy>
 concept CopyPolicyLike =
     requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
-             detail::screen_capture::CalleeRenderDependencies &deps, const uint8_t &numFramesInFlight) {
-        { c.init(deviceInfo, numFramesInFlight) } -> std::same_as<void>;
+             detail::screen_capture::CalleeRenderDependencies &deps) {
+        { c.init(deviceInfo) } -> std::same_as<void>;
         { c.registerWithCommandBufferManager() } -> std::same_as<void>;
         { c.triggerSubmission(deps) } -> std::same_as<void>;
     };
@@ -30,13 +35,14 @@ concept WorkerPolicyLike =
     };
 
 template <typename TCreateDependenciesPolicy>
-concept CreateDepsPolicyLike = requires(TCreateDependenciesPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
-                                        const StarTextures::Texture &targetTexture, const Handle &calleeCommandBuffer,
-                                        const uint8_t &numFramesInFlight) {
-    {
-        c.create(deviceInfo, targetTexture, calleeCommandBuffer, calleeCommandBuffer, numFramesInFlight)
-    } -> std::same_as<detail::screen_capture::CalleeRenderDependencies>;
-};
+concept CreateDepsPolicyLike =
+    requires(TCreateDependenciesPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
+             const StarTextures::Texture &targetTexture, const Handle &commandBufferContainingTarget,
+             const Handle &targetTextureReadySemaphore) {
+        {
+            c.create(deviceInfo, targetTexture, commandBufferContainingTarget, targetTextureReadySemaphore)
+        } -> std::same_as<detail::screen_capture::CalleeRenderDependencies>;
+    };
 template <WorkerPolicyLike TWorkerControllerPolicy, typename TCreateDependenciesPolicy, CopyPolicyLike TCopyPolicy>
 class ScreenCapture
 {
@@ -50,10 +56,13 @@ class ScreenCapture
 
     void init(const uint8_t &numFramesInFlight)
     {
+        common::HandleTypeRegistry::instance().registerType(ScreenCaptureServiceCalleeTypeName());
+        m_deviceInfo.numFramesInFlight = numFramesInFlight;
+
         registerWithEventBus();
 
         assert(m_deviceInfo.eventBus != nullptr);
-        m_copyPolicy.init(m_deviceInfo, numFramesInFlight);
+        m_copyPolicy.init(m_deviceInfo);
         initCommandBuffer();
     }
 
@@ -88,6 +97,17 @@ class ScreenCapture
     {
         const auto &screenEvent = static_cast<const event::TriggerScreenshot &>(e);
         assert(m_deviceInfo.taskManager != nullptr && "Task manager must be initialized");
+
+        if (!screenEvent.getCalleeRegistration().isInitialized())
+        {
+            screenEvent.getCalleeRegistration().type =
+                common::HandleTypeRegistry::instance().getTypeGuaranteedExist(ScreenCaptureServiceCalleeTypeName());
+            screenEvent.getCalleeRegistration().id = 0;
+
+            m_calleeDependencyTracker = m_createDependenciesPolicy.create(m_deviceInfo, screenEvent.getTexture(),
+                                                                          screenEvent.getTargetCommandBuffer(),
+                                                                          screenEvent.getTargetTextureReadySemaphore());
+        }
 
         // need way to wait for commands to be submitted BEFORE telling worker to start?
         m_copyPolicy.triggerSubmission(m_calleeDependencyTracker);

@@ -183,10 +183,10 @@ star::StarTextures::Texture::Texture(vk::Device &device, vk::Image &vulkanImage,
 
 star::StarTextures::Texture::Texture(vk::Device &device, vk::Image &vulkanImage,
                                      const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-                                     const vk::Format &baseFormat)
+                                     const vk::Format &baseFormat, const vk::Extent3D &baseExtent, vk::DeviceSize size)
     : device(device), memoryResources(std::make_shared<StarTextures::Resources>(
                           vulkanImage, CreateImageViews(device, vulkanImage, imageViewInfos))),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos))
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)), size(std::move(size))
 {
 }
 
@@ -386,6 +386,15 @@ star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setB
     return *this;
 }
 
+star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setSizeInfo(vk::DeviceSize size,
+                                                                                        vk::Extent3D resolution)
+{
+    overrideSize = std::make_optional(size);
+    overrideResolution = std::make_optional(resolution);
+
+    return *this;
+}
+
 std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builder::buildUnique()
 {
     return std::make_unique<StarTextures::Texture>(build());
@@ -428,7 +437,10 @@ star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
         }
         else
         {
-            return {this->device, this->vulkanImage.value(), this->viewInfos, this->format.value()};
+            assert(overrideSize.has_value() &&
+                   "Size MUST be calculated/provided for externally created/managed texture");
+            return {this->device,         this->vulkanImage.value(),  this->viewInfos,
+                    this->format.value(), overrideResolution.value(), overrideSize.value()};
         }
     }
     else

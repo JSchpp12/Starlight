@@ -23,6 +23,6 @@ struct DefaultCreatePolicy
 
     CalleeRenderDependencies create(DeviceInfo &deviceInfo, const StarTextures::Texture &targetTexture,
                                     const Handle &commandBufferContainingTarget,
-                                    const Handle &targetTextureReadySemaphore, const uint8_t &numFramesInFlight);
+                                    const Handle &targetTextureReadySemaphore);
 };
 } // namespace star::service::detail::screen_capture

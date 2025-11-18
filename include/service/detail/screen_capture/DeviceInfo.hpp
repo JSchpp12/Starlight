@@ -1,10 +1,10 @@
 #pragma once
 
 #include "core/MappedHandleContainer.hpp"
+#include "core/RenderingSurface.hpp"
 #include "core/device/StarDevice.hpp"
 #include "core/device/managers/ManagerCommandBuffer.hpp"
 #include "core/device/managers/Semaphore.hpp"
-#include "core/RenderingSurface.hpp"
 #include "core/device/system/EventBus.hpp"
 #include "job/TaskManager.hpp"
 
@@ -19,5 +19,6 @@ struct DeviceInfo
     core::device::manager::Semaphore *semaphoreManager = nullptr;
     job::TaskManager *taskManager = nullptr;
     const uint64_t *currentFrameCounter = nullptr;
+    uint8_t numFramesInFlight;
 };
-} // namespace star::service::device::screen_capture
+} // namespace star::service::detail::screen_capture

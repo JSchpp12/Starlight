@@ -1,6 +1,10 @@
 #include "StarBuffers/Buffer.hpp"
 
 #include "CastHelpers.hpp"
+#include "logging/LoggingFactory.hpp"
+
+#include <sstream>
+
 /*
  * Initially based off Ive_buffer by Brendan Galea -
  *https://github.com/SaschaWillems/Vulkan/blob/master/base/VulkanBuffer.h
@@ -108,6 +112,8 @@ std::shared_ptr<star::StarBuffers::Resources> StarBuffers::Buffer::CreateBuffer(
 
     if (result != vk::Result::eSuccess)
     {
+        LogAllocationFailure(result);
+        
         throw std::runtime_error("Failed to allocate buffer memory");
     }
 
@@ -164,5 +170,18 @@ StarBuffers::Buffer StarBuffers::Buffer::Builder::build()
 
     return StarBuffers::Buffer(this->allocator, this->instanceCount, this->instanceSize, this->minOffsetAlignment,
                                this->allocInfo, this->buffInfo, this->allocName);
+}
+
+void StarBuffers::Buffer::LogAllocationFailure(const vk::Result &allocationResult){
+    std::ostringstream oss; 
+    oss << "Error occurred during buffer allocation: "; 
+
+    if (allocationResult == vk::Result::eErrorOutOfDeviceMemory){
+        oss << "Out of device memory"; 
+    }else{
+        oss << "Unknown allocation error";
+    }
+
+    core::logging::log(boost::log::trivial::fatal, oss.str());
 }
 } // namespace star

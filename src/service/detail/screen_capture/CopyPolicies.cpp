@@ -1,6 +1,5 @@
 #include "service/detail/screen_capture/CopyPolicies.hpp"
 
-#include "Enums.hpp"
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/device/system/event/StartOfNextFrame.hpp"
@@ -8,10 +7,10 @@
 
 namespace star::service::detail::screen_capture
 {
-void DefaultCopyPolicy::init(DeviceInfo &deviceInfo, const uint8_t &numFramesInFlight)
+void DefaultCopyPolicy::init(DeviceInfo &deviceInfo)
 {
     m_deviceInfo = &deviceInfo;
-    m_doneSemaphores = createSemaphores(*m_deviceInfo->eventBus, numFramesInFlight);
+    m_doneSemaphores = createSemaphores(*m_deviceInfo->eventBus, m_deviceInfo->numFramesInFlight);
 }
 
 void DefaultCopyPolicy::triggerSubmission(CalleeRenderDependencies &targetDeps)
@@ -24,6 +23,7 @@ void DefaultCopyPolicy::recordCommandBuffer(vk::CommandBuffer &commandBuffer, co
                                             const uint64_t &frameIndex)
 {
     core::logging::log(boost::log::trivial::info, "Start record");
+
 }
 
 void DefaultCopyPolicy::addMemoryDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
@@ -53,6 +53,7 @@ vk::Semaphore DefaultCopyPolicy::submitBuffer(StarCommandBuffer &buffer, const i
                                               std::vector<vk::Semaphore> dataSemaphores,
                                               std::vector<vk::PipelineStageFlags> dataWaitPoints)
 {
+    
     return vk::Semaphore();
 }
 
@@ -63,9 +64,12 @@ std::vector<Handle> DefaultCopyPolicy::createSemaphores(core::device::system::Ev
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
-        eventBus.emit(core::device::system::event::ManagerRequest{
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::SemaphoreTypeName()),
-            core::device::manager::SemaphoreRequest{true}, result[i]});
+        eventBus.emit(
+            core::device::system::event::ManagerRequest{common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                                            core::device::manager::SemaphoreEventTypeName()),
+                                                        core::device::manager::SemaphoreRequest{true}, result[i]});
+
+        assert(result[i].isInitialized() && "Emit did not provide a result");
     }
 
     return result;
