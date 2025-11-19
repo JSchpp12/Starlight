@@ -22,38 +22,39 @@ class TriggerScreenshot : public star::common::IEvent
 {
   public:
     TriggerScreenshot(StarTextures::Texture targetTexture, Handle &targetTextureReadySemaphore,
-                      Handle &targetCommandBuffer, Handle &calleeRegistration, std::string screenshotName)
+                      Handle &targetCommandBuffer, Handle &calleeRegistration, const uint8_t &frameInFlightIndex,
+                      std::string screenshotName)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
           m_targetTexture(std::move(targetTexture)), m_targetTextureReadySemaphore(targetTextureReadySemaphore),
           m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration),
-          m_screenshotName(std::move(screenshotName))
+          m_frameInFlightIndex(frameInFlightIndex), m_screenshotName(std::move(screenshotName))
     {
     }
-
     virtual ~TriggerScreenshot() = default;
-
-    std::string getName() const
-    {
-        return {m_screenshotName.begin(), m_screenshotName.begin() + NameSize};
-    }
 
     StarTextures::Texture getTexture() const
     {
         return m_targetTexture;
     }
-
     Handle &getTargetTextureReadySemaphore() const
     {
         return m_targetTextureReadySemaphore;
     }
-
     Handle &getTargetCommandBuffer() const
     {
         return m_targetCommandBuffer;
     }
-
-    Handle &getCalleeRegistration() const{
+    Handle &getCalleeRegistration() const
+    {
         return m_calleeRegistration;
+    }
+    const uint8_t &getFrameInFlight() const
+    {
+        return m_frameInFlightIndex;
+    }
+    std::string getName() const
+    {
+        return {m_screenshotName.begin(), m_screenshotName.begin() + NameSize};
     }
 
   private:
@@ -63,6 +64,7 @@ class TriggerScreenshot : public star::common::IEvent
     Handle &m_targetTextureReadySemaphore;
     Handle &m_targetCommandBuffer;
     Handle &m_calleeRegistration;
+    const uint8_t &m_frameInFlightIndex;
     std::string m_screenshotName;
 };
 } // namespace star::event

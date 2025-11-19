@@ -15,8 +15,7 @@ class Worker
     struct WorkerConcept
     {
         virtual ~WorkerConcept() = default;
-        virtual void doStart() = 0;
-        virtual void doStop() = 0;
+        virtual void doCleanup() = 0;
         virtual void doQueueTask(void *task) = 0;
         virtual void doSetCompleteMessageCommunicationStructure(
             TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages) = 0;
@@ -37,14 +36,10 @@ class Worker
     {
         return m_impl.get();
     }
-    void stop()
-    {
-        m_impl->doStop();
-    }
 
-    void start()
+    void cleanup()
     {
-        m_impl->doStart();
+        m_impl->doCleanup();
     }
 
     void queueTask(void *task)
@@ -70,16 +65,10 @@ class Worker
         WorkerModel &operator=(WorkerModel &&) = default;
         virtual ~WorkerModel() = default;
 
-        void doStart() override
+        void doCleanup() override
         {
-            m_worker.start();
+            m_worker.cleanup();
         }
-
-        void doStop() override
-        {
-            m_worker.stop();
-        }
-
         void doQueueTask(void *task) override
         {
             m_worker.queueTask(task);

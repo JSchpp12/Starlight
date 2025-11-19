@@ -69,29 +69,31 @@ class Texture
         std::optional<vk::Extent3D> overrideResolution = std::nullopt;
     };
 
-    Texture(const Texture &other);
-
-    // copy assignment operator
-    Texture &operator=(const Texture &other)
-    {
-        if (this != &other)
-        {
-            this->memoryResources = other.memoryResources;
-            this->device = other.device;
-            this->baseFormat = other.baseFormat;
-            this->mipmapLevels = other.mipmapLevels;
-        }
-
-        return *this;
-    }
-
+    Texture() = default;
     virtual ~Texture() = default;
 
+    vk::ImageLayout &getImageLayout()
+    {
+        return memoryResources->trackedImageLayout;
+    }
+    const vk::Extent3D &getBaseExtent() const
+    {
+        assert(baseExtent.height != 0 && baseExtent.width != 0 && baseExtent.depth != 0);
+
+        return baseExtent;
+    }
+    const vk::ImageLayout &getImageLayout() const
+    {
+        return memoryResources->trackedImageLayout;
+    }
+    void setImageLayout(vk::ImageLayout imageLayout)
+    {
+        memoryResources->trackedImageLayout = std::move(imageLayout);
+    }
     void cleanupRender(vk::Device &device)
     {
         memoryResources->cleanupRender(device);
     }
-
     const vk::Image &getVulkanImage() const
     {
         return this->memoryResources->image;
@@ -118,15 +120,16 @@ class Texture
     }
 
     static vk::DeviceSize CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
-                                    const uint32_t &arrayLayers, const vk::ImageType &imageType,
-                                    const uint32_t &mipmapLevels);
+                                        const uint32_t &arrayLayers, const vk::ImageType &imageType,
+                                        const uint32_t &mipmapLevels);
 
   protected:
     Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
             const vk::Format &baseFormat, const vk::Extent3D &baseExtent, vk::DeviceSize size);
 
     Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-            const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo);
+            const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo, const vk::Extent3D &baseExtent,
+            vk::DeviceSize size);
 
     Texture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
             const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
@@ -139,9 +142,9 @@ class Texture
 
     std::shared_ptr<Resources> memoryResources = std::shared_ptr<Resources>();
 
-    vk::Device &device;
     vk::Format baseFormat;
     uint32_t mipmapLevels = 0;
+    vk::Extent3D baseExtent = {0, 0, 0};
     vk::DeviceSize size = 0;
 
     static vk::Extent3D GetLevelExtent(const vk::Extent3D &baseExtent, const uint32_t &level);

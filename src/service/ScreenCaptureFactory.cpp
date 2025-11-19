@@ -4,6 +4,8 @@
 #include "service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 #include "service/detail/screen_capture/WorkerControllerPolicies.hpp"
 
+#include "worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
+
 #include <ostream>
 
 namespace star::service::screen_capture
@@ -40,14 +42,15 @@ std::vector<job::worker::Worker::WorkerConcept *> Builder::registerWorkers()
     for (uint8_t i = 0; i < m_numWorkers; i++)
     {
         std::ostringstream oss;
-        oss << "Image Writer_";
-        oss << std::to_string(i);
+        oss << "Image Writer_" << std::to_string(i);
 
         newWorkers[i] =
             m_taskManager
                 .registerWorker(
                     typeid(job::tasks::write_image_to_disk::WriteImageTask),
-                    {job::worker::DefaultWorker<job::tasks::write_image_to_disk::WriteImageTask, 500>(oss.str())})
+                    {job::worker::DefaultWorker(
+                        job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::write_image_to_disk::WriteImageTask, 500>{},
+                        oss.str())})
                 .getRawConcept();
     }
 

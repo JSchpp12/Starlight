@@ -14,9 +14,9 @@ constexpr std::string StartOfNextFrameName()
 class StartOfNextFrame : public star::common::IEvent
 {
   public:
-    StartOfNextFrame(const uint64_t &frameIndex)
+    StartOfNextFrame(const uint64_t &frameIndex, const uint8_t &frameInFlightIndex)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(StartOfNextFrameName())),
-          m_frameIndex(frameIndex)
+          m_frameIndex(frameIndex), m_frameInFlightIndex(frameInFlightIndex)
     {
     }
 
@@ -25,7 +25,13 @@ class StartOfNextFrame : public star::common::IEvent
         return m_frameIndex;
     }
 
+    const uint8_t &getFrameInFlightIndex() const
+    {
+        return m_frameInFlightIndex;
+    }
+
   private:
     const uint64_t &m_frameIndex;
+    const uint8_t &m_frameInFlightIndex;
 };
 } // namespace star::core::device::system::event

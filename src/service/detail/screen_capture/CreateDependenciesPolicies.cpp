@@ -74,16 +74,18 @@ std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuf
     return buffers;
 }
 
-CalleeRenderDependencies DefaultCreatePolicy::create(DeviceInfo &deviceInfo, const StarTextures::Texture &targetTexture,
+CalleeRenderDependencies DefaultCreatePolicy::create(DeviceInfo &deviceInfo, StarTextures::Texture targetTexture,
                                                      const Handle &commandBufferContainingTarget,
                                                      const Handle &targetTextureReadySemaphore)
 {
     assert(deviceInfo.device != nullptr);
 
-    return CalleeRenderDependencies{
-        .commandBufferContainingTarget = commandBufferContainingTarget,
-        .hostVisibleBuffers = createHostVisibleBuffers(*deviceInfo.device, deviceInfo.numFramesInFlight,
-                                                       deviceInfo.surface->getResolution(), targetTexture.getSize())};
+    return CalleeRenderDependencies{.commandBufferContainingTarget = commandBufferContainingTarget,
+                                    .targetTextureReadySemaphore = targetTextureReadySemaphore,
+                                    .targetTexture = targetTexture,
+                                    .hostVisibleBuffers = createHostVisibleBuffers(*deviceInfo.device, 1,
+                                                                                   deviceInfo.surface->getResolution(),
+                                                                                   targetTexture.getSize())};
 }
 
 } // namespace star::service::detail::screen_capture

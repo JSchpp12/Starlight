@@ -15,7 +15,7 @@ namespace star::job
 class TaskManager
 {
   public:
-    TaskManager() : m_completeTasks(std::make_unique<job::TaskContainer<job::complete_tasks::CompleteTask, 128>>()) {};
+    TaskManager() : m_completeTasks(std::make_unique<job::TaskContainer<job::complete_tasks::CompleteTask, 128>>()){};
     ~TaskManager() = default;
 
     TaskManager(const TaskManager &) = delete;
@@ -28,39 +28,19 @@ class TaskManager
     {
         newWorker.setCompleteMessageCommunicationStructure(m_completeTasks.get());
 
-        if (m_allRunning)
-        {
-            newWorker.start();
-        }
-
         m_workers[taskType].emplace_back(std::move(newWorker));
         return m_workers[taskType].back();
     }
-
-    void startAll()
+    
+    void cleanup()
     {
         for (auto &[type, list] : m_workers)
         {
             for (auto &w : list)
             {
-                w.start();
+                w.cleanup();
             }
         }
-
-        m_allRunning = true;
-    }
-
-    void stopAll()
-    {
-        for (auto &[type, list] : m_workers)
-        {
-            for (auto &w : list)
-            {
-                w.stop();
-            }
-        }
-
-        m_allRunning = false;
     }
 
     template <typename TTask> void submitTask(TTask &&newTask)
@@ -97,9 +77,6 @@ class TaskManager
         std::unordered_map<std::type_index, std::vector<worker::Worker>>();
 
     std::unique_ptr<job::TaskContainer<job::complete_tasks::CompleteTask, 128>> m_completeTasks = nullptr;
-
-    // std::unordered_map<std::type_index, FrameScheduler> m_frameSchedulers;
-    bool m_allRunning = false;
 
     worker::Worker *getWorker(const std::type_index &taskType, const size_t &index = 0)
     {

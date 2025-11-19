@@ -122,12 +122,6 @@ vk::Filter star::StarTextures::Texture::SelectTextureFiltering(const vk::Physica
     return filterType;
 }
 
-star::StarTextures::Texture::Texture(const Texture &other)
-    : memoryResources(other.memoryResources), device(other.device), baseFormat(other.baseFormat),
-      mipmapLevels(other.mipmapLevels), size(other.size)
-{
-}
-
 vk::ImageView star::StarTextures::Texture::getImageView(const vk::Format *requestedFormat) const
 {
     if (requestedFormat != nullptr)
@@ -152,9 +146,9 @@ star::StarTextures::Texture::Texture(vk::Device &device, VmaAllocator &allocator
                                      const VmaAllocationCreateInfo &allocationCreateInfo,
                                      const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
                                      const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo)
-    : device(device), memoryResources(CreateResource(device, baseFormat, allocator, allocationCreateInfo, createInfo,
-                                                     allocationName, imageViewInfos, samplerInfo)),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)),
+    : memoryResources(CreateResource(device, baseFormat, allocator, allocationCreateInfo, createInfo, allocationName,
+                                     imageViewInfos, samplerInfo)),
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)), baseExtent(createInfo.extent),
       size(CalculateSize(baseFormat, createInfo.extent, createInfo.arrayLayers, createInfo.imageType, mipmapLevels))
 {
 }
@@ -164,29 +158,31 @@ star::StarTextures::Texture::Texture(vk::Device &device, VmaAllocator &allocator
                                      const VmaAllocationCreateInfo &allocationCreateInfo,
                                      const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
                                      const vk::Format &baseFormat)
-    : device(device), memoryResources(CreateResource(device, baseFormat, allocator, allocationCreateInfo, createInfo,
-                                                     allocationName, imageViewInfos)),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)),
+    : memoryResources(CreateResource(device, baseFormat, allocator, allocationCreateInfo, createInfo, allocationName,
+                                     imageViewInfos)),
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)), baseExtent(createInfo.extent),
       size(CalculateSize(baseFormat, createInfo.extent, createInfo.arrayLayers, createInfo.imageType, mipmapLevels))
 {
 }
 
 star::StarTextures::Texture::Texture(vk::Device &device, vk::Image &vulkanImage,
                                      const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-                                     const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo)
-    : device(device), baseFormat(baseFormat),
+                                     const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo,
+                                     const vk::Extent3D &baseExtent, vk::DeviceSize size)
+    : baseFormat(baseFormat),
       memoryResources(std::make_shared<StarTextures::Resources>(
           vulkanImage, CreateImageViews(device, vulkanImage, imageViewInfos), CreateImageSampler(device, samplerInfo))),
-      mipmapLevels(ExtractMipmapLevels(imageViewInfos))
+      mipmapLevels(ExtractMipmapLevels(imageViewInfos)), baseExtent(baseExtent), size(std::move(size))
 {
 }
 
 star::StarTextures::Texture::Texture(vk::Device &device, vk::Image &vulkanImage,
                                      const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
                                      const vk::Format &baseFormat, const vk::Extent3D &baseExtent, vk::DeviceSize size)
-    : device(device), memoryResources(std::make_shared<StarTextures::Resources>(
-                          vulkanImage, CreateImageViews(device, vulkanImage, imageViewInfos))),
-      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)), size(std::move(size))
+    : memoryResources(std::make_shared<StarTextures::Resources>(vulkanImage,
+                                                                CreateImageViews(device, vulkanImage, imageViewInfos))),
+      baseFormat(baseFormat), mipmapLevels(ExtractMipmapLevels(imageViewInfos)), baseExtent(baseExtent),
+      size(std::move(size))
 {
 }
 
@@ -430,15 +426,15 @@ star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
     }
     else if (this->vulkanImage.has_value())
     {
+        assert(overrideSize.has_value() && "Size MUST be calculated/provided for externally created/managed texture");
         if (this->samplerInfo.has_value())
         {
-            return {this->device, this->vulkanImage.value(), this->viewInfos, this->format.value(),
-                    this->samplerInfo.value()};
+            return {this->device,         this->vulkanImage.value(), this->viewInfos,
+                    this->format.value(), this->samplerInfo.value(), overrideResolution.value(),
+                    overrideSize.value()};
         }
         else
         {
-            assert(overrideSize.has_value() &&
-                   "Size MUST be calculated/provided for externally created/managed texture");
             return {this->device,         this->vulkanImage.value(),  this->viewInfos,
                     this->format.value(), overrideResolution.value(), overrideSize.value()};
         }

@@ -11,9 +11,9 @@ namespace star::service::detail::screen_capture
 struct CalleeRenderDependencies
 {
     Handle commandBufferContainingTarget;
+    Handle targetTextureReadySemaphore;
+    StarTextures::Texture targetTexture;
     std::vector<StarBuffers::Buffer> hostVisibleBuffers;
-    std::vector<StarTextures::Texture> transferDstTextures;
-    std::vector<Handle> targetTextureReadySemaphores;
 };
 
 } // namespace star::service::detail::screen_capture

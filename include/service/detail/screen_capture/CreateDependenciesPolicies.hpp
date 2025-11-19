@@ -21,7 +21,7 @@ struct DefaultCreatePolicy
                                                                       const vk::Extent2D &renderingResolution,
                                                                       const vk::DeviceSize &bufferSize);
 
-    CalleeRenderDependencies create(DeviceInfo &deviceInfo, const StarTextures::Texture &targetTexture,
+    CalleeRenderDependencies create(DeviceInfo &deviceInfo, StarTextures::Texture targetTexture,
                                     const Handle &commandBufferContainingTarget,
                                     const Handle &targetTextureReadySemaphore);
 };

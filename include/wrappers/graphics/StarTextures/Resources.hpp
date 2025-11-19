@@ -17,6 +17,7 @@ class Resources
     vk::Image image = vk::Image();
     std::unordered_map<vk::Format, vk::ImageView> views = std::unordered_map<vk::Format, vk::ImageView>();
     std::optional<vk::Sampler> sampler = std::nullopt;
+    vk::ImageLayout trackedImageLayout = vk::ImageLayout::eUndefined;
 
     Resources(const vk::Image &image);
     Resources(const vk::Image &image, const std::unordered_map<vk::Format, vk::ImageView> &views);

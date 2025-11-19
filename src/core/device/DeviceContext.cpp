@@ -4,6 +4,7 @@
 #include "job/tasks/TaskFactory.hpp"
 #include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
+#include "job/worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
 
 #include "core/device/system/event/StartOfNextFrame.hpp"
 
@@ -61,7 +62,7 @@ void star::core::device::DeviceContext::waitIdle()
 {
     if (m_ownsResources)
     {
-        m_taskManager.stopAll();
+        m_taskManager.cleanup();
         m_transferWorker->stopAll();
     }
 
@@ -73,7 +74,7 @@ void star::core::device::DeviceContext::prepareForNextFrame(const uint8_t &frame
     assert(frameInFlightIndex < m_frameInFlightTrackingInfo.size());
 
     handleCompleteMessages();
-    broadcastFrameStart();
+    broadcastFrameStart(frameInFlightIndex);
 
     m_frameInFlightTrackingInfo[frameInFlightIndex].numOfTimesFrameProcessed++;
     m_frameCounter++;
@@ -178,23 +179,23 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
     }
 
     // create worker for pipeline building
-    job::worker::Worker pipelineWorker{
-        job::worker::DefaultWorker<job::tasks::build_pipeline::BuildPipelineTask, 64>{"Pipeline Builder"}};
+    job::worker::Worker pipelineWorker{job::worker::DefaultWorker{
+        job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::build_pipeline::BuildPipelineTask,
+                                                                     64>{},
+        "Pipeline_Builder"}};
     m_taskManager.registerWorker(typeid(job::tasks::build_pipeline::BuildPipelineTask), std::move(pipelineWorker));
 
     // create worker for shader compilation
-    job::worker::Worker shaderWorker{
-        job::worker::DefaultWorker<job::tasks::compile_shader::CompileShaderTask, 64>{"Shader Compiler"}};
+    job::worker::Worker shaderWorker{job::worker::DefaultWorker{
+        job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::compile_shader::CompileShaderTask,
+        64>{}, "Shader_Compiler"}};
     m_taskManager.registerWorker(typeid(job::tasks::compile_shader::CompileShaderTask), std::move(shaderWorker));
-
-    m_taskManager.startAll();
 }
 
 void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight) const
 {
     std::ostringstream oss;
-    oss << "Initializing device context: \n \tNumber of frames in flight: ";
-    oss << std::to_string(numFramesInFlight);
+    oss << "Initializing device context: \n \tNumber of frames in flight: " << std::to_string(numFramesInFlight);
     core::logging::log(boost::log::trivial::info, oss.str());
 }
 
@@ -254,7 +255,7 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
     }
 }
 
-void star::core::device::DeviceContext::broadcastFrameStart()
+void star::core::device::DeviceContext::broadcastFrameStart(const uint8_t &frameInFlightIndex)
 {
-    m_eventBus.emit(star::core::device::system::event::StartOfNextFrame{m_frameCounter});
+    m_eventBus.emit(star::core::device::system::event::StartOfNextFrame{m_frameCounter, frameInFlightIndex});
 }

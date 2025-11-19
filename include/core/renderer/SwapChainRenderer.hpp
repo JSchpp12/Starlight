@@ -36,10 +36,6 @@ class SwapChainRenderer : public Renderer
 
     void pollEvents();
 
-    void triggerScreenshot(const std::string &path) {
-        // this->screenshotCommandBuffer->takeScreenshot(path);
-    };
-
     vk::Extent2D getMainExtent() const
     {
         return *this->swapChainExtent;
@@ -141,5 +137,7 @@ class SwapChainRenderer : public Renderer
     void addSemaphoresToRenderingContext(core::device::DeviceContext &context);
 
     void addFencesToRenderingContext(core::device::DeviceContext &context);
+
+    std::vector<vk::ImageMemoryBarrier2> getImageBarriersForThisFrame();
 };
 } // namespace star::core::renderer

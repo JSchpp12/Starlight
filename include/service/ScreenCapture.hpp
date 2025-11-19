@@ -22,10 +22,10 @@ constexpr const std::string ScreenCaptureServiceCalleeTypeName()
 template <typename TCopyPolicy>
 concept CopyPolicyLike =
     requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
-             detail::screen_capture::CalleeRenderDependencies &deps) {
+             detail::screen_capture::CalleeRenderDependencies &deps, const uint8_t &frameInFlightIndex) {
         { c.init(deviceInfo) } -> std::same_as<void>;
         { c.registerWithCommandBufferManager() } -> std::same_as<void>;
-        { c.triggerSubmission(deps) } -> std::same_as<void>;
+        { c.triggerSubmission(deps, frameInFlightIndex) } -> std::same_as<void>;
     };
 
 template <typename TWorkerControllerPolicy>
@@ -37,7 +37,7 @@ concept WorkerPolicyLike =
 template <typename TCreateDependenciesPolicy>
 concept CreateDepsPolicyLike =
     requires(TCreateDependenciesPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
-             const StarTextures::Texture &targetTexture, const Handle &commandBufferContainingTarget,
+             StarTextures::Texture targetTexture, const Handle &commandBufferContainingTarget,
              const Handle &targetTextureReadySemaphore) {
         {
             c.create(deviceInfo, targetTexture, commandBufferContainingTarget, targetTextureReadySemaphore)
@@ -110,7 +110,7 @@ class ScreenCapture
         }
 
         // need way to wait for commands to be submitted BEFORE telling worker to start?
-        m_copyPolicy.triggerSubmission(m_calleeDependencyTracker);
+        m_copyPolicy.triggerSubmission(m_calleeDependencyTracker, screenEvent.getFrameInFlight());
 
         m_workerPolicy.addWriteTask(
             job::tasks::write_image_to_disk::Create(screenEvent.getTexture(), screenEvent.getName()));
@@ -132,11 +132,6 @@ class ScreenCapture
         for (auto &buffer : m_calleeDependencyTracker.hostVisibleBuffers)
         {
             buffer.cleanupRender(device);
-        }
-
-        for (auto &texture : m_calleeDependencyTracker.transferDstTextures)
-        {
-            texture.cleanupRender(device);
         }
     }
 
