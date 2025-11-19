@@ -115,7 +115,7 @@ star::core::device::manager::ManagerCommandBuffer::Request star::core::renderer:
         .recordBufferCallback = std::bind(&SwapChainRenderer::recordCommandBuffer, this, std::placeholders::_1,
                                           std::placeholders::_2, std::placeholders::_3),
         .order = Command_Buffer_Order::main_render_pass,
-        .orderIndex = 0,
+        .orderIndex = Command_Buffer_Order_Index::first,
         .type = Queue_Type::Tgraphics,
         .waitStage = vk::PipelineStageFlagBits::eFragmentShader,
         .willBeSubmittedEachFrame = true,

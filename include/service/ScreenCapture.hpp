@@ -138,6 +138,7 @@ class ScreenCapture
     void registerWithEventBus()
     {
         assert(m_deviceInfo.eventBus != nullptr);
+        
         this->m_deviceInfo.eventBus->subscribe(
             star::event::TriggerScreenshotTypeName(),
             {[this](const star::common::IEvent &e, bool &keepAlive) { this->eventCallback(e, keepAlive); },

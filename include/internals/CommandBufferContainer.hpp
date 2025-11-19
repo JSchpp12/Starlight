@@ -118,15 +118,15 @@ class CommandBufferContainer
                                                     const uint64_t &currentFrameIndex,
                                                     std::vector<vk::Semaphore> *waitSemaphores = nullptr);
 
-    star::Handle add(std::unique_ptr<CompleteRequest> newRequest, const bool &willBeSubmittedEachFrame,
+    star::Handle add(std::shared_ptr<CompleteRequest> newRequest, const bool &willBeSubmittedEachFrame,
                      const star::Queue_Type &type, const star::Command_Buffer_Order &order,
                      const star::Command_Buffer_Order_Index &subOrder);
 
-    bool shouldSubmitThisBuffer(const size_t &bufferIndex);
+    bool shouldSubmitThisBuffer(const Handle &bufferHandle);
 
-    void resetThisBufferStatus(const size_t &bufferIndex);
+    void resetThisBufferStatus(const Handle &bufferHandle);
 
-    void setToSubmitThisBuffer(const size_t &bufferIndex);
+    void setToSubmitThisBuffer(const Handle &bufferHandle);
 
     CompleteRequest &get(const star::Handle &bufferHandle);
 
@@ -205,11 +205,9 @@ class CommandBufferContainer
       private:
     };
 
-    std::vector<std::unique_ptr<CompleteRequest>> allBuffers = std::vector<std::unique_ptr<CompleteRequest>>();
-    std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>> bufferGroupsWithNoSubOrder =
-        std::unordered_map<star::Command_Buffer_Order, std::unique_ptr<GenericBufferGroupInfo>>();
-    std::unordered_map<star::Command_Buffer_Order, std::vector<CompleteRequest *>> bufferGroupsWithSubOrders =
-        std::unordered_map<star::Command_Buffer_Order, std::vector<CompleteRequest *>>();
+    std::vector<std::shared_ptr<CompleteRequest>> allBuffers = std::vector<std::shared_ptr<CompleteRequest>>();
+    std::unordered_map<star::Command_Buffer_Order, std::vector<Handle>> bufferGroupsWithSubOrders =
+        std::unordered_map<star::Command_Buffer_Order, std::vector<Handle>>();
 
     // 0 - no
     // 1 - dynamic submit
@@ -218,12 +216,6 @@ class CommandBufferContainer
 
     // Indicates if all semaphores are updated with the proper order of execution
     bool subOrderSemaphoresUpToDate = false;
-
-    void waitUntilOrderGroupReady(core::device::StarDevice &device, const int &frameIndex,
-                                  const star::Command_Buffer_Order &order, const star::Queue_Type &type);
-
-    std::vector<std::reference_wrapper<CompleteRequest>> getAllBuffersOfTypeAndOrderReadyToSubmit(
-        const star::Command_Buffer_Order &order, const star::Queue_Type &type, bool triggerReset = false);
 
     void updateSemaphores();
 };

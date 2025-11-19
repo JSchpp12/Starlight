@@ -21,8 +21,6 @@ void DefaultCopyPolicy::triggerSubmission(CalleeRenderDependencies &targetDeps, 
 
     m_deviceInfo->commandManager->submitDynamicBuffer(m_commandBuffer);
 
-    targetDeps.targetTexture.setImageLayout(vk::ImageLayout::eTransferSrcOptimal);
-
     registerListenerForNextFrameStart(targetDeps, frameInFlightIndex);
 }
 
@@ -121,9 +119,10 @@ void DefaultCopyPolicy::registerWithCommandBufferManager()
             .recordBufferCallback = std::bind(&DefaultCopyPolicy::recordCommandBuffer, this, std::placeholders::_1,
                                               std::placeholders::_2, std::placeholders::_3),
             .order = star::Command_Buffer_Order::after_presentation,
-            .orderIndex = Command_Buffer_Order_Index::dont_care,
+            .orderIndex = Command_Buffer_Order_Index::first,
             .type = Queue_Type::Ttransfer,
             .waitStage = vk::PipelineStageFlagBits::eTransfer,
+            .recordOnce = false,
             .willBeSubmittedEachFrame = false,
             .overrideBufferSubmissionCallback =
                 std::bind(&DefaultCopyPolicy::submitBuffer, this, std::placeholders::_1, std::placeholders::_2,

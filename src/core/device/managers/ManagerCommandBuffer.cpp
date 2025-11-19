@@ -11,7 +11,7 @@ star::core::device::manager::ManagerCommandBuffer::ManagerCommandBuffer(StarDevi
 
 void star::core::device::manager::ManagerCommandBuffer::cleanup(StarDevice &device)
 {
-    buffers.cleanup(device);
+
 }
 
 star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevice &device,
@@ -20,7 +20,7 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
 {
 
     star::Handle newHandle = this->buffers.add(
-        std::make_unique<CommandBufferContainer::CompleteRequest>(
+        std::make_shared<CommandBufferContainer::CompleteRequest>(
             request.recordBufferCallback,
             std::make_unique<StarCommandBuffer>(device.getVulkanDevice(), this->numFramesInFlight,
                                                 device.getCommandPool(request.type), request.type,
@@ -123,7 +123,7 @@ void star::core::device::manager::ManagerCommandBuffer::handleDynamicBufferReque
     {
         Handle dynamicBufferRequest = ManagerCommandBuffer::dynamicBuffersToSubmit.top();
 
-        this->buffers.setToSubmitThisBuffer(dynamicBufferRequest.getID());
+        this->buffers.setToSubmitThisBuffer(dynamicBufferRequest);
 
         ManagerCommandBuffer::dynamicBuffersToSubmit.pop();
     }
