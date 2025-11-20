@@ -149,11 +149,11 @@ void StarEngine::run()
         currentScene->getPresentationRenderer()->submitPresentation(frameInFlightIndex, &allBuffersSubmitted);
         this->deviceManager.getContext(defaultDevice).getTransferWorker().update();
 
-        deviceManager.getContext(defaultDevice)
-            .getManagerCommandBuffer()
-            .m_manager.submitPostPresentationCommands(
-                deviceManager.getContext(defaultDevice).getDevice(), frameInFlightIndex,
-                deviceManager.getContext(defaultDevice).getCurrentFrameIndex(), allBuffersSubmitted);
+        // deviceManager.getContext(defaultDevice)
+        //     .getManagerCommandBuffer()
+        //     .m_manager.submitPostPresentationCommands(
+        //         deviceManager.getContext(defaultDevice).getDevice(), frameInFlightIndex,
+        //         deviceManager.getContext(defaultDevice).getCurrentFrameIndex(), allBuffersSubmitted);
     }
 
     deviceManager.getContext(defaultDevice).waitIdle();

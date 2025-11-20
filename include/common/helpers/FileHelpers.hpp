@@ -31,7 +31,7 @@ std::string GetFullPath(const std::string &pathToFile);
 
 std::string GetFileNameWithoutExtension(const std::string &pathToFile);
 
-boost::filesystem::path GetParentDirectory(const std::string &pathToFile);
+std::optional<boost::filesystem::path> GetParentDirectory(const std::string &pathToFile);
 
 Shader_Stage GetStageOfShader(std::string_view pathToFile);
 

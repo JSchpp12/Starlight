@@ -1,6 +1,7 @@
 #include "Compiler.hpp"
 
 #include "core/graphics/shader/BasicIncluder.hpp"
+#include "logging/LoggingFactory.hpp"
 namespace star
 {
 
@@ -91,11 +92,11 @@ shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath)
     boost::filesystem::path parent;
     try
     {
-        parent = file_helpers::GetParentDirectory(filePath);
+        parent = file_helpers::GetParentDirectory(filePath).value();
     }
     catch (const std::exception &e)
     {
-        std::cout << "Unable to find parent directory. Includes may not function" << "\n";
+        core::logging::log(boost::log::trivial::error, "Unable to find parent directory. Includes may not function");
         parent = filePath;
     }
     options.SetIncluder(std::make_unique<core::graphics::shader::BasicIncluder>(std::vector<std::string>{parent.string()}));

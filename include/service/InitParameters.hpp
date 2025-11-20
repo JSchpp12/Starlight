@@ -10,7 +10,6 @@
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
 #include "device/system/EventBus.hpp"
-#include "tasks/TaskFactory.hpp"
 
 namespace star::service
 {
@@ -23,6 +22,7 @@ struct InitParameters
     job::TaskManager &taskManager;
     core::device::manager::GraphicsContainer &graphicsManagers;
     core::device::manager::ManagerCommandBuffer &commandBufferManager;
+    const core::FrameInFlightTracking &frameTracker;
     job::TransferWorker &transferWorker;
     ManagerRenderResource &renderResourceManager;
     const uint64_t &currentFrameCounter;

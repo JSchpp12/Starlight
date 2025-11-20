@@ -227,9 +227,9 @@ class DeviceContext
         return m_frameCounter;
     }
 
-    const FrameInFlightTracking &getFrameInFlightTracking(const uint8_t &frameInFlightIndex) const
+    const FrameInFlightTracking &getFrameInFlightTracking() const
     {
-        return m_frameInFlightTrackingInfo[frameInFlightIndex];
+        return m_frameInFlightTrackingInfo;
     }
 
     void registerService(service::Service service, const uint8_t &numFramesInFlight);
@@ -237,7 +237,7 @@ class DeviceContext
   private:
     bool m_ownsResources = false;
     uint64_t m_frameCounter = 0;
-    std::vector<FrameInFlightTracking> m_frameInFlightTrackingInfo;
+    FrameInFlightTracking m_frameInFlightTrackingInfo;
     Handle m_deviceID;
     RenderingSurface m_surface;
     std::shared_ptr<StarDevice> m_device;

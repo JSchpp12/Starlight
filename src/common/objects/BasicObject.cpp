@@ -70,7 +70,7 @@ std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getS
 
 std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core::device::DeviceContext &context)
 {
-    auto parent = file_helpers::GetParentDirectory(m_objFilePath).string();
+    auto parent = file_helpers::GetParentDirectory(m_objFilePath).value().string();
 
     std::cout << "Loading object file: " << m_objFilePath << std::endl;
 
@@ -181,7 +181,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
 
 std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(const std::string &filePath)
 {
-    auto parentDirectory = file_helpers::GetParentDirectory(filePath).string();
+    auto parentDirectory = file_helpers::GetParentDirectory(filePath).value().string();
 
     if (!star::file_helpers::FileExists(filePath))
     {

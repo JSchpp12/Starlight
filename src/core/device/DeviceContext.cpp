@@ -40,7 +40,7 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8
     logInit(numFramesInFlight);
 
     m_deviceID = deviceID;
-    m_frameInFlightTrackingInfo.resize(numFramesInFlight);
+    m_frameInFlightTrackingInfo = FrameInFlightTracking(numFramesInFlight);
 
     m_surface.init(instance, window);
     m_device =
@@ -71,13 +71,11 @@ void star::core::device::DeviceContext::waitIdle()
 
 void star::core::device::DeviceContext::prepareForNextFrame(const uint8_t &frameInFlightIndex)
 {
-    assert(frameInFlightIndex < m_frameInFlightTrackingInfo.size());
+    m_frameInFlightTrackingInfo.getNumOfTimesFrameProcessed(frameInFlightIndex)++;
+    m_frameCounter++;
 
     handleCompleteMessages();
     broadcastFrameStart(frameInFlightIndex);
-
-    m_frameInFlightTrackingInfo[frameInFlightIndex].numOfTimesFrameProcessed++;
-    m_frameCounter++;
 }
 
 star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapchainSupportDetails()
@@ -210,6 +208,7 @@ void star::core::device::DeviceContext::registerService(service::Service service
                                    m_taskManager,
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
+                                   m_frameInFlightTrackingInfo,
                                    *m_transferWorker,
                                    *m_renderResourceManager,
                                    m_frameCounter};
@@ -226,6 +225,7 @@ void star::core::device::DeviceContext::setAllServiceParameters()
                                    m_taskManager,
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
+                                   m_frameInFlightTrackingInfo,
                                    *m_transferWorker,
                                    *m_renderResourceManager,
                                    m_frameCounter};
@@ -245,6 +245,7 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
                                    m_taskManager,
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
+                                   m_frameInFlightTrackingInfo,
                                    *m_transferWorker,
                                    *m_renderResourceManager,
                                    m_frameCounter};

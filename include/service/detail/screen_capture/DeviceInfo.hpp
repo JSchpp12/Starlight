@@ -3,6 +3,7 @@
 #include "core/MappedHandleContainer.hpp"
 #include "core/RenderingSurface.hpp"
 #include "core/device/StarDevice.hpp"
+#include "core/device/FrameInFlightTracking.hpp"
 #include "core/device/managers/ManagerCommandBuffer.hpp"
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/EventBus.hpp"
@@ -17,6 +18,7 @@ struct DeviceInfo
     core::RenderingSurface *surface = nullptr;
     core::device::system::EventBus *eventBus = nullptr;
     core::device::manager::Semaphore *semaphoreManager = nullptr;
+    const core::FrameInFlightTracking *frameTracker = nullptr;
     job::TaskManager *taskManager = nullptr;
     const uint64_t *currentFrameCounter = nullptr;
     uint8_t numFramesInFlight;

@@ -52,13 +52,12 @@ class TriggerScreenshot : public star::common::IEvent
     {
         return m_frameInFlightIndex;
     }
-    std::string getName() const
+    const std::string &getName() const
     {
-        return {m_screenshotName.begin(), m_screenshotName.begin() + NameSize};
+        return m_screenshotName;
     }
 
   private:
-    static constexpr std::size_t NameSize = 25;
     StarTextures::Texture m_targetTexture;
     vk::Semaphore m_textureReadyForCopy;
     Handle &m_targetTextureReadySemaphore;

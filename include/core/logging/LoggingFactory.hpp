@@ -6,20 +6,11 @@
 
 namespace star::core::logging
 {
-static inline void init()
-{
-    boost::log::add_console_log(std::cout,
-                                boost::log::keywords::format = "[%TimeStamp%] [%ThreadID%] [%Severity%]: %Message%");
-    boost::log::add_common_attributes();
-}
+void init();
 
-static inline boost::log::sources::severity_logger<boost::log::trivial::severity_level> &getLoggerForThread()
-{
-    thread_local boost::log::sources::severity_logger<boost::log::trivial::severity_level> logger;
-    return logger;
-};
+boost::log::sources::severity_logger<boost::log::trivial::severity_level> &getLoggerForThread();
 
-template <typename... Args> static void log(boost::log::trivial::severity_level level, Args &&...args)
+template <typename... Args> void log(boost::log::trivial::severity_level level, Args &&...args)
 {
     auto &logger = getLoggerForThread();
     boost::log::record rec = logger.open_record(boost::log::keywords::severity = level);

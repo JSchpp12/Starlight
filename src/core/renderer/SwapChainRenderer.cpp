@@ -124,7 +124,7 @@ star::core::device::manager::ManagerCommandBuffer::Request star::core::renderer:
             std::bind(&SwapChainRenderer::prepareForSubmission, this, std::placeholders::_1),
         .overrideBufferSubmissionCallback =
             std::bind(&SwapChainRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3, std::placeholders::_4, std::placeholders::_5)};
+                      std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)};
 }
 
 vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceFormat(
@@ -315,11 +315,14 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
 vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
     std::vector<vk::Semaphore> *previousCommandBufferSemaphores, std::vector<vk::Semaphore> dataSemaphores,
-    std::vector<vk::PipelineStageFlags> dataWaitPoints)
+    std::vector<vk::PipelineStageFlags> dataWaitPoints, std::vector<std::optional<uint64_t>> previousSignaledValues)
 {
     std::vector<vk::Semaphore> waitSemaphores = {
         m_renderingContext.recordDependentSemaphores.get(this->imageAcquireSemaphores[frameIndexToBeDrawn])};
     std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+
+    std::vector<vk::Semaphore> waitTimelines;
+    std::vector<uint64_t> waitTimelinesValues;
 
     if (previousCommandBufferSemaphores != nullptr)
     {
@@ -333,20 +336,29 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     assert(dataSemaphores.size() == dataWaitPoints.size());
     for (size_t i = 0; i < dataSemaphores.size(); i++)
     {
-        waitSemaphores.push_back(dataSemaphores[i]);
-        waitStages.push_back(dataWaitPoints[i]);
+        if (previousSignaledValues[i].has_value())
+        {
+            waitTimelines.push_back(dataSemaphores[i]);
+            waitTimelinesValues.push_back(previousSignaledValues[i].value());
+        }
+        else
+        {
+            waitSemaphores.push_back(dataSemaphores[i]);
+            waitStages.push_back(dataWaitPoints[i]);
+        }
     }
 
     uint32_t waitSemaphoreCount = 0;
     CastHelpers::SafeCast<size_t, uint32_t>(waitSemaphores.size(), waitSemaphoreCount);
 
+    auto *signalSemaphore = &m_renderingContext.recordDependentSemaphores.get(
+        this->imageAvailableSemaphores[this->currentSwapChainImageIndex]);
     vk::SubmitInfo submitInfo{};
     submitInfo.commandBufferCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores.data();
     submitInfo.waitSemaphoreCount = waitSemaphoreCount;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &m_renderingContext.recordDependentSemaphores.get(
-        this->imageAvailableSemaphores[this->currentSwapChainImageIndex]);
+    submitInfo.pSignalSemaphores = signalSemaphore;
     submitInfo.pWaitDstStageMask = waitStages.data();
     submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
     submitInfo.commandBufferCount = 1;

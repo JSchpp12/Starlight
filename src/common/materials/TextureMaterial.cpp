@@ -91,7 +91,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::get
 std::string star::TextureMaterial::GetMatchingFile(const std::string &filePath)
 {
     const auto foundPath = file_helpers::FindFileInDirectoryWithSameNameIgnoreFileType(
-        file_helpers::GetParentDirectory(filePath).string(),
+        file_helpers::GetParentDirectory(filePath).value().string(),
         file_helpers::GetFileNameWithoutExtension(filePath));
 
     if (!foundPath.has_value())

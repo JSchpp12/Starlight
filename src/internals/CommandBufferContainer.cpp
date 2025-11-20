@@ -3,12 +3,10 @@
 #include <syncstream>
 
 star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFlight, core::device::StarDevice &device)
-    : bufferGroupsWithSubOrders(
-          {std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<Handle>(5)),
-           std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<Handle>(5)),
-           std::make_pair(star::Command_Buffer_Order::after_render_pass, std::vector<Handle>(5)),
-           std::make_pair(star::Command_Buffer_Order::end_of_frame, std::vector<Handle>(5)),
-           std::make_pair(star::Command_Buffer_Order::after_presentation, std::vector<Handle>(1))})
+    : bufferGroupsWithSubOrders({std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<Handle>(5)),
+                                 std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<Handle>(5)),
+                                 std::make_pair(star::Command_Buffer_Order::after_render_pass, std::vector<Handle>(5)),
+                                 std::make_pair(star::Command_Buffer_Order::end_of_frame, std::vector<Handle>(5))})
 {
 }
 
@@ -47,15 +45,15 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
                 buffer->commandBuffer->buffer(frameInFlightIndex).end();
             }
 
-            buffer->submitCommandBuffer(device, frameInFlightIndex);
+            auto doneSemaphore = buffer->submitCommandBuffer(device, frameInFlightIndex);
 
             if (i == star::Command_Buffer_Order_Index::fifth ||
                 !this->bufferGroupsWithSubOrders[order][i].isInitialized())
             {
-                semaphores.push_back(allBuffers[this->bufferGroupsWithSubOrders[order][i - 1].getID()]
-                                         ->commandBuffer->getCompleteSemaphores()
-                                         .at(frameInFlightIndex));
+                semaphores.push_back(doneSemaphore);
             }
+
+            resetThisBufferStatus(bufferGroupsWithSubOrders[order][i - 1]);
         }
     }
 

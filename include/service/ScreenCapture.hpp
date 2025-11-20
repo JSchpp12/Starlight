@@ -2,7 +2,9 @@
 
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
+#include "detail/screen_capture/SynchronizationInfo.hpp"
 #include "event/TriggerScreenshot.hpp"
+#include "job/tasks/TaskFactory.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "service/InitParameters.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
@@ -25,7 +27,7 @@ concept CopyPolicyLike =
              detail::screen_capture::CalleeRenderDependencies &deps, const uint8_t &frameInFlightIndex) {
         { c.init(deviceInfo) } -> std::same_as<void>;
         { c.registerWithCommandBufferManager() } -> std::same_as<void>;
-        { c.triggerSubmission(deps, frameInFlightIndex) } -> std::same_as<void>;
+        { c.triggerSubmission(deps, frameInFlightIndex) } -> std::same_as<detail::screen_capture::SynchronizationInfo>;
     };
 
 template <typename TWorkerControllerPolicy>
@@ -74,6 +76,7 @@ class ScreenCapture
                                                .surface = &params.surface,
                                                .eventBus = &params.eventBus,
                                                .semaphoreManager = params.graphicsManagers.semaphoreManager.get(),
+                                               .frameTracker = &params.frameTracker,
                                                .taskManager = &params.taskManager,
                                                .currentFrameCounter = &params.currentFrameCounter};
     }
@@ -110,10 +113,12 @@ class ScreenCapture
         }
 
         // need way to wait for commands to be submitted BEFORE telling worker to start?
-        m_copyPolicy.triggerSubmission(m_calleeDependencyTracker, screenEvent.getFrameInFlight());
+        auto syncInfo = m_copyPolicy.triggerSubmission(m_calleeDependencyTracker, screenEvent.getFrameInFlight());
 
-        m_workerPolicy.addWriteTask(
-            job::tasks::write_image_to_disk::Create(screenEvent.getTexture(), screenEvent.getName()));
+        m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(
+            m_deviceInfo.device->getVulkanDevice(), screenEvent.getTexture().getBaseExtent(),
+            screenEvent.getTexture().getBaseFormat(), m_calleeDependencyTracker.hostVisibleBuffers.at(0),
+            screenEvent.getName(), syncInfo.signalValue, syncInfo.semaphore));
 
         keepAlive = true;
     }
@@ -138,7 +143,7 @@ class ScreenCapture
     void registerWithEventBus()
     {
         assert(m_deviceInfo.eventBus != nullptr);
-        
+
         this->m_deviceInfo.eventBus->subscribe(
             star::event::TriggerScreenshotTypeName(),
             {[this](const star::common::IEvent &e, bool &keepAlive) { this->eventCallback(e, keepAlive); },

@@ -33,7 +33,7 @@ class ManagerCommandBuffer
         bool recordOnce = false;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback = std::nullopt;
         std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const uint8_t &, std::vector<vk::Semaphore> *,
-                                                  std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>)>>
+                                                  std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>)>>
             overrideBufferSubmissionCallback = std::nullopt;
     };
 
@@ -52,9 +52,9 @@ class ManagerCommandBuffer
     /// @return semaphore signaling completion of submission
     vk::Semaphore update(StarDevice &device, const uint8_t &frameIndexToBeDrawn, const uint64_t &currentFrameIndex);
 
-    void submitPostPresentationCommands(StarDevice &device, const uint8_t &frameIndexToBeDrawn,
-                                        const uint64_t &currentFrameIndex,
-                                        vk::Semaphore presentationImageReadySemaphore);
+    // void submitPostPresentationCommands(StarDevice &device, const uint8_t &frameIndexToBeDrawn,
+    //                                     const uint64_t &currentFrameIndex,
+    //                                     vk::Semaphore presentationImageReadySemaphore);
 
   private:
     static std::stack<Handle> dynamicBuffersToSubmit;

@@ -48,7 +48,14 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
     {
         const auto &requestEvent =
             static_cast<const core::device::system::event::ManagerRequest<TResourceRequest> &>(e);
-        requestEvent.getResultingHandle() = this->submit(*this->m_device, requestEvent.giveMeRequest());
+        auto resultHandle = this->submit(*this->m_device, requestEvent.giveMeRequest());
+
+        requestEvent.getResultingHandle() = resultHandle;
+        if (auto out = requestEvent.getResultingResourcePointer()){
+            void *record = static_cast<void *>(this->get(resultHandle));
+            **out = record;
+        }
+        
         keepAlive = true;
     }
 

@@ -8,8 +8,7 @@ namespace star {
         main_render_pass = 1,   //special only usable by main render pass
         after_render_pass = 2,
         end_of_frame = 3, 
-        after_presentation = 4,
-        presentation = 5        //special only usable by presentation
+        presentation = 4        //special only usable by presentation
     };
 
     enum Command_Buffer_Order_Index {

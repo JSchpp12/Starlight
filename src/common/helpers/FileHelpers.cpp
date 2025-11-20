@@ -111,14 +111,11 @@ std::string GetFileNameWithoutExtension(const std::string &pathToFile)
     return mainFileName.substr(0, posOfExt);
 }
 
-boost::filesystem::path GetParentDirectory(const std::string &pathToFile)
+std::optional<boost::filesystem::path> GetParentDirectory(const std::string &pathToFile)
 {
     auto path = boost::filesystem::path(pathToFile); 
     if (!path.has_parent_path()){
-        std::ostringstream oss; 
-        oss << "Requested path does not have a parent. Path: " << pathToFile; 
-        core::logging::log(boost::log::trivial::error, oss.str());
-        throw std::runtime_error(oss.str());
+        return std::nullopt;
     }else{
         return path.parent_path();
     }

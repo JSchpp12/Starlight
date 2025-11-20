@@ -94,7 +94,7 @@ class SwapChainRenderer : public Renderer
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
                                std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
                                std::vector<vk::Semaphore> dataSemaphores,
-                               std::vector<vk::PipelineStageFlags> dataWaitPoints);
+                               std::vector<vk::PipelineStageFlags> dataWaitPoints, std::vector<std::optional<uint64_t>> previousSignaledValues);
 
     virtual std::vector<StarTextures::Texture> createRenderToImages(
         core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
