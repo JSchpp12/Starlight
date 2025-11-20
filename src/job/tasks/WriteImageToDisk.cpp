@@ -3,6 +3,8 @@
 #include "FileHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 namespace star::job::tasks::write_image_to_disk
 {
 
@@ -26,8 +28,9 @@ void Execute(void *p)
     // }
 
     WaitUntilSemaphoreIsReady(payload->device, payload->semaphore, *payload->signalValue);
+    WriteImageToDisk(payload->bufferImageInfo->hostVisibleBufferImage, *payload->bufferImageInfo, payload->path);
 
-    core::logging::log(boost::log::trivial::info, "Signal semaphore is done");
+    core::logging::log(boost::log::trivial::info, "PNG Write Done"); 
 }
 
 WriteImageTask Create(const vk::Device &device, const vk::Extent3D &imageExtent, const vk::Format &format,
@@ -58,8 +61,40 @@ void WaitUntilSemaphoreIsReady(vk::Device &device, const vk::Semaphore &semaphor
     }
 }
 
-void WriteImageToDisk(StarBuffers::Buffer &buffer)
+bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::string &path)
 {
-    
+    const uint32_t width = info.imageExtent.width;
+    const uint32_t height = info.imageExtent.height;
+
+    void *mapped = nullptr;
+    info.hostVisibleBufferImage.map(&mapped); // Or .data() depending on your wrapper
+    if (!mapped)
+    {
+        throw std::runtime_error("Failed to map buffer for image write.");
+    }
+
+    // ---- Format handling ----------------------------------------------------
+    int comp = 4; // RGBA
+    vk::Format fmt = info.imageFormat;
+
+    if (fmt == vk::Format::eR8G8B8A8Unorm || fmt == vk::Format::eR8G8B8A8Srgb || fmt == vk::Format::eB8G8R8A8Unorm ||
+        fmt == vk::Format::eB8G8R8A8Srgb)
+    {
+        // ok
+    }
+    else
+    {
+        // You can extend support by converting here.
+        info.hostVisibleBufferImage.unmap();
+        throw std::runtime_error("Unsupported image format for PNG writing.");
+    }
+
+    const uint32_t rowStride = width * comp; // tightly packed
+
+    // ---- PNG write ----------------------------------------------------------
+    int ok = stbi_write_png(path.c_str(), width, height, comp, mapped, rowStride);
+
+    info.hostVisibleBufferImage.unmap();
+    return ok != 0;
 }
 } // namespace star::job::tasks::write_image_to_disk

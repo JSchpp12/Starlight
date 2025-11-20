@@ -39,4 +39,6 @@ WriteImageTask Create(const vk::Device &device, const vk::Extent3D &imageExtent,
 void WaitUntilSemaphoreIsReady(vk::Device &device, const vk::Semaphore &semaphore,
                                const uint64_t &signalValueToWaitFor);
 
+bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::string &path);
+
 } // namespace star::job::tasks::write_image_to_disk
