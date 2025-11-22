@@ -24,7 +24,7 @@ void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus
     assert(p->compiledShaderCode != nullptr && "Compiled shader data not properly set");
 
     std::cout << "Marking shader at index [" << p->handleID << "] as ready" << std::endl;
-    gm->shaderManager->get(shader)->compiledShader = std::move(p->compiledShaderCode);
+    gm->shaderManager->get(shader)->setCompiledShader(std::move(p->compiledShaderCode));
     eb->emit<core::device::system::event::ShaderCompiled>(core::device::system::event::ShaderCompiled{shader});
 
     ProcessPipelinesWhichAreNowReadyForBuild(device, taskSystem, graphicsManagers);
@@ -59,7 +59,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
             {
                 compiledShaders.push_back(std::make_pair<StarShader, std::shared_ptr<std::vector<uint32_t>>>(
                     StarShader(gm->shaderManager->get(shader)->request.shader),
-                    std::move(gm->shaderManager->get(shader)->compiledShader)));
+                    std::move(gm->shaderManager->get(shader)->giveMeCompiledShader())));
             }
 
             star::StarPipeline::RenderResourceDependencies deps{.compiledShaders = std::move(compiledShaders),

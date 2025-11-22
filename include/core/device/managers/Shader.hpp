@@ -20,8 +20,7 @@ struct ShaderRequest
     ShaderRequest(StarShader shader) : shader(std::move(shader))
     {
     }
-    ShaderRequest(StarShader shader, Compiler compiler)
-        : shader(std::move(shader)), compiler(std::move(compiler))
+    ShaderRequest(StarShader shader, Compiler compiler) : shader(std::move(shader)), compiler(std::move(compiler))
     {
     }
 
@@ -30,6 +29,9 @@ struct ShaderRequest
 };
 struct ShaderRecord
 {
+  public:
+    ShaderRequest request;
+
     ShaderRecord() = default;
     ShaderRecord(ShaderRequest request) : request(std::move(request))
     {
@@ -37,24 +39,40 @@ struct ShaderRecord
 
     bool isReady() const
     {
-        return compiledShader != nullptr;
+        return m_compiledShader != nullptr;
+    }
+
+    void setCompiledShader(std::shared_ptr<std::vector<uint32_t>> compiledShader)
+    {
+        m_compiledShader = std::move(compiledShader);
     }
 
     void cleanupRender(core::device::StarDevice &device)
     {
-        if (compiledShader)
+        if (m_compiledShader)
         {
-            compiledShader.reset();
+            m_compiledShader.reset();
         }
     }
 
-    ShaderRequest request;
-    std::shared_ptr<std::vector<uint32_t>> compiledShader = nullptr;
+    std::shared_ptr<std::vector<uint32_t>> giveMeCompiledShader()
+    {
+        assert(m_compiledShader);
+        std::shared_ptr<std::vector<uint32_t>> tmp = m_compiledShader;
+        m_compiledShader = nullptr;
+
+        return tmp;
+    }
+
+  private:
+    std::shared_ptr<std::vector<uint32_t>> m_compiledShader = nullptr;
 };
 class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>
 {
   public:
-    Shader() : TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>(star::common::special_types::ShaderTypeName(), "shader_event_callback")
+    Shader()
+        : TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>(star::common::special_types::ShaderTypeName(),
+                                                                      "shader_event_callback")
     {
     }
 

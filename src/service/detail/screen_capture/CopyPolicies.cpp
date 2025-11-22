@@ -155,8 +155,8 @@ void DefaultCopyPolicy::registerWithCommandBufferManager()
             .orderIndex = Command_Buffer_Order_Index::first,
             .type = Queue_Type::Ttransfer,
             .waitStage = vk::PipelineStageFlagBits::eTransfer,
-            .recordOnce = false,
             .willBeSubmittedEachFrame = false,
+            .recordOnce = false,
             .overrideBufferSubmissionCallback =
                 std::bind(&DefaultCopyPolicy::submitBuffer, this, std::placeholders::_1, std::placeholders::_2,
                           std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)});
