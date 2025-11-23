@@ -15,9 +15,9 @@ class CompressedTextureFile : public TransferRequest::Texture
 {
   public:
     CompressedTextureFile(uint32_t graphicsQueueFamilyIndex, vk::PhysicalDeviceProperties deviceProperties,
-                          std::shared_ptr<SharedCompressedTexture> compressedTexture)
+                          std::unique_ptr<SharedCompressedTexture> compressedTexture)
         : graphicsQueueFamilyIndex(std::move(graphicsQueueFamilyIndex)), deviceProperties(std::move(deviceProperties)),
-          compressedTexture(compressedTexture) {};
+          compressedTexture(std::move(compressedTexture)) {};
 
     virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device,
                                                                      VmaAllocator &allocator) const override;
@@ -36,7 +36,7 @@ class CompressedTextureFile : public TransferRequest::Texture
   private:
     uint32_t graphicsQueueFamilyIndex;
     vk::PhysicalDeviceProperties deviceProperties;
-    std::shared_ptr<SharedCompressedTexture> compressedTexture = nullptr;
+    std::unique_ptr<SharedCompressedTexture> compressedTexture = nullptr;
 
     static void getTextureInfo(const std::string &imagePath, int &width, int &height, int &channels);
 };

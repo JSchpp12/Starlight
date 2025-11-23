@@ -8,20 +8,17 @@ namespace star::ManagerController::RenderResource
 class GlobalInfo : public star::ManagerController::RenderResource::Buffer
 {
   public:
-    GlobalInfo(const uint8_t &numFramesInFlight, const std::shared_ptr<StarCamera> camera) : camera(camera)
-    {
-    }
+    GlobalInfo(std::shared_ptr<StarCamera> camera);
+
+    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
 
     virtual ~GlobalInfo() = default;
 
   protected:
-    const std::shared_ptr<StarCamera> camera;
+    std::shared_ptr<StarCamera> camera = nullptr;
 
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device,
                                                                    const uint8_t &frameInFlightIndex) override;
-    bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const override
-    {
-        return true;
-    }
+    bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const override;
 };
 } // namespace star::ManagerController::RenderResource

@@ -44,8 +44,6 @@ class SharedCompressedTexture : private ThreadSharedResource<ktxTexture2>
     bool hasBeenTranscoded = false;
     ktx_transcode_fmt_e selectedTranscodeTargetFormat;
 
-    void createKTextureFromFile();
-
     static void GetSupportedCompressedTextureFormats(const vk::PhysicalDevice &physicalDevice,
                                                      std::vector<ktx_transcode_fmt_e> &availableFormats,
                                                      std::vector<std::string> &availableFormatNames);

@@ -20,7 +20,7 @@ class StarEntity
         return glm::vec3{matrixCopy[3][0], matrixCopy[3][1], matrixCopy[3][2]};
     }
 
-    glm::vec3 getScale()
+    glm::vec3 getScale() const
     {
         glm::mat4 matrixCopy = translationMat * rotationMat * scaleMat;
         return glm::vec3{matrixCopy[0][0], matrixCopy[1][1], matrixCopy[2][2]};
@@ -53,11 +53,6 @@ class StarEntity
 
     void rotateGlobal(const Type::Axis &axis, const float &amt, const bool &inDegrees = true);
 
-    virtual glm::mat4 getDisplayMatrix() const
-    {
-        return translationMat * rotationMat * scaleMat;
-    }
-
     void setForwardVector(const glm::vec3 &newForward)
     {
         // TODO: setting this vector should probably update the
@@ -69,17 +64,21 @@ class StarEntity
         this->upVector = glm::vec4(glm::cross(rightVec, forward), 1.0);
     }
 
-    glm::vec3 positionCoords = glm::vec3();
-    glm::vec4 getForwardVector() const
+    const glm::vec4 &getForwardVector() const
     {
         return this->forwardVector;
     }
-    glm::vec4 getUpVector() const
+    const glm::vec4 &getUpVector() const
     {
         return this->upVector;
     }
+    virtual glm::mat4 getDisplayMatrix() const
+    {
+        return translationMat * rotationMat * scaleMat;
+    }
 
   protected:
+    glm::vec3 positionCoords = glm::vec3();
     glm::mat4 rotationMat = glm::mat4();
     glm::mat4 translationMat = glm::mat4();
     glm::mat4 scaleMat = glm::mat4();

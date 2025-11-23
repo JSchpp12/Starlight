@@ -1,11 +1,12 @@
 #pragma once
 
 #include "Enums.hpp"
-#include <starlight/common/Handle.hpp>
 #include "StarEntity.hpp"
 #include "StarObject.hpp"
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <starlight/common/Handle.hpp>
 
 #include <optional>
 
@@ -84,27 +85,51 @@ class Light : public StarEntity
                            type == Type::directional ? minDirection : this->positionCoords + minDirection, upVector);
     }
 
-    bool getEnabled() const
+    bool &getEnabled()
     {
         return enabled;
     }
-    Type::Light getType() const
+    const bool &getEnabled() const
+    {
+        return enabled;
+    }
+    Type::Light &getType()
     {
         return type;
     }
-    glm::vec4 getAmbient() const
+    const Type::Light &getType() const
+    {
+        return type;
+    }
+    const glm::vec4 &getAmbient() const
     {
         return ambient;
     }
-    glm::vec4 getDiffuse() const
+    glm::vec4 &getAmbient()
+    {
+        return ambient;
+    }
+    glm::vec4 &getDiffuse()
     {
         return diffuse;
     }
-    glm::vec4 getSpecular() const
+    const glm::vec4 &getDiffuse() const
+    {
+        return diffuse;
+    }
+    glm::vec4 &getSpecular()
     {
         return specular;
     }
-    float getInnerDiameter() const
+    const glm::vec4 &getSpecular() const
+    {
+        return specular;
+    }
+    float &getInnerDiameter()
+    {
+        return innerDiameter;
+    }
+    const float &getInnerDiameter() const
     {
         return innerDiameter;
     }

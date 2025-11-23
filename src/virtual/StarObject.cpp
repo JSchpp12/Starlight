@@ -1,9 +1,12 @@
 #include "StarObject.hpp"
 
+#include "ConfigFile.hpp"
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
+
+#include <glm/glm.hpp>
 
 #include <algorithm>
 
@@ -150,9 +153,7 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
 
 star::StarObjectInstance &star::StarObject::getInstance(const size_t &index)
 {
-    assert(index < m_instanceInfo.m_instances->size() && "Index must be within bounds of available instances");
-
-    return m_instanceInfo.m_instances->at(index);
+    return m_instanceInfo.getInstance(index);
 }
 
 void star::StarObject::prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
@@ -241,7 +242,8 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
 
     for (auto &rmesh : this->meshes)
     {
-        uint32_t instanceCount = static_cast<uint32_t>(m_instanceInfo.m_instances->size());
+        uint32_t instanceCount;
+        CastHelpers::SafeCast<size_t, uint32_t>(m_instanceInfo.getSize(), instanceCount);
         rmesh.get()->recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
     }
 
@@ -253,8 +255,7 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
 
 star::StarObjectInstance &star::StarObject::createInstance()
 {
-    m_instanceInfo.m_instances->emplace_back();
-    return m_instanceInfo.m_instances->back();
+    return m_instanceInfo.create();
 }
 
 void star::StarObject::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
@@ -312,8 +313,8 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
-        const auto &instanceModelHandle = m_instanceInfo.m_infoManagerInstanceModel->getHandle(i);
-        const auto &instanceNormalHandle = m_instanceInfo.m_infoManagerInstanceNormal->getHandle(i);
+        const auto &instanceModelHandle = m_instanceInfo.getControllerModel()->getHandle(i);
+        const auto &instanceNormalHandle = m_instanceInfo.getControllerNormal()->getHandle(i);
 
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
@@ -336,12 +337,11 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &context,
                                              const uint8_t &numFramesInFlight)
 {
-    assert(m_instanceInfo.m_instances->size() > 0 &&
+    assert(m_instanceInfo.getSize() > 0 &&
            "Call to create instance buffers made but this object does not have any instances");
-    assert(m_instanceInfo.m_instances->size() < 1024 && "Max number of supported instances is 1024");
+    assert(m_instanceInfo.getSize() < 1024 && "Max number of supported instances is 1024");
 
-    m_instanceInfo.m_infoManagerInstanceModel->prepRender(context, numFramesInFlight);
-    m_instanceInfo.m_infoManagerInstanceNormal->prepRender(context, numFramesInFlight);
+    m_instanceInfo.prepRender(context, numFramesInFlight);
 }
 
 void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)
@@ -458,34 +458,34 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
         context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
     vk::Semaphore doneSemaphore;
 
-    if (m_instanceInfo.m_infoManagerInstanceModel->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    if (m_instanceInfo.getControllerModel()->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
     {
         updateInstanceModel = true;
 
         request.oneTimeWaitSemaphoreInfo.insert(
-            m_instanceInfo.m_infoManagerInstanceModel->getHandle(frameInFlightIndex), std::move(doneSemaphore),
+            m_instanceInfo.getControllerModel()->getHandle(frameInFlightIndex), std::move(doneSemaphore),
             vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
-    if (m_instanceInfo.m_infoManagerInstanceNormal->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    if (m_instanceInfo.getControllerNormal()->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
     {
         updateInstanceNormal = true;
 
         request.oneTimeWaitSemaphoreInfo.insert(
-            m_instanceInfo.m_infoManagerInstanceNormal->getHandle(frameInFlightIndex), std::move(doneSemaphore),
+            m_instanceInfo.getControllerNormal()->getHandle(frameInFlightIndex), std::move(doneSemaphore),
             vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
     if (updateInstanceNormal)
     {
         renderingContext.addBufferToRenderingContext(
-            context, m_instanceInfo.m_infoManagerInstanceModel->getHandle(frameInFlightIndex));
+            context, m_instanceInfo.getControllerNormal()->getHandle(frameInFlightIndex));
     }
 
     if (updateInstanceModel)
     {
         renderingContext.addBufferToRenderingContext(
-            context, m_instanceInfo.m_infoManagerInstanceNormal->getHandle(frameInFlightIndex));
+            context, m_instanceInfo.getControllerModel()->getHandle(frameInFlightIndex));
     }
 }
 
@@ -513,7 +513,7 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
 {
     auto barriers = std::vector<vk::BufferMemoryBarrier2>();
 
-    if (m_instanceInfo.m_infoManagerInstanceModel->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.getControllerModel()->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()
@@ -525,11 +525,11 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setBuffer(renderingContext.bufferTransferRecords.get(
-                    m_instanceInfo.m_infoManagerInstanceModel->getHandle(frameInFlightIndex)))
+                    m_instanceInfo.getControllerModel()->getHandle(frameInFlightIndex)))
                 .setSize(vk::WholeSize));
     }
 
-    if (m_instanceInfo.m_infoManagerInstanceNormal->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.getControllerNormal()->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()
@@ -541,7 +541,7 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setBuffer(renderingContext.bufferTransferRecords.get(
-                    m_instanceInfo.m_infoManagerInstanceNormal->getHandle(frameInFlightIndex)))
+                    m_instanceInfo.getControllerNormal()->getHandle(frameInFlightIndex)))
                 .setSize(vk::WholeSize));
     }
 

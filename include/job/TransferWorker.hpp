@@ -68,8 +68,13 @@ class TransferManagerThread
             this->inProcessTransferSrcBuffer = std::move(nInProcessTransferSrcBuffer);
         }
 
-        void markAsAvailable()
+        void markAsAvailable(vk::Device &device)
         {
+            if (inProcessTransferSrcBuffer)
+            {
+                inProcessTransferSrcBuffer->cleanupRender(device);
+            }
+
             this->inProcessTransferSrcBuffer.reset();
             this->inProcessTransferSrcBuffer = nullptr;
         }

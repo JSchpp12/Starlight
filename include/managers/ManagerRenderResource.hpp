@@ -54,7 +54,8 @@ class ManagerRenderResource : public StarManager
             return *this;
         }
 
-        explicit FinalizedResourceRequest(vk::Semaphore resourceSemaphore) : resourceSemaphore(std::move(resourceSemaphore))
+        explicit FinalizedResourceRequest(vk::Semaphore resourceSemaphore)
+            : resourceSemaphore(std::move(resourceSemaphore))
         {
         }
 
@@ -121,15 +122,15 @@ class ManagerRenderResource : public StarManager
 
   protected:
     static std::unordered_map<Handle, std::shared_ptr<core::device::StarDevice>, star::HandleHash> devices;
-    static std::unordered_map<Handle,
-                              std::unique_ptr<core::ManagedHandleContainer<
-                                  FinalizedResourceRequest<star::StarTextures::Texture>, 1000>>,
-                              star::HandleHash>
+    static std::unordered_map<
+        Handle,
+        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 1000>>,
+        star::HandleHash>
         textureStorage;
-    static std::unordered_map<Handle,
-                              std::unique_ptr<core::ManagedHandleContainer<
-                                  FinalizedResourceRequest<star::StarBuffers::Buffer>, 3000>>,
-                              star::HandleHash>
+    static std::unordered_map<
+        Handle,
+        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 3000>>,
+        star::HandleHash>
         bufferStorage;
 
     static std::unordered_map<Handle, std::set<boost::atomic<bool> *>, star::HandleHash>

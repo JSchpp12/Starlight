@@ -48,7 +48,7 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, con
         {
             texture = std::make_unique<TransferRequest::CompressedTextureFile>(
                 std::move(graphicsIndex), std::move(deviceProperties),
-                std::make_shared<SharedCompressedTexture>(m_texturePath));
+                std::make_unique<SharedCompressedTexture>(m_texturePath));
         }
         else
         {

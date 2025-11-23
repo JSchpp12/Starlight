@@ -72,7 +72,7 @@ void Renderer::initBuffers(core::device::DeviceContext &context, const uint8_t &
 {
     initBuffers(context, numFramesInFlight, std::move(lights));
 
-    m_infoManagerCamera = std::make_unique<ManagerController::RenderResource::GlobalInfo>(numFramesInFlight, camera);
+    m_infoManagerCamera = std::make_unique<ManagerController::RenderResource::GlobalInfo>(camera);
 }
 
 std::vector<star::StarTextures::Texture> Renderer::createRenderToImages(

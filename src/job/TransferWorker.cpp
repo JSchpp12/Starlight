@@ -3,7 +3,6 @@
 #include "CastHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include <syncstream>
 #include <thread>
 
 star::job::TransferManagerThread::~TransferManagerThread()
@@ -31,7 +30,7 @@ void star::job::TransferManagerThread::stopAsync()
 {
     this->shouldRun.store(false);
 
-    core::logging::log(boost::log::trivial::info, "Waiting for transfer thread to exit"); 
+    core::logging::log(boost::log::trivial::info, "Waiting for transfer thread to exit");
 
     // wait for thread to exit
     this->thread.join();
@@ -39,7 +38,7 @@ void star::job::TransferManagerThread::stopAsync()
 
 void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubThreadInfo myInfo)
 {
-    core::logging::log(boost::log::trivial::info, "Transfer thread started"); 
+    core::logging::log(boost::log::trivial::info, "Transfer thread started");
 
     std::queue<std::unique_ptr<ProcessRequestInfo>> processRequestInfos =
         std::queue<std::unique_ptr<ProcessRequestInfo>>();
@@ -87,9 +86,11 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
 
                 request->bufferTransferRequest->prep();
 
+                auto workingRequest = std::move(request->bufferTransferRequest);
+
                 CreateBuffer(myInfo.device, myInfo.allocator, myInfo.queue, request->gpuWorkDoneSemaphore,
                              myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
-                             request->bufferTransferRequest.get(), request->resultingBuffer.value(),
+                             workingRequest.get(), request->resultingBuffer.value(),
                              request->gpuDoneNotificationToMain);
             }
             else if (request->textureTransferRequest)
@@ -101,9 +102,11 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
 
                 core::logging::log(boost::log::trivial::info, "Creating Texture");
 
+                auto workingRequest = std::move(request->textureTransferRequest);
+
                 CreateTexture(myInfo.device, myInfo.allocator, myInfo.queue, request->gpuWorkDoneSemaphore,
                               myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
-                              request->textureTransferRequest.get(), request->resultingTexture.value(),
+                              workingRequest.get(), request->resultingTexture.value(),
                               request->gpuDoneNotificationToMain);
             }
 
@@ -114,7 +117,7 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
         }
     }
 
-    core::logging::log(boost::log::trivial::info, "Transfer thread exiting"); 
+    core::logging::log(boost::log::trivial::info, "Transfer thread exiting");
 
     while (!processRequestInfos.empty())
     {
@@ -124,7 +127,7 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
         if (!workingInfo->isMarkedAsAvailable())
         {
             workingInfo->commandBuffer->wait(0);
-            workingInfo->markAsAvailable();
+            workingInfo->markAsAvailable(myInfo.device);
         }
     }
 
@@ -229,7 +232,7 @@ void star::job::TransferManagerThread::CheckForCleanups(
 
         if (!workingInfo->isMarkedAsAvailable() && workingInfo->commandBuffer->isFenceReady(0))
         {
-            workingInfo->markAsAvailable();
+            workingInfo->markAsAvailable(device);
             readyInfos.push(std::move(workingInfo));
         }
         else
@@ -256,7 +259,7 @@ void star::job::TransferManagerThread::EnsureInfoReady(vk::Device &device, Proce
     if (!info.isMarkedAsAvailable())
     {
         info.commandBuffer->begin(0);
-        info.markAsAvailable();
+        info.markAsAvailable(device);
     }
     else
     {

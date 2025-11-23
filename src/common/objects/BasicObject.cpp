@@ -1,15 +1,14 @@
 #include "BasicObject.hpp"
 
-#include "ManagerController_RenderResource_TextureFile.hpp"
-#include "TransferRequest_IndicesInfo.hpp"
-#include "TransferRequest_VertInfo.hpp"
-
 #include "BumpMaterial.hpp"
 #include "CastHelpers.hpp"
+#include "ConfigFile.hpp"
 #include "FileHelpers.hpp"
-#include "StarMesh.hpp"
-
+#include "ManagerController_RenderResource_TextureFile.hpp"
 #include "StarGraphicsPipeline.hpp"
+#include "StarMesh.hpp"
+#include "TransferRequest_IndicesInfo.hpp"
+#include "TransferRequest_VertInfo.hpp"
 #include "VertColorMaterial.hpp"
 
 #include <boost/filesystem.hpp>
@@ -156,8 +155,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
             const Handle meshVertBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(), context.getSemaphoreManager().get(meshVertSemaphore)->semaphore,
                 std::make_unique<TransferRequest::VertInfo>(
-                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
-                    vertices));
+                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(), vertices));
 
             const auto indSemaphore =
                 context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
@@ -165,8 +163,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
             const Handle meshIndBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(), context.getSemaphoreManager().get(indSemaphore)->semaphore,
                 std::make_unique<TransferRequest::IndicesInfo>(
-                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
-                    fullInd));
+                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(), fullInd));
 
             // apply material from files to mesh -- will ignore passed values
             meshes.at(shapeCounter) =

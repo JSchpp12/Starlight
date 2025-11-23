@@ -1,8 +1,6 @@
 #pragma once
 
-#include "ConfigFile.hpp"
 #include "DescriptorModifier.hpp"
-#include "ManagerController_RenderResource_Buffer.hpp"
 #include "ManagerDescriptorPool.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarEntity.hpp"
@@ -18,14 +16,6 @@
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
-
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_inverse.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/matrix_cross_product.hpp>
-#include <glm/gtx/transform.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -93,9 +83,9 @@ class StarObject : private DescriptorModifier
 
     /// @brief Create an instance of this object.
     /// @return A reference to the created instance. The object will own the instance.
-    virtual StarObjectInstance &createInstance();
+    StarObjectInstance &createInstance();
 
-    virtual StarObjectInstance &getInstance(const size_t &index);
+    StarObjectInstance &getInstance(const size_t &index = 0);
 
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                              const Handle &targetCommandBuffer);
@@ -113,22 +103,20 @@ class StarObject : private DescriptorModifier
     /// <returns></returns>
     virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() = 0;
 #pragma region getters
-    Handle getPipline()
+    Handle &getPipline()
+    {
+        return this->pipeline;
+    }
+    const Handle &getPipeline() const
     {
         return this->pipeline;
     }
 #pragma endregion
 
   protected:
-    struct InstanceInfo
+    class InstanceInfo
     {
-        std::shared_ptr<std::vector<StarObjectInstance>> m_instances =
-            std::shared_ptr<std::vector<StarObjectInstance>>();
-        std::shared_ptr<ManagerController::RenderResource::InstanceModelInfo> m_infoManagerInstanceModel =
-            std::make_shared<ManagerController::RenderResource::InstanceModelInfo>();
-        std::shared_ptr<ManagerController::RenderResource::InstanceNormalInfo> m_infoManagerInstanceNormal =
-            std::make_shared<ManagerController::RenderResource::InstanceNormalInfo>();
-
+      public:
         InstanceInfo()
             : m_instances(std::make_shared<std::vector<StarObjectInstance>>()),
               m_infoManagerInstanceModel(
@@ -136,6 +124,54 @@ class StarObject : private DescriptorModifier
               m_infoManagerInstanceNormal(
                   std::make_shared<ManagerController::RenderResource::InstanceNormalInfo>(m_instances))
         {
+        }
+
+        void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+        {
+            m_infoManagerInstanceModel->prepRender(context, numFramesInFlight);
+            m_infoManagerInstanceNormal->prepRender(context, numFramesInFlight);
+        }
+
+        size_t getSize()
+        {
+            return m_instances->size();
+        }
+
+        StarObjectInstance &create()
+        {
+            m_instances->emplace_back();
+            return m_instances->back();
+        }
+
+        StarObjectInstance &getInstance(const size_t &index)
+        {
+            assert(index < m_instances->size());
+            setManagersToUpdate();
+
+            return m_instances->at(index);
+        }
+        const StarObjectInstance &getInstance(const size_t &index) const
+        {
+            assert(index < m_instances->size());
+            return m_instances->at(index);
+        }
+        std::shared_ptr<ManagerController::RenderResource::InstanceModelInfo> getControllerModel()
+        {
+            return m_infoManagerInstanceModel;
+        }
+        std::shared_ptr<ManagerController::RenderResource::InstanceNormalInfo> getControllerNormal()
+        {
+            return m_infoManagerInstanceNormal;
+        }
+
+      private:
+        std::shared_ptr<std::vector<StarObjectInstance>> m_instances = nullptr;
+        std::shared_ptr<ManagerController::RenderResource::InstanceModelInfo> m_infoManagerInstanceModel = nullptr;
+        std::shared_ptr<ManagerController::RenderResource::InstanceNormalInfo> m_infoManagerInstanceNormal = nullptr;
+
+        void setManagersToUpdate()
+        {
+            m_infoManagerInstanceNormal->setForUpdate();
         }
     };
     /// pipeline + rendering infos
@@ -145,11 +181,10 @@ class StarObject : private DescriptorModifier
     core::renderer::RenderingContext renderingContext;
     std::unique_ptr<StarPipeline> normalExtrusionPipeline;
     std::unique_ptr<StarDescriptorSetLayout> setLayout;
-    InstanceInfo m_instanceInfo = InstanceInfo();
+    InstanceInfo m_instanceInfo;
 
     std::vector<std::unique_ptr<StarMesh>> meshes;
     bool isReady = false;
-
 
     virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes(star::core::device::DeviceContext &device) = 0;
 

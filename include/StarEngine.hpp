@@ -1,5 +1,7 @@
 #pragma once
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include "StarApplication.hpp"
 #include "StarScene.hpp"
 #include "StarWindow.hpp"
