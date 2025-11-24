@@ -1,12 +1,14 @@
 #pragma once
 
 #include "job/tasks/Task.hpp"
+#include "logging/LoggingFactory.hpp"
 
-#include <boost/lockfree/queue.hpp>
 #include <boost/atomic/atomic.hpp>
+#include <boost/lockfree/queue.hpp>
 
 #include <optional>
 #include <queue>
+#include <sstream>
 #include <vector>
 
 namespace star::job
@@ -49,7 +51,9 @@ template <typename TTask, size_t TMaxSize> class TaskContainer
 
         assert(queuedIndex <= TMaxSize && "Popped queued task is beyond available range");
 
-        return std::make_optional<TTask>(std::move(m_tasks[queuedIndex]));
+        auto tmp = std::make_optional<TTask>(std::move(m_tasks[queuedIndex]));
+        m_availableSpaces.push(queuedIndex);
+        return tmp;
     }
 
   private:
@@ -64,7 +68,26 @@ template <typename TTask, size_t TMaxSize> class TaskContainer
         uint32_t nextSpace = 0;
         if (!m_availableSpaces.pop(nextSpace))
         {
-            throw std::runtime_error("No available space for new task. Consider recompiling with larger space allocated for container.");
+            core::logging::log(boost::log::trivial::warning,
+                               "Task container is out of space. Consider increasing size.");
+
+            int sleepCounter = 0;
+            while (!m_availableSpaces.pop(nextSpace))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                sleepCounter++;
+
+                if (sleepCounter == 500)
+                {
+                    throw std::runtime_error("Failed to wait for free spot to become available");
+                }
+            }
+
+            {
+                std::ostringstream oss;
+                oss << "Waiting done. Sleep looper counter: " << sleepCounter;
+                core::logging::log(boost::log::trivial::info, oss.str());
+            }
         }
 
         return nextSpace;

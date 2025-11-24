@@ -14,32 +14,25 @@ class RenderingSurface
 
     RenderingSurface(const RenderingSurface &) = delete;
     RenderingSurface &operator=(const RenderingSurface &) = delete;
-    RenderingSurface(RenderingSurface &&other)
-        : m_resolution(std::move(other.m_resolution)), m_surface(std::move(other.m_surface))
-    {
-    }
-    RenderingSurface &operator=(RenderingSurface &&other)
-    {
-        if (this != &other)
-        {
-            m_resolution = std::move(other.m_resolution);
-            m_surface = std::move(other.m_surface);
-        }
-        return *this;
-    }
+    RenderingSurface(RenderingSurface &&other) = default;
+    RenderingSurface &operator=(RenderingSurface &&other) = default;
     ~RenderingSurface() = default;
-    
-    void init(RenderingInstance &instance, StarWindow &window){
-        m_resolution = window.getExtent(); 
-        m_surface = CreateSurface(instance, window); 
-    }
+
+    void init(RenderingInstance &instance, StarWindow &window);
 
     vk::SurfaceKHR &getVulkanSurface()
     {
         return m_surface.get();
     }
-
-    vk::Extent2D getResolution() const
+    const vk::SurfaceKHR &getVulkanSurface() const
+    {
+        return m_surface.get();
+    }
+    vk::Extent2D &getResolution()
+    {
+        return m_resolution;
+    }
+    const vk::Extent2D &getResolution() const
     {
         return m_resolution;
     }

@@ -173,8 +173,8 @@ vk::Semaphore DefaultCopyPolicy::submitBuffer(StarCommandBuffer &buffer, const i
         m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameIndexToBeDrawn), 0};
     const std::vector<vk::Semaphore> signaltimelineSemaphores{*m_doneSemaphoresRaw[frameIndexToBeDrawn],
                                                               *m_binarySignalSemaphoresRaw[frameIndexToBeDrawn]};
-    uint32_t semaphoreCount; 
-    CastHelpers::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount); 
+    uint32_t semaphoreCount;
+    CastHelpers::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
 
     auto timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
                                   .setPSignalSemaphoreValues(signalSemaphoreValues.data())
@@ -210,7 +210,6 @@ void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBu
     {
         {
             void *r = nullptr;
-            // void** ptrToResult
             eventBus.emit(core::device::system::event::ManagerRequest{
                 common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
                     core::device::manager::SemaphoreEventTypeName()),
@@ -268,7 +267,8 @@ void DefaultCopyPolicy::startOfFrameEventCallback(const Handle &calleeCommandBuf
     }
 
     m_deviceInfo->commandManager->get(calleeCommandBuffer)
-        .oneTimeWaitSemaphoreInfo.insert(m_doneSemaphoreHandles.front(), *m_doneSemaphoresRaw.front(),
+        .oneTimeWaitSemaphoreInfo.insert(m_doneSemaphoreHandles[targetFrameInFlightIndex],
+                                         *m_doneSemaphoresRaw[targetFrameInFlightIndex],
                                          vk::PipelineStageFlagBits::eColorAttachmentOutput, signaledSemaphoreValue);
     keepAlive = false;
 }

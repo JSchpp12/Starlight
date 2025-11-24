@@ -36,7 +36,7 @@ star::SharedCompressedTexture::SharedCompressedTexture(const std::string &pathTo
 
 star::SharedCompressedTexture::~SharedCompressedTexture()
 {
-    ktxTexture_Destroy((ktxTexture *)this->resource);
+    ktxTexture2_Destroy(this->resource);
 }
 
 void star::SharedCompressedTexture::triggerTranscode(){

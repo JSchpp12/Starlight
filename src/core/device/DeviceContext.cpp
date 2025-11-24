@@ -116,7 +116,8 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::Cr
         }
     }
 
-    return std::make_shared<job::TransferWorker>(device, false, transferWorkerQueues);
+    return std::make_shared<job::TransferWorker>(*m_taskManager.getCompleteMessages(), device, false,
+                                                 transferWorkerQueues);
 }
 
 void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t maxMessagesCounter)
@@ -186,7 +187,8 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
     // create worker for shader compilation
     job::worker::Worker shaderWorker{job::worker::DefaultWorker{
         job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::compile_shader::CompileShaderTask,
-        64>{}, "Shader_Compiler"}};
+                                                                     64>{},
+        "Shader_Compiler"}};
     m_taskManager.registerWorker(typeid(job::tasks::compile_shader::CompileShaderTask), std::move(shaderWorker));
 }
 

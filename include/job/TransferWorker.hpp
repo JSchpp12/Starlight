@@ -1,11 +1,12 @@
 #pragma once
 
 #include "Allocator.hpp"
-#include <starlight/common/Handle.hpp>
 #include "StarBuffers/Buffer.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
 #include "device/StarDevice.hpp"
+#include "job/TaskContainer.hpp"
+#include <starlight/common/Handle.hpp>
 
 #include "StarCommandBuffer.hpp"
 #include "StarCommandPool.hpp"
@@ -15,6 +16,7 @@
 #include <boost/atomic.hpp>
 #include <boost/lockfree/stack.hpp>
 #include <boost/thread/thread.hpp>
+
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
@@ -24,6 +26,7 @@
 
 namespace star::job
 {
+
 class TransferManagerThread
 {
   public:
@@ -36,6 +39,7 @@ class TransferManagerThread
         std::optional<std::unique_ptr<StarBuffers::Buffer> *> resultingBuffer = std::nullopt;
         std::optional<std::unique_ptr<StarTextures::Texture> *> resultingTexture = std::nullopt;
 
+        InterThreadRequest() = default;
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain, vk::Semaphore gpuWorkDoneSemaphore,
                            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
                            std::unique_ptr<StarBuffers::Buffer> &resultingBuffer)
@@ -81,7 +85,7 @@ class TransferManagerThread
 
         bool isMarkedAsAvailable() const
         {
-          return  this->inProcessTransferSrcBuffer == nullptr;
+            return this->inProcessTransferSrcBuffer == nullptr;
         }
 
       private:
@@ -90,27 +94,29 @@ class TransferManagerThread
 
     struct SubThreadInfo
     {
-        SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device device, StarQueue queue, VmaAllocator &allocator,
-                      vk::PhysicalDeviceProperties deviceProperties,
-                      std::vector<boost::lockfree::stack<star::job::TransferManagerThread::InterThreadRequest *> *>
-                          *workingRequestQueues,
+        SubThreadInfo(boost::atomic<bool> *shouldRun,
+                      TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages, vk::Device device,
+                      StarQueue queue, VmaAllocator &allocator, vk::PhysicalDeviceProperties deviceProperties,
+                      job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> *taskContainer,
                       std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
-            : shouldRun(shouldRun), device(device), queue(queue), allocator(allocator),
-              deviceProperties(deviceProperties), workingRequestQueues(workingRequestQueues),
+            : shouldRun(shouldRun), completeMessages(completeMessages), device(device), queue(queue),
+              allocator(allocator), deviceProperties(deviceProperties), taskContainer(taskContainer),
               allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse)
         {
         }
 
         boost::atomic<bool> *shouldRun = nullptr;
+        TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages = nullptr;
         vk::Device device;
         StarQueue queue;
         VmaAllocator &allocator;
         vk::PhysicalDeviceProperties deviceProperties = vk::PhysicalDeviceProperties();
-        std::vector<boost::lockfree::stack<InterThreadRequest *> *> *workingRequestQueues = nullptr;
         std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
+        job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> *taskContainer = nullptr;
     };
 
-    TransferManagerThread(std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues,
+    TransferManagerThread(job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> &taskContainer,
+                          job::TaskContainer<complete_tasks::CompleteTask, 128> &completeTaskContainer,
                           const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
 
@@ -155,7 +161,8 @@ class TransferManagerThread
     static void EnsureInfoReady(vk::Device &device, ProcessRequestInfo &processInfo);
 
   protected:
-    std::vector<boost::lockfree::stack<InterThreadRequest *> *> requestQueues;
+    job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> &m_taskContainer;
+    job::TaskContainer<complete_tasks::CompleteTask, 128> &m_completeTaskContainer;
     vk::PhysicalDeviceProperties deviceProperties;
     StarQueue myQueue;
     std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
@@ -171,7 +178,8 @@ class TransferWorker
     /// @brief Creates a transfer worker which does not own the dedicated transfer queue. Device might not support
     /// dedicated transfer queue. As such, transfers are submitted on the main thread.
     /// @param device Created star device from which vulkan objects can be made
-    TransferWorker(core::device::StarDevice &device, bool overrideRunAsync, std::vector<StarQueue> &queuesToUse);
+    TransferWorker(TaskContainer<complete_tasks::CompleteTask, 128> &completeMessages, core::device::StarDevice &device,
+                   bool overrideRunAsync, std::vector<StarQueue> &queuesToUse);
 
     void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread, vk::Semaphore signalWhenDoneSemaphore,
              std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
@@ -183,26 +191,23 @@ class TransferWorker
 
     void update();
 
-    void stopAll(); 
+    void stopAll();
 
     ~TransferWorker();
 
   private:
-    boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> highPriorityRequests =
-        boost::lockfree::stack<TransferManagerThread::InterThreadRequest *>(50);
-    boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> standardRequests =
-        boost::lockfree::stack<TransferManagerThread::InterThreadRequest *>(50);
-    std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>> requests =
-        std::vector<std::unique_ptr<TransferManagerThread::InterThreadRequest>>();
+    job::TaskContainer<complete_tasks::CompleteTask, 128> &m_completeMessageContainer;
+    job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> m_highPriorityTaskContainer;
+    job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> m_standardTaskContainer;
 
     std::vector<std::unique_ptr<TransferManagerThread>> threads = std::vector<std::unique_ptr<TransferManagerThread>>();
 
-    void insertRequest(std::unique_ptr<TransferManagerThread::InterThreadRequest> newRequest,
-                       const bool &isHighPriority);
+    void insertRequest(TransferManagerThread::InterThreadRequest newRequest, const bool &isHighPriority);
 
     static std::vector<std::unique_ptr<TransferManagerThread>> CreateThreads(
         core::device::StarDevice &device, const std::vector<StarQueue> queuesToUse,
-        boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &highPriorityQueue,
-        boost::lockfree::stack<TransferManagerThread::InterThreadRequest *> &standardQueue);
+        job::TaskContainer<complete_tasks::CompleteTask, 128> &completeTaskContainer,
+        job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> &highPriorityQueue,
+        job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> &standardQueue);
 };
 } // namespace star::job

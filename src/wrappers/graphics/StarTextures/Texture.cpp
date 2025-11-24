@@ -56,16 +56,6 @@ void star::StarTextures::Texture::TransitionImageLayout(Texture &image, vk::Comm
         sourceStage = vk::PipelineStageFlagBits::eTransfer;
         destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
     }
-    // else if (oldLayout == vk::ImageLayout::eShaderReadOnlyOptimal && newLayout ==
-    // vk::ImageLayout::eTransferDstOptimal) {
-    // 	//preparing to update texture during runtime, need to wait for top of pipe
-    // 	//barrier.srcAccessMask = vk::AccessFlagBits::;
-    // 	barrier.srcAccessMask = {};
-    // 	barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-
-    // 	sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-    // 	destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-    // }
     else
     {
         throw std::invalid_argument("unsupported layout transition!");

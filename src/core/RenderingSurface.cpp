@@ -1,6 +1,8 @@
 #include "RenderingSurface.hpp"
 
-vk::UniqueSurfaceKHR star::core::RenderingSurface::CreateSurface(RenderingInstance &instance, StarWindow &window)
+namespace star::core
+{
+vk::UniqueSurfaceKHR RenderingSurface::CreateSurface(RenderingInstance &instance, StarWindow &window)
 {
     VkSurfaceKHR surfaceTmp = VkSurfaceKHR();
 
@@ -12,3 +14,10 @@ vk::UniqueSurfaceKHR star::core::RenderingSurface::CreateSurface(RenderingInstan
     }
     return vk::UniqueSurfaceKHR(surfaceTmp, instance.getVulkanInstance());
 }
+
+void RenderingSurface::init(RenderingInstance &instance, StarWindow &window)
+{
+    m_resolution = window.getExtent();
+    m_surface = CreateSurface(instance, window);
+}
+} // namespace star::core
