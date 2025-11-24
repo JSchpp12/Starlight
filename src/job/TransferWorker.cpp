@@ -20,7 +20,7 @@ void star::job::TransferManagerThread::startAsync(core::device::StarDevice &devi
         job::TransferManagerThread::mainLoop,
         job::TransferManagerThread::SubThreadInfo(&this->shouldRun, &m_completeTaskContainer, device.getVulkanDevice(),
                                                   this->myQueue, device.getAllocator().get(), this->deviceProperties,
-                                                  &m_taskContainer, this->allTransferQueueFamilyIndicesInUse));
+                                                  m_taskContainer, this->allTransferQueueFamilyIndicesInUse));
 
     if (!this->thread.joinable())
         throw std::runtime_error("Failed to launch transfer thread");
@@ -255,7 +255,7 @@ void star::job::TransferManagerThread::EnsureInfoReady(vk::Device &device, Proce
 }
 
 star::job::TransferManagerThread::TransferManagerThread(
-    job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> &taskContainer,
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer,
     job::TaskContainer<complete_tasks::CompleteTask, 128> &completeTaskContainer,
     const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse)
@@ -323,19 +323,19 @@ void star::job::TransferWorker::insertRequest(job::TransferManagerThread::InterT
 {
     if (isHighPriority)
     {
-        m_highPriorityTaskContainer.queueTask(std::move(newRequest));
+        m_highPriorityTaskContainer->queueTask(std::move(newRequest));
     }
     else
     {
-        m_standardTaskContainer.queueTask(std::move(newRequest));
+        m_standardTaskContainer->queueTask(std::move(newRequest));
     }
 }
 
 std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::TransferWorker::CreateThreads(
     core::device::StarDevice &device, const std::vector<StarQueue> queuesToUse,
     job::TaskContainer<complete_tasks::CompleteTask, 128> &completeTaskContainer,
-    job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> &highPriorityQueue,
-    job::TaskContainer<TransferManagerThread::InterThreadRequest, 500> &standardQueue)
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> highPriorityQueue,
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> standardQueue)
 {
     std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
 
@@ -352,26 +352,25 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
 
     std::set<size_t> alreadyInUseIndex = std::set<size_t>();
 
-    int curNumHighThreads = 0;
-    int curNumStandardThreads = 0;
     std::vector<std::unique_ptr<job::TransferManagerThread>> newThreads =
         std::vector<std::unique_ptr<job::TransferManagerThread>>();
 
+    bool createHighPriority = true;
     for (const auto &queue : queuesToUse)
     {
-        if (curNumHighThreads > curNumStandardThreads)
-        {
-            newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
-                standardQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), queue,
-                allTransferQueueFamilyIndicesInUse));
-            curNumStandardThreads++;
-        }
-        else
+        if (createHighPriority)
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
                 highPriorityQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), queue,
                 allTransferQueueFamilyIndicesInUse));
-            curNumHighThreads++;
+            createHighPriority = false;
+        }
+        else
+        {
+            newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
+                standardQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), queue,
+                allTransferQueueFamilyIndicesInUse));
+
         }
     }
 

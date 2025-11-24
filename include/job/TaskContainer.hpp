@@ -6,6 +6,7 @@
 #include <boost/atomic/atomic.hpp>
 #include <boost/lockfree/queue.hpp>
 
+#include <concepts>
 #include <optional>
 #include <queue>
 #include <sstream>
@@ -13,7 +14,13 @@
 
 namespace star::job
 {
-template <typename TTask, size_t TMaxSize> class TaskContainer
+template <typename TTask>
+concept TTaskLike = requires(TTask t) {
+    { t.reset() } -> std::same_as<void>;
+};
+
+template <TTaskLike TTask, size_t TMaxSize>
+class TaskContainer
 {
   public:
     TaskContainer() : m_tasks(std::vector<TTask>(TMaxSize))
@@ -77,7 +84,7 @@ template <typename TTask, size_t TMaxSize> class TaskContainer
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
                 sleepCounter++;
 
-                if (sleepCounter == 500)
+                if (sleepCounter == 1000)
                 {
                     throw std::runtime_error("Failed to wait for free spot to become available");
                 }

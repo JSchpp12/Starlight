@@ -249,7 +249,7 @@ class DeviceContext
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager;
     std::vector<service::Service> m_services;
 
-    std::shared_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device);
+    std::shared_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device, const size_t &targetNumQueuesToUse=2);
 
     void handleCompleteMessages(const uint8_t maxMessageCounter = 0);
 

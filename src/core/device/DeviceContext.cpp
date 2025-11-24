@@ -83,7 +83,7 @@ star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapch
     return m_device->getSwapchainSupport(m_surface);
 }
 
-std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device)
+std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device, const size_t &targetNumQueuesToUse)
 {
     star::core::logging::log(boost::log::trivial::info, "Initializing transfer workers");
 
@@ -108,7 +108,7 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::Cr
                 selectedFamilyIndices.insert(fam);
 
                 // only want 2, one for each of transfer operation
-                if (selectedFamilyIndices.size() == 2)
+                if (selectedFamilyIndices.size() == targetNumQueuesToUse)
                 {
                     break;
                 }

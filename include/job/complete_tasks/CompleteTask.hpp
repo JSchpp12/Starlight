@@ -15,7 +15,7 @@ class CompleteTask
 {
   public:
     static const size_t StorageBytes = size_t(MAX_COMPLETE_TASK_SIZE - sizeof(EngineOnCompleteFunction) -
-                                        sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction));
+                                              sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction));
     static const size_t StorageAlign = alignof(std::max_align_t);
     template <typename PayloadType> class Builder
     {
@@ -139,6 +139,18 @@ class CompleteTask
     void run(void *device, void *taskSystem, void *eventBus, void *graphicsManagers)
     {
         m_engineOnCompleteFunction(device, taskSystem, eventBus, graphicsManagers, payload());
+    }
+
+    void reset()
+    {
+        if (m_destroyPayloadFunction)
+        {
+            m_destroyPayloadFunction(m_data);
+        }
+
+        m_movePayloadFunction = nullptr;
+        m_destroyPayloadFunction = nullptr;
+        m_engineOnCompleteFunction = nullptr;
     }
 
   private:
