@@ -44,14 +44,16 @@ std::vector<job::worker::Worker::WorkerConcept *> Builder::registerWorkers()
         std::ostringstream oss;
         oss << "Image Writer_" << std::to_string(i);
 
-        newWorkers[i] =
-            m_taskManager
-                .registerWorker(
-                    typeid(job::tasks::write_image_to_disk::WriteImageTask),
-                    {job::worker::DefaultWorker(
-                        job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::write_image_to_disk::WriteImageTask, 500>{},
-                        oss.str())})
-                .getRawConcept();
+        auto worker = m_taskManager.registerWorker(
+            {job::worker::DefaultWorker(job::worker::default_worker::DefaultThreadTaskHandlingPolicy<
+                                            job::tasks::write_image_to_disk::WriteImageTask, 500>{},
+                                        oss.str())},
+            job::tasks::write_image_to_disk::WriteImageTypeName);
+
+        auto *newWorker = m_taskManager.getWorker(worker);
+        assert(newWorker != nullptr);
+
+        newWorkers[i] = newWorker->getRawConcept();
     }
 
     return newWorkers;

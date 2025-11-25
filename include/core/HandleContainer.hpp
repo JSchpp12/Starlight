@@ -12,7 +12,7 @@ namespace star::core
 template <typename TData> class HandleContainer
 {
   public:
-    HandleContainer(const std::string &handleTypeName)
+    HandleContainer(std::string_view handleTypeName)
         : m_handleType(common::HandleTypeRegistry::instance().registerType(handleTypeName))
     {
     }

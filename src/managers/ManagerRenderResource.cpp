@@ -20,12 +20,11 @@ void star::ManagerRenderResource::init(const Handle &deviceID, std::shared_ptr<s
     bufferStorage.insert(std::make_pair(
         deviceID,
         std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 3000>>(
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName()))));
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))));
     textureStorage.insert(std::make_pair(
         deviceID,
         std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 1000>>(
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName())
-        )));
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName))));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
 
@@ -120,12 +119,12 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
 bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &handle)
 {
     if (handle.getType() ==
-        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName()))
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))
     {
         return bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread.load();
     }
     else if (handle.getType() ==
-             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName()))
+             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName))
     {
         return textureStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread.load();
     }
@@ -140,17 +139,17 @@ bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &
 void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Handle &handle)
 {
     assert(deviceID.getType() ==
-           common::HandleTypeRegistry::instance().getType(common::special_types::DeviceTypeName()).value());
+           common::HandleTypeRegistry::instance().getType(common::special_types::DeviceTypeName).value());
 
     boost::atomic<bool> *fence = nullptr;
 
     if (handle.getType() ==
-        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName()))
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))
     {
         fence = &bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread;
     }
     else if (handle.getType() ==
-             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName()))
+             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName))
     {
         fence = &bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread;
     }
@@ -169,7 +168,7 @@ void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Han
 star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &deviceID, const star::Handle &handle)
 {
     assert(handle.getType() ==
-               common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName()) &&
+               common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName) &&
            "Handle provided is not a buffer handle");
 
     auto &container = bufferStorage.at(deviceID)->get(handle);
@@ -194,7 +193,7 @@ star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &
 star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const Handle &deviceID, const star::Handle &handle)
 {
     assert(handle.getType() == common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                   common::special_types::TextureTypeName()) &&
+                                   common::special_types::TextureTypeName) &&
            "Handle provided is not a texture handle");
 
     const auto &container = textureStorage.at(deviceID)->get(handle);

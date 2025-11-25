@@ -80,12 +80,14 @@ CalleeRenderDependencies DefaultCreatePolicy::create(DeviceInfo &deviceInfo, Sta
 {
     assert(deviceInfo.device != nullptr);
 
-    return CalleeRenderDependencies{.commandBufferContainingTarget = commandBufferContainingTarget,
-                                    .targetTextureReadySemaphore = targetTextureReadySemaphore,
-                                    .targetTexture = targetTexture,
-                                    .hostVisibleBuffers = createHostVisibleBuffers(*deviceInfo.device, 1,
-                                                                                   deviceInfo.surface->getResolution(),
-                                                                                   targetTexture.getSize())};
+    return CalleeRenderDependencies::Builder()
+        .addBufferInfo(createHostVisibleBuffers(*deviceInfo.device, 1, deviceInfo.surface->getResolution(),
+                                                targetTexture.getSize())[0],
+                       true)
+        .setCommandBufferContainingTarget(commandBufferContainingTarget)
+        .setTargetTextureReadySemaphore(targetTextureReadySemaphore)
+        .setTargetTexture(std::move(targetTexture))
+        .build();
 }
 
 } // namespace star::service::detail::screen_capture

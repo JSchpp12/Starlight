@@ -8,10 +8,10 @@
 #include <starlight/common/HandleTypeRegistry.hpp>
 #include <starlight/common/IEvent.hpp>
 
+#include <absl/container/flat_hash_map.h>
+
 #include <cassert>
 #include <functional>
-#include <typeindex>
-#include <unordered_map>
 #include <vector>
 
 namespace star::core::device::system
@@ -98,7 +98,7 @@ class EventBus
     }
 
   private:
-    std::unordered_map<size_t, std::vector<SubscriberCallbackInfo>> m_listeners;
+    absl::flat_hash_map<size_t, std::vector<SubscriberCallbackInfo>> m_listeners;
     uint16_t m_eventHandleType;
 
     void removeSubscriber(const Handle &subscriberHandle, std::vector<SubscriberCallbackInfo> &subs)
@@ -116,7 +116,7 @@ class EventBus
             subs[i - 1] = std::move(subs[i]);
 
             // Update the moved subscriber's handle (its index decreased by 1)
-            size_t index; 
+            size_t index;
             {
                 int updatedIndex = int(i) - 1;
                 CastHelpers::SafeCast<int, size_t>(updatedIndex, index);

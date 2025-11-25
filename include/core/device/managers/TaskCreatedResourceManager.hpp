@@ -13,7 +13,7 @@ template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
 class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>
 {
   public:
-    TaskCreatedResourceManager(const std::string &handleTypeName, const std::string &eventTypeName)
+    TaskCreatedResourceManager(std::string_view handleTypeName, std::string_view eventTypeName)
         : ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>(handleTypeName, eventTypeName){};
     virtual ~TaskCreatedResourceManager() = default;
     TaskCreatedResourceManager(const TaskCreatedResourceManager &) noexcept = delete;

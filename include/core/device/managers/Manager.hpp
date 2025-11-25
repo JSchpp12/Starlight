@@ -19,7 +19,7 @@ template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
 class Manager : public ManagerBase<TRecord, TResourceRequest>
 {
   public:
-    Manager(const std::string &resourceHandleName)
+    Manager(std::string_view resourceHandleName)
         : ManagerBase<TRecord, TResourceRequest>(resourceHandleName), m_records(resourceHandleName){};
         
     virtual ~Manager() = default;

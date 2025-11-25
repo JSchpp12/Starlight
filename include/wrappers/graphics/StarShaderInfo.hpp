@@ -1,9 +1,9 @@
 #pragma once
 
-#include "core/device/DeviceContext.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarTextures/Texture.hpp"
+#include "core/device/DeviceContext.hpp"
 
 #include <starlight/common/Handle.hpp>
 #include <starlight/common/HandleTypeRegistry.hpp>
@@ -136,7 +136,7 @@ class StarShaderInfo
 
     bool isReady(const uint8_t &frameInFlight);
 
-    // std::set<vk::Semaphore> getDependentSemaphores(const uint8_t &frameInFlight) const; 
+    // std::set<vk::Semaphore> getDependentSemaphores(const uint8_t &frameInFlight) const;
 
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
@@ -167,7 +167,8 @@ class StarShaderInfo
 
         Builder &add(const Handle &bufferHandle, vk::Semaphore *resourceSemaphore = nullptr)
         {
-            assert(bufferHandle.getType() == common::HandleTypeRegistry::instance().getType(common::special_types::BufferTypeName()));
+            assert(bufferHandle.getType() ==
+                   common::HandleTypeRegistry::instance().getType(common::special_types::BufferTypeName));
 
             this->activeSet->back()->add(ShaderInfo(ShaderInfo::BufferInfo{bufferHandle}, resourceSemaphore));
             return *this;
@@ -195,9 +196,11 @@ class StarShaderInfo
             return *this;
         }
 
-        Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout, vk::Semaphore *resourceSemaphore  = nullptr)
+        Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout,
+                     vk::Semaphore *resourceSemaphore = nullptr)
         {
-            assert(textureHandle.getType() == common::HandleTypeRegistry::instance().getType(common::special_types::TextureTypeName()));
+            assert(textureHandle.getType() ==
+                   common::HandleTypeRegistry::instance().getType(common::special_types::TextureTypeName));
             this->activeSet->back()->add(
                 ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout}, resourceSemaphore));
             return *this;
@@ -206,11 +209,11 @@ class StarShaderInfo
         Builder &add(const Handle &textureHandle, const vk::ImageLayout &desiredLayout,
                      const vk::Format &requestedImageViewFormat, vk::Semaphore *resourceSemaphore = nullptr)
         {
-            assert(textureHandle.getType() == common::HandleTypeRegistry::instance().getType(common::special_types::TextureTypeName()));
+            assert(textureHandle.getType() ==
+                   common::HandleTypeRegistry::instance().getType(common::special_types::TextureTypeName));
 
-            this->activeSet->back()->add(
-                ShaderInfo(ShaderInfo::TextureInfo{textureHandle, desiredLayout, requestedImageViewFormat},
-                           resourceSemaphore));
+            this->activeSet->back()->add(ShaderInfo(
+                ShaderInfo::TextureInfo{textureHandle, desiredLayout, requestedImageViewFormat}, resourceSemaphore));
             return *this;
         }
 
@@ -226,7 +229,7 @@ class StarShaderInfo
         };
 
       private:
-       star::Handle m_deviceID;
+        star::Handle m_deviceID;
         core::device::StarDevice &device;
         std::vector<std::shared_ptr<ShaderInfoSet>> *activeSet = nullptr;
 
@@ -237,6 +240,6 @@ class StarShaderInfo
     };
 
   private:
-   star::Handle m_deviceID;
+    star::Handle m_deviceID;
 };
 } // namespace star

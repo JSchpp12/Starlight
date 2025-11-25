@@ -19,7 +19,7 @@ void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus
     auto *p = static_cast<CompileCompletePayload *>(payload);
 
     Handle shader = Handle{
-        .type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::ShaderTypeName()),
+        .type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::ShaderTypeName),
         .id = p->handleID};
     assert(p->compiledShaderCode != nullptr && "Compiled shader data not properly set");
 
@@ -51,7 +51,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
             }
 
             Handle handle = Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                       common::special_types::PipelineTypeName()),
+                                       common::special_types::PipelineTypeName),
                                    .id = recordHandle};
 
             std::vector<std::pair<StarShader, std::shared_ptr<std::vector<uint32_t>>>> compiledShaders;
@@ -67,7 +67,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
                                                                 .swapChainExtent = record.request.resolution};
 
             ts->submitTask(tasks::build_pipeline::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
-                                                                      std::move(record.request.pipeline)));
+                                                                      std::move(record.request.pipeline)), tasks::build_pipeline::BuildPipelineTaskName);
         }
     }
 }

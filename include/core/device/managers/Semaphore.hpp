@@ -33,7 +33,7 @@ class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 
 {
   public:
     Semaphore()
-        : ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 3000>(common::special_types::SemaphoreTypeName(),
+        : ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 3000>(common::special_types::SemaphoreTypeName,
                                                                        SemaphoreEventTypeName())
     {
     }

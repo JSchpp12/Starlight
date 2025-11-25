@@ -3,8 +3,6 @@
 #include "device/StarDevice.hpp"
 #include "job/TaskManager.hpp"
 
-#include "core/device/StarDevice.hpp"
-
 #include "core/device/managers/GraphicsContainer.hpp"
 #include "core/device/system/EventBus.hpp"
 #include "core/device/system/event/ShaderCompiled.hpp"
@@ -22,7 +20,7 @@ void star::job::complete_tasks::task_factory::ExecuteBuildPipelineComplete(void 
     auto *p = static_cast<PipelineBuildCompletePayload *>(payload);
 
     auto handle = Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                             common::special_types::PipelineTypeName()),
+                             common::special_types::PipelineTypeName),
                          .id = p->handleID};
 
     std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;

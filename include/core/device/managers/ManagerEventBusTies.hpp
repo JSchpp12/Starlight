@@ -12,7 +12,7 @@ template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
 class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecordCount>
 {
   public:
-    ManagerEventBusTies(const std::string &handleTypeName, const std::string &eventTypeName)
+    ManagerEventBusTies(std::string_view handleTypeName, const std::string_view eventTypeName)
         : Manager<TRecord, TResourceRequest, TMaxRecordCount>(handleTypeName),
           m_registeredHandleEventType(common::HandleTypeRegistry::instance().registerType(eventTypeName))
     {

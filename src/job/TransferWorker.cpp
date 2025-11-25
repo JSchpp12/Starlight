@@ -43,7 +43,7 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
     std::queue<std::unique_ptr<ProcessRequestInfo>> processRequestInfos =
         std::queue<std::unique_ptr<ProcessRequestInfo>>();
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 1; i++)
     {
         processRequestInfos.push(CreateProcessingInfo(
             myInfo.device,

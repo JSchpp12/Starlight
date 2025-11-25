@@ -45,12 +45,14 @@ struct PipelineRecord
     uint8_t numCompiled = 0;
 };
 
+constexpr std::string_view PipelineCreateEventTypeName = "pipeline_event_callback";
+
 class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>
 {
   public:
     Pipeline()
-        : TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>(common::special_types::PipelineTypeName(),
-                                                                          "pipline_event_callback")
+        : TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>(common::special_types::PipelineTypeName,
+                                                                          PipelineCreateEventTypeName)
     {
     }
     virtual ~Pipeline() = default;

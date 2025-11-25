@@ -1,16 +1,17 @@
 #pragma once
 
-#include "TaskTracker.hpp"
 #include "complete_tasks/CompleteTask.hpp"
 
-#include "boost/atomic/atomic.hpp"
-
+#include <cassert>
 #include <optional>
 #include <stdexcept>
-#include <typeindex>
 
 namespace star::job::tasks
 {
+constexpr const std::string GetTaskNameType()
+{
+    return "star::job::task";
+}
 using ExecuteFunction = void (*)(void *);
 using DestructorFunction = void (*)(void *);
 using MovePayloadFunction = void (*)(void *, void *);
@@ -47,7 +48,6 @@ class Task
         {
             static_cast<PayloadType *>(data)->~PayloadType();
         }
-
         Builder &setPayload(const PayloadType &data)
         {
             m_hasData = true;
@@ -97,13 +97,12 @@ class Task
             if (!m_movePayloadFunction)
                 m_movePayloadFunction = &Builder<PayloadType>::DefaultMovePayload;
 
-            Task<StorageBytes, StorageAlign> task{typeid(PayloadType)};
+            Task<StorageBytes, StorageAlign> task{};
             new (task.m_data) PayloadType(std::forward<PayloadType>(m_data));
             task.m_executeFunction = m_executeFunction;
             task.m_destroyPayloadFunction = m_destroyPayloadFunction;
             task.m_movePayloadFunction = m_movePayloadFunction;
             task.m_createCompleteFunction = m_createCompleteTaskFunction;
-            task.m_type = typeid(PayloadType); 
 
             return task;
         }
@@ -118,8 +117,7 @@ class Task
         PayloadType m_data;
     };
     Task() = default;
-    Task(std::type_index type) : m_type(std::move(type)){};
-    Task(Task &&other) : m_type(std::move(other.m_type))
+    Task(Task &&other)
     {
         if (other.m_movePayloadFunction)
             other.m_movePayloadFunction(m_data, other.m_data);
@@ -145,7 +143,6 @@ class Task
             m_destroyPayloadFunction = other.m_destroyPayloadFunction;
             m_movePayloadFunction = other.m_movePayloadFunction;
             m_createCompleteFunction = other.m_createCompleteFunction;
-            m_type = std::move(other.m_type); 
 
             if (m_movePayloadFunction)
                 m_movePayloadFunction(m_data, other.m_data);
@@ -191,13 +188,7 @@ class Task
         m_createCompleteFunction = nullptr;
     }
 
-    const std::type_index &getType() const{
-        assert(m_type.has_value());
-        return m_type.value();
-    }
-
   private:
-    std::optional<std::type_index> m_type{std::nullopt}; 
     ExecuteFunction m_executeFunction = nullptr;
     DestructorFunction m_destroyPayloadFunction = nullptr;
     MovePayloadFunction m_movePayloadFunction = nullptr;

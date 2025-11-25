@@ -3,10 +3,11 @@
 #include "StarBuffers/Buffer.hpp"
 
 #include <vulkan/vulkan.hpp>
+#include <boost/atomic/atomic.hpp>
 
 namespace star::service::detail::screen_capture
 {
-struct SynchronizationInfo
+struct GPUSynchronizationInfo
 {
     const vk::Semaphore &semaphore;
     const uint64_t &signalValue;

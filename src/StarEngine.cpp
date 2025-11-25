@@ -199,8 +199,7 @@ void star::StarEngine::registerScreenshotService(core::device::DeviceContext &co
 
 star::Handle star::StarEngine::CreateDefaultDeviceHandle()
 {
-    return Handle{.type =
-                      common::HandleTypeRegistry::instance().getType(common::special_types::DeviceTypeName()).value(),
+    return Handle{.type = common::HandleTypeRegistry::instance().getType(common::special_types::DeviceTypeName).value(),
                   .id = 0};
 }
 

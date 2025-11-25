@@ -47,6 +47,7 @@ find_package(tinyobjloader CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS container thread filesystem log log_setup)
 find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
+find_package(absl CONFIG REQUIRED)
 
 # add all necessary dependencies
 include(GNUInstallDirs)
@@ -140,7 +141,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/service/detail/screen_capture/CopyPolicies.cpp"
     "src/service/detail/screen_capture/CalleeRenderDependencies.cpp"
     "src/service/detail/screen_capture/DeviceInfo.cpp"
-    "src/service/detail/screen_capture/SynchronizationInfo.cpp"
+    "src/service/detail/screen_capture/GPUSynchronizationInfo.cpp"
     "src/core/service/InitParameters.cpp"
     "src/managers/ManagerRenderResource.cpp"
     "src/templates/StarApplication.cpp"
@@ -202,7 +203,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/job/TaskManager.cpp"
     "src/job/ImageWriterWorker.cpp"
     "src/job/FrameScheduler.cpp"
-    "src/job/TaskTracker.cpp"
+    
     "src/core/device/StarDevice.cpp"
     "src/core/device/DeviceContext.cpp"
     "src/core/device/FrameInFlightTracking.cpp"
@@ -311,7 +312,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/service/detail/screen_capture/CopyPolicies.hpp"
     "include/service/detail/screen_capture/CalleeRenderDependencies.hpp"
     "include/service/detail/screen_capture/DeviceInfo.hpp"
-    "include/service/detail/screen_capture/SynchronizationInfo.hpp"
+    "include/service/detail/screen_capture/GPUSynchronizationInfo.hpp"
     "include/service/InitParameters.hpp"
     "include/managers/ManagerRenderResource.hpp"
     "include/modules/InteractionSystem.hpp"
@@ -343,7 +344,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/job/TaskManager.hpp"
     "include/job/ImageWriterWorker.hpp"
     "include/job/FrameScheduler.hpp"
-    "include/job/TaskTracker.hpp"
     "include/core/HandleContainer.hpp"
     "include/core/MappedHandleContainer.hpp"
     "include/core/LinearHandleContainer.hpp"
@@ -432,6 +432,7 @@ if (NOT ${HEADLESS})
             Boost::container
             Boost::filesystem
             KTX::ktx
+            absl::hash
             glfw
         )
 else()
@@ -479,6 +480,7 @@ else()
             Boost::container
             Boost::filesystem
             KTX::ktx
+            absl::hash
         )
 endif()
 

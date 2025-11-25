@@ -4,9 +4,12 @@
 #include "StarShader.hpp"
 
 #include <vector>
+#include <string_view>
 
 namespace star::job::complete_tasks::compile_shader
 {
+constexpr std::string_view CompileShaderTypeName = "star::job::complete_tasks::compile_shader";
+
 struct CompileCompletePayload
 {
     uint32_t handleID;

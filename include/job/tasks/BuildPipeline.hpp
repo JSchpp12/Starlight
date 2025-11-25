@@ -8,6 +8,9 @@
 
 namespace star::job::tasks::build_pipeline
 {
+
+constexpr std::string_view BuildPipelineTaskName = "star::job::tasks::build_pipeline";
+
 struct PipelineBuildPayload
 {
     vk::Device device;

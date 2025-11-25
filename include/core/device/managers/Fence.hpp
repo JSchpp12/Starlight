@@ -31,7 +31,7 @@ class Fence : public ManagerEventBusTies<FenceRecord, FenceRequest, 50>
 {
   public:
     Fence()
-        : ManagerEventBusTies<FenceRecord, FenceRequest, 50>(common::special_types::FenceTypeName(), FenceEventName())
+        : ManagerEventBusTies<FenceRecord, FenceRequest, 50>(common::special_types::FenceTypeName, FenceEventName())
     {
     }
     virtual ~Fence() = default;

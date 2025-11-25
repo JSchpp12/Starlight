@@ -21,7 +21,7 @@ template <typename TRecord, typename TResourceRequest>
 class ManagerBase
 {
   public:
-    ManagerBase(const std::string &handleTypeName)
+    ManagerBase(std::string_view handleTypeName)
         : m_handleType(star::common::HandleTypeRegistry::instance().registerType(handleTypeName))
     {
     }

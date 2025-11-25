@@ -1,1 +1,0 @@
-#include "service/detail/screen_capture/SynchronizationInfo.hpp"

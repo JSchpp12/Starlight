@@ -30,20 +30,23 @@ void Execute(void *p)
     WaitUntilSemaphoreIsReady(payload->device, payload->semaphore, *payload->signalValue);
     WriteImageToDisk(payload->bufferImageInfo->hostVisibleBufferImage, *payload->bufferImageInfo, payload->path);
 
-    core::logging::log(boost::log::trivial::info, "PNG Write Done"); 
+    core::logging::log(boost::log::trivial::info, "PNG Write Done");
+    payload->writeIsDoneFlag->store(true);
+    payload->writeIsDoneFlag->notify_one();
 }
 
-WriteImageTask Create(const vk::Device &device, const vk::Extent3D &imageExtent, const vk::Format &format,
-                      StarBuffers::Buffer &buffer, const std::string &filePath, const uint64_t &semaphoreSignalValue,
-                      const vk::Semaphore &signalSemaphore)
+WriteImageTask Create(boost::atomic<bool> *writeIsDoneFlag, const vk::Device &device, const vk::Extent3D &imageExtent,
+                      const vk::Format &format, StarBuffers::Buffer &buffer, const std::string &filePath,
+                      const uint64_t &semaphoreSignalValue, const vk::Semaphore &signalSemaphore)
 {
     return WriteImageTask::Builder<WritePayload>()
-        .setPayload(WritePayload{.device = device,
+        .setPayload(WritePayload{.path = filePath,
+                                 .semaphore = signalSemaphore,
+                                 .device = device,
                                  .bufferImageInfo = std::make_unique<BufferImageInfo>(
                                      vk::Extent3D{imageExtent}, vk::Format{format}, StarBuffers::Buffer{buffer}),
                                  .signalValue = std::make_unique<uint64_t>(semaphoreSignalValue),
-                                 .semaphore = signalSemaphore,
-                                 .path = filePath})
+                                 .writeIsDoneFlag = writeIsDoneFlag})
         .setCreateCompleteTaskFunction(&CreateComplete)
         .setExecute(&Execute)
         .build();

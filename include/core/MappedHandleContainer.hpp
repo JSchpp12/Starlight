@@ -3,14 +3,14 @@
 #include "CastHelpers.hpp"
 #include "HandleContainer.hpp"
 
-#include <unordered_map>
+#include <absl/container/flat_hash_map.h>
 
 namespace star::core
 {
 template <typename TData> class MappedHandleContainer : public HandleContainer<TData>
 {
   public:
-    MappedHandleContainer(const std::string &handleTypeName) : HandleContainer<TData>(handleTypeName)
+    MappedHandleContainer(std::string_view handleTypeName) : HandleContainer<TData>(handleTypeName)
     {
     }
     void manualInsert(const Handle &handle, TData record)
@@ -45,7 +45,7 @@ template <typename TData> class MappedHandleContainer : public HandleContainer<T
     }
 
   private:
-    std::unordered_map<Handle, TData, star::HandleHash> m_records;
+    absl::flat_hash_map<Handle, TData, star::HandleHash> m_records;
 
     Handle createNewHandle() const
     {

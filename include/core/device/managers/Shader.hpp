@@ -71,7 +71,7 @@ class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50
 {
   public:
     Shader()
-        : TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>(star::common::special_types::ShaderTypeName(),
+        : TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>(star::common::special_types::ShaderTypeName,
                                                                       "shader_event_callback")
     {
     }

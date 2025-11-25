@@ -1,21 +1,23 @@
 #pragma once
 
+#include "CastHelpers.hpp"
 #include "FrameScheduler.hpp"
 #include "complete_tasks/CompleteTask.hpp"
 #include "job/worker/Worker.hpp"
 
-#include <boost/lockfree/stack.hpp>
+#include <starlight/common/Handle.hpp>
+#include <starlight/common/HandleTypeRegistry.hpp>
 
 #include <memory>
 #include <typeindex>
-#include <unordered_map>
+#include <absl/container/flat_hash_map.h>
 
 namespace star::job
 {
 class TaskManager
 {
   public:
-    TaskManager() : m_completeTasks(std::make_unique<job::TaskContainer<job::complete_tasks::CompleteTask, 128>>()){};
+    TaskManager() : m_completeTasks(std::make_unique<job::TaskContainer<job::complete_tasks::CompleteTask, 128>>()) {};
     ~TaskManager() = default;
 
     TaskManager(const TaskManager &) = delete;
@@ -24,28 +26,26 @@ class TaskManager
     TaskManager(TaskManager &&) = default;
     TaskManager &operator=(TaskManager &&) = default;
 
-    worker::Worker &registerWorker(const std::type_index &taskType, worker::Worker newWorker)
-    {
-        newWorker.setCompleteMessageCommunicationStructure(m_completeTasks.get());
+    Handle registerNewTaskType(std::string_view taskName) noexcept;
 
-        m_workers[taskType].emplace_back(std::move(newWorker));
-        return m_workers[taskType].back();
-    }
-    
-    void cleanup()
-    {
-        for (auto &[type, list] : m_workers)
-        {
-            for (auto &w : list)
-            {
-                w.cleanup();
-            }
-        }
-    }
+    Handle registerWorker(worker::Worker newWorker, std::string_view taskName) noexcept;
 
-    template <typename TTask> void submitTask(TTask &&newTask)
+    void registerWorker(worker::Worker newWorker, Handle &registeredTaskTypeHanle) noexcept;
+
+    void cleanup() noexcept;
+
+    size_t getNumOfWorkersForType(const Handle &registeredTaskType) const noexcept;
+
+    /// <summary>
+    /// Submit a task to one of the workers for the provided handle type
+    /// </summary>
+    /// <typeparam name="TTask"></typeparam>
+    /// <param name="newTask"></param>
+    /// <param name="registeredTaskType">Contains the type which will be used to select worker pool. ID will be used to
+    /// select specific worker from that pool</param>
+    template <typename TTask> void submitTask(TTask &&newTask, const Handle &registeredTaskType)
     {
-        worker::Worker *worker = getWorker(typeid(TTask));
+        worker::Worker *worker = getWorker(registeredTaskType);
         if (worker == nullptr)
         {
             throw std::runtime_error("Failed to find corresponding worker for the provided task type");
@@ -56,37 +56,29 @@ class TaskManager
         delete storedTask;
     }
 
-    job::TaskContainer<job::complete_tasks::CompleteTask, 128> *getCompleteMessages()
+    template <typename TTask> void submitTask(TTask &&newTask, std::string_view taskName)
+    {
+        Handle handle = {.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(taskName), .id = 0};
+
+        submitTask<TTask>(std::forward<TTask>(newTask), handle);
+    }
+
+    job::TaskContainer<job::complete_tasks::CompleteTask, 128> *getCompleteMessages() noexcept
     {
         return m_completeTasks.get();
     }
 
-    bool isThereWorkerForTask(const std::type_index &taskType)
-    {
-        const worker::Worker *found = getWorker(taskType);
-        if (found == nullptr)
-        {
-            return false;
-        }
+    bool isThereWorkerForTask(const Handle &taskType) noexcept;
 
-        return true;
-    }
+    worker::Worker *getWorker(const Handle &registeredTaskType) noexcept;
 
   private:
-    std::unordered_map<std::type_index, std::vector<worker::Worker>> m_workers =
-        std::unordered_map<std::type_index, std::vector<worker::Worker>>();
+    absl::flat_hash_map<uint16_t, std::vector<worker::Worker>> m_workers;
 
     std::unique_ptr<job::TaskContainer<job::complete_tasks::CompleteTask, 128>> m_completeTasks = nullptr;
 
-    worker::Worker *getWorker(const std::type_index &taskType, const size_t &index = 0)
-    {
-        auto it = m_workers.find(taskType);
-        if (it == m_workers.end() || index >= it->second.size())
-        {
-            return nullptr;
-        }
+    std::vector<worker::Worker> *getWorkerPool(const uint16_t &registeredType) noexcept;
 
-        return &it->second[index];
-    }
+    const std::vector<worker::Worker> *getWorkerPool(const uint16_t &registeredType) const noexcept;
 };
 } // namespace star::job

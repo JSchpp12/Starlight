@@ -15,18 +15,26 @@ void DefaultCopyPolicy::init(DeviceInfo &deviceInfo)
     createSemaphores(*m_deviceInfo->eventBus, m_deviceInfo->numFramesInFlight);
 }
 
-SynchronizationInfo DefaultCopyPolicy::triggerSubmission(CalleeRenderDependencies &targetDeps,
-                                                         const uint8_t &frameInFlightIndex)
+GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CompleteCalleeRenderDependencies deps,
+                                                            const uint8_t &frameInFlightIndex)
 {
-    m_targetDeps = &targetDeps;
-
+    m_targetDeps = deps;
+    waitForWriteToBeCompleteInDependency(deps);
     m_deviceInfo->commandManager->submitDynamicBuffer(m_commandBuffer);
 
-    registerListenerForNextFrameStart(targetDeps, frameInFlightIndex);
+    registerListenerForNextFrameStart(deps, frameInFlightIndex);
 
-    return SynchronizationInfo{.semaphore = *m_doneSemaphoresRaw[frameInFlightIndex],
-                               .signalValue =
-                                   m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex)};
+    return GPUSynchronizationInfo{.semaphore = *m_doneSemaphoresRaw[frameInFlightIndex],
+                                  .signalValue =
+                                      m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex)};
+}
+
+void DefaultCopyPolicy::waitForWriteToBeCompleteInDependency(CompleteCalleeRenderDependencies &deps) const noexcept
+{
+    if (!deps.secondaryThreadWriteIsDone->value())
+    {
+        deps.secondaryThreadWriteIsDone->wait(false);
+    }
 }
 
 void DefaultCopyPolicy::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
@@ -41,13 +49,13 @@ void DefaultCopyPolicy::recordCommandBuffer(vk::CommandBuffer &commandBuffer, co
 
 void DefaultCopyPolicy::recordCopyCommands(vk::CommandBuffer &commandBuffer) const
 {
-    const vk::Extent3D imageExtent = m_targetDeps->targetTexture.getBaseExtent();
+    const vk::Extent3D &imageExtent = m_targetDeps.targetTexture->getBaseExtent();
 
     commandBuffer.copyImageToBuffer2(
         vk::CopyImageToBufferInfo2()
-            .setSrcImage(m_targetDeps->targetTexture.getVulkanImage())
+            .setSrcImage(m_targetDeps.targetTexture->getVulkanImage())
             .setSrcImageLayout(vk::ImageLayout::eTransferSrcOptimal)
-            .setDstBuffer(m_targetDeps->hostVisibleBuffers.at(0).getVulkanBuffer())
+            .setDstBuffer(m_targetDeps.buffer->getVulkanBuffer())
             .setRegions({vk::BufferImageCopy2()
                              .setImageExtent(imageExtent)
                              .setImageSubresource(vk::ImageSubresourceLayers()
@@ -82,7 +90,6 @@ void DefaultCopyPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer
 
 std::vector<vk::ImageMemoryBarrier2> DefaultCopyPolicy::getImageBarriersForPrep() const
 {
-    assert(m_targetDeps != nullptr);
     const auto range = vk::ImageSubresourceRange()
                            .setAspectMask(vk::ImageAspectFlagBits::eColor)
                            .setBaseMipLevel(0)
@@ -91,13 +98,13 @@ std::vector<vk::ImageMemoryBarrier2> DefaultCopyPolicy::getImageBarriersForPrep(
                            .setLayerCount(1);
 
     auto barriers = std::vector<vk::ImageMemoryBarrier2>(1);
-    if (m_targetDeps->targetTexture.getImageLayout() == vk::ImageLayout::ePresentSrcKHR)
+    if (m_targetDeps.targetTexture->getImageLayout() == vk::ImageLayout::ePresentSrcKHR)
     {
         barriers[0] = vk::ImageMemoryBarrier2()
                           .setOldLayout(vk::ImageLayout::ePresentSrcKHR)
                           .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
                           .setSubresourceRange(range)
-                          .setImage(m_targetDeps->targetTexture.getVulkanImage())
+                          .setImage(m_targetDeps.targetTexture->getVulkanImage())
                           .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                           .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                           .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
@@ -108,10 +115,10 @@ std::vector<vk::ImageMemoryBarrier2> DefaultCopyPolicy::getImageBarriersForPrep(
     else
     {
         barriers[0] = vk::ImageMemoryBarrier2()
-                          .setOldLayout(m_targetDeps->targetTexture.getImageLayout())
+                          .setOldLayout(m_targetDeps.targetTexture->getImageLayout())
                           .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
                           .setSubresourceRange(range)
-                          .setImage(m_targetDeps->targetTexture.getVulkanImage())
+                          .setImage(m_targetDeps.targetTexture->getVulkanImage())
                           .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                           .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                           .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
@@ -133,9 +140,9 @@ std::vector<vk::ImageMemoryBarrier2> DefaultCopyPolicy::getImageBarriersForClean
                            .setLayerCount(1);
     return {vk::ImageMemoryBarrier2()
                 .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
-                .setNewLayout(m_targetDeps->targetTexture.getImageLayout())
+                .setNewLayout(m_targetDeps.targetTexture->getImageLayout())
                 .setSubresourceRange(range)
-                .setImage(m_targetDeps->targetTexture.getVulkanImage())
+                .setImage(m_targetDeps.targetTexture->getVulkanImage())
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
@@ -173,26 +180,26 @@ vk::Semaphore DefaultCopyPolicy::submitBuffer(StarCommandBuffer &buffer, const i
         m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameIndexToBeDrawn), 0};
     const std::vector<vk::Semaphore> signaltimelineSemaphores{*m_doneSemaphoresRaw[frameIndexToBeDrawn],
                                                               *m_binarySignalSemaphoresRaw[frameIndexToBeDrawn]};
-    uint32_t semaphoreCount;
+    uint32_t semaphoreCount = 0;
     CastHelpers::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
 
-    auto timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
-                                  .setPSignalSemaphoreValues(signalSemaphoreValues.data())
-                                  .setSignalSemaphoreValueCount(semaphoreCount);
+    auto &timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
+                                   .setPSignalSemaphoreValues(signalSemaphoreValues.data())
+                                   .setSignalSemaphoreValueCount(semaphoreCount);
 
     std::vector<vk::Semaphore> waitSemaphores{
-        m_deviceInfo->semaphoreManager->get(m_targetDeps->targetTextureReadySemaphore)->semaphore};
+        m_deviceInfo->semaphoreManager->get(*m_targetDeps.targetTextureReadySemaphore)->semaphore};
     std::vector<vk::PipelineStageFlags> waitPoints{vk::PipelineStageFlagBits::eTransfer};
 
-    auto submitInfo = vk::SubmitInfo()
-                          .setCommandBufferCount(1)
-                          .setCommandBuffers(buffer.buffer(frameIndexToBeDrawn))
-                          .setWaitSemaphoreCount(1)
-                          .setPWaitSemaphores(waitSemaphores.data())
-                          .setPWaitDstStageMask(waitPoints.data())
-                          .setPSignalSemaphores(signaltimelineSemaphores.data())
-                          .setSignalSemaphoreCount(semaphoreCount)
-                          .setPNext(&timelineSubmitInfo);
+    auto &submitInfo = vk::SubmitInfo()
+                           .setCommandBufferCount(1)
+                           .setCommandBuffers(buffer.buffer(frameIndexToBeDrawn))
+                           .setWaitSemaphoreCount(1)
+                           .setPWaitSemaphores(waitSemaphores.data())
+                           .setPWaitDstStageMask(waitPoints.data())
+                           .setPSignalSemaphores(signaltimelineSemaphores.data())
+                           .setSignalSemaphoreCount(semaphoreCount)
+                           .setPNext(&timelineSubmitInfo);
 
     m_deviceInfo->device->getDefaultQueue(star::Queue_Type::Ttransfer).getVulkanQueue().submit({submitInfo});
 
@@ -231,10 +238,10 @@ void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBu
     }
 }
 
-void DefaultCopyPolicy::registerListenerForNextFrameStart(CalleeRenderDependencies &deps,
+void DefaultCopyPolicy::registerListenerForNextFrameStart(CompleteCalleeRenderDependencies &deps,
                                                           const uint8_t &frameInFlightIndex)
 {
-    Handle calleeHandle = deps.commandBufferContainingTarget;
+    Handle calleeHandle = *deps.commandBufferContainingTarget;
     uint8_t targetFrameInFlightIndex = frameInFlightIndex;
     uint64_t signaledSemaphoreValue = m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex);
 

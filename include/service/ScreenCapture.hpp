@@ -2,7 +2,7 @@
 
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
-#include "detail/screen_capture/SynchronizationInfo.hpp"
+#include "detail/screen_capture/GPUSynchronizationInfo.hpp"
 #include "event/TriggerScreenshot.hpp"
 #include "job/tasks/TaskFactory.hpp"
 #include "logging/LoggingFactory.hpp"
@@ -24,10 +24,12 @@ constexpr const std::string ScreenCaptureServiceCalleeTypeName()
 template <typename TCopyPolicy>
 concept CopyPolicyLike =
     requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
-             detail::screen_capture::CalleeRenderDependencies &deps, const uint8_t &frameInFlightIndex) {
+             detail::screen_capture::CompleteCalleeRenderDependencies deps, const uint8_t &frameInFlightIndex) {
         { c.init(deviceInfo) } -> std::same_as<void>;
         { c.registerWithCommandBufferManager() } -> std::same_as<void>;
-        { c.triggerSubmission(deps, frameInFlightIndex) } -> std::same_as<detail::screen_capture::SynchronizationInfo>;
+        {
+            c.triggerSubmission(deps, frameInFlightIndex)
+        } -> std::same_as<detail::screen_capture::GPUSynchronizationInfo>;
     };
 
 template <typename TWorkerControllerPolicy>
@@ -112,12 +114,22 @@ class ScreenCapture
                                                                           screenEvent.getTargetTextureReadySemaphore());
         }
 
+        detail::screen_capture::CompleteCalleeRenderDependencies selectedTargetResourcesForCopy{
+            .buffer = &m_calleeDependencyTracker.bufferInfo[0].bufferObject,
+            .secondaryThreadWriteIsDone = m_calleeDependencyTracker.bufferInfo[0].secondaryThreadWriteIsDone.get(),
+            .commandBufferContainingTarget = &m_calleeDependencyTracker.commandBufferContainingTarget,
+            .targetTextureReadySemaphore = &m_calleeDependencyTracker.targetTextureReadySemaphore,
+            .targetTexture = &m_calleeDependencyTracker.targetTexture
+        };
+
         // need way to wait for commands to be submitted BEFORE telling worker to start?
-        auto syncInfo = m_copyPolicy.triggerSubmission(m_calleeDependencyTracker, screenEvent.getFrameInFlight());
+        detail::screen_capture::GPUSynchronizationInfo syncInfo =
+            m_copyPolicy.triggerSubmission(selectedTargetResourcesForCopy, screenEvent.getFrameInFlight());
 
         m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(
+            m_calleeDependencyTracker.bufferInfo[0].secondaryThreadWriteIsDone.get(),
             m_deviceInfo.device->getVulkanDevice(), screenEvent.getTexture().getBaseExtent(),
-            screenEvent.getTexture().getBaseFormat(), m_calleeDependencyTracker.hostVisibleBuffers.at(0),
+            screenEvent.getTexture().getBaseFormat(), m_calleeDependencyTracker.bufferInfo[0].bufferObject,
             screenEvent.getName(), syncInfo.signalValue, syncInfo.semaphore));
 
         keepAlive = true;
@@ -134,9 +146,9 @@ class ScreenCapture
 
     void cleanupDependencies(vk::Device &device)
     {
-        for (auto &buffer : m_calleeDependencyTracker.hostVisibleBuffers)
+        for (auto &buffer : m_calleeDependencyTracker.bufferInfo)
         {
-            buffer.cleanupRender(device);
+            buffer.bufferObject.cleanupRender(device);
         }
     }
 

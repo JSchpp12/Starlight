@@ -41,7 +41,7 @@ void star::RenderResourceSystem::registerSetDrawInfoCallback(
 
 void star::RenderResourceSystem::bind(const Handle &resource, vk::CommandBuffer &commandBuffer)
 {
-    assert(common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName()) &&
+    assert(common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName) &&
            "Must be a buffer handle type");
 
     bindBuffer(resource.getID(), commandBuffer);

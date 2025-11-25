@@ -24,7 +24,7 @@ template <typename TData, size_t TMaxDataCount>
 class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount>
 {
   public:
-    ManagedHandleContainer(const std::string &handleTypeName)
+    ManagedHandleContainer(std::string_view handleTypeName)
         : LinearHandleContainer<TData, TMaxDataCount>(handleTypeName)
     {
     }

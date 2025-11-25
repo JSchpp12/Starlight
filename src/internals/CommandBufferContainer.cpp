@@ -69,7 +69,7 @@ star::Handle star::CommandBufferContainer::add(
     CastHelpers::SafeCast<size_t, uint32_t>(this->allBuffers.size(), count);
 
     star::Handle newHandle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                               common::special_types::CommandBufferTypeName()),
+                               common::special_types::CommandBufferTypeName),
                            .id = count};
     const int bufferIndex = this->allBuffers.size();
 

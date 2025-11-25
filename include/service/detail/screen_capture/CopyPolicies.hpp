@@ -2,7 +2,7 @@
 
 #include "CalleeRenderDependencies.hpp"
 #include "DeviceInfo.hpp"
-#include "SynchronizationInfo.hpp"
+#include "GPUSynchronizationInfo.hpp"
 #include "wrappers/graphics/StarCommandBuffer.hpp"
 
 namespace star::service::detail::screen_capture
@@ -12,7 +12,8 @@ class DefaultCopyPolicy
   public:
     void init(DeviceInfo &deviceInfo);
 
-    SynchronizationInfo triggerSubmission(CalleeRenderDependencies &targetDeps, const uint8_t &frameInFlightIndex);
+    GPUSynchronizationInfo triggerSubmission(CompleteCalleeRenderDependencies deps,
+                                             const uint8_t &frameInFlightIndex);
 
     void registerWithCommandBufferManager();
 
@@ -24,7 +25,9 @@ class DefaultCopyPolicy
     std::vector<vk::Semaphore *> m_binarySignalSemaphoresRaw;
     Handle m_startOfFrameListener;
     DeviceInfo *m_deviceInfo = nullptr;
-    CalleeRenderDependencies *m_targetDeps = nullptr;
+    CompleteCalleeRenderDependencies m_targetDeps; 
+
+    void waitForWriteToBeCompleteInDependency(CompleteCalleeRenderDependencies &targetDeps) const noexcept;
 
     void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                              const uint64_t &frameIndex);
@@ -47,7 +50,7 @@ class DefaultCopyPolicy
 
     void createSemaphores(core::device::system::EventBus &eventBus, const uint8_t &numFramesInFlight);
 
-    void registerListenerForNextFrameStart(CalleeRenderDependencies &deps, const uint8_t &frameInFlightIndex);
+    void registerListenerForNextFrameStart(CompleteCalleeRenderDependencies &deps, const uint8_t &frameInFlightIndex);
 
     void startOfFrameEventCallback(const Handle &calleeCommandBuffer, const uint8_t &targetFrameInFlightIndex,
                                    const uint64_t &signaledSemaphoreValue, const star::common::IEvent &e,

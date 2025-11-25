@@ -15,7 +15,7 @@ namespace star::core
 template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : public HandleContainer<TData>
 {
   public:
-    LinearHandleContainer(const std::string &handleTypeName) : HandleContainer<TData>(handleTypeName)
+    LinearHandleContainer(std::string_view handleTypeName) : HandleContainer<TData>(handleTypeName)
     {
     }
     LinearHandleContainer(uint16_t registeredHandleType) : HandleContainer<TData>(std::move(registeredHandleType))

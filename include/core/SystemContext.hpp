@@ -38,6 +38,6 @@ class SystemContext
   private:
     RenderingInstance m_instance;
     LinearHandleContainer<device::DeviceContext, 1> m_contexts =
-        LinearHandleContainer<device::DeviceContext, 1>(common::special_types::DeviceTypeName());
+        LinearHandleContainer<device::DeviceContext, 1>(common::special_types::DeviceTypeName);
 };
 } // namespace star::core

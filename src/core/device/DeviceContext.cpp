@@ -36,7 +36,7 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8
 {
     assert(!m_ownsResources && "Dont call init twice");
     assert(deviceID.getType() ==
-           common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::DeviceTypeName()));
+           common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::DeviceTypeName));
     logInit(numFramesInFlight);
 
     m_deviceID = deviceID;
@@ -83,7 +83,8 @@ star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapch
     return m_device->getSwapchainSupport(m_surface);
 }
 
-std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(StarDevice &device, const size_t &targetNumQueuesToUse)
+std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(
+    StarDevice &device, const size_t &targetNumQueuesToUse)
 {
     star::core::logging::log(boost::log::trivial::info, "Initializing transfer workers");
 
@@ -182,14 +183,15 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
         job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::build_pipeline::BuildPipelineTask,
                                                                      64>{},
         "Pipeline_Builder"}};
-    m_taskManager.registerWorker(typeid(job::tasks::build_pipeline::BuildPipelineTask), std::move(pipelineWorker));
+
+    m_taskManager.registerWorker(std::move(pipelineWorker), job::tasks::build_pipeline::BuildPipelineTaskName);
 
     // create worker for shader compilation
     job::worker::Worker shaderWorker{job::worker::DefaultWorker{
         job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::compile_shader::CompileShaderTask,
                                                                      64>{},
         "Shader_Compiler"}};
-    m_taskManager.registerWorker(typeid(job::tasks::compile_shader::CompileShaderTask), std::move(shaderWorker));
+    m_taskManager.registerWorker(std::move(shaderWorker), job::tasks::compile_shader::CompileShaderTypeName);
 }
 
 void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight) const

@@ -1,14 +1,16 @@
 #pragma once
 
-#include <starlight/common/Handle.hpp>
 #include "StarShader.hpp"
 #include "job/complete_tasks/CompleteTask.hpp"
 #include "job/tasks/Task.hpp"
+#include <starlight/common/Handle.hpp>
 
 #include <memory>
 
 namespace star::job::tasks::compile_shader
 {
+constexpr std::string_view CompileShaderTypeName = "star::job::tasks::compile_shader";
+
 struct CompileShaderPayload
 {
     std::string path;
