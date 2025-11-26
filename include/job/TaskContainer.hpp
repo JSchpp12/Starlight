@@ -4,11 +4,11 @@
 #include "logging/LoggingFactory.hpp"
 
 #include <boost/atomic/atomic.hpp>
-#include <boost/lockfree/queue.hpp>
+#include <boost/lockfree/stack.hpp>
 
 #include <concepts>
 #include <optional>
-#include <queue>
+#include <thread>
 #include <sstream>
 #include <vector>
 
@@ -19,11 +19,10 @@ concept TTaskLike = requires(TTask t) {
     { t.reset() } -> std::same_as<void>;
 };
 
-template <TTaskLike TTask, size_t TMaxSize>
-class TaskContainer
+template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
 {
   public:
-    TaskContainer() : m_tasks(std::vector<TTask>(TMaxSize))
+    TaskContainer() : m_tasks(TMaxSize)
     {
         initAvailableSpaces(TMaxSize);
     }
@@ -41,13 +40,6 @@ class TaskContainer
         m_queuedTasks.push(newSpace);
     }
 
-    void freeTask(const uint32_t &taskHandle)
-    {
-        assert(taskHandle < TMaxSize && "Task handle is beyond range of container size");
-        m_tasks[taskHandle].reset();
-        m_availableSpaces.push(taskHandle);
-    }
-
     std::optional<TTask> getQueuedTask()
     {
         uint32_t queuedIndex = 0;
@@ -56,19 +48,22 @@ class TaskContainer
             return std::nullopt;
         }
 
-        assert(queuedIndex <= TMaxSize && "Popped queued task is beyond available range");
+        assert(queuedIndex < TMaxSize && "Popped queued task is beyond available range");
 
         auto tmp = std::make_optional<TTask>(std::move(m_tasks[queuedIndex]));
-        m_availableSpaces.push(queuedIndex);
+        if (!m_availableSpaces.push(queuedIndex))
+        {
+            throw std::runtime_error("Failed to push available space");
+        }
         return tmp;
     }
 
   private:
-    std::vector<TTask> m_tasks = std::vector<TTask>(TMaxSize);
-    boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>> m_availableSpaces =
-        boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>>();
-    boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>> m_queuedTasks =
-        boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>>();
+    std::vector<TTask> m_tasks;
+    boost::lockfree::stack<uint32_t, boost::lockfree::capacity<TMaxSize>> m_availableSpaces =
+        boost::lockfree::stack<uint32_t, boost::lockfree::capacity<TMaxSize>>();
+    boost::lockfree::stack<uint32_t, boost::lockfree::capacity<TMaxSize>> m_queuedTasks =
+        boost::lockfree::stack<uint32_t, boost::lockfree::capacity<TMaxSize>>();
 
     uint32_t getNextAvailableSpace()
     {
@@ -104,7 +99,10 @@ class TaskContainer
     {
         for (uint32_t i = 0; i < size; i++)
         {
-            m_availableSpaces.push(i);
+            if (!m_availableSpaces.push(i))
+            {
+                throw std::runtime_error("Failed to initialize space");
+            }
         }
     }
 };

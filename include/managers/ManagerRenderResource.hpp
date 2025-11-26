@@ -129,7 +129,7 @@ class ManagerRenderResource : public StarManager
         textureStorage;
     static std::unordered_map<
         Handle,
-        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 3000>>,
+        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 1500>>,
         star::HandleHash>
         bufferStorage;
 

@@ -2,10 +2,11 @@
 cmake_minimum_required (VERSION 3.26)
 
 SET(STARLIGHT_NAME "starlight")
-project(${STARLIGHT_NAME})
+project(${STARLIGHT_NAME}
+    LANGUAGES CXX C
+)
 
 include(CheckIncludeFile)
-enable_language(C CXX)
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
