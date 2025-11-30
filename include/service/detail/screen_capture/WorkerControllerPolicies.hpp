@@ -17,5 +17,8 @@ class WorkerControllerPolicy
 
   private:
     std::vector<job::worker::Worker::WorkerConcept *> m_workers;
+    size_t m_nextWorkerIndexToUse = 0; 
+
+    void selectNextWorker();
 };
 } // namespace star::service::detail::screen_capture

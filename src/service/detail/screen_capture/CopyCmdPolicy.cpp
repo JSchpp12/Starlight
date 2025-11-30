@@ -1,5 +1,6 @@
 #include "service/detail/screen_capture/CopyCmdPolicy.hpp"
 
+#include "logging/LoggingFactory.hpp"
 #include <cassert>
 
 namespace star::service::detail::screen_capture
@@ -122,23 +123,19 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const int &
         waitSemaphores[0] = previousCommandBufferSemaphores->at(0);
     }
 
-    const uint64_t waitSemaphoreValues[]{m_inUseInfo->numTimesFrameProcessed};
-
-    auto &timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
-                                   .setPSignalSemaphoreValues(signalSemaphoreValues.data())
-                                   .setSignalSemaphoreValueCount(semaphoreCount)
-                                   .setPWaitSemaphoreValues(waitSemaphoreValues)
-                                   .setWaitSemaphoreValueCount(1);
+    auto timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
+                                  .setPSignalSemaphoreValues(signalSemaphoreValues.data())
+                                  .setSignalSemaphoreValueCount(semaphoreCount);
     const vk::PipelineStageFlags waitPoints[]{vk::PipelineStageFlagBits::eTransfer};
-    auto &submitInfo = vk::SubmitInfo()
-                           .setCommandBufferCount(1)
-                           .setCommandBuffers(buffer.buffer(frameIndexToBeDrawn))
-                           .setWaitSemaphoreCount(1)
-                           .setPWaitSemaphores(waitSemaphores.data())
-                           .setPWaitDstStageMask(waitPoints)
-                           .setPSignalSemaphores(signalTimelineSemaphores.data())
-                           .setSignalSemaphoreCount(semaphoreCount)
-                           .setPNext(&timelineSubmitInfo);
+    auto submitInfo = vk::SubmitInfo()
+                          .setCommandBufferCount(1)
+                          .setCommandBuffers(buffer.buffer(frameIndexToBeDrawn))
+                          .setWaitSemaphoreCount(1)
+                          .setPWaitSemaphores(waitSemaphores.data())
+                          .setPWaitDstStageMask(waitPoints)
+                          .setPSignalSemaphores(signalTimelineSemaphores.data())
+                          .setSignalSemaphoreCount(semaphoreCount)
+                          .setPNext(&timelineSubmitInfo);
 
     assert(m_inUseInfo->queueToUse != nullptr);
     m_inUseInfo->queueToUse.submit({submitInfo});

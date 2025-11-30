@@ -27,6 +27,12 @@ void Execute(void *p)
     //     }
     // }
 
+    if (payload->signalValue == nullptr){
+        throw std::runtime_error("No signal value provided");
+    }
+    if (payload->semaphore == nullptr){
+        throw std::runtime_error("No semaphore provided"); 
+    }
     WaitUntilSemaphoreIsReady(payload->device, payload->semaphore, *payload->signalValue);
     WriteImageToDisk(payload->bufferImageInfo->owningObjectPool->get(payload->bufferImageInfo->registrationHandle),
                      *payload->bufferImageInfo, payload->path);
@@ -51,7 +57,7 @@ WriteImageTask Create(WritePayload payload)
 void WaitUntilSemaphoreIsReady(vk::Device &device, const vk::Semaphore &semaphore, const uint64_t &signalValueToWaitFor)
 {
     vk::Result waitResult = device.waitSemaphores(
-        vk::SemaphoreWaitInfo().setSemaphoreCount(1).setPSemaphores(&semaphore).setPValues(&signalValueToWaitFor),
+        vk::SemaphoreWaitInfo().setValues(signalValueToWaitFor).setSemaphores(semaphore),
         UINT64_MAX);
 
     if (waitResult != vk::Result::eSuccess)

@@ -193,8 +193,9 @@ uint8_t StarEngine::GetNumFramesInFlight()
 void star::StarEngine::registerScreenshotService(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
 {
     deviceManager.getContext(defaultDevice)
-        .registerService(service::screen_capture::Builder(context.getDevice(), context.getTaskManager()).build(),
-                         numFramesInFlight);
+        .registerService(
+            service::screen_capture::Builder(context.getDevice(), context.getTaskManager()).setNumWorkers(27).build(),
+            numFramesInFlight);
 }
 
 star::Handle star::StarEngine::CreateDefaultDeviceHandle()

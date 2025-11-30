@@ -19,15 +19,6 @@ Service Builder::build()
 {
     assert(m_numWorkers > 0 && "Must have at least one worker");
 
-    if (m_numWorkers > 1)
-    {
-        std::ostringstream oss;
-        oss << "More than one worker is not currently supported";
-        core::logging::log(boost::log::trivial::error, oss.str());
-
-        throw std::runtime_error(oss.str());
-    }
-
     auto newWorkers = registerWorkers();
 
     return Service{ScreenCapture{detail::screen_capture::WorkerControllerPolicy{std::move(newWorkers)},
@@ -45,7 +36,7 @@ std::vector<job::worker::Worker::WorkerConcept *> Builder::registerWorkers()
 
         auto worker = m_taskManager.registerWorker(
             {job::worker::DefaultWorker(job::worker::default_worker::DefaultThreadTaskHandlingPolicy<
-                                            job::tasks::write_image_to_disk::WriteImageTask, 500>{},
+                                            job::tasks::write_image_to_disk::WriteImageTask, 500>{true},
                                         oss.str())},
             job::tasks::write_image_to_disk::WriteImageTypeName);
 

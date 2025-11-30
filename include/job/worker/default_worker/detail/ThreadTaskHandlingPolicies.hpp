@@ -14,10 +14,17 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
 {
   public:
     DefaultThreadTaskHandlingPolicy()
-        : m_shouldRun(std::make_shared<boost::atomic<bool>>()),
+        : m_waitForWorkToFinishBeforeExiting(false), m_shouldRun(std::make_shared<boost::atomic<bool>>()),
           m_tasks(std::make_shared<job::TaskContainer<TTask, TQueueSize>>())
     {
     }
+    explicit DefaultThreadTaskHandlingPolicy(bool waitForWorkToFinishBeforeExiting)
+        : m_waitForWorkToFinishBeforeExiting(waitForWorkToFinishBeforeExiting),
+          m_shouldRun(std::make_shared<boost::atomic<bool>>()),
+          m_tasks(std::make_shared<job::TaskContainer<TTask, TQueueSize>>())
+    {
+    }
+
     void init(std::string workerName, TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
     {
         m_workerName = std::make_shared<std::string>(workerName);
@@ -36,6 +43,7 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
     }
 
   private:
+    bool m_waitForWorkToFinishBeforeExiting = false;
     std::shared_ptr<boost::atomic<bool>> m_shouldRun = nullptr;
     std::shared_ptr<job::TaskContainer<TTask, TQueueSize>> m_tasks = nullptr;
     TaskContainer<complete_tasks::CompleteTask, 128> *m_completeMessages = nullptr;
@@ -46,8 +54,8 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
     void startThread()
     {
         m_shouldRun->store(true);
-        thread = boost::thread(&DefaultThreadTaskHandlingPolicy::threadFunction, m_shouldRun.get(), m_tasks.get(),
-                               m_completeMessages, m_workerName.get());
+        thread = boost::thread(&DefaultThreadTaskHandlingPolicy::threadFunction, &m_waitForWorkToFinishBeforeExiting,
+                               m_shouldRun.get(), m_tasks.get(), m_completeMessages, m_workerName.get());
     }
 
     void stopThread()
@@ -57,7 +65,8 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
             thread.join();
     }
 
-    static void threadFunction(boost::atomic<bool> *shouldRun, job::TaskContainer<TTask, TQueueSize> *tasks,
+    static void threadFunction(const bool *mustWaitForWorkToFinishBeforeExit, boost::atomic<bool> *shouldRun,
+                               job::TaskContainer<TTask, TQueueSize> *tasks,
                                TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages,
                                std::string *workerName)
     {
@@ -65,7 +74,8 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
 
         logStart(*workerName);
 
-        while (shouldRun->load())
+        bool run = shouldRun->load();
+        while (run)
         {
             std::optional<TTask> task = tasks->getQueuedTask();
 
@@ -82,6 +92,12 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
             else
             {
                 boost::this_thread::sleep_for(boost::chrono::milliseconds(2));
+            }
+
+            if (!shouldRun->load() &&
+                (!mustWaitForWorkToFinishBeforeExit || (mustWaitForWorkToFinishBeforeExit && !task.has_value())))
+            {
+                run = false;
             }
         }
 

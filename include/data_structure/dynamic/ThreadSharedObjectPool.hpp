@@ -1,5 +1,7 @@
 #pragma once
 
+#include "logging/LoggingFactory.hpp"
+
 #include <starlight/common/Handle.hpp>
 
 #include <boost/lockfree/stack.hpp>
@@ -32,9 +34,18 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
     Handle acquireBlocking()
     {
         Handle acquired;
+
+        int lockCounter = 0;
         while (!m_available.pop(acquired))
         {
+            lockCounter++;
             std::this_thread::yield();
+
+            if (lockCounter == 500)
+            {
+                core::logging::log(boost::log::trivial::info, "Blocking acquire call made. Thread yielding");
+                lockCounter = 0;
+            }
         }
         ensureCreated(acquired.getID());
         return acquired;
