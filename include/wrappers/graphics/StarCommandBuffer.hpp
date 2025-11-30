@@ -28,6 +28,8 @@ class StarCommandBuffer
 
     ~StarCommandBuffer();
 
+    void cleanupRender(vk::Device &device); 
+    
     /// <summary>
     /// Signal for begin of command recording.
     /// </summary>

@@ -21,13 +21,21 @@ constexpr std::string TriggerScreenshotTypeName()
 class TriggerScreenshot : public star::common::IEvent
 {
   public:
-    TriggerScreenshot(StarTextures::Texture targetTexture, Handle &targetTextureReadySemaphore,
-                      Handle &targetCommandBuffer, Handle &calleeRegistration, const uint8_t &frameInFlightIndex,
-                      std::string screenshotName)
+    TriggerScreenshot(StarTextures::Texture targetTexture, Handle &targetCommandBuffer, Handle &calleeRegistration,
+                      const uint8_t &frameInFlightIndex, std::string screenshotName,
+                      Handle &targetTextureReadySemaphore)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
-          m_targetTexture(std::move(targetTexture)), m_targetTextureReadySemaphore(targetTextureReadySemaphore),
-          m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration),
-          m_frameInFlightIndex(frameInFlightIndex), m_screenshotName(std::move(screenshotName))
+          m_targetTexture(std::move(targetTexture)), m_targetCommandBuffer(targetCommandBuffer),
+          m_calleeRegistration(calleeRegistration), m_frameInFlightIndex(frameInFlightIndex),
+          m_screenshotName(std::move(screenshotName)), m_targetTextureReadySemaphore(&targetTextureReadySemaphore)
+    {
+    }
+    TriggerScreenshot(StarTextures::Texture targetTexture, Handle &targetCommandBuffer, Handle &calleeRegistration,
+                      const uint8_t &frameInFlightIndex, std::string screenshotName)
+        : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
+          m_targetTexture(std::move(targetTexture)), m_targetCommandBuffer(targetCommandBuffer),
+          m_calleeRegistration(calleeRegistration), m_frameInFlightIndex(frameInFlightIndex),
+          m_screenshotName(std::move(screenshotName)), m_targetTextureReadySemaphore(nullptr)
     {
     }
     virtual ~TriggerScreenshot() = default;
@@ -36,7 +44,7 @@ class TriggerScreenshot : public star::common::IEvent
     {
         return m_targetTexture;
     }
-    Handle &getTargetTextureReadySemaphore() const
+    Handle *getTargetTextureReadySemaphore() const
     {
         return m_targetTextureReadySemaphore;
     }
@@ -59,11 +67,10 @@ class TriggerScreenshot : public star::common::IEvent
 
   private:
     StarTextures::Texture m_targetTexture;
-    vk::Semaphore m_textureReadyForCopy;
-    Handle &m_targetTextureReadySemaphore;
     Handle &m_targetCommandBuffer;
     Handle &m_calleeRegistration;
     const uint8_t &m_frameInFlightIndex;
     std::string m_screenshotName;
+    Handle *m_targetTextureReadySemaphore = nullptr;
 };
 } // namespace star::event

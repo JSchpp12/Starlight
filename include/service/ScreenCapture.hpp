@@ -1,6 +1,10 @@
 #pragma once
 
+#include "ManagedHandleContainer.hpp"
+#include "detail/screen_capture/Common.hpp"
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
+#include "detail/screen_capture/CapabilityCache.hpp"
+#include "detail/screen_capture/CopyRouter.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
 #include "detail/screen_capture/GPUSynchronizationInfo.hpp"
 #include "event/TriggerScreenshot.hpp"
@@ -16,19 +20,15 @@
 
 namespace star::service
 {
-constexpr const std::string ScreenCaptureServiceCalleeTypeName()
-{
-    return "star::service::screen_capture::callee";
-};
 
 template <typename TCopyPolicy>
 concept CopyPolicyLike =
-    requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
-             detail::screen_capture::CompleteCalleeRenderDependencies deps, const uint8_t &frameInFlightIndex) {
+    requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo, detail::screen_capture::CopyPlan &copyPlan,
+             const Handle &calleeHandle, const uint8_t &frameInFlightIndex) {
         { c.init(deviceInfo) } -> std::same_as<void>;
         { c.registerWithCommandBufferManager() } -> std::same_as<void>;
         {
-            c.triggerSubmission(deps, frameInFlightIndex)
+            c.triggerSubmission(copyPlan, frameInFlightIndex)
         } -> std::same_as<detail::screen_capture::GPUSynchronizationInfo>;
     };
 
@@ -42,7 +42,7 @@ template <typename TCreateDependenciesPolicy>
 concept CreateDepsPolicyLike =
     requires(TCreateDependenciesPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
              StarTextures::Texture targetTexture, const Handle &commandBufferContainingTarget,
-             const Handle &targetTextureReadySemaphore) {
+             const Handle *targetTextureReadySemaphore) {
         {
             c.create(deviceInfo, targetTexture, commandBufferContainingTarget, targetTextureReadySemaphore)
         } -> std::same_as<detail::screen_capture::CalleeRenderDependencies>;
@@ -54,14 +54,15 @@ class ScreenCapture
     ScreenCapture(TWorkerControllerPolicy workerPolicy, TCreateDependenciesPolicy createDependenciesPolicy,
                   TCopyPolicy copyPolicy)
         : m_workerPolicy(std::move(workerPolicy)), m_createDependenciesPolicy(std::move(createDependenciesPolicy)),
-          m_copyPolicy(std::move(copyPolicy))
+          m_copyPolicy(std::move(copyPolicy)),
+          m_calleeDependencyTracker(star::service::detail::screen_capture::common::ScreenCaptureServiceCalleeTypeName)
     {
     }
 
     void init(const uint8_t &numFramesInFlight)
     {
-        common::HandleTypeRegistry::instance().registerType(ScreenCaptureServiceCalleeTypeName());
         m_deviceInfo.numFramesInFlight = numFramesInFlight;
+        m_actionRouter.init(&m_deviceInfo);
 
         registerWithEventBus();
 
@@ -80,23 +81,25 @@ class ScreenCapture
                                                .semaphoreManager = params.graphicsManagers.semaphoreManager.get(),
                                                .frameTracker = &params.frameTracker,
                                                .taskManager = &params.taskManager,
-                                               .currentFrameCounter = &params.currentFrameCounter};
+                                               .currentFrameCounter = &params.currentFrameCounter,
+                                               .numFramesInFlight = 1};
     }
 
     void shutdown()
     {
         assert(m_deviceInfo.device != nullptr && "Device must be valid");
-        cleanupDependencies(m_deviceInfo.device->getVulkanDevice());
+        cleanupDependencies(*m_deviceInfo.device);
     }
 
   private:
     TWorkerControllerPolicy m_workerPolicy;
     TCreateDependenciesPolicy m_createDependenciesPolicy;
     TCopyPolicy m_copyPolicy;
+    core::LinearHandleContainer<detail::screen_capture::CalleeRenderDependencies, 5> m_calleeDependencyTracker;
 
     Handle m_subscriberHandle;
+    detail::screen_capture::CopyRouter m_actionRouter;
     detail::screen_capture::DeviceInfo m_deviceInfo;
-    detail::screen_capture::CalleeRenderDependencies m_calleeDependencyTracker;
 
     void eventCallback(const star::common::IEvent &e, bool &keepAlive)
     {
@@ -105,32 +108,34 @@ class ScreenCapture
 
         if (!screenEvent.getCalleeRegistration().isInitialized())
         {
-            screenEvent.getCalleeRegistration().type =
-                common::HandleTypeRegistry::instance().getTypeGuaranteedExist(ScreenCaptureServiceCalleeTypeName());
-            screenEvent.getCalleeRegistration().id = 0;
+            auto newDeps = m_createDependenciesPolicy.create(m_deviceInfo, screenEvent.getTexture(),
+                                                             screenEvent.getTargetCommandBuffer(),
+                                                             screenEvent.getTargetTextureReadySemaphore());
+            auto newHandle = m_calleeDependencyTracker.insert(std::move(newDeps));
 
-            m_calleeDependencyTracker = m_createDependenciesPolicy.create(m_deviceInfo, screenEvent.getTexture(),
-                                                                          screenEvent.getTargetCommandBuffer(),
-                                                                          screenEvent.getTargetTextureReadySemaphore());
+            screenEvent.getCalleeRegistration() = newHandle;
         }
 
-        detail::screen_capture::CompleteCalleeRenderDependencies selectedTargetResourcesForCopy{
-            .buffer = &m_calleeDependencyTracker.bufferInfo[0].bufferObject,
-            .secondaryThreadWriteIsDone = m_calleeDependencyTracker.bufferInfo[0].secondaryThreadWriteIsDone.get(),
-            .commandBufferContainingTarget = &m_calleeDependencyTracker.commandBufferContainingTarget,
-            .targetTextureReadySemaphore = &m_calleeDependencyTracker.targetTextureReadySemaphore,
-            .targetTexture = &m_calleeDependencyTracker.targetTexture
-        };
+        auto copyPlan = m_actionRouter.decide(m_calleeDependencyTracker.get(screenEvent.getCalleeRegistration()),
+                                              screenEvent.getCalleeRegistration(), screenEvent.getFrameInFlight());
 
         // need way to wait for commands to be submitted BEFORE telling worker to start?
         detail::screen_capture::GPUSynchronizationInfo syncInfo =
-            m_copyPolicy.triggerSubmission(selectedTargetResourcesForCopy, screenEvent.getFrameInFlight());
+            m_copyPolicy.triggerSubmission(copyPlan, screenEvent.getFrameInFlight());
 
-        m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(
-            m_calleeDependencyTracker.bufferInfo[0].secondaryThreadWriteIsDone.get(),
-            m_deviceInfo.device->getVulkanDevice(), screenEvent.getTexture().getBaseExtent(),
-            screenEvent.getTexture().getBaseFormat(), m_calleeDependencyTracker.bufferInfo[0].bufferObject,
-            screenEvent.getName(), syncInfo.signalValue, syncInfo.semaphore));
+        uint64_t signalValue;
+        CastHelpers::SafeCast(syncInfo.signalValue, signalValue);
+        job::tasks::write_image_to_disk::WritePayload payload{
+            .path = screenEvent.getName(),
+            .semaphore = syncInfo.semaphore,
+            .device = m_deviceInfo.device->getVulkanDevice(),
+            .bufferImageInfo = std::make_unique<job::tasks::write_image_to_disk::BufferImageInfo>(
+                copyPlan.resources.bufferInfo.containerRegistration,
+                copyPlan.calleeDependencies->targetTexture.getBaseExtent(),
+                copyPlan.calleeDependencies->targetTexture.getBaseFormat(),
+                &copyPlan.resources.bufferInfo.container->getBufferPool()),
+            .signalValue = std::make_unique<uint64_t>(std::move(signalValue))};
+        m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(std::move(payload)));
 
         keepAlive = true;
     }
@@ -144,12 +149,9 @@ class ScreenCapture
 
     };
 
-    void cleanupDependencies(vk::Device &device)
+    void cleanupDependencies(core::device::StarDevice &device)
     {
-        for (auto &buffer : m_calleeDependencyTracker.bufferInfo)
-        {
-            buffer.bufferObject.cleanupRender(device);
-        }
+        m_actionRouter.cleanupRender(&m_deviceInfo);
     }
 
     void registerWithEventBus()

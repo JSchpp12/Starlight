@@ -22,8 +22,8 @@ class SwapChainRenderer : public Renderer
                       std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window);
 
     SwapChainRenderer(const SwapChainRenderer &other) noexcept = delete;
-    SwapChainRenderer &operator=(const SwapChainRenderer & ) noexcept = delete;
-    
+    SwapChainRenderer &operator=(const SwapChainRenderer &) noexcept = delete;
+
     virtual ~SwapChainRenderer() = default;
 
     virtual void prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
@@ -45,10 +45,12 @@ class SwapChainRenderer : public Renderer
         return this->currentFrameInFlightCounter;
     }
 
-    std::vector<Handle> &getDoneSemaphores(){
+    std::vector<Handle> &getDoneSemaphores()
+    {
         return imageAvailableSemaphores;
     }
-    std::vector<Handle> getDoneSemaphores() const {
+    std::vector<Handle> getDoneSemaphores() const
+    {
         return imageAvailableSemaphores;
     }
 
@@ -72,6 +74,8 @@ class SwapChainRenderer : public Renderer
     // Sync obj storage
     std::vector<Handle> inFlightFences, imagesInFlight;
     std::vector<Handle> imageAvailableSemaphores, imageAcquireSemaphores;
+    std::vector<Handle> graphicsDoneSemaphoresExternalUse; /// These are guaranteed to match with the current frame in
+                                                           /// flight for other command buffers to reference
 
     virtual star::core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
@@ -94,10 +98,11 @@ class SwapChainRenderer : public Renderer
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
                                std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
                                std::vector<vk::Semaphore> dataSemaphores,
-                               std::vector<vk::PipelineStageFlags> dataWaitPoints, std::vector<std::optional<uint64_t>> previousSignaledValues);
+                               std::vector<vk::PipelineStageFlags> dataWaitPoints,
+                               std::vector<std::optional<uint64_t>> previousSignaledValues);
 
-    virtual std::vector<StarTextures::Texture> createRenderToImages(
-        core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
+    virtual std::vector<StarTextures::Texture> createRenderToImages(core::device::DeviceContext &device,
+                                                                    const uint8_t &numFramesInFlight) override;
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(
         const int &frameInFlightIndex) override;
@@ -115,7 +120,8 @@ class SwapChainRenderer : public Renderer
     /// <summary>
     /// Create semaphores that are going to be used to sync rendering and presentation queues
     /// </summary>
-    static std::vector<Handle> CreateSemaphores(core::device::DeviceContext &context, const uint8_t &numToCreate);
+    static std::vector<Handle> CreateSemaphores(core::device::DeviceContext &context, const uint8_t &numToCreate,
+                                                const bool &isTimeline);
 
     /// <summary>
     /// Fences are needed for CPU-GPU sync. Creates these required objects

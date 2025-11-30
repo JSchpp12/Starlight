@@ -41,6 +41,9 @@ class Buffer
     static vk::DeviceSize GetAlignment(vk::DeviceSize instanceSize, vk::DeviceSize minOffsetAlignment);
 
     Buffer() = default;
+    Buffer(VmaAllocator &allocator, const uint32_t &instanceCount, const vk::DeviceSize &instanceSize,
+           const vk::DeviceSize &minOffsetAlignment, const VmaAllocationCreateInfo &allocCreateInfo,
+           const vk::BufferCreateInfo &bufferCreateInfo, const std::string &allocName);
 
     ~Buffer();
 
@@ -57,7 +60,7 @@ class Buffer
 
     void cleanupRender(vk::Device &device)
     {
-        resources->cleanupRender(); 
+        resources->cleanupRender();
     }
 
     vk::Result flush(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
@@ -108,10 +111,6 @@ class Buffer
     uint32_t instanceCount;
     uint32_t alignmentSize;
     vk::BufferUsageFlags usageFlags;
-
-    Buffer(VmaAllocator &allocator, const uint32_t &instanceCount, const vk::DeviceSize &instanceSize,
-           const vk::DeviceSize &minOffsetAlignment, const VmaAllocationCreateInfo &allocCreateInfo,
-           const vk::BufferCreateInfo &bufferCreateInfo, const std::string &allocName);
 
     static std::shared_ptr<StarBuffers::Resources> CreateBuffer(VmaAllocator &allocator,
                                                                 const VmaAllocationCreateInfo &allocCreateInfo,

@@ -1,6 +1,8 @@
 #pragma once
 
+#include "data_structure/dynamic/ThreadSharedObjectPool.hpp"
 #include "job/tasks/Task.hpp"
+#include "wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
 
 #include "StarBuffers/Buffer.hpp"
 
@@ -15,9 +17,12 @@ constexpr std::string_view WriteImageTypeName = "star::job::tasks::write_image_t
 
 struct BufferImageInfo
 {
+    Handle registrationHandle;
     vk::Extent3D imageExtent;
     vk::Format imageFormat;
-    StarBuffers::Buffer hostVisibleBufferImage;
+    data_structure::dynamic::ThreadSharedObjectPool<star::StarBuffers::Buffer,
+                                           wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 1>
+        *owningObjectPool = nullptr;
 };
 
 struct WritePayload
@@ -27,7 +32,6 @@ struct WritePayload
     vk::Device device;
     std::unique_ptr<BufferImageInfo> bufferImageInfo = nullptr;
     std::unique_ptr<uint64_t> signalValue = nullptr;
-    boost::atomic<bool> *writeIsDoneFlag = nullptr;
 };
 
 using WriteImageTask = star::job::tasks::Task<sizeof(WritePayload), alignof(WritePayload)>;
@@ -36,9 +40,7 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p);
 
 void Execute(void *p);
 
-WriteImageTask Create(boost::atomic<bool> *writeIsDoneFlag, const vk::Device &device, const vk::Extent3D &imageExtent,
-                      const vk::Format &format, StarBuffers::Buffer &buffer, const std::string &filePath,
-                      const uint64_t &semaphoreSignalValue, const vk::Semaphore &signalSemaphore);
+WriteImageTask Create(WritePayload payload);
 
 void WaitUntilSemaphoreIsReady(vk::Device &device, const vk::Semaphore &semaphore,
                                const uint64_t &signalValueToWaitFor);

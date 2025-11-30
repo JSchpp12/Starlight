@@ -70,6 +70,21 @@ class Texture
     };
 
     Texture() = default;
+    Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
+            const vk::Format &baseFormat, const vk::Extent3D &baseExtent, vk::DeviceSize size);
+
+    Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
+            const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo, const vk::Extent3D &baseExtent,
+            vk::DeviceSize size);
+
+    Texture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+            const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
+            const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat);
+
+    Texture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
+            const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
+            const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat,
+            const vk::SamplerCreateInfo &samplerInfo);
     virtual ~Texture() = default;
 
     vk::ImageLayout &getImageLayout()
@@ -124,22 +139,6 @@ class Texture
                                         const uint32_t &mipmapLevels);
 
   protected:
-    Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-            const vk::Format &baseFormat, const vk::Extent3D &baseExtent, vk::DeviceSize size);
-
-    Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-            const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo, const vk::Extent3D &baseExtent,
-            vk::DeviceSize size);
-
-    Texture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
-            const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
-            const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat);
-
-    Texture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
-            const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
-            const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat,
-            const vk::SamplerCreateInfo &samplerInfo);
-
     std::shared_ptr<Resources> memoryResources = std::shared_ptr<Resources>();
 
     vk::Format baseFormat;

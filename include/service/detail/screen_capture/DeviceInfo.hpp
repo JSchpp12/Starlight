@@ -21,6 +21,6 @@ struct DeviceInfo
     const core::FrameInFlightTracking *frameTracker = nullptr;
     job::TaskManager *taskManager = nullptr;
     const uint64_t *currentFrameCounter = nullptr;
-    uint8_t numFramesInFlight;
+    uint8_t numFramesInFlight = 0;
 };
 } // namespace star::service::detail::screen_capture

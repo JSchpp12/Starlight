@@ -4,47 +4,6 @@
 
 namespace star::service::detail::screen_capture
 {
-std::vector<StarTextures::Texture> DefaultCreatePolicy::createTransferDstTextures(
-    core::device::StarDevice &device, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution,
-    const vk::Format &targetImageBaseFormat)
-{
-    auto textures = std::vector<StarTextures::Texture>();
-
-    const auto queueFamilyInds =
-        std::vector<uint32_t>{device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
-                              device.getDefaultQueue(star::Queue_Type::Ttransfer).getParentQueueFamilyIndex()};
-
-    for (uint8_t i = 0; i < numFramesInFlight; i++)
-    {
-        textures.emplace_back(
-            StarTextures::Texture::Builder(device.getVulkanDevice(), device.getAllocator().get())
-                .setBaseFormat(targetImageBaseFormat)
-                .setCreateInfo(
-                    Allocator::AllocationBuilder()
-                        .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                        .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
-                        .build(),
-                    vk::ImageCreateInfo()
-                        .setExtent(vk::Extent3D()
-                                       .setWidth(renderingResolution.width)
-                                       .setHeight(renderingResolution.height)
-                                       .setDepth(1))
-                        .setUsage(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc)
-                        .setImageType(vk::ImageType::e2D)
-                        .setMipLevels(1)
-                        .setArrayLayers(1)
-                        .setTiling(vk::ImageTiling::eOptimal)
-                        .setInitialLayout(vk::ImageLayout::eUndefined)
-                        .setSamples(vk::SampleCountFlagBits::e1)
-                        .setSharingMode(vk::SharingMode::eConcurrent)
-                        .setQueueFamilyIndexCount(2)
-                        .setPQueueFamilyIndices(queueFamilyInds.data()),
-                    "ScreenCapture_IntermediateTransferTexture")
-                .build());
-    }
-
-    return textures;
-}
 
 std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuffers(
     core::device::StarDevice &device, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution,
@@ -76,16 +35,15 @@ std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuf
 
 CalleeRenderDependencies DefaultCreatePolicy::create(DeviceInfo &deviceInfo, StarTextures::Texture targetTexture,
                                                      const Handle &commandBufferContainingTarget,
-                                                     const Handle &targetTextureReadySemaphore)
+                                                     const Handle *targetTextureReadySemaphore)
 {
     assert(deviceInfo.device != nullptr);
 
-    return CalleeRenderDependencies::Builder()
-        .addBufferInfo(createHostVisibleBuffers(*deviceInfo.device, 1, deviceInfo.surface->getResolution(),
-                                                targetTexture.getSize())[0],
-                       true)
-        .setCommandBufferContainingTarget(commandBufferContainingTarget)
-        .setTargetTextureReadySemaphore(targetTextureReadySemaphore)
+    auto builder = CalleeRenderDependencies::Builder();
+    if (targetTextureReadySemaphore != nullptr){
+        builder.setTargetTextureReadySemaphore(*targetTextureReadySemaphore);
+    }
+    return builder.setCommandBufferContainingTarget(commandBufferContainingTarget)
         .setTargetTexture(std::move(targetTexture))
         .build();
 }

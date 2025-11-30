@@ -45,7 +45,15 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
                 buffer->commandBuffer->buffer(frameInFlightIndex).end();
             }
 
-            auto doneSemaphore = buffer->submitCommandBuffer(device, frameInFlightIndex);
+            vk::Semaphore doneSemaphore;
+            if (i == star::Command_Buffer_Order_Index::first)
+            {
+                doneSemaphore = buffer->submitCommandBuffer(device, frameInFlightIndex, additionalWaitSemaphores);
+            }
+            else
+            {
+                doneSemaphore = buffer->submitCommandBuffer(device, frameInFlightIndex);
+            }
 
             if (i == star::Command_Buffer_Order_Index::fifth ||
                 !this->bufferGroupsWithSubOrders[order][i].isInitialized())

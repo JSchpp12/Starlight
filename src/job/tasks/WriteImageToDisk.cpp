@@ -28,25 +28,21 @@ void Execute(void *p)
     // }
 
     WaitUntilSemaphoreIsReady(payload->device, payload->semaphore, *payload->signalValue);
-    WriteImageToDisk(payload->bufferImageInfo->hostVisibleBufferImage, *payload->bufferImageInfo, payload->path);
+    WriteImageToDisk(payload->bufferImageInfo->owningObjectPool->get(payload->bufferImageInfo->registrationHandle),
+                     *payload->bufferImageInfo, payload->path);
 
-    core::logging::log(boost::log::trivial::info, "PNG Write Done");
-    payload->writeIsDoneFlag->store(true);
-    payload->writeIsDoneFlag->notify_one();
+    {
+        std::ostringstream oss;
+        oss << "File write done: " << payload->path;
+        core::logging::log(boost::log::trivial::info, oss.str());
+    }
+    payload->bufferImageInfo->owningObjectPool->release(payload->bufferImageInfo->registrationHandle);
 }
 
-WriteImageTask Create(boost::atomic<bool> *writeIsDoneFlag, const vk::Device &device, const vk::Extent3D &imageExtent,
-                      const vk::Format &format, StarBuffers::Buffer &buffer, const std::string &filePath,
-                      const uint64_t &semaphoreSignalValue, const vk::Semaphore &signalSemaphore)
+WriteImageTask Create(WritePayload payload)
 {
     return WriteImageTask::Builder<WritePayload>()
-        .setPayload(WritePayload{.path = filePath,
-                                 .semaphore = signalSemaphore,
-                                 .device = device,
-                                 .bufferImageInfo = std::make_unique<BufferImageInfo>(
-                                     vk::Extent3D{imageExtent}, vk::Format{format}, StarBuffers::Buffer{buffer}),
-                                 .signalValue = std::make_unique<uint64_t>(semaphoreSignalValue),
-                                 .writeIsDoneFlag = writeIsDoneFlag})
+        .setPayload(std::move(payload))
         .setCreateCompleteTaskFunction(&CreateComplete)
         .setExecute(&Execute)
         .build();
@@ -70,7 +66,7 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     const uint32_t height = info.imageExtent.height;
 
     void *mapped = nullptr;
-    info.hostVisibleBufferImage.map(&mapped); // Or .data() depending on your wrapper
+    buffer.map(&mapped); // Or .data() depending on your wrapper
     if (!mapped)
     {
         throw std::runtime_error("Failed to map buffer for image write.");
@@ -88,7 +84,7 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     else
     {
         // You can extend support by converting here.
-        info.hostVisibleBufferImage.unmap();
+        buffer.unmap();
         throw std::runtime_error("Unsupported image format for PNG writing.");
     }
 
@@ -97,7 +93,7 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     // ---- PNG write ----------------------------------------------------------
     int ok = stbi_write_png(path.c_str(), width, height, comp, mapped, rowStride);
 
-    info.hostVisibleBufferImage.unmap();
+    buffer.unmap();
     return ok != 0;
 }
 } // namespace star::job::tasks::write_image_to_disk

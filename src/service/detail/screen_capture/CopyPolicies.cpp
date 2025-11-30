@@ -1,209 +1,116 @@
 #include "service/detail/screen_capture/CopyPolicies.hpp"
 
+#include "CastHelpers.hpp"
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/device/system/event/StartOfNextFrame.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/HandleTypeRegistry.hpp>
 
 namespace star::service::detail::screen_capture
 {
+
+static void RecordImageBarrierPostBlitPreTransfer(vk::CommandBuffer cmd, vk::Image targetImage)
+{
+    const auto range = vk::ImageSubresourceRange()
+                           .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                           .setBaseMipLevel(0)
+                           .setLevelCount(1)
+                           .setBaseArrayLayer(0)
+                           .setLayerCount(1);
+
+    auto barrier = vk::ImageMemoryBarrier2()
+                       .setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                       .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+                       .setSubresourceRange(range)
+                       .setImage(targetImage)
+                       .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                       .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                       .setSrcStageMask(vk::PipelineStageFlagBits2::eBlit)
+                       .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                       .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                       .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
+
+    cmd.pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarrierCount(1).setPImageMemoryBarriers(&barrier));
+}
+
+static void RecordBlitImage(vk::CommandBuffer cmd, vk::Image srcImage, vk::Image dstImage,
+                            const vk::Extent3D &imageExtent, const vk::Filter &filter)
+{
+    auto region = vk::ImageBlit2()
+                      .setSrcOffsets({vk::Offset3D{0, 0, 0}})
+                      .setSrcSubresource(vk::ImageSubresourceLayers()
+                                             .setBaseArrayLayer(0)
+                                             .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                             .setLayerCount(1)
+                                             .setMipLevel(0))
+                      .setDstOffsets({vk::Offset3D{0, 0, 0}})
+                      .setDstSubresource(vk::ImageSubresourceLayers()
+                                             .setBaseArrayLayer(0)
+                                             .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                             .setLayerCount(1)
+                                             .setMipLevel(0));
+
+    cmd.blitImage2(vk::BlitImageInfo2()
+                       .setSrcImage(srcImage)
+                       .setSrcImageLayout(vk::ImageLayout::eTransferSrcOptimal)
+                       .setDstImage(dstImage)
+                       .setDstImageLayout(vk::ImageLayout::eTransferDstOptimal)
+                       .setFilter(filter)
+                       .setRegions(region));
+}
+
 void DefaultCopyPolicy::init(DeviceInfo &deviceInfo)
 {
     m_deviceInfo = &deviceInfo;
     createSemaphores(*m_deviceInfo->eventBus, m_deviceInfo->numFramesInFlight);
 }
 
-GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CompleteCalleeRenderDependencies deps,
-                                                            const uint8_t &frameInFlightIndex)
+GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan, const uint8_t &frameInFlightIndex)
 {
-    m_targetDeps = deps;
-    waitForWriteToBeCompleteInDependency(deps);
-    m_deviceInfo->commandManager->submitDynamicBuffer(m_commandBuffer);
+    prepareInProgressResources(copyPlan, frameInFlightIndex);
 
-    registerListenerForNextFrameStart(deps, frameInFlightIndex);
+    assert(m_deviceInfo->commandManager != nullptr);
+    m_copyCmds.trigger(*m_deviceInfo->commandManager);
+
+    // m_deviceInfo->commandManager->submitDynamicBuffer(m_commandBuffer);
 
     return GPUSynchronizationInfo{.semaphore = *m_doneSemaphoresRaw[frameInFlightIndex],
                                   .signalValue =
                                       m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex)};
 }
 
-void DefaultCopyPolicy::waitForWriteToBeCompleteInDependency(CompleteCalleeRenderDependencies &deps) const noexcept
+void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan, const uint8_t &frameInFlightIndex) noexcept
 {
-    if (!deps.secondaryThreadWriteIsDone->value())
+    m_inUseResources->path = copyPlan.path;
+    m_inUseResources->targetImage = copyPlan.calleeDependencies->targetTexture.getVulkanImage();
+    m_inUseResources->buffer = copyPlan.resources.bufferInfo.hostVisibleBuffer.getVulkanBuffer();
+    m_inUseResources->targetImageLayout = copyPlan.calleeDependencies->targetTexture.getImageLayout();
+    m_inUseResources->targetImageExtent = copyPlan.calleeDependencies->targetTexture.getBaseExtent();
+    m_inUseResources->blitFilter = copyPlan.blitFilter;
+
+    if (copyPlan.resources.blitTargetTexture.has_value())
     {
-        deps.secondaryThreadWriteIsDone->wait(false);
+        m_inUseResources->targetBlitImage = copyPlan.resources.blitTargetTexture.value();
     }
-}
-
-void DefaultCopyPolicy::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                            const uint64_t &frameIndex)
-{
-    core::logging::log(boost::log::trivial::info, "Start record");
-
-    addMemoryDependenciesToPrepForCopy(commandBuffer);
-    recordCopyCommands(commandBuffer);
-    addMemoryDependenciesToCleanupFromCopy(commandBuffer);
-}
-
-void DefaultCopyPolicy::recordCopyCommands(vk::CommandBuffer &commandBuffer) const
-{
-    const vk::Extent3D &imageExtent = m_targetDeps.targetTexture->getBaseExtent();
-
-    commandBuffer.copyImageToBuffer2(
-        vk::CopyImageToBufferInfo2()
-            .setSrcImage(m_targetDeps.targetTexture->getVulkanImage())
-            .setSrcImageLayout(vk::ImageLayout::eTransferSrcOptimal)
-            .setDstBuffer(m_targetDeps.buffer->getVulkanBuffer())
-            .setRegions({vk::BufferImageCopy2()
-                             .setImageExtent(imageExtent)
-                             .setImageSubresource(vk::ImageSubresourceLayers()
-                                                      .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                                      .setBaseArrayLayer(0)
-                                                      .setLayerCount(1)
-                                                      .setMipLevel(0))}));
-}
-
-void DefaultCopyPolicy::addMemoryDependenciesToPrepForCopy(vk::CommandBuffer &commandBuffer) const
-{
-    // assuming that the target image is not in the proper layout for transfer SRC
-    auto imageBarriers = getImageBarriersForPrep();
-    uint32_t numImageBarriers;
-    CastHelpers::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
-
-    commandBuffer.pipelineBarrier2(vk::DependencyInfo()
-                                       .setImageMemoryBarrierCount(numImageBarriers)
-                                       .setPImageMemoryBarriers(imageBarriers.data()));
-}
-
-void DefaultCopyPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &commandBuffer) const
-{
-    auto imageBarriers = getImageBarriersForCleanup();
-    uint32_t numImageBarriers;
-    CastHelpers::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
-
-    commandBuffer.pipelineBarrier2(vk::DependencyInfo()
-                                       .setImageMemoryBarrierCount(numImageBarriers)
-                                       .setPImageMemoryBarriers(imageBarriers.data()));
-}
-
-std::vector<vk::ImageMemoryBarrier2> DefaultCopyPolicy::getImageBarriersForPrep() const
-{
-    const auto range = vk::ImageSubresourceRange()
-                           .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                           .setBaseMipLevel(0)
-                           .setLevelCount(1)
-                           .setBaseArrayLayer(0)
-                           .setLayerCount(1);
-
-    auto barriers = std::vector<vk::ImageMemoryBarrier2>(1);
-    if (m_targetDeps.targetTexture->getImageLayout() == vk::ImageLayout::ePresentSrcKHR)
+    if (copyPlan.calleeDependencies->targetTextureReadySemaphore.has_value())
     {
-        barriers[0] = vk::ImageMemoryBarrier2()
-                          .setOldLayout(vk::ImageLayout::ePresentSrcKHR)
-                          .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                          .setSubresourceRange(range)
-                          .setImage(m_targetDeps.targetTexture->getVulkanImage())
-                          .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
-                          .setSrcAccessMask(vk::AccessFlagBits2::eNone)
-                          .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                          .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
-    }
-    else
-    {
-        barriers[0] = vk::ImageMemoryBarrier2()
-                          .setOldLayout(m_targetDeps.targetTexture->getImageLayout())
-                          .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                          .setSubresourceRange(range)
-                          .setImage(m_targetDeps.targetTexture->getVulkanImage())
-                          .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
-                          .setSrcAccessMask(vk::AccessFlagBits2::eNone)
-                          .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                          .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
+        m_inUseResources->targetTextureReadySemaphore =
+            &m_deviceInfo->semaphoreManager->get(copyPlan.calleeDependencies->targetTextureReadySemaphore.value())
+                 ->semaphore;
     }
 
-    return barriers;
-}
-
-std::vector<vk::ImageMemoryBarrier2> DefaultCopyPolicy::getImageBarriersForCleanup() const
-{
-    const auto range = vk::ImageSubresourceRange()
-                           .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                           .setBaseMipLevel(0)
-                           .setLevelCount(1)
-                           .setBaseArrayLayer(0)
-                           .setLayerCount(1);
-    return {vk::ImageMemoryBarrier2()
-                .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
-                .setNewLayout(m_targetDeps.targetTexture->getImageLayout())
-                .setSubresourceRange(range)
-                .setImage(m_targetDeps.targetTexture->getVulkanImage())
-                .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                .setSrcAccessMask(vk::AccessFlagBits2::eTransferRead)
-                .setDstStageMask(vk::PipelineStageFlagBits2::eBottomOfPipe)
-                .setDstAccessMask(vk::AccessFlagBits2::eNone)};
+    m_inUseResources->numTimesFrameProcessed = m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex);
+    m_inUseResources->semaphoreForCopyDone = m_binarySignalSemaphoresRaw[frameInFlightIndex];
+    m_inUseResources->timelineSemaphoreForCopyDone = m_doneSemaphoresRaw[frameInFlightIndex];
+    m_inUseResources->queueToUse = m_deviceInfo->device->getDefaultQueue(Queue_Type::Ttransfer).getVulkanQueue();
 }
 
 void DefaultCopyPolicy::registerWithCommandBufferManager()
 {
-    m_commandBuffer = m_deviceInfo->commandManager->submit(
-        *m_deviceInfo->device, *m_deviceInfo->currentFrameCounter,
-        core::device::manager::ManagerCommandBuffer::Request{
-            .recordBufferCallback = std::bind(&DefaultCopyPolicy::recordCommandBuffer, this, std::placeholders::_1,
-                                              std::placeholders::_2, std::placeholders::_3),
-            .order = star::Command_Buffer_Order::end_of_frame,
-            .orderIndex = Command_Buffer_Order_Index::first,
-            .type = Queue_Type::Ttransfer,
-            .waitStage = vk::PipelineStageFlagBits::eTransfer,
-            .willBeSubmittedEachFrame = false,
-            .recordOnce = false,
-            .overrideBufferSubmissionCallback =
-                std::bind(&DefaultCopyPolicy::submitBuffer, this, std::placeholders::_1, std::placeholders::_2,
-                          std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)});
-}
-
-vk::Semaphore DefaultCopyPolicy::submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
-                                              std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
-                                              std::vector<vk::Semaphore> dataSemaphores,
-                                              std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                                              std::vector<std::optional<uint64_t>> previousSignaledValues)
-{
-    auto &queue = m_deviceInfo->device->getDefaultQueue(Queue_Type::Ttransfer);
-    const std::vector<uint64_t> signalSemaphoreValues{
-        m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameIndexToBeDrawn), 0};
-    const std::vector<vk::Semaphore> signaltimelineSemaphores{*m_doneSemaphoresRaw[frameIndexToBeDrawn],
-                                                              *m_binarySignalSemaphoresRaw[frameIndexToBeDrawn]};
-    uint32_t semaphoreCount = 0;
-    CastHelpers::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
-
-    auto &timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
-                                   .setPSignalSemaphoreValues(signalSemaphoreValues.data())
-                                   .setSignalSemaphoreValueCount(semaphoreCount);
-
-    std::vector<vk::Semaphore> waitSemaphores{
-        m_deviceInfo->semaphoreManager->get(*m_targetDeps.targetTextureReadySemaphore)->semaphore};
-    std::vector<vk::PipelineStageFlags> waitPoints{vk::PipelineStageFlagBits::eTransfer};
-
-    auto &submitInfo = vk::SubmitInfo()
-                           .setCommandBufferCount(1)
-                           .setCommandBuffers(buffer.buffer(frameIndexToBeDrawn))
-                           .setWaitSemaphoreCount(1)
-                           .setPWaitSemaphores(waitSemaphores.data())
-                           .setPWaitDstStageMask(waitPoints.data())
-                           .setPSignalSemaphores(signaltimelineSemaphores.data())
-                           .setSignalSemaphoreCount(semaphoreCount)
-                           .setPNext(&timelineSubmitInfo);
-
-    m_deviceInfo->device->getDefaultQueue(star::Queue_Type::Ttransfer).getVulkanQueue().submit({submitInfo});
-
-    return *m_binarySignalSemaphoresRaw[frameIndexToBeDrawn];
+    m_copyCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
+    m_blitCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
 }
 
 void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBus, const uint8_t &numFramesInFlight)
@@ -218,7 +125,7 @@ void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBu
         {
             void *r = nullptr;
             eventBus.emit(core::device::system::event::ManagerRequest{
-                common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
                     core::device::manager::SemaphoreEventTypeName()),
                 core::device::manager::SemaphoreRequest{true}, m_doneSemaphoreHandles[i], &r});
 
@@ -229,7 +136,7 @@ void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBu
         {
             void *r = nullptr;
             eventBus.emit(core::device::system::event::ManagerRequest{
-                common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
                     core::device::manager::SemaphoreEventTypeName()),
                 core::device::manager::SemaphoreRequest{false}, m_binarySignalSemaphoresHandles[i], &r});
 
@@ -238,15 +145,15 @@ void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBu
     }
 }
 
-void DefaultCopyPolicy::registerListenerForNextFrameStart(CompleteCalleeRenderDependencies &deps,
+void DefaultCopyPolicy::registerListenerForNextFrameStart(CalleeRenderDependencies &deps,
                                                           const uint8_t &frameInFlightIndex)
 {
-    Handle calleeHandle = *deps.commandBufferContainingTarget;
+    Handle calleeHandle = deps.commandBufferContainingTarget;
     uint8_t targetFrameInFlightIndex = frameInFlightIndex;
     uint64_t signaledSemaphoreValue = m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex);
 
     m_deviceInfo->eventBus->subscribe(
-        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+        star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
             core::device::system::event::StartOfNextFrameName()),
         {[this, calleeHandle, targetFrameInFlightIndex, signaledSemaphoreValue](const star::common::IEvent &e,
                                                                                 bool &keepAlive) {
@@ -278,6 +185,13 @@ void DefaultCopyPolicy::startOfFrameEventCallback(const Handle &calleeCommandBuf
                                          *m_doneSemaphoresRaw[targetFrameInFlightIndex],
                                          vk::PipelineStageFlagBits::eColorAttachmentOutput, signaledSemaphoreValue);
     keepAlive = false;
+}
+
+StarTextures::Texture DefaultCopyPolicy::createBlitTargetTexture(const vk::Extent2D &extent) const
+{
+    return StarTextures::Texture::Builder(m_deviceInfo->device->getVulkanDevice(),
+                                          m_deviceInfo->device->getAllocator().get())
+        .build();
 }
 
 } // namespace star::service::detail::screen_capture

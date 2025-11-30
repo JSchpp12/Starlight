@@ -103,7 +103,6 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
 
     std::vector<StarTextures::Texture> renderToImages =
         std::vector<StarTextures::Texture>();
-    std::vector<vk::Framebuffer> renderToFramebuffers = std::vector<vk::Framebuffer>();
 
     // depth testing storage
     std::vector<std::unique_ptr<StarTextures::Texture>> renderToDepthImages =

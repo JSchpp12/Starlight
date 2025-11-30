@@ -40,8 +40,8 @@ void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceCon
     const size_t numSwapChainImages =
         context.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
 
-    this->imageAcquireSemaphores = CreateSemaphores(context, numFramesInFlight);
-    this->imageAvailableSemaphores = CreateSemaphores(context, numSwapChainImages);
+    this->imageAcquireSemaphores = CreateSemaphores(context, numFramesInFlight, false);
+    this->imageAvailableSemaphores = CreateSemaphores(context, numSwapChainImages, false);
 
     this->createFences(context);
     this->createFenceImageTracking();
@@ -362,6 +362,7 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     submitInfo.pWaitDstStageMask = waitStages.data();
     submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
     submitInfo.commandBufferCount = 1;
+    // submitInfo.pNext = timelineSubmitInfo;
 
     const auto &fence = m_renderingContext.recordDependentFence.get(inFlightFences[frameIndexToBeDrawn]);
 
@@ -481,7 +482,7 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
 }
 
 std::vector<star::Handle> star::core::renderer::SwapChainRenderer::CreateSemaphores(
-    star::core::device::DeviceContext &context, const uint8_t &numToCreate)
+    star::core::device::DeviceContext &context, const uint8_t &numToCreate, const bool &isTimeline)
 {
     auto semaphores = std::vector<Handle>(numToCreate);
 
@@ -492,7 +493,7 @@ std::vector<star::Handle> star::core::renderer::SwapChainRenderer::CreateSemapho
     {
         context.getEventBus().emit(core::device::system::event::ManagerRequest(
             common::HandleTypeRegistry::instance().getType(core::device::manager::SemaphoreEventTypeName()).value(),
-            core::device::manager::SemaphoreRequest{false}, semaphores[i]));
+            core::device::manager::SemaphoreRequest{isTimeline}, semaphores[i]));
 
         if (!semaphores[i].isInitialized())
         {
@@ -662,6 +663,12 @@ void star::core::renderer::SwapChainRenderer::prepareRenderingContext(core::devi
 void star::core::renderer::SwapChainRenderer::addSemaphoresToRenderingContext(core::device::DeviceContext &context)
 {
     for (const auto &semaphore : this->imageAcquireSemaphores)
+    {
+        m_renderingContext.recordDependentSemaphores.manualInsert(
+            semaphore, context.getSemaphoreManager().get(semaphore)->semaphore);
+    }
+
+    for (const auto &semaphore : this->graphicsDoneSemaphoresExternalUse)
     {
         m_renderingContext.recordDependentSemaphores.manualInsert(
             semaphore, context.getSemaphoreManager().get(semaphore)->semaphore);

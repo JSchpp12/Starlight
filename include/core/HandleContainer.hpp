@@ -29,6 +29,11 @@ template <typename TData> class HandleContainer
         assert(handle.getType() == m_handleType && "Ensure proper handle type provided");
         return getRecord(handle);
     }
+    const TData &get(const Handle &handle) const
+    {
+        assert(handle.getType() == m_handleType && "Ensure proper handle type provided");
+        return getRecord(handle);
+    }
     void remove(const Handle &handle, device::StarDevice *device = nullptr)
     {
         assert(handle.getType() == m_handleType && "Ensure proper handle type provided");

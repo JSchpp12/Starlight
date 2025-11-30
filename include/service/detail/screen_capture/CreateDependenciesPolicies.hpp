@@ -11,11 +11,6 @@ namespace star::service::detail::screen_capture
 {
 struct DefaultCreatePolicy
 {
-    virtual std::vector<StarTextures::Texture> createTransferDstTextures(core::device::StarDevice &device,
-                                                                         const uint8_t &numFramesInFlight,
-                                                                         const vk::Extent2D &renderingResolution,
-                                                                         const vk::Format &targetImageBaseFormat);
-
     virtual std::vector<StarBuffers::Buffer> createHostVisibleBuffers(core::device::StarDevice &device,
                                                                       const uint8_t &numFramesInFlight,
                                                                       const vk::Extent2D &renderingResolution,
@@ -23,6 +18,6 @@ struct DefaultCreatePolicy
 
     CalleeRenderDependencies create(DeviceInfo &deviceInfo, StarTextures::Texture targetTexture,
                                     const Handle &commandBufferContainingTarget,
-                                    const Handle &targetTextureReadySemaphore);
+                                    const Handle *targetTextureReadySemaphore = nullptr);
 };
 } // namespace star::service::detail::screen_capture

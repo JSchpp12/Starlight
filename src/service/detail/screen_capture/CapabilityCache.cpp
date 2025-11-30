@@ -1,0 +1,1 @@
+#include "service/detail/screen_capture/CapabilityCache.hpp"

@@ -26,15 +26,19 @@ star::StarCommandBuffer::StarCommandBuffer(vk::Device &vulkanDevice, int numBuff
 
 star::StarCommandBuffer::~StarCommandBuffer()
 {
+    cleanupRender(vulkanDevice);
+}
+
+void star::StarCommandBuffer::cleanupRender(vk::Device &device){
     for (auto &fence : this->readyFence)
     {
-        this->vulkanDevice.destroyFence(fence);
+        device.destroyFence(fence);
     }
     for (auto &semaphore : this->completeSemaphores)
     {
-        this->vulkanDevice.destroySemaphore(semaphore);
+        device.destroySemaphore(semaphore);
     }
-    this->vulkanDevice.freeCommandBuffers(this->parentPool->getVulkanCommandPool(), this->commandBuffers);
+    device.freeCommandBuffers(this->parentPool->getVulkanCommandPool(), this->commandBuffers);
 }
 
 void star::StarCommandBuffer::begin(int buffIndex)
