@@ -1,9 +1,8 @@
 #include "service/ScreenCaptureFactory.hpp"
 
-#include "service/detail/screen_capture/CopyPolicies.hpp"
+#include "service/detail/screen_capture/CopyDirectorPolicy.hpp"
 #include "service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 #include "service/detail/screen_capture/WorkerControllerPolicies.hpp"
-
 #include "worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
 
 #include <ostream>

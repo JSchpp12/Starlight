@@ -1,4 +1,4 @@
-#include "service/detail/screen_capture/CopyPolicies.hpp"
+#include "service/detail/screen_capture/CopyDirectorPolicy.hpp"
 
 #include "CastHelpers.hpp"
 #include "core/device/managers/Semaphore.hpp"
