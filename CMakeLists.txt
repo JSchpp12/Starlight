@@ -19,7 +19,7 @@ else()
     set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 endif()
 
-find_package(StarlightCommon REQUIRED)
+find_package(starlight-common REQUIRED)
 
 set(VULKAN_VERSION "1.4.313.0")
 find_package(Vulkan ${VULKAN_VERSION} REQUIRED)
@@ -439,7 +439,7 @@ if (NOT ${HEADLESS})
 
     target_link_libraries(${STARLIGHT_NAME}
         PUBLIC
-            Starlight::StarlightCommon
+            Starlight::starlight-common
             glslang
             SPIRV-Tools-opt
             SPIRV-Tools
