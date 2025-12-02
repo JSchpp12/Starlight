@@ -19,7 +19,7 @@ else()
     set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 endif()
 
-find_package(starlight-common REQUIRED)
+find_package(starlight_common REQUIRED)
 
 set(VULKAN_VERSION "1.4.313.0")
 find_package(Vulkan ${VULKAN_VERSION} REQUIRED)
@@ -34,14 +34,8 @@ set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
 
+find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
-if (NOT ${HEADLESS})
-    message("Enabling windowing support.")
-    add_subdirectory("extern/glfw")
-else()
-    message("Disabling windowing support.")
-endif()
-
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
@@ -439,7 +433,7 @@ if (NOT ${HEADLESS})
 
     target_link_libraries(${STARLIGHT_NAME}
         PUBLIC
-            Starlight::starlight-common
+            Starlight::starlight_common
             glslang
             SPIRV-Tools-opt
             SPIRV-Tools
