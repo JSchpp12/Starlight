@@ -67,7 +67,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/core/logging/LoggingFactory.cpp"
     "src/core/renderer/LightRenderer.cpp"
     "src/core/renderer/RendererBase.cpp"
-    "src/core/renderer/Renderer.cpp"
+    "src/core/renderer/DefaultRenderer.cpp"
     "src/core/renderer/SwapChainRenderer.cpp"
     "src/core/renderer/RenderingTargetInfo.cpp"
     "src/core/renderer/RenderingContext.cpp"
@@ -229,7 +229,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/core/logging/LoggingFactory.hpp"
     "include/core/renderer/RendererBase.hpp"
     "include/core/renderer/LightRenderer.hpp"
-    "include/core/renderer/Renderer.hpp"
+    "include/core/renderer/DefaultRenderer.hpp"
     "include/core/renderer/SwapChainRenderer.hpp"
     "include/core/renderer/RenderingTargetInfo.hpp"
     "include/core/renderer/RenderingContext.hpp"
@@ -556,7 +556,3 @@ endif()
 set_target_properties(${STARLIGHT_NAME} PROPERTIES 
     DEBUG_POSTFIX "d"
 )
-
-if (NOT ${HEADLESS})
-    target_compile_definitions(${STARLIGHT_NAME} PRIVATE ENABLE_PRESENTATION)
-endif()

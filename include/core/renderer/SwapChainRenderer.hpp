@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Renderer.hpp"
+#include "DefaultRenderer.hpp"
 #include "core/device/DeviceContext.hpp"
 
 #include <memory>
@@ -8,7 +8,7 @@
 
 namespace star::core::renderer
 {
-class SwapChainRenderer : public Renderer
+class SwapChainRenderer : public DefaultRenderer
 {
   public:
     SwapChainRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,

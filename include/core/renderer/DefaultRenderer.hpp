@@ -27,10 +27,10 @@
 
 namespace star::core::renderer
 {
-class Renderer : private RenderResourceModifier, private DescriptorModifier, public RendererBase
+class DefaultRenderer : private RenderResourceModifier, private DescriptorModifier, public RendererBase
 {
   public:
-    Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+    DefaultRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
              std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera,
              std::vector<std::shared_ptr<StarObject>> objects)
         : RendererBase(context, numFramesInFlight, std::move(objects)), ownsRenderResourceControllers(true)
@@ -38,7 +38,7 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
         initBuffers(context, numFramesInFlight, std::move(lights), camera);
     }
 
-    Renderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+    DefaultRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
              std::vector<std::shared_ptr<StarObject>> objects,
              std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
              std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
@@ -49,11 +49,11 @@ class Renderer : private RenderResourceModifier, private DescriptorModifier, pub
     {
     }
 
-    Renderer(Renderer &) = delete;
-    Renderer &operator=(Renderer &) = delete;
-    Renderer(Renderer &&other) = delete;
-    Renderer &operator=(Renderer &&other) = delete;
-    virtual ~Renderer() = default;
+    DefaultRenderer(DefaultRenderer &) = delete;
+    DefaultRenderer &operator=(DefaultRenderer &) = delete;
+    DefaultRenderer(DefaultRenderer &&other) = delete;
+    DefaultRenderer &operator=(DefaultRenderer &&other) = delete;
+    virtual ~DefaultRenderer() = default;
 
     virtual void prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
     virtual void cleanupRender(core::device::DeviceContext &device) override; 

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "core/renderer/Renderer.hpp"
+#include "core/renderer/DefaultRenderer.hpp"
 
 namespace star::core::renderer
 {
-class LightRenderer : public Renderer
+class LightRenderer : public DefaultRenderer
 {
     public:
     

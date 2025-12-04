@@ -5,7 +5,7 @@
 
 star::StarScene::StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
                            std::shared_ptr<StarCamera> camera,
-                           std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer)
+                           core::renderer::SwapChainRenderer presentationRenderer)
     : m_presentationRenderer(presentationRenderer), m_camera(camera)
 {
 }

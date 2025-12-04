@@ -27,11 +27,13 @@ void Execute(void *p)
     //     }
     // }
 
-    if (payload->signalValue == nullptr){
+    if (payload->signalValue == nullptr)
+    {
         throw std::runtime_error("No signal value provided");
     }
-    if (payload->semaphore == nullptr){
-        throw std::runtime_error("No semaphore provided"); 
+    if (payload->semaphore == nullptr)
+    {
+        throw std::runtime_error("No semaphore provided");
     }
     WaitUntilSemaphoreIsReady(payload->device, payload->semaphore, *payload->signalValue);
     WriteImageToDisk(payload->bufferImageInfo->owningObjectPool->get(payload->bufferImageInfo->registrationHandle),
@@ -57,8 +59,7 @@ WriteImageTask Create(WritePayload payload)
 void WaitUntilSemaphoreIsReady(vk::Device &device, const vk::Semaphore &semaphore, const uint64_t &signalValueToWaitFor)
 {
     vk::Result waitResult = device.waitSemaphores(
-        vk::SemaphoreWaitInfo().setValues(signalValueToWaitFor).setSemaphores(semaphore),
-        UINT64_MAX);
+        vk::SemaphoreWaitInfo().setValues(signalValueToWaitFor).setSemaphores(semaphore), UINT64_MAX);
 
     if (waitResult != vk::Result::eSuccess)
     {
@@ -94,10 +95,14 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
         throw std::runtime_error("Unsupported image format for PNG writing.");
     }
 
-    const uint32_t rowStride = width * comp; // tightly packed
-
+    int w = 0;
+    CastHelpers::SafeCast(width, w)
+    int h = 0;
+    CastHelpers::SafeCast(height, h);
+    const int rowStride = w * comp; // tightly packed
+    
     // ---- PNG write ----------------------------------------------------------
-    int ok = stbi_write_png(path.c_str(), width, height, comp, mapped, rowStride);
+    int ok = stbi_write_png(path.c_str(), w, h, comp, mapped, rowStride);
 
     buffer.unmap();
     return ok != 0;

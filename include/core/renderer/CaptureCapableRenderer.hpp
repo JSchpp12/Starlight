@@ -6,13 +6,13 @@
 
 // namespace star::core::renderer
 // {
-// class CaptureCapableRenderer : public Renderer
+// class CaptureCapableRenderer : public DefaultRenderer
 // {
 //   public:
 //     CaptureCapableRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
 //                            std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera,
 //                            std::vector<std::shared_ptr<StarObject>> objects)
-//         : Renderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects))
+//         : DefaultRenderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects))
 //     {
 //     }
 
@@ -21,7 +21,7 @@
 //                            std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
 //                            std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
 //                            std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData)
-//         : Renderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
+//         : DefaultRenderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
 //                    std::move(cameraData)) {};
 
 //     virtual ~CaptureCapableRenderer() = default;

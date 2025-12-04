@@ -8,7 +8,7 @@
 // {
 // void CaptureCapableRenderer::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
 // {
-//     Renderer::prepRender(context, numFramesInFlight);
+//     DefaultRenderer::prepRender(context, numFramesInFlight);
 
 //     if (!context.getTaskManager().isThereWorkerForTask(typeid(job::tasks::write_image_to_disk::WriteImageTask)))
 //     {
@@ -19,7 +19,7 @@
 
 // void CaptureCapableRenderer::cleanupRender(core::device::DeviceContext &context)
 // {
-//     Renderer::cleanupRender(context);
+//     DefaultRenderer::cleanupRender(context);
 // }
 
 // void CaptureCapableRenderer::createWorker(core::device::DeviceContext &context)
@@ -32,6 +32,6 @@
 
 // void CaptureCapableRenderer::frameUpdate(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
 // {
-//     Renderer::frameUpdate(context, numFramesInFlight);
+//     DefaultRenderer::frameUpdate(context, numFramesInFlight);
 // }
 // } // namespace star::core::renderer

@@ -6,6 +6,8 @@
 #include "StarWindow.hpp"
 #include "core/renderer/SwapChainRenderer.hpp"
 
+#include <starlight/common/Renderer.hpp>
+
 #include <map>
 #include <memory>
 #include <optional>
@@ -21,11 +23,11 @@ class StarScene
   public:
     StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
               std::shared_ptr<StarCamera> camera,
-              std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer);
+              core::renderer::SwapChainRenderer presentationRenderer);
 
     StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
               std::shared_ptr<StarCamera> camera,
-              std::shared_ptr<core::renderer::SwapChainRenderer> presentationRenderer,
+              core::renderer::SwapChainRenderer> presentationRenderer,
               std::vector<std::shared_ptr<core::renderer::RendererBase>> additionalRenderers);
 
     /// Function called every frame
@@ -43,7 +45,7 @@ class StarScene
         }
     }
 
-    std::shared_ptr<core::renderer::SwapChainRenderer> getPresentationRenderer()
+    std::shared_ptr<common::Renderer> getPresentationRenderer()
     {
         return m_presentationRenderer;
     }

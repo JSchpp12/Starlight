@@ -13,7 +13,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
                                                            std::vector<std::shared_ptr<StarObject>> objects,
                                                            std::shared_ptr<std::vector<Light>> lights,
                                                            std::shared_ptr<StarCamera> camera, const StarWindow &window)
-    : Renderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects)), window(window),
+    : DefaultRenderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects)), window(window),
       numFramesInFlight(numFramesInFlight), device(context)
 {
     createSwapChain(context);
@@ -25,7 +25,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window)
-    : Renderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
+    : DefaultRenderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
                std::move(cameraData)),
       window(window), numFramesInFlight(numFramesInFlight), device(context)
 {
@@ -35,7 +35,7 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
 void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
                                                          const uint8_t &numFramesInFlight)
 {
-    Renderer::prepRender(context, numFramesInFlight);
+    DefaultRenderer::prepRender(context, numFramesInFlight);
 
     const size_t numSwapChainImages =
         context.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
@@ -49,7 +49,7 @@ void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceCon
 
 void star::core::renderer::SwapChainRenderer::cleanupRender(core::device::DeviceContext &context)
 {
-    Renderer::cleanupRender(context);
+    DefaultRenderer::cleanupRender(context);
 
     cleanupSwapChain(context);
 }
@@ -57,7 +57,7 @@ void star::core::renderer::SwapChainRenderer::cleanupRender(core::device::Device
 void star::core::renderer::SwapChainRenderer::frameUpdate(core::device::DeviceContext &context,
                                                           const uint8_t &frameInFlightIndex)
 {
-    Renderer::frameUpdate(context, frameInFlightIndex);
+    DefaultRenderer::frameUpdate(context, frameInFlightIndex);
 
     prepareRenderingContext(context);
 }
@@ -478,7 +478,7 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
     commandBuffer.pipelineBarrier2(
         vk::DependencyInfo().setImageMemoryBarrierCount(numBarriers).setPImageMemoryBarriers(barriers.data()));
 
-    this->Renderer::recordCommandBuffer(commandBuffer, frameInFlightIndex, frameIndex);
+    this->DefaultRenderer::recordCommandBuffer(commandBuffer, frameInFlightIndex, frameIndex);
 }
 
 std::vector<star::Handle> star::core::renderer::SwapChainRenderer::CreateSemaphores(

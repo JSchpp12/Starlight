@@ -20,7 +20,7 @@
 
 namespace star::service
 {
-
+ 
 template <typename TCopyPolicy>
 concept CopyPolicyLike =
     requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo, detail::screen_capture::CopyPlan &copyPlan,
