@@ -1,5 +1,7 @@
 #include "TaskManager.hpp"
 
+#include <starlight/common/helper/CastHelpers.hpp>
+
 #include <cassert>
 
 namespace star::job
@@ -35,7 +37,7 @@ void TaskManager::registerWorker(worker::Worker newWorker, Handle &registeredTas
     assert(index >= 1);
     index--;
 
-    CastHelpers::SafeCast<size_t, uint32_t>(index,
+    common::helper::SafeCast<size_t, uint32_t>(index,
                                             registeredTaskTypeHandle.id);
 }
 
@@ -81,7 +83,7 @@ worker::Worker *TaskManager::getWorker(const Handle &registeredTaskType) noexcep
     }
 
     size_t workerIndex = 0;
-    CastHelpers::SafeCast<uint16_t, size_t>(registeredTaskType.getID(), workerIndex);
+    common::helper::SafeCast<uint16_t, size_t>(registeredTaskType.getID(), workerIndex);
 
     return &pool->at(workerIndex);
 }

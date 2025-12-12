@@ -1,7 +1,5 @@
 #pragma once
 
-#include "DescriptorModifier.hpp"
-#include "ManagerDescriptorPool.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarEntity.hpp"
 #include "StarGraphicsPipeline.hpp"
@@ -30,7 +28,7 @@ namespace star
 /// <summary>
 /// Base class for renderable objects.
 /// </summary>
-class StarObject : private DescriptorModifier
+class StarObject
 {
   public:
     bool drawNormals = false;
@@ -45,9 +43,12 @@ class StarObject : private DescriptorModifier
 
     StarObject() = default;
 
-    StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials) : m_meshMaterials(std::move(meshMaterials)) {};
+    explicit StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials)
+        : m_meshMaterials(std::move(meshMaterials)){};
 
     virtual ~StarObject() = default;
+
+    virtual void init(core::device::DeviceContext &device);
 
     virtual void cleanupRender(core::device::DeviceContext &device);
 
@@ -192,11 +193,7 @@ class StarObject : private DescriptorModifier
 
     virtual void createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds);
 
-    // Inherited via DescriptorModifier
-    virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
-        const int &numFramesInFlight) override;
-    virtual void createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight) override {};
-
+    std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(const uint8_t &numFramesInFlight);
     virtual bool isRenderReady(core::device::DeviceContext &context);
 
     virtual void updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,

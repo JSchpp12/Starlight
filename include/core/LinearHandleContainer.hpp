@@ -1,9 +1,10 @@
 #pragma once
 
-#include "CastHelpers.hpp"
 #include "Enums.hpp"
 #include "HandleContainer.hpp"
 #include "device/StarDevice.hpp"
+
+#include <starlight/common/helper/CastHelpers.hpp>
 #include <starlight/common/Handle.hpp>
 
 #include <array>
@@ -62,7 +63,7 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
     {
         assert(handle.getID() < m_records.size() && "Handle references location outside of available storage");
         size_t index = 0;
-        CastHelpers::SafeCast<uint32_t, size_t>(handle.getID(), index);
+        star::common::helper::SafeCast<uint32_t, size_t>(handle.getID(), index);
 
         return m_records[index];
     }

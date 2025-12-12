@@ -1,6 +1,6 @@
 #include "ManagerController_RenderResource_LightList.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 #include "TransferRequest_LightList.hpp"
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::LightList::
@@ -26,7 +26,7 @@ void star::ManagerController::RenderResource::LightList::storeLightCount(const u
     assert(frameInFlightIndex < m_lastWriteNumLights.size());
     
     uint16_t numLights = 0;
-    CastHelpers::SafeCast<size_t, uint16_t>(m_lights->size(), numLights);
+    common::helper::SafeCast<size_t, uint16_t>(m_lights->size(), numLights);
 
     m_lastWriteNumLights[frameInFlightIndex] = std::move(numLights);
 }

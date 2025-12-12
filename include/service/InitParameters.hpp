@@ -9,7 +9,7 @@
 #include "device/managers/GraphicsContainer.hpp"
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
-#include "device/system/EventBus.hpp"
+#include <starlight/common/EventBus.hpp>
 
 namespace star::service
 {
@@ -18,7 +18,7 @@ struct InitParameters
     Handle &deviceID;
     core::RenderingSurface &surface; 
     core::device::StarDevice &device;
-    core::device::system::EventBus &eventBus;
+    common::EventBus &eventBus;
     job::TaskManager &taskManager;
     core::device::manager::GraphicsContainer &graphicsManagers;
     core::device::manager::ManagerCommandBuffer &commandBufferManager;

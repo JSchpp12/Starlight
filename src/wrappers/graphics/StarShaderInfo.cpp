@@ -1,7 +1,5 @@
 #include "StarShaderInfo.hpp"
 
-#include "ManagerDescriptorPool.hpp"
-
 vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet()
 {
     if (this->setNeedsRebuild)
@@ -82,8 +80,9 @@ void star::StarShaderInfo::ShaderInfoSet::build(const star::Handle &deviceID)
 {
     this->isBuilt = true;
 
+    StarDescriptorPool *pool =nullptr; 
     this->descriptorWriter = std::make_unique<StarDescriptorWriter>(
-        this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
+        this->device, this->setLayout, m_pool);
     for (size_t i = 0; i < this->shaderInfos.size(); i++)
     {
         buildIndex(deviceID, i);
@@ -95,7 +94,7 @@ void star::StarShaderInfo::ShaderInfoSet::rebuildSet()
     if (!this->descriptorWriter)
     {
         this->descriptorWriter = std::make_unique<StarDescriptorWriter>(
-            this->device, this->setLayout, core::device::managers::ManagerDescriptorPool::getPool());
+            this->device, this->setLayout, m_pool);
     }
 
     this->descriptorSet = std::make_shared<vk::DescriptorSet>(this->descriptorWriter->build());
@@ -239,6 +238,6 @@ star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::startSet()
     auto size = this->activeSet->size();
     assert(size < this->layouts.size() && "Pushed beyond size defined in set layout");
 
-    this->activeSet->push_back(std::make_shared<ShaderInfoSet>(this->device, *this->layouts[size]));
+    this->activeSet->push_back(std::make_shared<ShaderInfoSet>(this->device, m_pool, *this->layouts[size]));
     return *this;
 }

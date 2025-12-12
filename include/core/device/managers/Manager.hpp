@@ -3,8 +3,8 @@
 #include "ManagedHandleContainer.hpp"
 #include "ManagerBase.hpp"
 #include "device/StarDevice.hpp"
-#include "device/system/EventBus.hpp"
 #include "job/TaskManager.hpp"
+#include <starlight/common/EventBus.hpp>
 #include <starlight/common/Handle.hpp>
 
 #include <array>
@@ -21,18 +21,23 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
   public:
     Manager(std::string_view resourceHandleName)
         : ManagerBase<TRecord, TResourceRequest>(resourceHandleName), m_records(resourceHandleName){};
-        
+
     virtual ~Manager() = default;
     Manager(const Manager &) = delete;
     Manager &operator=(const Manager &) = delete;
     Manager(Manager &&) = default;
     Manager &operator=(Manager &&) = default;
 
-    virtual void init(std::shared_ptr<device::StarDevice> device, core::device::system::EventBus &bus) = 0;
-    
-    virtual Handle submit(device::StarDevice &device, TResourceRequest resource) override
+    virtual void init(device::StarDevice *device, common::EventBus &eventBus)
     {
-        return insert(device, std::move(resource));
+        ManagerBase<TRecord, TResourceRequest>::init(device);
+
+        m_deviceEventBus = &eventBus;
+    }
+
+    virtual Handle submit(TResourceRequest resource) override
+    {
+        return insert(std::move(resource));
     }
 
     TRecord *get(const Handle &handle)
@@ -53,9 +58,9 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
         return m_records;
     }
 
-    void cleanupRender(device::StarDevice &device)
+    virtual void cleanupRender()
     {
-        m_records.cleanupAll(&device);
+        m_records.cleanupAll(this->m_device);
     }
 
     void deleteRequest(device::StarDevice &device, const Handle &requestHandle)
@@ -67,13 +72,17 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
 
   protected:
     star::core::ManagedHandleContainer<TRecord, TMaxRecordCount> m_records;
+    common::EventBus *m_deviceEventBus = nullptr;
 
-    Handle insert(device::StarDevice &device, TResourceRequest request)
+    Handle insert(TResourceRequest request)
     {
-        TRecord record = createRecord(device, std::move(request));
+        TRecord record = createRecord(std::move(request));
         return m_records.insert(std::move(record));
     }
 
-    virtual TRecord createRecord(device::StarDevice &device, TResourceRequest &&request) const = 0;
+    virtual TRecord createRecord(TResourceRequest &&request) const = 0;
+
+  private:
+    using ManagerBase<TRecord, TResourceRequest>::init;
 };
 } // namespace star::core::device::manager

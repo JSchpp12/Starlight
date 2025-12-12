@@ -77,13 +77,13 @@ class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50
     }
 
   protected:
-    ShaderRecord createRecord(device::StarDevice &device, ShaderRequest &&request) const override
+    ShaderRecord createRecord(ShaderRequest &&request) const override
     {
         return ShaderRecord(std::move(request));
     }
 
   private:
     void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
-                    system::EventBus &eventBus, ShaderRecord *storedRecord) override;
+                    common::EventBus &eventBus, ShaderRecord *storedRecord) override;
 };
 } // namespace star::core::device::manager

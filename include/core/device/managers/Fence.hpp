@@ -2,9 +2,6 @@
 
 #include "core/device/managers/ManagerEventBusTies.hpp"
 
-#include "core/device/system/event/ManagerRequest.hpp"
-#include "device/managers/Manager.hpp"
-
 namespace star::core::device::manager
 {
 struct FenceRequest
@@ -23,24 +20,22 @@ struct FenceRecord
         device.getVulkanDevice().destroyFence(fence);
     }
 };
-constexpr std::string FenceEventName()
-{
-    return "fence_event_callback";
-}
+
+constexpr std::string_view GetFenceEventName = "star::core::device::manager::fence";
+
 class Fence : public ManagerEventBusTies<FenceRecord, FenceRequest, 50>
 {
   public:
-    Fence()
-        : ManagerEventBusTies<FenceRecord, FenceRequest, 50>(common::special_types::FenceTypeName, FenceEventName())
+    Fence() : ManagerEventBusTies<FenceRecord, FenceRequest, 50>(common::special_types::FenceTypeName, GetFenceEventName)
     {
     }
     virtual ~Fence() = default;
 
   protected:
-    virtual FenceRecord createRecord(device::StarDevice &device, FenceRequest &&request) const
+    virtual FenceRecord createRecord(FenceRequest &&request) const
     {
         return FenceRecord{
-            .fence = device.getVulkanDevice().createFence(vk::FenceCreateInfo().setFlags(
+            .fence = this->m_device->getVulkanDevice().createFence(vk::FenceCreateInfo().setFlags(
                 request.createSignalState ? vk::FenceCreateFlagBits::eSignaled : vk::FenceCreateFlagBits()))};
     }
 };

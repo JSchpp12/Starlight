@@ -1,6 +1,5 @@
 #pragma once
 
-#include "CastHelpers.hpp"
 #include "FrameScheduler.hpp"
 #include "complete_tasks/CompleteTask.hpp"
 #include "job/worker/Worker.hpp"

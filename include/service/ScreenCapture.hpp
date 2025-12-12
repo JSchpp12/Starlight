@@ -124,7 +124,7 @@ class ScreenCapture
             m_copyPolicy.triggerSubmission(copyPlan, screenEvent.getFrameInFlight());
 
         uint64_t signalValue;
-        CastHelpers::SafeCast(syncInfo.signalValue, signalValue);
+        common::helper::SafeCast(syncInfo.signalValue, signalValue);
         job::tasks::write_image_to_disk::WritePayload payload{
             .path = screenEvent.getName(),
             .semaphore = syncInfo.semaphore,

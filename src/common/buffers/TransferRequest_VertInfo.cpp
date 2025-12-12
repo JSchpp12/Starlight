@@ -1,6 +1,6 @@
 #include "TransferRequest_VertInfo.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
@@ -10,7 +10,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
         indices.push_back(index);
 
     uint32_t numVerts = 0, numInds = 0;
-    if (!CastHelpers::SafeCast<size_t, uint32_t>(vertices.size(), numVerts) || !CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numInds)){
+    if (!common::helper::SafeCast<size_t, uint32_t>(vertices.size(), numVerts) || !common::helper::SafeCast<size_t, uint32_t>(indices.size(), numInds)){
         throw std::runtime_error("Failed to parse numerical values for vert info buffer creation"); 
     } 
 
@@ -36,7 +36,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
     vk::Device &device, VmaAllocator &allocator) const
 {
     uint32_t numVerts = 0; 
-    if (!CastHelpers::SafeCast<size_t, uint32_t>(this->vertices.size(), numVerts)){
+    if (!common::helper::SafeCast<size_t, uint32_t>(this->vertices.size(), numVerts)){
         throw std::runtime_error("Failed to cast numerical info for vert info creation"); 
     } 
 
@@ -62,7 +62,7 @@ void star::TransferRequest::VertInfo::writeDataToStageBuffer(StarBuffers::Buffer
     buffer.map(&mapped);
 
     int numVerts = 0; 
-    CastHelpers::SafeCast<size_t, int>(vertices.size(), numVerts); 
+    common::helper::SafeCast<size_t, int>(vertices.size(), numVerts); 
 
     for (int i = 0; i < numVerts; i++)
     {

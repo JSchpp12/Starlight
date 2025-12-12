@@ -39,7 +39,7 @@ class StarApplication : public Interactivity
 
     virtual void onScroll(double xoffset, double yoffset) override {};
 
-    virtual std::shared_ptr<StarScene> loadScene(core::device::DeviceContext &context, const StarWindow &window,
+    virtual std::shared_ptr<StarScene> loadScene(core::device::DeviceContext &context, StarWindow &window,
                                                  const uint8_t &numFramesInFlight) = 0;
 
   protected:

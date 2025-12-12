@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Allocator.hpp"
-#include "CastHelpers.hpp"
 #include "Enums.hpp"
 #include "RenderingInstance.hpp"
 #include "RenderingSurface.hpp"
@@ -17,7 +16,7 @@
 
 #include <iostream>
 #include <memory>
-#include <optional>
+#include <optional> 
 #include <set>
 #include <unordered_set>
 #include <vector>

@@ -35,8 +35,7 @@ star::TextureMaterial::TextureMaterial(std::string texturePath) : m_texturePath(
 void star::TextureMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                                        star::StarShaderInfo::Builder frameBuilder)
 {
-    assert(!m_textureHandle.isInitialized() && "Should not be prepared for render more than once");
-
+    if (!m_textureHandle.isInitialized())
     {
         const auto texSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
         const auto graphicsIndex =
@@ -85,7 +84,7 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::get
     const int &numFramesInFlight) const
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
-        std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 1 * numFramesInFlight)};
+        std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, numFramesInFlight)};
 }
 
 std::string star::TextureMaterial::GetMatchingFile(const std::string &filePath)

@@ -3,6 +3,8 @@
 #include "FileHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
 
+#include <starlight/common/helper/CastHelpers.hpp>
+
 #include <assert.h>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(
@@ -44,7 +46,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         indices.push_back(index);
 
     uint32_t numIndices = 0;
-    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
+    common::helper::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
 
     core::logging::log(boost::log::trivial::info, "Done");
 

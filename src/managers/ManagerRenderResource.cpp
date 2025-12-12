@@ -6,7 +6,7 @@ auto star::ManagerRenderResource::highPriorityRequestCompleteFlags =
     std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>();
 auto star::ManagerRenderResource::bufferStorage = std::unordered_map<
     star::Handle,
-    std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 1500>>,
+    std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 2000>>,
     star::HandleHash>();
 auto star::ManagerRenderResource::textureStorage = std::unordered_map<
     star::Handle,
@@ -19,7 +19,7 @@ void star::ManagerRenderResource::init(const Handle &deviceID, std::shared_ptr<s
     devices.insert(std::make_pair(deviceID, std::move(device)));
     bufferStorage.insert(std::make_pair(
         deviceID,
-        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 1500>>(
+        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 2000>>(
             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))));
     textureStorage.insert(std::make_pair(
         deviceID,

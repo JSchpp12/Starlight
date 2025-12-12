@@ -8,14 +8,11 @@
 
 namespace star::core::device::system::event
 {
-constexpr std::string ShaderCompiledTypeName()
-{
-    return "star::event::shader_compiled";
-}
+constexpr std::string_view GetShaderCompiledEventTypeName = "star::core::device::event::ShaderCompiled";
 struct ShaderCompiled : public star::common::IEvent
 {
     ShaderCompiled(Handle shaderHandle)
-        : star::common::IEvent(common::HandleTypeRegistry::instance().registerType(ShaderCompiledTypeName())),
+        : star::common::IEvent(common::HandleTypeRegistry::instance().registerType(GetShaderCompiledEventTypeName)),
           shaderHandle(std::move(shaderHandle))
     {
     }

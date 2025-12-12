@@ -1,12 +1,12 @@
 #include "TransferRequest_IndicesInfo.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::createStagingBuffer(vk::Device &device,
                                                                                           VmaAllocator &allocator) const
 {
     uint32_t numIndices = 0; 
-    CastHelpers::SafeCast<size_t, uint32_t>(this->indices.size(), numIndices); 
+    common::helper::SafeCast<size_t, uint32_t>(this->indices.size(), numIndices); 
 
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
@@ -16,10 +16,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(uint32_t) * CastHelpers::size_t_to_unsigned_int(this->indices.size()))
+                .setSize(sizeof(uint32_t) * common::helper::size_t_to_unsigned_int(this->indices.size()))
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "IndicesInfoBuffer_Src")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->indices.size()))
+        .setInstanceCount(common::helper::size_t_to_unsigned_int(this->indices.size()))
         .setInstanceSize(sizeof(uint32_t))
         .buildUnique();
 }
@@ -44,7 +44,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
         indices.push_back(index);
 
     uint32_t numIndices = 0; 
-    CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
+    common::helper::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
 
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
@@ -56,10 +56,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
                 .setSharingMode(vk::SharingMode::eConcurrent)
                 .setQueueFamilyIndexCount(indices.size())
                 .setPQueueFamilyIndices(indices.data())
-                .setSize(sizeof(uint32_t) * CastHelpers::size_t_to_unsigned_int(this->indices.size()))
+                .setSize(sizeof(uint32_t) * common::helper::size_t_to_unsigned_int(this->indices.size()))
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer),
             "IndicesInfoBuffer_Src")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->indices.size()))
+        .setInstanceCount(common::helper::size_t_to_unsigned_int(this->indices.size()))
         .setInstanceSize(sizeof(uint32_t))
         .buildUnique();
 }

@@ -12,9 +12,9 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(core::device::DeviceC
                                                            const uint8_t &numFramesInFlight,
                                                            std::vector<std::shared_ptr<StarObject>> objects,
                                                            std::shared_ptr<std::vector<Light>> lights,
-                                                           std::shared_ptr<StarCamera> camera, const StarWindow &window)
-    : DefaultRenderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects)), window(window),
-      numFramesInFlight(numFramesInFlight), device(context)
+                                                           std::shared_ptr<StarCamera> camera, StarWindow &window)
+    : DefaultRenderer(context, numFramesInFlight, std::move(lights), std::move(camera), std::move(objects)),
+      window(&window), numFramesInFlight(numFramesInFlight), device(&context)
 {
     createSwapChain(context);
 }
@@ -24,42 +24,47 @@ star::core::renderer::SwapChainRenderer::SwapChainRenderer(
     std::vector<std::shared_ptr<StarObject>> objects,
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
-    std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window)
+    std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, StarWindow &window)
     : DefaultRenderer(context, numFramesInFlight, std::move(objects), std::move(lightData), std::move(lightListData),
-               std::move(cameraData)),
-      window(window), numFramesInFlight(numFramesInFlight), device(context)
+                      std::move(cameraData)),
+      window(&window), numFramesInFlight(numFramesInFlight), device(&context)
 {
     createSwapChain(context);
 }
 
-void star::core::renderer::SwapChainRenderer::prepRender(core::device::DeviceContext &context,
+void star::core::renderer::SwapChainRenderer::prepRender(common::IDeviceContext &context,
                                                          const uint8_t &numFramesInFlight)
 {
     DefaultRenderer::prepRender(context, numFramesInFlight);
 
+    auto &c = static_cast<core::device::DeviceContext &>(context);
     const size_t numSwapChainImages =
-        context.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
+        c.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain).size();
 
-    this->imageAcquireSemaphores = CreateSemaphores(context, numFramesInFlight, false);
-    this->imageAvailableSemaphores = CreateSemaphores(context, numSwapChainImages, false);
+    this->imageAcquireSemaphores = CreateSemaphores(c, numFramesInFlight, false);
+    this->imageAvailableSemaphores = CreateSemaphores(c, numSwapChainImages, false);
 
-    this->createFences(context);
+    this->createFences(c);
     this->createFenceImageTracking();
 }
 
-void star::core::renderer::SwapChainRenderer::cleanupRender(core::device::DeviceContext &context)
+void star::core::renderer::SwapChainRenderer::cleanupRender(common::IDeviceContext &context)
 {
     DefaultRenderer::cleanupRender(context);
 
-    cleanupSwapChain(context);
+    auto &c = static_cast<core::device::DeviceContext &>(context);
+    cleanupSwapChain(c);
 }
 
-void star::core::renderer::SwapChainRenderer::frameUpdate(core::device::DeviceContext &context,
+void star::core::renderer::SwapChainRenderer::frameUpdate(common::IDeviceContext &context,
                                                           const uint8_t &frameInFlightIndex)
 {
     DefaultRenderer::frameUpdate(context, frameInFlightIndex);
 
-    prepareRenderingContext(context);
+    pollEvents();
+
+    auto &c = static_cast<core::device::DeviceContext &>(context);
+    prepareRenderingContext(c);
 }
 
 void star::core::renderer::SwapChainRenderer::submitPresentation(const int &frameIndexToBeDrawn,
@@ -85,7 +90,7 @@ void star::core::renderer::SwapChainRenderer::submitPresentation(const int &fram
 
     // make call to present image
     auto presentResult =
-        this->device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getVulkanQueue().presentKHR(presentInfo);
+        this->device->getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getVulkanQueue().presentKHR(presentInfo);
 
     if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR ||
         frameBufferResized)
@@ -149,7 +154,7 @@ vk::SurfaceFormatKHR star::core::renderer::SwapChainRenderer::chooseSwapSurfaceF
 bool star::core::renderer::SwapChainRenderer::doesSwapChainSupportTransferOperations(
     core::device::DeviceContext &context) const
 {
-    core::SwapChainSupportDetails swapChainSupport = device.getSwapchainSupportDetails();
+    core::SwapChainSupportDetails swapChainSupport = device->getSwapchainSupportDetails();
 
     if (swapChainSupport.capabilities.supportedUsageFlags & vk::ImageUsageFlagBits::eTransferSrc)
         return true;
@@ -222,7 +227,7 @@ vk::Extent2D star::core::renderer::SwapChainRenderer::chooseSwapExtent(const vk:
         // vulkan requires that resolution be defined in pixels -- if a high DPI display is used, screen coordinates do
         // not match with pixels
         int width, height;
-        glfwGetFramebufferSize(this->window.getGLFWwindow(), &width, &height);
+        glfwGetFramebufferSize(this->window->getGLFWwindow(), &width, &height);
 
         vk::Extent2D actualExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 
@@ -257,7 +262,7 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     //  4. timeout
 
     {
-        auto result = this->device.getDevice().getVulkanDevice().waitForFences(
+        auto result = this->device->getDevice().getVulkanDevice().waitForFences(
             m_renderingContext.recordDependentFence.get(inFlightFences[frameIndexToBeDrawn]), VK_TRUE, UINT64_MAX);
         if (result != vk::Result::eSuccess)
             throw std::runtime_error("Failed to wait for fences");
@@ -274,7 +279,7 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     //  2. VK_SUBOPTIMAL_KHR: swap chain can still be used to present to the surface, but the surface properties no
     //  longer match
     {
-        auto result = this->device.getDevice().getVulkanDevice().acquireNextImageKHR(
+        auto result = this->device->getDevice().getVulkanDevice().acquireNextImageKHR(
             swapChain, UINT64_MAX,
             m_renderingContext.recordDependentSemaphores.get(this->imageAcquireSemaphores[frameIndexToBeDrawn]));
 
@@ -296,7 +301,7 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     // check if a previous frame is using the current image
     if (imagesInFlight[this->currentSwapChainImageIndex].isInitialized())
     {
-        const vk::Result result = this->device.getDevice().getVulkanDevice().waitForFences(
+        const vk::Result result = this->device->getDevice().getVulkanDevice().waitForFences(
             1, &m_renderingContext.recordDependentFence.get(imagesInFlight[this->currentSwapChainImageIndex]), VK_TRUE,
             UINT64_MAX);
         if (result != vk::Result::eSuccess)
@@ -306,7 +311,7 @@ void star::core::renderer::SwapChainRenderer::prepareForSubmission(const int &fr
     imagesInFlight[this->currentSwapChainImageIndex] = inFlightFences[frameIndexToBeDrawn];
 
     // set fence to unsignaled state
-    const vk::Result resetResult = this->device.getDevice().getVulkanDevice().resetFences(
+    const vk::Result resetResult = this->device->getDevice().getVulkanDevice().resetFences(
         1, &m_renderingContext.recordDependentFence.get(imagesInFlight[this->currentSwapChainImageIndex]));
     if (resetResult != vk::Result::eSuccess)
         throw std::runtime_error("Failed to reset fences");
@@ -317,8 +322,10 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     std::vector<vk::Semaphore> *previousCommandBufferSemaphores, std::vector<vk::Semaphore> dataSemaphores,
     std::vector<vk::PipelineStageFlags> dataWaitPoints, std::vector<std::optional<uint64_t>> previousSignaledValues)
 {
+    size_t frameIndex = static_cast<size_t>(frameIndexToBeDrawn);
+
     std::vector<vk::Semaphore> waitSemaphores = {
-        m_renderingContext.recordDependentSemaphores.get(this->imageAcquireSemaphores[frameIndexToBeDrawn])};
+        m_renderingContext.recordDependentSemaphores.get(this->imageAcquireSemaphores[frameIndex])};
     std::vector<vk::PipelineStageFlags> waitStages = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
     std::vector<vk::Semaphore> waitTimelines;
@@ -349,7 +356,7 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     }
 
     uint32_t waitSemaphoreCount = 0;
-    CastHelpers::SafeCast<size_t, uint32_t>(waitSemaphores.size(), waitSemaphoreCount);
+    common::helper::SafeCast<size_t, uint32_t>(waitSemaphores.size(), waitSemaphoreCount);
 
     auto *signalSemaphore = &m_renderingContext.recordDependentSemaphores.get(
         this->imageAvailableSemaphores[this->currentSwapChainImageIndex]);
@@ -360,13 +367,12 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphore;
     submitInfo.pWaitDstStageMask = waitStages.data();
-    submitInfo.pCommandBuffers = &buffer.buffer(frameIndexToBeDrawn);
+    submitInfo.pCommandBuffers = &buffer.buffer(frameIndex);
     submitInfo.commandBufferCount = 1;
-    // submitInfo.pNext = timelineSubmitInfo;
 
-    const auto &fence = m_renderingContext.recordDependentFence.get(inFlightFences[frameIndexToBeDrawn]);
+    const auto &fence = m_renderingContext.recordDependentFence.get(inFlightFences[frameIndex]);
 
-    auto commandResult = std::make_unique<vk::Result>(this->device.getDevice()
+    auto commandResult = std::make_unique<vk::Result>(this->device->getDevice()
                                                           .getDefaultQueue(star::Queue_Type::Tpresent)
                                                           .getVulkanQueue()
                                                           .submit(1, &submitInfo, fence));
@@ -375,7 +381,7 @@ vk::Semaphore star::core::renderer::SwapChainRenderer::submitBuffer(
         throw std::runtime_error("Failed to submit command buffer");
     }
 
-    this->renderToImages[frameIndexToBeDrawn].setImageLayout(vk::ImageLayout::ePresentSrcKHR);
+    m_renderingContext.recordDependentImage.get(m_renderToImages[frameIndex])->setImageLayout(vk::ImageLayout::ePresentSrcKHR);
 
     return m_renderingContext.recordDependentSemaphores.get(
         this->imageAvailableSemaphores[this->currentSwapChainImageIndex]);
@@ -390,8 +396,8 @@ std::vector<star::StarTextures::Texture> star::core::renderer::SwapChainRenderer
 
     vk::Format format = getColorAttachmentFormat(device);
 
-    // get images in the newly created swapchain
-    for (vk::Image &image : this->device.getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain))
+    // get images in the newly created swapchain 
+    for (vk::Image &image : this->device->getDevice().getVulkanDevice().getSwapchainImagesKHR(this->swapChain))
     {
         auto builder =
             star::StarTextures::Texture::Builder(device.getDevice().getVulkanDevice(), image)
@@ -411,11 +417,11 @@ std::vector<star::StarTextures::Texture> star::core::renderer::SwapChainRenderer
         newRenderToImages.emplace_back(builder.build());
         newRenderToImages.back().setImageLayout(vk::ImageLayout::ePresentSrcKHR);
 
-        // auto buffer = device.beginSingleTimeCommands();
+        // auto buffer = device->beginSingleTimeCommands();
         // newRenderToImages.back()->transitionLayout(buffer, vk::ImageLayout::ePresentSrcKHR,
         // vk::AccessFlagBits::eNone, vk::AccessFlagBits::eColorAttachmentWrite,
         // vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput);
-        // device.endSingleTimeCommands(buffer);
+        // device->endSingleTimeCommands(buffer);
         auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 
         vk::ImageMemoryBarrier2 barrier{};
@@ -455,10 +461,12 @@ std::vector<star::StarTextures::Texture> star::core::renderer::SwapChainRenderer
 }
 
 vk::RenderingAttachmentInfo star::core::renderer::SwapChainRenderer::prepareDynamicRenderingInfoColorAttachment(
-    const int &frameInFlightIndex)
+    const uint8_t &frameInFlightIndex)
 {
+    size_t index = static_cast<size_t>(this->currentSwapChainImageIndex);
+
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-    colorAttachmentInfo.imageView = this->renderToImages[this->currentSwapChainImageIndex].getImageView();
+    colorAttachmentInfo.imageView = m_renderingContext.recordDependentImage.get(m_renderToImages[index])->getImageView();
     colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
     colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
@@ -473,7 +481,7 @@ void star::core::renderer::SwapChainRenderer::recordCommandBuffer(vk::CommandBuf
 {
     auto barriers = getImageBarriersForThisFrame();
     uint32_t numBarriers;
-    CastHelpers::SafeCast<size_t, uint32_t>(barriers.size(), numBarriers);
+    common::helper::SafeCast<size_t, uint32_t>(barriers.size(), numBarriers);
 
     commandBuffer.pipelineBarrier2(
         vk::DependencyInfo().setImageMemoryBarrierCount(numBarriers).setPImageMemoryBarriers(barriers.data()));
@@ -492,7 +500,7 @@ std::vector<star::Handle> star::core::renderer::SwapChainRenderer::CreateSemapho
     for (int i = 0; i < numToCreate; i++)
     {
         context.getEventBus().emit(core::device::system::event::ManagerRequest(
-            common::HandleTypeRegistry::instance().getType(core::device::manager::SemaphoreEventTypeName()).value(),
+            common::HandleTypeRegistry::instance().getType(core::device::manager::GetSemaphoreEventTypeName).value(),
             core::device::manager::SemaphoreRequest{isTimeline}, semaphores[i]));
 
         if (!semaphores[i].isInitialized())
@@ -512,7 +520,7 @@ void star::core::renderer::SwapChainRenderer::createFences(core::device::DeviceC
     for (size_t i = 0; i < this->numFramesInFlight; i++)
     {
         context.getEventBus().emit(core::device::system::event::ManagerRequest(
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(core::device::manager::FenceEventName()),
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(core::device::manager::GetFenceEventName),
             core::device::manager::FenceRequest{true}, inFlightFences[i]));
         if (!this->inFlightFences[i])
         {
@@ -527,7 +535,7 @@ void star::core::renderer::SwapChainRenderer::createFenceImageTracking()
 
     // need to ensure the frame that is going to be drawn to, is the one linked to the expected fence.
     // If, for any reason, vulkan returns an image out of order, we will be able to handle that with this link
-    imagesInFlight.resize(this->renderToImages.size());
+    imagesInFlight.resize(m_renderToImages.size());
 
     // initially, no frame is using any image so this is going to be created without an explicit link
 }
@@ -537,7 +545,7 @@ void star::core::renderer::SwapChainRenderer::createSwapChain(core::device::Devi
     // TODO: current implementation requires halting to all rendering when recreating swapchain. Can place old swap
     // chain in oldSwapChain field
     //   in order to prevent this and allow rendering to continue
-    auto swapChainSupport = this->device.getSwapchainSupportDetails();
+    auto swapChainSupport = this->device->getSwapchainSupportDetails();
     vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     vk::PresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
     vk::Extent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
@@ -554,7 +562,7 @@ void star::core::renderer::SwapChainRenderer::createSwapChain(core::device::Devi
 
     vk::SwapchainCreateInfoKHR createInfo{};
     createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;
-    createInfo.surface = this->device.getRenderingSurface().getVulkanSurface();
+    createInfo.surface = this->device->getRenderingSurface().getVulkanSurface();
 
     // specify image information for the surface
     createInfo.minImageCount = imageCount;
@@ -575,7 +583,7 @@ void star::core::renderer::SwapChainRenderer::createSwapChain(core::device::Devi
     }
 
     std::vector<uint32_t> queueFamilyIndicies =
-        this->device.getDevice().getQueueOwnershipTracker().getAllQueueFamilyIndices();
+        this->device->getDevice().getQueueOwnershipTracker().getAllQueueFamilyIndices();
 
     if (queueFamilyIndicies.size() > 1)
     {
@@ -611,7 +619,7 @@ void star::core::renderer::SwapChainRenderer::createSwapChain(core::device::Devi
     // for now, only assume we are making one swapchain
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    this->swapChain = this->device.getDevice().getVulkanDevice().createSwapchainKHR(createInfo);
+    this->swapChain = this->device->getDevice().getVulkanDevice().createSwapchainKHR(createInfo);
 
     this->swapChainExtent = std::make_unique<vk::Extent2D>(extent);
 }
@@ -621,35 +629,35 @@ void star::core::renderer::SwapChainRenderer::recreateSwapChain()
     int width = 0, height = 0;
 
     // check for window minimization and wait for window size to no longer be 0
-    glfwGetFramebufferSize(this->window.getGLFWwindow(), &width, &height);
+    glfwGetFramebufferSize(window->getGLFWwindow(), &width, &height);
     while (width == 0 || height == 0)
     {
-        glfwGetFramebufferSize(this->window.getGLFWwindow(), &width, &height);
+        glfwGetFramebufferSize(window->getGLFWwindow(), &width, &height);
         glfwWaitEvents();
     }
     // wait for device to finish any current actions
-    vkDeviceWaitIdle(this->device.getDevice().getVulkanDevice());
+    vkDeviceWaitIdle(this->device->getDevice().getVulkanDevice());
 
-    cleanupSwapChain(device);
+    cleanupSwapChain(*device);
 
     // create swap chain itself
-    createSwapChain(device);
+    createSwapChain(*device);
 }
 
 void star::core::renderer::SwapChainRenderer::cleanupSwapChain(core::device::DeviceContext &context)
 {
-    for (auto &image : this->renderToImages)
-    {
-        image.cleanupRender(context.getDevice().getVulkanDevice());
-    }
-    for (auto &image : this->renderToDepthImages)
-    {
-        if (image)
-        {
-            image->cleanupRender(context.getDevice().getVulkanDevice());
-            image.release();
-        }
-    }
+    // for (auto &image : this->renderToImages)
+    // {
+    //     image.cleanupRender(context.getDevice().getVulkanDevice());
+    // }
+    // for (auto &image : this->renderToDepthImages)
+    // {
+    //     if (image)
+    //     {
+    //         image->cleanupRender(context.getDevice().getVulkanDevice());
+    //         image.release();
+    //     }
+    // }
 
     context.getDevice().getVulkanDevice().destroySwapchainKHR(this->swapChain);
 }
@@ -699,9 +707,11 @@ void star::core::renderer::SwapChainRenderer::addFencesToRenderingContext(core::
 
 std::vector<vk::ImageMemoryBarrier2> star::core::renderer::SwapChainRenderer::getImageBarriersForThisFrame()
 {
+    StarTextures::Texture *image = m_renderingContext.recordDependentImage.get(m_renderToImages[currentSwapChainImageIndex]);
+
     auto barriers = std::vector<vk::ImageMemoryBarrier2>{
         vk::ImageMemoryBarrier2()
-            .setOldLayout(renderToImages[currentSwapChainImageIndex].getImageLayout())
+            .setOldLayout(image->getImageLayout())
             .setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
             .setSubresourceRange(vk::ImageSubresourceRange()
                                      .setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -709,7 +719,7 @@ std::vector<vk::ImageMemoryBarrier2> star::core::renderer::SwapChainRenderer::ge
                                      .setLevelCount(1)
                                      .setBaseArrayLayer(0)
                                      .setLayerCount(1))
-            .setImage(this->renderToImages[this->currentSwapChainImageIndex].getVulkanImage())
+            .setImage(image->getVulkanImage())
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
@@ -725,7 +735,7 @@ std::vector<vk::ImageMemoryBarrier2> star::core::renderer::SwapChainRenderer::ge
                                      .setLevelCount(1)
                                      .setBaseArrayLayer(0)
                                      .setLayerCount(1))
-            .setImage(this->renderToImages[this->currentSwapChainImageIndex].getVulkanImage())
+            .setImage(image->getVulkanImage())
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setSrcStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)

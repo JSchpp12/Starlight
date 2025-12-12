@@ -43,6 +43,8 @@ class Texture
 
         std::unique_ptr<Texture> buildUnique();
 
+        std::shared_ptr<Texture> buildShared();
+
         Texture build();
 
       private:
@@ -107,7 +109,10 @@ class Texture
     }
     void cleanupRender(vk::Device &device)
     {
-        memoryResources->cleanupRender(device);
+        if (memoryResources)
+        {
+            memoryResources->cleanupRender(device);
+        }
     }
     const vk::Image &getVulkanImage() const
     {

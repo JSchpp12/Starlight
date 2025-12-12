@@ -1,7 +1,8 @@
 #pragma once
 
-#include "CastHelpers.hpp"
 #include "HandleContainer.hpp"
+
+#include <starlight/common/helper/CastHelpers.hpp>
 
 #include <absl/container/flat_hash_map.h>
 
@@ -50,7 +51,7 @@ template <typename TData> class MappedHandleContainer : public HandleContainer<T
     Handle createNewHandle() const
     {
         uint32_t newId = 0;
-        CastHelpers::SafeCast<size_t, uint32_t>(m_records.size(), newId);
+        common::helper::SafeCast<size_t, uint32_t>(m_records.size(), newId);
 
         Handle newHandle{.type = this->getHandleType(), .id = std::move(newId)};
 
@@ -60,9 +61,11 @@ template <typename TData> class MappedHandleContainer : public HandleContainer<T
     void store(const Handle &recordHandle, TData record)
     {
         assert(recordHandle.getType() == this->getHandleType() && "Ensure proper handle type for container");
-        assert(!m_records.contains(recordHandle) && "Handle must be unique and not already used");
-
-        m_records.insert(std::make_pair(recordHandle, std::move(record)));
+        if (m_records.contains(recordHandle)){
+            m_records.find(recordHandle)->second = std::move(record);
+        }else{
+            m_records.insert(std::make_pair(recordHandle, std::move(record)));
+        }
     }
 };
 } // namespace star::core

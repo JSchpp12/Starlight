@@ -1,6 +1,9 @@
 #include "service/detail/screen_capture/CopyCmdPolicy.hpp"
 
 #include "logging/LoggingFactory.hpp"
+
+#include <starlight/common/helper/CastHelpers.hpp>
+
 #include <cassert>
 
 namespace star::service::detail::screen_capture
@@ -28,7 +31,7 @@ void CopyCmdPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &co
 {
     auto imageBarriers = getImageBarriersForCleanup();
     uint32_t numImageBarriers;
-    CastHelpers::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
+    star::common::helper::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
 
     commandBuffer.pipelineBarrier2(vk::DependencyInfo()
                                        .setImageMemoryBarrierCount(numImageBarriers)
@@ -110,7 +113,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const int &
     const std::vector<vk::Semaphore> signalTimelineSemaphores{*m_inUseInfo->timelineSemaphoreForCopyDone,
                                                               *m_inUseInfo->semaphoreForCopyDone};
     uint32_t semaphoreCount = 0;
-    CastHelpers::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
+    star::common::helper::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
 
     std::vector<vk::Semaphore> waitSemaphores = std::vector<vk::Semaphore>(1);
     if (m_inUseInfo->targetTextureReadySemaphore != nullptr)
@@ -176,7 +179,7 @@ void CopyCmdPolicy::addMemoryDependenciesToPrepForCopy(vk::CommandBuffer &comman
     // assuming that the target image is not in the proper layout for transfer SRC
     auto imageBarriers = getImageBarriersForPrep();
     uint32_t numImageBarriers;
-    CastHelpers::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
+    star::common::helper::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
 
     commandBuffer.pipelineBarrier2(vk::DependencyInfo()
                                        .setImageMemoryBarrierCount(numImageBarriers)

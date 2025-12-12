@@ -21,13 +21,11 @@
 
 namespace star
 {
-// constexpr const char *BUFFER_CONTAINER_TYPE = "buffer";
-// constexpr const char *TEXTURE_CONTAINER_TYPE = "texture";
-
 class ManagerRenderResource : public StarManager
 {
   private:
   public:
+
     template <typename T> struct FinalizedResourceRequest : public StarManager::FinalizedRequest
     {
         vk::Semaphore resourceSemaphore = VK_NULL_HANDLE;
@@ -129,7 +127,7 @@ class ManagerRenderResource : public StarManager
         textureStorage;
     static std::unordered_map<
         Handle,
-        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 1500>>,
+        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 2000>>,
         star::HandleHash>
         bufferStorage;
 

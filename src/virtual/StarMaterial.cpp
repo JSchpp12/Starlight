@@ -1,31 +1,43 @@
 #include "StarMaterial.hpp"
 
-void star::StarMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight, star::StarShaderInfo::Builder frameBuilder){
-	shaderInfo = buildShaderInfo(context, numFramesInFlight, std::move(frameBuilder)); 
-}
-
-void star::StarMaterial::cleanupRender(core::device::DeviceContext &context){
-	shaderInfo->cleanupRender(context.getDevice()); 
-}
-
-void star::StarMaterial::bind(vk::CommandBuffer& commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex)
+void star::StarMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+                                    star::StarShaderInfo::Builder frameBuilder)
 {
-	//bind the descriptor sets for the given image index
-	auto descriptors = this->shaderInfo->getDescriptors(swapChainImageIndex); 
-	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(), descriptors.data(), 0, nullptr);
+    if (!shaderInfo)
+    {
+        shaderInfo = buildShaderInfo(context, numFramesInFlight, std::move(frameBuilder));
+    }
 }
 
-bool star::StarMaterial::isKnownToBeReady(const uint8_t& frameInFlightIndex){
-	return this->shaderInfo->isReady(frameInFlightIndex);
-}
-
-std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(const int& numFramesInFlight) const
+void star::StarMaterial::cleanupRender(core::device::DeviceContext &context)
 {
-	return std::vector<std::pair<vk::DescriptorType, const int>>();
+    shaderInfo->cleanupRender(context.getDevice());
 }
 
-std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarMaterial::getDataSemaphores(const uint8_t &frameInFlightIndex) const{
-	auto semaphoreInfo = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>();
+void star::StarMaterial::bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout,
+                              int swapChainImageIndex)
+{
+    // bind the descriptor sets for the given image index
+    auto descriptors = this->shaderInfo->getDescriptors(swapChainImageIndex);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptors.size(),
+                                     descriptors.data(), 0, nullptr);
+}
 
-	return semaphoreInfo;
+bool star::StarMaterial::isKnownToBeReady(const uint8_t &frameInFlightIndex)
+{
+    return this->shaderInfo->isReady(frameInFlightIndex);
+}
+
+std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(
+    const int &numFramesInFlight) const
+{
+    return std::vector<std::pair<vk::DescriptorType, const int>>();
+}
+
+std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarMaterial::getDataSemaphores(
+    const uint8_t &frameInFlightIndex) const
+{
+    auto semaphoreInfo = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>();
+
+    return semaphoreInfo;
 }

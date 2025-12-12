@@ -4,7 +4,7 @@
 
 #include "InitParameters.hpp"
 #include "core/device/managers/GraphicsContainer.hpp"
-#include "core/device/system/EventBus.hpp"
+#include <starlight/common/EventBus.hpp>
 #include "job/TaskManager.hpp"
 
 namespace star::service

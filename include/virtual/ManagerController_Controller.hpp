@@ -39,7 +39,7 @@ template <typename TTransferType, typename TDataType> class Controller
                 context.getEventBus().emit(
                     core::device::system::event::ManagerRequest<core::device::manager::SemaphoreRequest>(
                         common::HandleTypeRegistry::instance()
-                            .getType(core::device::manager::SemaphoreEventTypeName())
+                            .getType(core::device::manager::GetSemaphoreEventTypeName)
                             .value(),
                         core::device::manager::SemaphoreRequest{false}, semaphore));
 

@@ -1,10 +1,6 @@
 #pragma once
 
-#include "CastHelpers.hpp"
-#include "DescriptorModifier.hpp"
-#include "core/device/DeviceContext.hpp"
 #include "Enums.hpp"
-#include <starlight/common/Handle.hpp>
 #include "Light.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
@@ -13,6 +9,9 @@
 #include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
 #include "VulkanVertex.hpp"
+#include "core/device/DeviceContext.hpp"
+#include <starlight/common/Handle.hpp>
+#include <starlight/common/helper/CastHelpers.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -32,20 +31,14 @@ class StarRenderGroup
   public:
     StarRenderGroup(core::device::DeviceContext &device, std::shared_ptr<StarObject> baseObject);
 
-    // no copy
-    StarRenderGroup(const StarRenderGroup &) = delete;
-    StarRenderGroup &operator=(const StarRenderGroup &) = delete;
-    StarRenderGroup(StarRenderGroup &&) = default;
-    StarRenderGroup &operator=(StarRenderGroup &&) = default;
-
-    virtual ~StarRenderGroup();
+    virtual ~StarRenderGroup() = default;
 
     void prepRender(core::device::DeviceContext &context, const vk::Extent2D &renderingResolution,
                     const uint8_t &numFramesInFlight, StarShaderInfo::Builder initEngineBuilder,
                     core::renderer::RenderingTargetInfo renderingInfo);
 
-    void cleanupRender(core::device::DeviceContext &context); 
-    
+    void cleanupRender(core::device::DeviceContext &context);
+
     virtual bool isObjectCompatible(StarObject &object);
 
     /// <summary>
@@ -58,13 +51,16 @@ class StarRenderGroup
         this->lights.push_back(newLight);
     }
 
-    void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, const Handle &targetCommandBuffer);
+    void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+                     const Handle &targetCommandBuffer);
 
-    virtual void recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &swapChainImageIndex, const uint64_t &frameIndex);
+    virtual void recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &swapChainImageIndex,
+                                          const uint64_t &frameIndex);
 
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &swapChainImageIndex, const uint64_t &frameIndex);
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &swapChainImageIndex,
+                                             const uint64_t &frameIndex);
 
-    virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex); 
+    virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
 
     int getNumObjects()
     {
@@ -86,15 +82,11 @@ class StarRenderGroup
         RenderObjectInfo baseObject;
         std::vector<RenderObjectInfo> objects;
     };
-    core::device::DeviceContext &device;
-
+    core::device::DeviceContext *device = nullptr;
     int numObjects = 0;
-
     vk::PipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
-
     std::vector<Light *> lights;
-
     std::vector<Group> groups;
 
     /// <summary>
@@ -103,6 +95,7 @@ class StarRenderGroup
     void prepareObjects(StarShaderInfo::Builder &groupBuilder, core::renderer::RenderingTargetInfo renderingInfo,
                         const vk::Extent2D &swapChainExtent, const uint8_t &numFramesInFlight);
 
-    virtual vk::PipelineLayout createPipelineLayout(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout);
+    virtual vk::PipelineLayout createPipelineLayout(
+        core::device::DeviceContext &context, std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout);
 };
 } // namespace star

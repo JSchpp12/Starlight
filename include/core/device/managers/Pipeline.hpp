@@ -45,7 +45,7 @@ struct PipelineRecord
     uint8_t numCompiled = 0;
 };
 
-constexpr std::string_view PipelineCreateEventTypeName = "pipeline_event_callback";
+constexpr std::string_view PipelineCreateEventTypeName = "star::event::pipeline";
 
 class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>
 {
@@ -62,21 +62,20 @@ class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineReque
     Pipeline(Pipeline &&) = delete;
     Pipeline &operator=(Pipeline &&) = delete;
 
-    void init(std::shared_ptr<device::StarDevice> device, core::device::system::EventBus &bus) override;
+    void init(device::StarDevice *device, common::EventBus &bus, job::TaskManager &taskSystem) override;
 
-    virtual void cleanup(core::device::system::EventBus &bus) override;
+    virtual void cleanupRender() override;
 
   protected:
-    std::unordered_map<Handle, Handle, star::HandleHash> m_subscriberShaderBuildInfo;
-    uint16_t m_shaderBuiltCallbackEventType;
+    absl::flat_hash_map<uint16_t, Handle> m_subscriberShaderBuildInfo;
 
-    PipelineRecord createRecord(device::StarDevice &device, PipelineRequest &&request) const override
+    PipelineRecord createRecord(PipelineRequest &&request) const override
     {
         return PipelineRecord(std::move(request));
     }
 
   private:
     void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
-                    system::EventBus &eventBus, PipelineRecord *storedRecord) override;
+                    common::EventBus &eventBus, PipelineRecord *storedRecord) override;
 };
 } // namespace star::core::device::manager

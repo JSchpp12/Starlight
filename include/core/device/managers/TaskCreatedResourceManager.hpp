@@ -18,25 +18,40 @@ class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResource
     virtual ~TaskCreatedResourceManager() = default;
     TaskCreatedResourceManager(const TaskCreatedResourceManager &) noexcept = delete;
     TaskCreatedResourceManager &operator=(const TaskCreatedResourceManager &) noexcept = delete;
-    TaskCreatedResourceManager(TaskCreatedResourceManager &&) noexcept = delete;
-    TaskCreatedResourceManager &operator=(TaskCreatedResourceManager &&) noexcept = delete;
+    TaskCreatedResourceManager(TaskCreatedResourceManager &&other) noexcept = default;
+    TaskCreatedResourceManager &operator=(TaskCreatedResourceManager &&other) noexcept = default;
 
-    virtual Handle submit(device::StarDevice &device, TResourceRequest request, job::TaskManager &taskSystem,
-                          system::EventBus &eventBus)
+    virtual Handle submit(TResourceRequest request) override
     {
-        auto handle = this->submit(device, std::move(request));
+        assert(this->m_device != nullptr && this->m_deviceTaskSystem != nullptr && this->m_deviceEventBus != nullptr &&
+               "Device or Task System not initialized");
+
+        auto handle = this->ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::submit(std::move(request));
 
         TRecord *record = this->get(handle);
-        submitTask(device, handle, taskSystem, eventBus, record);
+        submitTask(*this->m_device, handle, *this->m_deviceTaskSystem, *this->m_deviceEventBus, record);
 
         return handle;
     }
 
+    virtual void init(device::StarDevice *device, common::EventBus &eventBus, job::TaskManager &taskSystem)
+    {
+        this->ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::init(device, eventBus);
+
+        m_deviceTaskSystem = &taskSystem;
+    }
+
   protected:
     using Manager<TRecord, TResourceRequest, TMaxRecordCount>::submit;
-    virtual void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
-                            system::EventBus &eventBus, TRecord *storedRecord) {};
 
-    virtual TRecord createRecord(device::StarDevice &device, TResourceRequest &&request) const override = 0;
+    job::TaskManager *m_deviceTaskSystem = nullptr;
+
+    virtual void submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
+                            common::EventBus &eventBus, TRecord *storedRecord) = 0;
+
+    virtual TRecord createRecord(TResourceRequest &&request) const override = 0;
+
+  private:
+    using ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::init;
 };
 } // namespace star::core::device::manager

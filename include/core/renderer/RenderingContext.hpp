@@ -2,6 +2,7 @@
 
 #include "MappedHandleContainer.hpp"
 #include "StarPipeline.hpp"
+#include "StarTextures/Texture.hpp"
 #include "core/device/DeviceContext.hpp"
 
 #include <starlight/common/HandleTypeRegistry.hpp>
@@ -22,6 +23,8 @@ class RenderingContext
         MappedHandleContainer<vk::Semaphore>(common::special_types::SemaphoreTypeName);
     MappedHandleContainer<vk::Fence> recordDependentFence =
         MappedHandleContainer<vk::Fence>(common::special_types::FenceTypeName);
+    MappedHandleContainer<StarTextures::Texture*> recordDependentImage =
+        MappedHandleContainer<StarTextures::Texture*>(common::special_types::GetImageTypeName);
 
     void addBufferToRenderingContext(core::device::DeviceContext &context, const Handle &handle)
     {

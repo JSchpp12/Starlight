@@ -2,6 +2,8 @@
 
 #include "TransferRequest_Texture.hpp"
 
+#include <starlight/common/helper/CastHelpers.hpp>
+
 #include <memory>
 #include <random>
 #include <vector>
@@ -136,7 +138,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
         }
 
         uint32_t indexCount = 0;
-        CastHelpers::SafeCast<size_t, uint32_t>(indices.size(), indexCount);
+        common::helper::SafeCast<size_t, uint32_t>(indices.size(), indexCount);
 
         return star::StarTextures::Texture::Builder(device, allocator)
             .setCreateInfo(Allocator::AllocationBuilder()

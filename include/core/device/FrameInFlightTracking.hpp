@@ -18,7 +18,9 @@ class FrameInFlightTracking
 
     uint64_t &getNumOfTimesFrameProcessed(const uint8_t &frameInFlightIndex);
     const uint64_t &getNumOfTimesFrameProcessed(const uint8_t &frameInFlightIndex) const;
-
+    size_t getSize(){
+      return m_numOfTimesFrameProcessed.size();
+    }
   private:
     std::vector<uint64_t> m_numOfTimesFrameProcessed;
 };

@@ -96,8 +96,8 @@ class StarShaderInfo
     {
         std::vector<ShaderInfo> shaderInfos = std::vector<ShaderInfo>();
 
-        ShaderInfoSet(core::device::StarDevice &device, StarDescriptorSetLayout &setLayout)
-            : device(device), setLayout(setLayout) {};
+        ShaderInfoSet(core::device::StarDevice &device, StarDescriptorPool &pool, StarDescriptorSetLayout &setLayout)
+            : device(device), m_pool(pool), setLayout(setLayout){};
 
         void add(const ShaderInfo &shaderInfo);
 
@@ -114,6 +114,7 @@ class StarShaderInfo
 
       private:
         core::device::StarDevice &device;
+        StarDescriptorPool &m_pool;
         StarDescriptorSetLayout &setLayout;
         bool setNeedsRebuild = true;
         bool isBuilt = false;
@@ -129,14 +130,12 @@ class StarShaderInfo
         std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>>();
 
   public:
-    StarShaderInfo(Handle deviceID, core::device::StarDevice &device,
+    StarShaderInfo(Handle deviceID, core::device::StarDevice &device, StarDescriptorPool &pool,
                    const std::vector<std::shared_ptr<StarDescriptorSetLayout>> &layouts,
                    const std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> &shaderInfoSets)
-        : m_deviceID(deviceID), layouts(layouts), shaderInfoSets(shaderInfoSets) {};
+        : m_deviceID(deviceID), layouts(layouts), shaderInfoSets(shaderInfoSets){};
 
     bool isReady(const uint8_t &frameInFlight);
-
-    // std::set<vk::Semaphore> getDependentSemaphores(const uint8_t &frameInFlight) const;
 
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
@@ -147,8 +146,9 @@ class StarShaderInfo
     class Builder
     {
       public:
-        Builder(Handle deviceID, core::device::StarDevice &device, const int numFramesInFlight)
-            : m_deviceID(deviceID), device(device), sets(numFramesInFlight) {};
+        Builder(Handle deviceID, core::device::StarDevice &device, StarDescriptorPool &pool,
+                const uint8_t numFramesInFlight)
+            : m_deviceID(deviceID), device(device), m_pool(pool), sets(numFramesInFlight){};
 
         Builder &addSetLayout(std::shared_ptr<StarDescriptorSetLayout> layout)
         {
@@ -156,7 +156,7 @@ class StarShaderInfo
             return *this;
         };
 
-        Builder &startOnFrameIndex(const int &frameInFlight)
+        Builder &startOnFrameIndex(const size_t &frameInFlight)
         {
             assert(frameInFlight < this->sets.size() && "Pushed beyond size");
             this->activeSet = &this->sets[frameInFlight];
@@ -219,7 +219,7 @@ class StarShaderInfo
 
         std::unique_ptr<StarShaderInfo> build()
         {
-            return std::make_unique<StarShaderInfo>(m_deviceID, this->device, std::move(this->layouts),
+            return std::make_unique<StarShaderInfo>(m_deviceID, this->device, m_pool, std::move(this->layouts),
                                                     std::move(this->sets));
         };
 
@@ -231,6 +231,7 @@ class StarShaderInfo
       private:
         star::Handle m_deviceID;
         core::device::StarDevice &device;
+        StarDescriptorPool &m_pool;
         std::vector<std::shared_ptr<ShaderInfoSet>> *activeSet = nullptr;
 
         std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> layouts =

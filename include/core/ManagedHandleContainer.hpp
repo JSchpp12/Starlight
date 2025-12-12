@@ -5,12 +5,12 @@
 namespace star::core
 {
 template <typename T>
-concept TDataHasCleanupRender = requires(T record, device::StarDevice &device) {
-    { record.cleanupRender(device) } -> std::same_as<void>;
+concept TDataHasCleanup = requires(T record) {
+    { record.cleanupRender() } -> std::same_as<void>;
 };
 template <typename T>
-concept TDataHasCleanup = requires(T record) {
-    { record.cleanup() } -> std::same_as<void>;
+concept TDataHasCleanupRender = requires(T record, device::StarDevice &device) {
+    { record.cleanupRender(device) } -> std::same_as<void>;
 };
 template <typename T>
 concept TDataHasVKCleanup = requires(T record, vk::Device &device) {
@@ -32,6 +32,7 @@ class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount
         : LinearHandleContainer<TData, TMaxDataCount>(std::move(registeredHandleType))
     {
     }
+
     void cleanupAll(device::StarDevice *device = nullptr)
     {
         for (uint32_t i = 0; i < this->m_records.size(); i++)
@@ -65,7 +66,7 @@ class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount
         }
         else if constexpr (TDataHasCleanup<TData>)
         {
-            this->m_records[handle.getID()].cleanup();
+            this->m_records[handle.getID()].cleanupRender();
         }
     }
 };

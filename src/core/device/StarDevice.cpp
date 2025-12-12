@@ -1,5 +1,6 @@
 #include "device/StarDevice.hpp"
 
+#include <starlight/common/helper/CastHelpers.hpp>
 namespace star::core::device
 {
 StarDevice::StarDevice(StarWindow &window, core::RenderingSurface &renderingSurface,
@@ -72,7 +73,7 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance, core::Ren
             // try to pick the device that has the most seperate queue families
             if (indicies.getUniques().size() > largestQueueFamilyCount)
             {
-                largestQueueFamilyCount = CastHelpers::size_t_to_unsigned_int(indicies.getUniques().size());
+                largestQueueFamilyCount = common::helper::size_t_to_unsigned_int(indicies.getUniques().size());
                 optimalDevice = nDevice;
             }
         }
@@ -149,11 +150,11 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
 
     {
         uint32_t numDeviceExtensions = uint32_t();
-        CastHelpers::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
+        common::helper::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
 
         std::vector<const char *> validationLayerNames = instance.getValidationLayerNames();
         uint32_t numValidationLayers = uint32_t();
-        CastHelpers::SafeCast<size_t, uint32_t>(validationLayerNames.size(), numValidationLayers);
+        common::helper::SafeCast<size_t, uint32_t>(validationLayerNames.size(), numValidationLayers);
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
         for (auto &family : queueFamilies)
@@ -161,7 +162,7 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance, core::Re
             queueCreateInfos.push_back(family.getDeviceCreateInfo());
         }
         uint32_t numQueues = uint32_t();
-        CastHelpers::SafeCast<size_t, uint32_t>(queueCreateInfos.size(), numQueues);
+        common::helper::SafeCast<size_t, uint32_t>(queueCreateInfos.size(), numQueues);
 
         const vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
                                                     .setQueueCreateInfoCount(numQueues)

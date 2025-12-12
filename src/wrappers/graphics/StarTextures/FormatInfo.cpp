@@ -1,6 +1,6 @@
 #include "StarTextures/FormatInfo.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 
 namespace star::StarTextures
 {

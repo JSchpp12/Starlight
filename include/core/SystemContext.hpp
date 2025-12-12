@@ -15,7 +15,7 @@ namespace star::core
 class SystemContext
 {
   public:
-    SystemContext(RenderingInstance &&renderingInstance);
+    explicit SystemContext(RenderingInstance *renderingInstance);
 
     void createDevice(const Handle &deviceID, const uint64_t &frameIndex, const uint8_t &numOfFramesInFlight,
                       std::set<star::Rendering_Features> requiredFeatures, StarWindow &window,
@@ -25,10 +25,6 @@ class SystemContext
     {
         return m_contexts.get(handle);
     }
-    RenderingInstance &getRenderingInstance()
-    {
-        return m_instance;
-    }
 
     LinearHandleContainer<device::DeviceContext, 1> &getAllDevices()
     {
@@ -36,7 +32,7 @@ class SystemContext
     }
 
   private:
-    RenderingInstance m_instance;
+    RenderingInstance *m_instance = nullptr;
     LinearHandleContainer<device::DeviceContext, 1> m_contexts =
         LinearHandleContainer<device::DeviceContext, 1>(common::special_types::DeviceTypeName);
 };

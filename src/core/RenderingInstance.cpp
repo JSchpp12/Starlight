@@ -1,6 +1,6 @@
 #include "RenderingInstance.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 
 #include <unordered_set>
 
@@ -11,7 +11,7 @@ star::core::RenderingInstance::RenderingInstance(const std::string &applicationN
         throw std::runtime_error("Validation layers were requested but are not available on the system. Ensure PATH "
                                  "and vulkan dependencies are properly set");
     }
-
+    
     if (!DoesSystemSupportDisplayExtensions(getRequiredDisplayExtensions()))
     {
         throw std::runtime_error("System does not support the required extensions for display");
@@ -40,10 +40,10 @@ vk::Instance star::core::RenderingInstance::createInstance(const std::string &ap
     }
 
     uint32_t extensionCount = 0;
-    CastHelpers::SafeCast<size_t, uint32_t>(extensions.size(), extensionCount);
+    common::helper::SafeCast<size_t, uint32_t>(extensions.size(), extensionCount);
 
     uint32_t validationLayerCount = 0;
-    CastHelpers::SafeCast<size_t, uint32_t>(m_validationLayers.size(), validationLayerCount);
+    common::helper::SafeCast<size_t, uint32_t>(m_validationLayers.size(), validationLayerCount);
 
     auto appInfo = vk::ApplicationInfo()
                        .setPApplicationName(applicationName.c_str())
@@ -62,7 +62,6 @@ vk::Instance star::core::RenderingInstance::createInstance(const std::string &ap
             .setFlags(m_isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR : vk::InstanceCreateFlags()));
 }
 
-#ifdef ENABLE_PRESENTATION
 #include "GLFW/glfw3.h"
 std::vector<const char *> star::core::RenderingInstance::getRequiredDisplayExtensions() const
 {
@@ -72,13 +71,6 @@ std::vector<const char *> star::core::RenderingInstance::getRequiredDisplayExten
 
     return std::vector<const char *>(glfwExtensions, glfwExtensions + glfwExtensionCount);
 }
-
-#else
-std::vector<const char *> star::core::RenderingInstance::getRequiredDisplayExtensions() const
-{
-    return std::vector<const char *>();
-}
-#endif
 
 bool star::core::RenderingInstance::DoesSystemSupportValidationLayers(const std::vector<const char *> &validationLayers)
 {

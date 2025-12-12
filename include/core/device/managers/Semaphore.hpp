@@ -1,8 +1,8 @@
 #pragma once
 
-#include "core/device/system/EventBus.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "device/managers/ManagerEventBusTies.hpp"
+#include <starlight/common/EventBus.hpp>
 
 namespace star::core::device::manager
 {
@@ -25,24 +25,21 @@ struct SemaphoreRecord
     }
 };
 
-constexpr std::string SemaphoreEventTypeName()
-{
-    return "semaphore_event_callback";
-}
+constexpr std::string_view GetSemaphoreEventTypeName = "semaphore_event_callback";
 class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 3000>
 {
   public:
     Semaphore()
         : ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 3000>(common::special_types::SemaphoreTypeName,
-                                                                       SemaphoreEventTypeName())
+                                                                       GetSemaphoreEventTypeName)
     {
     }
     virtual ~Semaphore() = default;
 
   protected:
-    SemaphoreRecord createRecord(device::StarDevice &device, SemaphoreRequest &&request) const override
+    virtual SemaphoreRecord createRecord(SemaphoreRequest &&request) const override
     {
-        return SemaphoreRecord{.semaphore = CreateSemaphore(device, request.isTimelineSemaphore),
+        return SemaphoreRecord{.semaphore = CreateSemaphore(*this->m_device, request.isTimelineSemaphore),
                                .isTimelineSemaphore = request.isTimelineSemaphore};
     }
 

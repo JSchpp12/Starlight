@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 #include "core/device/DeviceContext.hpp"
 #include "GeometryHelpers.hpp"
 #include <starlight/common/Handle.hpp>
@@ -22,8 +22,8 @@ class StarMesh
     StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vector<Vertex> &vertices,
              std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked)
         : material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked),
-          triangular(indices.size() % 3 == 0), numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())),
-          numInds(CastHelpers::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
+          triangular(indices.size() % 3 == 0), numVerts(common::helper::size_t_to_unsigned_int(vertices.size())),
+          numInds(common::helper::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
     {
 
         CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
@@ -34,8 +34,8 @@ class StarMesh
              const glm::vec3 &boundBoxMaxCoord, bool packAdjacencies = false)
         : material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), triangular(indices.size() % 3 == 0),
           aaboundingBoxBounds{boundBoxMinCoord, boundBoxMaxCoord},
-          numVerts(CastHelpers::size_t_to_unsigned_int(vertices.size())),
-          numInds(CastHelpers::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
+          numVerts(common::helper::size_t_to_unsigned_int(vertices.size())),
+          numInds(common::helper::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
     {
         CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
     }

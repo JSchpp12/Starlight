@@ -1,6 +1,6 @@
 #include "service/detail/screen_capture/CopyDirectorPolicy.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/device/system/event/StartOfNextFrame.hpp"
@@ -113,7 +113,7 @@ void DefaultCopyPolicy::registerWithCommandBufferManager()
     m_blitCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
 }
 
-void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBus, const uint8_t &numFramesInFlight)
+void DefaultCopyPolicy::createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight)
 {
     m_doneSemaphoreHandles.resize(numFramesInFlight);
     m_doneSemaphoresRaw.resize(numFramesInFlight);
@@ -126,7 +126,7 @@ void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBu
             void *r = nullptr;
             eventBus.emit(core::device::system::event::ManagerRequest{
                 star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                    core::device::manager::SemaphoreEventTypeName()),
+                    core::device::manager::GetSemaphoreEventTypeName),
                 core::device::manager::SemaphoreRequest{true}, m_doneSemaphoreHandles[i], &r});
 
             assert(r != nullptr && m_doneSemaphoreHandles[i].isInitialized() && "Emit did not provide a result");
@@ -137,7 +137,7 @@ void DefaultCopyPolicy::createSemaphores(core::device::system::EventBus &eventBu
             void *r = nullptr;
             eventBus.emit(core::device::system::event::ManagerRequest{
                 star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                    core::device::manager::SemaphoreEventTypeName()),
+                    core::device::manager::GetSemaphoreEventTypeName),
                 core::device::manager::SemaphoreRequest{false}, m_binarySignalSemaphoresHandles[i], &r});
 
             m_binarySignalSemaphoresRaw[i] = &static_cast<core::device::manager::SemaphoreRecord *>(r)->semaphore;

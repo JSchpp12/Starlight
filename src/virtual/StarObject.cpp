@@ -5,6 +5,7 @@
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
+#include "wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"
 
 #include <glm/glm.hpp>
 
@@ -120,6 +121,13 @@ void star::StarObject::cleanupSharedResources(core::device::DeviceContext &devic
     // boundDescriptorLayout.reset();
     // device.getDevice().getVulkanDevice().destroyPipelineLayout(boundPipelineLayout);
     // StarObject::boundBoxPipeline.reset();
+}
+
+void star::StarObject::init(core::device::DeviceContext &context)
+{
+    auto submitter = std::make_shared<wrappers::graphics::policies::SubmitDescriptorRequestsPolicy>(getDescriptorRequests(1));
+
+    submitter->init(context.getEventBus());
 }
 
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)
@@ -243,7 +251,7 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
     for (auto &rmesh : this->meshes)
     {
         uint32_t instanceCount;
-        CastHelpers::SafeCast<size_t, uint32_t>(m_instanceInfo.getSize(), instanceCount);
+        common::helper::SafeCast<size_t, uint32_t>(m_instanceInfo.getSize(), instanceCount);
         rmesh.get()->recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
     }
 
@@ -417,10 +425,10 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex> &verts, std::vec
     this->boundingBoxIndsCount = inds.size();
 }
 
-std::vector<std::pair<vk::DescriptorType, const int>> star::StarObject::getDescriptorRequests(
-    const int &numFramesInFlight)
+std::vector<std::pair<vk::DescriptorType, const uint32_t>> star::StarObject::getDescriptorRequests(
+    const uint8_t &numFramesInFlight)
 {
-    std::vector<std::pair<vk::DescriptorType, const int>> requests{
+    std::vector<std::pair<vk::DescriptorType, const uint32_t>> requests{
         std::make_pair(vk::DescriptorType::eUniformBuffer, 2)};
 
     for (auto &material : m_meshMaterials)

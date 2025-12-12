@@ -1,6 +1,6 @@
 #include "TransferRequest_TextureFile.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 #include "ConfigFile.hpp"
 #include "Enums.hpp"
 #include "FileHelpers.hpp"
@@ -144,7 +144,7 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     {
         int rWidth, rHeight, rChannels;
         GetTextureInfo(this->imagePath, rWidth, rHeight, rChannels);
-        if (!CastHelpers::SafeCast<int, uint32_t>(rWidth, width) || !CastHelpers::SafeCast<int, uint32_t>(rHeight, height) || !CastHelpers::SafeCast<int, uint32_t>(rChannels, channels)){
+        if (!common::helper::SafeCast<int, uint32_t>(rWidth, width) || !common::helper::SafeCast<int, uint32_t>(rHeight, height) || !common::helper::SafeCast<int, uint32_t>(rChannels, channels)){
             throw std::runtime_error("Invalid values read from texture");
         }
     }

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <starlight/common/Handle.hpp>
 #include "Light.hpp"
 #include "StarObject.hpp"
 #include "StarWindow.hpp"
-#include "core/renderer/SwapChainRenderer.hpp"
+#include "StarCamera.hpp"
 
+#include <starlight/common/Handle.hpp>
 #include <starlight/common/Renderer.hpp>
 
 #include <map>
@@ -23,12 +23,12 @@ class StarScene
   public:
     StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
               std::shared_ptr<StarCamera> camera,
-              core::renderer::SwapChainRenderer presentationRenderer);
+              common::Renderer presentationRenderer);
 
     StarScene(const Handle &deviceID, const uint8_t &numFramesInFlight,
               std::shared_ptr<StarCamera> camera,
-              core::renderer::SwapChainRenderer> presentationRenderer,
-              std::vector<std::shared_ptr<core::renderer::RendererBase>> additionalRenderers);
+              common::Renderer presentationRenderer,
+              std::vector<common::Renderer> additionalRenderers);
 
     /// Function called every frame
     void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
@@ -37,15 +37,15 @@ class StarScene
 
     void cleanupRender(core::device::DeviceContext &context)
     {
-        m_presentationRenderer->cleanupRender(context);
+        m_presentationRenderer.cleanupRender(context);
 
         for (auto &renderer : m_additionalRenderers)
         {
-            renderer->cleanupRender(context);
+            renderer.cleanupRender(context);
         }
     }
 
-    std::shared_ptr<common::Renderer> getPresentationRenderer()
+    common::Renderer &getPresentationRenderer()
     {
         return m_presentationRenderer;
     }
@@ -56,8 +56,8 @@ class StarScene
     }
 
   protected:
-    std::shared_ptr<star::core::renderer::SwapChainRenderer> m_presentationRenderer;
-    std::vector<std::shared_ptr<star::core::renderer::RendererBase>> m_additionalRenderers;
+    common::Renderer m_presentationRenderer;
+    std::vector<common::Renderer> m_additionalRenderers;
     std::shared_ptr<StarCamera> m_camera = std::shared_ptr<StarCamera>();
 };
 } // namespace star

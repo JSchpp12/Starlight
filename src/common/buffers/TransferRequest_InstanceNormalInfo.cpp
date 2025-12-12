@@ -1,6 +1,6 @@
 #include "TransferRequest_InstanceNormalInfo.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormalInfo::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
@@ -16,10 +16,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
+                .setSize(common::helper::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "InstanceNormalInfo_SRC")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
+        .setInstanceCount(common::helper::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
         .setInstanceSize(sizeof(glm::mat4))
         .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
         .buildUnique();
@@ -45,10 +45,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
                 .setSharingMode(vk::SharingMode::eConcurrent)
                 .setQueueFamilyIndexCount(2)
                 .setQueueFamilyIndices(indices)
-                .setSize(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
+                .setSize(common::helper::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
             "InstanceNormalInfo")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
+        .setInstanceCount(common::helper::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
         .setInstanceSize(sizeof(glm::mat4))
         .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
         .buildUnique();

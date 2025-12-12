@@ -1,6 +1,6 @@
 #include "TransferRequest_LightInfo.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
@@ -16,7 +16,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
                 .setSize(sizeof(int))
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "LightList_Stage")
-        .setInstanceCount(CastHelpers::size_t_to_unsigned_int(1))
+        .setInstanceCount(common::helper::size_t_to_unsigned_int(1))
         .setInstanceSize(sizeof(int))
         .buildUnique();
 }
@@ -46,7 +46,7 @@ void star::TransferRequest::LightInfo::writeDataToStageBuffer(star::StarBuffers:
     buffer.map(&mapped);
 
     uint32_t num; 
-    star::CastHelpers::SafeCast<size_t, uint32_t>(m_numLights, num); 
+    star::common::helper::SafeCast<size_t, uint32_t>(m_numLights, num); 
 
     Info info = Info{
         .numLights = num

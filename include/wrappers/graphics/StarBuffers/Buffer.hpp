@@ -60,7 +60,10 @@ class Buffer
 
     void cleanupRender(vk::Device &device)
     {
-        resources->cleanupRender();
+        if (resources)
+        {
+            resources->cleanupRender();
+        }
     }
 
     vk::Result flush(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);

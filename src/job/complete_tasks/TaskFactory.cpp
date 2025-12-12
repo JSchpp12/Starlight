@@ -4,7 +4,7 @@
 #include "job/TaskManager.hpp"
 
 #include "core/device/managers/GraphicsContainer.hpp"
-#include "core/device/system/EventBus.hpp"
+#include <starlight/common/EventBus.hpp>
 #include "core/device/system/event/ShaderCompiled.hpp"
 
 #include <starlight/common/HandleTypeRegistry.hpp>

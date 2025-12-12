@@ -11,26 +11,28 @@ namespace star::core::renderer
 class SwapChainRenderer : public DefaultRenderer
 {
   public:
+    SwapChainRenderer() = default;
     SwapChainRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                       std::vector<std::shared_ptr<StarObject>> objects, std::shared_ptr<std::vector<Light>> lights,
-                      std::shared_ptr<StarCamera> camera, const StarWindow &window);
+                      std::shared_ptr<StarCamera> camera, StarWindow &window);
 
     SwapChainRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                       std::vector<std::shared_ptr<StarObject>> objects,
                       std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
                       std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
-                      std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, const StarWindow &window);
-
-    SwapChainRenderer(const SwapChainRenderer &other) noexcept = delete;
-    SwapChainRenderer &operator=(const SwapChainRenderer &) noexcept = delete;
+                      std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData, StarWindow &window);
 
     virtual ~SwapChainRenderer() = default;
+    SwapChainRenderer(const SwapChainRenderer &) = delete;
+    SwapChainRenderer &operator=(const SwapChainRenderer &) = delete;
+    SwapChainRenderer(SwapChainRenderer &&) = default;
+    SwapChainRenderer &operator=(SwapChainRenderer &&) = default;
 
-    virtual void prepRender(core::device::DeviceContext &device, const uint8_t &numFramesInFlight) override;
+    virtual void prepRender(common::IDeviceContext &device, const uint8_t &numFramesInFlight) override;
 
-    virtual void cleanupRender(core::device::DeviceContext &device) override;
+    virtual void cleanupRender(common::IDeviceContext &device) override;
 
-    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) override;
+    virtual void frameUpdate(common::IDeviceContext &context, const uint8_t &frameInFlightIndex) override;
 
     void submitPresentation(const int &frameIndexToBeDrawn, const vk::Semaphore *mainGraphicsDoneSemaphore);
 
@@ -55,8 +57,8 @@ class SwapChainRenderer : public DefaultRenderer
     }
 
   protected:
-    const StarWindow &window;
-    core::device::DeviceContext &device;
+    StarWindow *window = nullptr;
+    core::device::DeviceContext *device = nullptr;
 
     // tracker for which frame is being processed of the available permitted frames
     uint8_t currentFrameInFlightCounter = 0, previousFrame = 0, numFramesInFlight = 0;
@@ -105,7 +107,7 @@ class SwapChainRenderer : public DefaultRenderer
                                                                     const uint8_t &numFramesInFlight) override;
 
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(
-        const int &frameInFlightIndex) override;
+        const uint8_t &frameInFlightIndex) override;
 
     virtual void recordCommandBuffer(vk::CommandBuffer &buffer, const uint8_t &frameIndexToBeDrawn,
                                      const uint64_t &frameIndex) override;

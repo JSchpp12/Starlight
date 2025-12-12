@@ -1,9 +1,9 @@
 #pragma once
 
 #include "device/StarDevice.hpp"
-#include "device/system/EventBus.hpp"
 #include "job/TaskManager.hpp"
 
+#include <starlight/common/EventBus.hpp>
 #include <starlight/common/Handle.hpp>
 #include <starlight/common/HandleTypeRegistry.hpp>
 
@@ -25,16 +25,25 @@ class ManagerBase
         : m_handleType(star::common::HandleTypeRegistry::instance().registerType(handleTypeName))
     {
     }
-    virtual Handle submit(device::StarDevice &device, TResourceRequest resource) = 0;
+    virtual ~ManagerBase() = default;
+    
+    virtual Handle submit(TResourceRequest resource) = 0;
 
+    void init(device::StarDevice *device)
+    {
+        m_device = device;
+    }
     uint16_t &getHandleType()
     {
         return m_handleType;
     }
-    uint16_t getHandleType() const
+    const uint16_t &getHandleType() const
     {
         return m_handleType;
     }
+
+  protected:
+    core::device::StarDevice *m_device = nullptr;
 
   private:
     uint16_t m_handleType;

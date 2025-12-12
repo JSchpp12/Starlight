@@ -3,6 +3,8 @@
 #include "FileHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
 
+#include <starlight/common/helper/CastHelpers.hpp>
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 namespace star::job::tasks::write_image_to_disk
@@ -96,9 +98,9 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     }
 
     int w = 0;
-    CastHelpers::SafeCast(width, w)
+    common::helper::SafeCast(width, w);
     int h = 0;
-    CastHelpers::SafeCast(height, h);
+    common::helper::SafeCast(height, h);
     const int rowStride = w * comp; // tightly packed
     
     // ---- PNG write ----------------------------------------------------------

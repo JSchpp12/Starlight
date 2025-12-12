@@ -2,9 +2,9 @@
 
 #include "core/device/StarDevice.hpp"
 #include "core/device/managers/GraphicsContainer.hpp"
-#include "core/device/system/EventBus.hpp"
 #include "core/device/system/event/ShaderCompiled.hpp"
 #include "job/tasks/TaskFactory.hpp"
+#include <starlight/common/EventBus.hpp>
 
 #include <starlight/common/Handle.hpp>
 #include <starlight/common/HandleTypeRegistry.hpp>
@@ -13,9 +13,9 @@ namespace star::job::complete_tasks::compile_shader
 {
 void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers, void *payload)
 {
-    auto *d = static_cast<core::device::StarDevice *>(device);
+    // auto *d = static_cast<core::device::StarDevice *>(device);
     auto *gm = static_cast<star::core::device::manager::GraphicsContainer *>(graphicsManagers);
-    auto *eb = static_cast<star::core::device::system::EventBus *>(eventBus);
+    auto *eb = static_cast<star::common::EventBus *>(eventBus);
     auto *p = static_cast<CompileCompletePayload *>(payload);
 
     Handle shader = Handle{
@@ -45,7 +45,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
             record.numCompiled == record.request.pipeline.getShaders().size())
         {
             uint32_t recordHandle = 0;
-            if (!star::CastHelpers::SafeCast<size_t, uint32_t>(i, recordHandle))
+            if (!star::common::helper::SafeCast<size_t, uint32_t>(i, recordHandle))
             {
                 throw std::runtime_error("Unknown error. Failed to process record handle");
             }
@@ -59,7 +59,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
             {
                 compiledShaders.push_back(std::make_pair<StarShader, std::shared_ptr<std::vector<uint32_t>>>(
                     StarShader(gm->shaderManager->get(shader)->request.shader),
-                    std::move(gm->shaderManager->get(shader)->giveMeCompiledShader())));
+                    gm->shaderManager->get(shader)->giveMeCompiledShader()));
             }
 
             star::StarPipeline::RenderResourceDependencies deps{.compiledShaders = std::move(compiledShaders),
@@ -67,7 +67,8 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
                                                                 .swapChainExtent = record.request.resolution};
 
             ts->submitTask(tasks::build_pipeline::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
-                                                                      std::move(record.request.pipeline)), tasks::build_pipeline::BuildPipelineTaskName);
+                                                                      std::move(record.request.pipeline)),
+                           tasks::build_pipeline::BuildPipelineTaskName);
         }
     }
 }

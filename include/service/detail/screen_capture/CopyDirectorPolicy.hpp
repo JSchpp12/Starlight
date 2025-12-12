@@ -66,7 +66,7 @@ class DefaultCopyPolicy
                                std::vector<vk::PipelineStageFlags> dataWaitPoints,
                                std::vector<std::optional<uint64_t>> previousSignaledValues);
 
-    void createSemaphores(core::device::system::EventBus &eventBus, const uint8_t &numFramesInFlight);
+    void createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight);
 
     void registerListenerForNextFrameStart(CalleeRenderDependencies &deps, const uint8_t &frameInFlightIndex);
 

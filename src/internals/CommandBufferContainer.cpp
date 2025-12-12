@@ -74,7 +74,7 @@ star::Handle star::CommandBufferContainer::add(
     const star::Command_Buffer_Order_Index &subOrder)
 {
     uint32_t count = 0;
-    CastHelpers::SafeCast<size_t, uint32_t>(this->allBuffers.size(), count);
+    common::helper::SafeCast<size_t, uint32_t>(this->allBuffers.size(), count);
 
     star::Handle newHandle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
                                common::special_types::CommandBufferTypeName),
@@ -130,19 +130,16 @@ void star::CommandBufferContainer::updateSemaphores()
             {
                 auto currentBuffer =
                     allBuffers[bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][j].getID()];
-                int nextIndex = j + 1;
-                if (nextIndex >= bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)].size())
-                {
-                    break;
-                }
+                const int nextIndex = j + 1;
+                const auto &nextBufferHandle = bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][nextIndex];
 
-                auto nextBuffer =
-                    allBuffers[bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][nextIndex].getID()];
-
-                if (nextBuffer)
+                if (nextBufferHandle.isInitialized())
                 {
+                    auto *nextBuffer = allBuffers[nextBufferHandle.getID()].get();
                     nextBuffer->commandBuffer->waitFor(currentBuffer->commandBuffer->getCompleteSemaphores(),
                                                        nextBuffer->waitStage);
+                }else{
+                    break;
                 }
             }
         }

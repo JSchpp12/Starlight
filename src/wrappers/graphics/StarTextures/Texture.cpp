@@ -386,6 +386,11 @@ std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builde
     return std::make_unique<StarTextures::Texture>(build());
 }
 
+std::shared_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builder::buildShared()
+{
+    return std::make_shared<StarTextures::Texture>(build());
+}
+
 star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
 {
     assert(this->format.has_value());

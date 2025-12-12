@@ -1,7 +1,7 @@
 #include "BasicObject.hpp"
 
 #include "BumpMaterial.hpp"
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 #include "ConfigFile.hpp"
 #include "FileHelpers.hpp"
 #include "ManagerController_RenderResource_TextureFile.hpp"
@@ -143,7 +143,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
                                       1.0f - attrib.texcoords[2 * indicies[dIndex].texcoord_index + 1]};
 
                 vertices.at(vertCounter) = newVertex;
-                fullInd.at(vertCounter) = star::CastHelpers::size_t_to_unsigned_int(vertCounter);
+                fullInd.at(vertCounter) = star::common::helper::size_t_to_unsigned_int(vertCounter);
                 vertCounter++;
             }
         }

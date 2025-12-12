@@ -1,6 +1,6 @@
 #include "StarCommandBuffer.hpp"
 
-#include "CastHelpers.hpp"
+#include <starlight/common/helper/CastHelpers.hpp>
 
 star::StarCommandBuffer::StarCommandBuffer(vk::Device &vulkanDevice, int numBuffersToCreate,
                                            std::shared_ptr<StarCommandPool> parentPool, const star::Queue_Type type,
@@ -167,7 +167,7 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
     }
 
     uint32_t signalSemaphoreCount = 0; 
-    if (!CastHelpers::SafeCast<size_t, uint32_t>(signalSemaphores.size(), signalSemaphoreCount)){
+    if (!common::helper::SafeCast<size_t, uint32_t>(signalSemaphores.size(), signalSemaphoreCount)){
         throw std::runtime_error("Failed to cast signal semaphore counts"); 
     } 
 

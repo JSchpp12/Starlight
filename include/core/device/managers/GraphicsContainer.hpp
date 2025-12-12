@@ -1,10 +1,11 @@
 #pragma once
 
+#include "DescriptorPool.hpp"
+#include "Fence.hpp"
+#include "Image.hpp"
 #include "Pipeline.hpp"
 #include "Semaphore.hpp"
 #include "Shader.hpp"
-#include "Fence.hpp"
-#include "core/device/system/EventBus.hpp"
 
 #include <memory>
 
@@ -15,28 +16,52 @@ struct GraphicsContainer
     GraphicsContainer() = default;
     GraphicsContainer(const GraphicsContainer &) noexcept = delete;
     GraphicsContainer &operator=(const GraphicsContainer &) noexcept = delete;
-    GraphicsContainer(GraphicsContainer &&) noexcept = default;
-    GraphicsContainer &operator=(GraphicsContainer &&) noexcept = default;
+    GraphicsContainer(GraphicsContainer &&other)
+        : descriptorPoolManager(std::move(other.descriptorPoolManager)),
+          semaphoreManager(std::move(other.semaphoreManager)), shaderManager(std::move(other.shaderManager)),
+          pipelineManager(std::move(other.pipelineManager)), fenceManager(std::move(other.fenceManager)),
+          imageManager(std::move(other.imageManager)){};
+    GraphicsContainer &operator=(GraphicsContainer &&other)
+    {
+        if (this != &other)
+        {
+            descriptorPoolManager = std::move(other.descriptorPoolManager);
+            semaphoreManager = std::move(other.semaphoreManager);
+            shaderManager = std::move(other.shaderManager);
+            pipelineManager = std::move(other.pipelineManager);
+            fenceManager = std::move(other.fenceManager);
+            imageManager = std::move(other.imageManager);
+        }
+        return *this;
+    };
     ~GraphicsContainer() = default;
 
-    void init(std::shared_ptr<StarDevice> device, core::device::system::EventBus &bus)
+    void init(std::shared_ptr<StarDevice> device, common::EventBus &bus, job::TaskManager &taskSystem,
+              const uint8_t &numFramesInFlight)
     {
-        semaphoreManager->init(device, bus);
-        shaderManager->init(device, bus);
-        pipelineManager->init(device, bus);
-        fenceManager->init(device, bus);
+        descriptorPoolManager->init(numFramesInFlight, device.get(), bus);
+        semaphoreManager->init(device.get(), bus);
+        shaderManager->init(device.get(), bus, taskSystem);
+        pipelineManager->init(device.get(), bus, taskSystem);
+        fenceManager->init(device.get(), bus);
+        imageManager.init(device.get(), bus);
     }
 
-    void cleanup(core::device::system::EventBus &bus){
-        fenceManager->cleanup(bus);
-        pipelineManager->cleanup(bus); 
-        shaderManager->cleanup(bus);
-        semaphoreManager->cleanup(bus);
+    void cleanupRender()
+    {
+        descriptorPoolManager->cleanupRender();
+        fenceManager->cleanupRender();
+        pipelineManager->cleanupRender();
+        shaderManager->cleanupRender();
+        semaphoreManager->cleanupRender();
+        imageManager.cleanupRender();
     }
 
-    std::shared_ptr<Semaphore> semaphoreManager = std::make_shared<Semaphore>();
-    std::shared_ptr<Shader> shaderManager = std::make_shared<Shader>();
-    std::shared_ptr<Pipeline> pipelineManager = std::make_shared<Pipeline>();
-    std::shared_ptr<Fence> fenceManager = std::make_shared<Fence>();
+    std::unique_ptr<DescriptorPool> descriptorPoolManager = std::make_unique<DescriptorPool>();
+    std::unique_ptr<Semaphore> semaphoreManager = std::make_unique<Semaphore>();
+    std::unique_ptr<Shader> shaderManager = std::make_unique<Shader>();
+    std::unique_ptr<Pipeline> pipelineManager = std::make_unique<Pipeline>();
+    std::unique_ptr<Fence> fenceManager = std::make_unique<Fence>();
+    Image imageManager;
 };
 } // namespace star::core::device::manager
