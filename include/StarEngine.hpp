@@ -24,7 +24,7 @@
 namespace star
 {
 
-template <typename TFinalRenderControlPolicy> class StarEngine
+template <typename TFinalRenderControlPolicy, typename TWindowingSystemPolicy> class StarEngine
 {
   public:
     StarEngine(TFinalRenderControlPolicy finalRenderControlPolicy, StarApplication &application)

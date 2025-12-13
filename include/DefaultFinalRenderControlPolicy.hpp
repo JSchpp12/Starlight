@@ -4,7 +4,7 @@
 #include "StarWindow.hpp"
 
 #include <starlight/common/Handle.hpp>
-
+ 
 namespace star
 {
 class DefaultFinalRenderControlPolicy

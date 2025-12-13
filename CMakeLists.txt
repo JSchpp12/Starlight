@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.26)
 
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
-    LANGUAGES CXX C
+    LANGUAGES C CXX
 )
 
 include(CheckIncludeFile)
@@ -34,7 +34,6 @@ set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
 
-find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
@@ -428,7 +427,6 @@ if (NOT ${HEADLESS})
         ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
         ${glm_SOURCE_DIR}
         ${Stb_INCLUDE_DIR}
-        "extern/glfw/include/"
     )
 
     target_link_libraries(${STARLIGHT_NAME}
@@ -451,7 +449,6 @@ if (NOT ${HEADLESS})
             Boost::filesystem
             KTX::ktx
             absl::hash
-            glfw
         )
 else()
     set(${STARLIGHT_NAME}_INCLUDE_DIRS
