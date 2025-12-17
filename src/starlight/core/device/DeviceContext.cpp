@@ -18,13 +18,15 @@
 
 star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
     : m_frameInFlightTrackingInfo(std::move(other.m_frameInFlightTrackingInfo)),
-      m_deviceID(std::move(other.m_deviceID)), m_device(std::move(other.m_device)),
-      m_eventBus(std::move(other.m_eventBus)), m_taskManager(std::move(other.m_taskManager)),
-      m_graphicsManagers(std::move(other.m_graphicsManagers)),
+      m_deviceID(std::move(other.m_deviceID)), m_device(std::move(other.m_device)), m_eventBus(),
+      m_taskManager(std::move(other.m_taskManager)), m_graphicsManagers(),
       m_commandBufferManager(std::move(other.m_commandBufferManager)),
       m_transferWorker(std::move(other.m_transferWorker)),
       m_renderResourceManager(std::move(other.m_renderResourceManager)), m_services(std::move(other.m_services))
 {
+    m_graphicsManagers = std::move(other.m_graphicsManagers);
+    m_eventBus = std::move(other.m_eventBus);
+
     m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
                             static_cast<uint8_t>(m_frameInFlightTrackingInfo.getSize()));
 
@@ -39,22 +41,23 @@ star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(
         m_frameCounter = std::move(other.m_frameCounter);
         m_deviceID = std::move(other.m_deviceID);
         m_device = std::move(other.m_device);
-        m_eventBus = std::move(other.m_eventBus);
         m_taskManager = std::move(other.m_taskManager);
         m_commandBufferManager = std::move(other.m_commandBufferManager);
-        m_graphicsManagers = std::move(other.m_graphicsManagers);
         m_transferWorker = std::move(other.m_transferWorker);
         m_renderResourceManager = std::move(other.m_renderResourceManager);
         m_services = std::move(other.m_services);
+
+        m_graphicsManagers = std::move(other.m_graphicsManagers);
+        m_eventBus = std::move(other.m_eventBus);
+        m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
+                                static_cast<uint8_t>(m_frameInFlightTrackingInfo.getSize()));
+
         if (other.m_ownsResources)
         {
             m_ownsResources = std::move(other.m_ownsResources);
 
             setAllServiceParameters();
         }
-
-        m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
-                                static_cast<uint8_t>(m_frameInFlightTrackingInfo.getSize()));
 
         other.m_ownsResources = false;
     }
@@ -116,13 +119,6 @@ void star::core::device::DeviceContext::prepareForNextFrame(const uint8_t &frame
 
     handleCompleteMessages();
     broadcastFrameStart(frameInFlightIndex);
-}
-
-star::core::SwapChainSupportDetails star::core::device::DeviceContext::getSwapchainSupportDetails()
-{
-    assert(m_renderingSurface.has_value());
-
-    return m_device.getSwapchainSupport(m_renderingSurface.value());
 }
 
 std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(

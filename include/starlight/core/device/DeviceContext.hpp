@@ -1,6 +1,5 @@
 #pragma once
 
-#include "SwapChainSupportDetails.hpp"
 #include "TaskManager.hpp"
 #include "core/device/FrameInFlightTracking.hpp"
 #include "device/StarDevice.hpp"
@@ -131,8 +130,6 @@ class DeviceContext : public star::common::IDeviceContext
         return *m_transferWorker;
     }
 
-    SwapChainSupportDetails getSwapchainSupportDetails();
-
     Handle &getDeviceID()
     {
         return m_deviceID;
@@ -169,7 +166,6 @@ class DeviceContext : public star::common::IDeviceContext
 
   private:
     StarDevice m_device;
-    std::optional<vk::SurfaceKHR> m_renderingSurface = std::nullopt;
     bool m_ownsResources = false;
     uint64_t m_frameCounter = 0;
     FrameInFlightTracking m_frameInFlightTrackingInfo;

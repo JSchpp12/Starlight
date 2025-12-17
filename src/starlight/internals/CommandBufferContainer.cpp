@@ -6,7 +6,8 @@ star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFligh
     : bufferGroupsWithSubOrders({std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<Handle>(5)),
                                  std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<Handle>(5)),
                                  std::make_pair(star::Command_Buffer_Order::after_render_pass, std::vector<Handle>(5)),
-                                 std::make_pair(star::Command_Buffer_Order::end_of_frame, std::vector<Handle>(5))})
+                                 std::make_pair(star::Command_Buffer_Order::end_of_frame, std::vector<Handle>(5)),
+                                 std::make_pair(star::Command_Buffer_Order::presentation, std::vector<Handle>(1))})
 {
 }
 
@@ -122,7 +123,7 @@ star::CommandBufferContainer::CompleteRequest &star::CommandBufferContainer::get
 
 void star::CommandBufferContainer::updateSemaphores()
 {
-    for (int i = star::Command_Buffer_Order::before_render_pass; i != Command_Buffer_Order::presentation; i++)
+    for (int i = star::Command_Buffer_Order::before_render_pass; i != Command_Buffer_Order::end_of_frame; i++)
     {
         if (this->bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][0].isInitialized())
         {
@@ -131,14 +132,17 @@ void star::CommandBufferContainer::updateSemaphores()
                 auto currentBuffer =
                     allBuffers[bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][j].getID()];
                 const int nextIndex = j + 1;
-                const auto &nextBufferHandle = bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][nextIndex];
+                const auto &nextBufferHandle =
+                    bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][nextIndex];
 
                 if (nextBufferHandle.isInitialized())
                 {
                     auto *nextBuffer = allBuffers[nextBufferHandle.getID()].get();
                     nextBuffer->commandBuffer->waitFor(currentBuffer->commandBuffer->getCompleteSemaphores(),
                                                        nextBuffer->waitStage);
-                }else{
+                }
+                else
+                {
                     break;
                 }
             }

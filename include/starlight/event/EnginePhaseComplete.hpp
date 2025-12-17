@@ -9,11 +9,13 @@ namespace star::event
 {
 constexpr std::string_view GetEnginePhaseCompleteInitTypeName = "star::event::EnginePhaseComplete::init";
 constexpr std::string_view GetEnginePhaseCompleteLoadTypeName = "star::event::EnginePhaseComplete::load";
+constexpr std::string_view GetEnginePhaseCompleteFrameTypeName = "star::event::EnginePhaseComplete::frame";
 
 enum class Phase
 {
     init,
-    load // called after all of the prepRender functions are complete
+    load, // called after all of the prepRender functions are complete
+    frame
 };
 class EnginePhaseComplete : public common::IEvent
 {

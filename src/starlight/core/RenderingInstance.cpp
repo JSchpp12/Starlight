@@ -4,20 +4,21 @@
 
 #include <unordered_set>
 
-star::core::RenderingInstance::RenderingInstance(const std::string &applicationName)
+star::core::RenderingInstance::RenderingInstance(const std::string &applicationName,
+                                                 std::vector<const char *> &extensions)
 {
     if (m_enableValidationLayers && !DoesSystemSupportValidationLayers(m_validationLayers))
     {
         throw std::runtime_error("Validation layers were requested but are not available on the system. Ensure PATH "
                                  "and vulkan dependencies are properly set");
     }
-    
-    if (!DoesSystemSupportDisplayExtensions(getRequiredDisplayExtensions()))
+
+    if (!DoesSystemSupportDisplayExtensions(extensions))
     {
         throw std::runtime_error("System does not support the required extensions for display");
     }
 
-    m_instance = createInstance(applicationName);
+    m_instance = createInstance(applicationName, extensions);
 }
 
 star::core::RenderingInstance::~RenderingInstance()
@@ -26,9 +27,8 @@ star::core::RenderingInstance::~RenderingInstance()
         m_instance.destroy();
 }
 
-vk::Instance star::core::RenderingInstance::createInstance(const std::string &applicationName)
+vk::Instance star::core::RenderingInstance::createInstance(const std::string &applicationName, std::vector<const char *> &extensions)
 {
-    std::vector<const char *> extensions = getRequiredDisplayExtensions();
     for (const auto &extension : m_platformInstanceRequiredExtensions)
     {
         extensions.push_back(extension);
@@ -60,16 +60,6 @@ vk::Instance star::core::RenderingInstance::createInstance(const std::string &ap
             .setPpEnabledLayerNames(m_validationLayers.data())
             .setPApplicationInfo(&appInfo)
             .setFlags(m_isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR : vk::InstanceCreateFlags()));
-}
-
-#include "GLFW/glfw3.h"
-std::vector<const char *> star::core::RenderingInstance::getRequiredDisplayExtensions() const
-{
-    uint32_t glfwExtensionCount = 0;
-    const char **glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    return std::vector<const char *>(glfwExtensions, glfwExtensions + glfwExtensionCount);
 }
 
 bool star::core::RenderingInstance::DoesSystemSupportValidationLayers(const std::vector<const char *> &validationLayers)

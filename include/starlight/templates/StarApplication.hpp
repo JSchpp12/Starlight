@@ -30,7 +30,7 @@ class StarApplication
     // virtual void onScroll(double xoffset, double yoffset) override {};
 
     virtual std::shared_ptr<StarScene> loadScene(core::device::DeviceContext &context,
-                                                 const uint8_t &numFramesInFlight, star::StarCamera mainCamera) = 0;
+                                                 const uint8_t &numFramesInFlight) = 0;
 
   protected:
 };

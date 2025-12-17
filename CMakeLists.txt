@@ -49,6 +49,12 @@ set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_reflect")
 
+set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
+set(SHADERC_SKIP_TESTS ON CACHE BOOL "" FORCE)
+set(SHADERC_ENABLE_SHARED_CRT ON CACHE BOOL "" FORCE)
+set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
+add_subdirectory("extern/shaderc")
+
 set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/StarEngine.cpp" 
     "src/starlight/DefaultFinalRenderControlPolicy.cpp"
@@ -121,6 +127,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/event/ConsumeDescriptorRequests.cpp"
     "src/starlight/event/EnginePhaseComplete.cpp"
     "src/starlight/event/TriggerScreenshot.cpp"
+    "src/starlight/event/RenderReadyForFinalization.cpp"
     "src/starlight/core/service/Service.cpp"
     "src/starlight/service/ScreenCaptureFactory.cpp"
     "src/starlight/service/ScreenCapture.cpp"
@@ -143,7 +150,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/systems/StarRenderGroup.cpp" 
     "src/starlight/common/Compiler.cpp"
     "src/starlight/common/Interactivity.cpp" 
-    "src/starlight/common/KeyStates.cpp"
     "src/starlight/common/RuntimeUpdateTexture.cpp"
     "src/starlight/common/ThreadSharedResource.cpp"
     "src/starlight/common/materials/BumpMaterial.cpp"
@@ -222,7 +228,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/common/ThreadSharedResource.hpp"
     "include/starlight/common/Compiler.hpp"
     "include/starlight/common/Interactivity.hpp"
-    "include/starlight/common/KeyStates.hpp"
     "include/starlight/common/materials/BumpMaterial.hpp"
     "include/starlight/common/materials/VertColorMaterial.hpp"
     "include/starlight/common/materials/TextureMaterial.hpp"
@@ -293,6 +298,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/event/ConsumeDescriptorRequests.hpp"
     "include/starlight/event/EnginePhaseComplete.hpp"
     "include/starlight/event/TriggerScreenshot.hpp"
+    "include/starlight/event/RenderReadyForFinalization.hpp"
     "include/starlight/core/graphics/shader/BasicIncluder.hpp"
     "include/starlight/service/Service.hpp"
     "include/starlight/service/ScreenCapture.hpp"
@@ -412,7 +418,7 @@ target_link_libraries(${STARLIGHT_NAME}
         Starlight::starlight_common
         nlohmann_json::nlohmann_json
         Vulkan::Vulkan
-        shaderc
+        shaderc_combined
     PRIVATE
         tinyobjloader::tinyobjloader
         GPUOpen::VulkanMemoryAllocator
@@ -508,7 +514,7 @@ set_target_properties(${STARLIGHT_NAME} PROPERTIES
 
 include(GNUInstallDirs)
 
-install(TARGETS ${STARLIGHT_NAME}
+install(TARGETS ${STARLIGHT_NAME} shaderc_combined
     EXPORT starlightTargets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}   # .dll/.so with runtime on Windows
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}   # .so/.dylib

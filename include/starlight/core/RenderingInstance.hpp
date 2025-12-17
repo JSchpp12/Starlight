@@ -10,7 +10,7 @@ namespace star::core
 class RenderingInstance
 {
   public:
-    RenderingInstance(const std::string &applicationName);
+    RenderingInstance(const std::string &applicationName, std::vector<const char *> &extensions);
     ~RenderingInstance();
 
     RenderingInstance(const RenderingInstance &) = delete;
@@ -64,7 +64,7 @@ class RenderingInstance
     std::vector<const char *> m_platformInstanceRequiredExtensions = {};
 #endif
 
-    vk::Instance createInstance(const std::string &applicationName);
+    vk::Instance createInstance(const std::string &applicationName, std::vector<const char *> &extensions);
 
     static bool DoesSystemSupportValidationLayers(const std::vector<const char *> &validationLayers);
 

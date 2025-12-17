@@ -1,6 +1,5 @@
 #pragma once
 
-#include "KeyStates.hpp"
 #include "StarCamera.hpp"
 #include "Time.hpp"
 

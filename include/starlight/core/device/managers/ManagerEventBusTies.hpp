@@ -23,19 +23,20 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
     ManagerEventBusTies &operator=(const ManagerEventBusTies &) = delete;
 
     ManagerEventBusTies(ManagerEventBusTies &&other) noexcept
-        : Manager<TRecord, TResourceRequest, TMaxRecordCount>(std::move(other)),
-          m_subscriberInfo(), // don't move this; resubscribe below
-          m_registeredHandleEventType(other.m_registeredHandleEventType)
+        : Manager<TRecord, TResourceRequest, TMaxRecordCount>(std::move(other))
     {
-        if (other.m_deviceEventBus && other.m_device)
+        // Unsubscribe source BEFORE moving handle
+        if (other.m_subscriberInfo.isInitialized() && other.m_deviceEventBus)
         {
-            // Unsubscribe source to avoid dangling callbacks
-            if (other.m_subscriberInfo.isInitialized())
-            {
-                other.cleanupRender();
-            }
-            // Initialize/resubscribe in our new 'this'
-            init(other.m_device, *other.m_deviceEventBus);
+            other.unsubscribe();
+        }
+
+        // Now move the handle safely
+        m_subscriberInfo = std::move(other.m_subscriberInfo);
+
+        if (this->m_deviceEventBus && this->m_device)
+        {
+            init(this->m_device, *this->m_deviceEventBus);
         }
     }
 
@@ -43,10 +44,8 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
     {
         if (this != &other)
         {
-            // Clean up existing subscription
-            if (m_subscriberInfo.isInitialized() && this->m_deviceEventBus)
-            {
-                this->m_deviceEventBus->unsubscribe(m_subscriberInfo);
+            if (other.m_subscriberInfo.isInitialized() && other.m_deviceEventBus){
+                other.unsubscribe();
             }
 
             // Move base class
@@ -72,12 +71,19 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
         submitSubscribeToEventBus(eventBus);
     }
 
+    void unsubscribe()
+    {
+        if (m_subscriberInfo.isInitialized())
+        {
+            this->m_deviceEventBus->unsubscribe(m_subscriberInfo);
+
+            m_subscriberInfo = Handle();
+        }
+    }
+
     virtual void cleanupRender() override
     {
-        assert(m_subscriberInfo.isInitialized() && "Should not call cleanup twice");
-        this->m_deviceEventBus->unsubscribe(m_subscriberInfo);
-
-        m_subscriberInfo = Handle();
+        unsubscribe();
 
         this->Manager<TRecord, TResourceRequest, TMaxRecordCount>::cleanupRender();
     }

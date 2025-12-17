@@ -25,8 +25,21 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
     virtual ~Manager() = default;
     Manager(const Manager &) = delete;
     Manager &operator=(const Manager &) = delete;
-    Manager(Manager &&) = default;
-    Manager &operator=(Manager &&) = default;
+    Manager(Manager &&other) noexcept
+        : ManagerBase<TRecord, TResourceRequest>(std::move(other)), m_records(std::move(other.m_records)),
+          m_deviceEventBus(other.m_deviceEventBus){};
+    Manager &operator=(Manager &&other) noexcept
+    {
+        if (this != &other)
+        {
+            ManagerBase<TRecord, TResourceRequest>::operator=(std::move(other));
+
+            m_records = std::move(other.m_records);
+            m_deviceEventBus = other.m_deviceEventBus;
+        }
+
+        return *this;
+    }
 
     virtual void init(device::StarDevice *device, common::EventBus &eventBus)
     {
@@ -37,6 +50,8 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
 
     virtual Handle submit(TResourceRequest resource) override
     {
+        assert(this->m_device != nullptr && "Init must be called first");
+
         return insert(std::move(resource));
     }
 
@@ -60,7 +75,10 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
 
     virtual void cleanupRender()
     {
-        m_records.cleanupAll(this->m_device);
+        if (this->m_device != nullptr)
+        {
+            m_records.cleanupAll(this->m_device);
+        }
     }
 
     void deleteRequest(device::StarDevice &device, const Handle &requestHandle)

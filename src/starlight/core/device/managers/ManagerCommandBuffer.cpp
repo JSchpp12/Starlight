@@ -11,7 +11,6 @@ star::core::device::manager::ManagerCommandBuffer::ManagerCommandBuffer(StarDevi
 
 void star::core::device::manager::ManagerCommandBuffer::cleanup(StarDevice &device)
 {
-
 }
 
 star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevice &device,
@@ -33,7 +32,7 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
     if (request.type == Queue_Type::Tgraphics && request.order == Command_Buffer_Order::main_render_pass)
         this->mainGraphicsBufferHandle = std::make_unique<Handle>(newHandle);
 
-    //todo: REMOVE THIS! OR move it to the update function
+    // todo: REMOVE THIS! OR move it to the update function
     if (request.recordOnce)
     {
         for (int i = 0; i < this->numFramesInFlight; i++)
@@ -102,10 +101,11 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     std::vector<vk::Semaphore> finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(
         device, Command_Buffer_Order::end_of_frame, swapChainIndex, currentFrameIndex, &waitSemaphores);
 
-    if (finalSubmissionSemaphores.empty())
-        return mainGraphicsSemaphore;
-    else
+    if (!finalSubmissionSemaphores.empty())
+    {
         return finalSubmissionSemaphores[0];
+    }
+    return mainGraphicsSemaphore;
 }
 
 // void star::core::device::manager::ManagerCommandBuffer::submitPostPresentationCommands(

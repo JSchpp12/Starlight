@@ -11,6 +11,7 @@
 #include "core/SystemContext.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "event/EnginePhaseComplete.hpp"
+#include "event/RenderReadyForFinalization.hpp"
 #include "service/ScreenCaptureFactory.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
@@ -19,18 +20,22 @@
 #include <string>
 #include <vector>
 
+#include <concepts>
+
 namespace star
 {
 
-template <typename TMainRenderDeviceControlPolicy> class StarEngine
+template <typename TEngineInitPolicy, typename TMainLoopPolicy, typename TEngineExitPolicy> class StarEngine
 {
   public:
-    StarEngine(TMainRenderDeviceControlPolicy mainRendererPolicy, StarApplication &application)
-        : m_mainRendererControlPolicy(std::move(mainRendererPolicy)), m_application(application),
-          m_renderingInstance(ConfigFile::getSetting(star::Config_Settings::app_name)),
+    StarEngine(TEngineInitPolicy initPolicy, TMainLoopPolicy loopPolicy, TEngineExitPolicy exitPolicy,
+               StarApplication &application)
+        : m_initPolicy(std::move(initPolicy)), m_loopPolicy(std::move(loopPolicy)), m_exitPolicy(std::move(exitPolicy)),
+          m_application(application),
+          m_renderingInstance(m_initPolicy.createRenderingInstance(ConfigFile::getSetting(Config_Settings::app_name))),
           m_systemManager(&m_renderingInstance)
     {
-        defaultDevice = {
+        m_defaultDevice = {
             .type = common::HandleTypeRegistry::instance().getType(common::special_types::DeviceTypeName).value(),
             .id = 0};
         core::logging::init();
@@ -50,26 +55,28 @@ template <typename TMainRenderDeviceControlPolicy> class StarEngine
 
         std::set<Rendering_Device_Features> renderingFeatures{Rendering_Device_Features::timeline_semaphores};
 
-        uint8_t framesInFlight;
         {
+            uint8_t framesInFlight;
             int readFramesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-            if (!common::helper::SafeCast<int, uint8_t>(readFramesInFlight, framesInFlight))
+            if (!common::helper::SafeCast(readFramesInFlight, framesInFlight))
             {
                 throw std::runtime_error("Invalid number of frames in flight in config file");
             }
+            m_loopPolicy.init(framesInFlight);
         }
 
-        m_mainRendererControlPolicy.init(defaultDevice, framesInFlight, m_frameCounter);
-
-        // m_systemManager.createDevice(m_frameCounter, framesInFlight, features,
-        //                              *m_finalRenderPolicy.m_window, renderingFeatures);
+        m_defaultDevice = m_systemManager.registerDevice(core::device::DeviceContext{
+            m_initPolicy.createNewDevice(m_renderingInstance, features, renderingFeatures)});
+        m_systemManager.getContext(m_defaultDevice)
+            .init(m_defaultDevice, m_loopPolicy.getMaxNumOfFramesInFlight(),
+                  m_initPolicy.getEngineRenderingResolution());
 
         // try and get a transfer queue from different queue fams
         {
             std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
             std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
 
-            const auto transferFams = this->m_systemManager.getContext(defaultDevice)
+            const auto transferFams = this->m_systemManager.getContext(m_defaultDevice)
                                           .getDevice()
                                           .getQueueOwnershipTracker()
                                           .getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
@@ -79,17 +86,17 @@ template <typename TMainRenderDeviceControlPolicy> class StarEngine
                 if (selectedFamilyIndices.size() > 1)
                     break;
 
-                if (fam != m_systemManager.getContext(defaultDevice)
+                if (fam != m_systemManager.getContext(m_defaultDevice)
                                .getDevice()
                                .getDefaultQueue(Queue_Type::Tgraphics)
                                .getParentQueueFamilyIndex() &&
-                    fam != m_systemManager.getContext(defaultDevice)
+                    fam != m_systemManager.getContext(m_defaultDevice)
                                .getDevice()
                                .getDefaultQueue(Queue_Type::Tcompute)
                                .getParentQueueFamilyIndex() &&
                     !selectedFamilyIndices.contains(fam))
                 {
-                    auto nQueue = m_systemManager.getContext(defaultDevice)
+                    auto nQueue = m_systemManager.getContext(m_defaultDevice)
                                       .getDevice()
                                       .getQueueOwnershipTracker()
                                       .giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false, fam);
@@ -109,75 +116,72 @@ template <typename TMainRenderDeviceControlPolicy> class StarEngine
 
     ~StarEngine()
     {
-        StarObject::cleanupSharedResources(m_systemManager.getContext(defaultDevice));
+        StarObject::cleanupSharedResources(m_systemManager.getContext(m_defaultDevice));
     }
 
     void run()
     {
-        uint8_t numFramesInFlight;
-        {
-            int framesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-            if (!star::common::helper::SafeCast<int, uint8_t>(framesInFlight, numFramesInFlight))
-            {
-                throw std::runtime_error("Failed to process number of frames in flight");
-            }
-        }
-
-        std::shared_ptr<StarScene> currentScene = m_application.loadScene(
-            m_systemManager.getContext(defaultDevice), *this->m_finalRenderPolicy.m_window, numFramesInFlight);
+        std::shared_ptr<StarScene> currentScene = m_application.loadScene(m_systemManager.getContext(m_defaultDevice),
+                                                                          m_loopPolicy.getMaxNumOfFramesInFlight());
 
         assert(currentScene && "Application must provide a proper instance of a scene object");
-        m_systemManager.getContext(defaultDevice)
+        m_systemManager.getContext(m_defaultDevice)
             .getEventBus()
             .emit(event::EnginePhaseComplete{event::Phase::init, event::GetEnginePhaseCompleteInitTypeName});
 
-        currentScene->prepRender(m_systemManager.getContext(defaultDevice), numFramesInFlight);
-        registerScreenshotService(m_systemManager.getContext(defaultDevice), numFramesInFlight);
+        currentScene->prepRender(m_systemManager.getContext(m_defaultDevice), m_loopPolicy.getMaxNumOfFramesInFlight());
+        registerScreenshotService(m_systemManager.getContext(m_defaultDevice),
+                                  m_loopPolicy.getMaxNumOfFramesInFlight());
 
-        m_systemManager.getContext(defaultDevice)
+        m_systemManager.getContext(m_defaultDevice)
             .getEventBus()
             .emit(event::EnginePhaseComplete{event::Phase::init, event::GetEnginePhaseCompleteLoadTypeName});
 
-        uint8_t frameInFlightIndex = 0;
-        while (!m_mainRendererControlPolicy.shouldProgramExit())
+        while (!m_exitPolicy.shouldExit())
         {
-            frameInFlightIndex = m_mainRendererControlPolicy.getFrameIndexToBeDrawn();
+            m_loopPolicy.frameUpdate();
+            const uint8_t &frameInFlightIndex = m_loopPolicy.getCurrentFrameInFlightIndex();
 
             // check if any new objects have been added
-            m_systemManager.getContext(defaultDevice).prepareForNextFrame(frameInFlightIndex);
-
-            m_mainRendererControlPolicy.frameUpdate(m_systemManager);
+            m_systemManager.getContext(m_defaultDevice).prepareForNextFrame(frameInFlightIndex);
 
             m_application.frameUpdate(m_systemManager, frameInFlightIndex);
-            currentScene->frameUpdate(m_systemManager.getContext(defaultDevice), frameInFlightIndex);
+            currentScene->frameUpdate(m_systemManager.getContext(m_defaultDevice), frameInFlightIndex);
 
-            ManagerRenderResource::frameUpdate(m_systemManager.getContext(defaultDevice).getDeviceID(),
+            ManagerRenderResource::frameUpdate(m_systemManager.getContext(m_defaultDevice).getDeviceID(),
                                                frameInFlightIndex);
             vk::Semaphore allBuffersSubmitted =
-                m_systemManager.getContext(defaultDevice)
+                m_systemManager.getContext(m_defaultDevice)
                     .getManagerCommandBuffer()
-                    .update(frameInFlightIndex, m_systemManager.getContext(defaultDevice).getCurrentFrameIndex());
-            m_mainRendererControlPolicy.submitPresentation(frameInFlightIndex, &allBuffersSubmitted);
-            this->m_systemManager.getContext(defaultDevice).getTransferWorker().update();
+                    .update(frameInFlightIndex, m_systemManager.getContext(m_defaultDevice).getCurrentFrameIndex());
+            m_systemManager.getContext(m_defaultDevice)
+                .getEventBus()
+                .emit(event::RenderReadyForFinalization(m_systemManager.getContext(m_defaultDevice).getDevice()));
+
+            this->m_systemManager.getContext(m_defaultDevice).getTransferWorker().update();
         }
 
-        m_systemManager.getContext(defaultDevice).waitIdle();
-        currentScene->cleanupRender(m_systemManager.getContext(defaultDevice));
+        m_systemManager.getContext(m_defaultDevice).waitIdle();
+        currentScene->cleanupRender(m_systemManager.getContext(m_defaultDevice));
+        m_initPolicy.cleanup(m_renderingInstance.getVulkanInstance());
     }
 
   protected:
-    TMainRenderDeviceControlPolicy m_mainRendererControlPolicy;
+    TEngineInitPolicy m_initPolicy;
+    TMainLoopPolicy m_loopPolicy;
+    TEngineExitPolicy m_exitPolicy;
+
     StarApplication &m_application;
     core::RenderingInstance m_renderingInstance;
     core::SystemContext m_systemManager;
-    Handle defaultDevice;
+    Handle m_defaultDevice;
     uint64_t m_frameCounter = 0;
     std::shared_ptr<StarScene> currentScene = nullptr;
 
   private:
     void registerScreenshotService(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
     {
-        m_systemManager.getContext(defaultDevice)
+        m_systemManager.getContext(m_defaultDevice)
             .registerService(service::screen_capture::Builder(context.getDevice(), context.getTaskManager())
                                  .setNumWorkers(27)
                                  .build(),
