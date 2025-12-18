@@ -3,6 +3,7 @@
 // row-major notation
 
 #include "StarEntity.hpp"
+#include "core/device/DeviceContext.hpp"
 
 #include <glm/glm.hpp>
 
@@ -19,11 +20,13 @@ class StarCamera : public StarEntity
                const float &nearClippingPlaneDistance, const float &farClippingPlaneDistance);
     virtual ~StarCamera() = default;
 
+    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) {};
     glm::mat4 getViewMatrix() const;
 
     glm::mat4 getProjectionMatrix() const;
 
-    glm::ivec2& getResolution() {
+    glm::ivec2 &getResolution()
+    {
         return resolution;
     }
     const glm::ivec2 &getResolution() const

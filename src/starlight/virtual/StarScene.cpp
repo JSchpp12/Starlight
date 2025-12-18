@@ -25,6 +25,8 @@ void star::StarScene::cleanupRender(core::device::DeviceContext &context)
 }
 void star::StarScene::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
+    m_camera->frameUpdate(context, frameInFlightIndex);
+    
     for (size_t i = 0; i < m_renderers.size(); i++)
     {
         m_renderers[i].frameUpdate(context, frameInFlightIndex);
