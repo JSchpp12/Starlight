@@ -56,11 +56,6 @@ void DescriptorPool::eventCallback(const star::common::IEvent &e, bool &keepAliv
         }
     }
 
-    for (auto &type : processedTypes)
-    {
-        std::cout << "amt: " << type.second << std::endl;
-    }
-
     this->insert({std::move(processedTypes)});
 
     keepAlive = false;
