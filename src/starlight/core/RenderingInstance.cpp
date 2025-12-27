@@ -27,7 +27,8 @@ star::core::RenderingInstance::~RenderingInstance()
         m_instance.destroy();
 }
 
-vk::Instance star::core::RenderingInstance::createInstance(const std::string &applicationName, std::vector<const char *> &extensions)
+vk::Instance star::core::RenderingInstance::createInstance(const std::string &applicationName,
+                                                           std::vector<const char *> &extensions)
 {
     for (const auto &extension : m_platformInstanceRequiredExtensions)
     {

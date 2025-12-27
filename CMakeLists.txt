@@ -151,7 +151,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/templates/StarApplication.cpp"
     "src/starlight/systems/StarRenderGroup.cpp" 
     "src/starlight/common/Compiler.cpp"
-    "src/starlight/common/Interactivity.cpp" 
     "src/starlight/common/RuntimeUpdateTexture.cpp"
     "src/starlight/common/ThreadSharedResource.cpp"
     "src/starlight/common/materials/BumpMaterial.cpp"
@@ -211,7 +210,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/graphics/shader/BasicIncluder.cpp"
     "src/starlight/policy/DefaultEngineInitPolicy.cpp"
     "src/starlight/policy/EngineExitAfterNumberOfFrames.cpp"
-    "src/starlight/policy/IncrementalImageEngineLoopController.cpp"
+    "src/starlight/policy/DefaultEngineLoopPolicy.cpp"
     "src/starlight/policy/ListenForPrepForNextFramePolicy.cpp"
 )
 
@@ -231,7 +230,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/renderer/CaptureCapableRenderer.hpp"
     "include/starlight/common/ThreadSharedResource.hpp"
     "include/starlight/common/Compiler.hpp"
-    "include/starlight/common/Interactivity.hpp"
     "include/starlight/common/materials/BumpMaterial.hpp"
     "include/starlight/common/materials/VertColorMaterial.hpp"
     "include/starlight/common/materials/TextureMaterial.hpp"
@@ -367,7 +365,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/SwapChainSupportDetails.hpp"
     "include/starlight/policy/DefaultEngineInitPolicy.hpp"
     "include/starlight/policy/EngineExitAfterNumberOfFrames.hpp"
-    "include/starlight/policy/IncrementalImageEngineLoopController.hpp"
+    "include/starlight/policy/DefaultEngineLoopPolicy.hpp"
     "include/starlight/policy/ListenForPrepForNextFramePolicy.hpp"
     #header only
     "include/starlight/common/entities/Light.hpp"

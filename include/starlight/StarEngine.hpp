@@ -25,7 +25,25 @@
 
 namespace star
 {
-template <typename TEngineInitPolicy, typename TMainLoopPolicy, typename TEngineExitPolicy> class StarEngine
+template <typename T>
+concept InitLike =
+    requires(T init, std::string appName, core::RenderingInstance &instance, core::device::StarDevice &device,
+             const uint8_t &numFramesInFlight, std::set<star::Rendering_Features> &features,
+             std::set<Rendering_Device_Features> &deviceFeatures) {
+        { init.createRenderingInstance(appName) } -> std::same_as<core::RenderingInstance>;
+        { init.createNewDevice(instance, features, deviceFeatures) } -> std::same_as<core::device::StarDevice>;
+        { init.init(numFramesInFlight) } -> std::same_as<void>;
+        { init.cleanup(instance) } -> std::same_as<void>;
+        { init.getFrameInFlightTrackingSetup(device) } -> std::same_as<common::FrameTracker::Setup>;
+        { init.getEngineRenderingResolution() } -> std::same_as<vk::Extent2D>;
+        { init.getAdditionalDeviceServices() } -> std::same_as<std::vector<service::Service>>;
+    };
+
+template <typename T>
+concept ExitLike = requires(T exit) {
+    { exit.shouldExit() } -> std::same_as<bool>;
+};
+template <InitLike TEngineInitPolicy, typename TMainLoopPolicy, ExitLike TEngineExitPolicy> class StarEngine
 {
   public:
     StarEngine(TEngineInitPolicy initPolicy, TMainLoopPolicy loopPolicy, TEngineExitPolicy exitPolicy,
@@ -181,7 +199,7 @@ template <typename TEngineInitPolicy, typename TMainLoopPolicy, typename TEngine
         currentScene->cleanupRender(m_systemManager.getContext(m_defaultDevice));
         // need to cleanup services first
         m_systemManager.getContext(m_defaultDevice).cleanupRender();
-        m_initPolicy.cleanup(m_renderingInstance.getVulkanInstance()); // destroy surface
+        m_initPolicy.cleanup(m_renderingInstance); // destroy surface
     }
 
   protected:
