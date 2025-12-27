@@ -130,6 +130,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/event/RenderReadyForFinalization.cpp"
     "src/starlight/event/PrepForNextFrame.cpp"
     "src/starlight/core/service/Service.cpp"
+    "src/starlight/service/FrameInFlightControllerService.cpp"
     "src/starlight/service/ScreenCaptureFactory.cpp"
     "src/starlight/service/ScreenCapture.cpp"
     "src/starlight/service/detail/screen_capture/WorkerControllerPolicies.cpp"
@@ -208,6 +209,10 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/RenderingInstance.cpp"
     "src/starlight/core/SwapChainSupportDetails.cpp"
     "src/starlight/core/graphics/shader/BasicIncluder.cpp"
+    "src/starlight/policy/DefaultEngineInitPolicy.cpp"
+    "src/starlight/policy/EngineExitAfterNumberOfFrames.cpp"
+    "src/starlight/policy/IncrementalImageEngineLoopController.cpp"
+    "src/starlight/policy/ListenForPrepForNextFramePolicy.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
@@ -300,6 +305,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/event/PrepForNextFrame.hpp"
     "include/starlight/core/graphics/shader/BasicIncluder.hpp"
     "include/starlight/service/Service.hpp"
+    "include/starlight/service/FrameInFlightControllerService.hpp"
     "include/starlight/service/ScreenCapture.hpp"
     "include/starlight/service/ScreenCaptureFactory.hpp"
     "include/starlight/service/detail/screen_capture/WorkerControllerPolicies.hpp"
@@ -359,6 +365,10 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/SystemContext.hpp"
     "include/starlight/core/RenderingInstance.hpp"
     "include/starlight/core/SwapChainSupportDetails.hpp"
+    "include/starlight/policy/DefaultEngineInitPolicy.hpp"
+    "include/starlight/policy/EngineExitAfterNumberOfFrames.hpp"
+    "include/starlight/policy/IncrementalImageEngineLoopController.hpp"
+    "include/starlight/policy/ListenForPrepForNextFramePolicy.hpp"
     #header only
     "include/starlight/common/entities/Light.hpp"
     "include/starlight/virtual/StarShader.hpp"

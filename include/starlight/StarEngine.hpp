@@ -25,7 +25,6 @@
 
 namespace star
 {
-
 template <typename TEngineInitPolicy, typename TMainLoopPolicy, typename TEngineExitPolicy> class StarEngine
 {
   public:
