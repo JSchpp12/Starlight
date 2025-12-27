@@ -12,6 +12,8 @@
 #include "StarTextures/Texture.hpp"
 #include "core/renderer/RendererBase.hpp"
 
+#include <star_common/FrameTracker.hpp>
+
 #include <chrono>
 #include <memory>
 #include <optional>
@@ -49,9 +51,9 @@ class DefaultRenderer : public RendererBase
     DefaultRenderer &operator=(DefaultRenderer &&other) = default;
     virtual ~DefaultRenderer() = default;
 
-    virtual void prepRender(common::IDeviceContext &device, const uint8_t &numFramesInFlight) override;
+    virtual void prepRender(common::IDeviceContext &device) override;
     virtual void cleanupRender(common::IDeviceContext &device) override;
-    virtual void frameUpdate(common::IDeviceContext &context, const uint8_t &frameInFlightIndex) override;
+    virtual void frameUpdate(common::IDeviceContext &context) override;
 
     StarDescriptorSetLayout &getGlobalShaderInfo()
     {
@@ -156,11 +158,11 @@ class DefaultRenderer : public RendererBase
 #pragma region helpers
     vk::Viewport prepareRenderingViewport(const vk::Extent2D &resolution);
 
-    virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const uint8_t &frameInFlightIndex);
+    virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const common::FrameTracker &frameTracker);
 
-    virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const uint8_t &frameInFlightIndex);
+    virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const common::FrameTracker &frameTracker);
 
-    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameInFlightIndex,
                                      const uint64_t &frameIndex);
 
     void recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,

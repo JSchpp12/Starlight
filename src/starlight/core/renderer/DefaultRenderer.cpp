@@ -6,32 +6,32 @@
 #include "ManagerRenderResource.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 
-#include <vma/vk_mem_alloc.h>
 #include <star_common/HandleTypeRegistry.hpp>
+#include <vma/vk_mem_alloc.h>
 
 #include <algorithm>
 
 namespace star::core::renderer
 {
 
-void DefaultRenderer::prepRender(common::IDeviceContext &device, const uint8_t &numFramesInFlight)
+void DefaultRenderer::prepRender(common::IDeviceContext &device)
 {
-    RendererBase::prepRender(device, numFramesInFlight);
+    RendererBase::prepRender(device);
 
     auto &c = static_cast<core::device::DeviceContext &>(device);
-    m_infoManagerLightData->prepRender(c, numFramesInFlight);
-    m_infoManagerLightList->prepRender(c, numFramesInFlight);
+    m_infoManagerLightData->prepRender(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
+    m_infoManagerLightList->prepRender(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
 
     if (m_infoManagerCamera)
     {
-        m_infoManagerCamera->prepRender(c, numFramesInFlight);
+        m_infoManagerCamera->prepRender(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
     }
 
     m_renderingContext.targetResolution = c.getEngineResolution();
 
-    auto rendererDescriptors = manualCreateDescriptors(c, numFramesInFlight);
+    auto rendererDescriptors = manualCreateDescriptors(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
     {
-        auto images = createRenderToImages(c, numFramesInFlight);
+        auto images = createRenderToImages(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
         m_colorFormat = images.front().getBaseFormat();
         m_renderToImages.resize(images.size());
 
@@ -49,7 +49,7 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device, const uint8_t &
         }
     }
     {
-        auto images = createRenderToDepthImages(c, numFramesInFlight);
+        auto images = createRenderToDepthImages(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
         m_depthFormat = images.front().getBaseFormat();
         m_renderToDepthImages.resize(images.size());
 
@@ -71,8 +71,8 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device, const uint8_t &
 
     for (auto &group : m_renderGroups)
     {
-        group.prepRender(c, c.getEngineResolution(), numFramesInFlight, rendererDescriptors,
-                         renderInfo);
+        group.prepRender(c, c.getEngineResolution(), c.getFrameTracker().getSetup().getNumFramesInFlight(),
+                         rendererDescriptors, renderInfo);
     }
 }
 
@@ -83,18 +83,18 @@ void DefaultRenderer::cleanupRender(common::IDeviceContext &context)
     RendererBase::cleanupRender(c);
 }
 
-void DefaultRenderer::frameUpdate(common::IDeviceContext &context, const uint8_t &frameInFlightIndex)
+void DefaultRenderer::frameUpdate(common::IDeviceContext &context)
 {
-    RendererBase::frameUpdate(context, frameInFlightIndex);
+    RendererBase::frameUpdate(context);
 
     auto &c = static_cast<core::device::DeviceContext &>(context);
-    size_t i = static_cast<size_t>(frameInFlightIndex);
+    size_t i = static_cast<size_t>(c.getFrameTracker().getCurrent().getFrameInFlightIndex());
     m_renderingContext.recordDependentImage.manualInsert(m_renderToImages[i],
                                                          &c.getImageManager().get(m_renderToImages[i])->texture);
     m_renderingContext.recordDependentImage.manualInsert(m_renderToDepthImages[i],
                                                          &c.getImageManager().get(m_renderToDepthImages[i])->texture);
 
-    updateDependentData(c, frameInFlightIndex);
+    updateDependentData(c, c.getFrameTracker().getCurrent().getFrameInFlightIndex());
 }
 
 void DefaultRenderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
@@ -470,22 +470,22 @@ void DefaultRenderer::createDescriptors(star::core::device::DeviceContext &devic
 {
 }
 
-void DefaultRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+void DefaultRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                           const uint64_t &frameIndex)
 {
     vk::Viewport viewport = this->prepareRenderingViewport(m_renderingContext.targetResolution);
     commandBuffer.setViewport(0, viewport);
 
-    recordPreRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
+    recordPreRenderPassCommands(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
 
-    recordCommandBufferDependencies(commandBuffer, frameInFlightIndex, frameIndex);
+    recordCommandBufferDependencies(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
 
     {
         // dynamic rendering used...so dont need all that extra stuff
         vk::RenderingAttachmentInfo colorAttachmentInfo =
-            prepareDynamicRenderingInfoColorAttachment(frameInFlightIndex);
+            prepareDynamicRenderingInfoColorAttachment(frameTracker);
         vk::RenderingAttachmentInfo depthAttachmentInfo =
-            prepareDynamicRenderingInfoDepthAttachment(frameInFlightIndex);
+            prepareDynamicRenderingInfoDepthAttachment(frameTracker);
 
         auto renderArea = vk::Rect2D{vk::Offset2D{}, m_renderingContext.targetResolution};
         vk::RenderingInfoKHR renderInfo{};
@@ -497,11 +497,11 @@ void DefaultRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, cons
         commandBuffer.beginRendering(renderInfo);
     }
 
-    recordRenderingCalls(commandBuffer, frameInFlightIndex, frameIndex);
+    recordRenderingCalls(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
 
     commandBuffer.endRendering();
 
-    recordPostRenderingCalls(commandBuffer, frameInFlightIndex);
+    recordPostRenderingCalls(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex());
 }
 
 void DefaultRenderer::recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer,
@@ -572,12 +572,13 @@ std::vector<vk::BufferMemoryBarrier2> DefaultRenderer::getMemoryBarriersForThisF
 }
 
 vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderer::prepareDynamicRenderingInfoColorAttachment(
-    const uint8_t &frameInFlightIndex)
+    const common::FrameTracker &frameTracker)
 {
-    size_t index = static_cast<size_t>(frameInFlightIndex);
+    size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
 
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-    colorAttachmentInfo.imageView = m_renderingContext.recordDependentImage.get(m_renderToImages[index])->getImageView();
+    colorAttachmentInfo.imageView =
+        m_renderingContext.recordDependentImage.get(m_renderToImages[index])->getImageView();
     colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
     colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
@@ -587,12 +588,13 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderer::prepareDynami
 }
 
 vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderer::prepareDynamicRenderingInfoDepthAttachment(
-    const uint8_t &frameInFlightIndex)
+    const common::FrameTracker &frameTracker)
 {
-    size_t index = static_cast<size_t>(frameInFlightIndex);
+    size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
 
     vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};
-    depthAttachmentInfo.imageView = m_renderingContext.recordDependentImage.get(m_renderToDepthImages[index])->getImageView();
+    depthAttachmentInfo.imageView =
+        m_renderingContext.recordDependentImage.get(m_renderToDepthImages[index])->getImageView();
     depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;

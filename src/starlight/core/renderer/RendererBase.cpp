@@ -39,20 +39,20 @@ void RendererBase::cleanupRender(common::IDeviceContext &context)
     }
 }
 
-void RendererBase::prepRender(common::IDeviceContext &context, const uint8_t &numFramesInFlight)
+void RendererBase::prepRender(common::IDeviceContext &context)
 {
     auto &c = static_cast<core::device::DeviceContext &>(context);
 
     m_renderGroups = CreateRenderingGroups(c, m_objects);
 
     m_commandBuffer =
-        c.getManagerCommandBuffer().submit(getCommandBufferRequest(), c.getCurrentFrameIndex());
+        c.getManagerCommandBuffer().submit(getCommandBufferRequest(), c.getFrameTracker().getCurrent().getGlobalFrameCounter());
 }
 
-void RendererBase::frameUpdate(common::IDeviceContext &context, const uint8_t &frameInFlightIndex)
+void RendererBase::frameUpdate(common::IDeviceContext &context)
 {
     auto &c = static_cast<core::device::DeviceContext &>(context);
-    updateRenderingGroups(c, frameInFlightIndex);
+    updateRenderingGroups(c, c.getFrameTracker().getCurrent().getFrameInFlightIndex());
 }
 
 std::vector<star::StarRenderGroup> RendererBase::CreateRenderingGroups(

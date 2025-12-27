@@ -6,6 +6,7 @@
 #include "device/StarDevice.hpp"
 
 #include "internals/CommandBufferContainer.hpp"
+#include <star_common/FrameTracker.hpp>
 
 #include <functional>
 #include <set>
@@ -24,7 +25,7 @@ class ManagerCommandBuffer
         // type
         // callback function to record the buffer
         // is it dependent on another buffer to finish first?
-        std::function<void(vk::CommandBuffer &, const uint8_t &, const uint64_t &)> recordBufferCallback;
+        std::function<void(vk::CommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback;
         Command_Buffer_Order order;
         int orderIndex;
         star::Queue_Type type;
@@ -32,7 +33,7 @@ class ManagerCommandBuffer
         bool willBeSubmittedEachFrame = false;
         bool recordOnce = false;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback = std::nullopt;
-        std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const uint8_t &, std::vector<vk::Semaphore> *,
+        std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *,
                                                   std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>)>>
             overrideBufferSubmissionCallback = std::nullopt;
     };
@@ -50,7 +51,7 @@ class ManagerCommandBuffer
     /// @brief Process and submit all command buffers
     /// @param frameIndexToBeDrawn
     /// @return semaphore signaling completion of submission
-    vk::Semaphore update(StarDevice &device, const uint8_t &frameIndexToBeDrawn, const uint64_t &currentFrameIndex);
+    vk::Semaphore update(StarDevice &device, const common::FrameTracker &frameTracker);
 
     // void submitPostPresentationCommands(StarDevice &device, const uint8_t &frameIndexToBeDrawn,
     //                                     const uint64_t &currentFrameIndex,
@@ -63,7 +64,7 @@ class ManagerCommandBuffer
     CommandBufferContainer buffers;
     std::unique_ptr<star::Handle> mainGraphicsBufferHandle = std::unique_ptr<star::Handle>();
 
-    vk::Semaphore submitCommandBuffers(StarDevice &device, const uint8_t &swapChainIndex,
+    vk::Semaphore submitCommandBuffers(StarDevice &device, const common::FrameTracker &swapChainIndex,
                                        const uint64_t &currentFrameIndex);
 
     void handleDynamicBufferRequests();

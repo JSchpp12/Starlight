@@ -6,6 +6,7 @@
 
 #include <star_common/Handle.hpp>
 #include <star_common/Renderer.hpp>
+#include <star_common/FrameTracker.hpp>
 
 #include <map>
 #include <memory>
@@ -27,7 +28,7 @@ class StarScene
     /// Function called every frame
     void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 
-    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
+    void prepRender(core::device::DeviceContext &context, const common::FrameTracker::Setup &renderImageSetup);
 
     void cleanupRender(core::device::DeviceContext &context);
 

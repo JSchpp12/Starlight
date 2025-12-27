@@ -3,6 +3,7 @@
 #include "Common.hpp"
 #include "core/device/managers/ManagerCommandBuffer.hpp"
 
+#include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 
 namespace star::service::detail::screen_capture
@@ -19,7 +20,7 @@ class CopyCmdPolicy
   private:
     common::InUseResourceInformation *m_inUseInfo = nullptr;
 
-    void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+    void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const star::common::FrameTracker &frameTracker,
                              const uint64_t &frameIndex);
     void recordCopyCommands(vk::CommandBuffer &commandBuffer) const;
     void recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk::Image targetSrcImage) const;
@@ -28,7 +29,7 @@ class CopyCmdPolicy
     std::vector<vk::ImageMemoryBarrier2> getImageBarriersForPrep() const;
     std::vector<vk::ImageMemoryBarrier2> getImageBarriersForCleanup() const;
 
-    vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
+    vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
                                std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
                                std::vector<vk::Semaphore> dataSemaphores,
                                std::vector<vk::PipelineStageFlags> dataWaitPoints,

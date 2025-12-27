@@ -1,7 +1,6 @@
 #pragma once
 
 #include "TaskManager.hpp"
-#include "core/device/FrameInFlightTracking.hpp"
 #include "device/StarDevice.hpp"
 #include "device/managers/GraphicsContainer.hpp"
 #include "device/managers/ManagerCommandBuffer.hpp"
@@ -9,6 +8,7 @@
 #include "service/Service.hpp"
 #include "tasks/TaskFactory.hpp"
 
+#include <star_common/FrameTracker.hpp>
 #include <star_common/IDeviceContext.hpp>
 
 #include <vulkan/vulkan.hpp>
@@ -28,9 +28,9 @@ class DeviceContext : public star::common::IDeviceContext
             return m_manager.submit(m_device, frameIndex, request);
         }
 
-        vk::Semaphore update(const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
+        vk::Semaphore update(const common::FrameTracker &frameTracker)
         {
-            return m_manager.update(m_device, frameInFlightIndex, frameIndex);
+            return m_manager.update(m_device, frameTracker);
         }
 
         StarDevice &m_device;
@@ -45,11 +45,11 @@ class DeviceContext : public star::common::IDeviceContext
     DeviceContext(const DeviceContext &) = delete;
     DeviceContext &operator=(const DeviceContext &) = delete;
 
-    void init(const Handle &deviceID, const uint8_t &numFramesInFlight, vk::Extent2D engineResolution);
+    void init(const Handle &deviceID, common::FrameTracker::Setup setup, vk::Extent2D engineResolution);
 
     void waitIdle();
 
-    void prepareForNextFrame(const uint8_t &frameInFlightIndex);
+    void prepareForNextFrame();
 
     StarDevice &getDevice()
     {
@@ -144,14 +144,9 @@ class DeviceContext : public star::common::IDeviceContext
         return m_taskManager;
     }
 
-    const uint64_t &getCurrentFrameIndex() const
+    const common::FrameTracker &getFrameTracker() const
     {
-        return m_frameCounter;
-    }
-
-    const FrameInFlightTracking &getFrameInFlightTracking() const
-    {
-        return m_frameInFlightTrackingInfo;
+        return m_flightTracker;
     }
     vk::Extent2D &getEngineResolution()
     {
@@ -162,13 +157,14 @@ class DeviceContext : public star::common::IDeviceContext
         return m_engineResolution;
     }
 
-    void registerService(service::Service service, const uint8_t &numFramesInFlight);
+    void cleanupRender(); 
+
+    void registerService(service::Service service);
 
   private:
     StarDevice m_device;
+    common::FrameTracker m_flightTracker;
     bool m_ownsResources = false;
-    uint64_t m_frameCounter = 0;
-    FrameInFlightTracking m_frameInFlightTrackingInfo;
     Handle m_deviceID;
     common::EventBus m_eventBus;
     job::TaskManager m_taskManager;
@@ -196,6 +192,8 @@ class DeviceContext : public star::common::IDeviceContext
 
     void initServices(const uint8_t &numFramesInFlight);
 
-    void broadcastFrameStart(const uint8_t &frameInFlightIndex);
+    void broadcastFrameStart();
+
+    void broadcastFramePrepToService();
 };
 } // namespace star::core::device

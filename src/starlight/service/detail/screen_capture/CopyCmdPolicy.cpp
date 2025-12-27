@@ -101,7 +101,7 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForCleanup()
                 .setDstAccessMask(vk::AccessFlagBits2::eNone)};
 }
 
-vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
+vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
                                           std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
                                           std::vector<vk::Semaphore> dataSemaphores,
                                           std::vector<vk::PipelineStageFlags> dataWaitPoints,
@@ -132,7 +132,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const int &
     const vk::PipelineStageFlags waitPoints[]{vk::PipelineStageFlagBits::eTransfer};
     auto submitInfo = vk::SubmitInfo()
                           .setCommandBufferCount(1)
-                          .setCommandBuffers(buffer.buffer(frameIndexToBeDrawn))
+                          .setCommandBuffers(buffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()))
                           .setWaitSemaphoreCount(1)
                           .setPWaitSemaphores(waitSemaphores.data())
                           .setPWaitDstStageMask(waitPoints)
@@ -162,8 +162,8 @@ void CopyCmdPolicy::recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk
                                                       .setMipLevel(0))}));
 }
 
-void CopyCmdPolicy::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                        const uint64_t &frameIndex)
+void CopyCmdPolicy::recordCommandBuffer(vk::CommandBuffer &commandBuffer,
+                                        const star::common::FrameTracker &frameTracker, const uint64_t &frameIndex)
 {
     addMemoryDependenciesToPrepForCopy(commandBuffer);
     recordCopyImageToBuffer(commandBuffer, m_inUseInfo->targetImage);

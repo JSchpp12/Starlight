@@ -7,6 +7,7 @@
 #include "job/worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
 
 #include "core/device/system/event/StartOfNextFrame.hpp"
+#include "event/PrepForNextFrame.hpp"
 #include "managers/ManagerRenderResource.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
@@ -17,10 +18,9 @@
 #include <cassert>
 
 star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
-    : m_frameInFlightTrackingInfo(std::move(other.m_frameInFlightTrackingInfo)),
-      m_deviceID(std::move(other.m_deviceID)), m_device(std::move(other.m_device)), m_eventBus(),
-      m_taskManager(std::move(other.m_taskManager)), m_graphicsManagers(),
-      m_commandBufferManager(std::move(other.m_commandBufferManager)),
+    : m_device(std::move(other.m_device)), m_flightTracker(std::move(other.m_flightTracker)),
+      m_deviceID(std::move(other.m_deviceID)), m_eventBus(), m_taskManager(std::move(other.m_taskManager)),
+      m_graphicsManagers(), m_commandBufferManager(std::move(other.m_commandBufferManager)),
       m_transferWorker(std::move(other.m_transferWorker)),
       m_renderResourceManager(std::move(other.m_renderResourceManager)), m_services(std::move(other.m_services))
 {
@@ -28,7 +28,7 @@ star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
     m_eventBus = std::move(other.m_eventBus);
 
     m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
-                            static_cast<uint8_t>(m_frameInFlightTrackingInfo.getSize()));
+                            static_cast<uint8_t>(m_flightTracker.getSetup().getNumFramesInFlight()));
 
     other.m_ownsResources = false;
 }
@@ -37,8 +37,7 @@ star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(
 {
     if (this != &other)
     {
-        m_frameInFlightTrackingInfo = std::move(other.m_frameInFlightTrackingInfo);
-        m_frameCounter = std::move(other.m_frameCounter);
+        m_flightTracker = std::move(other.m_flightTracker);
         m_deviceID = std::move(other.m_deviceID);
         m_device = std::move(other.m_device);
         m_taskManager = std::move(other.m_taskManager);
@@ -50,7 +49,7 @@ star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(
         m_graphicsManagers = std::move(other.m_graphicsManagers);
         m_eventBus = std::move(other.m_eventBus);
         m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
-                                static_cast<uint8_t>(m_frameInFlightTrackingInfo.getSize()));
+                                static_cast<uint8_t>(m_flightTracker.getSetup().getNumFramesInFlight()));
 
         if (other.m_ownsResources)
         {
@@ -76,27 +75,28 @@ star::core::device::DeviceContext::~DeviceContext()
     }
 }
 
-void star::core::device::DeviceContext::init(const Handle &deviceID, const uint8_t &numFramesInFlight,
+void star::core::device::DeviceContext::init(const Handle &deviceID, common::FrameTracker::Setup setup,
                                              vk::Extent2D engineResolution)
 {
     assert(!m_ownsResources && "Dont call init twice");
     assert(deviceID.getType() ==
            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::DeviceTypeName));
-    logInit(numFramesInFlight);
+    m_flightTracker = common::FrameTracker(std::move(setup));
 
+    logInit(m_flightTracker.getSetup().getNumFramesInFlight());
     m_deviceID = deviceID;
-    m_frameInFlightTrackingInfo = FrameInFlightTracking(numFramesInFlight);
     m_engineResolution = std::move(engineResolution);
 
-    m_commandBufferManager = std::make_unique<manager::ManagerCommandBuffer>(m_device, numFramesInFlight);
+    m_commandBufferManager =
+        std::make_unique<manager::ManagerCommandBuffer>(m_device, m_flightTracker.getSetup().getNumFramesInFlight());
     m_transferWorker = CreateTransferWorker(m_device);
     m_renderResourceManager = std::make_unique<ManagerRenderResource>();
 
-    initServices(numFramesInFlight);
+    initServices(m_flightTracker.getSetup().getNumFramesInFlight());
 
-    initWorkers(numFramesInFlight);
+    initWorkers(m_flightTracker.getSetup().getNumFramesInFlight());
 
-    m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager, numFramesInFlight);
+    m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager, m_flightTracker.getSetup().getNumFramesInFlight());
 
     m_ownsResources = true;
 }
@@ -112,13 +112,21 @@ void star::core::device::DeviceContext::waitIdle()
     m_device.getVulkanDevice().waitIdle();
 }
 
-void star::core::device::DeviceContext::prepareForNextFrame(const uint8_t &frameInFlightIndex)
+void star::core::device::DeviceContext::prepareForNextFrame()
 {
-    m_frameInFlightTrackingInfo.getNumOfTimesFrameProcessed(frameInFlightIndex)++;
-    m_frameCounter++;
-
     handleCompleteMessages();
-    broadcastFrameStart(frameInFlightIndex);
+
+    uint8_t currentFrame;
+    broadcastFramePrepToService();
+
+    // assuming external service will handle updating the tracker
+    m_flightTracker.triggerIncrementForCurrentFrame();
+    broadcastFrameStart();
+}
+
+void star::core::device::DeviceContext::cleanupRender()
+{
+    shutdownServices();
 }
 
 std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(
@@ -239,36 +247,26 @@ void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight
     core::logging::log(boost::log::trivial::info, oss.str());
 }
 
-void star::core::device::DeviceContext::registerService(service::Service service, const uint8_t &numFramesInFlight)
+void star::core::device::DeviceContext::registerService(service::Service service)
 {
     m_services.emplace_back(std::move(service));
 
-    service::InitParameters params{m_deviceID,
-                                   m_device,
-                                   m_eventBus,
-                                   m_taskManager,
-                                   m_graphicsManagers,
-                                   *m_commandBufferManager,
-                                   m_frameInFlightTrackingInfo,
-                                   *m_transferWorker,
-                                   *m_renderResourceManager,
-                                   m_frameCounter};
+    service::InitParameters params{m_deviceID,         m_device,
+                                   m_eventBus,         m_taskManager,
+                                   m_graphicsManagers, *m_commandBufferManager,
+                                   *m_transferWorker,  *m_renderResourceManager,
+                                   m_flightTracker};
 
-    m_services.back().init(params, numFramesInFlight);
+    m_services.back().init(params, m_flightTracker.getSetup().getNumFramesInFlight());
 }
 
 void star::core::device::DeviceContext::setAllServiceParameters()
 {
-    service::InitParameters params{m_deviceID,
-                                   m_device,
-                                   m_eventBus,
-                                   m_taskManager,
-                                   m_graphicsManagers,
-                                   *m_commandBufferManager,
-                                   m_frameInFlightTrackingInfo,
-                                   *m_transferWorker,
-                                   *m_renderResourceManager,
-                                   m_frameCounter};
+    service::InitParameters params{m_deviceID,         m_device,
+                                   m_eventBus,         m_taskManager,
+                                   m_graphicsManagers, *m_commandBufferManager,
+                                   *m_transferWorker,  *m_renderResourceManager,
+                                   m_flightTracker};
 
     for (auto &service : m_services)
     {
@@ -278,16 +276,11 @@ void star::core::device::DeviceContext::setAllServiceParameters()
 
 void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesInFlight)
 {
-    service::InitParameters params{m_deviceID,
-                                   m_device,
-                                   m_eventBus,
-                                   m_taskManager,
-                                   m_graphicsManagers,
-                                   *m_commandBufferManager,
-                                   m_frameInFlightTrackingInfo,
-                                   *m_transferWorker,
-                                   *m_renderResourceManager,
-                                   m_frameCounter};
+    service::InitParameters params{m_deviceID,         m_device,
+                                   m_eventBus,         m_taskManager,
+                                   m_graphicsManagers, *m_commandBufferManager,
+                                   *m_transferWorker,  *m_renderResourceManager,
+                                   m_flightTracker};
 
     for (auto &service : m_services)
     {
@@ -295,7 +288,13 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
     }
 }
 
-void star::core::device::DeviceContext::broadcastFrameStart(const uint8_t &frameInFlightIndex)
+void star::core::device::DeviceContext::broadcastFrameStart()
 {
-    m_eventBus.emit(star::core::device::system::event::StartOfNextFrame{m_frameCounter, frameInFlightIndex});
+    m_eventBus.emit(star::core::device::system::event::StartOfNextFrame{
+        m_flightTracker.getCurrent().getGlobalFrameCounter(), m_flightTracker.getCurrent().getFrameInFlightIndex()});
+}
+
+void star::core::device::DeviceContext::broadcastFramePrepToService()
+{
+    m_eventBus.emit(star::event::PrepForNextFrame{m_flightTracker});
 }

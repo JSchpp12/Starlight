@@ -63,7 +63,7 @@ template <typename TTransferType, typename TDataType> class Controller
     {
         assert(frameInFlightIndex < m_resourceHandles.size() && m_resourceHandles[frameInFlightIndex].isInitialized() &&
                "Resources must be properly prepared before use");
-        if (hasAlreadyBeenUpdatedThisFrame(context.getCurrentFrameIndex()))
+        if (hasAlreadyBeenUpdatedThisFrame(context.getFrameTracker().getCurrent().getGlobalFrameCounter()))
         {
             semaphore = context.getManagerRenderResource()
                             .get<TDataType>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
@@ -75,7 +75,7 @@ template <typename TTransferType, typename TDataType> class Controller
             return false;
         }
 
-        m_lastFrameUpdate = context.getCurrentFrameIndex();
+        m_lastFrameUpdate = context.getFrameTracker().getCurrent().getGlobalFrameCounter();
         context.getManagerRenderResource().updateRequest(context.getDeviceID(),
                                                          createTransferRequest(context.getDevice(), frameInFlightIndex),
                                                          m_resourceHandles[frameInFlightIndex], true);

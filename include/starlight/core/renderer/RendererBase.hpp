@@ -22,8 +22,8 @@ class RendererBase
     virtual void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                       const uint64_t &frameIndex);
     virtual void cleanupRender(common::IDeviceContext &context);
-    virtual void prepRender(common::IDeviceContext &context, const uint8_t &numFramesInFlight);
-    virtual void frameUpdate(common::IDeviceContext &context, const uint8_t &frameInFlightIndex);
+    virtual void prepRender(common::IDeviceContext &context);
+    virtual void frameUpdate(common::IDeviceContext &context);
     virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
 
     Handle getCommandBuffer() const

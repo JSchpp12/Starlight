@@ -1,9 +1,9 @@
 #pragma once
 
 #include "ManagedHandleContainer.hpp"
-#include "detail/screen_capture/Common.hpp"
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
 #include "detail/screen_capture/CapabilityCache.hpp"
+#include "detail/screen_capture/Common.hpp"
 #include "detail/screen_capture/CopyRouter.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
 #include "detail/screen_capture/GPUSynchronizationInfo.hpp"
@@ -20,7 +20,7 @@
 
 namespace star::service
 {
- 
+
 template <typename TCopyPolicy>
 concept CopyPolicyLike =
     requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo, detail::screen_capture::CopyPlan &copyPlan,
@@ -61,7 +61,6 @@ class ScreenCapture
 
     void init(const uint8_t &numFramesInFlight)
     {
-        m_deviceInfo.numFramesInFlight = numFramesInFlight;
         m_actionRouter.init(&m_deviceInfo);
 
         registerWithEventBus();
@@ -78,10 +77,8 @@ class ScreenCapture
                                                .commandManager = &params.commandBufferManager,
                                                .eventBus = &params.eventBus,
                                                .semaphoreManager = params.graphicsManagers.semaphoreManager.get(),
-                                               .frameTracker = &params.frameTracker,
                                                .taskManager = &params.taskManager,
-                                               .currentFrameCounter = &params.currentFrameCounter,
-                                               .numFramesInFlight = 1};
+                                               .flightTracker = &params.flightTracker};
     }
 
     void shutdown()

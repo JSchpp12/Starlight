@@ -35,13 +35,17 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
     // todo: REMOVE THIS! OR move it to the update function
     if (request.recordOnce)
     {
-        for (int i = 0; i < this->numFramesInFlight; i++)
-        {
-            this->buffers.get(newHandle).commandBuffer->begin(i);
-            request.recordBufferCallback(this->buffers.get(newHandle).commandBuffer->buffer(i), i, currentFrameIndex);
-            this->buffers.get(newHandle).commandBuffer->buffer(i).end();
-        }
+        throw std::runtime_error("Single time recording is not supported at present");
     }
+    // if (request.recordOnce)
+    // {
+    //     for (int i = 0; i < this->numFramesInFlight; i++)
+    //     {
+    //         this->buffers.get(newHandle).commandBuffer->begin(i);
+    //         request.recordBufferCallback(this->buffers.get(newHandle).commandBuffer->buffer(i), frameTracker,
+    //         currentFrameIndex); this->buffers.get(newHandle).commandBuffer->buffer(i).end();
+    //     }
+    // }
 
     return newHandle;
 }
@@ -58,40 +62,39 @@ star::CommandBufferContainer::CompleteRequest &star::core::device::manager::Mana
 }
 
 vk::Semaphore star::core::device::manager::ManagerCommandBuffer::update(StarDevice &device,
-                                                                        const uint8_t &frameInFlight,
-                                                                        const uint64_t &currentFrameIndex)
+                                                                        const common::FrameTracker &frameTracker)
 {
     handleDynamicBufferRequests();
 
-    return submitCommandBuffers(device, frameInFlight, currentFrameIndex);
+    return submitCommandBuffers(device, frameTracker, frameTracker.getCurrent().getGlobalFrameCounter());
 }
 
-vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBuffers(StarDevice &device,
-                                                                                      const uint8_t &swapChainIndex,
-                                                                                      const uint64_t &currentFrameIndex)
+vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBuffers(
+    StarDevice &device, const common::FrameTracker &frameTracker, const uint64_t &currentFrameIndex)
 {
     // determine the order of buffers to execute
     assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- cannot happen");
 
     // submit before
     std::vector<vk::Semaphore> beforeSemaphores = this->buffers.submitGroupWhenReady(
-        device, Command_Buffer_Order::before_render_pass, swapChainIndex, currentFrameIndex);
+        device, Command_Buffer_Order::before_render_pass, frameTracker, currentFrameIndex);
 
     // need to submit each group of buffers depending on the queue family they are in
     CommandBufferContainer::CompleteRequest &mainGraphicsBuffer = this->buffers.get(*this->mainGraphicsBufferHandle);
 
     if (mainGraphicsBuffer.beforeBufferSubmissionCallback.has_value())
-        mainGraphicsBuffer.beforeBufferSubmissionCallback.value()(swapChainIndex);
+        mainGraphicsBuffer.beforeBufferSubmissionCallback.value()(frameTracker.getCurrent().getFrameInFlightIndex());
 
     if (!mainGraphicsBuffer.recordOnce)
     {
-        mainGraphicsBuffer.commandBuffer->begin(swapChainIndex);
-        mainGraphicsBuffer.recordBufferCallback(mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex),
-                                                swapChainIndex, currentFrameIndex);
-        mainGraphicsBuffer.commandBuffer->buffer(swapChainIndex).end();
+        mainGraphicsBuffer.commandBuffer->begin(frameTracker.getCurrent().getFrameInFlightIndex());
+        mainGraphicsBuffer.recordBufferCallback(
+            mainGraphicsBuffer.commandBuffer->buffer(frameTracker.getCurrent().getFrameInFlightIndex()), frameTracker,
+            currentFrameIndex);
+        mainGraphicsBuffer.commandBuffer->buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
     }
 
-    auto mainGraphicsSemaphore = mainGraphicsBuffer.submitCommandBuffer(device, swapChainIndex, &beforeSemaphores);
+    auto mainGraphicsSemaphore = mainGraphicsBuffer.submitCommandBuffer(device, frameTracker, &beforeSemaphores);
 
     assert(mainGraphicsSemaphore && "The main graphics complete semaphore is not valid. This might happen if the "
                                     "override function does not return a valid semaphore");
@@ -99,7 +102,7 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     std::vector<vk::Semaphore> waitSemaphores = {mainGraphicsSemaphore};
 
     std::vector<vk::Semaphore> finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(
-        device, Command_Buffer_Order::end_of_frame, swapChainIndex, currentFrameIndex, &waitSemaphores);
+        device, Command_Buffer_Order::end_of_frame, frameTracker, currentFrameIndex, &waitSemaphores);
 
     if (!finalSubmissionSemaphores.empty())
     {

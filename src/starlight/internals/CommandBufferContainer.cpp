@@ -12,7 +12,7 @@ star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFligh
 }
 
 std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
-    core::device::StarDevice &device, const star::Command_Buffer_Order &order, const uint8_t &frameInFlightIndex,
+    core::device::StarDevice &device, const star::Command_Buffer_Order &order, const common::FrameTracker &frameTracker,
     const uint64_t &currentFrameIndex, std::vector<vk::Semaphore> *additionalWaitSemaphores)
 {
     if (!this->subOrderSemaphoresUpToDate)
@@ -36,24 +36,25 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
             CompleteRequest *buffer = this->allBuffers[bufferGroupsWithSubOrders[order][i - 1].getID()].get();
 
             if (buffer->beforeBufferSubmissionCallback.has_value())
-                buffer->beforeBufferSubmissionCallback.value()(frameInFlightIndex);
+                buffer->beforeBufferSubmissionCallback.value()(frameTracker.getCurrent().getFrameInFlightIndex());
 
             if (!buffer->recordOnce)
             {
-                buffer->commandBuffer->begin(frameInFlightIndex);
-                buffer->recordBufferCallback(buffer->commandBuffer->buffer(frameInFlightIndex), frameInFlightIndex,
-                                             currentFrameIndex);
-                buffer->commandBuffer->buffer(frameInFlightIndex).end();
+                buffer->commandBuffer->begin(frameTracker.getCurrent().getFrameInFlightIndex());
+                buffer->recordBufferCallback(
+                    buffer->commandBuffer->buffer(frameTracker.getCurrent().getFrameInFlightIndex()), frameTracker,
+                    currentFrameIndex);
+                buffer->commandBuffer->buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
             }
 
             vk::Semaphore doneSemaphore;
             if (i == star::Command_Buffer_Order_Index::first)
             {
-                doneSemaphore = buffer->submitCommandBuffer(device, frameInFlightIndex, additionalWaitSemaphores);
+                doneSemaphore = buffer->submitCommandBuffer(device, frameTracker, additionalWaitSemaphores);
             }
             else
             {
-                doneSemaphore = buffer->submitCommandBuffer(device, frameInFlightIndex);
+                doneSemaphore = buffer->submitCommandBuffer(device, frameTracker);
             }
 
             if (i == star::Command_Buffer_Order_Index::fifth ||

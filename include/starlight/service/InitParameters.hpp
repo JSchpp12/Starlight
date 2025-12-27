@@ -3,12 +3,12 @@
 #include "ManagerRenderResource.hpp"
 #include "SwapChainSupportDetails.hpp"
 #include "TaskManager.hpp"
-#include "core/device/FrameInFlightTracking.hpp"
 #include "device/StarDevice.hpp"
 #include "device/managers/GraphicsContainer.hpp"
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
 #include <star_common/EventBus.hpp>
+#include <star_common/FrameTracker.hpp>
 
 namespace star::service
 {
@@ -20,9 +20,8 @@ struct InitParameters
     job::TaskManager &taskManager;
     core::device::manager::GraphicsContainer &graphicsManagers;
     core::device::manager::ManagerCommandBuffer &commandBufferManager;
-    const core::FrameInFlightTracking &frameTracker;
     job::TransferWorker &transferWorker;
     ManagerRenderResource &renderResourceManager;
-    const uint64_t &currentFrameCounter;
+    common::FrameTracker &flightTracker;
 };
 } // namespace star::service

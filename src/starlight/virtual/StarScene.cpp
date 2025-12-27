@@ -29,18 +29,18 @@ void star::StarScene::frameUpdate(core::device::DeviceContext &context, const ui
 
     for (size_t i = 0; i < m_renderers.size(); i++)
     {
-        m_renderers[i].frameUpdate(context, frameInFlightIndex);
+        m_renderers[i].frameUpdate(context);
     }
 
-    m_primaryRenderer.frameUpdate(context, frameInFlightIndex);
+    m_primaryRenderer.frameUpdate(context);
 }
 
-void star::StarScene::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+void star::StarScene::prepRender(core::device::DeviceContext &context, const common::FrameTracker::Setup &renderImageSetup)
 {
     for (auto &addRender : m_renderers)
     {
-        addRender.prepRender(context, numFramesInFlight);
+        addRender.prepRender(context);
     }
 
-    m_primaryRenderer.prepRender(context, numFramesInFlight);
+    m_primaryRenderer.prepRender(context);
 }

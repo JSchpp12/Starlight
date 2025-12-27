@@ -22,7 +22,7 @@ class TriggerScreenshot : public star::common::IEvent
 {
   public:
     TriggerScreenshot(StarTextures::Texture targetTexture, Handle &targetCommandBuffer, Handle &calleeRegistration,
-                      const uint8_t &frameInFlightIndex, std::string screenshotName,
+                      const uint8_t &frameInFlightIndex, std::string screenshotName, bool isTargetPartOfFinalization,
                       Handle &targetTextureReadySemaphore)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
           m_targetTexture(std::move(targetTexture)), m_targetCommandBuffer(targetCommandBuffer),
@@ -31,7 +31,7 @@ class TriggerScreenshot : public star::common::IEvent
     {
     }
     TriggerScreenshot(StarTextures::Texture targetTexture, Handle &targetCommandBuffer, Handle &calleeRegistration,
-                      const uint8_t &frameInFlightIndex, std::string screenshotName)
+                      const uint8_t &frameInFlightIndex, std::string screenshotName, bool isTargetPartOfFinalization)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
           m_targetTexture(std::move(targetTexture)), m_targetCommandBuffer(targetCommandBuffer),
           m_calleeRegistration(calleeRegistration), m_frameInFlightIndex(frameInFlightIndex),
@@ -64,6 +64,15 @@ class TriggerScreenshot : public star::common::IEvent
     {
         return m_screenshotName;
     }
+    bool &getIsTargetPartOfFinalization()
+    {
+        return m_isTargetPartOfFinalization;
+    }
+
+    const bool &getIsTargetPartOfFinalization() const
+    {
+        return m_isTargetPartOfFinalization;
+    }
 
   private:
     StarTextures::Texture m_targetTexture;
@@ -71,6 +80,7 @@ class TriggerScreenshot : public star::common::IEvent
     Handle &m_calleeRegistration;
     const uint8_t &m_frameInFlightIndex;
     std::string m_screenshotName;
+    bool m_isTargetPartOfFinalization;
     Handle *m_targetTextureReadySemaphore = nullptr;
 };
 } // namespace star::event

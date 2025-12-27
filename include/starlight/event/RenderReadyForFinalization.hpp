@@ -11,7 +11,7 @@ constexpr std::string_view GetRenderReadyForFinalizationTypeName = "star::event:
 class RenderReadyForFinalization : public common::IEvent
 {
   public:
-    explicit RenderReadyForFinalization(core::device::StarDevice &device);
+    RenderReadyForFinalization(core::device::StarDevice &device, vk::Semaphore finalDoneSemaphore);
 
     virtual ~RenderReadyForFinalization() = default;
 
@@ -19,7 +19,17 @@ class RenderReadyForFinalization : public common::IEvent
     {
         return m_device;
     }
+    vk::Semaphore &getFinalDoneSemaphore()
+    {
+        return m_finalDoneSemaphore;
+    }
+    const vk::Semaphore &getFinalDoneSemaphore() const
+    {
+        return m_finalDoneSemaphore;
+    }
+
   private:
     core::device::StarDevice &m_device;
+    vk::Semaphore m_finalDoneSemaphore;
 };
 } // namespace star::event

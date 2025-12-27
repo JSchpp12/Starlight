@@ -4,8 +4,8 @@
 
 #include "InitParameters.hpp"
 #include "core/device/managers/GraphicsContainer.hpp"
-#include <star_common/EventBus.hpp>
 #include "job/TaskManager.hpp"
+#include <star_common/EventBus.hpp>
 
 namespace star::service
 {
@@ -23,9 +23,12 @@ class Service
     template <typename TService> struct ServiceModel : public ServiceConcept
     {
         TService m_service;
-        ServiceModel(TService service) : m_service(std::move(service))
+
+        template <typename UService>
+        explicit ServiceModel(UService &&service) : m_service(std::forward<UService>(service))
         {
         }
+
         virtual ~ServiceModel() = default;
 
         void doSetInitParameters(InitParameters &params) override
@@ -48,9 +51,11 @@ class Service
 
   public:
     template <typename TService>
-    Service(TService service) : m_impl(std::make_unique<ServiceModel<TService>>(std::move(service)))
+    explicit Service(TService &&service)
+        : m_impl(std::make_unique<ServiceModel<std::decay_t<TService>>>(std::forward<TService>(service)))
     {
     }
+
     Service(const Service &) = delete;
     Service &operator=(const Service &) = delete;
     Service(Service &&) = default;

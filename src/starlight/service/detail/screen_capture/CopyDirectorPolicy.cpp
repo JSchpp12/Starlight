@@ -64,7 +64,7 @@ static void RecordBlitImage(vk::CommandBuffer cmd, vk::Image srcImage, vk::Image
 void DefaultCopyPolicy::init(DeviceInfo &deviceInfo)
 {
     m_deviceInfo = &deviceInfo;
-    createSemaphores(*m_deviceInfo->eventBus, m_deviceInfo->numFramesInFlight);
+    createSemaphores(*m_deviceInfo->eventBus, m_deviceInfo->flightTracker->getSetup().getNumFramesInFlight());
 }
 
 GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan, const uint8_t &frameInFlightIndex)
@@ -78,7 +78,7 @@ GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan, 
 
     return GPUSynchronizationInfo{.semaphore = *m_doneSemaphoresRaw[frameInFlightIndex],
                                   .signalValue =
-                                      m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex)};
+                                      m_deviceInfo->flightTracker->getCurrent().getFramesInFlightTracking().getNumOfTimesFrameProcessed(frameInFlightIndex)};
 }
 
 void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan, const uint8_t &frameInFlightIndex) noexcept
@@ -101,7 +101,7 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan, const uin
                  ->semaphore;
     }
 
-    m_inUseResources->numTimesFrameProcessed = m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex);
+    m_inUseResources->numTimesFrameProcessed = m_deviceInfo->flightTracker->getCurrent().getFramesInFlightTracking().getNumOfTimesFrameProcessed(frameInFlightIndex);
     m_inUseResources->semaphoreForCopyDone = m_binarySignalSemaphoresRaw[frameInFlightIndex];
     m_inUseResources->timelineSemaphoreForCopyDone = m_doneSemaphoresRaw[frameInFlightIndex];
     m_inUseResources->queueToUse = m_deviceInfo->device->getDefaultQueue(Queue_Type::Ttransfer).getVulkanQueue();
@@ -150,7 +150,7 @@ void DefaultCopyPolicy::registerListenerForNextFrameStart(CalleeRenderDependenci
 {
     Handle calleeHandle = deps.commandBufferContainingTarget;
     uint8_t targetFrameInFlightIndex = frameInFlightIndex;
-    uint64_t signaledSemaphoreValue = m_deviceInfo->frameTracker->getNumOfTimesFrameProcessed(frameInFlightIndex);
+    uint64_t signaledSemaphoreValue = m_deviceInfo->flightTracker->getCurrent().getFramesInFlightTracking().getNumOfTimesFrameProcessed(frameInFlightIndex);
 
     m_deviceInfo->eventBus->subscribe(
         star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
