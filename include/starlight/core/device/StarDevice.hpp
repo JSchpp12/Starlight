@@ -7,6 +7,7 @@
 #include "StarCommandPool.hpp"
 #include "StarQueueFamily.hpp"
 #include "SwapChainSupportDetails.hpp"
+#include "wrappers/graphics/QueueFamilyIndices.hpp"
 
 #include <star_common/IRenderDevice.hpp>
 
@@ -14,131 +15,12 @@
 
 #include <iostream>
 #include <memory>
-#include <optional> 
-#include <set>
-#include <unordered_map>
+#include <optional>
 #include <unordered_set>
 #include <vector>
 
 namespace star::core::device
 {
-
-class QueueFamilyIndicies
-{
-  public:
-    void registerFamily(const uint32_t &familyIndex, const vk::QueueFlags &queueSupport,
-                        const vk::Bool32 &presentSupport, const uint32_t &familyQueueCount)
-    {
-        this->familyIndexQueueCount[familyIndex] = familyQueueCount;
-        this->familyIndexQueueSupport[familyIndex] = queueSupport;
-        this->allIndicies.insert(familyIndex);
-
-        if (presentSupport)
-            this->presentFamilies.insert(familyIndex);
-
-        if (queueSupport & vk::QueueFlagBits::eGraphics)
-            this->graphicsFamilies.insert(familyIndex);
-
-        if (queueSupport & vk::QueueFlagBits::eTransfer)
-            this->transferFamilies.insert(familyIndex);
-
-        if (queueSupport & vk::QueueFlagBits::eCompute)
-            this->computeFamilies.insert(familyIndex);
-    }
-
-    // check if queue families are all seperate -- this means more parallel work
-    bool isOptimalSupport() const
-    {
-        if (!this->isFullySupported())
-        {
-            return false;
-        }
-
-        // select presentation
-        std::vector<uint32_t> base = std::vector<uint32_t>();
-
-        // select queue with present + graphics
-        {
-            std::vector<uint32_t> found;
-            std::set_intersection(this->graphicsFamilies.begin(), this->graphicsFamilies.end(),
-                                  this->presentFamilies.begin(), this->presentFamilies.end(),
-                                  std::back_inserter(found));
-            if (found.size() > 0)
-                base.push_back(found[0]);
-            else
-                return false;
-        }
-
-        // select compute
-        {
-            std::vector<uint32_t> found;
-            std::set_difference(this->computeFamilies.begin(), this->computeFamilies.end(), base.begin(), base.end(),
-                                std::back_inserter(found));
-            if (found.size() > 0)
-                base.push_back(found[0]);
-            else
-                return false;
-        }
-
-        // select transfer
-        {
-            std::vector<uint32_t> found;
-            std::set_difference(this->transferFamilies.begin(), this->transferFamilies.end(), base.begin(), base.end(),
-                                std::back_inserter(found));
-            if (found.size() > 0)
-                base.push_back(found[0]);
-            else
-                return false;
-        }
-
-        return true;
-    }
-
-    bool isFullySupported() const
-    {
-        if (this->graphicsFamilies.size() > 0 && this->presentFamilies.size() > 0 &&
-            this->transferFamilies.size() > 0 && this->computeFamilies.size() > 0)
-        {
-            return true;
-        }
-        return false;
-    }
-
-    bool isSuitable() const
-    {
-        return this->graphicsFamilies.size() > 0 && this->presentFamilies.size() > 0;
-    }
-
-    uint32_t getNumQueuesForIndex(const uint32_t &index)
-    {
-        return this->familyIndexQueueCount[index];
-    }
-
-    vk::QueueFlags getSupportForIndex(const uint32_t &index)
-    {
-        return this->familyIndexQueueSupport[index];
-    }
-
-    std::set<uint32_t> getUniques() const
-    {
-        return this->allIndicies;
-    }
-
-    bool getSupportsPresentForIndex(const uint32_t &index)
-    {
-        return this->presentFamilies.find(index) != this->presentFamilies.end();
-    }
-
-  private:
-    std::set<uint32_t> allIndicies = std::set<uint32_t>();
-    std::unordered_map<uint32_t, vk::QueueFlags> familyIndexQueueSupport =
-        std::unordered_map<uint32_t, vk::QueueFlags>();
-    std::unordered_map<uint32_t, uint32_t> familyIndexQueueCount = std::unordered_map<uint32_t, uint32_t>();
-    std::set<uint32_t> graphicsFamilies = std::set<uint32_t>();
-    std::set<uint32_t> presentFamilies = std::set<uint32_t>();
-    std::set<uint32_t> transferFamilies = std::set<uint32_t>();
-    std::set<uint32_t> computeFamilies = std::set<uint32_t>();
-};
 
 class StarDevice : public star::common::IRenderDevice
 {
@@ -232,10 +114,10 @@ class StarDevice : public star::common::IRenderDevice
     };
     StarDevice() = default;
 
-    StarDevice(core::RenderingInstance &renderingInstance,
-               std::set<star::Rendering_Features> requiredFeatures,
-               const std::set<star::Rendering_Device_Features> &requiredRenderingDeviceFeatures, 
-            vk::SurfaceKHR *optionalRenderingSurface = nullptr);
+    StarDevice(core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures,
+               const std::set<star::Rendering_Device_Features> &requiredRenderingDeviceFeatures,
+               const std::vector<const char *> additionalRequiredPhysicalDeviceExtensions,
+               vk::SurfaceKHR *optionalRenderingSurface = nullptr);
 
     ~StarDevice();
 
@@ -245,9 +127,8 @@ class StarDevice : public star::common::IRenderDevice
 
     StarDevice(StarDevice &&other)
         : vulkanDevice(other.vulkanDevice), allocator(std::move(other.allocator)), physicalDevice(other.physicalDevice),
-          extraFamilies(std::move(other.extraFamilies)),
-          currentDeviceQueues(std::move(other.currentDeviceQueues)), defaultQueue(std::move(other.defaultQueue)),
-          dedicatedComputeQueue(std::move(other.dedicatedComputeQueue)),
+          extraFamilies(std::move(other.extraFamilies)), currentDeviceQueues(std::move(other.currentDeviceQueues)),
+          defaultQueue(std::move(other.defaultQueue)), dedicatedComputeQueue(std::move(other.dedicatedComputeQueue)),
           dedicatedTransferQueue(std::move(other.dedicatedTransferQueue)), defaultCommandPool(other.defaultCommandPool),
           transferCommandPool(other.transferCommandPool), computeCommandPool(other.computeCommandPool)
     {
@@ -389,23 +270,29 @@ class StarDevice : public star::common::IRenderDevice
     std::shared_ptr<StarCommandPool> transferCommandPool = nullptr;
     std::shared_ptr<StarCommandPool> computeCommandPool = nullptr;
 
-    const std::vector<const char *> requiredDeviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME, // image presentation is not built into the vulkan core...need to enable it
-                                         // through an extension
-        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
-        VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-        VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-        VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
-
     // Pick a proper physical GPU that matches the required extensions
-    void pickPhysicalDevice(core::RenderingInstance &instance,
-                            const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, vk::SurfaceKHR *optionalRenderingSurface);
+    void pickPhysicalDevice(core::RenderingInstance &instance, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
+                            const std::vector<const char *> &requiredDeviceExtensions,
+                            vk::SurfaceKHR *optionalRenderingSurface);
     // Create a logical device to communicate with the physical device
     void createLogicalDevice(core::RenderingInstance &instance,
                              const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                             const std::set<Rendering_Device_Features> &deviceFeatures, vk::SurfaceKHR *optionalRenderingSurface);
+                             const std::vector<const char *> &requiredDeviceExtensions,
+                             const std::set<Rendering_Device_Features> &deviceFeatures,
+                             vk::SurfaceKHR *optionalRenderingSurface);
 
     void createAllocator(core::RenderingInstance &instance);
+
+    std::vector<const char *> getDefaultPhysicalDeviceExtensions()
+    {
+        return {VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
+                VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
+                VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+                VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+                VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
+                VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+                VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
+    }
 
     /* Helper Functions */
 
@@ -418,7 +305,8 @@ class StarDevice : public star::common::IRenderDevice
     /// Find what queues are available for the device
     /// Queues support different types of commands such as : processing compute commands or memory transfer commands
     /// </summary>
-    static QueueFamilyIndicies FindQueueFamilies(const vk::PhysicalDevice &device, vk::SurfaceKHR *optionalRenderingSurface);
+    static QueueFamilyIndicies FindQueueFamilies(const vk::PhysicalDevice &device,
+                                                 vk::SurfaceKHR *optionalRenderingSurface);
 
     /// <summary>
     /// Check if the given device supports required extensions.

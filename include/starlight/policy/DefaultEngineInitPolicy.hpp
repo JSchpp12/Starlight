@@ -27,11 +27,10 @@ class DefaultEngineInitPolicy
     std::vector<service::Service> getAdditionalDeviceServices();
 
     core::RenderingInstance createRenderingInstance(std::string appName); 
-    
-
+  
   private:
-    uint8_t m_maxNumFramesInFlight{0};
+    uint8_t m_maxNumFramesInFlight{1};
 
-    // service::Service createFrameInFlightControllerService(); 
+    service::Service createFrameInFlightControllerService() const; 
 };
 } // namespace star::policy
