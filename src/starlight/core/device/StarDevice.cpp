@@ -1,6 +1,8 @@
 #include "device/StarDevice.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
+#include "starlight/core/logging/LoggingFactory.hpp"
+
 namespace star::core::device
 {
 StarDevice::StarDevice(core::RenderingInstance &renderingInstance,
@@ -116,6 +118,7 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance,
 
     if ((devices.size() == 0) || !physicalDevice)
     {
+        core::logging::log(boost::log::trivial::fatal, "Failed to find suitable GPU");
         throw std::runtime_error("failed to find suitable GPU!");
     }
 }

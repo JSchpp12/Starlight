@@ -1,8 +1,8 @@
 #pragma once
 
-namespace star::core
+namespace star::policy
 {
-class IncrementalImageEngineLoopController
+class DefaultEngineLoopPolicy
 {
   public:
     void frameUpdate()

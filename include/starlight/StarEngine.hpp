@@ -43,7 +43,12 @@ template <typename T>
 concept ExitLike = requires(T exit) {
     { exit.shouldExit() } -> std::same_as<bool>;
 };
-template <InitLike TEngineInitPolicy, typename TMainLoopPolicy, ExitLike TEngineExitPolicy> class StarEngine
+
+template <typename T>
+concept LoopLike = requires(T loop){
+    {loop.frameUpdate()} -> std::same_as<void>;
+};
+template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngineExitPolicy> class StarEngine
 {
   public:
     StarEngine(TEngineInitPolicy initPolicy, TMainLoopPolicy loopPolicy, TEngineExitPolicy exitPolicy,

@@ -6,7 +6,7 @@ void DefaultEngineInitPolicy::init(uint8_t requestedNumFramesInFLight)
 {
 }
 
-void DefaultEngineInitPolicy::cleanup(vk::Instance instance)
+void DefaultEngineInitPolicy::cleanup(core::RenderingInstance &instance)
 {
 }
 
@@ -14,12 +14,12 @@ star::core::device::StarDevice star::policy::DefaultEngineInitPolicy::createNewD
     core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> &engineRenderingFeatures,
     std::set<Rendering_Device_Features> &engineRenderingDeviceFeatures)
 {
-    return core::device::StarDevice(renderingInstance, engineRenderingFeatures, engineRenderingDeviceFeatures);
+    return core::device::StarDevice(renderingInstance, engineRenderingFeatures, engineRenderingDeviceFeatures, nullptr);
 }
 
 vk::Extent2D star::policy::DefaultEngineInitPolicy::getEngineRenderingResolution()
 {
-    return vk::Extent2D();
+    return vk::Extent2D(1280, 720);
 }
 
 common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFlightTrackingSetup(
@@ -28,7 +28,7 @@ common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFli
     return common::FrameTracker::Setup(0, 1);
 }
 
-std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalServices()
+std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalDeviceServices()
 {
     return std::vector<service::Service>();
 }
