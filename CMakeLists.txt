@@ -518,6 +518,8 @@ set_target_properties(${STARLIGHT_NAME} PROPERTIES
     DEBUG_POSTFIX "d"
 )
 
+add_library(Starlight::starlight ALIAS starlight)
+
 include(GNUInstallDirs)
 
 install(TARGETS ${STARLIGHT_NAME} shaderc_combined
