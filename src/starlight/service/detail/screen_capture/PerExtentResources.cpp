@@ -33,15 +33,14 @@ static std::vector<star::StarTextures::Texture> CreateImages(DeviceInfo *deviceI
 {
     assert(deviceInfo != nullptr && deviceInfo->flightTracker != nullptr);
     auto policy = CreateImagePolicy(deviceInfo, targetImageFormat, extent);
-
-    std::vector<StarTextures::Texture> result =
-        std::vector<StarTextures::Texture>(deviceInfo->flightTracker->getSetup().getNumFramesInFlight());
     auto tPool = deviceInfo->device->getCommandPool(Queue_Type::Ttransfer);
     auto targetQueue = deviceInfo->device->getDefaultQueue(star::Queue_Type::Ttransfer);
-    auto cmd = std::make_unique<StarCommandBuffer>(deviceInfo->device->getVulkanDevice(),
-                                                   deviceInfo->flightTracker->getSetup().getNumFramesInFlight(), tPool,
+    const size_t numTargetImages =
+        static_cast<size_t>(deviceInfo->flightTracker->getSetup().getNumUniqueTargetFramesForFinalization());
+    auto cmd = std::make_unique<StarCommandBuffer>(deviceInfo->device->getVulkanDevice(), numTargetImages, tPool,
                                                    Queue_Type::Ttransfer, true, false);
-    for (uint8_t i = 0; i < deviceInfo->flightTracker->getSetup().getNumFramesInFlight(); i++)
+    std::vector<StarTextures::Texture> result = std::vector<StarTextures::Texture>(numTargetImages);
+    for (size_t i{0}; i < numTargetImages; i++)
     {
         result[i] = policy.create();
 
@@ -71,7 +70,7 @@ static std::vector<star::StarTextures::Texture> CreateImages(DeviceInfo *deviceI
         cmd->submit(i, targetQueue.getVulkanQueue());
     }
 
-    for (uint8_t i = 0; i < deviceInfo->flightTracker->getSetup().getNumFramesInFlight(); i++)
+    for (size_t i{0}; i < numTargetImages; i++)
     {
         cmd->wait(i);
     }

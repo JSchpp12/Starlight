@@ -3,6 +3,7 @@
 #include "StarScene.hpp"
 #include "core/SystemContext.hpp"
 
+#include <star_common/FrameTracker.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,7 +18,7 @@ class StarApplication
 
     virtual void init() = 0;
 
-    virtual void frameUpdate(core::SystemContext &systemContext, const uint8_t &frameInFlightIndex) = 0;
+    virtual void frameUpdate(core::SystemContext &systemContext) = 0;
 
     // virtual void onKeyPress(int key, int scancode, int mods) override {};
 

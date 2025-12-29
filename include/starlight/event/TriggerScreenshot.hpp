@@ -21,21 +21,20 @@ constexpr std::string TriggerScreenshotTypeName()
 class TriggerScreenshot : public star::common::IEvent
 {
   public:
-    TriggerScreenshot(StarTextures::Texture targetTexture, Handle &targetCommandBuffer, Handle &calleeRegistration,
-                      const uint8_t &frameInFlightIndex, std::string screenshotName, bool isTargetPartOfFinalization,
-                      Handle &targetTextureReadySemaphore)
+    TriggerScreenshot(StarTextures::Texture targetTexture, std::string screenshotName, Handle &targetCommandBuffer,
+                      Handle &calleeRegistration, Handle &targetTextureReadySemaphore)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
-          m_targetTexture(std::move(targetTexture)), m_targetCommandBuffer(targetCommandBuffer),
-          m_calleeRegistration(calleeRegistration), m_frameInFlightIndex(frameInFlightIndex),
-          m_screenshotName(std::move(screenshotName)), m_targetTextureReadySemaphore(&targetTextureReadySemaphore)
+          m_targetTexture(std::move(targetTexture)), m_screenshotName(std::move(screenshotName)),
+          m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration),
+          m_targetTextureReadySemaphore(&targetTextureReadySemaphore)
     {
     }
     TriggerScreenshot(StarTextures::Texture targetTexture, Handle &targetCommandBuffer, Handle &calleeRegistration,
-                      const uint8_t &frameInFlightIndex, std::string screenshotName, bool isTargetPartOfFinalization)
+                      std::string screenshotName)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
-          m_targetTexture(std::move(targetTexture)), m_targetCommandBuffer(targetCommandBuffer),
-          m_calleeRegistration(calleeRegistration), m_frameInFlightIndex(frameInFlightIndex),
-          m_screenshotName(std::move(screenshotName)), m_targetTextureReadySemaphore(nullptr)
+          m_targetTexture(std::move(targetTexture)), m_screenshotName(std::move(screenshotName)),
+          m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration),
+          m_targetTextureReadySemaphore(nullptr)
     {
     }
     virtual ~TriggerScreenshot() = default;
@@ -56,31 +55,16 @@ class TriggerScreenshot : public star::common::IEvent
     {
         return m_calleeRegistration;
     }
-    const uint8_t &getFrameInFlight() const
-    {
-        return m_frameInFlightIndex;
-    }
     const std::string &getName() const
     {
         return m_screenshotName;
     }
-    bool &getIsTargetPartOfFinalization()
-    {
-        return m_isTargetPartOfFinalization;
-    }
-
-    const bool &getIsTargetPartOfFinalization() const
-    {
-        return m_isTargetPartOfFinalization;
-    }
 
   private:
     StarTextures::Texture m_targetTexture;
+    std::string m_screenshotName;
     Handle &m_targetCommandBuffer;
     Handle &m_calleeRegistration;
-    const uint8_t &m_frameInFlightIndex;
-    std::string m_screenshotName;
-    bool m_isTargetPartOfFinalization;
     Handle *m_targetTextureReadySemaphore = nullptr;
 };
 } // namespace star::event

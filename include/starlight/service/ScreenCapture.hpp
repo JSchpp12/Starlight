@@ -22,15 +22,12 @@ namespace star::service
 {
 
 template <typename TCopyPolicy>
-concept CopyPolicyLike =
-    requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo, detail::screen_capture::CopyPlan &copyPlan,
-             const Handle &calleeHandle, const uint8_t &frameInFlightIndex) {
-        { c.init(deviceInfo) } -> std::same_as<void>;
-        { c.registerWithCommandBufferManager() } -> std::same_as<void>;
-        {
-            c.triggerSubmission(copyPlan, frameInFlightIndex)
-        } -> std::same_as<detail::screen_capture::GPUSynchronizationInfo>;
-    };
+concept CopyPolicyLike = requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
+                                  detail::screen_capture::CopyPlan &copyPlan, const Handle &calleeHandle) {
+    { c.init(deviceInfo) } -> std::same_as<void>;
+    { c.registerWithCommandBufferManager() } -> std::same_as<void>;
+    { c.triggerSubmission(copyPlan) } -> std::same_as<detail::screen_capture::GPUSynchronizationInfo>;
+};
 
 template <typename TWorkerControllerPolicy>
 concept WorkerPolicyLike =
@@ -47,6 +44,17 @@ concept CreateDepsPolicyLike =
             c.create(deviceInfo, targetTexture, commandBufferContainingTarget, targetTextureReadySemaphore)
         } -> std::same_as<detail::screen_capture::CalleeRenderDependencies>;
     };
+/**
+ * @brief only works with image attached to swap chain --> limitation caused by frame in flight tracking.
+ * Using the targetImageIndex means that the copy will create num of dependencies matching the number of frames used in
+ * the swapChain or the target finalization renderer. If some image is targeted from a smaller value of frame in
+ * flight, such as an offscreen renderer which only has a number of images matching the num of frames in flight there
+ * might be some bugs
+ *
+ * @tparam TWorkerControllerPolicy
+ * @tparam TCreateDependenciesPolicy
+ * @tparam TCopyPolicy
+ */
 template <WorkerPolicyLike TWorkerControllerPolicy, typename TCreateDependenciesPolicy, CopyPolicyLike TCopyPolicy>
 class ScreenCapture
 {
@@ -113,11 +121,11 @@ class ScreenCapture
         }
 
         auto copyPlan = m_actionRouter.decide(m_calleeDependencyTracker.get(screenEvent.getCalleeRegistration()),
-                                              screenEvent.getCalleeRegistration(), screenEvent.getFrameInFlight());
+                                              screenEvent.getCalleeRegistration(),
+                                              m_deviceInfo.flightTracker->getCurrent().getFinalTargetImageIndex());
 
         // need way to wait for commands to be submitted BEFORE telling worker to start?
-        detail::screen_capture::GPUSynchronizationInfo syncInfo =
-            m_copyPolicy.triggerSubmission(copyPlan, screenEvent.getFrameInFlight());
+        detail::screen_capture::GPUSynchronizationInfo syncInfo = m_copyPolicy.triggerSubmission(copyPlan);
 
         uint64_t signalValue;
         common::helper::SafeCast(syncInfo.signalValue, signalValue);

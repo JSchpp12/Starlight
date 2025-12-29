@@ -49,6 +49,7 @@ void FrameInFlightControllerService::shutdown()
 void FrameInFlightControllerService::prepForNextFrame(common::FrameTracker *frameTracker)
 {
     frameTracker->getCurrent().setFrameInFlightIndex(incrementNextFrameInFlight(*frameTracker));
+    frameTracker->triggerIncrementForCurrentFrame();
 }
 
 void FrameInFlightControllerService::cleanup(common::EventBus &eventBus)

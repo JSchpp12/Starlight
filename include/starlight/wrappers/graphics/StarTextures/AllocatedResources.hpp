@@ -11,7 +11,7 @@ class AllocatedResources : public Resources
     VmaAllocation allocationMemory = VmaAllocation();
 
     AllocatedResources(const vk::Image &image, const VmaAllocation &allocationMemory, VmaAllocator allocator)
-        : Resources(image), allocationMemory(allocationMemory), m_allocator(std::move(allocator)) {};
+        : Resources(image), allocationMemory(allocationMemory), m_allocator(std::move(allocator)){};
     AllocatedResources(const vk::Image &image, const std::unordered_map<vk::Format, vk::ImageView> &views,
                        const VmaAllocation &allocationMemory, VmaAllocator allocator)
         : Resources(image, views), allocationMemory(allocationMemory), m_allocator(std::move(allocator))
@@ -27,10 +27,13 @@ class AllocatedResources : public Resources
 
     virtual void cleanupRender(vk::Device &device) override
     {
-        Resources::cleanupRender(device);
+        if (this->image != VK_NULL_HANDLE)
+        {
+            Resources::cleanupRender(device);
+            vmaDestroyImage(m_allocator, this->image, this->allocationMemory);
 
-        vmaDestroyImage(m_allocator, this->image, this->allocationMemory);
-        this->image = VK_NULL_HANDLE;
+            this->image = VK_NULL_HANDLE;
+        }
     }
 
   private:

@@ -45,8 +45,8 @@ concept ExitLike = requires(T exit) {
 };
 
 template <typename T>
-concept LoopLike = requires(T loop){
-    {loop.frameUpdate()} -> std::same_as<void>;
+concept LoopLike = requires(T loop) {
+    { loop.frameUpdate() } -> std::same_as<void>;
 };
 template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngineExitPolicy> class StarEngine
 {
@@ -178,9 +178,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             // check if any new objects have been added
             m_systemManager.getContext(m_defaultDevice).prepareForNextFrame();
 
-            m_application.frameUpdate(
-                m_systemManager,
-                m_systemManager.getContext(m_defaultDevice).getFrameTracker().getCurrent().getFrameInFlightIndex());
+            m_application.frameUpdate(m_systemManager);
             currentScene->frameUpdate(
                 m_systemManager.getContext(m_defaultDevice),
                 m_systemManager.getContext(m_defaultDevice).getFrameTracker().getCurrent().getFrameInFlightIndex());

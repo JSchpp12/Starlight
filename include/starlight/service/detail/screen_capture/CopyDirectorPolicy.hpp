@@ -25,7 +25,7 @@ class DefaultCopyPolicy
 
     void init(DeviceInfo &deviceInfo);
 
-    GPUSynchronizationInfo triggerSubmission(CopyPlan &copyPlan, const uint8_t &frameInFlightIndex);
+    GPUSynchronizationInfo triggerSubmission(CopyPlan &copyPlan);
 
     void registerWithCommandBufferManager();
 
@@ -43,28 +43,7 @@ class DefaultCopyPolicy
     ExecuteCmdBuffer<CopyCmdPolicy> m_copyCmds;
     ExecuteCmdBuffer<BlitCmdPolicy> m_blitCmds;
 
-    void prepareInProgressResources(CopyPlan &extentResources, const uint8_t &frameInFlightIndex) noexcept;
-
-    void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                             const uint64_t &frameIndex);
-
-    void recordCopyCommands(vk::CommandBuffer &commandBuffer) const;
-
-    void recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk::Image targetSrcImage) const;
-
-    void addMemoryDependenciesToPrepForCopy(vk::CommandBuffer &commandBuffer) const;
-
-    void addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &commandBuffer) const;
-
-    std::vector<vk::ImageMemoryBarrier2> getImageBarriersForPrep() const;
-
-    std::vector<vk::ImageMemoryBarrier2> getImageBarriersForCleanup() const;
-
-    vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const int &frameIndexToBeDrawn,
-                               std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
-                               std::vector<vk::Semaphore> dataSemaphores,
-                               std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                               std::vector<std::optional<uint64_t>> previousSignaledValues);
+    void prepareInProgressResources(CopyPlan &extentResources) noexcept;
 
     void createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight);
 
