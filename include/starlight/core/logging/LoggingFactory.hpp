@@ -75,5 +75,9 @@ template <typename... Args> inline void debug(Args &&...args)
 {
     log(to_boost(LogLevel::debug), std::forward<Args>(args)...);
 }
+template <typename... Args> inline void info(Args &&...args)
+{
+    log(to_boost(LogLevel::info), std::forward<Args>(args)...);
+}
 
 } // namespace star::core::logging

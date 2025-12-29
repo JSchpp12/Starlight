@@ -2,13 +2,15 @@
 
 #include "core/graphics/shader/BasicIncluder.hpp"
 #include "logging/LoggingFactory.hpp"
+#include "starlight/core/Exceptions.hpp"
+
 namespace star
 {
 
 #ifdef NDEBUG
 bool Compiler::compileDebug = false;
 #else
-bool Compiler::compileDebug = true; 
+bool Compiler::compileDebug = true;
 #endif
 
 std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool optimize)
@@ -27,8 +29,9 @@ std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool opti
 
     if (compileResult.GetCompilationStatus() != shaderc_compilation_status_success)
     {
-        std::cerr << compileResult.GetErrorMessage();
-        throw std::runtime_error("Failed to compile shader");
+        std::ostringstream oss;
+        oss << "Failed to compile shader with error: " << compileResult.GetErrorMessage() << std::endl;
+        STAR_THROW(oss.str());
     }
     return std::vector<uint32_t>{compileResult.cbegin(), compileResult.cend()};
 }
@@ -82,7 +85,8 @@ shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath)
 
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
     options.SetTargetSpirv(shaderc_spirv_version_1_6);
-    if (!m_precompilerMacros.empty()){
+    if (!m_precompilerMacros.empty())
+    {
         options.AddMacroDefinition(m_precompilerMacros);
     }
 
@@ -99,7 +103,8 @@ shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath)
         core::logging::log(boost::log::trivial::error, "Unable to find parent directory. Includes may not function");
         parent = filePath;
     }
-    options.SetIncluder(std::make_unique<core::graphics::shader::BasicIncluder>(std::vector<std::string>{parent.string()}));
+    options.SetIncluder(
+        std::make_unique<core::graphics::shader::BasicIncluder>(std::vector<std::string>{parent.string()}));
 
     return options;
 }
