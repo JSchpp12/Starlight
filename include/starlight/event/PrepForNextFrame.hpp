@@ -3,6 +3,8 @@
 #include <star_common/FrameTracker.hpp>
 #include <star_common/IEvent.hpp>
 
+#include <string_view>
+
 namespace star::event
 {
 constexpr std::string_view GetPrepForNextFrameEventTypeName = "star::event::FramePrep";

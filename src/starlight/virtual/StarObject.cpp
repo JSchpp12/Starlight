@@ -165,6 +165,11 @@ star::StarObjectInstance &star::StarObject::getInstance(const size_t &index)
     return m_instanceInfo.getInstance(index);
 }
 
+const star::StarObjectInstance &star::StarObject::getInstance(const size_t &index) const
+{
+    return m_instanceInfo.getInstance(index);
+}
+
 void star::StarObject::prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
                                   const uint8_t &numFramesInFlight, star::StarShaderInfo::Builder fullEngineBuilder,
                                   Handle sharedPipeline)

@@ -5,24 +5,24 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 
-#include <iostream>
+#include <cassert>
 
 star::StarEntity::StarEntity()
-    : rotationMat(glm::identity<glm::mat4>()), translationMat(glm::identity<glm::mat4>()),
-      scaleMat(glm::identity<glm::mat4>())
+    : rotationMat(glm::mat4(1.0f)), translationMat(glm::mat4(1.0f)),
+      scaleMat(glm::mat4(1.0f))
 {
 }
 
 star::StarEntity::StarEntity(const glm::vec3 &position)
-    : rotationMat(glm::identity<glm::mat4>()), translationMat(glm::identity<glm::mat4>()),
-      scaleMat(glm::identity<glm::mat4>())
+    : rotationMat(glm::mat4(1.0f)), translationMat(glm::mat4(1.0f)),
+      scaleMat(glm::mat4(1.0f))
 {
     this->setPosition(position);
 }
 
 star::StarEntity::StarEntity(const glm::vec3 &position, const glm::vec3 &scale)
-    : rotationMat(glm::identity<glm::mat4>()), translationMat(glm::identity<glm::mat4>()),
-      scaleMat(glm::identity<glm::mat4>())
+    : rotationMat(glm::mat4(1.0f)), translationMat(glm::mat4(1.0f)),
+      scaleMat(glm::mat4(1.0f))
 {
     this->setPosition(position);
     this->setScale(scale);
@@ -30,13 +30,16 @@ star::StarEntity::StarEntity(const glm::vec3 &position, const glm::vec3 &scale)
 
 void star::StarEntity::setScale(const glm::vec3 &scale)
 {
-    if (scale.x != scale.y && scale.y != scale.z)
-    {
-        std::cout
-            << "WARNING: Non-uniform scaling applied to object. This WILL break axis aligned bounding box calculations."
-            << std::endl;
-    }
     scaleMat = glm::scale(scaleMat, scale);
+}
+
+glm::vec3 star::StarEntity::getScale() const
+{
+    glm::mat4 RS = rotationMat * scaleMat; // exclude translation
+    glm::vec3 col0 = glm::vec3(RS[0]);     // X basis (affected by scale)
+    glm::vec3 col1 = glm::vec3(RS[1]);     // Y basis
+    glm::vec3 col2 = glm::vec3(RS[2]);     // Z basis
+    return glm::vec3(glm::length(col0), glm::length(col1), glm::length(col2));
 }
 
 void star::StarEntity::setPosition(const glm::vec3 &newPosition)

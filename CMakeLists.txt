@@ -429,6 +429,7 @@ target_link_libraries(${STARLIGHT_NAME}
         nlohmann_json::nlohmann_json
         Vulkan::Vulkan
         shaderc_combined
+        GPUOpen::VulkanMemoryAllocator
     PRIVATE
         tinyobjloader::tinyobjloader
         GPUOpen::VulkanMemoryAllocator

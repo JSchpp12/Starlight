@@ -204,7 +204,7 @@ inline std::string summarizeExtensions(const std::vector<vk::ExtensionProperties
     // Sort for stable output
     auto sorted = exts;
     std::sort(sorted.begin(), sorted.end(),
-              [](auto &a, auto &b) { return std::string(a.extensionName) < std::string(b.extensionName); });
+              [](auto &a, auto &b) { return std::string(a.extensionName.data()) < std::string(b.extensionName.data()); });
     for (const auto &e : sorted)
     {
         oss << "  " << e.extensionName << " (ver " << e.specVersion << ")\n";

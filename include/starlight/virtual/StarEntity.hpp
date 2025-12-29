@@ -20,11 +20,7 @@ class StarEntity
         return glm::vec3{matrixCopy[3][0], matrixCopy[3][1], matrixCopy[3][2]};
     }
 
-    glm::vec3 getScale() const
-    {
-        glm::mat4 matrixCopy = translationMat * rotationMat * scaleMat;
-        return glm::vec3{matrixCopy[0][0], matrixCopy[1][1], matrixCopy[2][2]};
-    }
+    glm::vec3 getScale() const;
 
     virtual void setScale(const glm::vec3 &scale);
 
@@ -79,9 +75,9 @@ class StarEntity
 
   protected:
     glm::vec3 positionCoords = glm::vec3();
-    glm::mat4 rotationMat = glm::mat4();
-    glm::mat4 translationMat = glm::mat4();
-    glm::mat4 scaleMat = glm::mat4();
+    glm::mat4 rotationMat = glm::mat4(1.0f);
+    glm::mat4 translationMat = glm::mat4(1.0f);
+    glm::mat4 scaleMat = glm::mat4(1.0f);
 
   private:
     glm::vec4 xAxis = glm::vec4{1.0f, 0.0, 0.0f, 0.0f};

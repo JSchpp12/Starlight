@@ -12,12 +12,9 @@ include(CMakeFindDependencyMacro)
 # ---- Re-find dependencies that your exported targets link to
 # Keep these in sync with target_link_libraries(starlight PUBLIC ...)
 
-# Vulkan (SDK)
 find_dependency(Vulkan @VULKAN_VERSION@ REQUIRED)
 find_dependency(spirv_reflect CONFIG REQUIRED)
 find_dependency(shaderc REQUIRED)
-
-# Header-only / imported deps (examples; adjust to your actual link deps)
 find_dependency(glm CONFIG REQUIRED)
 find_dependency(VulkanMemoryAllocator CONFIG REQUIRED)     # VMA
 find_dependency(nlohmann_json 3.12.0 REQUIRED)

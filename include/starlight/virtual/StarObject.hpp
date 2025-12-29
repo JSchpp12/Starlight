@@ -87,6 +87,7 @@ class StarObject
     StarObjectInstance &createInstance();
 
     StarObjectInstance &getInstance(const size_t &index = 0);
+    const StarObjectInstance &getInstance(const size_t &index = 0) const;
 
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                              const Handle &targetCommandBuffer);
@@ -172,6 +173,7 @@ class StarObject
 
         void setManagersToUpdate()
         {
+            m_infoManagerInstanceModel->setToUpdate();
             m_infoManagerInstanceNormal->setForUpdate();
         }
     };
