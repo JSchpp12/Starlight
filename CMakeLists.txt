@@ -57,7 +57,6 @@ add_subdirectory("extern/shaderc")
 
 set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/StarEngine.cpp" 
-    "src/starlight/DefaultFinalRenderControlPolicy.cpp"
     "src/starlight/data_structure/dynamic/ThreadSharedObjectPool.cpp"
     "src/starlight/graphics/PipelineFactory.cpp"
     "src/starlight/core/logging/LoggingFactory.cpp"
@@ -130,6 +129,9 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/event/TriggerScreenshot.cpp"
     "src/starlight/event/RenderReadyForFinalization.cpp"
     "src/starlight/event/PrepForNextFrame.cpp"
+    "src/starlight/event/FrameComplete.cpp"
+    "src/starlight/event/policy/ListenForPrepForNextFramePolicy.cpp"
+    "src/starlight/event/policy/ListenForFrameCompletePolicy.cpp"
     "src/starlight/core/service/Service.cpp"
     "src/starlight/service/FrameInFlightControllerService.cpp"
     "src/starlight/service/ScreenCaptureFactory.cpp"
@@ -148,6 +150,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/detail/screen_capture/BlitCmdPolicy.cpp"
     "src/starlight/service/detail/screen_capture/CopyCmdPolicy.cpp"
     "src/starlight/service/detail/screen_capture/ExecuteCmdBuffer.cpp"
+    "src/starlight/service/HeadlessRenderResultWriteService.cpp"
     "src/starlight/core/service/InitParameters.cpp"
     "src/starlight/templates/StarApplication.cpp"
     "src/starlight/systems/StarRenderGroup.cpp" 
@@ -212,14 +215,13 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/DefaultEngineInitPolicy.cpp"
     "src/starlight/policy/EngineExitAfterNumberOfFrames.cpp"
     "src/starlight/policy/DefaultEngineLoopPolicy.cpp"
-    "src/starlight/policy/ListenForPrepForNextFramePolicy.cpp"
+    "src/starlight/core/renderer/HeadlessRenderer.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/StarEngine.hpp"
-    "include/starlight/DefaultFinalRenderControlPolicy.hpp"
     "include/starlight/data_structure/dynamic/ThreadSharedObjectPool.hpp"
     "include/starlight/graphics/PipelineFactory.hpp"
     "include/starlight/core/logging/LoggingFactory.hpp"
@@ -303,6 +305,9 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/event/TriggerScreenshot.hpp"
     "include/starlight/event/RenderReadyForFinalization.hpp"
     "include/starlight/event/PrepForNextFrame.hpp"
+    "include/starlight/event/FrameComplete.hpp"
+    "include/starlight/event/policy/ListenForFrameCompletePolicy.hpp"
+    "include/starlight/event/policy/ListenForPrepForNextFramePolicy.hpp"
     "include/starlight/core/graphics/shader/BasicIncluder.hpp"
     "include/starlight/service/Service.hpp"
     "include/starlight/service/FrameInFlightControllerService.hpp"
@@ -324,6 +329,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/service/detail/screen_capture/CopyCmdPolicy.hpp"
     "include/starlight/service/detail/screen_capture/ExecuteCmdBuffer.hpp"
     "include/starlight/service/InitParameters.hpp"
+    "include/starlight/service/HeadlessRenderResultWriteService.hpp"
     "include/starlight/managers/ManagerRenderResource.hpp"
     "include/starlight/systems/StarRenderGroup.hpp"
     "include/starlight/internals/CommandBufferContainer.hpp"
@@ -368,8 +374,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/policy/DefaultEngineInitPolicy.hpp"
     "include/starlight/policy/EngineExitAfterNumberOfFrames.hpp"
     "include/starlight/policy/DefaultEngineLoopPolicy.hpp"
-    "include/starlight/policy/ListenForPrepForNextFramePolicy.hpp"
     "include/starlight/core/Exceptions.hpp"
+    "include/starlight/core/renderer/HeadlessRenderer.hpp"
     #header only
     "include/starlight/util/PhysicalDeviceLogging.hpp"
     "include/starlight/common/entities/Light.hpp"

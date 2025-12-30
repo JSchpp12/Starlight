@@ -32,5 +32,7 @@ class DefaultEngineInitPolicy
     uint8_t m_maxNumFramesInFlight{1};
 
     service::Service createFrameInFlightControllerService() const; 
+
+    service::Service createHeadlessCaptureService() const;
 };
 } // namespace star::policy

@@ -1,8 +1,9 @@
 #include "starlight/policy/DefaultEngineInitPolicy.hpp"
 
 #include "starlight/common/ConfigFile.hpp"
-#include "starlight/service/FrameInFlightControllerService.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/service/FrameInFlightControllerService.hpp"
+#include "starlight/service/HeadlessRenderResultWriteService.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -30,15 +31,17 @@ vk::Extent2D star::policy::DefaultEngineInitPolicy::getEngineRenderingResolution
     uint32_t width;
     {
         int w{std::stoi(star::ConfigFile::getSetting(Config_Settings::resolution_x))};
-        if (!star::common::helper::SafeCast(w,width)){
+        if (!star::common::helper::SafeCast(w, width))
+        {
             STAR_THROW("Failed to parse and process config setting resolution_x");
         }
     }
 
-    uint32_t height; 
+    uint32_t height;
     {
         int h{std::stoi(star::ConfigFile::getSetting(Config_Settings::resolution_y))};
-        if (!star::common::helper::SafeCast(h, height)){
+        if (!star::common::helper::SafeCast(h, height))
+        {
             STAR_THROW("Failed to parse and process config settings resolution_y");
         }
     }
@@ -54,14 +57,20 @@ common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFli
 
 std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalDeviceServices()
 {
-    std::vector<service::Service> services; 
-    services.emplace_back(createFrameInFlightControllerService()); 
-    return services; 
+    std::vector<service::Service> services;
+    services.emplace_back(createFrameInFlightControllerService());
+    services.emplace_back(createHeadlessCaptureService());
+    return services;
 }
 
-service::Service star::policy::DefaultEngineInitPolicy::createFrameInFlightControllerService() const
+service::Service DefaultEngineInitPolicy::createFrameInFlightControllerService() const
 {
     return service::Service{service::FrameInFlightControllerService{}};
+}
+
+service::Service DefaultEngineInitPolicy::createHeadlessCaptureService() const
+{
+    return service::Service{service::HeadlessRenderResultWriteService{}};
 }
 
 core::RenderingInstance DefaultEngineInitPolicy::createRenderingInstance(std::string appName)

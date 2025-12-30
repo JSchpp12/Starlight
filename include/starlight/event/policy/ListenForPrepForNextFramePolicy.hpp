@@ -7,6 +7,11 @@
 
 namespace star::policy
 {
+template <typename T>
+concept ListenerLike = requires(T listener, common::FrameTracker &frameTracker) {
+    { listener.prepForNextFrame(frameTracker) } -> std::same_as<void>;
+};
+
 template <typename T> class ListenForPrepForNextFramePolicy
 {
   public:
@@ -64,4 +69,4 @@ template <typename T> class ListenForPrepForNextFramePolicy
         }
     }
 };
-} // namespace star::windowing
+} // namespace star::policy

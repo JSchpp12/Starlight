@@ -1,6 +1,6 @@
 #pragma once
 
-#include "starlight/policy/ListenForPrepForNextFramePolicy.hpp"
+#include "starlight/event/policy/ListenForPrepForNextFramePolicy.hpp"
 #include "starlight/service/InitParameters.hpp"
 #include <star_common/EventBus.hpp>
 

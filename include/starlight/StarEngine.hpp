@@ -12,6 +12,7 @@
 #include "core/logging/LoggingFactory.hpp"
 #include "event/EnginePhaseComplete.hpp"
 #include "event/RenderReadyForFinalization.hpp"
+#include "event/FrameComplete.hpp"
 #include "service/ScreenCaptureFactory.hpp"
 
 #include <star_common/FrameTracker.hpp>
@@ -196,6 +197,8 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
                                                         allBuffersSubmitted));
 
             this->m_systemManager.getContext(m_defaultDevice).getTransferWorker().update();
+
+            m_systemManager.getContext(m_defaultDevice).getEventBus().emit(star::event::FrameComplete{});
         }
 
         m_systemManager.getContext(m_defaultDevice).waitIdle();

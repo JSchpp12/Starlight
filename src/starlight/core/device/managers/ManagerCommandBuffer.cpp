@@ -73,7 +73,7 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     StarDevice &device, const common::FrameTracker &frameTracker, const uint64_t &currentFrameIndex)
 {
     // determine the order of buffers to execute
-    assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- cannot happen");
+    assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- not a valid rendering setup");
 
     // submit before
     std::vector<vk::Semaphore> beforeSemaphores = this->buffers.submitGroupWhenReady(

@@ -6,6 +6,7 @@ FrameInFlightControllerService::FrameInFlightControllerService()
     : star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>(*this)
 {
 }
+
 FrameInFlightControllerService::FrameInFlightControllerService(FrameInFlightControllerService &&other)
     : star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>{*this},
       m_deviceEventBus{other.m_deviceEventBus}, m_deviceFrameTracker{other.m_deviceFrameTracker}
@@ -16,6 +17,7 @@ FrameInFlightControllerService::FrameInFlightControllerService(FrameInFlightCont
         initListeners(*m_deviceEventBus);
     }
 }
+
 FrameInFlightControllerService &FrameInFlightControllerService::operator=(FrameInFlightControllerService &&other)
 {
     if (this != &other)
@@ -29,11 +31,15 @@ FrameInFlightControllerService &FrameInFlightControllerService::operator=(FrameI
             initListeners(*m_deviceEventBus);
         }
     }
+
     return *this;
 }
 
 void FrameInFlightControllerService::init(const uint8_t &numFramesInFlight)
 {
+    assert(m_deviceEventBus != nullptr); 
+
+    initListeners(*m_deviceEventBus);
 }
 
 void FrameInFlightControllerService::setInitParameters(star::service::InitParameters &params)
@@ -44,6 +50,9 @@ void FrameInFlightControllerService::setInitParameters(star::service::InitParame
 
 void FrameInFlightControllerService::shutdown()
 {
+    assert(m_deviceEventBus != nullptr); 
+
+    cleanup(*m_deviceEventBus);
 }
 
 void FrameInFlightControllerService::prepForNextFrame(common::FrameTracker *frameTracker)
