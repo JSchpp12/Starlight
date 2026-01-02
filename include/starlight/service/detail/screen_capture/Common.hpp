@@ -25,7 +25,6 @@ struct InUseResourceInformation
     vk::Image targetBlitImage = VK_NULL_HANDLE;
     vk::Filter blitFilter;
     vk::Semaphore *targetTextureReadySemaphore = nullptr;
-    vk::Semaphore *semaphoreForCopyDone = nullptr;
     vk::Semaphore *timelineSemaphoreForCopyDone = nullptr;
     vk::Semaphore *semaphoreForBlitDone = nullptr;
     vk::Queue queueToUse = VK_NULL_HANDLE;

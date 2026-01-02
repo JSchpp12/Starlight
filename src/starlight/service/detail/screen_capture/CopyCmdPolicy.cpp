@@ -107,11 +107,14 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
                                           std::vector<vk::PipelineStageFlags> dataWaitPoints,
                                           std::vector<std::optional<uint64_t>> previousSignaledValues)
 {
-    assert(m_inUseInfo->semaphoreForCopyDone && m_inUseInfo->timelineSemaphoreForCopyDone);
+    assert( m_inUseInfo->timelineSemaphoreForCopyDone);
+
+    const size_t frameIndex = static_cast<size_t>(frameTracker.getCurrent().getFinalTargetImageIndex());
+    const vk::Semaphore &signalSemaphore = buffer.getCompleteSemaphores()[frameIndex];
 
     const std::vector<uint64_t> signalSemaphoreValues{m_inUseInfo->numTimesFrameProcessed, 0};
     const std::vector<vk::Semaphore> signalTimelineSemaphores{*m_inUseInfo->timelineSemaphoreForCopyDone,
-                                                              *m_inUseInfo->semaphoreForCopyDone};
+                                                              signalSemaphore};
     uint32_t semaphoreCount = 0;
     star::common::helper::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
 
@@ -143,7 +146,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
     assert(m_inUseInfo->queueToUse != nullptr);
     m_inUseInfo->queueToUse.submit({submitInfo});
 
-    return *m_inUseInfo->semaphoreForCopyDone;
+    return signalSemaphore;
 }
 
 void CopyCmdPolicy::recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk::Image targetSrcImage) const
@@ -174,6 +177,7 @@ void CopyCmdPolicy::recordCopyCommands(vk::CommandBuffer &commandBuffer) const
 {
     recordCopyImageToBuffer(commandBuffer, m_inUseInfo->targetImage);
 }
+
 void CopyCmdPolicy::addMemoryDependenciesToPrepForCopy(vk::CommandBuffer &commandBuffer)
 {
     // assuming that the target image is not in the proper layout for transfer SRC

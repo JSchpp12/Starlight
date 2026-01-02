@@ -8,16 +8,21 @@
 namespace star::policy
 {
 template <typename T>
-concept ListenerLike = requires(T listener, common::FrameTracker &frameTracker) {
-    { listener.prepForNextFrame(frameTracker) } -> std::same_as<void>;
+concept ListenerForPrepForNextFrameLike = requires(T listener, const event::PrepForNextFrame &event, bool &keepAlive) {
+    { listener.onPrepForNextFrame(event, keepAlive) } -> std::same_as<void>;
 };
 
 template <typename T> class ListenForPrepForNextFramePolicy
 {
   public:
-    ListenForPrepForNextFramePolicy(T &me) : m_listenerHandle{}, m_me{me}
+    explicit ListenForPrepForNextFramePolicy(T &me) : m_listenerHandle(), m_me(me)
     {
     }
+    ListenForPrepForNextFramePolicy(const ListenForPrepForNextFramePolicy &) = delete;
+    ListenForPrepForNextFramePolicy &operator=(const ListenForPrepForNextFramePolicy &) = delete;
+    ListenForPrepForNextFramePolicy(ListenForPrepForNextFramePolicy &&) = delete;
+    ListenForPrepForNextFramePolicy &operator=(ListenForPrepForNextFramePolicy &&) = delete;
+    ~ListenForPrepForNextFramePolicy() = default;
 
     void init(common::EventBus &eventBus)
     {
@@ -32,7 +37,7 @@ template <typename T> class ListenForPrepForNextFramePolicy
         }
     }
 
-  private:
+  protected:
     Handle m_listenerHandle;
     T &m_me;
 
@@ -51,9 +56,7 @@ template <typename T> class ListenForPrepForNextFramePolicy
     {
         const auto &event = static_cast<const event::PrepForNextFrame &>(e);
 
-        m_me.prepForNextFrame(event.getFrameTracker());
-
-        keepAlive = true;
+        m_me.onPrepForNextFrame(event, keepAlive);
     }
 
     Handle *getHandleForEventBus()

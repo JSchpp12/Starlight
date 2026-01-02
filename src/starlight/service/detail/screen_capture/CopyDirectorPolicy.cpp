@@ -75,10 +75,11 @@ GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
     assert(m_deviceInfo->commandManager != nullptr);
     m_copyCmds.trigger(*m_deviceInfo->commandManager);
 
-    // m_deviceInfo->commandManager->submitDynamicBuffer(m_commandBuffer);
-
     const size_t index = static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFinalTargetImageIndex());
-    return GPUSynchronizationInfo{.semaphore = *m_doneSemaphoresRaw[index],
+    return GPUSynchronizationInfo{.copyCommandBuffer = m_copyCmds.getCommandBuffer(),
+                                  .signalSemaphore = m_deviceInfo->commandManager->get(m_copyCmds.getCommandBuffer())
+                                                         .commandBuffer->getCompleteSemaphores()[index],
+                                  .semaphore = *m_doneSemaphoresRaw[index],
                                   .signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed()};
 }
 
@@ -98,17 +99,15 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
     if (copyPlan.calleeDependencies->targetTextureReadySemaphore.has_value())
     {
         m_inUseResources->targetTextureReadySemaphore =
-            &m_deviceInfo->semaphoreManager->get(copyPlan.calleeDependencies->targetTextureReadySemaphore.value())
-                 ->semaphore;
+            &copyPlan.calleeDependencies->targetTextureReadySemaphore.value();
     }
 
     const size_t resourceIndex =
         static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFinalTargetImageIndex());
-    assert(resourceIndex < m_binarySignalSemaphoresRaw.size() && resourceIndex < m_doneSemaphoresRaw.size() &&
+    assert(resourceIndex < m_doneSemaphoresRaw.size() &&
            "Resource index outside of created semaphore range for copyDirector");
 
     m_inUseResources->numTimesFrameProcessed = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed();
-    m_inUseResources->semaphoreForCopyDone = m_binarySignalSemaphoresRaw[resourceIndex];
     m_inUseResources->timelineSemaphoreForCopyDone = m_doneSemaphoresRaw[resourceIndex];
     m_inUseResources->queueToUse = m_deviceInfo->device->getDefaultQueue(Queue_Type::Ttransfer).getVulkanQueue();
 }
@@ -123,8 +122,6 @@ void DefaultCopyPolicy::createSemaphores(star::common::EventBus &eventBus, const
 {
     m_doneSemaphoreHandles.resize(numFramesInFlight);
     m_doneSemaphoresRaw.resize(numFramesInFlight);
-    m_binarySignalSemaphoresHandles.resize(numFramesInFlight);
-    m_binarySignalSemaphoresRaw.resize(numFramesInFlight);
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
@@ -137,16 +134,6 @@ void DefaultCopyPolicy::createSemaphores(star::common::EventBus &eventBus, const
 
             assert(r != nullptr && m_doneSemaphoreHandles[i].isInitialized() && "Emit did not provide a result");
             m_doneSemaphoresRaw[i] = &static_cast<core::device::manager::SemaphoreRecord *>(r)->semaphore;
-        }
-
-        {
-            void *r = nullptr;
-            eventBus.emit(core::device::system::event::ManagerRequest{
-                star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                    core::device::manager::GetSemaphoreEventTypeName),
-                core::device::manager::SemaphoreRequest{false}, m_binarySignalSemaphoresHandles[i], &r});
-
-            m_binarySignalSemaphoresRaw[i] = &static_cast<core::device::manager::SemaphoreRecord *>(r)->semaphore;
         }
     }
 }

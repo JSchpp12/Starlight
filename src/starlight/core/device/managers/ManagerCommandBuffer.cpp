@@ -17,7 +17,6 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
                                                                        const uint64_t &currentFrameIndex,
                                                                        Request request)
 {
-
     star::Handle newHandle = this->buffers.add(
         std::make_shared<CommandBufferContainer::CompleteRequest>(
             request.recordBufferCallback,
@@ -59,6 +58,12 @@ star::CommandBufferContainer::CompleteRequest &star::core::device::manager::Mana
     const Handle &handle)
 {
     return buffers.get(handle);
+}
+
+star::CommandBufferContainer::CompleteRequest &star::core::device::manager::ManagerCommandBuffer::getDefault()
+{
+    assert(this->mainGraphicsBufferHandle);
+    return this->buffers.get(*this->mainGraphicsBufferHandle);
 }
 
 vk::Semaphore star::core::device::manager::ManagerCommandBuffer::update(StarDevice &device,

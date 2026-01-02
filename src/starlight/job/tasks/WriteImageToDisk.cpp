@@ -4,11 +4,20 @@
 #include "logging/LoggingFactory.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
+#include "starlight/core/Exceptions.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 namespace star::job::tasks::write_image_to_disk
 {
+
+void LogStart(const std::string &fileName)
+{
+    std::ostringstream oss; 
+    oss << "Start write - " << fileName << std::endl;
+
+    core::logging::info(oss.str());
+}
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
 {
@@ -17,8 +26,6 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
 
 void Execute(void *p)
 {
-    core::logging::log(boost::log::trivial::info, "Beginning image write");
-
     auto *payload = static_cast<WritePayload *>(p);
 
     // if (auto parentDir = file_helpers::GetParentDirectory(payload->path))
@@ -31,19 +38,20 @@ void Execute(void *p)
 
     if (payload->signalValue == nullptr)
     {
-        throw std::runtime_error("No signal value provided");
+        STAR_THROW("No signal value provided");
     }
     if (payload->semaphore == nullptr)
     {
-        throw std::runtime_error("No semaphore provided");
+        STAR_THROW("No semaphore provided");
     }
+    LogStart(payload->path); 
     WaitUntilSemaphoreIsReady(payload->device, payload->semaphore, *payload->signalValue);
     WriteImageToDisk(payload->bufferImageInfo->owningObjectPool->get(payload->bufferImageInfo->registrationHandle),
                      *payload->bufferImageInfo, payload->path);
 
     {
         std::ostringstream oss;
-        oss << "File write done: " << payload->path;
+        oss << "Done write - " << payload->path;
         core::logging::log(boost::log::trivial::info, oss.str());
     }
     payload->bufferImageInfo->owningObjectPool->release(payload->bufferImageInfo->registrationHandle);

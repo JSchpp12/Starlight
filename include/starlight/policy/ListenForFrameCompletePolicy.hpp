@@ -9,10 +9,10 @@
 #include <concepts>
 #include <string_view>
 
-namespace star::event
+namespace star::policy
 {
 template <typename T>
-concept ListenerLike = requires(T listener) {
+concept OnFrameCompleteListenerLike = requires(T listener) {
     { listener.onFrameComplete() } -> std::same_as<void>;
 };
 
@@ -20,7 +20,7 @@ template <typename TListener> class ListenForFrameCompletePolicy
 {
   public:
     explicit ListenForFrameCompletePolicy(TListener &me)
-        requires ListenerLike<TListener>
+        requires OnFrameCompleteListenerLike<TListener>
         : m_listenerHandle(), m_me(me) {};
 
     void init(common::EventBus &eventBus)
@@ -30,6 +30,10 @@ template <typename TListener> class ListenForFrameCompletePolicy
 
     void cleanup(common::EventBus &eventBus)
     {
+        if (m_listenerHandle.isInitialized())
+        {
+            eventBus.unsubscribe(m_listenerHandle);
+        }
     }
 
   private:
@@ -43,7 +47,7 @@ template <typename TListener> class ListenForFrameCompletePolicy
 
     void registerListener(common::EventBus &eventBus)
     {
-        eventBus.subscribe(common::HandleTypeRegistry::instance().registerType(GetFrameCompleteTypeName),
+        eventBus.subscribe(common::HandleTypeRegistry::instance().registerType(event::GetFrameCompleteTypeName),
                            common::SubscriberCallbackInfo{
                                std::bind(&ListenForFrameCompletePolicy<TListener>::eventCallback, this,
                                          std::placeholders::_1, std::placeholders::_2),
@@ -68,4 +72,4 @@ template <typename TListener> class ListenForFrameCompletePolicy
         }
     }
 };
-} // namespace star::event
+} // namespace star::policy

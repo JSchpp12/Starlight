@@ -35,9 +35,27 @@ class RendererBase
     {
         return m_commandBuffer;
     }
+    std::vector<Handle> &getRenderToColorImages()
+    {
+        return m_renderToImages;
+    }
+    const std::vector<Handle> &getRenderToColorImages() const
+    {
+        return m_renderToImages;
+    }
 
+    std::vector<Handle> &getRenderToDepthImages()
+    {
+        return m_renderToDepthImages;
+    }
+    const std::vector<Handle> &getRenderToDepthImages() const
+    {
+        return m_renderToDepthImages;
+    }
   protected:
     std::vector<std::shared_ptr<StarObject>> m_objects;
+    std::vector<Handle> m_renderToImages;
+    std::vector<Handle> m_renderToDepthImages;
     std::vector<StarRenderGroup> m_renderGroups;
     Handle m_commandBuffer;
 

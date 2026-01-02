@@ -1,0 +1,1 @@
+#include "starlight/policy/ListenForRegisterMainGraphicsRendererPolicy.hpp"

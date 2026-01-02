@@ -35,7 +35,7 @@ std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuf
 
 CalleeRenderDependencies DefaultCreatePolicy::create(DeviceInfo &deviceInfo, StarTextures::Texture targetTexture,
                                                      const Handle &commandBufferContainingTarget,
-                                                     const Handle *targetTextureReadySemaphore)
+                                                     vk::Semaphore *targetTextureReadySemaphore)
 {
     assert(deviceInfo.device != nullptr);
 

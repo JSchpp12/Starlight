@@ -11,8 +11,8 @@
 #include "core/SystemContext.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "event/EnginePhaseComplete.hpp"
-#include "event/RenderReadyForFinalization.hpp"
 #include "event/FrameComplete.hpp"
+#include "event/RenderReadyForFinalization.hpp"
 #include "service/ScreenCaptureFactory.hpp"
 
 #include <star_common/FrameTracker.hpp>
@@ -175,6 +175,15 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         while (!m_exitPolicy.shouldExit())
         {
             m_loopPolicy.frameUpdate();
+            {
+                std::ostringstream oss;
+                oss << "Engine Frame: "
+                    << std::to_string(m_systemManager.getContext(m_defaultDevice)
+                                          .getFrameTracker()
+                                          .getCurrent()
+                                          .getGlobalFrameCounter());
+                core::logging::info(oss.str());
+            }
 
             // check if any new objects have been added
             m_systemManager.getContext(m_defaultDevice).prepareForNextFrame();

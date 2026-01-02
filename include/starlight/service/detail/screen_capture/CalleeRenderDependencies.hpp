@@ -23,7 +23,7 @@ struct CalleeRenderDependencies
             m_targetTexture = std::move(targetTexture);
             return *this;
         }
-        Builder &setTargetTextureReadySemaphore(Handle targetTextureReadySemaphore)
+        Builder &setTargetTextureReadySemaphore(vk::Semaphore targetTextureReadySemaphore)
         {
             m_targetTextureReadySemaphore = std::move(targetTextureReadySemaphore);
             return *this;
@@ -38,7 +38,7 @@ struct CalleeRenderDependencies
       private:
         Handle m_commandBufferContainingTarget;
         StarTextures::Texture m_targetTexture;
-        std::optional<Handle> m_targetTextureReadySemaphore;
+        std::optional<vk::Semaphore> m_targetTextureReadySemaphore;
     };
 
     void cleanupRender()
@@ -46,7 +46,7 @@ struct CalleeRenderDependencies
     }
     Handle commandBufferContainingTarget;
     StarTextures::Texture targetTexture;
-    std::optional<Handle> targetTextureReadySemaphore = std::nullopt;
+    std::optional<vk::Semaphore> targetTextureReadySemaphore = std::nullopt;
 };
 
 } // namespace star::service::detail::screen_capture

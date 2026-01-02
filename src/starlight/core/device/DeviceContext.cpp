@@ -72,6 +72,7 @@ star::core::device::DeviceContext::~DeviceContext()
         m_graphicsManagers.cleanupRender();
         m_commandBufferManager->cleanup(m_device);
         star::ManagerRenderResource::cleanup(m_deviceID, m_device);
+        m_eventBus.cleanup();
     }
 }
 

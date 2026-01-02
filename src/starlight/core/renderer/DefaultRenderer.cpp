@@ -146,9 +146,10 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
                 vk::ImageCreateInfo()
                     .setExtent(vk::Extent3D().setWidth(width).setHeight(height).setDepth(1))
                     .setPQueueFamilyIndices(indices.data())
+                    .setArrayLayers(1)
                     .setQueueFamilyIndexCount(numIndices)
                     .setSharingMode(indices.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent)
-                    .setUsage(vk::ImageUsageFlagBits::eColorAttachment)
+                    .setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc)
                     .setImageType(vk::ImageType::e2D)
                     .setMipLevels(1)
                     .setTiling(vk::ImageTiling::eOptimal)
@@ -169,6 +170,7 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
     for (int i = 0; i < numFramesInFlight; i++)
     {
         newRenderToImages.emplace_back(builder.build());
+        newRenderToImages.back().setImageLayout(vk::ImageLayout::eColorAttachmentOptimal);
 
         auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
 

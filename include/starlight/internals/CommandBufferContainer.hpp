@@ -4,8 +4,8 @@
 #include "StarCommandBuffer.hpp"
 #include "device/StarDevice.hpp"
 
-#include <star_common/Handle.hpp>
 #include <star_common/FrameTracker.hpp>
+#include <star_common/Handle.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -73,26 +73,27 @@ class CommandBufferContainer
         vk::PipelineStageFlags waitStage;
         Command_Buffer_Order order;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
-        std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *,
-                                                  std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>,
-                                                  std::vector<std::optional<uint64_t>>)>>
+        std::optional<std::function<vk::Semaphore(
+            StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *, std::vector<vk::Semaphore>,
+            std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>)>>
             overrideBufferSubmissionCallback;
         SemaphoreInfo oneTimeWaitSemaphoreInfo;
 
         CompleteRequest(
-            std::function<void(vk::CommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback,
+            std::function<void(vk::CommandBuffer &, const common::FrameTracker &, const uint64_t &)>
+                recordBufferCallback,
             std::unique_ptr<StarCommandBuffer> commandBuffer, const Queue_Type &type, const bool &recordOnce,
             const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order,
             std::optional<std::function<void(const int &)>> beforeSubmissionCallback =
                 std::optional<std::function<void(const int &)>>(),
             std::optional<std::function<vk::Semaphore(
-                StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *, std::vector<vk::Semaphore>,
-                std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>)>>
+                StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *,
+                std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>)>>
                 overrideBufferSubmissionCallback = std::nullopt)
             : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
               recordOnce(recordOnce), waitStage(waitStage), order(order),
               beforeBufferSubmissionCallback(beforeSubmissionCallback),
-              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback){};
+              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
 
         vk::Semaphore submitCommandBuffer(core::device::StarDevice &device, const common::FrameTracker &frameTracker,
                                           std::vector<vk::Semaphore> *beforeSemaphores = nullptr)
@@ -115,6 +116,12 @@ class CommandBufferContainer
                 {
                     additionalWaits[i] = std::make_pair(waits[i], waitPoints[i]);
                 }
+
+                if (beforeSemaphores != nullptr)
+                {
+                    additionalWaits.push_back(std::make_pair(beforeSemaphores->front(), waitStage));
+                }
+
                 commandBuffer->submit(frameTracker.getCurrent().getFrameInFlightIndex(),
                                       device.getDefaultQueue(commandBuffer->getType()).getVulkanQueue(),
                                       &additionalWaits);

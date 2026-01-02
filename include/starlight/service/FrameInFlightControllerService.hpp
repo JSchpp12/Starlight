@@ -1,13 +1,13 @@
 #pragma once
 
-#include "starlight/event/policy/ListenForPrepForNextFramePolicy.hpp"
+#include "starlight/policy/ListenForPrepForNextFramePolicy.hpp"
 #include "starlight/service/InitParameters.hpp"
 #include <star_common/EventBus.hpp>
 
 namespace star::service
 {
 class FrameInFlightControllerService
-    : public star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>
+    : private star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>
 {
   public:
     FrameInFlightControllerService();
@@ -25,7 +25,7 @@ class FrameInFlightControllerService
     void cleanup(common::EventBus &eventBus); 
 
   protected:
-    void prepForNextFrame(common::FrameTracker *frameTracker);
+    void onPrepForNextFrame(const event::PrepForNextFrame &event, bool &keepAlive);
 
   private:
     friend class star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>;

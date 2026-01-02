@@ -17,13 +17,19 @@ void Pipeline::init(device::StarDevice *device, common::EventBus &eventBus, job:
 void Pipeline::cleanupRender()
 {
     this->TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>::cleanupRender();
-
+    
+    std::vector<const Handle *> unsubscribers; 
     for (const auto &subscriberInfo : m_subscriberShaderBuildInfo)
     {
         if (subscriberInfo.second.isInitialized())
         {
-            this->m_deviceEventBus->unsubscribe(subscriberInfo.second);
+            unsubscribers.push_back(&subscriberInfo.second);
         }
+    }
+
+    for (size_t i{0}; i < unsubscribers.size(); i++)
+    {
+        m_deviceEventBus->unsubscribe(*unsubscribers[i]);
     }
 }
 

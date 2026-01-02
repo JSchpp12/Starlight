@@ -48,6 +48,8 @@ class ManagerCommandBuffer
 
     CommandBufferContainer::CompleteRequest &get(const Handle &handle);
 
+    CommandBufferContainer::CompleteRequest &getDefault();
+
     /// @brief Process and submit all command buffers
     /// @param frameIndexToBeDrawn
     /// @return semaphore signaling completion of submission

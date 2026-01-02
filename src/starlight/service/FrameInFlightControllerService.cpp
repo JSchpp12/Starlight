@@ -8,7 +8,7 @@ FrameInFlightControllerService::FrameInFlightControllerService()
 }
 
 FrameInFlightControllerService::FrameInFlightControllerService(FrameInFlightControllerService &&other)
-    : star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>{*this},
+    : star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>(*this),
       m_deviceEventBus{other.m_deviceEventBus}, m_deviceFrameTracker{other.m_deviceFrameTracker}
 {
     if (m_deviceEventBus != nullptr)
@@ -55,10 +55,14 @@ void FrameInFlightControllerService::shutdown()
     cleanup(*m_deviceEventBus);
 }
 
-void FrameInFlightControllerService::prepForNextFrame(common::FrameTracker *frameTracker)
+void FrameInFlightControllerService::onPrepForNextFrame(const event::PrepForNextFrame &event, bool &keepAlive)
 {
-    frameTracker->getCurrent().setFrameInFlightIndex(incrementNextFrameInFlight(*frameTracker));
-    frameTracker->triggerIncrementForCurrentFrame();
+    auto *frameTracker = event.getFrameTracker();
+    const uint8_t nextIndex = incrementNextFrameInFlight(*frameTracker);
+    frameTracker->getCurrent().setFrameInFlightIndex(nextIndex);
+    frameTracker->getCurrent().setFinalTargetImageIndex(nextIndex);
+
+    keepAlive = true;
 }
 
 void FrameInFlightControllerService::cleanup(common::EventBus &eventBus)

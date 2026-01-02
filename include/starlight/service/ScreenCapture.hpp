@@ -7,6 +7,7 @@
 #include "detail/screen_capture/CopyRouter.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
 #include "detail/screen_capture/GPUSynchronizationInfo.hpp"
+#include "detail/screen_capture/SyncTargetRenderer.hpp"
 #include "event/TriggerScreenshot.hpp"
 #include "job/tasks/TaskFactory.hpp"
 #include "logging/LoggingFactory.hpp"
@@ -39,7 +40,7 @@ template <typename TCreateDependenciesPolicy>
 concept CreateDepsPolicyLike =
     requires(TCreateDependenciesPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
              StarTextures::Texture targetTexture, const Handle &commandBufferContainingTarget,
-             const Handle *targetTextureReadySemaphore) {
+             vk::Semaphore *targetTextureReadySemaphore) {
         {
             c.create(deviceInfo, targetTexture, commandBufferContainingTarget, targetTextureReadySemaphore)
         } -> std::same_as<detail::screen_capture::CalleeRenderDependencies>;
@@ -69,12 +70,10 @@ class ScreenCapture
 
     void init(const uint8_t &numFramesInFlight)
     {
-        m_actionRouter.init(&m_deviceInfo);
-
-        registerWithEventBus();
-
         assert(m_deviceInfo.eventBus != nullptr);
+        m_actionRouter.init(&m_deviceInfo);
         m_copyPolicy.init(m_deviceInfo);
+        registerWithEventBus();
         initCommandBuffer();
     }
 
@@ -127,6 +126,10 @@ class ScreenCapture
         // need way to wait for commands to be submitted BEFORE telling worker to start?
         detail::screen_capture::GPUSynchronizationInfo syncInfo = m_copyPolicy.triggerSubmission(copyPlan);
 
+        createCallbackForSyncingMainRenderer(syncInfo.copyCommandBuffer, screenEvent.getTargetCommandBuffer(),
+                                             syncInfo.signalSemaphore,
+                                             m_deviceInfo.flightTracker->getCurrent().getGlobalFrameCounter());
+
         uint64_t signalValue;
         common::helper::SafeCast(syncInfo.signalValue, signalValue);
         job::tasks::write_image_to_disk::WritePayload payload{
@@ -149,8 +152,12 @@ class ScreenCapture
         return &m_subscriberHandle;
     }
 
-    void notificationFromEventBusDeleteHandle(const Handle &handle) {
-
+    void notificationFromEventBusDeleteHandle(const Handle &handle)
+    {
+        if (m_subscriberHandle == handle)
+        {
+            m_subscriberHandle = Handle();
+        }
     };
 
     void cleanupDependencies(core::device::StarDevice &device)
@@ -175,6 +182,23 @@ class ScreenCapture
         assert(m_deviceInfo.device != nullptr);
 
         m_copyPolicy.registerWithCommandBufferManager();
+    }
+
+    void createCallbackForSyncingMainRenderer(Handle copyCommandBuffer, Handle targetCommandBuffer,
+                                              vk::Semaphore signalSemaphore, uint64_t currentFrameCount) const
+    {
+        std::shared_ptr<detail::screen_capture::SyncTargetRenderer> callback =
+            detail::screen_capture::SyncTargetRenderer::Builder()
+                .setDeviceEventBus(m_deviceInfo.eventBus)
+                .setCreatedOnFrameCount(std::move(currentFrameCount))
+                .setSemaphore(std::move(signalSemaphore))
+                .setTargetFrameInFlightIndex(m_deviceInfo.flightTracker->getCurrent().getFrameInFlightIndex())
+                .setSourceCommandBuffer(std::move(copyCommandBuffer))
+                .setTargetCommandBuffer(std::move(targetCommandBuffer))
+                .setDeviceCommandBufferManager(m_deviceInfo.commandManager)
+                .buildShared();
+
+        callback->init();
     }
 };
 } // namespace star::service

@@ -45,8 +45,8 @@ class DefaultRenderer : public RendererBase
     {
     }
 
-    DefaultRenderer(DefaultRenderer &) = delete;
-    DefaultRenderer &operator=(DefaultRenderer &) = delete;
+    DefaultRenderer(const DefaultRenderer &) = delete;
+    DefaultRenderer &operator=(const DefaultRenderer &) = delete;
     DefaultRenderer(DefaultRenderer &&other) = default;
     DefaultRenderer &operator=(DefaultRenderer &&other) = default;
     virtual ~DefaultRenderer() = default;
@@ -58,24 +58,6 @@ class DefaultRenderer : public RendererBase
     StarDescriptorSetLayout &getGlobalShaderInfo()
     {
         return *this->globalSetLayout;
-    }
-
-    std::vector<Handle> &getRenderToColorImages()
-    {
-        return m_renderToImages;
-    }
-    const std::vector<Handle> &getRenderToColorImages() const
-    {
-        return m_renderToImages;
-    }
-
-    std::vector<Handle> &getRenderToDepthImages()
-    {
-        return m_renderToDepthImages;
-    }
-    const std::vector<Handle> &getRenderToDepthImages() const
-    {
-        return m_renderToDepthImages;
     }
 
     virtual RenderingTargetInfo getRenderTargetInfo() const
@@ -103,9 +85,6 @@ class DefaultRenderer : public RendererBase
     bool isReady = false;
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
-
-    std::vector<Handle> m_renderToImages;
-    std::vector<Handle> m_renderToDepthImages;
 
     std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
     core::renderer::RenderingContext m_renderingContext = core::renderer::RenderingContext();

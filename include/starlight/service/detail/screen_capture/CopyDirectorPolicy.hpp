@@ -33,8 +33,6 @@ class DefaultCopyPolicy
     Handle m_commandBufferTransfer, m_commandBufferGraphics;
     std::vector<Handle> m_doneSemaphoreHandles;
     std::vector<vk::Semaphore *> m_doneSemaphoresRaw;
-    std::vector<Handle> m_binarySignalSemaphoresHandles;
-    std::vector<vk::Semaphore *> m_binarySignalSemaphoresRaw;
     Handle m_startOfFrameListener;
     DeviceInfo *m_deviceInfo = nullptr;
     std::unique_ptr<common::InUseResourceInformation> m_inUseResources =

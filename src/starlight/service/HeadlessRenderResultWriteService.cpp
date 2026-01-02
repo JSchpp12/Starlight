@@ -1,17 +1,24 @@
 #include "starlight/service/HeadlessRenderResultWriteService.hpp"
 
+#include <starlight/event/TriggerScreenshot.hpp>
+
 #include <cassert>
 
-using Listen = star::event::ListenForFrameCompletePolicy<star::service::HeadlessRenderResultWriteService>;
+using PrepListen = star::policy::ListenForPrepForNextFramePolicy<star::service::HeadlessRenderResultWriteService>;
+using GraphicsListen =
+    star::policy::ListenForRegisterMainGraphicsRenderPolicy<star::service::HeadlessRenderResultWriteService>;
 
-star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService() : Listen(*this)
+star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService()
+    : PrepListen(*this), GraphicsListen(*this)
 {
 }
 
 star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService(
     HeadlessRenderResultWriteService &&other)
-    : Listen(*this), m_eventBus{other.m_eventBus}
+    : PrepListen(*this), GraphicsListen(*this)
 {
+    m_eventBus = other.m_eventBus;
+
     if (m_eventBus != nullptr)
     {
         other.cleanup(*m_eventBus);
@@ -44,13 +51,14 @@ star::service::HeadlessRenderResultWriteService::~HeadlessRenderResultWriteServi
 {
     if (m_eventBus != nullptr)
     {
-        Listen::cleanup(*m_eventBus);
+        cleanup(*m_eventBus);
     }
 }
 
 void star::service::HeadlessRenderResultWriteService::cleanup(common::EventBus &eventBus)
 {
-    Listen::cleanup(eventBus);
+    PrepListen::cleanup(eventBus);
+    GraphicsListen::cleanup(eventBus);
 }
 
 void star::service::HeadlessRenderResultWriteService::init(const uint8_t &numFramesInFlight)
@@ -58,20 +66,53 @@ void star::service::HeadlessRenderResultWriteService::init(const uint8_t &numFra
     assert(m_eventBus != nullptr);
 
     initListeners(*m_eventBus);
+
+    m_screenshotRegistrations.resize(numFramesInFlight);
 }
 
 void star::service::HeadlessRenderResultWriteService::initListeners(common::EventBus &eventBus)
 {
-    Listen::init(eventBus);
+    PrepListen::init(eventBus);
+    GraphicsListen::init(eventBus);
 }
 
-void star::service::HeadlessRenderResultWriteService::onFrameComplete()
+void star::service::HeadlessRenderResultWriteService::onPrepForNextFrame(const event::PrepForNextFrame &event,
+                                                                         bool &keepAlive)
 {
     // todo grab the final renderer somehow and get the images from it to dispatch to the screen capture service
-    std::cout << "I am offscreen here";
- }
+    assert(m_eventBus != nullptr);
+    assert(m_frameTracker != nullptr);
+    assert(m_managerGraphicsContainer != nullptr);
+    assert(m_mainGraphicsRenderer != nullptr);
+    assert(m_managerCommandBuffer != nullptr);
+
+    const size_t index = static_cast<size_t>(m_frameTracker->getCurrent().getFrameInFlightIndex());
+    vk::Semaphore semaphore = m_managerCommandBuffer->getDefault().commandBuffer->getCompleteSemaphores()[index];
+    star::StarTextures::Texture targetImage =
+        m_managerGraphicsContainer->imageManager.get(m_mainGraphicsRenderer->getRenderToColorImages()[index])->texture;
+    auto commandBuffer = m_mainGraphicsRenderer->getCommandBuffer();
+
+    std::ostringstream oss; 
+    oss << "Frame - " << std::to_string(m_frameTracker->getCurrent().getGlobalFrameCounter()) << ".png";
+
+    m_eventBus->emit(event::TriggerScreenshot{std::move(targetImage), oss.str(), commandBuffer,
+                                              m_screenshotRegistrations[index], std::move(semaphore)});
+
+    keepAlive = true;
+}
 
 void star::service::HeadlessRenderResultWriteService::setInitParameters(star::service::InitParameters &params)
 {
     m_eventBus = &params.eventBus;
+    m_frameTracker = &params.flightTracker;
+    m_managerGraphicsContainer = &params.graphicsManagers;
+    m_managerCommandBuffer = &params.commandBufferManager;
+}
+
+void star::service::HeadlessRenderResultWriteService::onRegisterMainGraphics(
+    const event::RegisterMainGraphicsRenderer &event, bool &keepAlive)
+{
+    m_mainGraphicsRenderer = event.getRenderer();
+
+    keepAlive = false;
 }
