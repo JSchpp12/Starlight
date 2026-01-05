@@ -107,7 +107,6 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
     assert(resourceIndex < m_doneSemaphoresRaw.size() &&
            "Resource index outside of created semaphore range for copyDirector");
 
-    m_inUseResources->numTimesFrameProcessed = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed();
     m_inUseResources->timelineSemaphoreForCopyDone = m_doneSemaphoresRaw[resourceIndex];
     m_inUseResources->queueToUse = m_deviceInfo->device->getDefaultQueue(Queue_Type::Ttransfer).getVulkanQueue();
 }
@@ -147,16 +146,20 @@ void DefaultCopyPolicy::registerListenerForNextFrameStart(CalleeRenderDependenci
         m_deviceInfo->flightTracker->getCurrent().getFramesInFlightTracking().getNumOfTimesFrameProcessed(
             frameInFlightIndex);
 
-    m_deviceInfo->eventBus->subscribe(
-        star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-            core::device::system::event::StartOfNextFrameName()),
-        {[this, calleeHandle, targetFrameInFlightIndex, signaledSemaphoreValue](const star::common::IEvent &e,
-                                                                                bool &keepAlive) {
-             this->startOfFrameEventCallback(calleeHandle, targetFrameInFlightIndex, signaledSemaphoreValue, e,
-                                             keepAlive);
-         },
-         [this]() -> Handle * { return &this->m_startOfFrameListener; },
-         [this](const Handle &noLongerNeededHandle) { this->m_startOfFrameListener = Handle(); }});
+    m_deviceInfo->eventBus->subscribe(star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                          core::device::system::event::StartOfNextFrameName()),
+                                      {[this, calleeHandle, targetFrameInFlightIndex,
+                                        signaledSemaphoreValue](const star::common::IEvent &e, bool &keepAlive) {
+                                           this->startOfFrameEventCallback(calleeHandle, targetFrameInFlightIndex,
+                                                                           signaledSemaphoreValue, e, keepAlive);
+                                       },
+                                       [this]() -> Handle * { return &this->m_startOfFrameListener; },
+                                       [this](const Handle &noLongerNeededHandle) {
+                                           if (noLongerNeededHandle == m_startOfFrameListener)
+                                           {
+                                               m_startOfFrameListener = Handle();
+                                           }
+                                       }});
 }
 
 void DefaultCopyPolicy::startOfFrameEventCallback(const Handle &calleeCommandBuffer,

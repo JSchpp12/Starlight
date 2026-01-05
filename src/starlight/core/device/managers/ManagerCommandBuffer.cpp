@@ -1,5 +1,7 @@
 #include "device/managers/ManagerCommandBuffer.hpp"
 
+#include "core/Exceptions.hpp"
+
 std::stack<star::Handle> star::core::device::manager::ManagerCommandBuffer::dynamicBuffersToSubmit =
     std::stack<star::Handle>();
 
@@ -34,18 +36,8 @@ star::Handle star::core::device::manager::ManagerCommandBuffer::submit(StarDevic
     // todo: REMOVE THIS! OR move it to the update function
     if (request.recordOnce)
     {
-        throw std::runtime_error("Single time recording is not supported at present");
+        STAR_THROW("Single time recording is not supported. This feature is to be removed.");
     }
-    // if (request.recordOnce)
-    // {
-    //     for (int i = 0; i < this->numFramesInFlight; i++)
-    //     {
-    //         this->buffers.get(newHandle).commandBuffer->begin(i);
-    //         request.recordBufferCallback(this->buffers.get(newHandle).commandBuffer->buffer(i), frameTracker,
-    //         currentFrameIndex); this->buffers.get(newHandle).commandBuffer->buffer(i).end();
-    //     }
-    // }
-
     return newHandle;
 }
 
@@ -92,11 +84,7 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
 
     if (!mainGraphicsBuffer.recordOnce)
     {
-        mainGraphicsBuffer.commandBuffer->begin(frameTracker.getCurrent().getFrameInFlightIndex());
-        mainGraphicsBuffer.recordBufferCallback(
-            mainGraphicsBuffer.commandBuffer->buffer(frameTracker.getCurrent().getFrameInFlightIndex()), frameTracker,
-            currentFrameIndex);
-        mainGraphicsBuffer.commandBuffer->buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
+        mainGraphicsBuffer.recordBufferCallback(*mainGraphicsBuffer.commandBuffer, frameTracker, currentFrameIndex);
     }
 
     auto mainGraphicsSemaphore = mainGraphicsBuffer.submitCommandBuffer(device, frameTracker, &beforeSemaphores);

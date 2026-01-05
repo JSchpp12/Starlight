@@ -15,10 +15,10 @@ core::device::manager::ManagerCommandBuffer::Request HeadlessRenderer::getComman
         .recordOnce = false};
 }
 
-void HeadlessRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
+void HeadlessRenderer::recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                            const uint64_t &frameIndex)
 {
-    this->DefaultRenderer::recordCommandBuffer(commandBuffer, frameTracker, frameIndex);
+    this->DefaultRenderer::recordCommands(commandBuffer, frameTracker, frameIndex);
 
     const size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
     m_renderingContext.recordDependentImage.get(m_renderToImages[index])

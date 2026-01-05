@@ -25,7 +25,7 @@ class ManagerCommandBuffer
         // type
         // callback function to record the buffer
         // is it dependent on another buffer to finish first?
-        std::function<void(vk::CommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback;
+        std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback;
         Command_Buffer_Order order;
         int orderIndex;
         star::Queue_Type type;

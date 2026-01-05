@@ -73,7 +73,7 @@ void WaitUntilSemaphoreIsReady(vk::Device &device, const vk::Semaphore &semaphor
 
     if (waitResult != vk::Result::eSuccess)
     {
-        throw std::runtime_error("Failed to wait for semaphore. Copy taking too long");
+        STAR_THROW("Failed to wait for semaphore. Copy taking too long");
     }
 }
 
@@ -86,7 +86,7 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     buffer.map(&mapped); // Or .data() depending on your wrapper
     if (!mapped)
     {
-        throw std::runtime_error("Failed to map buffer for image write.");
+        STAR_THROW("Failed to map buffer for image write");
     }
 
     // ---- Format handling ----------------------------------------------------

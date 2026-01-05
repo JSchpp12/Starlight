@@ -28,8 +28,7 @@ class DefaultRenderer : public RendererBase
     DefaultRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                     std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera,
                     std::vector<std::shared_ptr<StarObject>> objects)
-        : RendererBase(context, numFramesInFlight, std::move(objects)), 
-        ownsRenderResourceControllers(true)
+        : RendererBase(context, numFramesInFlight, std::move(objects)), ownsRenderResourceControllers(true)
     {
         initBuffers(context, numFramesInFlight, std::move(lights), camera);
     }
@@ -137,12 +136,24 @@ class DefaultRenderer : public RendererBase
 #pragma region helpers
     vk::Viewport prepareRenderingViewport(const vk::Extent2D &resolution);
 
-    virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(const common::FrameTracker &frameTracker);
+    virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoColorAttachment(
+        const common::FrameTracker &frameTracker);
 
-    virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(const common::FrameTracker &frameTracker);
+    virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(
+        const common::FrameTracker &frameTracker);
 
-    virtual void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameInFlightIndex,
+    virtual void recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &frameInFlightIndex,
                                      const uint64_t &frameIndex);
+
+    /**
+     * @brief Target functionfrom recordCommandBuffer() but without the start and end
+     *
+     * @param buffer
+     * @param flightTracker
+     * @param frameIndex
+     */
+    virtual void recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
+                                const uint64_t &frameIndex);
 
     void recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                          const uint64_t &frameIndex);

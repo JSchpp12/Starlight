@@ -472,8 +472,18 @@ void DefaultRenderer::createDescriptors(star::core::device::DeviceContext &devic
 {
 }
 
-void DefaultRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
+void DefaultRenderer::recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                           const uint64_t &frameIndex)
+{
+    commandBuffer.begin(frameTracker.getCurrent().getFrameInFlightIndex());
+
+    recordCommands(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()), frameTracker, frameIndex);
+
+    commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
+}
+
+void DefaultRenderer::recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
+                                     const uint64_t &frameIndex)
 {
     vk::Viewport viewport = this->prepareRenderingViewport(m_renderingContext.targetResolution);
     commandBuffer.setViewport(0, viewport);
@@ -484,10 +494,8 @@ void DefaultRenderer::recordCommandBuffer(vk::CommandBuffer &commandBuffer, cons
 
     {
         // dynamic rendering used...so dont need all that extra stuff
-        vk::RenderingAttachmentInfo colorAttachmentInfo =
-            prepareDynamicRenderingInfoColorAttachment(frameTracker);
-        vk::RenderingAttachmentInfo depthAttachmentInfo =
-            prepareDynamicRenderingInfoDepthAttachment(frameTracker);
+        vk::RenderingAttachmentInfo colorAttachmentInfo = prepareDynamicRenderingInfoColorAttachment(frameTracker);
+        vk::RenderingAttachmentInfo depthAttachmentInfo = prepareDynamicRenderingInfoDepthAttachment(frameTracker);
 
         auto renderArea = vk::Rect2D{vk::Offset2D{}, m_renderingContext.targetResolution};
         vk::RenderingInfoKHR renderInfo{};

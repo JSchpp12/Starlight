@@ -1,16 +1,18 @@
 #include "service/detail/screen_capture/CopyCmdPolicy.hpp"
 
+#include "core/Exceptions.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include <star_common/helper/CastHelpers.hpp>
-
 #include <cassert>
+#include <star_common/helper/CastHelpers.hpp>
 
 namespace star::service::detail::screen_capture
 {
 Handle CopyCmdPolicy::registerWithManager(core::device::StarDevice &device,
                                           core::device::manager::ManagerCommandBuffer &manCmdBuf)
 {
+    m_device = &device;
+
     return manCmdBuf.submit(
         device, 0,
         core::device::manager::ManagerCommandBuffer::Request{
@@ -107,12 +109,15 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
                                           std::vector<vk::PipelineStageFlags> dataWaitPoints,
                                           std::vector<std::optional<uint64_t>> previousSignaledValues)
 {
-    assert( m_inUseInfo->timelineSemaphoreForCopyDone);
+    assert(m_inUseInfo->timelineSemaphoreForCopyDone && "Timeline semaphore should have been set previously");
 
-    const size_t frameIndex = static_cast<size_t>(frameTracker.getCurrent().getFinalTargetImageIndex());
-    const vk::Semaphore &signalSemaphore = buffer.getCompleteSemaphores()[frameIndex];
+    vk::Semaphore signalSemaphore = VK_NULL_HANDLE;
+    {
+        const size_t frameIndex = static_cast<size_t>(frameTracker.getCurrent().getFinalTargetImageIndex());
+        signalSemaphore = buffer.getCompleteSemaphores()[frameIndex];
+    }
 
-    const std::vector<uint64_t> signalSemaphoreValues{m_inUseInfo->numTimesFrameProcessed, 0};
+    const std::vector<uint64_t> signalSemaphoreValues{frameTracker.getCurrent().getNumTimesFrameProcessed(), 0};
     const std::vector<vk::Semaphore> signalTimelineSemaphores{*m_inUseInfo->timelineSemaphoreForCopyDone,
                                                               signalSemaphore};
     uint32_t semaphoreCount = 0;
@@ -144,6 +149,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
                           .setPNext(&timelineSubmitInfo);
 
     assert(m_inUseInfo->queueToUse != nullptr);
+
     m_inUseInfo->queueToUse.submit({submitInfo});
 
     return signalSemaphore;
@@ -165,12 +171,30 @@ void CopyCmdPolicy::recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk
                                                       .setMipLevel(0))}));
 }
 
-void CopyCmdPolicy::recordCommandBuffer(vk::CommandBuffer &commandBuffer,
+void CopyCmdPolicy::recordCommandBuffer(StarCommandBuffer &commandBuffer,
                                         const star::common::FrameTracker &frameTracker, const uint64_t &frameIndex)
 {
-    addMemoryDependenciesToPrepForCopy(commandBuffer);
-    recordCopyImageToBuffer(commandBuffer, m_inUseInfo->targetImage);
-    addMemoryDependenciesToCleanupFromCopy(commandBuffer);
+
+    if (frameTracker.getCurrent().getNumTimesFrameProcessed() > 1)
+    {
+        const uint64_t frameCount = frameTracker.getCurrent().getNumTimesFrameProcessed();
+        const uint64_t waitValue = frameCount - 1;
+        auto result = m_device->getVulkanDevice().waitSemaphores(
+            vk::SemaphoreWaitInfo().setValues(waitValue).setSemaphores(*m_inUseInfo->timelineSemaphoreForCopyDone),
+            UINT64_MAX);
+
+        if (result != vk::Result::eSuccess)
+        {
+            STAR_THROW("Failed to wait for timeline semaphores");
+        }
+    }
+    commandBuffer.begin(frameTracker.getCurrent().getFrameInFlightIndex());
+    addMemoryDependenciesToPrepForCopy(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));
+    recordCopyImageToBuffer(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()),
+                            m_inUseInfo->targetImage);
+    addMemoryDependenciesToCleanupFromCopy(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));
+
+    commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
 }
 
 void CopyCmdPolicy::recordCopyCommands(vk::CommandBuffer &commandBuffer) const

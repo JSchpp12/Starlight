@@ -53,7 +53,7 @@ template <typename T> class ListenForEnginePhaseCompletePolicy
                 std::bind(&ListenForEnginePhaseCompletePolicy<T>::eventCallback, this, std::placeholders::_1,
                           std::placeholders::_2, std::placeholders::_3),
                 std::bind(&ListenForEnginePhaseCompletePolicy<T>::getHandleForEventBus, this),
-                std::bind(&ListenForEnginePhaseCompletePolicy<T>::notificationOfEventBusOfDeletion, this,
+                std::bind(&ListenForEnginePhaseCompletePolicy<T>::notificationFromEventBusOfDeletion, this,
                           std::placeholders::_1)});
     }
 

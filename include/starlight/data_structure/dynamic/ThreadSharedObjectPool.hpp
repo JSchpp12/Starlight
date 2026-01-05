@@ -1,6 +1,7 @@
 #pragma once
 
 #include "logging/LoggingFactory.hpp"
+#include "core/Exceptions.hpp"
 
 #include <star_common/Handle.hpp>
 
@@ -67,7 +68,7 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
         assert(handle.getID() < TCapacity);
         if (!m_available.push(handle))
         {
-            throw std::runtime_error("ThreadSharedObjectPool::release failed to push");
+            STAR_THROW("Release call failed to push available space");
         }
     }
 

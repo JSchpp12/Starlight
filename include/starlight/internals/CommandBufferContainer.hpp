@@ -66,7 +66,7 @@ class CommandBufferContainer
     };
     struct CompleteRequest
     {
-        std::function<void(vk::CommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback;
+        std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback;
         std::unique_ptr<StarCommandBuffer> commandBuffer;
         Queue_Type type;
         bool recordOnce;
@@ -80,7 +80,7 @@ class CommandBufferContainer
         SemaphoreInfo oneTimeWaitSemaphoreInfo;
 
         CompleteRequest(
-            std::function<void(vk::CommandBuffer &, const common::FrameTracker &, const uint64_t &)>
+            std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)>
                 recordBufferCallback,
             std::unique_ptr<StarCommandBuffer> commandBuffer, const Queue_Type &type, const bool &recordOnce,
             const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order,

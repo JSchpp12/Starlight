@@ -19,8 +19,9 @@ class CopyCmdPolicy
 
   private:
     common::InUseResourceInformation *m_inUseInfo = nullptr;
+    core::device::StarDevice *m_device = nullptr;
 
-    void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const star::common::FrameTracker &frameTracker,
+    void recordCommandBuffer(StarCommandBuffer &commandBuffer, const star::common::FrameTracker &frameTracker,
                              const uint64_t &frameIndex);
     void recordCopyCommands(vk::CommandBuffer &commandBuffer) const;
     void recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk::Image targetSrcImage) const;

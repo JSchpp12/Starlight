@@ -40,11 +40,7 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
 
             if (!buffer->recordOnce)
             {
-                buffer->commandBuffer->begin(frameTracker.getCurrent().getFrameInFlightIndex());
-                buffer->recordBufferCallback(
-                    buffer->commandBuffer->buffer(frameTracker.getCurrent().getFrameInFlightIndex()), frameTracker,
-                    currentFrameIndex);
-                buffer->commandBuffer->buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
+                buffer->recordBufferCallback(*buffer->commandBuffer, frameTracker, currentFrameIndex);
             }
 
             vk::Semaphore doneSemaphore;

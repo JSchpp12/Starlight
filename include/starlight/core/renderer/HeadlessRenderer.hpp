@@ -32,7 +32,7 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
   private:
     core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
-    void recordCommandBuffer(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
+    void recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                              const uint64_t &frameIndex) override;
 
     //vk::Semaphore forceSkipSubmission(StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,

@@ -17,7 +17,6 @@ enum class RoutePath
 struct InUseResourceInformation
 {
     vk::Extent3D targetImageExtent;
-    uint64_t numTimesFrameProcessed;
     RoutePath path;
     vk::Image targetImage = VK_NULL_HANDLE;
     vk::Buffer buffer = VK_NULL_HANDLE;

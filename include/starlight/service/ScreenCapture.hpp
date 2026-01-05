@@ -40,7 +40,7 @@ template <typename TCreateDependenciesPolicy>
 concept CreateDepsPolicyLike =
     requires(TCreateDependenciesPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
              StarTextures::Texture targetTexture, const Handle &commandBufferContainingTarget,
-             vk::Semaphore *targetTextureReadySemaphore) {
+             vk::Semaphore targetTextureReadySemaphore) {
         {
             c.create(deviceInfo, targetTexture, commandBufferContainingTarget, targetTextureReadySemaphore)
         } -> std::same_as<detail::screen_capture::CalleeRenderDependencies>;
