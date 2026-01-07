@@ -28,8 +28,8 @@ class StarCommandBuffer
 
     ~StarCommandBuffer();
 
-    void cleanupRender(vk::Device &device); 
-    
+    void cleanupRender(vk::Device &device);
+
     /// <summary>
     /// Signal for begin of command recording.
     /// </summary>
@@ -64,7 +64,9 @@ class StarCommandBuffer
 
     void submit(int bufferIndex, vk::Queue &targetQueue,
                 std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>> *additionalWaits = nullptr,
-                vk::Fence *additionalFences = nullptr, std::vector<vk::Semaphore> *additionalSignalSemaphores = nullptr);
+                std::vector<std::optional<uint64_t>> *additionalWaitsSignaledValues = nullptr,
+                vk::Fence *additionalFences = nullptr,
+                std::vector<vk::Semaphore> *additionalSignalSemaphores = nullptr);
 
     bool isFenceReady(const int &bufferIndex);
 

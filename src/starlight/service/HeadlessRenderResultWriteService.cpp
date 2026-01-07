@@ -1,6 +1,7 @@
 #include "starlight/service/HeadlessRenderResultWriteService.hpp"
 
-#include <starlight/event/TriggerScreenshot.hpp>
+#include "starlight/core/modules/sync_renderer/Factory.hpp"
+#include "starlight/event/TriggerScreenshot.hpp"
 
 #include <cassert>
 
@@ -9,13 +10,13 @@ using GraphicsListen =
     star::policy::ListenForRegisterMainGraphicsRenderPolicy<star::service::HeadlessRenderResultWriteService>;
 
 star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService()
-    : PrepListen(*this), GraphicsListen(*this)
+    : PrepListen(*this), GraphicsListen(*this), m_renderReady(*this)
 {
 }
 
 star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService(
     HeadlessRenderResultWriteService &&other)
-    : PrepListen(*this), GraphicsListen(*this)
+    : PrepListen(*this), GraphicsListen(*this), m_renderReady(*this)
 {
     m_eventBus = other.m_eventBus;
 
@@ -59,6 +60,7 @@ void star::service::HeadlessRenderResultWriteService::cleanup(common::EventBus &
 {
     PrepListen::cleanup(eventBus);
     GraphicsListen::cleanup(eventBus);
+    m_renderReady.cleanup(eventBus);
 }
 
 void star::service::HeadlessRenderResultWriteService::init(const uint8_t &numFramesInFlight)
@@ -74,6 +76,7 @@ void star::service::HeadlessRenderResultWriteService::initListeners(common::Even
 {
     PrepListen::init(eventBus);
     GraphicsListen::init(eventBus);
+    m_renderReady.init(eventBus);
 }
 
 void star::service::HeadlessRenderResultWriteService::onPrepForNextFrame(const event::PrepForNextFrame &event,
@@ -92,7 +95,7 @@ void star::service::HeadlessRenderResultWriteService::onPrepForNextFrame(const e
         m_managerGraphicsContainer->imageManager.get(m_mainGraphicsRenderer->getRenderToColorImages()[index])->texture;
     auto commandBuffer = m_mainGraphicsRenderer->getCommandBuffer();
 
-    std::ostringstream oss; 
+    std::ostringstream oss;
     oss << "Frame - " << std::to_string(m_frameTracker->getCurrent().getGlobalFrameCounter()) << ".png";
 
     m_eventBus->emit(event::TriggerScreenshot{std::move(targetImage), oss.str(), commandBuffer,
@@ -115,4 +118,20 @@ void star::service::HeadlessRenderResultWriteService::onRegisterMainGraphics(
     m_mainGraphicsRenderer = event.getRenderer();
 
     keepAlive = false;
+}
+
+void star::service::HeadlessRenderResultWriteService::onRenderReadyForFinalization(
+    const event::RenderReadyForFinalization &event, bool &keepAlive)
+{
+    assert(m_eventBus && m_managerCommandBuffer); 
+    vk::Semaphore semaphore = event.getFinalDoneSemaphore(); 
+
+    // create a waiter to update the target renderer
+    core::modules::sync_renderer::Factory(*m_eventBus, *m_managerCommandBuffer)
+        .setSemaphore(event.getFinalDoneSemaphore())
+        .setCreatedOnFrameCount(m_frameTracker->getCurrent().getGlobalFrameCounter())
+        .setTargetFrameInFlightIndex(m_frameTracker->getCurrent().getFinalTargetImageIndex())
+        .setTargetCommandBuffer(m_mainGraphicsRenderer->getCommandBuffer())
+        .build();
+    keepAlive = true;
 }

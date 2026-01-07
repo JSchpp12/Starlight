@@ -18,9 +18,7 @@ concept ListenerRenderReadyLike =
 template <typename T> class ListenForRenderReadyForFinalization
 {
   public:
-    explicit ListenForRenderReadyForFinalization(T &me)
-        requires ListenerRenderReadyLike<T>
-        : m_listenerHandle(), m_me(me)
+    explicit ListenForRenderReadyForFinalization(T &me) : m_listenerHandle(), m_me(me)
     {
     }
     ListenForRenderReadyForFinalization(const ListenForRenderReadyForFinalization &) = delete;
@@ -64,6 +62,7 @@ template <typename T> class ListenForRenderReadyForFinalization
     }
 
     void eventCallback(const common::IEvent &e, bool &keepAlive)
+        requires ListenerRenderReadyLike<T>
     {
         const auto &event = static_cast<const event::RenderReadyForFinalization &>(e);
 

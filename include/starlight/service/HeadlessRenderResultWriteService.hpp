@@ -3,7 +3,7 @@
 #include "starlight/core/renderer/RendererBase.hpp"
 #include "starlight/policy/ListenForRegisterMainGraphicsRendererPolicy.hpp"
 #include "starlight/policy/ListenForPrepForNextFramePolicy.hpp"
-#include "starlight/service/HeadlessRenderResultWriteService.hpp"
+#include "starlight/policy/ListenForRenderReadyForFinalization.hpp"
 #include "starlight/service/InitParameters.hpp"
 #include <star_common/EventBus.hpp>
 
@@ -32,10 +32,13 @@ class HeadlessRenderResultWriteService
     void onPrepForNextFrame(const event::PrepForNextFrame &eevnt, bool &keepAlive); 
 
     void onRegisterMainGraphics(const event::RegisterMainGraphicsRenderer &event, bool &keepAlive);
+
+    void onRenderReadyForFinalization(const event::RenderReadyForFinalization &event, bool &keepAlive);
   private:
     friend class star::policy::ListenForPrepForNextFramePolicy<HeadlessRenderResultWriteService>;
     friend class star::policy::ListenForRegisterMainGraphicsRenderPolicy<HeadlessRenderResultWriteService>;
-    
+
+    star::policy::ListenForRenderReadyForFinalization<HeadlessRenderResultWriteService> m_renderReady; 
     std::vector<Handle> m_screenshotRegistrations; 
     common::EventBus *m_eventBus = nullptr;
     common::FrameTracker *m_frameTracker = nullptr;

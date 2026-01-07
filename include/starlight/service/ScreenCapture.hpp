@@ -7,11 +7,11 @@
 #include "detail/screen_capture/CopyRouter.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
 #include "detail/screen_capture/GPUSynchronizationInfo.hpp"
-#include "detail/screen_capture/SyncTargetRenderer.hpp"
 #include "event/TriggerScreenshot.hpp"
 #include "job/tasks/TaskFactory.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "service/InitParameters.hpp"
+#include "starlight/core/modules/sync_renderer/Factory.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
@@ -186,21 +186,19 @@ class ScreenCapture
 
     void createCallbackForSyncingMainRenderer(Handle copyCommandBuffer, Handle targetCommandBuffer,
                                               vk::Semaphore signalSemaphore, uint64_t currentFrameCount,
-                                              const uint64_t &signalValue) const
+                                              const uint64_t &signalValue)
     {
-        std::shared_ptr<detail::screen_capture::SyncTargetRenderer> callback =
-            detail::screen_capture::SyncTargetRenderer::Builder()
-                .setDeviceEventBus(m_deviceInfo.eventBus)
-                .setCreatedOnFrameCount(std::move(currentFrameCount))
-                .setSemaphoreSignalValue(signalValue)
-                .setSemaphore(std::move(signalSemaphore))
-                .setTargetFrameInFlightIndex(m_deviceInfo.flightTracker->getCurrent().getFrameInFlightIndex())
-                .setSourceCommandBuffer(std::move(copyCommandBuffer))
-                .setTargetCommandBuffer(std::move(targetCommandBuffer))
-                .setDeviceCommandBufferManager(m_deviceInfo.commandManager)
-                .buildShared();
+        assert(m_deviceInfo.eventBus && m_deviceInfo.commandManager); 
 
-        callback->init();
+        core::modules::sync_renderer::Factory(*m_deviceInfo.eventBus, *m_deviceInfo.commandManager)
+            .setWaitPipelineStage(vk::PipelineStageFlagBits::eFragmentShader)
+            .setCreatedOnFrameCount(std::move(currentFrameCount))
+            .setSemaphoreSignalValue(signalValue)
+            .setSemaphore(std::move(signalSemaphore))
+            .setTargetFrameInFlightIndex(m_deviceInfo.flightTracker->getCurrent().getFrameInFlightIndex())
+            .setSourceCommandBuffer(std::move(copyCommandBuffer))
+            .setTargetCommandBuffer(std::move(targetCommandBuffer))
+            .build();
     }
 };
 } // namespace star::service

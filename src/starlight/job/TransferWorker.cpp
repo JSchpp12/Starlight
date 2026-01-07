@@ -164,7 +164,7 @@ void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAlloc
     processInfo.commandBuffer->buffer(0).end();
 
     auto signalSemaphore = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
-    processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, &signalSemaphore);
+    processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, nullptr, &signalSemaphore);
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
@@ -201,7 +201,7 @@ void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllo
 
     processInfo.commandBuffer->buffer(0).end();
     auto signalSemaphores = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
-    processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, &signalSemaphores);
+    processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, nullptr, &signalSemaphores);
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }

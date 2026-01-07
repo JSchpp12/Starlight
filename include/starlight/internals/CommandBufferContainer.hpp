@@ -120,11 +120,12 @@ class CommandBufferContainer
                 if (beforeSemaphores != nullptr)
                 {
                     additionalWaits.push_back(std::make_pair(beforeSemaphores->front(), waitStage));
+                    previousSignaledValues.push_back(std::nullopt);
                 }
 
                 commandBuffer->submit(frameTracker.getCurrent().getFrameInFlightIndex(),
                                       device.getDefaultQueue(commandBuffer->getType()).getVulkanQueue(),
-                                      &additionalWaits);
+                                      &additionalWaits, &previousSignaledValues);
             }
 
             return commandBuffer->getCompleteSemaphores().at(frameTracker.getCurrent().getFrameInFlightIndex());

@@ -29,7 +29,8 @@ star::StarCommandBuffer::~StarCommandBuffer()
     cleanupRender(vulkanDevice);
 }
 
-void star::StarCommandBuffer::cleanupRender(vk::Device &device){
+void star::StarCommandBuffer::cleanupRender(vk::Device &device)
+{
     for (auto &fence : this->readyFence)
     {
         device.destroyFence(fence);
@@ -131,16 +132,21 @@ void star::StarCommandBuffer::reset(int bufferIndex)
 
 void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
                                      std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>> *overrideWait,
+                                     std::vector<std::optional<uint64_t>> *additionalWaitsSignaledValues,
                                      vk::Fence *overrideFence, std::vector<vk::Semaphore> *additionalSignalSemaphores)
 {
     std::vector<vk::Semaphore> waits = std::vector<vk::Semaphore>();
     std::vector<vk::PipelineStageFlags> waitPoints = std::vector<vk::PipelineStageFlags>();
+    std::vector<uint64_t> waitSignalValues;
 
     if (overrideWait != nullptr)
     {
-        for (const auto &waitInfo : *overrideWait){
-            waits.push_back(waitInfo.first);
-            waitPoints.push_back(waitInfo.second);
+        for (size_t i{0}; i < overrideWait->size(); i++)
+        {
+            waits.push_back(overrideWait->at(i).first);
+            waitPoints.push_back(overrideWait->at(i).second);
+            waitSignalValues.push_back(
+                additionalWaitsSignaledValues->at(i).has_value() ? additionalWaitsSignaledValues->at(i).value() : 0);
         }
     }
 
@@ -151,6 +157,7 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
         {
             waits.push_back(waitInfos.first);
             waitPoints.push_back(waitInfos.second);
+            waitSignalValues.push_back(0);//star command buffers themselves do not use timeline semaphores
         }
     }
 
@@ -160,18 +167,30 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
         signalSemaphores.push_back(this->completeSemaphores.at(bufferIndex));
     }
 
-    if (additionalSignalSemaphores != nullptr){
-        for (const auto& semaphore : *additionalSignalSemaphores){
-            signalSemaphores.push_back(semaphore); 
+    if (additionalSignalSemaphores != nullptr)
+    {
+        for (const auto &semaphore : *additionalSignalSemaphores)
+        {
+            signalSemaphores.push_back(semaphore);
         }
     }
 
-    uint32_t signalSemaphoreCount = 0; 
-    if (!common::helper::SafeCast<size_t, uint32_t>(signalSemaphores.size(), signalSemaphoreCount)){
-        throw std::runtime_error("Failed to cast signal semaphore counts"); 
-    } 
+    uint32_t signalSemaphoreCount = 0;
+    if (!common::helper::SafeCast<size_t, uint32_t>(signalSemaphores.size(), signalSemaphoreCount))
+    {
+        throw std::runtime_error("Failed to cast signal semaphore counts");
+    }
+
+    uint32_t waitValueCount = 0;
+    common::helper::SafeCast(waitSignalValues.size(), waitValueCount);
+
+
+    const vk::TimelineSemaphoreSubmitInfo time = vk::TimelineSemaphoreSubmitInfo()
+                                                     .setWaitSemaphoreValueCount(waitValueCount)
+                                                     .setWaitSemaphoreValues(waitSignalValues);
 
     vk::SubmitInfo submitInfo = vk::SubmitInfo()
+                                    .setPNext(&time)
                                     .setCommandBufferCount(1)
                                     .setPCommandBuffers(&this->commandBuffers.at(bufferIndex))
                                     .setWaitSemaphoreCount(waits.size() > 0 ? waits.size() : 0)
