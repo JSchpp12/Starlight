@@ -4,7 +4,7 @@
 #include "ManagerBase.hpp"
 #include "device/StarDevice.hpp"
 #include "job/TaskManager.hpp"
-#include <star_common/EventBus.hpp>
+
 #include <star_common/Handle.hpp>
 
 #include <array>
@@ -19,15 +19,14 @@ template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
 class Manager : public ManagerBase<TRecord, TResourceRequest>
 {
   public:
-    Manager(std::string_view resourceHandleName)
-        : ManagerBase<TRecord, TResourceRequest>(resourceHandleName), m_records(resourceHandleName){};
+    explicit Manager(std::string_view resourceHandleName)
+        : ManagerBase<TRecord, TResourceRequest>(resourceHandleName), m_records(resourceHandleName) {};
 
     virtual ~Manager() = default;
     Manager(const Manager &) = delete;
     Manager &operator=(const Manager &) = delete;
     Manager(Manager &&other) noexcept
-        : ManagerBase<TRecord, TResourceRequest>(std::move(other)), m_records(std::move(other.m_records)),
-          m_deviceEventBus(other.m_deviceEventBus){};
+        : ManagerBase<TRecord, TResourceRequest>(std::move(other)), m_records(std::move(other.m_records)) {};
     Manager &operator=(Manager &&other) noexcept
     {
         if (this != &other)
@@ -35,17 +34,9 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
             ManagerBase<TRecord, TResourceRequest>::operator=(std::move(other));
 
             m_records = std::move(other.m_records);
-            m_deviceEventBus = other.m_deviceEventBus;
         }
 
         return *this;
-    }
-
-    virtual void init(device::StarDevice *device, common::EventBus &eventBus)
-    {
-        ManagerBase<TRecord, TResourceRequest>::init(device);
-
-        m_deviceEventBus = &eventBus;
     }
 
     virtual Handle submit(TResourceRequest resource) override
@@ -90,7 +81,6 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
 
   protected:
     star::core::ManagedHandleContainer<TRecord, TMaxRecordCount> m_records;
-    common::EventBus *m_deviceEventBus = nullptr;
 
     Handle insert(TResourceRequest request)
     {
@@ -99,8 +89,5 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
     }
 
     virtual TRecord createRecord(TResourceRequest &&request) const = 0;
-
-  private:
-    using ManagerBase<TRecord, TResourceRequest>::init;
 };
 } // namespace star::core::device::manager

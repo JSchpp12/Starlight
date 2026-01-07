@@ -93,11 +93,9 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
     m_transferWorker = CreateTransferWorker(m_device);
     m_renderResourceManager = std::make_unique<ManagerRenderResource>();
 
-    initServices(m_flightTracker.getSetup().getNumFramesInFlight());
-
-    initWorkers(m_flightTracker.getSetup().getNumFramesInFlight());
-
     m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager, m_flightTracker.getSetup().getNumFramesInFlight());
+    initServices(m_flightTracker.getSetup().getNumFramesInFlight());
+    initWorkers(m_flightTracker.getSetup().getNumFramesInFlight());
 
     m_ownsResources = true;
 }
@@ -287,6 +285,10 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
     {
         service.init(params, numOfFramesInFlight);
     }
+}
+
+void star::core::device::DeviceContext::processAvailableQueues()
+{
 }
 
 void star::core::device::DeviceContext::broadcastFrameStart()

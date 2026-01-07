@@ -23,13 +23,13 @@ class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResource
 
     virtual Handle submit(TResourceRequest request) override
     {
-        assert(this->m_device != nullptr && this->m_deviceTaskSystem != nullptr && this->m_deviceEventBus != nullptr &&
+        assert(this->m_device != nullptr && this->m_deviceTaskSystem != nullptr && this->m_eventBus != nullptr &&
                "Device or Task System not initialized");
 
         auto handle = this->ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::submit(std::move(request));
 
         TRecord *record = this->get(handle);
-        submitTask(*this->m_device, handle, *this->m_deviceTaskSystem, *this->m_deviceEventBus, record);
+        submitTask(*this->m_device, handle, *this->m_deviceTaskSystem, *this->m_eventBus, record);
 
         return handle;
     }

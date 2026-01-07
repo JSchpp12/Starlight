@@ -4,6 +4,7 @@
 
 #include "Enums.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
+
 #include <star_common/EventBus.hpp>
 
 namespace star::core::device::manager
@@ -17,26 +18,26 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
           m_registeredHandleEventType(common::HandleTypeRegistry::instance().registerType(eventTypeName))
     {
     }
-
     virtual ~ManagerEventBusTies() = default;
     ManagerEventBusTies(const ManagerEventBusTies &) = delete;
     ManagerEventBusTies &operator=(const ManagerEventBusTies &) = delete;
 
     ManagerEventBusTies(ManagerEventBusTies &&other) noexcept
-        : Manager<TRecord, TResourceRequest, TMaxRecordCount>(std::move(other))
+        : Manager<TRecord, TResourceRequest, TMaxRecordCount>(std::move(other)), m_subscriberInfo(),
+          m_eventBus(other.m_eventBus)
     {
         // Unsubscribe source BEFORE moving handle
-        if (other.m_subscriberInfo.isInitialized() && other.m_deviceEventBus)
+        if (other.m_subscriberInfo.isInitialized() && other.m_eventBus)
         {
-            other.unsubscribe();
+            other.unsubscribe(*other.m_eventBus);
         }
 
         // Now move the handle safely
         m_subscriberInfo = std::move(other.m_subscriberInfo);
-
-        if (this->m_deviceEventBus && this->m_device)
+        m_eventBus = other.m_eventBus;
+        if (this->m_eventBus && this->m_device)
         {
-            init(this->m_device, *this->m_deviceEventBus);
+            init(this->m_device, *this->m_eventBus);
         }
     }
 
@@ -44,52 +45,53 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
     {
         if (this != &other)
         {
-            if (other.m_subscriberInfo.isInitialized() && other.m_deviceEventBus){
-                other.unsubscribe();
+            if (other.m_subscriberInfo.isInitialized() && other.m_eventBus)
+            {
+                other.unsubscribe(*other.m_eventBus);
             }
 
-            // Move base class
             Manager<TRecord, TResourceRequest, TMaxRecordCount>::operator=(std::move(other));
-
-            // Move member variables
+            m_eventBus = other.m_eventBus;
             m_registeredHandleEventType = std::move(other.m_registeredHandleEventType);
             m_subscriberInfo = std::move(other.m_subscriberInfo);
 
-            // Reinitialize if needed
-            if (other.m_device && other.m_deviceEventBus)
+            if (other.m_device && other.m_eventBus)
             {
-                init(other.m_device, *other.m_deviceEventBus);
+                init(other.m_device, *other.m_eventBus);
             }
         }
         return *this;
     }
 
-    virtual void init(device::StarDevice *device, common::EventBus &eventBus) override
+    virtual void init(device::StarDevice *device, common::EventBus &eventBus)
     {
-        Manager<TRecord, TResourceRequest, TMaxRecordCount>::init(device, eventBus);
+        Manager<TRecord, TResourceRequest, TMaxRecordCount>::init(device);
 
         submitSubscribeToEventBus(eventBus);
+        m_eventBus = &eventBus;
     }
 
-    void unsubscribe()
+    void unsubscribe(common::EventBus &eventBus)
     {
         if (m_subscriberInfo.isInitialized())
         {
-            this->m_deviceEventBus->unsubscribe(m_subscriberInfo);
+            eventBus.unsubscribe(m_subscriberInfo);
 
             m_subscriberInfo = Handle();
         }
     }
 
-    virtual void cleanupRender() override
+    virtual void cleanupRender()
     {
-        unsubscribe();
+        assert(m_eventBus);
 
+        unsubscribe(*m_eventBus);
         this->Manager<TRecord, TResourceRequest, TMaxRecordCount>::cleanupRender();
     }
 
   protected:
     Handle m_subscriberInfo;
+    common::EventBus *m_eventBus = nullptr;
 
     void eventCallback(const star::common::IEvent &e, bool &keepAlive)
     {

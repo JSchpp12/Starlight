@@ -4,8 +4,9 @@
 #include "HandleContainer.hpp"
 #include "device/StarDevice.hpp"
 
-#include <star_common/helper/CastHelpers.hpp>
+#include "core/Exceptions.hpp"
 #include <star_common/Handle.hpp>
+#include <star_common/helper/CastHelpers.hpp>
 
 #include <array>
 #include <vector>
@@ -34,10 +35,11 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
 
     Handle storeRecord(TData newData) override
     {
-        const uint32_t nextSpace = getNextSpace();
-        const Handle newHandle = Handle{.type = this->getHandleType(), .id = nextSpace};
+        const uint32_t acqSpace = this->getNextSpace();
 
-        m_records[nextSpace] = std::move(newData);
+        const Handle newHandle = Handle{.type = this->getHandleType(), .id = acqSpace};
+
+        m_records[static_cast<const size_t &>(acqSpace)] = std::move(newData);
 
         return newHandle;
     }
@@ -53,7 +55,7 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
 
         if (m_nextSpace >= m_records.size())
         {
-            throw std::runtime_error("Storage is full");
+            STAR_THROW("Storage is full"); 
         }
 
         return m_nextSpace++;

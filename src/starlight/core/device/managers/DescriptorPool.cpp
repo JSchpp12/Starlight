@@ -15,15 +15,16 @@ DescriptorPool::DescriptorPool() : Manager<DescriptorPoolRecord, DescriptorPoolR
 
 void DescriptorPool::init(const uint8_t &numFramesInFlight, device::StarDevice *device, common::EventBus &eventBus)
 {
-    init(device, eventBus);
+    init(device);
 
     m_numFramesInFlight = numFramesInFlight;
+    m_eventBus = &eventBus;
     registerListenForEnginePhaseComplete(eventBus);
 }
 
-void DescriptorPool::init(device::StarDevice *device, common::EventBus &eventBus)
+void DescriptorPool::init(device::StarDevice *device)
 {
-    Manager<DescriptorPoolRecord, DescriptorPoolRequest, 1>::init(device, eventBus);
+    Manager<DescriptorPoolRecord, DescriptorPoolRequest, 1>::init(device);
 }
 
 void DescriptorPool::registerListenForEnginePhaseComplete(common::EventBus &bus)
@@ -87,11 +88,11 @@ void DescriptorPool::notificationFromEventBusHandleDelete(const Handle &noLonger
 
 std::vector<std::pair<vk::DescriptorType, const uint32_t>> DescriptorPool::emitAndGetRequests()
 {
-    assert(this->m_deviceEventBus != nullptr);
+    assert(this->m_eventBus != nullptr);
 
     std::vector<std::pair<vk::DescriptorType, const uint32_t>> data;
 
-    this->m_deviceEventBus->emit(event::ConsumeDescriptorRequests{static_cast<void *>(&data)});
+    this->m_eventBus->emit(event::ConsumeDescriptorRequests{static_cast<void *>(&data)});
 
     return data;
 }

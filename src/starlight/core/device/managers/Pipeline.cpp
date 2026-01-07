@@ -29,7 +29,7 @@ void Pipeline::cleanupRender()
 
     for (size_t i{0}; i < unsubscribers.size(); i++)
     {
-        m_deviceEventBus->unsubscribe(*unsubscribers[i]);
+        this->m_eventBus->unsubscribe(*unsubscribers[i]);
     }
 }
 

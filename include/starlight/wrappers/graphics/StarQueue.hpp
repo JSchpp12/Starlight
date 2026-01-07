@@ -8,20 +8,28 @@ class StarQueue
 {
   public:
     StarQueue() = default;
-    StarQueue(vk::Queue queue, const uint32_t &parentQueueFamilyIndex);
+    StarQueue(vk::Queue queue, uint32_t parentQueueFamilyIndex);
 
-    uint32_t getParentQueueFamilyIndex() const
+    const uint32_t &getParentQueueFamilyIndex()
     {
-        return this->parentQueueFamilyIndex;
+        return m_parentQueueFamilyIndex;
+    }
+    const uint32_t &getParentQueueFamilyIndex() const
+    {
+        return m_parentQueueFamilyIndex;
     }
 
     vk::Queue &getVulkanQueue()
     {
-        return this->queue;
+        return m_queue;
+    }
+    const vk::Queue &getVulkanQueue() const
+    {
+        return m_queue;
     }
 
   private:
-    uint32_t parentQueueFamilyIndex = 0;
-    vk::Queue queue = vk::Queue();
+    uint32_t m_parentQueueFamilyIndex = 0;
+    vk::Queue m_queue = VK_NULL_HANDLE;
 };
 } // namespace star

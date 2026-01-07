@@ -44,8 +44,9 @@ class DescriptorPool : public Manager<DescriptorPoolRecord, DescriptorPoolReques
     std::unique_ptr<StarDescriptorPool> currentPool;
     Handle m_engineSceneInitCallbackDone;
     uint8_t m_numFramesInFlight = 0;
+    common::EventBus *m_eventBus = nullptr;
 
-    virtual void init(device::StarDevice *device, common::EventBus &eventBus) override;
+    virtual void init(device::StarDevice *device) override;
 
     DescriptorPoolRecord createRecord(DescriptorPoolRequest &&request) const override;
 

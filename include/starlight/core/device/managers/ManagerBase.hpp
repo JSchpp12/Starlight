@@ -42,7 +42,7 @@ class ManagerBase
 
     virtual Handle submit(TResourceRequest resource) = 0;
 
-    void init(device::StarDevice *device)
+    virtual void init(device::StarDevice *device)
     {
         m_device = device;
     }

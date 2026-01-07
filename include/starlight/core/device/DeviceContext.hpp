@@ -192,6 +192,8 @@ class DeviceContext : public star::common::IDeviceContext
 
     void initServices(const uint8_t &numFramesInFlight);
 
+    void processAvailableQueues();
+
     void broadcastFrameStart();
 
     void broadcastFramePrepToService();
