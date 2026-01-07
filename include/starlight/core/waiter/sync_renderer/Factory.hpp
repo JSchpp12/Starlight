@@ -1,21 +1,21 @@
 #pragma once
 
 #include "starlight/core/device/managers/ManagerCommandBuffer.hpp"
-#include "starlight/core/modules/sync_renderer/SyncTargetRenderer.hpp"
+#include "starlight/core/waiter/sync_renderer/SyncTargetRenderer.hpp"
 
-#include <star_common/Handle.hpp>
 #include <star_common/EventBus.hpp>
+#include <star_common/Handle.hpp>
 
 #include <optional>
 #include <vulkan/vulkan.hpp>
 
-namespace star::core::modules::sync_renderer
+namespace star::core::waiter::sync_renderer
 {
 class Factory
 {
   public:
     Factory(star::common::EventBus &eventBus, core::device::manager::ManagerCommandBuffer &commandBufferManager);
-    Factory &setWaitPipelineStage(vk::PipelineStageFlags flags); 
+    Factory &setWaitPipelineStage(vk::PipelineStageFlags flags);
     Factory &setCreatedOnFrameCount(uint64_t currentFrameCounter);
     Factory &setSemaphore(vk::Semaphore semaphore);
     Factory &setSemaphoreSignalValue(uint64_t signalValue);
@@ -25,7 +25,7 @@ class Factory
     std::shared_ptr<SyncTargetRenderer> build();
 
   private:
-    star::common::EventBus &m_eventBus; 
+    star::common::EventBus &m_eventBus;
     core::device::manager::ManagerCommandBuffer &m_commandBufferManager;
     std::optional<uint64_t> m_signalValue = std::nullopt;
     std::optional<uint64_t> m_createdOnFrameCount = std::nullopt;
@@ -35,4 +35,4 @@ class Factory
     vk::PipelineStageFlags m_flags;
     vk::Semaphore m_targetSemaphore = VK_NULL_HANDLE;
 };
-} // namespace star::core::modules::sync_renderer
+} // namespace star::core::waiter::sync_renderer

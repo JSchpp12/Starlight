@@ -1,8 +1,8 @@
 #pragma once
 
-#include "starlight/core/modules/sync_renderer/SyncTargetRenderer.hpp"
+#include "starlight/core/waiter/sync_renderer/SyncTargetRenderer.hpp"
 
-namespace star::core::modules::sync_renderer
+namespace star::core::waiter::sync_renderer
 {
 class SyncTargetRendererBinary : public SyncTargetRenderer
 {
@@ -17,4 +17,4 @@ class SyncTargetRendererBinary : public SyncTargetRenderer
   protected:
     virtual void registerWaitWithManager() override;
 };
-} // namespace star::core::modules::sync_renderer
+} // namespace star::core::waiter::sync_renderer

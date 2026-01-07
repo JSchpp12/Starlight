@@ -104,15 +104,6 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     return mainGraphicsSemaphore;
 }
 
-// void star::core::device::manager::ManagerCommandBuffer::submitPostPresentationCommands(
-//     StarDevice &device, const uint8_t &frameInFlightIndex, const uint64_t &currentFrameIndex,
-//     vk::Semaphore presentationImageReadySemaphore)
-// {
-//     auto ready = std::vector<vk::Semaphore>{presentationImageReadySemaphore};
-//     this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::after_presentation, frameInFlightIndex,
-//                                        currentFrameIndex, &ready);
-// }
-
 void star::core::device::manager::ManagerCommandBuffer::handleDynamicBufferRequests()
 {
     while (!ManagerCommandBuffer::dynamicBuffersToSubmit.empty())

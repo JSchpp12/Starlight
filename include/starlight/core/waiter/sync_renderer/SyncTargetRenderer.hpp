@@ -9,7 +9,7 @@
 
 #include <memory>
 
-namespace star::core::modules::sync_renderer
+namespace star::core::waiter::sync_renderer
 {
 class SyncTargetRenderer : public std::enable_shared_from_this<SyncTargetRenderer>
 {
@@ -58,4 +58,4 @@ class SyncTargetRenderer : public std::enable_shared_from_this<SyncTargetRendere
 
     void registerListener(star::common::EventBus &eventBus);
 };
-} // namespace star::core::modules::sync_renderer
+} // namespace star::core::waiter::sync_renderer

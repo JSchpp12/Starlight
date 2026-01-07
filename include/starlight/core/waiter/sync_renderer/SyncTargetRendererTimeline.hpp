@@ -1,10 +1,10 @@
 #pragma once
 
-#include "starlight/core/modules/sync_renderer/SyncTargetRenderer.hpp"
+#include "starlight/core/waiter/sync_renderer/SyncTargetRenderer.hpp"
 
 #include <vulkan/vulkan.hpp>
 
-namespace star::core::modules::sync_renderer
+namespace star::core::waiter::sync_renderer
 {
 class SyncTargetRendererTimeline : public SyncTargetRenderer
 {
@@ -24,4 +24,4 @@ class SyncTargetRendererTimeline : public SyncTargetRenderer
 
     uint64_t m_signalValue;
 };
-} // namespace star::core::modules::sync_renderer
+} // namespace star::core::waiter::sync_renderer

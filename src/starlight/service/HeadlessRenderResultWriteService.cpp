@@ -1,6 +1,6 @@
 #include "starlight/service/HeadlessRenderResultWriteService.hpp"
 
-#include "starlight/core/modules/sync_renderer/Factory.hpp"
+#include "starlight/core/waiter/sync_renderer/Factory.hpp"
 #include "starlight/event/TriggerScreenshot.hpp"
 
 #include <cassert>
@@ -124,14 +124,13 @@ void star::service::HeadlessRenderResultWriteService::onRenderReadyForFinalizati
     const event::RenderReadyForFinalization &event, bool &keepAlive)
 {
     assert(m_eventBus && m_managerCommandBuffer); 
-    vk::Semaphore semaphore = event.getFinalDoneSemaphore(); 
-
     // create a waiter to update the target renderer
-    core::modules::sync_renderer::Factory(*m_eventBus, *m_managerCommandBuffer)
+    core::waiter::sync_renderer::Factory(*m_eventBus, *m_managerCommandBuffer)
         .setSemaphore(event.getFinalDoneSemaphore())
         .setCreatedOnFrameCount(m_frameTracker->getCurrent().getGlobalFrameCounter())
         .setTargetFrameInFlightIndex(m_frameTracker->getCurrent().getFinalTargetImageIndex())
         .setTargetCommandBuffer(m_mainGraphicsRenderer->getCommandBuffer())
         .build();
+
     keepAlive = true;
 }

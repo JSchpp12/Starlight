@@ -1,6 +1,6 @@
-#include "starlight/core/modules/sync_renderer/SyncTargetRenderer.hpp"
+#include "starlight/core/waiter/sync_renderer/SyncTargetRenderer.hpp"
 
-namespace star::core::modules::sync_renderer
+namespace star::core::waiter::sync_renderer
 {
 void SyncTargetRenderer::registerListener(star::common::EventBus &eventBus)
 {
@@ -23,7 +23,7 @@ void SyncTargetRenderer::onStartOfNextFrame(const event::StartOfNextFrame &event
     if (m_createdOnFrameCount < event.getFrameTracker().getCurrent().getGlobalFrameCounter() &&
         event.getFrameTracker().getCurrent().getFrameInFlightIndex() == m_targetFrameIndex)
     {
-        registerWaitWithManager(); 
+        registerWaitWithManager();
 
         keepAlive = false;
     }
@@ -32,4 +32,4 @@ void SyncTargetRenderer::onStartOfNextFrame(const event::StartOfNextFrame &event
         keepAlive = true;
     }
 }
-}
+} // namespace star::core::waiter::sync_renderer

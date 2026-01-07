@@ -55,10 +55,6 @@ class ManagerCommandBuffer
     /// @return semaphore signaling completion of submission
     vk::Semaphore update(StarDevice &device, const common::FrameTracker &frameTracker);
 
-    // void submitPostPresentationCommands(StarDevice &device, const uint8_t &frameIndexToBeDrawn,
-    //                                     const uint64_t &currentFrameIndex,
-    //                                     vk::Semaphore presentationImageReadySemaphore);
-
   private:
     static std::stack<Handle> dynamicBuffersToSubmit;
 

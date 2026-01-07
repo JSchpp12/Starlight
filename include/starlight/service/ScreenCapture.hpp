@@ -11,7 +11,7 @@
 #include "job/tasks/TaskFactory.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "service/InitParameters.hpp"
-#include "starlight/core/modules/sync_renderer/Factory.hpp"
+#include "starlight/core/waiter/sync_renderer/Factory.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
@@ -190,7 +190,7 @@ class ScreenCapture
     {
         assert(m_deviceInfo.eventBus && m_deviceInfo.commandManager); 
 
-        core::modules::sync_renderer::Factory(*m_deviceInfo.eventBus, *m_deviceInfo.commandManager)
+        core::waiter::sync_renderer::Factory(*m_deviceInfo.eventBus, *m_deviceInfo.commandManager)
             .setWaitPipelineStage(vk::PipelineStageFlagBits::eFragmentShader)
             .setCreatedOnFrameCount(std::move(currentFrameCount))
             .setSemaphoreSignalValue(signalValue)

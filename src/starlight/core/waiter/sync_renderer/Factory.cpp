@@ -1,9 +1,9 @@
-#include "starlight/core/modules/sync_renderer/Factory.hpp"
+#include "starlight/core/waiter/sync_renderer/Factory.hpp"
 
-#include "starlight/core/modules/sync_renderer/SyncTargetRendererBinary.hpp"
-#include "starlight/core/modules/sync_renderer/SyncTargetRendererTimeline.hpp"
+#include "starlight/core/waiter/sync_renderer/SyncTargetRendererBinary.hpp"
+#include "starlight/core/waiter/sync_renderer/SyncTargetRendererTimeline.hpp"
 
-namespace star::core::modules::sync_renderer
+namespace star::core::waiter::sync_renderer
 {
 Factory::Factory(star::common::EventBus &eventBus, core::device::manager::ManagerCommandBuffer &commandBufferManager)
     : m_eventBus(eventBus), m_commandBufferManager(commandBufferManager)
@@ -74,4 +74,4 @@ std::shared_ptr<SyncTargetRenderer> Factory::build()
 
     return waiter;
 }
-} // namespace star::core::modules::sync_renderer
+} // namespace star::core::waiter::sync_renderer
