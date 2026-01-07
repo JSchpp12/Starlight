@@ -11,9 +11,11 @@
 namespace star::service::detail::screen_capture
 {
 template <typename TPolicy>
-concept TExecutePolicyLike = requires(TPolicy c, core::device::StarDevice &device, core::device::manager::ManagerCommandBuffer &manCmdBuf) {
-    { c.registerWithManager(device, manCmdBuf) } -> std::same_as<Handle>;
-};
+concept TExecutePolicyLike =
+    requires(TPolicy c, core::device::StarDevice &device, core::device::manager::ManagerCommandBuffer &manCmdBuf) {
+        { c.registerWithManager(device, manCmdBuf) } -> std::same_as<Handle>;
+        { c.init(device) } -> std::same_as<void>;
+    };
 
 template <TExecutePolicyLike TExecuteBufferPolicy> class ExecuteCmdBuffer
 {
@@ -25,6 +27,7 @@ template <TExecutePolicyLike TExecuteBufferPolicy> class ExecuteCmdBuffer
     void init(core::device::StarDevice &device, core::device::manager::ManagerCommandBuffer &manCmdBuf)
     {
         m_commandBuffer = m_executePolicy.registerWithManager(device, manCmdBuf);
+        m_executePolicy.init(device);
     }
 
     void trigger(core::device::manager::ManagerCommandBuffer &manCmdBuf)

@@ -10,9 +10,9 @@ namespace star::service::detail::screen_capture
 {
 struct GPUSynchronizationInfo
 {
+    uint64_t signalValue;
     Handle &copyCommandBuffer;
-    vk::Semaphore &signalSemaphore;
-    const vk::Semaphore &semaphore;
-    const uint64_t &signalValue;
+    const vk::Semaphore &binarySemaphoreForMainCopyDone;
+    const vk::Semaphore &timelineSemaphoreForMainCopyCommandsDone;
 };
 } // namespace star::service::detail::screen_capture

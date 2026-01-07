@@ -15,6 +15,8 @@ class BlitCmdPolicy
     }
     Handle registerWithManager(core::device::StarDevice &device, core::device::manager::ManagerCommandBuffer &manCmdBuf);
 
+    void init(core::device::StarDevice &device);
+
   private:
     common::InUseResourceInformation *m_inUseInfo = nullptr;
 };

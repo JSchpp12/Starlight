@@ -2,7 +2,6 @@
 
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
-#include "core/device/system/event/StartOfNextFrame.hpp"
 #include "logging/LoggingFactory.hpp"
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -20,17 +19,17 @@ static void RecordImageBarrierPostBlitPreTransfer(vk::CommandBuffer cmd, vk::Ima
                            .setBaseArrayLayer(0)
                            .setLayerCount(1);
 
-    auto barrier = vk::ImageMemoryBarrier2()
-                       .setOldLayout(vk::ImageLayout::eTransferDstOptimal)
-                       .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                       .setSubresourceRange(range)
-                       .setImage(targetImage)
-                       .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                       .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                       .setSrcStageMask(vk::PipelineStageFlagBits2::eBlit)
-                       .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                       .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                       .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
+    const auto barrier = vk::ImageMemoryBarrier2()
+                             .setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                             .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+                             .setSubresourceRange(range)
+                             .setImage(targetImage)
+                             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                             .setSrcStageMask(vk::PipelineStageFlagBits2::eBlit)
+                             .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                             .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                             .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
 
     cmd.pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarrierCount(1).setPImageMemoryBarriers(&barrier));
 }
@@ -38,19 +37,19 @@ static void RecordImageBarrierPostBlitPreTransfer(vk::CommandBuffer cmd, vk::Ima
 static void RecordBlitImage(vk::CommandBuffer cmd, vk::Image srcImage, vk::Image dstImage,
                             const vk::Extent3D &imageExtent, const vk::Filter &filter)
 {
-    auto region = vk::ImageBlit2()
-                      .setSrcOffsets({vk::Offset3D{0, 0, 0}})
-                      .setSrcSubresource(vk::ImageSubresourceLayers()
-                                             .setBaseArrayLayer(0)
-                                             .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                             .setLayerCount(1)
-                                             .setMipLevel(0))
-                      .setDstOffsets({vk::Offset3D{0, 0, 0}})
-                      .setDstSubresource(vk::ImageSubresourceLayers()
-                                             .setBaseArrayLayer(0)
-                                             .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                             .setLayerCount(1)
-                                             .setMipLevel(0));
+    const auto region = vk::ImageBlit2()
+                            .setSrcOffsets({vk::Offset3D{0, 0, 0}})
+                            .setSrcSubresource(vk::ImageSubresourceLayers()
+                                                   .setBaseArrayLayer(0)
+                                                   .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                                   .setLayerCount(1)
+                                                   .setMipLevel(0))
+                            .setDstOffsets({vk::Offset3D{0, 0, 0}})
+                            .setDstSubresource(vk::ImageSubresourceLayers()
+                                                   .setBaseArrayLayer(0)
+                                                   .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                                   .setLayerCount(1)
+                                                   .setMipLevel(0));
 
     cmd.blitImage2(vk::BlitImageInfo2()
                        .setSrcImage(srcImage)
@@ -64,6 +63,7 @@ static void RecordBlitImage(vk::CommandBuffer cmd, vk::Image srcImage, vk::Image
 void DefaultCopyPolicy::init(DeviceInfo &deviceInfo)
 {
     m_deviceInfo = &deviceInfo;
+
     createSemaphores(*m_deviceInfo->eventBus,
                      m_deviceInfo->flightTracker->getSetup().getNumUniqueTargetFramesForFinalization());
 }
@@ -75,12 +75,11 @@ GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
     assert(m_deviceInfo->commandManager != nullptr);
     m_copyCmds.trigger(*m_deviceInfo->commandManager);
 
-    const size_t index = static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFinalTargetImageIndex());
-    return GPUSynchronizationInfo{.copyCommandBuffer = m_copyCmds.getCommandBuffer(),
-                                  .signalSemaphore = m_deviceInfo->commandManager->get(m_copyCmds.getCommandBuffer())
-                                                         .commandBuffer->getCompleteSemaphores()[index],
-                                  .semaphore = *m_doneSemaphoresRaw[index],
-                                  .signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed()};
+    const size_t index = static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFrameInFlightIndex());
+    return GPUSynchronizationInfo{.signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed(),
+                                  .copyCommandBuffer = m_copyCmds.getCommandBuffer(),
+                                  .binarySemaphoreForMainCopyDone = *m_binaryInfo.raws[index],
+                                  .timelineSemaphoreForMainCopyCommandsDone = *m_timelineInfo.raws[index]};
 }
 
 void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
@@ -102,13 +101,26 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
             &copyPlan.calleeDependencies->targetTextureReadySemaphore.value();
     }
 
-    const size_t resourceIndex =
-        static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFinalTargetImageIndex());
-    assert(resourceIndex < m_doneSemaphoresRaw.size() &&
-           "Resource index outside of created semaphore range for copyDirector");
+    {
+        const size_t resourceIndex =
+            static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFinalTargetImageIndex());
 
-    m_inUseResources->timelineSemaphoreForCopyDone = m_doneSemaphoresRaw[resourceIndex];
+        assert(resourceIndex < m_timelineInfo.raws.size() &&
+               "Resource index outside of created semaphore range for copyDirector");
+        auto *record = m_deviceInfo->semaphoreManager->get(m_timelineInfo.handles[resourceIndex]);
+        m_inUseResources->timelineSemaphoreForCopyDone.semaphore = &record->semaphore;
+        m_inUseResources->timelineSemaphoreForCopyDone.signaledValue = &record->timlineValue;
+
+        assert(resourceIndex < m_binaryInfo.handles.size() && "Resource index outside of binary semaphore range");
+        m_inUseResources->binarySemaphoreForCopyDone =
+            &m_deviceInfo->semaphoreManager->get(m_binaryInfo.handles[resourceIndex])->semaphore;
+    }
+
     m_inUseResources->queueToUse = m_deviceInfo->device->getDefaultQueue(Queue_Type::Ttransfer).getVulkanQueue();
+    {
+        uint64_t signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed() + 1;
+        m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal = signalValue;
+    }
 }
 
 void DefaultCopyPolicy::registerWithCommandBufferManager()
@@ -117,10 +129,10 @@ void DefaultCopyPolicy::registerWithCommandBufferManager()
     m_blitCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
 }
 
-void DefaultCopyPolicy::createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight)
+void DefaultCopyPolicy::SemaphoreInfo::init(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight, bool isTimeline)
 {
-    m_doneSemaphoreHandles.resize(numFramesInFlight);
-    m_doneSemaphoresRaw.resize(numFramesInFlight);
+    handles.resize(numFramesInFlight);
+    raws.resize(numFramesInFlight);
 
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
@@ -129,60 +141,18 @@ void DefaultCopyPolicy::createSemaphores(star::common::EventBus &eventBus, const
             eventBus.emit(core::device::system::event::ManagerRequest{
                 star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
                     core::device::manager::GetSemaphoreEventTypeName),
-                core::device::manager::SemaphoreRequest{true}, m_doneSemaphoreHandles[i], &r});
+                core::device::manager::SemaphoreRequest{isTimeline}, handles[i], &r});
 
-            assert(r != nullptr && m_doneSemaphoreHandles[i].isInitialized() && "Emit did not provide a result");
-            m_doneSemaphoresRaw[i] = &static_cast<core::device::manager::SemaphoreRecord *>(r)->semaphore;
+            assert(r != nullptr && handles[i].isInitialized() && "Emit did not provide a result");
+            raws[i] = &static_cast<core::device::manager::SemaphoreRecord *>(r)->semaphore;
         }
     }
 }
 
-void DefaultCopyPolicy::registerListenerForNextFrameStart(CalleeRenderDependencies &deps,
-                                                          const uint8_t &frameInFlightIndex)
+void DefaultCopyPolicy::createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight)
 {
-    Handle calleeHandle = deps.commandBufferContainingTarget;
-    uint8_t targetFrameInFlightIndex = frameInFlightIndex;
-    uint64_t signaledSemaphoreValue =
-        m_deviceInfo->flightTracker->getCurrent().getFramesInFlightTracking().getNumOfTimesFrameProcessed(
-            frameInFlightIndex);
-
-    m_deviceInfo->eventBus->subscribe(star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                          core::device::system::event::StartOfNextFrameName()),
-                                      {[this, calleeHandle, targetFrameInFlightIndex,
-                                        signaledSemaphoreValue](const star::common::IEvent &e, bool &keepAlive) {
-                                           this->startOfFrameEventCallback(calleeHandle, targetFrameInFlightIndex,
-                                                                           signaledSemaphoreValue, e, keepAlive);
-                                       },
-                                       [this]() -> Handle * { return &this->m_startOfFrameListener; },
-                                       [this](const Handle &noLongerNeededHandle) {
-                                           if (noLongerNeededHandle == m_startOfFrameListener)
-                                           {
-                                               m_startOfFrameListener = Handle();
-                                           }
-                                       }});
-}
-
-void DefaultCopyPolicy::startOfFrameEventCallback(const Handle &calleeCommandBuffer,
-                                                  const uint8_t &targetFrameInFlightIndex,
-                                                  const uint64_t &signaledSemaphoreValue, const star::common::IEvent &e,
-                                                  bool &keepAlive)
-{
-    assert(calleeCommandBuffer.isInitialized() && "Callee information must be provided");
-
-    const auto &startEvent = static_cast<const core::device::system::event::StartOfNextFrame &>(e);
-
-    // check if the previous image matches with the image that WILL be used this frame in the target command buffer
-    if (targetFrameInFlightIndex != startEvent.getFrameInFlightIndex())
-    {
-        keepAlive = true;
-        return;
-    }
-
-    m_deviceInfo->commandManager->get(calleeCommandBuffer)
-        .oneTimeWaitSemaphoreInfo.insert(m_doneSemaphoreHandles[targetFrameInFlightIndex],
-                                         *m_doneSemaphoresRaw[targetFrameInFlightIndex],
-                                         vk::PipelineStageFlagBits::eColorAttachmentOutput, signaledSemaphoreValue);
-    keepAlive = false;
+    m_binaryInfo.init(eventBus, numFramesInFlight, false);
+    m_timelineInfo.init(eventBus, numFramesInFlight, true);
 }
 
 StarTextures::Texture DefaultCopyPolicy::createBlitTargetTexture(const vk::Extent2D &extent) const

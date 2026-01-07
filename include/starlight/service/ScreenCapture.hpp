@@ -26,7 +26,6 @@ template <typename TCopyPolicy>
 concept CopyPolicyLike = requires(TCopyPolicy c, detail::screen_capture::DeviceInfo &deviceInfo,
                                   detail::screen_capture::CopyPlan &copyPlan, const Handle &calleeHandle) {
     { c.init(deviceInfo) } -> std::same_as<void>;
-    { c.registerWithCommandBufferManager() } -> std::same_as<void>;
     { c.triggerSubmission(copyPlan) } -> std::same_as<detail::screen_capture::GPUSynchronizationInfo>;
 };
 
@@ -126,15 +125,16 @@ class ScreenCapture
         // need way to wait for commands to be submitted BEFORE telling worker to start?
         detail::screen_capture::GPUSynchronizationInfo syncInfo = m_copyPolicy.triggerSubmission(copyPlan);
 
-        createCallbackForSyncingMainRenderer(syncInfo.copyCommandBuffer, screenEvent.getTargetCommandBuffer(),
-                                             syncInfo.signalSemaphore,
-                                             m_deviceInfo.flightTracker->getCurrent().getGlobalFrameCounter());
-
         uint64_t signalValue;
         common::helper::SafeCast(syncInfo.signalValue, signalValue);
+        createCallbackForSyncingMainRenderer(syncInfo.copyCommandBuffer, screenEvent.getTargetCommandBuffer(),
+                                             syncInfo.timelineSemaphoreForMainCopyCommandsDone,
+                                             m_deviceInfo.flightTracker->getCurrent().getGlobalFrameCounter(),
+                                             syncInfo.signalValue);
+
         job::tasks::write_image_to_disk::WritePayload payload{
             .path = screenEvent.getName(),
-            .semaphore = syncInfo.semaphore,
+            .semaphore = syncInfo.timelineSemaphoreForMainCopyCommandsDone,
             .device = m_deviceInfo.device->getVulkanDevice(),
             .bufferImageInfo = std::make_unique<job::tasks::write_image_to_disk::BufferImageInfo>(
                 copyPlan.resources.bufferInfo.containerRegistration,
@@ -185,12 +185,14 @@ class ScreenCapture
     }
 
     void createCallbackForSyncingMainRenderer(Handle copyCommandBuffer, Handle targetCommandBuffer,
-                                              vk::Semaphore signalSemaphore, uint64_t currentFrameCount) const
+                                              vk::Semaphore signalSemaphore, uint64_t currentFrameCount,
+                                              const uint64_t &signalValue) const
     {
         std::shared_ptr<detail::screen_capture::SyncTargetRenderer> callback =
             detail::screen_capture::SyncTargetRenderer::Builder()
                 .setDeviceEventBus(m_deviceInfo.eventBus)
                 .setCreatedOnFrameCount(std::move(currentFrameCount))
+                .setSemaphoreSignalValue(signalValue)
                 .setSemaphore(std::move(signalSemaphore))
                 .setTargetFrameInFlightIndex(m_deviceInfo.flightTracker->getCurrent().getFrameInFlightIndex())
                 .setSourceCommandBuffer(std::move(copyCommandBuffer))

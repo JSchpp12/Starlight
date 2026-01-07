@@ -6,4 +6,9 @@ Handle BlitCmdPolicy::registerWithManager(core::device::StarDevice &device, core
 {
     return Handle();
 }
+
+void BlitCmdPolicy::init(core::device::StarDevice &device)
+{
+    (void)device; 
+}
 } // namespace star::service::detail::screen_capture

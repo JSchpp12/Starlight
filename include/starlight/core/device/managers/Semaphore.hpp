@@ -4,6 +4,8 @@
 #include "device/managers/ManagerEventBusTies.hpp"
 #include <star_common/EventBus.hpp>
 
+#include <vulkan/vulkan.h>
+
 namespace star::core::device::manager
 {
 struct SemaphoreRequest
@@ -13,8 +15,13 @@ struct SemaphoreRequest
 
 struct SemaphoreRecord
 {
-    vk::Semaphore semaphore;
-    bool isTimelineSemaphore;
+    vk::Semaphore semaphore = VK_NULL_HANDLE;
+    std::optional<uint64_t> timlineValue = std::nullopt;
+
+    bool isTimelineSemaphore() const
+    {
+        return timlineValue.has_value();
+    }
     bool isReady() const
     {
         return true;
@@ -22,6 +29,8 @@ struct SemaphoreRecord
     void cleanupRender(device::StarDevice &device)
     {
         device.getVulkanDevice().destroySemaphore(semaphore);
+        semaphore = VK_NULL_HANDLE;
+        timlineValue = std::nullopt;
     }
 };
 
@@ -37,13 +46,6 @@ class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 
     virtual ~Semaphore() = default;
 
   protected:
-    virtual SemaphoreRecord createRecord(SemaphoreRequest &&request) const override
-    {
-        return SemaphoreRecord{.semaphore = CreateSemaphore(*this->m_device, request.isTimelineSemaphore),
-                               .isTimelineSemaphore = request.isTimelineSemaphore};
-    }
-
-  private:
-    static vk::Semaphore CreateSemaphore(device::StarDevice &device, const bool &isTimelineSemaphore);
+    virtual SemaphoreRecord createRecord(SemaphoreRequest &&request) const override;
 };
 } // namespace star::core::device::manager

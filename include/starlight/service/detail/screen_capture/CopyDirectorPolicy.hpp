@@ -30,9 +30,15 @@ class DefaultCopyPolicy
     void registerWithCommandBufferManager();
 
   private:
+    struct SemaphoreInfo
+    {
+        std::vector<Handle> handles;
+        std::vector<vk::Semaphore *> raws;
+
+        void init(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight, bool isTimeline); 
+    };
     Handle m_commandBufferTransfer, m_commandBufferGraphics;
-    std::vector<Handle> m_doneSemaphoreHandles;
-    std::vector<vk::Semaphore *> m_doneSemaphoresRaw;
+    SemaphoreInfo m_timelineInfo, m_binaryInfo;
     Handle m_startOfFrameListener;
     DeviceInfo *m_deviceInfo = nullptr;
     std::unique_ptr<common::InUseResourceInformation> m_inUseResources =
@@ -45,11 +51,6 @@ class DefaultCopyPolicy
 
     void createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight);
 
-    void registerListenerForNextFrameStart(CalleeRenderDependencies &deps, const uint8_t &frameInFlightIndex);
-
-    void startOfFrameEventCallback(const Handle &calleeCommandBuffer, const uint8_t &targetFrameInFlightIndex,
-                                   const uint64_t &signaledSemaphoreValue, const star::common::IEvent &e,
-                                   bool &keepAlive);
 
     StarTextures::Texture createBlitTargetTexture(const vk::Extent2D &extent) const;
 };

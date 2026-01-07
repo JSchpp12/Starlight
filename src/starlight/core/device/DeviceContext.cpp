@@ -6,8 +6,8 @@
 #include "job/worker/Worker.hpp"
 #include "job/worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
 
-#include "core/device/system/event/StartOfNextFrame.hpp"
 #include "event/PrepForNextFrame.hpp"
+#include "event/StartOfNextFrame.hpp"
 #include "managers/ManagerRenderResource.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
@@ -291,8 +291,7 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
 
 void star::core::device::DeviceContext::broadcastFrameStart()
 {
-    m_eventBus.emit(star::core::device::system::event::StartOfNextFrame{
-        m_flightTracker.getCurrent().getGlobalFrameCounter(), m_flightTracker.getCurrent().getFrameInFlightIndex()});
+    m_eventBus.emit(event::StartOfNextFrame{m_flightTracker});
 }
 
 void star::core::device::DeviceContext::broadcastFramePrepToService()
