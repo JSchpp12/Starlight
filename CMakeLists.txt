@@ -234,7 +234,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/StarEngine.hpp"
     "include/starlight/data_structure/dynamic/ThreadSharedObjectPool.hpp"
     "include/starlight/graphics/PipelineFactory.hpp"
-    "src/starlight/core/sysinfo/SystemInfo.hpp"
+    "include/starlight/core/sysinfo/SystemInfo.hpp"
     "include/starlight/core/logging/LoggingFactory.hpp"
     "include/starlight/core/renderer/RendererBase.hpp"
     "include/starlight/core/renderer/LightRenderer.hpp"
