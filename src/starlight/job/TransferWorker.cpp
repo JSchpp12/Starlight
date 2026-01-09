@@ -2,6 +2,7 @@
 
 #include <star_common/helper/CastHelpers.hpp>
 #include "logging/LoggingFactory.hpp"
+#include "core/Exceptions.hpp"
 
 #include <thread>
 
@@ -278,8 +279,9 @@ star::job::TransferWorker::TransferWorker(TaskContainer<complete_tasks::Complete
     this->threads =
         CreateThreads(device, queuesToUse, completeMessages, m_highPriorityTaskContainer, m_standardTaskContainer);
 
-    if (this->threads.size() == 0)
-        throw std::runtime_error("Failed to create transfer worker");
+    if (this->threads.size() == 0){
+        STAR_THROW("Failed to create any transfer worker"); 
+    }
 
     for (auto &thread : this->threads)
         thread->startAsync(device);

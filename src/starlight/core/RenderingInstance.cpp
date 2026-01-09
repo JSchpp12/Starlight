@@ -3,19 +3,20 @@
 #include <star_common/helper/CastHelpers.hpp>
 
 #include <unordered_set>
+#include "starlight/core/Exceptions.hpp"
 
 star::core::RenderingInstance::RenderingInstance(const std::string &applicationName,
                                                  std::vector<const char *> &extensions)
 {
     if (m_enableValidationLayers && !DoesSystemSupportValidationLayers(m_validationLayers))
     {
-        throw std::runtime_error("Validation layers were requested but are not available on the system. Ensure PATH "
+        STAR_THROW("Validation layers were requested but are not available on the system. Ensure PATH "
                                  "and vulkan dependencies are properly set");
     }
 
     if (!DoesSystemSupportDisplayExtensions(extensions))
     {
-        throw std::runtime_error("System does not support the required extensions for display");
+        STAR_THROW("System does not support the required extensions for display");
     }
 
     m_instance = createInstance(applicationName, extensions);

@@ -82,7 +82,6 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance,
 
     // pick the best device of the potential devices that are suitable
     std::vector<vk::PhysicalDevice> optimalDevices = std::vector<vk::PhysicalDevice>();
-    vk::PhysicalDevice optimalDevice;
     uint32_t largestQueueFamilyCount = 0;
     for (const auto &nDevice : suitableDevices)
     {
@@ -93,13 +92,13 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance,
             if (indicies.getUniques().size() > largestQueueFamilyCount)
             {
                 largestQueueFamilyCount = common::helper::size_t_to_unsigned_int(indicies.getUniques().size());
-                optimalDevice = nDevice;
+                picked = nDevice;
             }
         }
     }
 
     // check for a fully supported device
-    if (!optimalDevice)
+    if (!picked)
     {
         for (const auto &nDevice : devices)
         {
@@ -110,12 +109,10 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance,
             }
         }
     }
-    else
-    {
-        picked = optimalDevice;
-        LogPhysicalDeviceInfo(picked);
-        this->physicalDevice = picked;
-    }
+
+    LogPhysicalDeviceInfo(picked);
+    this->physicalDevice = picked;
+    
 
     if ((devices.size() == 0) || !physicalDevice)
     {

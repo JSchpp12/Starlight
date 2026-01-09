@@ -443,17 +443,14 @@ star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
 
 void star::StarTextures::Texture::LogImageCreateFailure(const vk::Result &result)
 {
-    std::stringstream ss;
-    ss << "Failed to create image with error: ";
+    std::ostringstream oss;
+    oss << "Failed to create image with Vulkan error: ";
 
-    switch (result)
-    {
-    case vk::Result::eErrorFeatureNotPresent:
-        ss << "Feature not present";
-        break;
+    if (result == vk::Result::eErrorFeatureNotPresent){
+        oss << "eErrorFeatureNotPresent"; 
     }
 
-    core::logging::log(boost::log::trivial::error, ss.str());
+    core::logging::log(boost::log::trivial::error, oss.str());
 }
 
 vk::DeviceSize star::StarTextures::Texture::CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
