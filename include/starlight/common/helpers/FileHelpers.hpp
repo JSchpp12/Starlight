@@ -2,13 +2,10 @@
 
 #include "Enums.hpp"
 
-#include <sys/stat.h>
-
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <string>
-#include <vector>
 
 #include <boost/filesystem.hpp>
 
@@ -37,4 +34,5 @@ Shader_Stage GetStageOfShader(std::string_view pathToFile);
 
 void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirectory);
 
+boost::filesystem::path GetExecutableDirectory();
 } // namespace star::file_helpers

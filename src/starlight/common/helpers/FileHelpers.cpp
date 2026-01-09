@@ -1,7 +1,11 @@
 #include "helpers/FileHelpers.hpp"
 
 #include "logging/LoggingFactory.hpp"
+#include "core/Exceptions.hpp"
 
+#include <star_common/helper/FileHelpers.hpp>
+
+#include <sys/stat.h>
 #include <iostream>
 #include <sstream>
 
@@ -47,7 +51,7 @@ std::string ReadFile(const std::string &pathToFile, bool includeCarriageReturns)
     if (!FileExists(pathToFile)){
         std::ostringstream oss; 
         oss << "Provided file for reading does not exist: " << pathToFile;
-        throw std::runtime_error(oss.str()); 
+        STAR_THROW(oss.str());  
     }
 
     std::string line, text;
@@ -65,14 +69,15 @@ std::string ReadFileBinary(const std::string &pathToFile){
     if (!FileExists(pathToFile)){
         std::ostringstream oss; 
         oss << "Provided file for reading does not exist: " << pathToFile; 
-        throw std::runtime_error(oss.str()); 
+        STAR_THROW(oss.str()); 
     }
 
     std::ifstream file(pathToFile, std::ios::binary | std::ios::ate);
 
     if (!file.is_open()) {
-        std::cerr << "Error: Could not open file " << pathToFile << std::endl;
-        return "";
+        std::ostringstream oss; 
+        oss << "Error: Could not open file " << pathToFile << std::endl;
+        STAR_THROW(oss.str()); 
     }
 
     std::streamsize size = file.tellg();
@@ -80,7 +85,9 @@ std::string ReadFileBinary(const std::string &pathToFile){
 
     std::vector<char> buffer(size);
     if (!file.read(buffer.data(), size)) {
-        std::cerr << "Error: Could not read from file " << pathToFile << std::endl;
+        std::ostringstream oss; 
+        oss << "Error: Could not read from file " << pathToFile << std::endl;
+        core::error(oss.str()); 
         return "";
     }
 
@@ -103,7 +110,7 @@ std::string GetFileNameWithoutExtension(const std::string &pathToFile)
 {
     const auto path = boost::filesystem::path(pathToFile); 
     if (!path.has_filename()){
-        throw std::runtime_error("No filename provided in path"); 
+        STAR_THROW("No filename provided in path");  
     }
 
     const std::string mainFileName = path.filename().string(); 
@@ -136,7 +143,7 @@ star::Shader_Stage GetStageOfShader(std::string_view pathToFile)
         return Shader_Stage::fragment;
     }
 
-    throw std::runtime_error("Unsupported stage type for shader");
+    STAR_THROW("Unsupported stage type for shader"); 
 }
 
 void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirectory){
@@ -149,7 +156,13 @@ void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirector
         std::ostringstream oss;
         oss << "Filesystem error: " << e.what();
 
-        throw std::runtime_error(oss.str());
+        STAR_THROW(oss.str()); 
     }
+}
+
+boost::filesystem::path GetExecutableDirectory(){
+    const std::string exePath = star::common::GetExecutablePath();
+    const auto parentDir = GetParentDirectory(exePath).value(); //should always have a value
+    return parentDir.string(); 
 }
 } // namespace star::file_helpers

@@ -411,7 +411,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/templates/FileResourceManager.hpp"
     "include/starlight/templates/FileResourceContainer.hpp"
     "include/starlight/common/ConfigFile.hpp"
-    "include/starlight/common/helpers/DebugHelpers.hpp"
     "include/starlight/common/helpers/FileHelpers.hpp"
     "include/starlight/common/helpers/Time.hpp"
     "include/starlight/common/VulkanVertex.hpp"

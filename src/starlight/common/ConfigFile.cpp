@@ -36,9 +36,10 @@ void star::ConfigFile::load(const std::string &configFilePath)
 {
     if (!file_helpers::FileExists(configFilePath))
     {
-        core::logging::log(boost::log::trivial::error,
-                           "No config file found. A default one can be generated with the prepare media cmake target");
-        throw std::runtime_error("No config file found");
+        std::ostringstream oss; 
+        oss << "Provided config file was not found: " << configFilePath << std::endl << "A default config file should have been created with the starlight app builder project" << std::endl;
+
+        STAR_THROW(oss.str()); 
     }
 
     json configJson;
@@ -51,12 +52,10 @@ void star::ConfigFile::load(const std::string &configFilePath)
     catch (std::exception &e)
     {
         std::ostringstream oss;
-#include "Enums.hpp"
+
         oss << "Error reading config file: ";
         oss << e.what();
-        core::logging::log(boost::log::trivial::error, oss.str());
-
-        std::cerr << oss.str() << std::endl;
+        STAR_THROW(oss.str()); 
     }
 
     for (auto &setting : availableSettings)
@@ -79,7 +78,7 @@ void star::ConfigFile::load(const std::string &configFilePath)
             case Config_Settings::frames_in_flight:
                 settings[setting.second] = "2";
             default:
-                throw std::runtime_error("Setting not found and has no available default: " + setting.first);
+                STAR_THROW("Setting not found and has no available default: " + setting.first);
             }
         }
     }
