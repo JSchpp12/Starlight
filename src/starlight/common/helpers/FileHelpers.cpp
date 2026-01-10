@@ -161,7 +161,7 @@ void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirector
 }
 
 boost::filesystem::path GetExecutableDirectory(){
-    const std::string exePath = star::common::GetExecutablePath();
+    const std::string exePath = star::common::GetExecutablePath().string();
     const auto parentDir = GetParentDirectory(exePath).value(); //should always have a value
     return parentDir.string(); 
 }

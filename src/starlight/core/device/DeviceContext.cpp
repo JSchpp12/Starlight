@@ -115,7 +115,6 @@ void star::core::device::DeviceContext::prepareForNextFrame()
 {
     handleCompleteMessages();
 
-    uint8_t currentFrame;
     broadcastFramePrepToService();
 
     // assuming external service will handle updating the tracker

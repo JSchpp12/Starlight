@@ -41,7 +41,7 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
         }
     }
 
-    ManagerEventBusTies &operator=(ManagerEventBusTies &&other)
+    ManagerEventBusTies &operator=(ManagerEventBusTies &&other) noexcept
     {
         if (this != &other)
         {

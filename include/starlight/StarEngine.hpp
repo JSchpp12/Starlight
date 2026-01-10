@@ -8,6 +8,7 @@
 #include "StarRenderGroup.hpp"
 #include "StarScene.hpp"
 #include "TransferWorker.hpp"
+#include "core/sysinfo/SystemInfo.hpp"
 #include "core/SystemContext.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "event/EnginePhaseComplete.hpp"
@@ -64,6 +65,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             .id = 0};
         core::logging::init();
         core::logging::log(boost::log::trivial::info, "Logger initialized");
+        core::sysinfo::logSystemOverview();
 
         std::set<star::Rendering_Features> features;
         {

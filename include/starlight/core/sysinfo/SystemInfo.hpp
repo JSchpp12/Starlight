@@ -103,17 +103,21 @@ inline HostInfo queryHostInfo() {
         hi.hostname = "unknown";
     }
     hi.osName = "Windows";
-    // Version (build number via GetVersionEx is deprecated; keep minimal)
+
     OSVERSIONINFOEXW osvi{};
     osvi.dwOSVersionInfoSize = sizeof(osvi);
-    if (::GetVersionExW(reinterpret_cast<OSVERSIONINFOEXW*>(&osvi))) {
+    // Version (build number via GetVersionEx is deprecated; keep minimal)
+    if (::GetVersionExW(reinterpret_cast<LPOSVERSIONINFOW>(&osvi)))
+    {
         std::ostringstream oss;
-        oss << "Win " << osvi.dwMajorVersion << "." << osvi.dwMinorVersion
-            << " (build " << osvi.dwBuildNumber << ")";
+        oss << "Win " << osvi.dwMajorVersion << "." << osvi.dwMinorVersion << " (build " << osvi.dwBuildNumber << ")";
         hi.osVersion = oss.str();
-    } else {
+    }
+    else
+    {
         hi.osVersion = "unknown";
     }
+
 #elif defined(__APPLE__)
     char buf[256];
     if (gethostname(buf, sizeof(buf)) == 0) {
