@@ -22,7 +22,7 @@ class LightList : public ManagerController::RenderResource::Buffer
     const std::shared_ptr<std::vector<Light>> m_lights;
     std::vector<uint16_t> m_lastWriteNumLights;
 
-    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device,
+    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
                                                                    const uint8_t &frameInFlightIndex) override;
 
     void storeLightCount(const uint8_t &frameInFlightIndex);

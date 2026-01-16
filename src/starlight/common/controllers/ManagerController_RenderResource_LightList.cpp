@@ -1,30 +1,35 @@
 #include "ManagerController_RenderResource_LightList.hpp"
 
-#include <star_common/helper/CastHelpers.hpp>
 #include "TransferRequest_LightList.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
+
+#include <star_common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::LightList::
-    createTransferRequest(core::device::StarDevice &device, const uint8_t &frameInFlightIndex)
+    createTransferRequest(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
     storeLightCount(frameInFlightIndex);
 
     return std::make_unique<TransferRequest::LightList>(
-        *m_lights, device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
+        *m_lights, core::helper::GetEngineDefaultQueue(
+                       context.getEventBus(), context.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics)
+                       ->getParentQueueFamilyIndex());
 }
 
-bool star::ManagerController::RenderResource::LightList::doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const
+bool star::ManagerController::RenderResource::LightList::doesFrameInFlightDataNeedUpdated(
+    const uint8_t &frameInFlightIndex) const
 {
 
-    return true; 
+    return true;
     assert(frameInFlightIndex < m_lastWriteNumLights.size());
 
-    return m_lastWriteNumLights[frameInFlightIndex] != m_lights->size(); 
+    return m_lastWriteNumLights[frameInFlightIndex] != m_lights->size();
 }
 
 void star::ManagerController::RenderResource::LightList::storeLightCount(const uint8_t &frameInFlightIndex)
 {
     assert(frameInFlightIndex < m_lastWriteNumLights.size());
-    
+
     uint16_t numLights = 0;
     common::helper::SafeCast<size_t, uint16_t>(m_lights->size(), numLights);
 

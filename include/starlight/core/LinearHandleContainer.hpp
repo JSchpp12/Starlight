@@ -9,7 +9,7 @@
 #include <star_common/helper/CastHelpers.hpp>
 
 #include <array>
-#include <vector>
+#include <stack>
 
 namespace star::core
 {
@@ -29,7 +29,7 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
     }
 
   protected:
-    std::vector<uint32_t> m_skippedSpaces = std::vector<uint32_t>();
+    std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
     std::array<TData, TMaxDataCount> m_records = std::array<TData, TMaxDataCount>();
     uint32_t m_nextSpace = 0;
 
@@ -48,14 +48,14 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
     {
         if (!m_skippedSpaces.empty())
         {
-            const uint32_t id = m_skippedSpaces.back();
-            m_skippedSpaces.pop_back();
+            const uint32_t id = m_skippedSpaces.top();
+            m_skippedSpaces.pop();
             return id;
         }
 
         if (m_nextSpace >= m_records.size())
         {
-            STAR_THROW("Storage is full"); 
+            STAR_THROW("Storage is full");
         }
 
         return m_nextSpace++;
@@ -70,11 +70,20 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
         return m_records[index];
     }
 
+    const TData &getRecord(const Handle &handle) const override
+    {
+        assert(handle.getID() < m_records.size() && "Handle references location outside of available storage");
+        size_t index = 0;
+        star::common::helper::SafeCast<uint32_t, size_t>(handle.getID(), index);
+
+        return m_records[index];
+    }
+
     virtual void removeRecord(const Handle &handle, device::StarDevice *device) override
     {
         assert(handle.getID() < m_records.size() && "Requested index is beyond max storage space in remove()");
 
-        m_skippedSpaces.push_back(handle.getID());
+        m_skippedSpaces.push(handle.getID());
     }
 };
 } // namespace star::core

@@ -61,10 +61,7 @@ void star::TransferRequest::VertInfo::writeDataToStageBuffer(StarBuffers::Buffer
     void *mapped = nullptr;
     buffer.map(&mapped);
 
-    int numVerts = 0; 
-    common::helper::SafeCast<size_t, int>(vertices.size(), numVerts); 
-
-    for (int i = 0; i < numVerts; i++)
+    for (size_t i{0}; i < vertices.size(); i++)
     {
         Vertex vert = Vertex(vertices[i]); 
 

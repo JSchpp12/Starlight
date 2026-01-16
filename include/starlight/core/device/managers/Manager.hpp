@@ -51,7 +51,12 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
         return &m_records.get(handle);
     }
 
-    bool isReady(const Handle &handle)
+    const TRecord *get(const Handle &handle) const
+    {
+        return &m_records.get(handle);
+    }
+
+    bool isReady(const Handle &handle) const
     {
         auto *rec = get(handle);
         assert(rec != nullptr);

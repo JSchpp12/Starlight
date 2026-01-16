@@ -38,6 +38,6 @@ class BumpMaterial : public TextureMaterial
 
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context,
                                                             const uint8_t &numFramesInFlight,
-                                                            StarShaderInfo::Builder builder) override;
+                                                            StarShaderInfo::Builder builder) override; 
 };
 } // namespace star

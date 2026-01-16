@@ -14,7 +14,7 @@ star::Allocator::Allocator(vk::Device device, vk::PhysicalDevice physicalDevice,
 	vmaCreateAllocator(&allocatorInfo, &this->allocator);
 }
 
-star::Allocator::~Allocator()
+void star::Allocator::cleanupRender()
 {
-	vmaDestroyAllocator(this->allocator);
+    vmaDestroyAllocator(allocator);
 }

@@ -77,7 +77,7 @@ template <typename TTransferType, typename TDataType> class Controller
 
         m_lastFrameUpdate = context.getFrameTracker().getCurrent().getGlobalFrameCounter();
         context.getManagerRenderResource().updateRequest(context.getDeviceID(),
-                                                         createTransferRequest(context.getDevice(), frameInFlightIndex),
+                                                         createTransferRequest(context, frameInFlightIndex),
                                                          m_resourceHandles[frameInFlightIndex], true);
         semaphore = context.getManagerRenderResource()
                         .get<TDataType>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
@@ -90,7 +90,7 @@ template <typename TTransferType, typename TDataType> class Controller
                                            // value to avoid start at 0.
     std::vector<Handle> m_resourceHandles = std::vector<Handle>();
 
-    virtual std::unique_ptr<TTransferType> createTransferRequest(core::device::StarDevice &device,
+    virtual std::unique_ptr<TTransferType> createTransferRequest(core::device::DeviceContext &context,
                                                                  const uint8_t &frameInFlightIndex) = 0;
 
     bool hasAlreadyBeenUpdatedThisFrame(const uint64_t &currentFrameCount) const

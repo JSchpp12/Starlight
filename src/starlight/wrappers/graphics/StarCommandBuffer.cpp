@@ -3,17 +3,15 @@
 #include <star_common/helper/CastHelpers.hpp>
 
 star::StarCommandBuffer::StarCommandBuffer(vk::Device &vulkanDevice, int numBuffersToCreate,
-                                           std::shared_ptr<StarCommandPool> parentPool, const star::Queue_Type type,
+                                           const StarCommandPool *parentPool, const star::Queue_Type type,
                                            bool initFences, bool initSemaphores)
     : vulkanDevice(vulkanDevice), parentPool(parentPool), type(type)
 {
     this->waitSemaphores.resize(numBuffersToCreate);
-    // allocate this from the pool
-    vk::CommandBufferAllocateInfo allocateInfo = vk::CommandBufferAllocateInfo{};
-    allocateInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
-    allocateInfo.commandPool = this->parentPool->getVulkanCommandPool();
-    allocateInfo.level = vk::CommandBufferLevel::ePrimary;
-    allocateInfo.commandBufferCount = (uint32_t)numBuffersToCreate;
+    vk::CommandBufferAllocateInfo allocateInfo = vk::CommandBufferAllocateInfo()
+                                                     .setCommandPool(parentPool->getVulkanCommandPool())
+                                                     .setLevel(vk::CommandBufferLevel::ePrimary)
+                                                     .setCommandBufferCount(static_cast<uint32_t>(numBuffersToCreate));
 
     this->commandBuffers = this->vulkanDevice.allocateCommandBuffers(allocateInfo);
 
@@ -26,7 +24,10 @@ star::StarCommandBuffer::StarCommandBuffer(vk::Device &vulkanDevice, int numBuff
 
 star::StarCommandBuffer::~StarCommandBuffer()
 {
-    cleanupRender(vulkanDevice);
+    if (commandBuffers.size() > 0)
+    {
+        cleanupRender(vulkanDevice);
+    }
 }
 
 void star::StarCommandBuffer::cleanupRender(vk::Device &device)
@@ -35,11 +36,19 @@ void star::StarCommandBuffer::cleanupRender(vk::Device &device)
     {
         device.destroyFence(fence);
     }
+    readyFence.clear();
+
     for (auto &semaphore : this->completeSemaphores)
     {
         device.destroySemaphore(semaphore);
     }
-    device.freeCommandBuffers(this->parentPool->getVulkanCommandPool(), this->commandBuffers);
+    completeSemaphores.clear();
+
+    if (commandBuffers.size() > 0)
+    {
+        device.freeCommandBuffers(this->parentPool->getVulkanCommandPool(), this->commandBuffers);
+    }
+    commandBuffers.clear();
 }
 
 void star::StarCommandBuffer::begin(int buffIndex)
@@ -157,7 +166,7 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
         {
             waits.push_back(waitInfos.first);
             waitPoints.push_back(waitInfos.second);
-            waitSignalValues.push_back(0);//star command buffers themselves do not use timeline semaphores
+            waitSignalValues.push_back(0); // star command buffers themselves do not use timeline semaphores
         }
     }
 
@@ -183,7 +192,6 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
 
     uint32_t waitValueCount = 0;
     common::helper::SafeCast(waitSignalValues.size(), waitValueCount);
-
 
     const vk::TimelineSemaphoreSubmitInfo time = vk::TimelineSemaphoreSubmitInfo()
                                                      .setWaitSemaphoreValueCount(waitValueCount)

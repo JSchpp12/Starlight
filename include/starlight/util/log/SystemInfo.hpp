@@ -28,7 +28,7 @@
 
 #include "core/logging/LoggingFactory.hpp" // include your provided logger header
 
-namespace star::core::sysinfo {
+namespace star::log {
 
 // -------------------------
 // Types

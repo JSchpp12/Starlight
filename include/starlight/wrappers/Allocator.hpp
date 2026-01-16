@@ -59,15 +59,14 @@ namespace star {
 		
 		Allocator() = default;
 		Allocator(vk::Device device, vk::PhysicalDevice physicalDevice, vk::Instance instance);
-		~Allocator();
 
 		VmaAllocator& get() {
 			return this->allocator; 
 		}
 
+		void cleanupRender(); 
+
 	protected:
 		VmaAllocator allocator = VmaAllocator();
-
 	};
-
 }

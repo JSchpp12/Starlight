@@ -3,7 +3,9 @@
 #include "MappedHandleContainer.hpp"
 #include "StarCommandBuffer.hpp"
 #include "device/StarDevice.hpp"
+#include "device/managers/Queue.hpp"
 
+#include <absl/container/flat_hash_map.h>
 #include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 
@@ -49,7 +51,7 @@ class CommandBufferContainer
                                             std::vector<vk::PipelineStageFlags> &waitPoints,
                                             std::vector<std::optional<uint64_t>> &signaledValues)
         {
-            for (const auto semaphoreInfo : m_semaphores)
+            for (const auto &semaphoreInfo : m_semaphores)
             {
                 semaphores.push_back(semaphoreInfo.second.semaphore);
                 waitPoints.push_back(semaphoreInfo.second.stageFlags);
@@ -61,14 +63,14 @@ class CommandBufferContainer
 
       private:
         std::unordered_map<Handle, SemaphoreWaitInfo, star::HandleHash> m_semaphores;
-        // std::unordered_map<Handle, vk::Semaphore, star::HandleHash> m_semaphores;
-        // std::unordered_map<Handle, vk::PipelineStageFlags, star::HandleHash> m_semaphoreWaitFlags;
     };
+
     struct CompleteRequest
     {
         std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback;
         std::unique_ptr<StarCommandBuffer> commandBuffer;
         Queue_Type type;
+        StarQueue *queueToUse;
         bool recordOnce;
         vk::PipelineStageFlags waitStage;
         Command_Buffer_Order order;
@@ -96,6 +98,7 @@ class CommandBufferContainer
               overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
 
         vk::Semaphore submitCommandBuffer(core::device::StarDevice &device, const common::FrameTracker &frameTracker,
+                                          absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
                                           std::vector<vk::Semaphore> *beforeSemaphores = nullptr)
         {
             auto waits = std::vector<vk::Semaphore>();
@@ -124,17 +127,15 @@ class CommandBufferContainer
                 }
 
                 commandBuffer->submit(frameTracker.getCurrent().getFrameInFlightIndex(),
-                                      device.getDefaultQueue(commandBuffer->getType()).getVulkanQueue(),
-                                      &additionalWaits, &previousSignaledValues);
+                                      queues[commandBuffer->getType()]->getVulkanQueue(), &additionalWaits,
+                                      &previousSignaledValues);
             }
 
             return commandBuffer->getCompleteSemaphores().at(frameTracker.getCurrent().getFrameInFlightIndex());
         }
     };
 
-    CommandBufferContainer(const int &numImagesInFlight, core::device::StarDevice &device);
-
-    ~CommandBufferContainer() = default;
+    CommandBufferContainer(core::device::StarDevice &device, const uint8_t &numImagesInFlight);
 
     void cleanup(core::device::StarDevice &device);
 
@@ -142,6 +143,7 @@ class CommandBufferContainer
                                                     const star::Command_Buffer_Order &order,
                                                     const common::FrameTracker &frameTracker,
                                                     const uint64_t &currentFrameIndex,
+                                                    absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
                                                     std::vector<vk::Semaphore> *waitSemaphores = nullptr);
 
     star::Handle add(std::shared_ptr<CompleteRequest> newRequest, const bool &willBeSubmittedEachFrame,
@@ -227,10 +229,7 @@ class CommandBufferContainer
                     this->fences.erase(type);
             }
         }
-
-      private:
     };
-
     std::vector<std::shared_ptr<CompleteRequest>> allBuffers = std::vector<std::shared_ptr<CompleteRequest>>();
     std::unordered_map<star::Command_Buffer_Order, std::vector<Handle>> bufferGroupsWithSubOrders =
         std::unordered_map<star::Command_Buffer_Order, std::vector<Handle>>();

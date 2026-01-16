@@ -8,7 +8,7 @@
 #include "StarRenderGroup.hpp"
 #include "StarScene.hpp"
 #include "TransferWorker.hpp"
-#include "core/sysinfo/SystemInfo.hpp"
+#include "util/log/SystemInfo.hpp"
 #include "core/SystemContext.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "event/EnginePhaseComplete.hpp"
@@ -65,7 +65,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             .id = 0};
         core::logging::init();
         core::logging::log(boost::log::trivial::info, "Logger initialized");
-        core::sysinfo::logSystemOverview();
+        star::log::logSystemOverview();
 
         std::set<star::Rendering_Features> features;
         {
@@ -107,47 +107,6 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         }
 
         registerScreenshotService(m_systemManager.getContext(m_defaultDevice));
-
-        // try and get a transfer queue from different queue fams
-        {
-            std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
-            std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
-
-            const auto transferFams = this->m_systemManager.getContext(m_defaultDevice)
-                                          .getDevice()
-                                          .getQueueOwnershipTracker()
-                                          .getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
-
-            for (const auto &fam : transferFams)
-            {
-                if (selectedFamilyIndices.size() > 1)
-                    break;
-
-                if (fam != m_systemManager.getContext(m_defaultDevice)
-                               .getDevice()
-                               .getDefaultQueue(Queue_Type::Tgraphics)
-                               .getParentQueueFamilyIndex() &&
-                    fam != m_systemManager.getContext(m_defaultDevice)
-                               .getDevice()
-                               .getDefaultQueue(Queue_Type::Tcompute)
-                               .getParentQueueFamilyIndex() &&
-                    !selectedFamilyIndices.contains(fam))
-                {
-                    auto nQueue = m_systemManager.getContext(m_defaultDevice)
-                                      .getDevice()
-                                      .getQueueOwnershipTracker()
-                                      .giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false, fam);
-
-                    if (nQueue.has_value())
-                    {
-                        transferWorkerQueues.push_back(nQueue.value());
-
-                        selectedFamilyIndices.insert(fam);
-                    }
-                }
-            }
-        }
-
         m_application.init();
     }
 
@@ -177,15 +136,6 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         while (!m_exitPolicy.shouldExit())
         {
             m_loopPolicy.frameUpdate();
-            {
-                std::ostringstream oss;
-                oss << "Engine Frame: "
-                    << std::to_string(m_systemManager.getContext(m_defaultDevice)
-                                          .getFrameTracker()
-                                          .getCurrent()
-                                          .getGlobalFrameCounter());
-                core::logging::info(oss.str());
-            }
 
             // check if any new objects have been added
             m_systemManager.getContext(m_defaultDevice).prepareForNextFrame();

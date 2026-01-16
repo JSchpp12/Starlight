@@ -5,6 +5,7 @@
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
 #include "wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"
 
 #include "common/helpers/GeometryHelpers.hpp"
@@ -126,7 +127,8 @@ void star::StarObject::cleanupSharedResources(core::device::DeviceContext &devic
 
 void star::StarObject::init(core::device::DeviceContext &context)
 {
-    auto submitter = std::make_shared<wrappers::graphics::policies::SubmitDescriptorRequestsPolicy>(getDescriptorRequests(1));
+    auto submitter =
+        std::make_shared<wrappers::graphics::policies::SubmitDescriptorRequestsPolicy>(getDescriptorRequests(1));
 
     submitter->init(context.getEventBus());
 }
@@ -197,6 +199,11 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context, cons
     this->meshes = loadMeshes(context);
     m_deviceID = context.getDeviceID();
 
+    const uint32_t graphicsFamilyIndex =
+        core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
+                                            star::Queue_Type::Tgraphics)
+            ->getParentQueueFamilyIndex();
+
     {
         std::vector<Vertex> bbVerts;
         std::vector<uint32_t> bbInds;
@@ -207,18 +214,14 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context, cons
             auto bbSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
             this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(
                 m_deviceID, context.getSemaphoreManager().get(bbSemaphore)->semaphore,
-                std::make_unique<TransferRequest::VertInfo>(
-                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
-                    std::move(bbVerts)));
+                std::make_unique<TransferRequest::VertInfo>(graphicsFamilyIndex, std::move(bbVerts)));
         }
         {
             auto bbIndSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
 
             this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
                 m_deviceID, context.getSemaphoreManager().get(bbIndSemaphore)->semaphore,
-                std::make_unique<TransferRequest::IndicesInfo>(
-                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
-                    std::move(bbInds)));
+                std::make_unique<TransferRequest::IndicesInfo>(graphicsFamilyIndex, std::move(bbInds)));
         }
     }
 

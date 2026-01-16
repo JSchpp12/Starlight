@@ -18,7 +18,7 @@ class InstanceNormalInfo : public ManagerController::RenderResource::Buffer
     void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
 
   protected:
-    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device,
+    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
                                                                    const uint8_t &frameInFlightIndex) override;
     bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameinFlightIndex) const override;
 

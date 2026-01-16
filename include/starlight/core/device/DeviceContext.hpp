@@ -37,7 +37,7 @@ class DeviceContext : public star::common::IDeviceContext
         manager::ManagerCommandBuffer &m_manager;
     };
     DeviceContext() = default;
-    explicit DeviceContext(StarDevice device) : m_device(std::move(device)){};
+    explicit DeviceContext(StarDevice device) : m_device(std::move(device)) {};
 
     virtual ~DeviceContext();
     DeviceContext(DeviceContext &&other);
@@ -157,7 +157,7 @@ class DeviceContext : public star::common::IDeviceContext
         return m_engineResolution;
     }
 
-    void cleanupRender(); 
+    void cleanupRender();
 
     void registerService(service::Service service);
 
@@ -174,9 +174,15 @@ class DeviceContext : public star::common::IDeviceContext
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager;
     std::vector<service::Service> m_services;
     vk::Extent2D m_engineResolution;
+    QueueFamilyIndices m_familyIndices;
 
-    std::shared_ptr<job::TransferWorker> CreateTransferWorker(StarDevice &device,
-                                                              const size_t &targetNumQueuesToUse = 2);
+    std::unordered_set<uint32_t> gatherEngineDedicatedQueueFamilyIndices();
+
+    std::vector<Handle> gatherTransferQueues(const uint8_t &targetNumberOfQueues) const;
+
+    std::shared_ptr<job::TransferWorker> createTransferWorker(
+        StarDevice &device, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+        const size_t &targetNumQueuesToUse = 2);
 
     void handleCompleteMessages(const uint8_t maxMessageCounter = 0);
 
@@ -192,10 +198,25 @@ class DeviceContext : public star::common::IDeviceContext
 
     void initServices(const uint8_t &numFramesInFlight);
 
-    void processAvailableQueues();
+    std::vector<Handle> processAvailableQueues();
 
     void broadcastFrameStart();
 
     void broadcastFramePrepToService();
+
+    Handle getQueueOfType(const std::vector<Handle> &allQueueHandles, const star::Queue_Type &type,
+                          const std::unordered_set<uint32_t> *queueFamilyIndsToAvoid);
+
+    absl::flat_hash_map<star::Queue_Type, Handle> selectEngineReservedQueues(
+        const std::vector<Handle> &allQueueHandles);
+
+    service::Service createQueueOwnershipService(std::vector<Handle> queueHandles,
+                                                 absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
+
+    void gatherPoolAndQueueForType(const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved,
+                                   const star::Queue_Type &type, StarCommandPool *pool, StarQueue *queue);
+
+    std::unique_ptr<manager::ManagerCommandBuffer> createManagerCommandBuffer(
+        const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved);
 };
 } // namespace star::core::device

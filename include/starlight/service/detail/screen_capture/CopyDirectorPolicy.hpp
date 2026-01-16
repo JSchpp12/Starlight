@@ -51,6 +51,7 @@ class DefaultCopyPolicy
 
     void createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight);
 
+    vk::Queue getQueueToUse() const;
 
     StarTextures::Texture createBlitTargetTexture(const vk::Extent2D &extent) const;
 };

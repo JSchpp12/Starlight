@@ -7,17 +7,19 @@ namespace star
 class StarCommandPool
 {
   public:
-  StarCommandPool(vk::Device vulkanDevice, const uint32_t &familyIndex, const bool &setAutoReset); 
-  ~StarCommandPool(); 
+    StarCommandPool() = default;
+    StarCommandPool(vk::Device vulkanDevice, const uint32_t &familyIndex, const bool &setAutoReset);
 
-  StarCommandPool(const StarCommandPool&) = delete;
-  StarCommandPool& operator=(const StarCommandPool&) = delete;
+    void cleanupRender(vk::Device &device);
 
-  vk::CommandPool &getVulkanCommandPool(){return this->commandPool;}
+    vk::CommandPool getVulkanCommandPool() const
+    {
+        return commandPool;
+    }
+
   private:
-  vk::Device vulkanDevice = vk::Device();
-  vk::CommandPool commandPool = vk::CommandPool();
+    vk::CommandPool commandPool = VK_NULL_HANDLE;
 
-  static vk::CommandPool CreateCommandPool(vk::Device &device, const uint32_t &familyIndex, const bool &setAutoReset); 
+    static vk::CommandPool CreateCommandPool(vk::Device &device, const uint32_t &familyIndex, const bool &setAutoReset);
 };
 } // namespace star

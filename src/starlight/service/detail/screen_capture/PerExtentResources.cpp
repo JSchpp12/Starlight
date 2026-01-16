@@ -32,47 +32,16 @@ static std::vector<star::StarTextures::Texture> CreateImages(DeviceInfo *deviceI
                                                              const vk::Extent2D &extent)
 {
     assert(deviceInfo != nullptr && deviceInfo->flightTracker != nullptr);
+    assert(deviceInfo->commandPoolManager != nullptr); 
+    assert(deviceInfo->queueManager != nullptr); 
+
     auto policy = CreateImagePolicy(deviceInfo, targetImageFormat, extent);
-    auto tPool = deviceInfo->device->getCommandPool(Queue_Type::Ttransfer);
-    auto targetQueue = deviceInfo->device->getDefaultQueue(star::Queue_Type::Ttransfer);
     const size_t numTargetImages =
         static_cast<size_t>(deviceInfo->flightTracker->getSetup().getNumUniqueTargetFramesForFinalization());
-    auto cmd = std::make_unique<StarCommandBuffer>(deviceInfo->device->getVulkanDevice(), numTargetImages, tPool,
-                                                   Queue_Type::Ttransfer, true, false);
     std::vector<StarTextures::Texture> result = std::vector<StarTextures::Texture>(numTargetImages);
     for (size_t i{0}; i < numTargetImages; i++)
     {
         result[i] = policy.create();
-
-        auto begin = vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-
-        auto barrier = vk::ImageMemoryBarrier2()
-                           .setOldLayout(vk::ImageLayout::eUndefined)
-                           .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                           .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                           .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                           .setImage(result[i].getVulkanImage())
-                           .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
-                           .setSrcAccessMask(vk::AccessFlagBits2::eNone)
-                           .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                           .setDstAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                           .setSubresourceRange(vk::ImageSubresourceRange()
-                                                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                                    .setBaseArrayLayer(0)
-                                                    .setLayerCount(1)
-                                                    .setBaseMipLevel(0)
-                                                    .setLevelCount(1));
-        cmd->begin(i, begin);
-
-        cmd->buffer(i).pipelineBarrier2(
-            vk::DependencyInfo().setPImageMemoryBarriers(&barrier).setImageMemoryBarrierCount(1));
-        cmd->buffer(i).end();
-        cmd->submit(i, targetQueue.getVulkanQueue());
-    }
-
-    for (size_t i{0}; i < numTargetImages; i++)
-    {
-        cmd->wait(i);
     }
 
     return result;

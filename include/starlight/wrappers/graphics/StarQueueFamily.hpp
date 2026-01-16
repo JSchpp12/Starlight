@@ -1,28 +1,26 @@
 #pragma once
 
 #include "Enums.hpp"
-#include "StarQueue.hpp"
 #include "StarCommandPool.hpp"
+#include "StarQueue.hpp"
 
 #include <vulkan/vulkan.hpp>
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 namespace star
 {
 class StarQueueFamily
 {
   public:
-    ~StarQueueFamily();
     StarQueueFamily(const uint32_t &queueFamilyIndex, const uint32_t &queueCount, const vk::QueueFlags &support,
                     const bool &presentationSupport);
 
-    vk::DeviceQueueCreateInfo getDeviceCreateInfo();
-
     void init(vk::Device &vulkanDeviceToUse);
 
-    std::vector<StarQueue> &getQueues(){
+    std::vector<StarQueue> &getQueues()
+    {
         return this->queues;
     }
 
@@ -41,6 +39,14 @@ class StarQueueFamily
     {
         return this->queueFamilyIndex;
     }
+    vk::QueueFlags &getSupport()
+    {
+        return support;
+    }
+    const std::vector<float> &getQueuePriorities() const
+    {
+        return queuePriority;
+    }
 
   private:
     uint32_t queueFamilyIndex;
@@ -48,12 +54,11 @@ class StarQueueFamily
     vk::QueueFlags support;
     bool presentationSupport;
     std::vector<float> queuePriority = std::vector<float>();
-
     vk::Device *vulkanDevice = nullptr;
 
     std::vector<StarQueue> queues;
 
-    static std::vector<StarQueue> CreateQueues(vk::Device *device, const uint32_t &familyIndex,
+    std::vector<StarQueue> createQueues(vk::Device *device, const uint32_t &familyIndex,
                                                const uint32_t &numToCreate);
 };
 } // namespace star

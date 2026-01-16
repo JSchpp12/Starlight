@@ -20,7 +20,7 @@ class LightInfo : public ManagerController::RenderResource::Buffer
     const std::shared_ptr<std::vector<Light>> lights;
     std::vector<uint32_t> lastWriteNumLights;
 
-    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device,
+    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
                                                                    const uint8_t &frameInFlightIndex) override;
 
     bool doesFrameInFlightDataNeedUpdated(const uint8_t &currentFrameInFlightIndex) const override;

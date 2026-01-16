@@ -51,6 +51,7 @@ template <typename TData> class HandleContainer
   protected:
     virtual Handle storeRecord(TData newData) = 0;
     virtual TData &getRecord(const Handle &handle) = 0;
+    virtual const TData &getRecord(const Handle &handle) const = 0;
     virtual void removeRecord(const Handle &handle, device::StarDevice *device = nullptr) = 0;
 
   private:

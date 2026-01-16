@@ -4,7 +4,7 @@
 #include "StarCommandPool.hpp"
 #include "StarQueue.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan.hpp>
 
 #include <memory>
 #include <optional>
@@ -23,7 +23,7 @@ class StarCommandBuffer
     StarCommandBuffer(StarCommandBuffer &&) = default;
     StarCommandBuffer &operator=(StarCommandBuffer &&) = default;
 
-    StarCommandBuffer(vk::Device &device, int numBuffersToCreate, std::shared_ptr<StarCommandPool> parentPool,
+    StarCommandBuffer(vk::Device &device, int numBuffersToCreate, const StarCommandPool *parentPool,
                       const Queue_Type type, bool initFences, bool initSemaphores);
 
     ~StarCommandBuffer();
@@ -77,7 +77,14 @@ class StarCommandBuffer
 
     vk::CommandBuffer &buffer(const size_t &buffIndex = 0)
     {
-        return this->commandBuffers.at(buffIndex);
+        assert(buffIndex < commandBuffers.size());
+        return commandBuffers[buffIndex];
+    }
+
+    const vk::CommandBuffer &buffer(const size_t &buffIndex = 0) const
+    {
+        assert(buffIndex < commandBuffers.size());
+        return commandBuffers[buffIndex];
     }
 
     vk::Fence &getFence(const size_t &bufferIndex = 0)
@@ -87,20 +94,20 @@ class StarCommandBuffer
 
     void wait(int bufferIndex = 0);
 
-    Queue_Type getType()
+    Queue_Type getType() const
     {
         return this->type;
     }
 
-    size_t getNumBuffers()
+    size_t getNumBuffers() const
     {
         return this->commandBuffers.size();
     }
 
   protected:
-    vk::Device vulkanDevice;
+    vk::Device vulkanDevice = VK_NULL_HANDLE;
     Queue_Type type;
-    std::shared_ptr<StarCommandPool> parentPool = nullptr;
+    const StarCommandPool *parentPool = nullptr;
     StarCommandBuffer *mustWaitFor = nullptr;
 
     std::vector<vk::CommandBuffer> commandBuffers;

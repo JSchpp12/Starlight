@@ -1,16 +1,16 @@
 #include "BasicObject.hpp"
 
 #include "BumpMaterial.hpp"
-#include <star_common/helper/CastHelpers.hpp>
 #include "ConfigFile.hpp"
 #include "FileHelpers.hpp"
-#include "ManagerController_RenderResource_TextureFile.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "StarMesh.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
 #include "VertColorMaterial.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
 
+#include <star_common/helper/CastHelpers.hpp>
 #include <boost/filesystem.hpp>
 
 std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
@@ -105,6 +105,12 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
         throw std::runtime_error("All properties should match with the number of meshes contained in obj file");
     }
 
+    const auto graphicsQueueFamilyIndex =
+        core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
+                                            star::Queue_Type::Tgraphics)
+            ->getParentQueueFamilyIndex();
+
+
     // need to scale object so that it fits on screen
     // combine all attributes into a single object
     int dIndex = 0;
@@ -154,16 +160,14 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
                 context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
             const Handle meshVertBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(), context.getSemaphoreManager().get(meshVertSemaphore)->semaphore,
-                std::make_unique<TransferRequest::VertInfo>(
-                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(), vertices));
+                std::make_unique<TransferRequest::VertInfo>(graphicsQueueFamilyIndex, vertices));
 
             const auto indSemaphore =
                 context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
 
             const Handle meshIndBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(), context.getSemaphoreManager().get(indSemaphore)->semaphore,
-                std::make_unique<TransferRequest::IndicesInfo>(
-                    context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(), fullInd));
+                std::make_unique<TransferRequest::IndicesInfo>(graphicsQueueFamilyIndex, fullInd));
 
             // apply material from files to mesh -- will ignore passed values
             meshes.at(shapeCounter) =

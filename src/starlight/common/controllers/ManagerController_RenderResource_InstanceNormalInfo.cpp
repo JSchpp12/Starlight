@@ -1,6 +1,7 @@
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 
 #include "TransferRequest_InstanceNormalInfo.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
 
 #include <cassert>
 
@@ -28,15 +29,18 @@ void star::ManagerController::RenderResource::InstanceNormalInfo::prepRender(cor
 }
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceNormalInfo::
-    createTransferRequest(star::core::device::StarDevice &device, const uint8_t &frameInFlightIndex)
+    createTransferRequest(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
     assert(m_instances && "Instances must be provided before use");
 
     m_needsUpdatedThisFrame[frameInFlightIndex] = false;
 
     return std::make_unique<star::TransferRequest::InstanceNormalInfo>(
-        *m_instances, device.getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
-        device.getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment);
+        *m_instances,
+        core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
+                                            star::Queue_Type::Tgraphics)
+            ->getParentQueueFamilyIndex(),
+        context.getDevice().getPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment);
 }
 
 bool star::ManagerController::RenderResource::InstanceNormalInfo::doesFrameInFlightDataNeedUpdated(

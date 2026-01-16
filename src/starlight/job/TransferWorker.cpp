@@ -1,8 +1,8 @@
 #include "job/TransferWorker.hpp"
 
-#include <star_common/helper/CastHelpers.hpp>
-#include "logging/LoggingFactory.hpp"
 #include "core/Exceptions.hpp"
+#include "logging/LoggingFactory.hpp"
+#include <star_common/helper/CastHelpers.hpp>
 
 #include <thread>
 
@@ -43,12 +43,13 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
 
     std::queue<std::unique_ptr<ProcessRequestInfo>> processRequestInfos =
         std::queue<std::unique_ptr<ProcessRequestInfo>>();
+    auto pool = std::make_shared<StarCommandPool>(myInfo.device, myInfo.queue.getParentQueueFamilyIndex(), true);
 
     for (int i = 0; i < 1; i++)
     {
-        processRequestInfos.push(CreateProcessingInfo(
-            myInfo.device,
-            std::make_unique<StarCommandPool>(myInfo.device, myInfo.queue.getParentQueueFamilyIndex(), true)));
+        processRequestInfos.push(std::make_unique<ProcessRequestInfo>(
+            pool, std::make_unique<StarCommandBuffer>(myInfo.device, 1, pool.get(), star::Queue_Type::Ttransfer, true,
+                                                      false)));
     }
 
     while (myInfo.shouldRun->load())
@@ -120,13 +121,9 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
     }
 
     CheckForCleanups(myInfo.device, processRequestInfos);
-}
 
-std::unique_ptr<star::job::TransferManagerThread::ProcessRequestInfo> star::job::TransferManagerThread::
-    CreateProcessingInfo(vk::Device &device, std::shared_ptr<star::StarCommandPool> commandPool)
-{
-    return std::make_unique<ProcessRequestInfo>(
-        std::make_unique<StarCommandBuffer>(device, 1, commandPool, star::Queue_Type::Ttransfer, true, false));
+    //cleanup command pools
+    pool->cleanupRender(myInfo.device); 
 }
 
 void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
@@ -273,14 +270,15 @@ star::job::TransferWorker::~TransferWorker()
 
 star::job::TransferWorker::TransferWorker(TaskContainer<complete_tasks::CompleteTask, 128> &completeMessages,
                                           star::core::device::StarDevice &device, bool overrideToSingleThreadMode,
-                                          std::vector<StarQueue> &queuesToUse)
+                                          std::vector<StarQueue *> &queuesToUse)
     : m_completeMessageContainer(completeMessages)
 {
     this->threads =
         CreateThreads(device, queuesToUse, completeMessages, m_highPriorityTaskContainer, m_standardTaskContainer);
 
-    if (this->threads.size() == 0){
-        STAR_THROW("Failed to create any transfer worker"); 
+    if (this->threads.size() == 0)
+    {
+        STAR_THROW("Failed to create any transfer worker");
     }
 
     for (auto &thread : this->threads)
@@ -334,7 +332,7 @@ void star::job::TransferWorker::insertRequest(job::TransferManagerThread::InterT
 }
 
 std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::TransferWorker::CreateThreads(
-    core::device::StarDevice &device, const std::vector<StarQueue> queuesToUse,
+    core::device::StarDevice &device, const std::vector<StarQueue *> &queuesToUse,
     job::TaskContainer<complete_tasks::CompleteTask, 128> &completeTaskContainer,
     std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> highPriorityQueue,
     std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> standardQueue)
@@ -344,7 +342,7 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
     std::set<uint32_t> uniqueQueueFamilyIndicesInUse = std::set<uint32_t>();
     for (const auto &queue : queuesToUse)
     {
-        uniqueQueueFamilyIndicesInUse.insert(queue.getParentQueueFamilyIndex());
+        uniqueQueueFamilyIndicesInUse.insert(queue->getParentQueueFamilyIndex());
     }
 
     for (const auto &index : uniqueQueueFamilyIndicesInUse)
@@ -358,21 +356,20 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
         std::vector<std::unique_ptr<job::TransferManagerThread>>();
 
     bool createHighPriority = true;
-    for (const auto &queue : queuesToUse)
+    for (const auto *queue : queuesToUse)
     {
         if (createHighPriority)
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
-                highPriorityQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), queue,
+                highPriorityQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), *queue,
                 allTransferQueueFamilyIndicesInUse));
             createHighPriority = false;
         }
         else
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
-                standardQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), queue,
+                standardQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), *queue,
                 allTransferQueueFamilyIndicesInUse));
-
         }
     }
 

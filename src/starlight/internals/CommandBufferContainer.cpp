@@ -2,7 +2,7 @@
 
 #include <syncstream>
 
-star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFlight, core::device::StarDevice &device)
+star::CommandBufferContainer::CommandBufferContainer(core::device::StarDevice &device, const uint8_t &numImagesInFlight)
     : bufferGroupsWithSubOrders({std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<Handle>(5)),
                                  std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<Handle>(5)),
                                  std::make_pair(star::Command_Buffer_Order::after_render_pass, std::vector<Handle>(5)),
@@ -13,7 +13,8 @@ star::CommandBufferContainer::CommandBufferContainer(const int &numImagesInFligh
 
 std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
     core::device::StarDevice &device, const star::Command_Buffer_Order &order, const common::FrameTracker &frameTracker,
-    const uint64_t &currentFrameIndex, std::vector<vk::Semaphore> *additionalWaitSemaphores)
+    const uint64_t &currentFrameIndex, absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
+    std::vector<vk::Semaphore> *additionalWaitSemaphores)
 {
     if (!this->subOrderSemaphoresUpToDate)
     {
@@ -46,11 +47,11 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
             vk::Semaphore doneSemaphore;
             if (i == star::Command_Buffer_Order_Index::first)
             {
-                doneSemaphore = buffer->submitCommandBuffer(device, frameTracker, additionalWaitSemaphores);
+                doneSemaphore = buffer->submitCommandBuffer(device, frameTracker, queues, additionalWaitSemaphores);
             }
             else
             {
-                doneSemaphore = buffer->submitCommandBuffer(device, frameTracker);
+                doneSemaphore = buffer->submitCommandBuffer(device, frameTracker, queues);
             }
 
             if (i == star::Command_Buffer_Order_Index::fifth ||
@@ -87,6 +88,14 @@ star::Handle star::CommandBufferContainer::add(
     this->bufferGroupsWithSubOrders[order][static_cast<int>(subOrder) - 1] = newHandle;
 
     return newHandle;
+}
+
+void star::CommandBufferContainer::cleanup(core::device::StarDevice &device)
+{
+    for (auto &request : this->allBuffers)
+    {
+        request->commandBuffer->cleanupRender(device.getVulkanDevice());
+    }
 }
 
 bool star::CommandBufferContainer::shouldSubmitThisBuffer(const Handle &buffer)

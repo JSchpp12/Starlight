@@ -1,29 +1,14 @@
 #include "StarQueueFamily.hpp"
 
-star::StarQueueFamily::~StarQueueFamily()
-{
-}
-
 star::StarQueueFamily::StarQueueFamily(const uint32_t &queueFamilyIndex, const uint32_t &queueCount,
                                        const vk::QueueFlags &support, const bool &presentationSupport)
     : queueFamilyIndex(queueFamilyIndex), queueCount(queueCount), support(support), presentationSupport(presentationSupport)
 {
-    this->queuePriority.push_back(1.0f);
-    for (uint32_t i = 1; i < queueCount; i++)
+    for (uint32_t i{0}; i < queueCount; i++)
     {
-        this->queuePriority.push_back(0.0f);
+        this->queuePriority.push_back(1.0f);
     }
 };
-
-vk::DeviceQueueCreateInfo star::StarQueueFamily::getDeviceCreateInfo()
-{
-    vk::DeviceQueueCreateInfo createInfo{};
-    createInfo.sType = vk::StructureType::eDeviceQueueCreateInfo;
-    createInfo.queueFamilyIndex = this->queueFamilyIndex;
-    createInfo.queueCount = this->queueCount;
-    createInfo.pQueuePriorities = this->queuePriority.data();
-    return createInfo;
-}
 
 void star::StarQueueFamily::init(vk::Device &vulkanDeviceToUse)
 {
@@ -31,7 +16,7 @@ void star::StarQueueFamily::init(vk::Device &vulkanDeviceToUse)
 
     this->vulkanDevice = &vulkanDeviceToUse;
 
-    this->queues = CreateQueues(this->vulkanDevice, this->queueFamilyIndex, this->queueCount);
+    this->queues = createQueues(this->vulkanDevice, this->queueFamilyIndex, this->queueCount);
 }
 
 std::shared_ptr<star::StarCommandPool> star::StarQueueFamily::createCommandPool(const bool &setAutoReset)
@@ -54,7 +39,7 @@ bool star::StarQueueFamily::doesSupport(const vk::QueueFlags &querySupport) cons
     return (this->support & querySupport) == querySupport;
 }
 
-std::vector<star::StarQueue> star::StarQueueFamily::CreateQueues(vk::Device *device, const uint32_t &familyIndex,
+std::vector<star::StarQueue> star::StarQueueFamily::createQueues(vk::Device *device, const uint32_t &familyIndex,
                                                            const uint32_t &numToCreate)
 {
     std::vector<vk::Queue> newQueues = std::vector<vk::Queue>(numToCreate);
@@ -66,7 +51,7 @@ std::vector<star::StarQueue> star::StarQueueFamily::CreateQueues(vk::Device *dev
 
     std::vector<StarQueue> finalQueues = std::vector<StarQueue>(numToCreate);
     for (int i = 0; i < numToCreate; i++){
-        finalQueues[i] = StarQueue(newQueues[i], familyIndex); 
+        finalQueues[i] = StarQueue(familyIndex, newQueues[i], support, presentationSupport); 
     }
 
     return finalQueues;

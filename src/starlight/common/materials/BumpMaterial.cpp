@@ -1,6 +1,8 @@
 #include "BumpMaterial.hpp"
 
 #include "TransferRequest_TextureFile.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
+#include "event/GetQueue.hpp"
 
 void star::BumpMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &constBuilder) const
 {
@@ -16,7 +18,9 @@ void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const 
     m_bumpMap = ManagerRenderResource::addRequest(
         context.getDeviceID(), context.getSemaphoreManager().get(bumpSemaphore)->semaphore,
         std::make_unique<TransferRequest::TextureFile>(
-            context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex(),
+            star::core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
+                                                      Queue_Type::Tgraphics)
+                ->getParentQueueFamilyIndex(),
             context.getDevice().getPhysicalDevice().getProperties(), m_bumpMapFilePath));
 
     TextureMaterial::prepRender(context, numFramesInFlight, frameBuilder);

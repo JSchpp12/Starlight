@@ -1,14 +1,17 @@
 #include "core/device/DeviceContext.hpp"
 
 #include "core/logging/LoggingFactory.hpp"
+#include "event/PrepForNextFrame.hpp"
+#include "event/StartOfNextFrame.hpp"
 #include "job/tasks/TaskFactory.hpp"
 #include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
 #include "job/worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
-
-#include "event/PrepForNextFrame.hpp"
-#include "event/StartOfNextFrame.hpp"
 #include "managers/ManagerRenderResource.hpp"
+#include "service/QueueManagerService.hpp"
+#include "starlight/core/helper/queue/QueueHelpers.hpp"
+#include "starlight/event/GetQueue.hpp"
+#include "starlight/wrappers/graphics/QueueFamilyIndices.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 #include <star_common/helper/CastHelpers.hpp>
@@ -29,6 +32,10 @@ star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
 
     m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
                             static_cast<uint8_t>(m_flightTracker.getSetup().getNumFramesInFlight()));
+    if (m_commandBufferManager)
+    {
+        m_commandBufferManager->init(m_graphicsManagers.queueManager);
+    }
 
     other.m_ownsResources = false;
 }
@@ -50,6 +57,10 @@ star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(
         m_eventBus = std::move(other.m_eventBus);
         m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
                                 static_cast<uint8_t>(m_flightTracker.getSetup().getNumFramesInFlight()));
+        if (m_commandBufferManager)
+        {
+            m_commandBufferManager->init(m_graphicsManagers.queueManager);
+        }
 
         if (other.m_ownsResources)
         {
@@ -88,13 +99,19 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
     m_deviceID = deviceID;
     m_engineResolution = std::move(engineResolution);
 
-    m_commandBufferManager =
-        std::make_unique<manager::ManagerCommandBuffer>(m_device, m_flightTracker.getSetup().getNumFramesInFlight());
-    m_transferWorker = CreateTransferWorker(m_device);
-    m_renderResourceManager = std::make_unique<ManagerRenderResource>();
-
     m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager, m_flightTracker.getSetup().getNumFramesInFlight());
+    auto availableQueues = processAvailableQueues();
+    auto engineReservedQueues = selectEngineReservedQueues(availableQueues);
+    m_commandBufferManager = std::make_unique<core::device::manager::ManagerCommandBuffer>(
+        m_device, m_graphicsManagers.queueManager, m_flightTracker.getSetup().getNumFramesInFlight(),
+        engineReservedQueues);
+    m_commandBufferManager->init(m_graphicsManagers.queueManager);
+
+    m_services.emplace_back(createQueueOwnershipService(availableQueues, engineReservedQueues));
     initServices(m_flightTracker.getSetup().getNumFramesInFlight());
+
+    m_transferWorker = createTransferWorker(m_device, engineReservedQueues);
+    m_renderResourceManager = std::make_unique<ManagerRenderResource>();
     initWorkers(m_flightTracker.getSetup().getNumFramesInFlight());
 
     m_ownsResources = true;
@@ -127,37 +144,53 @@ void star::core::device::DeviceContext::cleanupRender()
     shutdownServices();
 }
 
-std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::CreateTransferWorker(
-    StarDevice &device, const size_t &targetNumQueuesToUse)
+std::unordered_set<uint32_t> star::core::device::DeviceContext::gatherEngineDedicatedQueueFamilyIndices()
+{
+    std::unordered_set<uint32_t> dedicated;
+
+    const auto *graphicsQueue =
+        core::helper::GetEngineDefaultQueue(m_eventBus, m_graphicsManagers.queueManager, star::Queue_Type::Tgraphics);
+
+    return dedicated;
+}
+
+std::vector<star::Handle> star::core::device::DeviceContext::gatherTransferQueues(
+    const uint8_t &targetNumberOfQueues) const
+{
+    std::vector<star::Handle> targetQueues;
+
+    return targetQueues;
+}
+
+std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::createTransferWorker(
+    StarDevice &device, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+    const size_t &targetNumQueuesToUse)
 {
     star::core::logging::log(boost::log::trivial::info, "Initializing transfer workers");
 
     std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
-    std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
+    std::vector<StarQueue *> transferWorkerQueues = std::vector<StarQueue *>(targetNumQueuesToUse);
 
-    const auto transferFams =
-        device.getQueueOwnershipTracker().getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
-    for (const auto &fam : transferFams)
+    auto selectedTransferFamilyIndex =
+        m_graphicsManagers.queueManager.get(engineReserved.at(star::Queue_Type::Ttransfer))
+            ->queue.getParentQueueFamilyIndex();
+
+    Handle queue;
+    for (size_t i{0}; i < targetNumQueuesToUse; i++)
     {
-        if (fam != device.getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex() &&
-            fam != device.getDefaultQueue(Queue_Type::Tcompute).getParentQueueFamilyIndex() &&
-            !selectedFamilyIndices.contains(fam))
+        m_eventBus.emit(event::GetQueue::Builder()
+                            .setQueueData(queue)
+                            .setQueueType(star::Queue_Type::Ttransfer)
+                            .setSelectFromFamilyIndex(selectedTransferFamilyIndex)
+                            .build());
+
+        if (queue.isInitialized())
         {
-            auto nQueue =
-                device.getQueueOwnershipTracker().giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false, fam);
-
-            if (nQueue.has_value())
-            {
-                transferWorkerQueues.push_back(nQueue.value());
-
-                selectedFamilyIndices.insert(fam);
-
-                // only want 2, one for each of transfer operation
-                if (selectedFamilyIndices.size() == targetNumQueuesToUse)
-                {
-                    break;
-                }
-            }
+            transferWorkerQueues[i] = &m_graphicsManagers.queueManager.get(queue)->queue;
+        }
+        else
+        {
+            break;
         }
     }
 
@@ -198,29 +231,6 @@ void star::core::device::DeviceContext::shutdownServices()
 void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFlight)
 {
     ManagerRenderResource::init(m_deviceID, &m_device, m_transferWorker, numFramesInFlight);
-
-    const auto transferFams =
-        m_device.getQueueOwnershipTracker().getQueueFamiliesWhichSupport(vk::QueueFlagBits::eTransfer);
-    std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
-    std::vector<StarQueue> transferWorkerQueues = std::vector<StarQueue>();
-
-    for (const auto &fam : transferFams)
-    {
-        if (fam != m_device.getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex() &&
-            fam != m_device.getDefaultQueue(Queue_Type::Tcompute).getParentQueueFamilyIndex() &&
-            !selectedFamilyIndices.contains(fam))
-        {
-            auto nQueue =
-                m_device.getQueueOwnershipTracker().giveMeQueueWithProperties(vk::QueueFlagBits::eTransfer, false, fam);
-
-            if (nQueue.has_value())
-            {
-                transferWorkerQueues.push_back(nQueue.value());
-
-                selectedFamilyIndices.insert(fam);
-            }
-        }
-    }
 
     // create worker for pipeline building
     job::worker::Worker pipelineWorker{job::worker::DefaultWorker{
@@ -286,8 +296,24 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
     }
 }
 
-void star::core::device::DeviceContext::processAvailableQueues()
+std::vector<star::Handle> star::core::device::DeviceContext::processAvailableQueues()
 {
+    QueueFamilyIndices indices = m_device.getQueueInfo();
+    std::vector<star::Handle> handles;
+
+    auto families = indices.getQueueFamilies();
+    for (auto &family : families)
+    {
+        family.init(m_device.getVulkanDevice());
+
+        for (auto &queue : family.getQueues())
+        {
+            auto record = m_graphicsManagers.queueManager.submit({queue});
+            handles.emplace_back(std::move(record));
+        }
+    }
+
+    return handles;
 }
 
 void star::core::device::DeviceContext::broadcastFrameStart()
@@ -299,3 +325,164 @@ void star::core::device::DeviceContext::broadcastFramePrepToService()
 {
     m_eventBus.emit(star::event::PrepForNextFrame{m_flightTracker});
 }
+
+static vk::QueueFlags EnumToQueueFlags(const star::Queue_Type &type)
+{
+    switch (type)
+    {
+    case (star::Queue_Type::Tgraphics):
+        return vk::QueueFlagBits::eGraphics;
+        break;
+    case (star::Queue_Type::Ttransfer):
+        return vk::QueueFlagBits::eTransfer;
+        break;
+    case (star::Queue_Type::Tcompute):
+        return vk::QueueFlagBits::eCompute;
+        break;
+    default:
+        return vk::QueueFlags{};
+    }
+}
+
+star::Handle star::core::device::DeviceContext::getQueueOfType(
+    const std::vector<Handle> &allQueueHandles, const star::Queue_Type &type,
+    const std::unordered_set<uint32_t> *queueFamilyIndsToAvoid)
+{
+    for (const auto &handle : allQueueHandles)
+    {
+        const auto &queue = m_graphicsManagers.queueManager.get(handle)->queue;
+        if (queueFamilyIndsToAvoid == nullptr ||
+            (queueFamilyIndsToAvoid != nullptr && !queueFamilyIndsToAvoid->contains(queue.getParentQueueFamilyIndex())))
+        {
+            if (type == star::Queue_Type::Tpresent && queue.getDoesSupportPresentation())
+            {
+                return handle;
+            }
+            else if (queue.isCompatibleWith(EnumToQueueFlags(type)))
+            {
+                return handle;
+            }
+        }
+    }
+
+    return Handle();
+}
+
+absl::flat_hash_map<star::Queue_Type, star::Handle> star::core::device::DeviceContext::selectEngineReservedQueues(
+    const std::vector<star::Handle> &allQueueHandles)
+{
+    // const auto type = common::HandleTypeRegistry::instance().getType(common::special_types::F)
+    //  select a queue of each type
+    absl::flat_hash_map<star::Queue_Type, star::Handle> selectedQueues;
+
+    // start with present becuase that one is special for non-headless environments
+    std::unordered_set<uint32_t> selectedFamilyInds;
+    Handle selected = getQueueOfType(allQueueHandles, star::Queue_Type::Tpresent, nullptr);
+
+    if (selected.isInitialized())
+    {
+        selectedQueues.insert(
+            std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tpresent, Handle(selected)));
+        selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selected)->queue.getParentQueueFamilyIndex());
+    }
+
+    // try and select graphics shared with present if present
+    if (!selectedQueues.empty())
+    {
+        // check if the present queue supports graphics
+        // Handle handle = selectedQueues[star::Queue_Type::Tgraphics];
+        if (m_graphicsManagers.queueManager.get(selected)->queue.isCompatibleWith(
+                EnumToQueueFlags(star::Queue_Type::Tgraphics)))
+        {
+            selectedQueues.insert(
+                std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tgraphics, Handle(selected)));
+        }
+        else
+        {
+            STAR_THROW("Not able to find queue which supports graphics or presentation");
+        }
+    }
+    else
+    {
+        selected = getQueueOfType(allQueueHandles, star::Queue_Type::Tgraphics, nullptr);
+        // dedicated graphics family
+        selectedQueues.insert(
+            std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tgraphics, Handle(selected)));
+        selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selected)->queue.getParentQueueFamilyIndex());
+    }
+
+    // try to get dedicated transfer queue
+    selected = getQueueOfType(allQueueHandles, star::Queue_Type::Ttransfer, &selectedFamilyInds);
+    if (selected.isInitialized())
+    {
+        selectedQueues.insert(
+            std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Ttransfer, Handle(selected)));
+        selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selected)->queue.getParentQueueFamilyIndex());
+    }
+    else
+    {
+        // use selected graphics queue
+        selectedQueues.insert(std::make_pair<star::Queue_Type, star::Handle>(
+            star::Queue_Type::Ttransfer, Handle(selectedQueues[star::Queue_Type::Tgraphics])));
+    }
+
+    // try to get dedicated compute queue
+    selected = getQueueOfType(allQueueHandles, star::Queue_Type::Tcompute, &selectedFamilyInds);
+    if (selected.isInitialized())
+    {
+        auto pair = std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tcompute, Handle(selected));
+        selectedQueues.insert(std::move(pair));
+        selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selected)->queue.getParentQueueFamilyIndex());
+    }
+    else
+    {
+        // vulkan guarantees one queue which supports all
+        selectedQueues.insert(std::make_pair<star::Queue_Type, star::Handle>(
+            star::Queue_Type::Tcompute, Handle(selectedQueues[star::Queue_Type::Tgraphics])));
+    }
+
+    return selectedQueues;
+}
+
+star::service::Service star::core::device::DeviceContext::createQueueOwnershipService(
+    std::vector<Handle> queueHandles, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved)
+{
+    auto service = service::QueueManagerService(std::move(queueHandles), std::move(engineReserved));
+    return star::service::Service(std::move(service));
+}
+
+void star::core::device::DeviceContext::gatherPoolAndQueueForType(
+    const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved, const star::Queue_Type &type,
+    StarCommandPool *pool, StarQueue *queue)
+{
+    const auto poolType =
+        common::HandleTypeRegistry::instance().getType(common::special_types::CommandPoolTypeName).value();
+    Handle handle = engineReserved.at(star::Queue_Type::Tpresent);
+    queue = &m_graphicsManagers.queueManager.get(handle)->queue;
+
+    handle.type = poolType;
+    pool = &m_graphicsManagers.commandPoolManager.get(handle)->commandPool;
+}
+
+// std::unique_ptr<star::core::device::manager::ManagerCommandBuffer> star::core::device::DeviceContext::
+//     createManagerCommandBuffer(const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved)
+//{
+//
+//     StarCommandPool *presentPool = nullptr, *graphicsPool = nullptr, *transferPool = nullptr, *computePool = nullptr;
+//     StarQueue *presentQueue = nullptr, *graphicsQueue = nullptr, *transferQueue = nullptr, *computeQueue = nullptr;
+//
+//     // need to select one of each kind
+//     gatherPoolAndQueueForType(engineReserved, star::Queue_Type::Tgraphics, graphicsPool, graphicsQueue);
+//     gatherPoolAndQueueForType(engineReserved, star::Queue_Type::Ttransfer, transferPool, transferQueue);
+//     gatherPoolAndQueueForType(engineReserved, star::Queue_Type::Tcompute, computePool, computeQueue);
+//     if (engineReserved.contains(star::Queue_Type::Tpresent))
+//     {
+//         gatherPoolAndQueueForType(engineReserved, star::Queue_Type::Tpresent, presentPool, presentQueue);
+//         return std::make_unique<core::device::manager::ManagerCommandBuffer>(
+//             m_device, m_flightTracker.getSetup().getNumFramesInFlight(), *graphicsQueue, *graphicsPool,
+//             *transferQueue, *transferPool, *computeQueue, *computePool, *presentQueue, *presentPool);
+//     }
+//
+//     return , *graphicsQueue, *graphicsPool, *transferQueue,
+//         *transferPool, *computeQueue, *computePool);
+// }

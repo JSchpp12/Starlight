@@ -1,12 +1,17 @@
 #include "StarCommandPool.hpp"
 
 star::StarCommandPool::StarCommandPool(vk::Device vulkanDevice, const uint32_t &familyIndex, const bool &setAutoReset)
-: vulkanDevice(vulkanDevice), commandPool(CreateCommandPool(vulkanDevice, familyIndex, setAutoReset)){
+: commandPool(CreateCommandPool(vulkanDevice, familyIndex, setAutoReset)){
 
 }
 
-star::StarCommandPool::~StarCommandPool(){
-    this->vulkanDevice.destroyCommandPool(this->commandPool); 
+void star::StarCommandPool::cleanupRender(vk::Device &device)
+{
+    if (commandPool != VK_NULL_HANDLE)
+    {
+        device.destroyCommandPool(commandPool);
+        commandPool = VK_NULL_HANDLE;
+    }
 }
 
 vk::CommandPool star::StarCommandPool::CreateCommandPool(vk::Device &vulkanDevice, const uint32_t &familyIndex, const bool &setAutoReset){

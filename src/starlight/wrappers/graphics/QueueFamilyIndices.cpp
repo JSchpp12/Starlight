@@ -1,6 +1,6 @@
 #include "starlight/wrappers/graphics/QueueFamilyIndices.hpp"
 
-void star::QueueFamilyIndicies::registerFamily(const uint32_t &familyIndex, const vk::QueueFlags &queueSupport,
+void star::QueueFamilyIndices::registerFamily(const uint32_t &familyIndex, const vk::QueueFlags &queueSupport,
                                                const vk::Bool32 &presentSupport, const uint32_t &familyQueueCount)
 {
     this->familyIndexQueueCount[familyIndex] = familyQueueCount;
@@ -20,7 +20,7 @@ void star::QueueFamilyIndicies::registerFamily(const uint32_t &familyIndex, cons
         this->computeFamilies.insert(familyIndex);
 }
 
-bool star::QueueFamilyIndicies::isOptimalSupport(const bool needsPresentationSupport) const
+bool star::QueueFamilyIndices::isOptimalSupport(const bool needsPresentationSupport) const
 {
     if (!this->isFullySupported(needsPresentationSupport))
     {
@@ -81,7 +81,7 @@ bool star::QueueFamilyIndicies::isOptimalSupport(const bool needsPresentationSup
     return true;
 }
 
-bool star::QueueFamilyIndicies::isFullySupported(const bool needsPresentationSupport) const
+bool star::QueueFamilyIndices::isFullySupported(const bool needsPresentationSupport) const
 {
     if (needsPresentationSupport)
     {
@@ -92,11 +92,24 @@ bool star::QueueFamilyIndicies::isFullySupported(const bool needsPresentationSup
     return this->graphicsFamilies.size() > 0 && this->transferFamilies.size() > 0 && this->computeFamilies.size() > 0;
 }
 
-bool star::QueueFamilyIndicies::isSuitable(const bool needsPresentationSupport) const
+bool star::QueueFamilyIndices::isSuitable(const bool needsPresentationSupport) const
 {
     if (needsPresentationSupport)
     {
         return graphicsFamilies.size() > 0 && presentFamilies.size() > 0;
     }
     return graphicsFamilies.size() > 0;
+}
+
+std::vector<star::StarQueueFamily> star::QueueFamilyIndices::getQueueFamilies()
+{
+    std::vector<StarQueueFamily> queueFamilies = std::vector<StarQueueFamily>();
+    for (auto uniqueIndex : getUniques())
+    {
+        queueFamilies.emplace_back(uniqueIndex, getNumQueuesForIndex(uniqueIndex),
+                                   getSupportForIndex(uniqueIndex),
+                                   getSupportsPresentForIndex(uniqueIndex));
+    }
+
+    return queueFamilies;
 }

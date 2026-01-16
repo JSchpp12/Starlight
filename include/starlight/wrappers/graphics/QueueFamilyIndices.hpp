@@ -1,5 +1,7 @@
 #pragma once
 
+#include "starlight/wrappers/graphics/StarQueueFamily.hpp"
+
 #include <set>
 #include <vulkan/vulkan.hpp>
 #include <unordered_map>
@@ -7,7 +9,7 @@
 namespace star
 {
 
-class QueueFamilyIndicies
+class QueueFamilyIndices
 {
   public:
     void registerFamily(const uint32_t &familyIndex, const vk::QueueFlags &queueSupport,
@@ -30,7 +32,7 @@ class QueueFamilyIndicies
         return this->familyIndexQueueSupport[index];
     }
 
-    std::set<uint32_t> getUniques() const
+    const std::set<uint32_t> &getUniques() const
     {
         return this->allIndicies;
     }
@@ -39,6 +41,8 @@ class QueueFamilyIndicies
     {
         return this->presentFamilies.find(index) != this->presentFamilies.end();
     }
+
+    std::vector<StarQueueFamily> getQueueFamilies(); 
 
   private:
     std::set<uint32_t> allIndicies = std::set<uint32_t>();

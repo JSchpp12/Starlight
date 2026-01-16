@@ -2,7 +2,10 @@
 
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
+#include "event/GetQueue.hpp"
 #include "logging/LoggingFactory.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
+
 #include <star_common/helper/CastHelpers.hpp>
 
 #include <star_common/HandleTypeRegistry.hpp>
@@ -116,11 +119,26 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
             &m_deviceInfo->semaphoreManager->get(m_binaryInfo.handles[resourceIndex])->semaphore;
     }
 
-    m_inUseResources->queueToUse = m_deviceInfo->device->getDefaultQueue(Queue_Type::Ttransfer).getVulkanQueue();
+    m_inUseResources->queueToUse = getQueueToUse();
     {
         uint64_t signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed() + 1;
         m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal = signalValue;
     }
+}
+
+vk::Queue DefaultCopyPolicy::getQueueToUse() const
+{
+    Handle defaultTransferQueue;
+
+    core::helper::GetEngineDefaultQueue(*m_deviceInfo->eventBus, *m_deviceInfo->queueManager,
+                                        star::Queue_Type::Ttransfer);
+
+    if (!defaultTransferQueue.isInitialized())
+    {
+        STAR_THROW("Failed to obtain default transfer queue to use");
+    }
+
+    return m_deviceInfo->queueManager->get(defaultTransferQueue)->queue.getVulkanQueue();
 }
 
 void DefaultCopyPolicy::registerWithCommandBufferManager()
@@ -129,7 +147,8 @@ void DefaultCopyPolicy::registerWithCommandBufferManager()
     m_blitCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
 }
 
-void DefaultCopyPolicy::SemaphoreInfo::init(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight, bool isTimeline)
+void DefaultCopyPolicy::SemaphoreInfo::init(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight,
+                                            bool isTimeline)
 {
     handles.resize(numFramesInFlight);
     raws.resize(numFramesInFlight);

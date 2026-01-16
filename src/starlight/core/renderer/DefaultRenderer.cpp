@@ -5,6 +5,8 @@
 #include "ManagerController_RenderResource_LightList.hpp"
 #include "ManagerRenderResource.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
+#include "core/helper/command_buffer/CommandBufferHelpers.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 #include <vma/vk_mem_alloc.h>
@@ -118,10 +120,18 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
     std::vector<StarTextures::Texture> newRenderToImages = std::vector<StarTextures::Texture>();
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
-    indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
-    if (device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex() != indices.back())
+    indices.push_back(core::helper::GetEngineDefaultQueue(
+                          device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics)
+                          ->getParentQueueFamilyIndex());
+
     {
-        indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
+        StarQueue *presentQueue = core::helper::GetEngineDefaultQueue(
+            device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tpresent);
+
+        if (presentQueue != nullptr && presentQueue->getParentQueueFamilyIndex() != indices.back())
+        {
+            indices.push_back(presentQueue->getParentQueueFamilyIndex());
+        }
     }
 
     vk::Format format = getColorAttachmentFormat(device);
@@ -167,12 +177,18 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
                                                       .setBaseMipLevel(0)
                                                       .setLevelCount(1)));
 
+    auto *singleTimeTargetQueue = core::helper::GetEngineDefaultQueue(
+        device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics);
+    assert(singleTimeTargetQueue != nullptr);
+
     for (int i = 0; i < numFramesInFlight; i++)
     {
         newRenderToImages.emplace_back(builder.build());
         newRenderToImages.back().setImageLayout(vk::ImageLayout::eColorAttachmentOptimal);
 
-        auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
+        auto oneTimeSetup = core::helper::BeginSingleTimeCommands(
+            device.getDevice(), device.getEventBus(), device.getGraphicsManagers().commandPoolManager,
+            device.getManagerCommandBuffer().m_manager, star::Queue_Type::Tgraphics);
 
         vk::ImageMemoryBarrier barrier{};
         barrier.sType = vk::StructureType::eImageMemoryBarrier;
@@ -191,7 +207,7 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup->buffer().pipelineBarrier(
+        oneTimeSetup.buffer().pipelineBarrier(
             vk::PipelineStageFlagBits::eTopOfPipe,             // which pipeline stages should
                                                                // occurr before barrier
             vk::PipelineStageFlagBits::eColorAttachmentOutput, // pipeline stage in
@@ -199,7 +215,7 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
                                                                // wait on the barrier
             {}, {}, nullptr, barrier);
 
-        device.getDevice().endSingleTimeCommands(std::move(oneTimeSetup));
+        core::helper::EndSingleTimeCommands(*singleTimeTargetQueue, std::move(oneTimeSetup));
     }
 
     return newRenderToImages;
@@ -213,10 +229,18 @@ std::vector<star::StarTextures::Texture> star::core::renderer::DefaultRenderer::
     const vk::Format depthFormat = getDepthAttachmentFormat(device);
 
     std::vector<uint32_t> indices = std::vector<uint32_t>();
-    indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tgraphics).getParentQueueFamilyIndex());
-    if (device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex() != indices.back())
+    const auto graphicsQueueFamilyIndex =
+        core::helper::GetEngineDefaultQueue(device.getEventBus(), device.getGraphicsManagers().queueManager,
+                                            star::Queue_Type::Tgraphics)
+            ->getParentQueueFamilyIndex();
+    indices.push_back(graphicsQueueFamilyIndex);
+
+    auto *presentQueueFamily = core::helper::GetEngineDefaultQueue(
+        device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tpresent);
+
+    if (presentQueueFamily != nullptr && presentQueueFamily->getParentQueueFamilyIndex() != graphicsQueueFamilyIndex)
     {
-        indices.push_back(device.getDevice().getDefaultQueue(star::Queue_Type::Tpresent).getParentQueueFamilyIndex());
+        indices.push_back(presentQueueFamily->getParentQueueFamilyIndex());
     }
 
     int width, height;
@@ -259,11 +283,17 @@ std::vector<star::StarTextures::Texture> star::core::renderer::DefaultRenderer::
                                                       .setBaseMipLevel(0)
                                                       .setLevelCount(1)));
 
+    auto *oneTimeTargetQueue = core::helper::GetEngineDefaultQueue(
+        device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics);
+    assert(oneTimeTargetQueue != nullptr);
+
     for (int i = 0; i < numFramesInFlight; i++)
     {
         newRenderToImages.emplace_back(builder.build());
 
-        auto oneTimeSetup = device.getDevice().beginSingleTimeCommands();
+        auto oneTimeSetup = core::helper::BeginSingleTimeCommands(
+            device.getDevice(), device.getEventBus(), device.getGraphicsManagers().commandPoolManager,
+            device.getManagerCommandBuffer().m_manager, star::Queue_Type::Tgraphics);
 
         vk::ImageMemoryBarrier barrier{};
         barrier.sType = vk::StructureType::eImageMemoryBarrier;
@@ -282,13 +312,13 @@ std::vector<star::StarTextures::Texture> star::core::renderer::DefaultRenderer::
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
-        oneTimeSetup->buffer().pipelineBarrier(
+        oneTimeSetup.buffer().pipelineBarrier(
             vk::PipelineStageFlagBits::eTopOfPipe,         // which pipeline stages should occurr before barrier
             vk::PipelineStageFlagBits::eLateFragmentTests, // pipeline stage in which operations will wait on the
                                                            // barrier
             {}, {}, nullptr, barrier);
 
-        device.getDevice().endSingleTimeCommands(std::move(oneTimeSetup));
+        core::helper::EndSingleTimeCommands(*oneTimeTargetQueue, std::move(oneTimeSetup));
     }
 
     return newRenderToImages;

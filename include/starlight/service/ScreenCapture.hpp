@@ -98,7 +98,6 @@ class ScreenCapture
     TCreateDependenciesPolicy m_createDependenciesPolicy;
     TCopyPolicy m_copyPolicy;
     core::LinearHandleContainer<detail::screen_capture::CalleeRenderDependencies, 5> m_calleeDependencyTracker;
-
     Handle m_subscriberHandle;
     detail::screen_capture::CopyRouter m_actionRouter;
     detail::screen_capture::DeviceInfo m_deviceInfo;

@@ -4,9 +4,9 @@
 #include "StarShaderInfo.hpp"
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "TransferRequest_TextureFile.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
 
 #include "FileHelpers.hpp"
-#include "ManagerController_RenderResource_TextureFile.hpp"
 
 #include <cassert>
 
@@ -39,7 +39,9 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, con
     {
         const auto texSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
         const auto graphicsIndex =
-            context.getDevice().getDefaultQueue(Queue_Type::Tgraphics).getParentQueueFamilyIndex();
+            core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
+                                                star::Queue_Type::Tgraphics)
+                ->getParentQueueFamilyIndex();
         const auto deviceProperties = context.getDevice().getPhysicalDevice().getProperties();
 
         auto texture = std::unique_ptr<TransferRequest::Texture>();

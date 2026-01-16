@@ -72,10 +72,12 @@ class TransferManagerThread
     class ProcessRequestInfo
     {
       public:
+        std::shared_ptr<StarCommandPool> commandPool = nullptr;
         std::unique_ptr<StarCommandBuffer> commandBuffer = nullptr;
 
-        ProcessRequestInfo(std::unique_ptr<StarCommandBuffer> commandBuffer)
-            : commandBuffer(std::move(commandBuffer)) {};
+        ProcessRequestInfo(std::shared_ptr<StarCommandPool> commandPool,
+                           std::unique_ptr<StarCommandBuffer> commandBuffer)
+            : commandPool(std::move(commandPool)), commandBuffer(std::move(commandBuffer)) {};
 
         void setInProcessDeps(std::unique_ptr<StarBuffers::Buffer> nInProcessTransferSrcBuffer)
         {
@@ -104,11 +106,11 @@ class TransferManagerThread
 
     struct SubThreadInfo
     {
-        SubThreadInfo(boost::atomic<bool> *shouldRun,
-                      TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages, vk::Device device,
-                      StarQueue queue, VmaAllocator &allocator, vk::PhysicalDeviceProperties deviceProperties,
-                      std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer,
-                      std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
+        SubThreadInfo(
+            boost::atomic<bool> *shouldRun, TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages,
+            vk::Device device, StarQueue queue, VmaAllocator &allocator, vk::PhysicalDeviceProperties deviceProperties,
+            std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer,
+            std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
             : shouldRun(shouldRun), completeMessages(completeMessages), device(device), queue(queue),
               allocator(allocator), deviceProperties(deviceProperties), taskContainer(taskContainer),
               allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse)
@@ -147,9 +149,6 @@ class TransferManagerThread
     void cleanup();
 
     static void mainLoop(SubThreadInfo myInfo);
-
-    static std::unique_ptr<ProcessRequestInfo> CreateProcessingInfo(vk::Device &device,
-                                                                    std::shared_ptr<StarCommandPool> commandPool);
 
     static void CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
                              vk::Semaphore signalWhenDoneSemaphore,
@@ -190,7 +189,7 @@ class TransferWorker
     /// dedicated transfer queue. As such, transfers are submitted on the main thread.
     /// @param device Created star device from which vulkan objects can be made
     TransferWorker(TaskContainer<complete_tasks::CompleteTask, 128> &completeMessages, core::device::StarDevice &device,
-                   bool overrideRunAsync, std::vector<StarQueue> &queuesToUse);
+                   bool overrideRunAsync, std::vector<StarQueue*> &queuesToUse);
 
     void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread, vk::Semaphore signalWhenDoneSemaphore,
              std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
@@ -218,7 +217,7 @@ class TransferWorker
     void insertRequest(TransferManagerThread::InterThreadRequest newRequest, const bool &isHighPriority);
 
     static std::vector<std::unique_ptr<TransferManagerThread>> CreateThreads(
-        core::device::StarDevice &device, const std::vector<StarQueue> queuesToUse,
+        core::device::StarDevice &device, const std::vector<StarQueue *> &queuesToUse,
         job::TaskContainer<complete_tasks::CompleteTask, 128> &completeTaskContainer,
         std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> highPriorityQueue,
         std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> standardQueue);

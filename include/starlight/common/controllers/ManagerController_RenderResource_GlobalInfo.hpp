@@ -17,7 +17,7 @@ class GlobalInfo : public star::ManagerController::RenderResource::Buffer
   protected:
     std::shared_ptr<StarCamera> camera = nullptr;
 
-    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::StarDevice &device,
+    std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
                                                                    const uint8_t &frameInFlightIndex) override;
     bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const override;
 };

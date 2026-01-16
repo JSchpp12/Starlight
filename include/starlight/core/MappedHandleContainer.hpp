@@ -24,6 +24,11 @@ template <typename TData> class MappedHandleContainer : public HandleContainer<T
         return m_records.contains(handle);
     }
 
+    const absl::flat_hash_map<Handle, TData, star::HandleHash> &getRecords() const
+    {
+        return m_records;
+    }
+
   protected:
     Handle storeRecord(TData newData) override
     {
@@ -38,6 +43,12 @@ template <typename TData> class MappedHandleContainer : public HandleContainer<T
         assert(m_records.contains(handle) && "Handle must be in the set");
         return m_records[handle];
     }
+
+    const TData &getRecord(const Handle &handle) const override
+    {
+        return m_records.at(handle);
+    }
+
     void removeRecord(const Handle &handle, device::StarDevice *device) override
     {
         assert(m_records.contains(handle) && "Handle must be in the set");
@@ -61,9 +72,12 @@ template <typename TData> class MappedHandleContainer : public HandleContainer<T
     void store(const Handle &recordHandle, TData record)
     {
         assert(recordHandle.getType() == this->getHandleType() && "Ensure proper handle type for container");
-        if (m_records.contains(recordHandle)){
+        if (m_records.contains(recordHandle))
+        {
             m_records.find(recordHandle)->second = std::move(record);
-        }else{
+        }
+        else
+        {
             m_records.insert(std::make_pair(recordHandle, std::move(record)));
         }
     }
