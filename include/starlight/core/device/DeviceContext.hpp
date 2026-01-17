@@ -213,9 +213,6 @@ class DeviceContext : public star::common::IDeviceContext
     service::Service createQueueOwnershipService(std::vector<Handle> queueHandles,
                                                  absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
 
-    void gatherPoolAndQueueForType(const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved,
-                                   const star::Queue_Type &type, StarCommandPool *pool, StarQueue *queue);
-
     std::unique_ptr<manager::ManagerCommandBuffer> createManagerCommandBuffer(
         const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved);
 };

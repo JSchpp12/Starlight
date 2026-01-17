@@ -18,7 +18,6 @@ struct DeviceInfo
     core::device::manager::ManagerCommandBuffer *commandManager = nullptr;
     star::common::EventBus *eventBus = nullptr;
     core::device::manager::Semaphore *semaphoreManager = nullptr;
-    core::device::manager::CommandPool *commandPoolManager = nullptr; 
     core::device::manager::Queue *queueManager = nullptr; 
     job::TaskManager *taskManager = nullptr;
     star::common::FrameTracker *flightTracker = nullptr;

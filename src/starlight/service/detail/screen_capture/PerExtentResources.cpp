@@ -32,7 +32,6 @@ static std::vector<star::StarTextures::Texture> CreateImages(DeviceInfo *deviceI
                                                              const vk::Extent2D &extent)
 {
     assert(deviceInfo != nullptr && deviceInfo->flightTracker != nullptr);
-    assert(deviceInfo->commandPoolManager != nullptr); 
     assert(deviceInfo->queueManager != nullptr); 
 
     auto policy = CreateImagePolicy(deviceInfo, targetImageFormat, extent);
@@ -86,7 +85,6 @@ CopyResource PerExtentResources::giveMeResource(const vk::Extent2D &targetExtent
 {
     assert(m_deviceInfo != nullptr);
     CopyResourcesContainer *container = nullptr;
-    std::vector<star::StarTextures::Texture> *calleeTargetTextures = nullptr;
 
     if (m_resources.contains(targetExtent))
     {

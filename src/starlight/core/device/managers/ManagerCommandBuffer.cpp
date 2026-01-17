@@ -9,35 +9,6 @@
 std::stack<star::Handle> star::core::device::manager::ManagerCommandBuffer::dynamicBuffersToSubmit =
     std::stack<star::Handle>();
 
-namespace star::core::device::manager
-{
-static inline void GatherEngineDefaultQueueInfo(common::EventBus &eventBus,
-                                                core::device::manager::CommandPool &commandPoolManager,
-                                                core::device::manager::Queue &queueManager,
-                                                const star::Queue_Type &type, StarCommandPool *&pool, StarQueue *&queue)
-{
-    Handle defaultQueue;
-
-    {
-        auto event =
-            event::GetQueue::Builder().setQueueData(defaultQueue).getEngineDedicatedQueue().setQueueType(type).build();
-        eventBus.emit(std::move(event));
-    }
-
-    if (!defaultQueue.isInitialized())
-    {
-        STAR_THROW("Unable to gather default engine info");
-    }
-
-    queue = &queueManager.get(defaultQueue)->queue;
-
-    defaultQueue.type =
-        common::HandleTypeRegistry::instance().getType(common::special_types::CommandPoolTypeName).value();
-
-    pool = &commandPoolManager.get(defaultQueue)->commandPool;
-}
-
-} // namespace star::core::device::manager
 star::core::device::manager::ManagerCommandBuffer::ManagerCommandBuffer(
     StarDevice &device, core::device::manager::Queue &queueManager, const uint8_t &numFramesInFlight,
     const absl::flat_hash_map<star::Queue_Type, Handle> &queuesToUse)

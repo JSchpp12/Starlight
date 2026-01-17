@@ -83,6 +83,7 @@ class ScreenCapture
                                                .commandManager = &params.commandBufferManager,
                                                .eventBus = &params.eventBus,
                                                .semaphoreManager = params.graphicsManagers.semaphoreManager.get(),
+                                               .queueManager = &params.graphicsManagers.queueManager,
                                                .taskManager = &params.taskManager,
                                                .flightTracker = &params.flightTracker};
     }
@@ -187,7 +188,7 @@ class ScreenCapture
                                               vk::Semaphore signalSemaphore, uint64_t currentFrameCount,
                                               const uint64_t &signalValue)
     {
-        assert(m_deviceInfo.eventBus && m_deviceInfo.commandManager); 
+        assert(m_deviceInfo.eventBus && m_deviceInfo.commandManager);
 
         core::waiter::sync_renderer::Factory(*m_deviceInfo.eventBus, *m_deviceInfo.commandManager)
             .setWaitPipelineStage(vk::PipelineStageFlagBits::eFragmentShader)

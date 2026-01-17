@@ -106,12 +106,12 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
         m_device, m_graphicsManagers.queueManager, m_flightTracker.getSetup().getNumFramesInFlight(),
         engineReservedQueues);
     m_commandBufferManager->init(m_graphicsManagers.queueManager);
+    m_renderResourceManager = std::make_unique<ManagerRenderResource>();
 
     m_services.emplace_back(createQueueOwnershipService(availableQueues, engineReservedQueues));
     initServices(m_flightTracker.getSetup().getNumFramesInFlight());
 
     m_transferWorker = createTransferWorker(m_device, engineReservedQueues);
-    m_renderResourceManager = std::make_unique<ManagerRenderResource>();
     initWorkers(m_flightTracker.getSetup().getNumFramesInFlight());
 
     m_ownsResources = true;
@@ -259,10 +259,13 @@ void star::core::device::DeviceContext::registerService(service::Service service
 {
     m_services.emplace_back(std::move(service));
 
-    service::InitParameters params{m_deviceID,         m_device,
-                                   m_eventBus,         m_taskManager,
-                                   m_graphicsManagers, *m_commandBufferManager,
-                                   *m_transferWorker,  *m_renderResourceManager,
+    service::InitParameters params{m_deviceID,
+                                   m_device,
+                                   m_eventBus,
+                                   m_taskManager,
+                                   m_graphicsManagers,
+                                   *m_commandBufferManager,
+                                   *m_renderResourceManager,
                                    m_flightTracker};
 
     m_services.back().init(params, m_flightTracker.getSetup().getNumFramesInFlight());
@@ -270,10 +273,13 @@ void star::core::device::DeviceContext::registerService(service::Service service
 
 void star::core::device::DeviceContext::setAllServiceParameters()
 {
-    service::InitParameters params{m_deviceID,         m_device,
-                                   m_eventBus,         m_taskManager,
-                                   m_graphicsManagers, *m_commandBufferManager,
-                                   *m_transferWorker,  *m_renderResourceManager,
+    service::InitParameters params{m_deviceID,
+                                   m_device,
+                                   m_eventBus,
+                                   m_taskManager,
+                                   m_graphicsManagers,
+                                   *m_commandBufferManager,
+                                   *m_renderResourceManager,
                                    m_flightTracker};
 
     for (auto &service : m_services)
@@ -284,10 +290,13 @@ void star::core::device::DeviceContext::setAllServiceParameters()
 
 void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesInFlight)
 {
-    service::InitParameters params{m_deviceID,         m_device,
-                                   m_eventBus,         m_taskManager,
-                                   m_graphicsManagers, *m_commandBufferManager,
-                                   *m_transferWorker,  *m_renderResourceManager,
+    service::InitParameters params{m_deviceID,
+                                   m_device,
+                                   m_eventBus,
+                                   m_taskManager,
+                                   m_graphicsManagers,
+                                   *m_commandBufferManager,
+                                   *m_renderResourceManager,
                                    m_flightTracker};
 
     for (auto &service : m_services)
@@ -450,39 +459,3 @@ star::service::Service star::core::device::DeviceContext::createQueueOwnershipSe
     auto service = service::QueueManagerService(std::move(queueHandles), std::move(engineReserved));
     return star::service::Service(std::move(service));
 }
-
-void star::core::device::DeviceContext::gatherPoolAndQueueForType(
-    const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved, const star::Queue_Type &type,
-    StarCommandPool *pool, StarQueue *queue)
-{
-    const auto poolType =
-        common::HandleTypeRegistry::instance().getType(common::special_types::CommandPoolTypeName).value();
-    Handle handle = engineReserved.at(star::Queue_Type::Tpresent);
-    queue = &m_graphicsManagers.queueManager.get(handle)->queue;
-
-    handle.type = poolType;
-    pool = &m_graphicsManagers.commandPoolManager.get(handle)->commandPool;
-}
-
-// std::unique_ptr<star::core::device::manager::ManagerCommandBuffer> star::core::device::DeviceContext::
-//     createManagerCommandBuffer(const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved)
-//{
-//
-//     StarCommandPool *presentPool = nullptr, *graphicsPool = nullptr, *transferPool = nullptr, *computePool = nullptr;
-//     StarQueue *presentQueue = nullptr, *graphicsQueue = nullptr, *transferQueue = nullptr, *computeQueue = nullptr;
-//
-//     // need to select one of each kind
-//     gatherPoolAndQueueForType(engineReserved, star::Queue_Type::Tgraphics, graphicsPool, graphicsQueue);
-//     gatherPoolAndQueueForType(engineReserved, star::Queue_Type::Ttransfer, transferPool, transferQueue);
-//     gatherPoolAndQueueForType(engineReserved, star::Queue_Type::Tcompute, computePool, computeQueue);
-//     if (engineReserved.contains(star::Queue_Type::Tpresent))
-//     {
-//         gatherPoolAndQueueForType(engineReserved, star::Queue_Type::Tpresent, presentPool, presentQueue);
-//         return std::make_unique<core::device::manager::ManagerCommandBuffer>(
-//             m_device, m_flightTracker.getSetup().getNumFramesInFlight(), *graphicsQueue, *graphicsPool,
-//             *transferQueue, *transferPool, *computeQueue, *computePool, *presentQueue, *presentPool);
-//     }
-//
-//     return , *graphicsQueue, *graphicsPool, *transferQueue,
-//         *transferPool, *computeQueue, *computePool);
-// }

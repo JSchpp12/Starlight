@@ -4,7 +4,6 @@
 #include "StarCommandBuffer.hpp"
 #include "device/StarDevice.hpp"
 #include "internals/CommandBufferContainer.hpp"
-#include "starlight/core/device/managers/CommandPool.hpp"
 #include "starlight/core/device/managers/Queue.hpp"
 
 #include <star_common/FrameTracker.hpp>

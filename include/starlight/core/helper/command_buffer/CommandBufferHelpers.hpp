@@ -1,9 +1,8 @@
 #pragma once
 
-#include "starlight/core/device/managers/CommandPool.hpp"
+#include "starlight/core/device/managers/ManagerCommandBuffer.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/wrappers/graphics/StarCommandBuffer.hpp"
-#include "starlight/core/device/managers/ManagerCommandBuffer.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 #include <star_common/special_types/SpecialHandleTypes.hpp>
@@ -13,7 +12,7 @@
 namespace star::core::helper
 {
 static inline StarCommandBuffer BeginSingleTimeCommands(
-    core::device::StarDevice &device, common::EventBus &eventBus, const core::device::manager::CommandPool &poolManager,
+    core::device::StarDevice &device, common::EventBus &eventBus,
     core::device::manager::ManagerCommandBuffer &commandBufferManger, const star::Queue_Type &type)
 {
     auto &pool = commandBufferManger.getInUseInfoForType(type)->pool;

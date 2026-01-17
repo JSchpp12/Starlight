@@ -2,9 +2,9 @@
 
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
+#include "core/helper/queue/QueueHelpers.hpp"
 #include "event/GetQueue.hpp"
 #include "logging/LoggingFactory.hpp"
-#include "core/helper/queue/QueueHelpers.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -128,17 +128,15 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
 
 vk::Queue DefaultCopyPolicy::getQueueToUse() const
 {
-    Handle defaultTransferQueue;
+    auto *defaultTransferQueue = core::helper::GetEngineDefaultQueue(
+        *m_deviceInfo->eventBus, *m_deviceInfo->queueManager, star::Queue_Type::Ttransfer);
 
-    core::helper::GetEngineDefaultQueue(*m_deviceInfo->eventBus, *m_deviceInfo->queueManager,
-                                        star::Queue_Type::Ttransfer);
-
-    if (!defaultTransferQueue.isInitialized())
+    if (defaultTransferQueue == nullptr)
     {
         STAR_THROW("Failed to obtain default transfer queue to use");
     }
 
-    return m_deviceInfo->queueManager->get(defaultTransferQueue)->queue.getVulkanQueue();
+    return defaultTransferQueue->getVulkanQueue();
 }
 
 void DefaultCopyPolicy::registerWithCommandBufferManager()

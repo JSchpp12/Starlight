@@ -186,9 +186,9 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
         newRenderToImages.emplace_back(builder.build());
         newRenderToImages.back().setImageLayout(vk::ImageLayout::eColorAttachmentOptimal);
 
-        auto oneTimeSetup = core::helper::BeginSingleTimeCommands(
-            device.getDevice(), device.getEventBus(), device.getGraphicsManagers().commandPoolManager,
-            device.getManagerCommandBuffer().m_manager, star::Queue_Type::Tgraphics);
+        auto oneTimeSetup = core::helper::BeginSingleTimeCommands(device.getDevice(), device.getEventBus(),
+                                                                  device.getManagerCommandBuffer().m_manager,
+                                                                  star::Queue_Type::Tgraphics);
 
         vk::ImageMemoryBarrier barrier{};
         barrier.sType = vk::StructureType::eImageMemoryBarrier;
@@ -291,9 +291,9 @@ std::vector<star::StarTextures::Texture> star::core::renderer::DefaultRenderer::
     {
         newRenderToImages.emplace_back(builder.build());
 
-        auto oneTimeSetup = core::helper::BeginSingleTimeCommands(
-            device.getDevice(), device.getEventBus(), device.getGraphicsManagers().commandPoolManager,
-            device.getManagerCommandBuffer().m_manager, star::Queue_Type::Tgraphics);
+        auto oneTimeSetup = core::helper::BeginSingleTimeCommands(device.getDevice(), device.getEventBus(),
+                                                                  device.getManagerCommandBuffer().m_manager,
+                                                                  star::Queue_Type::Tgraphics);
 
         vk::ImageMemoryBarrier barrier{};
         barrier.sType = vk::StructureType::eImageMemoryBarrier;

@@ -20,7 +20,6 @@ struct InitParameters
     job::TaskManager &taskManager;
     core::device::manager::GraphicsContainer &graphicsManagers;
     core::device::manager::ManagerCommandBuffer &commandBufferManager;
-    job::TransferWorker &transferWorker;
     ManagerRenderResource &renderResourceManager;
     common::FrameTracker &flightTracker;
 };
