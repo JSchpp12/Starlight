@@ -116,7 +116,6 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
            m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue && m_inUseInfo->binarySemaphoreForCopyDone &&
            "Timeline semaphore should have been set previously");
 
-
     const std::vector<uint64_t> signalSemaphoreValues{m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal, 0};
     const std::vector<vk::Semaphore> signalTimelineSemaphores{*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore,
                                                               *m_inUseInfo->binarySemaphoreForCopyDone};
@@ -178,13 +177,14 @@ void CopyCmdPolicy::waitForSemaphoreIfNecessary(const star::common::FrameTracker
     const uint64_t &frameCount = frameTracker.getCurrent().getNumTimesFrameProcessed();
     if (frameCount == m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue->value())
     {
-        assert(m_inUseInfo->timelineSemaphoreForCopyDone.semaphore && "Semaphore was not assigned"); 
+        assert(m_inUseInfo->timelineSemaphoreForCopyDone.semaphore && "Semaphore was not assigned");
         assert(m_device != nullptr && "Init() was never called");
 
-        auto result =
-            m_device->getVulkanDevice().waitSemaphores(vk::SemaphoreWaitInfo().setValues(frameCount).setSemaphores(
-                                                           *m_inUseInfo->timelineSemaphoreForCopyDone.semaphore),
-                                                       UINT64_MAX);
+        auto result = m_device->getVulkanDevice().waitSemaphores(
+            vk::SemaphoreWaitInfo()
+                .setValues(frameCount)
+                .setSemaphores(*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore),
+            UINT64_MAX);
 
         if (result != vk::Result::eSuccess)
         {

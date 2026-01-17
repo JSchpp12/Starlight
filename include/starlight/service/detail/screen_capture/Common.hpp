@@ -19,8 +19,8 @@ enum class RoutePath
 struct GatheredSemaphoreInfo
 {
     uint64_t valueToSignal; 
-    vk::Semaphore *semaphore = nullptr;
     std::optional<uint64_t> *signaledValue = nullptr;
+    vk::Semaphore *semaphore = nullptr;
 };
 
 struct InUseResourceInformation

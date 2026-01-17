@@ -5,18 +5,17 @@
 
 #include <cassert>
 
-using PrepListen = star::policy::ListenForPrepForNextFramePolicy<star::service::HeadlessRenderResultWriteService>;
 using GraphicsListen =
     star::policy::ListenForRegisterMainGraphicsRenderPolicy<star::service::HeadlessRenderResultWriteService>;
 
 star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService()
-    : PrepListen(*this), GraphicsListen(*this), m_renderReady(*this)
+    : GraphicsListen(*this), m_renderReady(*this), m_triggerCapturePolicy(*this)
 {
 }
 
 star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService(
     HeadlessRenderResultWriteService &&other)
-    : PrepListen(*this), GraphicsListen(*this), m_renderReady(*this)
+    : GraphicsListen(*this), m_renderReady(*this), m_triggerCapturePolicy(*this)
 {
     m_eventBus = other.m_eventBus;
 
@@ -58,9 +57,9 @@ star::service::HeadlessRenderResultWriteService::~HeadlessRenderResultWriteServi
 
 void star::service::HeadlessRenderResultWriteService::cleanup(common::EventBus &eventBus)
 {
-    PrepListen::cleanup(eventBus);
     GraphicsListen::cleanup(eventBus);
     m_renderReady.cleanup(eventBus);
+    m_triggerCapturePolicy.cleanup(eventBus);
 }
 
 void star::service::HeadlessRenderResultWriteService::init(const uint8_t &numFramesInFlight)
@@ -74,12 +73,12 @@ void star::service::HeadlessRenderResultWriteService::init(const uint8_t &numFra
 
 void star::service::HeadlessRenderResultWriteService::initListeners(common::EventBus &eventBus)
 {
-    PrepListen::init(eventBus);
     GraphicsListen::init(eventBus);
     m_renderReady.init(eventBus);
+    m_triggerCapturePolicy.init(eventBus);
 }
 
-void star::service::HeadlessRenderResultWriteService::onPrepForNextFrame(const event::PrepForNextFrame &event,
+void star::service::HeadlessRenderResultWriteService::onStartOfNextFrame(const event::StartOfNextFrame &event,
                                                                          bool &keepAlive)
 {
     // todo grab the final renderer somehow and get the images from it to dispatch to the screen capture service
@@ -123,7 +122,7 @@ void star::service::HeadlessRenderResultWriteService::onRegisterMainGraphics(
 void star::service::HeadlessRenderResultWriteService::onRenderReadyForFinalization(
     const event::RenderReadyForFinalization &event, bool &keepAlive)
 {
-    assert(m_eventBus && m_managerCommandBuffer); 
+    assert(m_eventBus && m_managerCommandBuffer);
     // create a waiter to update the target renderer
     core::waiter::sync_renderer::Factory(*m_eventBus, *m_managerCommandBuffer)
         .setSemaphore(event.getFinalDoneSemaphore())

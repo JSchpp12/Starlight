@@ -13,8 +13,7 @@ template <typename T>
 concept ListenerForStartOfFrameLike = requires(T listener, const event::StartOfNextFrame &event, bool &keepAlive) {
     { listener.onStartOfNextFrame(event, keepAlive) } -> std::same_as<void>;
 };
-template <typename T>
-class ListenForStartOfNextFramePolicy
+template <typename T> class ListenForStartOfNextFramePolicy
 {
   public:
     explicit ListenForStartOfNextFramePolicy(T &me) : m_listenerHandle(), m_me(me)
@@ -38,18 +37,9 @@ class ListenForStartOfNextFramePolicy
             eventBus.unsubscribe(m_listenerHandle);
         }
     }
-
     Handle *getHandleForEventBus()
     {
         return &m_listenerHandle;
-    }
-
-    void eventCallback(const common::IEvent &e, bool &keepAlive)
-        requires ListenerForStartOfFrameLike<T>
-    {
-        const auto &event = static_cast<const event::StartOfNextFrame &>(e);
-
-        m_me.onStartOfNextFrame(event, keepAlive);
     }
 
     void notificationFromEventBusOfDeletion(const Handle &noLongerNeededHandle)
@@ -60,9 +50,13 @@ class ListenForStartOfNextFramePolicy
         }
     }
 
-  private:
-    Handle m_listenerHandle;
-    T &m_me;
+    void eventCallback(const common::IEvent &e, bool &keepAlive)
+        requires ListenerForStartOfFrameLike<T>
+    {
+        const auto &event = static_cast<const event::StartOfNextFrame &>(e);
+
+        m_me.onStartOfNextFrame(event, keepAlive);
+    }
 
     void registerListener(common::EventBus &eventBus)
     {
@@ -74,5 +68,9 @@ class ListenForStartOfNextFramePolicy
                                std::bind(&ListenForStartOfNextFramePolicy<T>::notificationFromEventBusOfDeletion, this,
                                          std::placeholders::_1)});
     }
+
+  private:
+    Handle m_listenerHandle;
+    T &m_me;
 };
 } // namespace star::policy

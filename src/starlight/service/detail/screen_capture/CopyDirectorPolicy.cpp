@@ -66,9 +66,7 @@ static void RecordBlitImage(vk::CommandBuffer cmd, vk::Image srcImage, vk::Image
 void DefaultCopyPolicy::init(DeviceInfo &deviceInfo)
 {
     m_deviceInfo = &deviceInfo;
-
-    createSemaphores(*m_deviceInfo->eventBus,
-                     m_deviceInfo->flightTracker->getSetup().getNumUniqueTargetFramesForFinalization());
+    initSemaphores(m_deviceInfo->flightTracker->getSetup().getNumUniqueTargetFramesForFinalization());
 }
 
 GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
@@ -78,11 +76,12 @@ GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
     assert(m_deviceInfo->commandManager != nullptr);
     m_copyCmds.trigger(*m_deviceInfo->commandManager);
 
-    const size_t index = static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFrameInFlightIndex());
-    return GPUSynchronizationInfo{.signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed(),
+    return GPUSynchronizationInfo{.signalValue = m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal,
                                   .copyCommandBuffer = m_copyCmds.getCommandBuffer(),
-                                  .binarySemaphoreForMainCopyDone = *m_binaryInfo.raws[index],
-                                  .timelineSemaphoreForMainCopyCommandsDone = *m_timelineInfo.raws[index]};
+                                  .binarySemaphoreForMainCopyDone = *m_inUseResources->binarySemaphoreForCopyDone,
+
+                                  .timelineSemaphoreForMainCopyCommandsDone =
+                                      *m_inUseResources->timelineSemaphoreForCopyDone.semaphore};
 }
 
 void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
@@ -105,18 +104,30 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
     }
 
     {
-        const size_t resourceIndex =
-            static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFinalTargetImageIndex());
+        const size_t frameInFlight =
+            static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFrameInFlightIndex());
 
-        assert(resourceIndex < m_timelineInfo.raws.size() &&
-               "Resource index outside of created semaphore range for copyDirector");
-        auto *record = m_deviceInfo->semaphoreManager->get(m_timelineInfo.handles[resourceIndex]);
+        if (!m_timelineInfo.handles[frameInFlight].isInitialized())
+        {
+            m_timelineInfo.createSemaphoreDataAtIndex(
+                *m_deviceInfo->eventBus, frameInFlight,
+                m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed());
+        }
+
+        auto *record = m_deviceInfo->semaphoreManager->get(m_timelineInfo.handles[frameInFlight]);
         m_inUseResources->timelineSemaphoreForCopyDone.semaphore = &record->semaphore;
-        m_inUseResources->timelineSemaphoreForCopyDone.signaledValue = &record->timlineValue;
+        m_inUseResources->timelineSemaphoreForCopyDone.signaledValue = &record->timelineValue;
+    }
+    {
+        const size_t index = static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFinalTargetImageIndex());
 
-        assert(resourceIndex < m_binaryInfo.handles.size() && "Resource index outside of binary semaphore range");
+        if (!m_binaryInfo.handles[index].isInitialized())
+        {
+            m_binaryInfo.createSemaphoreDataAtIndex(*m_deviceInfo->eventBus, index);
+        }
+
         m_inUseResources->binarySemaphoreForCopyDone =
-            &m_deviceInfo->semaphoreManager->get(m_binaryInfo.handles[resourceIndex])->semaphore;
+            &m_deviceInfo->semaphoreManager->get(m_binaryInfo.handles[index])->semaphore;
     }
 
     m_inUseResources->queueToUse = getQueueToUse();
@@ -145,31 +156,33 @@ void DefaultCopyPolicy::registerWithCommandBufferManager()
     m_blitCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
 }
 
-void DefaultCopyPolicy::SemaphoreInfo::init(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight,
-                                            bool isTimeline)
+void DefaultCopyPolicy::SemaphoreInfo::init(const uint8_t &numFramesInFlight)
 {
     handles.resize(numFramesInFlight);
     raws.resize(numFramesInFlight);
-
-    for (uint8_t i = 0; i < numFramesInFlight; i++)
-    {
-        {
-            void *r = nullptr;
-            eventBus.emit(core::device::system::event::ManagerRequest{
-                star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                    core::device::manager::GetSemaphoreEventTypeName),
-                core::device::manager::SemaphoreRequest{isTimeline}, handles[i], &r});
-
-            assert(r != nullptr && handles[i].isInitialized() && "Emit did not provide a result");
-            raws[i] = &static_cast<core::device::manager::SemaphoreRecord *>(r)->semaphore;
-        }
-    }
 }
 
-void DefaultCopyPolicy::createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight)
+void DefaultCopyPolicy::SemaphoreInfo::createSemaphoreDataAtIndex(star::common::EventBus &eventBus, const size_t &index,
+                                                                  std::optional<uint64_t> initialSignalValueOfTimeline)
 {
-    m_binaryInfo.init(eventBus, numFramesInFlight, false);
-    m_timelineInfo.init(eventBus, numFramesInFlight, true);
+    assert(index < handles.size());
+
+    void *r = nullptr;
+    eventBus.emit(core::device::system::event::ManagerRequest{
+        star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+            core::device::manager::GetSemaphoreEventTypeName),
+        core::device::manager::SemaphoreRequest{.initialSignalValue = initialSignalValueOfTimeline,
+                                                .isTimelineSemaphore = initialSignalValueOfTimeline.has_value()},
+        handles[index], &r});
+
+    assert(r != nullptr && handles[index].isInitialized() && "Emit did not provide a result");
+    raws[index] = &static_cast<core::device::manager::SemaphoreRecord *>(r)->semaphore;
+}
+
+void DefaultCopyPolicy::initSemaphores(const uint8_t &numFramesInFlight)
+{
+    m_binaryInfo.init(numFramesInFlight);
+    m_timelineInfo.init(numFramesInFlight);
 }
 
 StarTextures::Texture DefaultCopyPolicy::createBlitTargetTexture(const vk::Extent2D &extent) const

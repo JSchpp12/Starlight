@@ -35,7 +35,10 @@ class DefaultCopyPolicy
         std::vector<Handle> handles;
         std::vector<vk::Semaphore *> raws;
 
-        void init(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight, bool isTimeline); 
+        void init(const uint8_t &numFramesInFlight);
+
+        void createSemaphoreDataAtIndex(star::common::EventBus &eventBus, const size_t &index,
+                                        std::optional<uint64_t> initialSignalValueIfTimeline = std::nullopt);
     };
     Handle m_commandBufferTransfer, m_commandBufferGraphics;
     SemaphoreInfo m_timelineInfo, m_binaryInfo;
@@ -49,7 +52,7 @@ class DefaultCopyPolicy
 
     void prepareInProgressResources(CopyPlan &extentResources) noexcept;
 
-    void createSemaphores(star::common::EventBus &eventBus, const uint8_t &numFramesInFlight);
+    void initSemaphores(const uint8_t &numFramesInFlight);
 
     vk::Queue getQueueToUse() const;
 
