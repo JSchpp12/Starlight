@@ -2,12 +2,13 @@
 
 namespace star::core::device::manager
 {
-static inline vk::Semaphore CreateSemaphore(device::StarDevice &device, bool isTimelineSemaphore)
+static inline vk::Semaphore CreateSemaphore(device::StarDevice &device, bool isTimelineSemaphore,
+                                            std::optional<uint64_t> initialSignaledValue)
 {
     vk::SemaphoreTypeCreateInfo typeInfo =
         vk::SemaphoreTypeCreateInfo()
             .setSemaphoreType(isTimelineSemaphore ? vk::SemaphoreType::eTimeline : vk::SemaphoreType::eBinary)
-            .setInitialValue(0);
+            .setInitialValue(initialSignaledValue.has_value() ? initialSignaledValue.value() : 0);
 
     vk::SemaphoreCreateInfo createInfo = vk::SemaphoreCreateInfo().setPNext(&typeInfo);
 
@@ -23,8 +24,14 @@ static inline vk::Semaphore CreateSemaphore(device::StarDevice &device, bool isT
 
 SemaphoreRecord Semaphore::createRecord(SemaphoreRequest &&request) const
 {
-    return SemaphoreRecord{.semaphore = CreateSemaphore(*this->m_device, request.isTimelineSemaphore),
-                           .timlineValue =
-                               request.isTimelineSemaphore ? std::make_optional<uint64_t>(0) : std::nullopt};
+    std::optional<uint64_t> timelineValue = std::nullopt;
+    if (request.isTimelineSemaphore)
+    {
+        timelineValue = request.initialSignalValue.has_value() ? request.initialSignalValue.value() : 0;
+    }
+    
+    return SemaphoreRecord{
+        .semaphore = CreateSemaphore(*this->m_device, request.isTimelineSemaphore, request.initialSignalValue),
+        .timelineValue = timelineValue};
 }
 } // namespace star::core::device::manager

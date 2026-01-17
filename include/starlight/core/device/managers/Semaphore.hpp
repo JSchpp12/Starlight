@@ -10,17 +10,18 @@ namespace star::core::device::manager
 {
 struct SemaphoreRequest
 {
+    std::optional<uint64_t> initialSignalValue;
     bool isTimelineSemaphore;
 };
 
 struct SemaphoreRecord
 {
     vk::Semaphore semaphore = VK_NULL_HANDLE;
-    std::optional<uint64_t> timlineValue = std::nullopt;
+    std::optional<uint64_t> timelineValue = std::nullopt;
 
     bool isTimelineSemaphore() const
     {
-        return timlineValue.has_value();
+        return timelineValue.has_value();
     }
     bool isReady() const
     {
@@ -30,7 +31,7 @@ struct SemaphoreRecord
     {
         device.getVulkanDevice().destroySemaphore(semaphore);
         semaphore = VK_NULL_HANDLE;
-        timlineValue = std::nullopt;
+        timelineValue = std::nullopt;
     }
 };
 
