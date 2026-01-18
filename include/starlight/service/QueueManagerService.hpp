@@ -20,7 +20,7 @@ class QueueManagerService
     QueueManagerService(QueueManagerService &&other);
     QueueManagerService &operator=(QueueManagerService &&other); 
     ~QueueManagerService() = default;
-    void init(const uint8_t &numFramesInFlight);
+    void init();
 
     void setInitParameters(star::service::InitParameters &params);
 

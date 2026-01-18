@@ -56,11 +56,14 @@ set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
 set(${STARLIGHT_NAME}_SOURCE
-    "src/starlight/StarEngine.cpp" 
+    "src/starlight/StarEngine.cpp"
+    "src/starlight/core/CommandSubmitter.cpp"
     "src/starlight/core/helper/queue/QueueHelpers.cpp"
     "src/starlight/core/helper/command_buffer/CommandBufferHelpers.cpp"
     "src/starlight/data_structure/dynamic/ThreadSharedObjectPool.cpp"
     "src/starlight/graphics/PipelineFactory.cpp"
+    "src/starlight/core/CommandBus.cpp"
+    "src/starlight/command/CreateObject.cpp"
     "src/starlight/core/logging/LoggingFactory.cpp"
     "src/starlight/core/renderer/LightRenderer.cpp"
     "src/starlight/core/renderer/RendererBase.cpp"
@@ -142,6 +145,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/ListenForRenderReadyForFinalization.cpp"
     "src/starlight/policy/ListenForStartOfNextFramePolicy.cpp"
     "src/starlight/core/service/Service.cpp"
+    "src/starlight/service/SceneLoaderService.cpp"
     "src/starlight/service/FrameInFlightControllerService.cpp"
     "src/starlight/service/ScreenCaptureFactory.cpp"
     "src/starlight/service/ScreenCapture.cpp"
@@ -235,10 +239,12 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/StarEngine.hpp"
+    "include/starlight/core/CommandSubmitter.hpp"
     "include/starlight/core/helper/queue/QueueHelpers.hpp"
     "include/starlight/core/helper/command_buffer/CommandBufferHelpers.hpp"
     "include/starlight/data_structure/dynamic/ThreadSharedObjectPool.hpp"
     "include/starlight/graphics/PipelineFactory.hpp"
+    "include/starlight/command/CreateObject.hpp"
     "include/starlight/core/logging/LoggingFactory.hpp"
     "include/starlight/core/renderer/RendererBase.hpp"
     "include/starlight/core/renderer/LightRenderer.hpp"
@@ -329,6 +335,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/policy/ListenForGetQueuePolicy.hpp"
     "include/starlight/core/graphics/shader/BasicIncluder.hpp"
     "include/starlight/service/Service.hpp"
+    "include/starlight/service/SceneLoaderService.hpp"
     "include/starlight/service/FrameInFlightControllerService.hpp"
     "include/starlight/service/ScreenCapture.hpp"
     "include/starlight/service/ScreenCaptureFactory.hpp"

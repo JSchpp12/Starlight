@@ -67,7 +67,7 @@ class ScreenCapture
     {
     }
 
-    void init(const uint8_t &numFramesInFlight)
+    void init()
     {
         assert(m_deviceInfo.eventBus != nullptr);
         m_actionRouter.init(&m_deviceInfo);

@@ -6,15 +6,15 @@
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
 #include "service/Service.hpp"
+#include "starlight/core/CommandBus.hpp"
+#include "starlight/core/CommandSubmitter.hpp"
 #include "tasks/TaskFactory.hpp"
 
+#include <memory>
 #include <star_common/FrameTracker.hpp>
 #include <star_common/IDeviceContext.hpp>
-
-#include <vulkan/vulkan.hpp>
-
-#include <memory>
 #include <vector>
+#include <vulkan/vulkan.hpp>
 
 namespace star::core::device
 {
@@ -50,6 +50,13 @@ class DeviceContext : public star::common::IDeviceContext
     void waitIdle();
 
     void prepareForNextFrame();
+
+    CommandSubmitter<DeviceContext> begin()
+    {
+        return CommandSubmitter<DeviceContext>(*this);
+    }
+
+    void submit(star::common::IServiceCommand &command);
 
     StarDevice &getDevice()
     {
@@ -162,11 +169,14 @@ class DeviceContext : public star::common::IDeviceContext
     void registerService(service::Service service);
 
   private:
+    friend class CommandSubmitter<DeviceContext>;
+
     StarDevice m_device;
     common::FrameTracker m_flightTracker;
     bool m_ownsResources = false;
     Handle m_deviceID;
     common::EventBus m_eventBus;
+    core::CommandBus m_commandBus;
     job::TaskManager m_taskManager;
     manager::GraphicsContainer m_graphicsManagers;
     std::unique_ptr<manager::ManagerCommandBuffer> m_commandBufferManager;
@@ -212,6 +222,8 @@ class DeviceContext : public star::common::IDeviceContext
 
     service::Service createQueueOwnershipService(std::vector<Handle> queueHandles,
                                                  absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
+
+    service::Service createSceneLoaderService();
 
     std::unique_ptr<manager::ManagerCommandBuffer> createManagerCommandBuffer(
         const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved);

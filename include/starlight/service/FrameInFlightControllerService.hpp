@@ -16,7 +16,7 @@ class FrameInFlightControllerService
     FrameInFlightControllerService(FrameInFlightControllerService &&other); 
     FrameInFlightControllerService &operator=(FrameInFlightControllerService &&other); 
 
-    void init(const uint8_t &numFramesInFlight);
+    void init();
 
     void setInitParameters(star::service::InitParameters &params); 
     

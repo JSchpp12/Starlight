@@ -20,7 +20,7 @@ class HeadlessRenderResultWriteService
     HeadlessRenderResultWriteService &operator=(HeadlessRenderResultWriteService &&other);
     ~HeadlessRenderResultWriteService();
 
-    void init(const uint8_t &numFramesInFlight);
+    void init();
 
     void setInitParameters(star::service::InitParameters &params);
 

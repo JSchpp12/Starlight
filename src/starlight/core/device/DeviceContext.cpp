@@ -8,17 +8,16 @@
 #include "job/worker/Worker.hpp"
 #include "job/worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
 #include "managers/ManagerRenderResource.hpp"
+#include "service/InitParameters.hpp"
 #include "service/QueueManagerService.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/event/GetQueue.hpp"
+#include "starlight/service/SceneLoaderService.hpp"
 #include "starlight/wrappers/graphics/QueueFamilyIndices.hpp"
 
+#include <cassert>
 #include <star_common/HandleTypeRegistry.hpp>
 #include <star_common/helper/CastHelpers.hpp>
-
-#include "service/InitParameters.hpp"
-
-#include <cassert>
 
 star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
     : m_device(std::move(other.m_device)), m_flightTracker(std::move(other.m_flightTracker)),
@@ -38,6 +37,11 @@ star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
     }
 
     other.m_ownsResources = false;
+}
+
+void star::core::device::DeviceContext::submit(star::common::IServiceCommand &command)
+{
+    m_commandBus.submit(command);
 }
 
 star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(DeviceContext &&other)
@@ -109,6 +113,7 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
     m_renderResourceManager = std::make_unique<ManagerRenderResource>();
 
     m_services.emplace_back(createQueueOwnershipService(availableQueues, engineReservedQueues));
+    m_services.emplace_back(createSceneLoaderService());
     initServices(m_flightTracker.getSetup().getNumFramesInFlight());
 
     m_transferWorker = createTransferWorker(m_device, engineReservedQueues);
@@ -262,13 +267,14 @@ void star::core::device::DeviceContext::registerService(service::Service service
     service::InitParameters params{m_deviceID,
                                    m_device,
                                    m_eventBus,
+                                   m_commandBus,
                                    m_taskManager,
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_renderResourceManager,
                                    m_flightTracker};
 
-    m_services.back().init(params, m_flightTracker.getSetup().getNumFramesInFlight());
+    m_services.back().init(params);
 }
 
 void star::core::device::DeviceContext::setAllServiceParameters()
@@ -276,6 +282,7 @@ void star::core::device::DeviceContext::setAllServiceParameters()
     service::InitParameters params{m_deviceID,
                                    m_device,
                                    m_eventBus,
+                                   m_commandBus,
                                    m_taskManager,
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
@@ -293,6 +300,7 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
     service::InitParameters params{m_deviceID,
                                    m_device,
                                    m_eventBus,
+                                   m_commandBus,
                                    m_taskManager,
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
@@ -301,7 +309,7 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
 
     for (auto &service : m_services)
     {
-        service.init(params, numOfFramesInFlight);
+        service.init(params);
     }
 }
 
@@ -457,5 +465,11 @@ star::service::Service star::core::device::DeviceContext::createQueueOwnershipSe
     std::vector<Handle> queueHandles, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved)
 {
     auto service = service::QueueManagerService(std::move(queueHandles), std::move(engineReserved));
+    return star::service::Service(std::move(service));
+}
+
+star::service::Service star::core::device::DeviceContext::createSceneLoaderService()
+{
+    auto service = service::SceneLoaderService();
     return star::service::Service(std::move(service));
 }

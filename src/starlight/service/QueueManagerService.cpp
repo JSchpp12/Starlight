@@ -56,7 +56,7 @@ void QueueManagerService::setInitParameters(star::service::InitParameters &param
     m_queueManager = &params.graphicsManagers.queueManager;
 }
 
-void QueueManagerService::init(const uint8_t &numFramesInFlight)
+void QueueManagerService::init()
 {
     assert(m_eventBus != nullptr);
     initListeners(*m_eventBus);

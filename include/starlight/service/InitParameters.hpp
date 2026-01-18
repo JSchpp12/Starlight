@@ -7,6 +7,8 @@
 #include "device/managers/GraphicsContainer.hpp"
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
+#include "starlight/core/CommandBus.hpp"
+
 #include <star_common/EventBus.hpp>
 #include <star_common/FrameTracker.hpp>
 
@@ -17,6 +19,7 @@ struct InitParameters
     Handle &deviceID;
     core::device::StarDevice &device;
     common::EventBus &eventBus;
+    core::CommandBus &commandBus;
     job::TaskManager &taskManager;
     core::device::manager::GraphicsContainer &graphicsManagers;
     core::device::manager::ManagerCommandBuffer &commandBufferManager;
