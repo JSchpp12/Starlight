@@ -1,7 +1,12 @@
-cmake_minimum_required (VERSION 3.27)
 
-project("starlight")
+cmake_minimum_required (VERSION 3.26)
 
+SET(STARLIGHT_NAME "starlight")
+project(${STARLIGHT_NAME}
+    LANGUAGES C CXX
+)
+
+include(CheckIncludeFile)
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,12 +15,14 @@ if (APPLE)
     set(CMAKE_MACOSX_RPATH 1)
 elseif(WIN32)
     set(CMAKE_FIND_LIBRARY_PREFIXES "")
+else() 
+    set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 endif()
 
-enable_language(C CXX)
+find_package(starlight_common REQUIRED)
 
-find_package(Vulkan 1.4.313 REQUIRED)
-find_package(Stb REQUIRED)
+set(VULKAN_VERSION "1.4.313.0")
+find_package(Vulkan ${VULKAN_VERSION} REQUIRED)
 
 set(SPIRV_HEADERS_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_headers")
@@ -28,16 +35,15 @@ set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
 
 find_package(glm CONFIG REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS container thread filesystem)
+find_package(Boost REQUIRED COMPONENTS container thread filesystem log log_setup)
 find_package(Ktx CONFIG REQUIRED)
+find_package(Stb REQUIRED)
+find_package(absl CONFIG REQUIRED)
 
 # add all necessary dependencies
-include(GNUInstallDirs)
-
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
@@ -49,259 +55,465 @@ set(SHADERC_ENABLE_SHARED_CRT ON CACHE BOOL "" FORCE)
 set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
-set(${PROJECT_NAME}_SOURCE
-    "src/StarEngine.cpp" 
-    "src/Renderer.cpp"
-    "src/SceneRenderer.cpp"
-    "src/SwapChainRenderer.cpp"
-    "src/virtual/StarObject.cpp"
-    "src/virtual/ModulePlug/RenderResourceModifier.cpp"
-    "src/virtual/ModulePlug/CommandBufferModifier.cpp"
-    "src/virtual/ModulePlug/DescriptorModifier.cpp"
-    "src/virtual/ModulePlug/ManagerPlug.cpp"
-    "src/virtual/StarMesh.cpp"
-    "src/virtual/StarRenderer.cpp" 
-    "src/virtual/StarManager.cpp"
-    "src/virtual/StarWindow.cpp" 
-    "src/virtual/StarDevice.cpp"
-    "src/virtual/StarScene.cpp"
-    "src/virtual/StarShader.cpp" 
-    "src/virtual/StarMaterial.cpp" 
-    "src/virtual/StarCamera.cpp"
-    "src/virtual/StarPipeline.cpp"
-    "src/virtual/StarEntity.cpp"
-    "src/virtual/TransferRequest_Texture.cpp"
-    "src/virtual/TransferRequest_Memory.cpp"
-    "src/virtual/TransferRequest_Buffer.cpp"
-    "src/virtual/ManagerController_Controller.cpp"
-    "src/virtual/ManagerController_RenderResource_Buffer.cpp"
-    "src/virtual/ManagerController_RenderResource_Texture.cpp"
-    "src/wrappers/graphics/StarDescriptorBuilders.cpp"  
-    "src/wrappers/graphics/StarBuffer.cpp"  
-    "src/wrappers/graphics/StarGraphicsPipeline.cpp"  
-    "src/wrappers/graphics/StarComputePipeline.cpp"
-    "src/wrappers/graphics/StarRenderPass.cpp"
-    "src/wrappers/graphics/StarCommandBuffer.cpp"
-    "src/wrappers/graphics/StarShaderInfo.cpp"
-    "src/wrappers/graphics/StarQueueFamily.cpp"
-    "src/wrappers/graphics/StarTexture.cpp"
-    "src/wrappers/graphics/StarQueue.cpp"
-    "src/wrappers/graphics/StarCommandPool.cpp"
-    "src/wrappers/Allocator.cpp"
-    "src/wrappers/ScreenshotCommandBuffer.cpp"
-    "src/managers/ShaderManager.cpp" 
-    "src/managers/ManagerRenderResource.cpp"
-    "src/managers/LightManager.cpp"
-    "src/managers/MapManager.cpp" 
-    "src/managers/ManagerDescriptorPool.cpp"
-    "src/managers/ManagerCommandBuffer.cpp"
-    "src/templates/StarApplication.cpp"
-    "src/modules/InteractionSystem.cpp"
-    "src/modules/RenderResourceSystem.cpp"
-    "src/systems/StarRenderGroup.cpp" 
-    "src/common/Compiler.cpp"
-    "src/common/Interactivity.cpp" 
-    "src/common/KeyStates.cpp"
-    "src/common/RuntimeUpdateTexture.cpp"
-    "src/common/ThreadSharedResource.cpp"
-    "src/common/materials/BumpMaterial.cpp"
-    "src/common/materials/VertColorMaterial.cpp"
-    "src/common/materials/HeightDisplacementMaterial.cpp"
-    "src/common/objects/BasicObject.cpp"
-    "src/common/objects/Square.cpp"
-    "src/common/objects/Grid.cpp"
-    "src/common/objects/StarObjectInstance.cpp"
-    "src/common/ConfigFile.cpp"
-    "src/common/BasicCamera.cpp"
-    "src/common/Handle.cpp"
-    "src/common/buffers/TransferRequest_GlobalInfo.cpp"
-    "src/common/buffers/TransferRequest_InstanceModelInfo.cpp"
-    "src/common/buffers/TransferRequest_InstanceNormalInfo.cpp"
-    "src/common/buffers/TransferRequest_LightInfo.cpp"
-    "src/common/buffers/TransferRequest_IndiciesInfo.cpp"
-    "src/common/buffers/TransferRequest_VertInfo.cpp"
-    "src/common/textures/TransferRequest_TextureFile.cpp"
-    "src/common/textures/TransferRequest_CompressedTextureFile.cpp"
-    "src/common/textures/SharedCompressedTexture.cpp"
-    "src/common/controllers/ManagerController_RenderResource_TextureFile.cpp"
-    "src/common/controllers/ManagerController_RenderResource_GlobalInfo.cpp"
-    "src/common/controllers/ManagerController_RenderResource_InstanceModelInfo.cpp"
-    "src/common/controllers/ManagerController_RenderResource_InstanceNormalInfo.cpp"
-    "src/common/controllers/ManagerController_RenderResource_LightInfo.cpp"
-    "src/common/controllers/ManagerController_RenderResource_IndicesInfo.cpp"
-    "src/common/controllers/ManagerController_RenderResource_VertInfo.cpp"
-    "src/common/materials/TextureMaterial.cpp"
-    "src/common/helpers/GeometryHelpers.cpp"
-    "src/common/helpers/FileHelpers.cpp"
-    "src/internals/CommandBufferContainer.cpp"
-    "src/internals/TransferWorker.cpp"
-    "src/internals/ManagerStorageContainer.cpp"
+set(${STARLIGHT_NAME}_SOURCE
+    "src/starlight/StarEngine.cpp" 
+    "src/starlight/core/helper/queue/QueueHelpers.cpp"
+    "src/starlight/core/helper/command_buffer/CommandBufferHelpers.cpp"
+    "src/starlight/data_structure/dynamic/ThreadSharedObjectPool.cpp"
+    "src/starlight/graphics/PipelineFactory.cpp"
+    "src/starlight/core/logging/LoggingFactory.cpp"
+    "src/starlight/core/renderer/LightRenderer.cpp"
+    "src/starlight/core/renderer/RendererBase.cpp"
+    "src/starlight/core/renderer/DefaultRenderer.cpp"
+    "src/starlight/core/renderer/RenderingTargetInfo.cpp"
+    "src/starlight/core/renderer/RenderingContext.cpp"
+    "src/starlight/core/renderer/CaptureCapableRenderer.cpp"
+    "src/starlight/virtual/StarObject.cpp"
+    "src/starlight/virtual/ModulePlug/ManagerPlug.cpp"
+    "src/starlight/virtual/StarMesh.cpp"
+    "src/starlight/virtual/StarManager.cpp"
+    "src/starlight/virtual/StarScene.cpp"
+    "src/starlight/virtual/StarShader.cpp" 
+    "src/starlight/virtual/StarMaterial.cpp" 
+    "src/starlight/virtual/StarCamera.cpp"
+    "src/starlight/virtual/StarPipeline.cpp"
+    "src/starlight/virtual/StarEntity.cpp"
+    "src/starlight/virtual/TransferRequest_Texture.cpp"
+    "src/starlight/virtual/TransferRequest_Memory.cpp"
+    "src/starlight/virtual/TransferRequest_Buffer.cpp"
+    "src/starlight/virtual/ManagerController_Controller.cpp"
+    "src/starlight/virtual/ManagerController_RenderResource_Buffer.cpp"
+    "src/starlight/virtual/ManagerController_RenderResource_Texture.cpp"
+    "src/starlight/wrappers/graphics/StarDescriptorBuilders.cpp"  
+    "src/starlight/wrappers/graphics/StarGraphicsPipeline.cpp"  
+    "src/starlight/wrappers/graphics/StarComputePipeline.cpp"
+    "src/starlight/wrappers/graphics/StarRenderPass.cpp"
+    "src/starlight/wrappers/graphics/StarCommandBuffer.cpp"
+    "src/starlight/wrappers/graphics/StarShaderInfo.cpp"
+    "src/starlight/wrappers/graphics/StarQueueFamily.cpp"
+    "src/starlight/wrappers/graphics/StarQueue.cpp"
+    "src/starlight/wrappers/graphics/StarCommandPool.cpp"
+    "src/starlight/wrappers/Allocator.cpp"
+    "src/starlight/wrappers/graphics/StarTextures/FormatInfo.cpp"
+    "src/starlight/wrappers/graphics/StarTextures/Texture.cpp"
+    "src/starlight/wrappers/graphics/StarTextures/Resources.cpp"
+    "src/starlight/wrappers/graphics/StarTextures/AllocatedResources.cpp"
+    "src/starlight/wrappers/graphics/policies/GenericImageCreateAllocatePolicy.cpp"
+    "src/starlight/wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.cpp"
+    "src/starlight/wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.cpp"
+    "src/starlight/wrappers/graphics/policies/CreateDescriptorsOnEventPolicy.cpp"
+    "src/starlight/wrappers/graphics/StarBuffers/Buffer.cpp"
+    "src/starlight/wrappers/graphics/StarBuffers/Resources.cpp"
+    "src/starlight/wrappers/graphics/QueueFamilyIndices.cpp"
+    "src/starlight/managers/MapManager.cpp" 
+    "src/starlight/managers/ManagerRenderResource.cpp"
+    "src/starlight/core/HandleContainer.cpp"
+    "src/starlight/core/LinearHandleContainer.cpp"
+    "src/starlight/core/MappedHandleContainer.cpp"
+    "src/starlight/core/ManagedHandleContainer.cpp"
+    "src/starlight/core/device/managers/ManagerBase.cpp"
+    "src/starlight/core/device/managers/ManagerCommandBuffer.cpp"
+    "src/starlight/core/device/managers/Shader.cpp"
+    "src/starlight/core/device/managers/Pipeline.cpp"
+    "src/starlight/core/device/managers/Manager.cpp"
+    "src/starlight/core/device/managers/ManagerEventBusTies.cpp"
+    "src/starlight/core/device/managers/TaskCreatedResourceManager.cpp"
+    "src/starlight/core/device/managers/GraphicsContainer.cpp"
+    "src/starlight/core/device/managers/Semaphore.cpp"
+    "src/starlight/core/device/managers/Fence.cpp"
+    "src/starlight/core/device/managers/DescriptorPool.cpp"
+    "src/starlight/core/device/managers/Image.cpp"
+    "src/starlight/core/device/managers/Queue.cpp"
+    "src/starlight/core/device/system/event/ShaderCompiled.cpp"
+    "src/starlight/core/device/system/event/ManagerRequest.cpp"
+    "src/starlight/event/ConsumeDescriptorRequests.cpp"
+    "src/starlight/event/EnginePhaseComplete.cpp"
+    "src/starlight/event/TriggerScreenshot.cpp"
+    "src/starlight/event/RenderReadyForFinalization.cpp"
+    "src/starlight/event/PrepForNextFrame.cpp"
+    "src/starlight/event/FrameComplete.cpp"
+    "src/starlight/event/RegisterMainGraphicsRenderer.cpp"
+    "src/starlight/event/StartOfNextFrame.cpp"
+    "src/starlight/event/GetQueue.cpp"
+    "src/starlight/policy/ListenForPrepForNextFramePolicy.cpp"
+    "src/starlight/policy/ListenForFrameCompletePolicy.cpp"
+    "src/starlight/policy/ListenForEnginePhaseCompletePolicy.cpp"
+    "src/starlight/policy/ListenForRegisterMainGraphicsRendererPolicy.cpp"
+    "src/starlight/policy/ListenForRenderReadyForFinalization.cpp"
+    "src/starlight/policy/ListenForStartOfNextFramePolicy.cpp"
+    "src/starlight/core/service/Service.cpp"
+    "src/starlight/service/FrameInFlightControllerService.cpp"
+    "src/starlight/service/ScreenCaptureFactory.cpp"
+    "src/starlight/service/ScreenCapture.cpp"
+    "src/starlight/service/detail/screen_capture/WorkerControllerPolicies.cpp"
+    "src/starlight/service/detail/screen_capture/CreateDependenciesPolicies.cpp"
+    "src/starlight/service/detail/screen_capture/CopyDirectorPolicy.cpp"
+    "src/starlight/service/detail/screen_capture/CalleeRenderDependencies.cpp"
+    "src/starlight/service/detail/screen_capture/DeviceInfo.cpp"
+    "src/starlight/service/detail/screen_capture/GPUSynchronizationInfo.cpp"
+    "src/starlight/service/detail/screen_capture/CapabilityCache.cpp"
+    "src/starlight/service/detail/screen_capture/CopyRouter.cpp"
+    "src/starlight/service/detail/screen_capture/CopyPlan.cpp"
+    "src/starlight/service/detail/screen_capture/PerExtentResources.cpp"
+    "src/starlight/service/detail/screen_capture/CopyResourceContainer.cpp"
+    "src/starlight/service/detail/screen_capture/BlitCmdPolicy.cpp"
+    "src/starlight/service/detail/screen_capture/CopyCmdPolicy.cpp"
+    "src/starlight/service/detail/screen_capture/ExecuteCmdBuffer.cpp"
+    "src/starlight/core/waiter/sync_renderer/Factory.cpp"
+    "src/starlight/core/waiter/sync_renderer/SyncTargetRendererTimeline.cpp"
+    "src/starlight/core/waiter/sync_renderer/SyncTargetRendererBinary.cpp"
+    "src/starlight/core/waiter/sync_renderer/SyncTargetRenderer.cpp"
+    "src/starlight/service/QueueManagerService.cpp"
+    "src/starlight/service/detail/queue_ownership/QueueOwnershipTracker.cpp"
+    "src/starlight/service/HeadlessRenderResultWriteService.cpp"
+    "src/starlight/core/service/InitParameters.cpp"
+    "src/starlight/templates/StarApplication.cpp"
+    "src/starlight/systems/StarRenderGroup.cpp" 
+    "src/starlight/common/Compiler.cpp"
+    "src/starlight/common/RuntimeUpdateTexture.cpp"
+    "src/starlight/common/ThreadSharedResource.cpp"
+    "src/starlight/common/materials/BumpMaterial.cpp"
+    "src/starlight/common/materials/VertColorMaterial.cpp"
+    "src/starlight/common/materials/HeightDisplacementMaterial.cpp"
+    "src/starlight/common/objects/BasicObject.cpp"
+    "src/starlight/common/objects/Square.cpp"
+    "src/starlight/common/objects/Grid.cpp"
+    "src/starlight/common/objects/StarObjectInstance.cpp"
+    "src/starlight/common/ConfigFile.cpp"
+    "src/starlight/common/buffers/TransferRequest_GlobalInfo.cpp"
+    "src/starlight/common/buffers/TransferRequest_InstanceModelInfo.cpp"
+    "src/starlight/common/buffers/TransferRequest_InstanceNormalInfo.cpp"
+    "src/starlight/common/buffers/TransferRequest_LightInfo.cpp"
+    "src/starlight/common/buffers/TransferRequest_LightList.cpp"
+    "src/starlight/common/buffers/TransferRequest_IndiciesInfo.cpp"
+    "src/starlight/common/buffers/TransferRequest_VertInfo.cpp"
+    "src/starlight/common/textures/TransferRequest_TextureFile.cpp"
+    "src/starlight/common/textures/TransferRequest_CompressedTextureFile.cpp"
+    "src/starlight/common/textures/TransferRequest_TextureData.cpp"
+    "src/starlight/common/textures/SharedCompressedTexture.cpp"
+    "src/starlight/common/controllers/ManagerController_RenderResource_GlobalInfo.cpp"
+    "src/starlight/common/controllers/ManagerController_RenderResource_InstanceModelInfo.cpp"
+    "src/starlight/common/controllers/ManagerController_RenderResource_InstanceNormalInfo.cpp"
+    "src/starlight/common/controllers/ManagerController_RenderResource_LightInfo.cpp"
+    "src/starlight/common/controllers/ManagerController_RenderResource_LightList.cpp"
+    "src/starlight/common/materials/TextureMaterial.cpp"
+    "src/starlight/common/helpers/GeometryHelpers.cpp"
+    "src/starlight/common/helpers/FileHelpers.cpp"
+    "src/starlight/internals/CommandBufferContainer.cpp"
+    "src/starlight/job/worker/Worker.cpp"
+    "src/starlight/job/worker/DefaultWorker.cpp"
+    "src/starlight/job/worker/default_worker/detail/ThreadTaskHandlingPolicies.cpp"
+    "src/starlight/job/TransferWorker.cpp"
+    "src/starlight/internals/ManagerStorageContainer.cpp"
+    "src/starlight/job/TaskContainer.cpp"
+    "src/starlight/job/complete_tasks/CompleteTask.cpp"
+    "src/starlight/job/complete_tasks/TaskFactory.cpp"
+    "src/starlight/job/complete_tasks/BuildPipeline.cpp"
+    "src/starlight/job/complete_tasks/CompileShader.cpp"
+    "src/starlight/job/tasks/Task.cpp"
+    "src/starlight/job/tasks/TaskFactory.cpp"
+    "src/starlight/job/tasks/WriteImageToDisk.cpp"
+    "src/starlight/job/tasks/CompileShader.cpp"
+    "src/starlight/job/tasks/BuildPipeline.cpp"
+    "src/starlight/job/TaskManager.cpp"
+    "src/starlight/job/ImageWriterWorker.cpp"
+    "src/starlight/job/FrameScheduler.cpp"
+    "src/starlight/core/device/StarDevice.cpp"
+    "src/starlight/core/device/DeviceContext.cpp"
+    "src/starlight/core/SystemContext.cpp"
+    "src/starlight/core/RenderingInstance.cpp"
+    "src/starlight/core/SwapChainSupportDetails.cpp"
+    "src/starlight/core/graphics/shader/BasicIncluder.cpp"
+    "src/starlight/policy/DefaultEngineInitPolicy.cpp"
+    "src/starlight/policy/EngineExitAfterNumberOfFrames.cpp"
+    "src/starlight/policy/DefaultEngineLoopPolicy.cpp"
+    "src/starlight/policy/ListenForGetQueuePolicy.cpp"
+    "src/starlight/core/renderer/HeadlessRenderer.cpp"
 )
-set(${PROJECT_NAME}_TARGET_SOURCE ${${PROJECT_NAME}_SOURCE} PARENT_SCOPE)
 
-set(${PROJECT_NAME}_HEADERS
-    "include/StarEngine.hpp"
-    "include/SceneRenderer.hpp"
-    "include/SwapChainRenderer.hpp"
-    "include/common/ThreadSharedResource.hpp"
-    "include/common/Compiler.hpp"
-    "include/common/Interactivity.hpp"
-    "include/common/KeyStates.hpp"
-    "include/common/materials/BumpMaterial.hpp"
-    "include/common/materials/VertColorMaterial.hpp"
-    "include/common/materials/TextureMaterial.hpp"
-    "include/common/objects/BasicObject.hpp"
-    "include/common/objects/Square.hpp"
-    "include/common/objects/StarObjectInstance.hpp"
-    "include/common/BasicCamera.hpp"
-    "include/common/RuntimeUpdateTexture.hpp"
-    "include/common/buffers/TransferRequest_GlobalInfo.hpp"
-    "include/common/buffers/TransferRequest_InstanceModelInfo.hpp"
-    "include/common/buffers/TransferRequest_InstanceNormalInfo.hpp"
-    "include/common/buffers/TransferRequest_IndicesInfo.hpp"
-    "include/common/buffers/TransferRequest_VertInfo.hpp"
-    "include/common/textures/TransferRequest_TextureFile.hpp"
-    "include/common/textures/TransferRequest_CompressedTextureFile.hpp"
-    "include/common/textures/SharedCompressedTexture.hpp"
-    "include/common/controllers/ManagerController_RenderResource_TextureFile.hpp"
-    "include/common/controllers/ManagerController_RenderResource_GlobalInfo.hpp"
-    "include/common/controllers/ManagerController_RenderResource_InstanceModelInfo.hpp"
-    "include/common/controllers/ManagerController_RenderResource_InstanceNormalInfo.hpp"
-    "include/common/controllers/ManagerController_RenderResource_LightInfo.hpp"
-    "include/common/controllers/ManagerController_RenderResource_IndicesInfo.hpp"
-    "include/common/controllers/ManagerController_RenderResource_VertInfo.hpp"
-    "include/virtual/ModulePlug/RenderResourceModifier.hpp"
-    "include/virtual/ModulePlug/CommandBufferModifier.hpp"
-    "include/virtual/ModulePlug/DescriptorModifier.hpp"
-    "include/virtual/ModulePlug/ManagerPlug.hpp"
-    "include/virtual/StarManager.hpp"
-    "include/virtual/StarRenderer.hpp" 
-    "include/virtual/StarWindow.hpp" 
-    "include/virtual/StarDevice.hpp"
-    "include/virtual/StarObject.hpp"
-    "include/virtual/StarScene.hpp"
-    "include/virtual/StarMesh.hpp"
-    "include/virtual/StarCamera.hpp"
-    "include/virtual/StarMaterial.hpp"
-    "include/virtual/StarPipeline.hpp"
-    "include/virtual/TransferRequest_Texture.hpp"
-    "include/virtual/TransferRequest_Buffer.hpp"
-    "include/virtual/TransferRequest_Memory.hpp"
-    "include/virtual/ManagerController_Controller.hpp"
-    "include/virtual/ManagerController_RenderResource_Buffer.hpp"
-    "include/virtual/ManagerController_RenderResource_Texture.hpp"
-    "include/wrappers/graphics/StarDescriptorBuilders.hpp"
-    "include/wrappers/graphics/StarBuffer.hpp"
-    "include/wrappers/graphics/StarGraphicsPipeline.hpp"
-    "include/wrappers/graphics/StarComputePipeline.hpp"
-    "include/wrappers/graphics/StarRenderPass.hpp"
-    "include/wrappers/graphics/StarCommandBuffer.hpp"
-    "include/wrappers/ScreenshotCommandBuffer.hpp"
-    "include/wrappers/graphics/StarShaderInfo.hpp"
-    "include/wrappers/graphics/StarQueueFamily.hpp"
-    "include/wrappers/graphics/StarTexture.hpp"
-    "include/wrappers/graphics/StarQueue.hpp"
-    "include/wrappers/graphics/StarCommandPool.hpp"
-    "include/wrappers/Allocator.hpp"
-    "include/managers/ShaderManager.hpp"
-    "include/managers/LightManager.hpp"
-    "include/managers/MapManager.hpp"
-    "include/managers/ManagerDescriptorPool.hpp"
-    "include/managers/ManagerCommandBuffer.hpp"
-    "include/managers/ManagerRenderResource.hpp"
-    "include/modules/InteractionSystem.hpp"
-    "include/modules/RenderResourceSystem.hpp"
-    "include/systems/StarRenderGroup.hpp"
-    "include/internals/CommandBufferContainer.hpp"
-    "include/internals/TransferWorker.hpp"
-    "include/internals/ManagerStorageContainer.hpp"
-    "include/virtual/StarEntity.hpp"
+set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
+
+set(${STARLIGHT_NAME}_HEADERS
+    "include/starlight/StarEngine.hpp"
+    "include/starlight/core/helper/queue/QueueHelpers.hpp"
+    "include/starlight/core/helper/command_buffer/CommandBufferHelpers.hpp"
+    "include/starlight/data_structure/dynamic/ThreadSharedObjectPool.hpp"
+    "include/starlight/graphics/PipelineFactory.hpp"
+    "include/starlight/core/logging/LoggingFactory.hpp"
+    "include/starlight/core/renderer/RendererBase.hpp"
+    "include/starlight/core/renderer/LightRenderer.hpp"
+    "include/starlight/core/renderer/DefaultRenderer.hpp"
+    "include/starlight/core/renderer/RenderingTargetInfo.hpp"
+    "include/starlight/core/renderer/RenderingContext.hpp"
+    "include/starlight/core/renderer/CaptureCapableRenderer.hpp"
+    "include/starlight/common/ThreadSharedResource.hpp"
+    "include/starlight/common/Compiler.hpp"
+    "include/starlight/common/materials/BumpMaterial.hpp"
+    "include/starlight/common/materials/VertColorMaterial.hpp"
+    "include/starlight/common/materials/TextureMaterial.hpp"
+    "include/starlight/common/objects/BasicObject.hpp"
+    "include/starlight/common/objects/Square.hpp"
+    "include/starlight/common/objects/StarObjectInstance.hpp"
+    "include/starlight/common/RuntimeUpdateTexture.hpp"
+    "include/starlight/common/buffers/TransferRequest_GlobalInfo.hpp"
+    "include/starlight/common/buffers/TransferRequest_InstanceModelInfo.hpp"
+    "include/starlight/common/buffers/TransferRequest_InstanceNormalInfo.hpp"
+    "include/starlight/common/buffers/TransferRequest_IndicesInfo.hpp"
+    "include/starlight/common/buffers/TransferRequest_LightInfo.hpp"
+    "include/starlight/common/buffers/TransferRequest_LightList.hpp"
+    "include/starlight/common/buffers/TransferRequest_VertInfo.hpp"
+    "include/starlight/common/textures/TransferRequest_TextureFile.hpp"
+    "include/starlight/common/textures/TransferRequest_CompressedTextureFile.hpp"
+    "include/starlight/common/textures/TransferRequest_TextureData.hpp"
+    "include/starlight/common/textures/SharedCompressedTexture.hpp"
+    "include/starlight/common/controllers/ManagerController_RenderResource_GlobalInfo.hpp"
+    "include/starlight/common/controllers/ManagerController_RenderResource_InstanceModelInfo.hpp"
+    "include/starlight/common/controllers/ManagerController_RenderResource_InstanceNormalInfo.hpp"
+    "include/starlight/common/controllers/ManagerController_RenderResource_LightInfo.hpp"
+    "include/starlight/common/controllers/ManagerController_RenderResource_LightList.hpp"
+    "include/starlight/virtual/ModulePlug/ManagerPlug.hpp"
+    "include/starlight/virtual/StarManager.hpp" 
+    "include/starlight/virtual/StarObject.hpp"
+    "include/starlight/virtual/StarScene.hpp"
+    "include/starlight/virtual/StarMesh.hpp"
+    "include/starlight/virtual/StarCamera.hpp"
+    "include/starlight/virtual/StarMaterial.hpp"
+    "include/starlight/virtual/StarPipeline.hpp"
+    "include/starlight/virtual/TransferRequest_Texture.hpp"
+    "include/starlight/virtual/TransferRequest_Buffer.hpp"
+    "include/starlight/virtual/TransferRequest_Memory.hpp"
+    "include/starlight/virtual/ManagerController_Controller.hpp"
+    "include/starlight/virtual/ManagerController_RenderResource_Buffer.hpp"
+    "include/starlight/virtual/ManagerController_RenderResource_Texture.hpp"
+    "include/starlight/wrappers/graphics/StarDescriptorBuilders.hpp"
+    "include/starlight/wrappers/graphics/StarGraphicsPipeline.hpp"
+    "include/starlight/wrappers/graphics/StarComputePipeline.hpp"
+    "include/starlight/wrappers/graphics/StarRenderPass.hpp"
+    "include/starlight/wrappers/graphics/StarCommandBuffer.hpp"
+    "include/starlight/wrappers/graphics/StarShaderInfo.hpp"
+    "include/starlight/wrappers/graphics/StarQueueFamily.hpp"
+    "include/starlight/wrappers/graphics/StarQueue.hpp"
+    "include/starlight/wrappers/graphics/StarCommandPool.hpp"
+    "include/starlight/wrappers/Allocator.hpp"
+    "include/starlight/wrappers/graphics/QueueFamilyIndices.hpp"
+    "include/starlight/managers/MapManager.hpp"
+    "include/starlight/core/device/managers/ManagerBase.hpp"
+    "include/starlight/core/device/managers/ManagerCommandBuffer.hpp"
+    "include/starlight/core/device/managers/Shader.hpp"
+    "include/starlight/core/device/managers/Pipeline.hpp"
+    "include/starlight/core/device/managers/Manager.hpp"
+    "include/starlight/core/device/managers/TaskCreatedResourceManager.hpp"
+    "include/starlight/core/device/managers/ManagerEventBusTies.hpp"
+    "include/starlight/core/device/managers/Semaphore.hpp"
+    "include/starlight/core/device/managers/Fence.hpp"
+    "include/starlight/core/device/managers/GraphicsContainer.hpp"
+    "include/starlight/core/device/managers/DescriptorPool.hpp"
+    "include/starlight/core/device/managers/Image.hpp"
+    "include/starlight/core/device/managers/Queue.hpp"
+    "include/starlight/core/device/system/event/ShaderCompiled.hpp"
+    "include/starlight/core/device/system/event/ManagerRequest.hpp"
+    "include/starlight/event/ConsumeDescriptorRequests.hpp"
+    "include/starlight/event/EnginePhaseComplete.hpp"
+    "include/starlight/event/TriggerScreenshot.hpp"
+    "include/starlight/event/RenderReadyForFinalization.hpp"
+    "include/starlight/event/PrepForNextFrame.hpp"
+    "include/starlight/event/FrameComplete.hpp"
+    "include/starlight/event/RegisterMainGraphicsRenderer.hpp"
+    "include/starlight/event/StartOfNextFrame.hpp"
+    "include/starlight/event/GetQueue.hpp"
+    "include/starlight/policy/ListenForFrameCompletePolicy.hpp"
+    "include/starlight/policy/ListenForPrepForNextFramePolicy.hpp"
+    "include/starlight/policy/ListenForEnginePhaseCompletePolicy.hpp"
+    "include/starlight/policy/ListenForRegisterMainGraphicsRendererPolicy.hpp"
+    "include/starlight/policy/ListenForStartOfNextFramePolicy.hpp"
+    "include/starlight/policy/ListenForGetQueuePolicy.hpp"
+    "include/starlight/core/graphics/shader/BasicIncluder.hpp"
+    "include/starlight/service/Service.hpp"
+    "include/starlight/service/FrameInFlightControllerService.hpp"
+    "include/starlight/service/ScreenCapture.hpp"
+    "include/starlight/service/ScreenCaptureFactory.hpp"
+    "include/starlight/service/detail/screen_capture/WorkerControllerPolicies.hpp"
+    "include/starlight/service/detail/screen_capture/CreateDependenciesPolicies.hpp"
+    "include/starlight/service/detail/screen_capture/CopyDirectorPolicy.hpp"
+    "include/starlight/service/detail/screen_capture/CalleeRenderDependencies.hpp"
+    "include/starlight/service/detail/screen_capture/DeviceInfo.hpp"
+    "include/starlight/service/detail/screen_capture/GPUSynchronizationInfo.hpp"
+    "include/starlight/service/detail/screen_capture/CapabilityCache.hpp"
+    "include/starlight/service/detail/screen_capture/CopyRouter.hpp"
+    "include/starlight/service/detail/screen_capture/CopyPlan.hpp"
+    "include/starlight/service/detail/screen_capture/PerExtentResources.hpp"
+    "include/starlight/service/detail/screen_capture/CopyResourcesContainer.hpp"
+    "include/starlight/service/detail/screen_capture/Common.hpp"
+    "include/starlight/service/detail/screen_capture/BlitCmdPolicy.hpp"
+    "include/starlight/service/detail/screen_capture/CopyCmdPolicy.hpp"
+    "include/starlight/service/detail/screen_capture/ExecuteCmdBuffer.hpp"
+    "include/starlight/service/QueueManagerService.hpp"
+    "include/starlight/service/detail/queue_ownership/QueueOwnershipTracker.hpp"
+    "include/starlight/core/waiter/sync_renderer/Factory.hpp"
+    "include/starlight/core/waiter/sync_renderer/SyncTargetRendererTimeline.hpp"
+    "include/starlight/core/waiter/sync_renderer/SyncTargetRendererBinary.hpp"
+    "include/starlight/core/waiter/sync_renderer/SyncTargetRenderer.hpp"
+    "include/starlight/service/InitParameters.hpp"
+    "include/starlight/service/HeadlessRenderResultWriteService.hpp"
+    "include/starlight/managers/ManagerRenderResource.hpp"
+    "include/starlight/systems/StarRenderGroup.hpp"
+    "include/starlight/internals/CommandBufferContainer.hpp"
+    "include/starlight/internals/ManagerStorageContainer.hpp"
+    "include/starlight/virtual/StarEntity.hpp"
+    "include/starlight/wrappers/graphics/StarTextures/FormatInfo.hpp"
+    "include/starlight/wrappers/graphics/StarTextures/Texture.hpp"
+    "include/starlight/wrappers/graphics/policies/GenericImageCreateAllocatePolicy.hpp"
+    "include/starlight/wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
+    "include/starlight/wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"
+    "include/starlight/wrappers/graphics/policies/CreateDescriptorsOnEventPolicy.hpp"
+    "include/starlight/wrappers/graphics/StarTextures/Resources.hpp"
+    "include/starlight/wrappers/graphics/StarTextures/AllocatedResources.hpp"
+    "include/starlight/wrappers/graphics/StarBuffers/Buffer.hpp"
+    "include/starlight/wrappers/graphics/StarBuffers/Resources.hpp"
+    "include/starlight/job/TransferWorker.hpp"
+    "include/starlight/job/worker/DefaultWorker.hpp"
+    "include/starlight/job/worker/Worker.hpp"
+    "include/starlight/job/worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
+    "include/starlight/job/TaskContainer.hpp"
+    "include/starlight/job/complete_tasks/CompleteTask.hpp"
+    "include/starlight/job/complete_tasks/TaskFactory.hpp"
+    "include/starlight/job/complete_tasks/BuildPipeline.hpp"
+    "include/starlight/job/complete_tasks/CompileShader.hpp"
+    "include/starlight/job/tasks/Task.hpp"
+    "include/starlight/job/tasks/TaskFactory.hpp"
+    "include/starlight/job/tasks/WriteImageToDisk.hpp"
+    "include/starlight/job/tasks/CompileShader.hpp"
+    "include/starlight/job/tasks/BuildPipeline.hpp"
+    "include/starlight/job/TaskManager.hpp"
+    "include/starlight/job/ImageWriterWorker.hpp"
+    "include/starlight/job/FrameScheduler.hpp"
+    "include/starlight/core/HandleContainer.hpp"
+    "include/starlight/core/MappedHandleContainer.hpp"
+    "include/starlight/core/LinearHandleContainer.hpp"
+    "include/starlight/core/ManagedHandleContainer.hpp"
+    "include/starlight/core/device/StarDevice.hpp"
+    "include/starlight/core/device/DeviceContext.hpp"
+    "include/starlight/core/SystemContext.hpp"
+    "include/starlight/core/RenderingInstance.hpp"
+    "include/starlight/core/SwapChainSupportDetails.hpp"
+    "include/starlight/policy/DefaultEngineInitPolicy.hpp"
+    "include/starlight/policy/EngineExitAfterNumberOfFrames.hpp"
+    "include/starlight/policy/DefaultEngineLoopPolicy.hpp"
+    "include/starlight/policy/ListenForRenderReadyForFinalization.hpp"
+    "include/starlight/core/Exceptions.hpp"
+    "include/starlight/core/renderer/HeadlessRenderer.hpp"
     #header only
-    "include/common/entities/Light.hpp"
-    "include/virtual/StarShader.hpp"
-    "include/enums/Enums.hpp"
-    "include/common/Handle.hpp"
-    "include/common/BufferHandle.hpp"
-    "include/structs/LightBufferObject.hpp"
-    "include/structs/Vertex.hpp"
-    "include/structs/Color.hpp"
-    "include/structs/Ray.hpp"
-    "include/structs/RenderingTargetInfo.hpp"
-    "include/templates/StarMemoryManager.hpp"
-    "include/templates/StarApplication.hpp"
-    "include/templates/StarResourceContainer.hpp"
-    "include/templates/FileResourceManager.hpp"
-    "include/templates/FileResourceContainer.hpp"
-    "include/common/ConfigFile.hpp"
-    "include/common/helpers/DebugHelpers.hpp"
-    "include/common/helpers/FileHelpers.hpp"
-    "include/common/helpers/Time.hpp"
-    "include/common/helpers/CastHelpers.hpp"
-    "include/common/VulkanVertex.hpp"
+    "include/starlight/util/log/PhysicalDeviceLogging.hpp"
+    "include/starlight/util/log/SystemInfo.hpp"
+    "include/starlight/common/entities/Light.hpp"
+    "include/starlight/virtual/StarShader.hpp"
+    "include/starlight/enums/Enums.hpp"
+    "include/starlight/common/BufferHandle.hpp"
+    "include/starlight/structs/LightBufferObject.hpp"
+    "include/starlight/structs/Vertex.hpp"
+    "include/starlight/structs/Color.hpp"
+    "include/starlight/structs/Ray.hpp"
+    "include/starlight/templates/StarApplication.hpp"
+    "include/starlight/templates/StarResourceContainer.hpp"
+    "include/starlight/templates/FileResourceManager.hpp"
+    "include/starlight/templates/FileResourceContainer.hpp"
+    "include/starlight/common/ConfigFile.hpp"
+    "include/starlight/common/helpers/FileHelpers.hpp"
+    "include/starlight/common/helpers/Time.hpp"
+    "include/starlight/common/VulkanVertex.hpp"
 )
-set(${PROJECT_NAME}_TARGET_HEADERS ${${PROJECT_NAME}_HEADERS} PARENT_SCOPE)
+set(${STARLIGHT_NAME}_TARGET_HEADERS ${${STARLIGHT_NAME}_HEADERS} PARENT_SCOPE)
 
-add_library(${PROJECT_NAME} "${${PROJECT_NAME}_SOURCE};${${PROJECT_NAME}_HEADERS}")
+add_library(${STARLIGHT_NAME} "${${STARLIGHT_NAME}_SOURCE};${${STARLIGHT_NAME}_HEADERS}")
 
-target_link_libraries(${PROJECT_NAME}
+set(${STARLIGHT_NAME}_INCLUDE_DIRS
+    "include/starlight/"
+    "include/starlight/virtual/"
+    "include/starlight/internals"
+    "include/starlight/virtual/ModulePlug/"
+    "include/starlight/wrappers/"
+    "include/starlight/wrappers/graphics/"
+    "include/starlight/structs/"
+    "include/starlight/enums/"
+    "include/starlight/templates/"
+    "include/starlight/managers/"
+    "include/starlight/common/"
+    "include/starlight/common/entities/"
+    "include/starlight/common/materials/"
+    "include/starlight/common/helpers/"
+    "include/starlight/common/objects/"
+    "include/starlight/common/buffers/"
+    "include/starlight/common/textures"
+    "include/starlight/common/controllers/"
+    "include/starlight/builders/"
+    "include/starlight/controllers/"
+    "include/starlight/modules/"
+    "include/starlight/systems/"
+    "include/starlight/structs/"
+    "include/starlight/renderers/" 
+    "include/starlight/job/"
+    "include/starlight/core/"
+)
+
+target_link_libraries(${STARLIGHT_NAME}
     PUBLIC
-        Vulkan::Vulkan
-        shaderc
-        tinyobjloader::tinyobjloader
-        glfw
-        spirv-reflect-static
-        GPUOpen::VulkanMemoryAllocator
+        Starlight::starlight_common
         nlohmann_json::nlohmann_json
+        Vulkan::Vulkan
+        shaderc_combined
+        GPUOpen::VulkanMemoryAllocator
+    PRIVATE
+        tinyobjloader::tinyobjloader
+        GPUOpen::VulkanMemoryAllocator
+        Boost::log
+        Boost::log_setup
         Boost::thread
         Boost::container
         Boost::filesystem
         KTX::ktx
-    )
-
-set(${PROJECT_NAME}_INCLUDE_DIRS
-    "include/"
-    "include/virtual/"
-    "include/internals"
-    "include/virtual/ModulePlug/"
-    "include/wrappers/"
-    "include/wrappers/graphics/"
-    "include/structs/"
-    "include/enums/"
-    "include/templates/"
-    "include/managers/"
-    "include/common/"
-    "include/common/entities/"
-    "include/common/materials/"
-    "include/common/helpers/"
-    "include/common/objects/"
-    "include/common/buffers/"
-    "include/common/textures"
-    "include/common/controllers/"
-    "include/builders/"
-    "include/controllers/"
-    "include/modules/"
-    "include/systems/"
-    "include/structs/"
-    "include/renderers/" 
+        absl::hash
 )
 
-set(${PROJECT_NAME}_TARGET_INCLUDE_DIRS ${${PROJECT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)
+set(${STARLIGHT_NAME}_TARGET_INCLUDE_DIRS ${${STARLIGHT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)
 
-target_include_directories(${PROJECT_NAME}
+target_include_directories(${STARLIGHT_NAME}
     PUBLIC
-        ${${PROJECT_NAME}_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_SOURCE_DIR}/external/spirvreflect
-        ${glm_SOURCE_DIR}
-        ${Stb_INCLUDE_DIR}
+        # --- Build interface (source-tree paths) ---
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/virtual>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/internals>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/virtual/ModulePlug>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/wrappers>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/wrappers/graphics>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/structs>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/enums>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/templates>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/managers>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/core>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/objects>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/buffers>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/entities>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/controllers>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/job>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/systems>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/materials>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/textures>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/helpers>
+        # --- Install interface    # --- Install interface (install-tree paths) ---
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${glm_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${Stb_INCLUDE_DIR}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 if (MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE
+    target_compile_options(${STARLIGHT_NAME} PRIVATE
         /Zi 
         /MP
         /EHsc
     )
-    target_link_options(${PROJECT_NAME} PRIVATE 
+    target_link_options(${STARLIGHT_NAME} PRIVATE 
         /DEBUG
     )
 endif()
@@ -311,16 +523,16 @@ if (CPPCHECK_EXECUTABLE)
 	set(CPPCHECK_FILES "")
     set(CPPCHECK_INCLUDES "")
 
-	foreach(FILE "${${PROJECT_NAME}_SOURCE}")
+	foreach(FILE "${${STARLIGHT_NAME}_SOURCE}")
 		file(TO_CMAKE_PATH "${FILE}" UNIX_PATH)
     list(APPEND CPPCHECK_FILES "${UNIX_PATH}")
 	endforeach()
 
-    foreach(DIR ${${PROJECT_NAME}_INCLUDE_DIRS})
+    foreach(DIR ${${STARLIGHT_NAME}_INCLUDE_DIRS})
         list(APPEND CPPCHECK_INCLUDES "-I" "${CMAKE_CURRENT_SOURCE_DIR}/${DIR}")
     endforeach()
 
-	add_custom_target("${PROJECT_NAME}_cppcheck"
+	add_custom_target("${STARLIGHT_NAME}_cppcheck"
 		COMMAND ${CPPCHECK_EXECUTABLE} 
 			--enable=all 
             --suppress=missingIncludeSystem
@@ -336,11 +548,55 @@ if (CPPCHECK_EXECUTABLE)
 		VERBATIM
 	)
 
-	add_dependencies("${PROJECT_NAME}_cppcheck" ${CMAKE_PROJECT_NAME})
+	add_dependencies("${STARLIGHT_NAME}_cppcheck" ${CMAKE_PROJECT_NAME})
 endif()
 
-set_target_properties(${PROJECT_NAME} PROPERTIES 
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
+set_target_properties(${STARLIGHT_NAME} PROPERTIES 
     DEBUG_POSTFIX "d"
+)
+
+add_library(Starlight::starlight ALIAS starlight)
+
+include(GNUInstallDirs)
+
+install(TARGETS ${STARLIGHT_NAME} shaderc_combined
+    EXPORT starlightTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}   # .dll/.so with runtime on Windows
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}   # .so/.dylib
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}   # .a/.lib
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Install your public headers under include/starlight/ (adjust if you want a different prefix)
+
+# Install the whole include directory so the same subfolders exist:
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.h" PATTERN)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/starlightConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/starlightConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/starlight
+    PATH_VARS CMAKE_INSTALL_LIBDIR CMAKE_INSTALL_INCLUDEDIR
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/starlightConfigVersion.cmake
+    VERSION 1.0.0
+    COMPATIBILITY AnyNewerVersion
+)
+
+install(EXPORT starlightTargets
+    FILE starlightTargets.cmake
+    NAMESPACE Starlight::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/starlight
+)
+
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/starlightConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/starlightConfigVersion.cmake
+       DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/starlight
 )

@@ -1,0 +1,41 @@
+
+# ---- Required for relocatable packages
+@PACKAGE_INIT@
+
+# Optional: define a user-facing variable for the installed include root
+# (Only set if the install used a specific include prefix.)
+set(STARLIGHT_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@" CACHE PATH "Starlight public headers")
+
+# ---- Bring in find_dependency()
+include(CMakeFindDependencyMacro)
+
+# ---- Re-find dependencies that your exported targets link to
+# Keep these in sync with target_link_libraries(starlight PUBLIC ...)
+
+find_dependency(Vulkan @VULKAN_VERSION@ REQUIRED)
+find_dependency(spirv_reflect CONFIG REQUIRED)
+find_dependency(shaderc REQUIRED)
+find_dependency(glm CONFIG REQUIRED)
+find_dependency(VulkanMemoryAllocator CONFIG REQUIRED)     # VMA
+find_dependency(nlohmann_json 3.12.0 REQUIRED)
+find_dependency(tinyobjloader CONFIG REQUIRED)
+find_dependency(Boost REQUIRED COMPONENTS container thread filesystem log log_setup)
+find_dependency(Ktx CONFIG REQUIRED)                       # KTX
+find_dependency(Stb REQUIRED)
+find_dependency(absl CONFIG REQUIRED)                      # absl::hash
+
+# If spirv-reflect is required at link time (static lib), keep its name consistent
+# with what you export/link in the build:
+# find_dependency(spirv_reflect CONFIG REQUIRED)           # if using a packaged reflect
+# (If you build spirv-reflect from source and export it yourself, you may not need this.)
+
+# ---- Load Starlight’s exported targets (creates Starlight::starlight, etc.)
+include("${CMAKE_CURRENT_LIST_DIR}/starlightTargets.cmake")
+
+# ---- Optional convenience variables for consumers
+# (Handy if you want to expose where you installed headers/libraries)
+set(Starlight_FOUND TRUE)
+set(Starlight_VERSION "@PACKAGE_VERSION@")
+
+# ---- Optional: propagate compile features/definitions expected by consumers
+# target_compile_features(Starlight::starlight INTERFACE cxx_std_20)
