@@ -25,7 +25,6 @@ class ManagerRenderResource : public StarManager
 {
   private:
   public:
-
     template <typename T> struct FinalizedResourceRequest : public StarManager::FinalizedRequest
     {
         vk::Semaphore resourceSemaphore = VK_NULL_HANDLE;
@@ -69,8 +68,7 @@ class ManagerRenderResource : public StarManager
     static void init(const Handle &deviceID, core::device::StarDevice *device,
                      std::shared_ptr<job::TransferWorker> worker, const int &totalNumFramesInFlight);
 
-    static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
-                             const bool &isHighPriority = false);
+    static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore);
 
     static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                              std::unique_ptr<TransferRequest::Buffer> newRequest,
@@ -119,7 +117,7 @@ class ManagerRenderResource : public StarManager
     }
 
   protected:
-    static std::unordered_map<Handle, core::device::StarDevice*, star::HandleHash> devices;
+    static std::unordered_map<Handle, core::device::StarDevice *, star::HandleHash> devices;
     static std::unordered_map<
         Handle,
         std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 1000>>,

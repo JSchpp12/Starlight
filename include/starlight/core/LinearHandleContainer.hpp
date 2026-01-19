@@ -2,14 +2,13 @@
 
 #include "Enums.hpp"
 #include "HandleContainer.hpp"
-#include "device/StarDevice.hpp"
-
 #include "core/Exceptions.hpp"
-#include <star_common/Handle.hpp>
-#include <star_common/helper/CastHelpers.hpp>
+#include "device/StarDevice.hpp"
 
 #include <array>
 #include <stack>
+#include <star_common/Handle.hpp>
+#include <star_common/helper/CastHelpers.hpp>
 
 namespace star::core
 {
@@ -23,6 +22,8 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
     LinearHandleContainer(uint16_t registeredHandleType) : HandleContainer<TData>(std::move(registeredHandleType))
     {
     }
+    virtual ~LinearHandleContainer() = default;
+
     std::array<TData, TMaxDataCount> &getData()
     {
         return m_records;
@@ -81,8 +82,9 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
 
     virtual void removeRecord(const Handle &handle, device::StarDevice *device) override
     {
-        assert(handle.getID() < m_records.size() && "Requested index is beyond max storage space in remove()");
+        (void)device;
 
+        assert(handle.getID() < m_records.size() && "Requested index is beyond max storage space in remove()");
         m_skippedSpaces.push(handle.getID());
     }
 };

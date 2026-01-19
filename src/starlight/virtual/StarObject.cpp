@@ -211,13 +211,13 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context, cons
         calculateBoundingBox(bbVerts, bbInds);
 
         {
-            auto bbSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+            auto bbSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
             this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(
                 m_deviceID, context.getSemaphoreManager().get(bbSemaphore)->semaphore,
                 std::make_unique<TransferRequest::VertInfo>(graphicsFamilyIndex, std::move(bbVerts)));
         }
         {
-            auto bbIndSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest{false});
+            auto bbIndSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
 
             this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
                 m_deviceID, context.getSemaphoreManager().get(bbIndSemaphore)->semaphore,

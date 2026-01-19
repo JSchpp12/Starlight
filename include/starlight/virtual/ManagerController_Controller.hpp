@@ -41,11 +41,11 @@ template <typename TTransferType, typename TDataType> class Controller
                         common::HandleTypeRegistry::instance()
                             .getType(core::device::manager::GetSemaphoreEventTypeName)
                             .value(),
-                        core::device::manager::SemaphoreRequest{false}, semaphore));
+                        core::device::manager::SemaphoreRequest(), semaphore));
 
                 auto fullSemaphore = context.getSemaphoreManager().get(semaphore)->semaphore;
                 m_resourceHandles[i] =
-                    context.getManagerRenderResource().addRequest(context.getDeviceID(), fullSemaphore, true);
+                    context.getManagerRenderResource().addRequest(context.getDeviceID(), fullSemaphore);
             }
         }
     }

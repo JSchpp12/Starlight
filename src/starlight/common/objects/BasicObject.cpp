@@ -157,13 +157,13 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
         if (shape.mesh.material_ids.at(shapeCounter) != -1)
         {
             const auto meshVertSemaphore =
-                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
             const Handle meshVertBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(), context.getSemaphoreManager().get(meshVertSemaphore)->semaphore,
                 std::make_unique<TransferRequest::VertInfo>(graphicsQueueFamilyIndex, vertices));
 
             const auto indSemaphore =
-                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
 
             const Handle meshIndBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(), context.getSemaphoreManager().get(indSemaphore)->semaphore,

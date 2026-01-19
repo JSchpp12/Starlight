@@ -95,7 +95,7 @@ class CommandBufferContainer
             : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
               recordOnce(recordOnce), waitStage(waitStage), order(order),
               beforeBufferSubmissionCallback(beforeSubmissionCallback),
-              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
+              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback){};
 
         vk::Semaphore submitCommandBuffer(core::device::StarDevice &device, const common::FrameTracker &frameTracker,
                                           absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,

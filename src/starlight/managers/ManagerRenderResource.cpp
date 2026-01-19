@@ -31,8 +31,7 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
     managerWorker = worker;
 }
 
-star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
-                                                     const bool &isHighPriority)
+star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore)
 {
     Handle newBufferHandle = bufferStorage.at(deviceID)->insert(
         FinalizedResourceRequest<star::StarBuffers::Buffer>(std::move(resourceSemaphore)));

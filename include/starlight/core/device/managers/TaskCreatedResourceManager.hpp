@@ -36,13 +36,13 @@ class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResource
 
     virtual void init(device::StarDevice *device, common::EventBus &eventBus, job::TaskManager &taskSystem)
     {
-        this->ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::init(device, eventBus);
-
+        init(device, eventBus);
         m_deviceTaskSystem = &taskSystem;
     }
 
   protected:
     using Manager<TRecord, TResourceRequest, TMaxRecordCount>::submit;
+    using ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::init; 
 
     job::TaskManager *m_deviceTaskSystem = nullptr;
 
@@ -50,8 +50,5 @@ class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResource
                             common::EventBus &eventBus, TRecord *storedRecord) = 0;
 
     virtual TRecord createRecord(TResourceRequest &&request) const override = 0;
-
-  private:
-    using ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::init;
 };
 } // namespace star::core::device::manager

@@ -4,7 +4,6 @@
 
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
-
 #include <cassert>
 
 namespace star::core
@@ -19,6 +18,7 @@ template <typename TData> class HandleContainer
     HandleContainer(uint16_t handleType) : m_handleType(std::move(handleType))
     {
     }
+    virtual ~HandleContainer() = default;
 
     Handle insert(TData newData)
     {

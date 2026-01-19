@@ -4,12 +4,11 @@
 #include "StarShader.hpp"
 #include "device/managers/TaskCreatedResourceManager.hpp"
 
-#include <star_common/Handle.hpp>
-#include <star_common/HandleTypeRegistry.hpp>
-
 #include <array>
 #include <memory>
 #include <stack>
+#include <star_common/Handle.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
 #include <vector>
 
 namespace star::core::device::manager

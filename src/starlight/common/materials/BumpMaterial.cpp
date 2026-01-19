@@ -13,7 +13,7 @@ void star::BumpMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout
 void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                                     star::StarShaderInfo::Builder frameBuilder)
 {
-    auto bumpSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+    auto bumpSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
 
     m_bumpMap = ManagerRenderResource::addRequest(
         context.getDeviceID(), context.getSemaphoreManager().get(bumpSemaphore)->semaphore,
