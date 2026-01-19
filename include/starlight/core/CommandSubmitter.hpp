@@ -12,7 +12,7 @@ template <typename TDeviceContext> class CommandSubmitter
     }
     template <typename T> CommandSubmitter &set(T &command)
     {
-        m_name = command.getName();
+        m_name = command.GetUniqueTypeName();
         m_command = &command;
         return *this;
     }

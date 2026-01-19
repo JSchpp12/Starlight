@@ -42,6 +42,7 @@ find_package(Boost REQUIRED COMPONENTS container thread filesystem log log_setup
 find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(absl CONFIG REQUIRED)
+find_package(pxr CONFIG REQUIRED)
 
 # add all necessary dependencies
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
@@ -64,6 +65,9 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/graphics/PipelineFactory.cpp"
     "src/starlight/core/CommandBus.cpp"
     "src/starlight/command/CreateObject.cpp"
+    "src/starlight/command/detail/create_object/ObjectLoader.cpp"
+    "src/starlight/command/detail/create_object/FromObjFileLoader.cpp"
+    "src/starlight/command/SaveSceneState.cpp"
     "src/starlight/core/logging/LoggingFactory.cpp"
     "src/starlight/core/renderer/LightRenderer.cpp"
     "src/starlight/core/renderer/RendererBase.cpp"
@@ -138,6 +142,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/event/RegisterMainGraphicsRenderer.cpp"
     "src/starlight/event/StartOfNextFrame.cpp"
     "src/starlight/event/GetQueue.cpp"
+    "src/starlight/policy/command/ListenForCreateObject.cpp"
     "src/starlight/policy/ListenForPrepForNextFramePolicy.cpp"
     "src/starlight/policy/ListenForFrameCompletePolicy.cpp"
     "src/starlight/policy/ListenForEnginePhaseCompletePolicy.cpp"
@@ -245,6 +250,9 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/data_structure/dynamic/ThreadSharedObjectPool.hpp"
     "include/starlight/graphics/PipelineFactory.hpp"
     "include/starlight/command/CreateObject.hpp"
+    "include/starlight/command/detail/create_object/ObjectLoader.hpp"
+    "include/starlight/command/detail/create_object/FromObjFileLoader.hpp"
+    "include/starlight/command/SaveSceneState.hpp"
     "include/starlight/core/logging/LoggingFactory.hpp"
     "include/starlight/core/renderer/RendererBase.hpp"
     "include/starlight/core/renderer/LightRenderer.hpp"
@@ -327,6 +335,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/event/RegisterMainGraphicsRenderer.hpp"
     "include/starlight/event/StartOfNextFrame.hpp"
     "include/starlight/event/GetQueue.hpp"
+    "include/starlight/policy/command/ListenForCreateObject.hpp"
     "include/starlight/policy/ListenForFrameCompletePolicy.hpp"
     "include/starlight/policy/ListenForPrepForNextFramePolicy.hpp"
     "include/starlight/policy/ListenForEnginePhaseCompletePolicy.hpp"
@@ -469,6 +478,7 @@ target_link_libraries(${STARLIGHT_NAME}
         Vulkan::Vulkan
         shaderc_combined
         GPUOpen::VulkanMemoryAllocator
+        usd
     PRIVATE
         tinyobjloader::tinyobjloader
         GPUOpen::VulkanMemoryAllocator

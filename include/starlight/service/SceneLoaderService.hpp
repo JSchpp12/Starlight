@@ -1,14 +1,17 @@
 #pragma once
 
 #include "starlight/command/CreateObject.hpp"
+#include "starlight/policy/command/ListenForCreateObject.hpp"
 #include "starlight/service/InitParameters.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace star::service
 {
 class SceneLoaderService
 {
   public:
-    SceneLoaderService() = default;
+    SceneLoaderService() : m_objectStates(), m_onCreate(*this){};
     SceneLoaderService(const SceneLoaderService &) = delete;
     SceneLoaderService &operator=(const SceneLoaderService &) = delete;
     SceneLoaderService(SceneLoaderService &&other) noexcept;
@@ -26,6 +29,8 @@ class SceneLoaderService
     void onCreateObject(command::CreateObject &event);
 
   private:
+    absl::flat_hash_map<std::string, std::shared_ptr<StarObject>> m_objectStates;
+    policy::ListenForCreateObject<SceneLoaderService> m_onCreate;
     star::core::CommandBus *m_deviceCommandBus = nullptr;
 
     void registerCommands(core::CommandBus &commandBus) noexcept;

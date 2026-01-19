@@ -5,7 +5,7 @@
 namespace star::service
 {
 SceneLoaderService::SceneLoaderService(SceneLoaderService &&other) noexcept
-    : m_deviceCommandBus(other.m_deviceCommandBus)
+    :  m_onCreate(*this), m_deviceCommandBus(other.m_deviceCommandBus)
 {
     if (m_deviceCommandBus != nullptr)
     {
@@ -51,33 +51,32 @@ void SceneLoaderService::shutdown()
 
 void SceneLoaderService::cleanup(common::EventBus &eventBus)
 {
+    (void)eventBus;
+
+    if (m_deviceCommandBus != nullptr)
+    {
+        cleanupCommands(*m_deviceCommandBus); 
+    }
 }
 
 void SceneLoaderService::cleanupCommands(core::CommandBus &commandBus) noexcept
 {
-    if (m_deviceCommandBus->getRegistry().contains(star::command::create_object::GetCreateObjectCommandTypeName))
-    {
-        // need to remove first
-        commandBus.removeServiceCallback(commandBus.getRegistry().getTypeGuaranteedExist(
-            star::command::create_object::GetCreateObjectCommandTypeName));
-    }
+    m_onCreate.cleanup(commandBus);
 }
 
 void SceneLoaderService::onCreateObject(command::CreateObject &event)
 {
-    std::cout << "Big test";
+    const auto &uniqueName = event.getUniqueName();
+    assert(!m_objectStates.contains(uniqueName));
+
+    auto newObject = event.load();
+    m_objectStates.insert(std::make_pair(uniqueName, newObject));
+
+    event.getReply().set(newObject);
 }
 
 void SceneLoaderService::registerCommands(core::CommandBus &commandBus) noexcept
 {
-    auto type = m_deviceCommandBus->registerCommandType(star::command::create_object::GetCreateObjectCommandTypeName);
-
-    m_deviceCommandBus->registerServiceCallback(
-        type, star::common::ServiceCallback{this, [](void *ctx, star::common::IServiceCommand &base) {
-                                                auto *self = static_cast<SceneLoaderService *>(ctx);
-                                                auto &cmd = static_cast<command::CreateObject &>(base);
-
-                                                self->onCreateObject(cmd);
-                                            }});
+    m_onCreate.init(commandBus);
 }
 } // namespace star::service

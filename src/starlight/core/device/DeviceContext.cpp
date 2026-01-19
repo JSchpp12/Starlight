@@ -83,7 +83,6 @@ star::core::device::DeviceContext::~DeviceContext()
 {
     if (m_ownsResources)
     {
-        shutdownServices();
         m_graphicsManagers.cleanupRender();
         m_commandBufferManager->cleanup(m_device);
         star::ManagerRenderResource::cleanup(m_deviceID, m_device);

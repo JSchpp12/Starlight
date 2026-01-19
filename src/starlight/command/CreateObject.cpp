@@ -1,26 +1,28 @@
 #include "starlight/command/CreateObject.hpp"
 
+#include "starlight/command/detail/create_object/FromObjFileLoader.hpp"
+
+#include <cassert>
+
 namespace star::command
 {
-CreateObject::Builder &CreateObject::Builder::setParentDir(std::string parentDir)
+CreateObject::Builder &CreateObject::Builder::setLoader(std::unique_ptr<create_object::ObjectLoader> loader)
 {
-    m_parentDir = std::move(parentDir);
+    m_loader = std::move(loader);
     return *this;
 }
 
-CreateObject::Builder &CreateObject::Builder::setFileName(std::string fileName)
+CreateObject::Builder &CreateObject::Builder::setUniqueName(std::string name)
 {
-    m_fileName = std::move(fileName);
+    m_uniqueName = std::move(name);
     return *this;
 }
 
 CreateObject CreateObject::Builder::build()
 {
-    return {std::move(m_parentDir), std::move(m_fileName)};
-}
+    assert(m_loader != nullptr);
+    assert(!m_uniqueName.empty());
 
-CreateObject::CreateObject(std::string parentDir, std::string fileName)
-    : common::IServiceCommand(), parentDir(std::move(parentDir)), fileName(std::move(fileName))
-{
+    return {std::move(m_uniqueName), std::move(m_loader)};
 }
 } // namespace star::command
