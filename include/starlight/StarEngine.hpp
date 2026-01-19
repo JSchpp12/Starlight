@@ -8,22 +8,20 @@
 #include "StarRenderGroup.hpp"
 #include "StarScene.hpp"
 #include "TransferWorker.hpp"
-#include "util/log/SystemInfo.hpp"
 #include "core/SystemContext.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "event/EnginePhaseComplete.hpp"
 #include "event/FrameComplete.hpp"
 #include "event/RenderReadyForFinalization.hpp"
 #include "service/ScreenCaptureFactory.hpp"
-
-#include <star_common/FrameTracker.hpp>
-#include <star_common/HandleTypeRegistry.hpp>
-
-#include <memory>
-#include <string>
-#include <vector>
+#include "util/log/SystemInfo.hpp"
 
 #include <concepts>
+#include <memory>
+#include <star_common/FrameTracker.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
+#include <string>
+#include <vector>
 
 namespace star
 {

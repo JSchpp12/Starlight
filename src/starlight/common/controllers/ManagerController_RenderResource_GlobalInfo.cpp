@@ -26,5 +26,7 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 bool star::ManagerController::RenderResource::GlobalInfo::doesFrameInFlightDataNeedUpdated(
     const uint8_t &frameInFlightIndex) const
 {
+    (void)frameInFlightIndex;
+    
     return true;
 }

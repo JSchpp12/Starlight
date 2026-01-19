@@ -58,7 +58,6 @@ class StarQueueFamily
 
     std::vector<StarQueue> queues;
 
-    std::vector<StarQueue> createQueues(vk::Device *device, const uint32_t &familyIndex,
-                                               const uint32_t &numToCreate);
+    std::vector<StarQueue> createQueues(vk::Device *device, const uint32_t &familyIndex, const size_t &numToCreate);
 };
 } // namespace star

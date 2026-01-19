@@ -2,7 +2,8 @@
 
 star::StarQueueFamily::StarQueueFamily(const uint32_t &queueFamilyIndex, const uint32_t &queueCount,
                                        const vk::QueueFlags &support, const bool &presentationSupport)
-    : queueFamilyIndex(queueFamilyIndex), queueCount(queueCount), support(support), presentationSupport(presentationSupport)
+    : queueFamilyIndex(queueFamilyIndex), queueCount(queueCount), support(support),
+      presentationSupport(presentationSupport)
 {
     for (uint32_t i{0}; i < queueCount; i++)
     {
@@ -16,7 +17,7 @@ void star::StarQueueFamily::init(vk::Device &vulkanDeviceToUse)
 
     this->vulkanDevice = &vulkanDeviceToUse;
 
-    this->queues = createQueues(this->vulkanDevice, this->queueFamilyIndex, this->queueCount);
+    this->queues = createQueues(this->vulkanDevice, this->queueFamilyIndex, static_cast<size_t>(this->queueCount));
 }
 
 std::shared_ptr<star::StarCommandPool> star::StarQueueFamily::createCommandPool(const bool &setAutoReset)
@@ -26,9 +27,12 @@ std::shared_ptr<star::StarCommandPool> star::StarQueueFamily::createCommandPool(
     return std::make_shared<StarCommandPool>(*this->vulkanDevice, this->queueFamilyIndex, setAutoReset);
 }
 
-bool star::StarQueueFamily::doesSupport(const vk::QueueFlags &querySupport, const bool &querySupportPresentation) const{
-    if (!querySupportPresentation || (querySupportPresentation && this->presentationSupport == querySupportPresentation)){
-        return doesSupport(querySupport); 
+bool star::StarQueueFamily::doesSupport(const vk::QueueFlags &querySupport, const bool &querySupportPresentation) const
+{
+    if (!querySupportPresentation ||
+        (querySupportPresentation && this->presentationSupport == querySupportPresentation))
+    {
+        return doesSupport(querySupport);
     }
 
     return false;
@@ -40,18 +44,15 @@ bool star::StarQueueFamily::doesSupport(const vk::QueueFlags &querySupport) cons
 }
 
 std::vector<star::StarQueue> star::StarQueueFamily::createQueues(vk::Device *device, const uint32_t &familyIndex,
-                                                           const uint32_t &numToCreate)
+                                                                 const size_t &numToCreate)
 {
     std::vector<vk::Queue> newQueues = std::vector<vk::Queue>(numToCreate);
+    std::vector<StarQueue> finalQueues = std::vector<StarQueue>(numToCreate);
 
-    for (int i = 0; i < numToCreate; i++)
+    for (size_t i{0}; i < numToCreate; i++)
     {
         newQueues[i] = device->getQueue(familyIndex, i);
-    }
-
-    std::vector<StarQueue> finalQueues = std::vector<StarQueue>(numToCreate);
-    for (int i = 0; i < numToCreate; i++){
-        finalQueues[i] = StarQueue(familyIndex, newQueues[i], support, presentationSupport); 
+        finalQueues[i] = StarQueue(familyIndex, newQueues[i], support, presentationSupport);
     }
 
     return finalQueues;
