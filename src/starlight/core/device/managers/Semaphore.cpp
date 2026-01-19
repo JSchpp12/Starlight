@@ -1,5 +1,7 @@
 #include "device/managers/Semaphore.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+
 namespace star::core::device::manager
 {
 static inline vk::Semaphore CreateSemaphore(device::StarDevice &device, bool isTimelineSemaphore,
@@ -16,7 +18,7 @@ static inline vk::Semaphore CreateSemaphore(device::StarDevice &device, bool isT
 
     if (newSemaphore == VK_NULL_HANDLE)
     {
-        throw std::runtime_error("Failed to create semaphore");
+        STAR_THROW("Failed to create semaphore");
     }
 
     return newSemaphore;

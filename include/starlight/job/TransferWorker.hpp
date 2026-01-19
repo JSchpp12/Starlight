@@ -77,7 +77,7 @@ class TransferManagerThread
 
         ProcessRequestInfo(std::shared_ptr<StarCommandPool> commandPool,
                            std::unique_ptr<StarCommandBuffer> commandBuffer)
-            : commandPool(std::move(commandPool)), commandBuffer(std::move(commandBuffer)) {};
+            : commandPool(std::move(commandPool)), commandBuffer(std::move(commandBuffer)){};
 
         void setInProcessDeps(std::unique_ptr<StarBuffers::Buffer> nInProcessTransferSrcBuffer)
         {
@@ -112,8 +112,8 @@ class TransferManagerThread
             std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer,
             std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
             : shouldRun(shouldRun), completeMessages(completeMessages), device(device), queue(queue),
-              allocator(allocator), deviceProperties(deviceProperties), taskContainer(taskContainer),
-              allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse)
+              allocator(allocator), deviceProperties(deviceProperties),
+              allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse), taskContainer(taskContainer)
         {
         }
 
@@ -189,7 +189,7 @@ class TransferWorker
     /// dedicated transfer queue. As such, transfers are submitted on the main thread.
     /// @param device Created star device from which vulkan objects can be made
     TransferWorker(TaskContainer<complete_tasks::CompleteTask, 128> &completeMessages, core::device::StarDevice &device,
-                   bool overrideRunAsync, std::vector<StarQueue*> &queuesToUse);
+                   bool overrideRunAsync, std::vector<StarQueue *> &queuesToUse);
 
     void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread, vk::Semaphore signalWhenDoneSemaphore,
              std::unique_ptr<TransferRequest::Buffer> newBufferRequest,

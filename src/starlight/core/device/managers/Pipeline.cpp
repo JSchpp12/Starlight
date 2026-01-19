@@ -36,6 +36,8 @@ void Pipeline::cleanupRender()
 void Pipeline::submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                           common::EventBus &eventBus, PipelineRecord *storedRecord)
 {
+    (void)storedRecord; 
+    
     uint16_t key = static_cast<uint16_t>(m_subscriberShaderBuildInfo.size());
     m_subscriberShaderBuildInfo.insert(std::make_pair(key, Handle()));
 

@@ -65,7 +65,7 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
 
     virtual void init(device::StarDevice *device, common::EventBus &eventBus)
     {
-        Manager<TRecord, TResourceRequest, TMaxRecordCount>::init(device);
+        init(device);
 
         submitSubscribeToEventBus(eventBus);
         m_eventBus = &eventBus;
@@ -81,7 +81,7 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
         }
     }
 
-    virtual void cleanupRender()
+    virtual void cleanupRender() override
     {
         assert(m_eventBus);
 
@@ -90,6 +90,8 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
     }
 
   protected:
+    using Manager<TRecord, TResourceRequest, TMaxRecordCount>::init;
+    
     Handle m_subscriberInfo;
     common::EventBus *m_eventBus = nullptr;
 

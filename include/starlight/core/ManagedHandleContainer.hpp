@@ -32,6 +32,7 @@ class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount
         : LinearHandleContainer<TData, TMaxDataCount>(std::move(registeredHandleType))
     {
     }
+    virtual ~ManagedHandleContainer() = default;
 
     void cleanupAll(device::StarDevice *device = nullptr)
     {
