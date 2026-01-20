@@ -143,6 +143,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/event/StartOfNextFrame.cpp"
     "src/starlight/event/GetQueue.cpp"
     "src/starlight/policy/command/ListenForCreateObject.cpp"
+    "src/starlight/policy/command/ListenForSaveSceneState.cpp"
     "src/starlight/policy/ListenForPrepForNextFramePolicy.cpp"
     "src/starlight/policy/ListenForFrameCompletePolicy.cpp"
     "src/starlight/policy/ListenForEnginePhaseCompletePolicy.cpp"
@@ -151,6 +152,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/ListenForStartOfNextFramePolicy.cpp"
     "src/starlight/core/service/Service.cpp"
     "src/starlight/service/SceneLoaderService.cpp"
+    "src/starlight/service/detail/scene_loader/SceneFile.cpp"
+    "src/starlight/service/detail/scene_loader/SceneObjectTracker.cpp"
     "src/starlight/service/FrameInFlightControllerService.cpp"
     "src/starlight/service/ScreenCaptureFactory.cpp"
     "src/starlight/service/ScreenCapture.cpp"
@@ -336,6 +339,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/event/StartOfNextFrame.hpp"
     "include/starlight/event/GetQueue.hpp"
     "include/starlight/policy/command/ListenForCreateObject.hpp"
+    "include/starlight/policy/command/ListenForSaveSceneState.hpp"
     "include/starlight/policy/ListenForFrameCompletePolicy.hpp"
     "include/starlight/policy/ListenForPrepForNextFramePolicy.hpp"
     "include/starlight/policy/ListenForEnginePhaseCompletePolicy.hpp"
@@ -345,6 +349,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/graphics/shader/BasicIncluder.hpp"
     "include/starlight/service/Service.hpp"
     "include/starlight/service/SceneLoaderService.hpp"
+    "include/starlight/service/detail/scene_loader/SceneFile.hpp"
+    "include/starlight/service/detail/scene_loader/SceneObjectTracker.hpp"
     "include/starlight/service/FrameInFlightControllerService.hpp"
     "include/starlight/service/ScreenCapture.hpp"
     "include/starlight/service/ScreenCaptureFactory.hpp"
@@ -478,7 +484,6 @@ target_link_libraries(${STARLIGHT_NAME}
         Vulkan::Vulkan
         shaderc_combined
         GPUOpen::VulkanMemoryAllocator
-        usd
     PRIVATE
         tinyobjloader::tinyobjloader
         GPUOpen::VulkanMemoryAllocator
@@ -489,6 +494,8 @@ target_link_libraries(${STARLIGHT_NAME}
         Boost::filesystem
         KTX::ktx
         absl::hash
+        usd
+        usdGeom
 )
 
 set(${STARLIGHT_NAME}_TARGET_INCLUDE_DIRS ${${STARLIGHT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)

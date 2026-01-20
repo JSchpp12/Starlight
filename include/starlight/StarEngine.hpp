@@ -161,6 +161,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         }
 
         m_systemManager.getContext(m_defaultDevice).waitIdle();
+        m_application.shutdown(m_systemManager.getContext(m_defaultDevice));
         currentScene->cleanupRender(m_systemManager.getContext(m_defaultDevice));
         // need to cleanup services first
         m_systemManager.getContext(m_defaultDevice).cleanupRender();

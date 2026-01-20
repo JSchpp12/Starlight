@@ -72,7 +72,9 @@ class StarEntity
     {
         return translationMat * rotationMat * scaleMat;
     }
-
+    const glm::mat4 &getRotationMat() const{
+        return rotationMat;
+    }
   protected:
     glm::vec3 positionCoords = glm::vec3();
     glm::mat4 rotationMat = glm::mat4(1.0f);

@@ -9,9 +9,9 @@ namespace save_scene_state
 inline constexpr std::string_view GetSaveSceneStateCommandTypeName = "star::command::save_scene_state";
 }
 
-struct SaveSceneState
+struct SaveSceneState : public common::IServiceCommand
 {
-    static constexpr std::string_view getName()
+    static constexpr std::string_view GetUniqueTypeName()
     {
         return save_scene_state::GetSaveSceneStateCommandTypeName;
     }

@@ -1,12 +1,21 @@
 #include "starlight/service/SceneLoaderService.hpp"
 
 #include "starlight/command/CreateObject.hpp"
+#include "starlight/common/ConfigFile.hpp"
+#include "starlight/service/detail/scene_loader/SceneFile.hpp"
 
 namespace star::service
 {
-SceneLoaderService::SceneLoaderService(SceneLoaderService &&other) noexcept
-    :  m_onCreate(*this), m_deviceCommandBus(other.m_deviceCommandBus)
+SceneLoaderService::SceneLoaderService()
+    : m_objectTracker(scene_loader::SceneFile("StarScene.usda").read()), m_onCreate(*this), m_onSceneSave(*this)
 {
+}
+
+SceneLoaderService::SceneLoaderService(SceneLoaderService &&other) noexcept
+    : m_objectTracker(std::move(other.m_objectTracker)), m_onCreate(*this), m_onSceneSave(*this),
+      m_deviceCommandBus(other.m_deviceCommandBus)
+{
+
     if (m_deviceCommandBus != nullptr)
     {
         other.cleanupCommands(*m_deviceCommandBus);
@@ -18,6 +27,7 @@ SceneLoaderService &SceneLoaderService::operator=(SceneLoaderService &&other) no
 {
     if (this != &other)
     {
+        m_objectTracker = std::move(other.m_objectTracker);
         m_deviceCommandBus = other.m_deviceCommandBus;
         if (m_deviceCommandBus != nullptr)
         {
@@ -55,28 +65,37 @@ void SceneLoaderService::cleanup(common::EventBus &eventBus)
 
     if (m_deviceCommandBus != nullptr)
     {
-        cleanupCommands(*m_deviceCommandBus); 
+        cleanupCommands(*m_deviceCommandBus);
     }
 }
 
 void SceneLoaderService::cleanupCommands(core::CommandBus &commandBus) noexcept
 {
     m_onCreate.cleanup(commandBus);
+    m_onSceneSave.cleanup(commandBus);
 }
 
 void SceneLoaderService::onCreateObject(command::CreateObject &event)
 {
     const auto &uniqueName = event.getUniqueName();
-    assert(!m_objectStates.contains(uniqueName));
+    assert(!m_objectTracker.contains(uniqueName));
 
     auto newObject = event.load();
-    m_objectStates.insert(std::make_pair(uniqueName, newObject));
+    m_objectTracker.insert(std::make_pair(uniqueName, newObject));
 
     event.getReply().set(newObject);
+}
+
+void SceneLoaderService::onSaveSceneState(command::SaveSceneState &event)
+{
+    (void)event;
+    auto file = scene_loader::SceneFile("StarScene.usda"); 
+    file.write(m_objectTracker);
 }
 
 void SceneLoaderService::registerCommands(core::CommandBus &commandBus) noexcept
 {
     m_onCreate.init(commandBus);
+    m_onSceneSave.init(commandBus);
 }
 } // namespace star::service

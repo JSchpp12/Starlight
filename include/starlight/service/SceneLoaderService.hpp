@@ -2,16 +2,16 @@
 
 #include "starlight/command/CreateObject.hpp"
 #include "starlight/policy/command/ListenForCreateObject.hpp"
+#include "starlight/policy/command/ListenForSaveSceneState.hpp"
 #include "starlight/service/InitParameters.hpp"
-
-#include <absl/container/flat_hash_map.h>
+#include "starlight/service/detail/scene_loader/SceneObjectTracker.hpp"
 
 namespace star::service
 {
 class SceneLoaderService
 {
   public:
-    SceneLoaderService() : m_objectStates(), m_onCreate(*this){};
+    SceneLoaderService();
     SceneLoaderService(const SceneLoaderService &) = delete;
     SceneLoaderService &operator=(const SceneLoaderService &) = delete;
     SceneLoaderService(SceneLoaderService &&other) noexcept;
@@ -28,9 +28,12 @@ class SceneLoaderService
 
     void onCreateObject(command::CreateObject &event);
 
+    void onSaveSceneState(command::SaveSceneState &event);
+
   private:
-    absl::flat_hash_map<std::string, std::shared_ptr<StarObject>> m_objectStates;
+    scene_loader::SceneObjectTracker m_objectTracker;
     policy::ListenForCreateObject<SceneLoaderService> m_onCreate;
+    policy::ListenForSaveSceneState<SceneLoaderService> m_onSceneSave;
     star::core::CommandBus *m_deviceCommandBus = nullptr;
 
     void registerCommands(core::CommandBus &commandBus) noexcept;

@@ -1,0 +1,1 @@
+#include "starlight/service/detail/scene_loader/SceneObjectTracker.hpp"
