@@ -30,8 +30,10 @@ add_subdirectory("extern/spirv_headers")
 set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
+
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
+set(ENABLE_GLSLANG_JS OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
 
 find_package(glm CONFIG REQUIRED)
@@ -47,7 +49,6 @@ find_package(pxr CONFIG REQUIRED)
 # add all necessary dependencies
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_reflect")
 
 set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
