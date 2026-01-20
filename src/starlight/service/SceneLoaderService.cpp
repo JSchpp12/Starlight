@@ -7,7 +7,7 @@
 namespace star::service
 {
 SceneLoaderService::SceneLoaderService()
-    : m_objectTracker(scene_loader::SceneFile("StarScene.usda").read()), m_onCreate(*this), m_onSceneSave(*this)
+    : m_objectTracker(), m_onCreate(*this), m_onSceneSave(*this)
 {
 }
 
@@ -82,6 +82,18 @@ void SceneLoaderService::onCreateObject(command::CreateObject &event)
 
     auto newObject = event.load();
     m_objectTracker.insert(std::make_pair(uniqueName, newObject));
+
+    auto file = scene_loader::SceneFile("StarScene.usda");
+    auto fileData = file.tryReadObjectInfo(uniqueName); 
+    newObject->createInstance();
+
+    if (fileData.has_value()){
+        newObject->getInstance().setPosition(fileData.value().position); 
+        newObject->getInstance().setScale(fileData.value().scale); 
+        for (const auto &rot : fileData.value().rotationsToApply){
+            newObject->getInstance().rotateRelative(rot.first, rot.second, true);
+        }
+    }
 
     event.getReply().set(newObject);
 }
