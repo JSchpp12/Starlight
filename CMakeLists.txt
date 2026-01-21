@@ -495,8 +495,8 @@ target_link_libraries(${STARLIGHT_NAME}
         Boost::filesystem
         KTX::ktx
         absl::hash
-        usd
-        usdGeom
+
+        ${PXR_LIBRARIES}
 )
 
 set(${STARLIGHT_NAME}_TARGET_INCLUDE_DIRS ${${STARLIGHT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)
@@ -530,6 +530,8 @@ target_include_directories(${STARLIGHT_NAME}
         $<BUILD_INTERFACE:${glm_SOURCE_DIR}>
         $<BUILD_INTERFACE:${Stb_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    PRIVATE
+        ${PXR_INCLUDE_DIRS}
 )
 
 if (MSVC)
