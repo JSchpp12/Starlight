@@ -1,42 +1,25 @@
 #include "starlight/service/detail/scene_loader/SceneFile.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+
+#include <filesystem>
 #include <iostream>
-#include <pxr/base/gf/vec3d.h>
-#include <pxr/base/gf/vec3f.h>
-#include <pxr/usd/usd/primRange.h>
-#include <pxr/usd/usd/stage.h>
-#include <pxr/usd/usd/timeCode.h>
-#include <pxr/usd/usdGeom/xform.h>
-#include <pxr/usd/usdGeom/xformCommonAPI.h>
+#include <nlohmann/json.hpp>
 #include <sstream>
 
 namespace star::service::scene_loader
 {
-inline float Deg2Rad(float d)
-{
-    return d * float(M_PI / 180.0);
-}
 
-std::array<std::pair<star::Type::Axis, float>, 3> ConvertFromEulerToGlobalRotations(
-    const pxr::GfVec3f &rDeg, const pxr::UsdGeomXformCommonAPI::RotationOrder &order)
+std::array<std::pair<star::Type::Axis, float>, 3> ConvertFromEulerToGlobalRotations(const glm::vec3 &rDeg)
 {
-
     float ax = rDeg[0];
     float ay = rDeg[1];
     float az = rDeg[2];
-
-    switch (order)
-    {
-    case (pxr::UsdGeomXformCommonAPI::RotationOrder::RotationOrderXYZ):
-        return std::array<std::pair<star::Type::Axis, float>, 3>{
-            std::make_pair(star::Type::Axis::z, az),
-            std::make_pair(star::Type::Axis::y, ay),
-            std::make_pair(star::Type::Axis::x, ax),
-        };
-        break;
-    }
-
-    return {};
+    return std::array<std::pair<star::Type::Axis, float>, 3>{
+        std::make_pair(star::Type::Axis::z, az),
+        std::make_pair(star::Type::Axis::y, ay),
+        std::make_pair(star::Type::Axis::x, ax),
+    };
 }
 
 glm::vec3 ExtractRotationDegrees(const std::shared_ptr<StarObject> object)
@@ -68,70 +51,109 @@ glm::vec3 ExtractRotationDegrees(const std::shared_ptr<StarObject> object)
 
 void SceneFile::write(const SceneObjectTracker &sceneObjects)
 {
-    pxr::UsdStageRefPtr stage = pxr::UsdStage::CreateNew(m_path);
+    // Build JSON tree in memory
+    nlohmann::json root = nlohmann::json::object();
+    root["Scene"] = nlohmann::json::object();
+    root["Scene"]["objects"] = nlohmann::json::object();
 
     for (const auto &ele : sceneObjects.getStorage())
     {
-        pxr::UsdGeomXform xform;
-        {
-            auto oss = std::ostringstream();
-            oss << "/Scene/objects/" << ele.first;
-            xform = pxr::UsdGeomXform::Define(stage, pxr::SdfPath(oss.str()));
-        }
+        const std::string &name = ele.first;
+        const auto &obj = ele.second;
 
-        pxr::UsdGeomXformCommonAPI api(xform);
-        {
-            const auto pos = ele.second->getInstance().getPosition();
-            api.SetTranslate(pxr::GfVec3f(pos.x, pos.y, pos.z));
-        }
-        {
-            const auto rotation = ExtractRotationDegrees(ele.second);
-            api.SetRotate(pxr::GfVec3f(rotation.x, rotation.y, rotation.z));
-        }
-        {
-            const auto scale = ele.second->getInstance().getScale();
-            api.SetScale(pxr::GfVec3f(scale.x, scale.y, scale.z));
-        }
+        const auto pos = obj->getInstance().getPosition();
+        const auto rotDeg = ExtractRotationDegrees(obj);
+        const auto scale = obj->getInstance().getScale();
+
+        nlohmann::json jObj = nlohmann::json::object();
+        jObj["position"] = {pos.x, pos.y, pos.z};
+        jObj["rotation_deg"] = {rotDeg.x, rotDeg.y, rotDeg.z};
+        jObj["scale"] = {scale.x, scale.y, scale.z};
+
+        root["Scene"]["objects"][name] = std::move(jObj);
     }
 
-    stage->GetRootLayer()->Save();
+    // Ensure directory exists
+    try
+    {
+        std::filesystem::path p(m_path);
+        if (p.has_parent_path())
+        {
+            std::filesystem::create_directories(p.parent_path());
+        }
+    }
+    catch (...)
+    {
+        // Non-fatal; try writing anyway
+    }
+
+    // Pretty print with 2-space indentation
+    std::ofstream ofs(m_path, std::ios::binary);
+    if (!ofs)
+    {
+        STAR_THROW(std::string("Failed to open JSON for writing: ") + m_path);
+    }
+    ofs << std::setw(2) << root;
+    ofs.flush();
+    if (!ofs)
+    {
+        STAR_THROW(std::string("Failed to write JSON to: ") + m_path);
+    }
 }
 
 std::optional<SceneFile::LoadedObjectInfo> SceneFile::tryReadObjectInfo(const std::string &name)
 {
-    pxr::UsdStageRefPtr stage = pxr::UsdStage::Open(m_path);
-    if (!stage)
+    // Load file
+    std::ifstream ifs(m_path, std::ios::binary);
+    if (!ifs)
     {
+        return std::nullopt; // not found or not readable
+    }
+
+    nlohmann::json root;
+    try
+    {
+        ifs >> root;
+    }
+    catch (const std::exception &ex)
+    {
+        STAR_THROW(std::string("JSON parse error: ") + ex.what());
+    }
+
+    // Navigate to /Scene/objects/<name>
+    if (!root.contains("Scene") || !root["Scene"].contains("objects"))
         return std::nullopt;
-    }
 
-    std::ostringstream oss;
-    oss << "/Scene/objects/" << name;
-
-    const pxr::SdfPath rootPath(oss.str());
-    pxr::UsdPrim root = stage->GetPrimAtPath(rootPath);
-    if (!root)
-    {
+    const nlohmann::json &objects = root["Scene"]["objects"];
+    if (!objects.contains(name))
         return std::nullopt;
-    }
 
-    pxr::UsdGeomXform xform(root);
-    pxr::UsdGeomXformCommonAPI api(xform);
+    const nlohmann::json &jObj = objects[name];
 
-    pxr::GfVec3f rDeg, s, pivot;
-    pxr::GfVec3d t;
-    auto rotOrder = pxr::UsdGeomXformCommonAPI::RotationOrderXYZ;
+    // Required fields: position[], scale[], rotation_deg[], rotation_order
+    auto readVec3 = [](const nlohmann::json &j, const char *key, glm::vec3 &out) -> bool {
+        if (!j.contains(key) || !j[key].is_array() || j[key].size() != 3)
+            return false;
+        out.x = j[key][0].get<float>();
+        out.y = j[key][1].get<float>();
+        out.z = j[key][2].get<float>();
+        return true;
+    };
 
-    bool reset = false;
-    if (api.GetXformVectors(&t, &rDeg, &s, &pivot, &rotOrder, pxr::UsdTimeCode::Default()))
-    {
-        LoadedObjectInfo info{.position = glm::vec3(t[0], t[1], t[2]),
-                              .scale = glm::vec3(s[0], s[1], s[2]),
-                              .rotationsToApply = ConvertFromEulerToGlobalRotations(rDeg, rotOrder)};
+    glm::vec3 position{}, scale{}, rotDeg{};
+    if (!readVec3(jObj, "position", position))
+        return std::nullopt;
+    if (!readVec3(jObj, "scale", scale))
+        return std::nullopt;
+    if (!readVec3(jObj, "rotation_deg", rotDeg))
+        return std::nullopt;
 
-        return info;
-    }
+    LoadedObjectInfo info{
+        .position = position,
+        .scale = scale,
+        .rotationsToApply = ConvertFromEulerToGlobalRotations(rotDeg),
+    };
 
-    return std::nullopt;
+    return info;
 }
 } // namespace star::service::scene_loader

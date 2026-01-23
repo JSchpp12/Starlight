@@ -83,7 +83,7 @@ void SceneLoaderService::onCreateObject(command::CreateObject &event)
     auto newObject = event.load();
     m_objectTracker.insert(std::make_pair(uniqueName, newObject));
 
-    auto file = scene_loader::SceneFile("StarScene.usda");
+    auto file = scene_loader::SceneFile("StarScene.json");
     auto fileData = file.tryReadObjectInfo(uniqueName); 
     newObject->createInstance();
 
@@ -101,7 +101,7 @@ void SceneLoaderService::onCreateObject(command::CreateObject &event)
 void SceneLoaderService::onSaveSceneState(command::SaveSceneState &event)
 {
     (void)event;
-    auto file = scene_loader::SceneFile("StarScene.usda"); 
+    auto file = scene_loader::SceneFile("StarScene.json"); 
     file.write(m_objectTracker);
 }
 

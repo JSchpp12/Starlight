@@ -4,10 +4,10 @@
 #include "starlight/service/detail/scene_loader/SceneObjectTracker.hpp"
 
 #include <absl/container/flat_hash_map.h>
-#include <glm/glm.hpp>
-#include <string>
 #include <array>
+#include <glm/glm.hpp>
 #include <optional>
+#include <string>
 
 namespace star::service::scene_loader
 {
@@ -21,7 +21,7 @@ class SceneFile
         std::array<std::pair<star::Type::Axis, float>, 3> rotationsToApply;
     };
 
-    explicit SceneFile(std::string path) : m_path(std::move(path)){};
+    explicit SceneFile(std::string path) : m_path(std::move(path)) {};
 
     void write(const SceneObjectTracker &sceneObjects);
 

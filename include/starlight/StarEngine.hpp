@@ -103,7 +103,6 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
                 m_systemManager.getContext(m_defaultDevice).registerService(std::move(additionalServices[i]));
             }
         }
-
         registerScreenshotService(m_systemManager.getContext(m_defaultDevice));
         m_application.init();
     }
