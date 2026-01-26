@@ -3,8 +3,9 @@
 #include "core/Exceptions.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include <cassert>
 #include <star_common/helper/CastHelpers.hpp>
+
+#include <cassert>
 
 namespace star::service::detail::screen_capture
 {
@@ -17,7 +18,7 @@ Handle CopyCmdPolicy::registerWithManager(core::device::StarDevice &device,
             .recordBufferCallback = std::bind(&CopyCmdPolicy::recordCommandBuffer, this, std::placeholders::_1,
                                               std::placeholders::_2, std::placeholders::_3),
             .order = Command_Buffer_Order::end_of_frame,
-            .orderIndex = Command_Buffer_Order_Index::first,
+            .orderIndex = Command_Buffer_Order_Index::fifth,
             .type = Queue_Type::Ttransfer,
             .waitStage = vk::PipelineStageFlagBits::eTransfer,
             .willBeSubmittedEachFrame = false,
