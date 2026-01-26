@@ -1,7 +1,5 @@
 #include "internals/CommandBufferContainer.hpp"
 
-#include <syncstream>
-
 star::CommandBufferContainer::CommandBufferContainer(core::device::StarDevice &device, const uint8_t &numImagesInFlight)
     : bufferGroupsWithSubOrders({std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<Handle>(5)),
                                  std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<Handle>(5)),
@@ -25,11 +23,13 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
     std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>();
 
     // submit buffers which have a suborder first
-    for (int i = star::Command_Buffer_Order_Index::first; i != star::Command_Buffer_Order_Index::fifth; i++)
+    bool firstProcessed = false;
+    const size_t lastGroupIndex = static_cast<size_t>(star::Command_Buffer_Order_Index::fifth) + 1;
+    for (size_t i{1}; i < lastGroupIndex; i++)
     {
         if (!bufferGroupsWithSubOrders[order][i - 1].isInitialized())
         {
-            break;
+            continue;
         }
 
         if (shouldSubmitThisBuffer(bufferGroupsWithSubOrders[order][i - 1]))
@@ -45,9 +45,10 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
             }
 
             vk::Semaphore doneSemaphore;
-            if (i == star::Command_Buffer_Order_Index::first)
+            if (!firstProcessed)
             {
                 doneSemaphore = buffer->submitCommandBuffer(device, frameTracker, queues, additionalWaitSemaphores);
+                firstProcessed = true;
             }
             else
             {
@@ -133,11 +134,11 @@ void star::CommandBufferContainer::updateSemaphores()
     {
         if (this->bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][0].isInitialized())
         {
-            for (int j = 0; j < bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)].size(); j++)
+            for (size_t j{0}; j < bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)].size(); j++)
             {
                 auto currentBuffer =
                     allBuffers[bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][j].getID()];
-                const int nextIndex = j + 1;
+                const size_t nextIndex = j + 1;
                 const auto &nextBufferHandle =
                     bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][nextIndex];
 
@@ -149,7 +150,7 @@ void star::CommandBufferContainer::updateSemaphores()
                 }
                 else
                 {
-                    break;
+                    continue;
                 }
             }
         }
