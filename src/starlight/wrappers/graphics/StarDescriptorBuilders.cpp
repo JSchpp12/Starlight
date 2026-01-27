@@ -1,5 +1,7 @@
 #include "StarDescriptorBuilders.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+
 namespace star
 {
 StarDescriptorSetLayout::Builder &StarDescriptorSetLayout::Builder::addBinding(uint32_t binding,
@@ -209,7 +211,7 @@ vk::DescriptorSet StarDescriptorWriter::build()
     bool success = this->pool.allocateDescriptorSet(setLayout.getDescriptorSetLayout(), set);
     if (!success)
     {
-        throw std::runtime_error("Failed");
+        STAR_THROW("Failed to allocate descriptor set");
     }
     overwrite(set);
     return set;
