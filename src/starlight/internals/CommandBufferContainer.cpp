@@ -134,15 +134,15 @@ void star::CommandBufferContainer::updateSemaphores()
     {
         if (this->bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][0].isInitialized())
         {
-            for (size_t j{0}; j < bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)].size(); j++)
+            for (size_t j{0}; j < bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)].size() - 1; j++)
             {
-                auto currentBuffer =
+                auto &currentBuffer =
                     allBuffers[bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][j].getID()];
                 const size_t nextIndex = j + 1;
                 const auto &nextBufferHandle =
                     bufferGroupsWithSubOrders[static_cast<Command_Buffer_Order>(i)][nextIndex];
 
-                if (nextBufferHandle.isInitialized())
+                if (nextIndex < bufferGroupsWithSubOrders.size() && nextBufferHandle.isInitialized())
                 {
                     auto *nextBuffer = allBuffers[nextBufferHandle.getID()].get();
                     nextBuffer->commandBuffer->waitFor(currentBuffer->commandBuffer->getCompleteSemaphores(),
