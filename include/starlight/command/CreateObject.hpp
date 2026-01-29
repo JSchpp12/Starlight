@@ -5,6 +5,7 @@
 
 #include <star_common/IServiceCommand.hpp>
 #include <star_common/ServiceReply.hpp>
+
 #include <string_view>
 
 namespace star::command
@@ -27,7 +28,7 @@ struct CreateObject : public common::IServiceCommand
         std::unique_ptr<create_object::ObjectLoader> m_loader = nullptr;
     };
 
-    static constexpr std::string_view GetUniqueTypeName()
+    static inline constexpr std::string_view GetUniqueTypeName()
     {
         return create_object::GetCreateObjectCommandTypeName;
     }

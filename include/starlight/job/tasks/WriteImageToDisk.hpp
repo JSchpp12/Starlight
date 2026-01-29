@@ -13,7 +13,7 @@
 namespace star::job::tasks::write_image_to_disk
 {
 
-constexpr std::string_view WriteImageTypeName = "star::job::tasks::write_image_to_disk";
+inline static constexpr std::string_view WriteImageTypeName = "star::job::tasks::write_image_to_disk";
 
 struct BufferImageInfo
 {

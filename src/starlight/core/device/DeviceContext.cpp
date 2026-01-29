@@ -6,18 +6,19 @@
 #include "job/tasks/TaskFactory.hpp"
 #include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
-#include "job/worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
 #include "managers/ManagerRenderResource.hpp"
 #include "service/InitParameters.hpp"
 #include "service/QueueManagerService.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/event/GetQueue.hpp"
+#include "starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
 #include "starlight/service/SceneLoaderService.hpp"
 #include "starlight/wrappers/graphics/QueueFamilyIndices.hpp"
 
-#include <cassert>
 #include <star_common/HandleTypeRegistry.hpp>
 #include <star_common/helper/CastHelpers.hpp>
+
+#include <cassert>
 
 star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
     : m_device(std::move(other.m_device)), m_flightTracker(std::move(other.m_flightTracker)),
@@ -238,16 +239,14 @@ void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFl
 
     // create worker for pipeline building
     job::worker::Worker pipelineWorker{job::worker::DefaultWorker{
-        job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::build_pipeline::BuildPipelineTask,
-                                                                     64>{},
+        job::worker::default_worker::BusyWaitTaskHandlingPolicy<job::tasks::build_pipeline::BuildPipelineTask, 64>{},
         "Pipeline_Builder"}};
 
     m_taskManager.registerWorker(std::move(pipelineWorker), job::tasks::build_pipeline::BuildPipelineTaskName);
 
     // create worker for shader compilation
     job::worker::Worker shaderWorker{job::worker::DefaultWorker{
-        job::worker::default_worker::DefaultThreadTaskHandlingPolicy<job::tasks::compile_shader::CompileShaderTask,
-                                                                     64>{},
+        job::worker::default_worker::BusyWaitTaskHandlingPolicy<job::tasks::compile_shader::CompileShaderTask, 64>{},
         "Shader_Compiler"}};
     m_taskManager.registerWorker(std::move(shaderWorker), job::tasks::compile_shader::CompileShaderTypeName);
 }

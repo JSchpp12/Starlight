@@ -2,11 +2,7 @@
 
 #include "ScreenCapture.hpp"
 #include "Service.hpp"
-#include "job/tasks/WriteImageToDisk.hpp"
-
-#include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
-#include "logging/LoggingFactory.hpp"
 
 namespace star::service::screen_capture
 {

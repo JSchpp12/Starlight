@@ -10,29 +10,36 @@
 
 namespace star::job::worker::default_worker
 {
-template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPolicy
+template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
 {
   public:
-    DefaultThreadTaskHandlingPolicy()
+    BusyWaitTaskHandlingPolicy()
         : m_waitForWorkToFinishBeforeExiting(false), m_shouldRun(std::make_shared<boost::atomic<bool>>()),
           m_tasks(std::make_shared<job::TaskContainer<TTask, TQueueSize>>())
     {
     }
-    explicit DefaultThreadTaskHandlingPolicy(bool waitForWorkToFinishBeforeExiting)
+
+    explicit BusyWaitTaskHandlingPolicy(bool waitForWorkToFinishBeforeExiting)
         : m_waitForWorkToFinishBeforeExiting(waitForWorkToFinishBeforeExiting),
           m_shouldRun(std::make_shared<boost::atomic<bool>>()),
           m_tasks(std::make_shared<job::TaskContainer<TTask, TQueueSize>>())
     {
     }
+    BusyWaitTaskHandlingPolicy(const BusyWaitTaskHandlingPolicy &&) = delete;
+    BusyWaitTaskHandlingPolicy &operator=(const BusyWaitTaskHandlingPolicy &&) = delete;
+    BusyWaitTaskHandlingPolicy(BusyWaitTaskHandlingPolicy &&) = default;
+    BusyWaitTaskHandlingPolicy &operator=(BusyWaitTaskHandlingPolicy &&) = default;
+    virtual ~BusyWaitTaskHandlingPolicy() = default;
 
     void init(std::string workerName, TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
     {
-        m_workerName = std::make_shared<std::string>(workerName);
+        m_workerName = std::move(workerName);
         m_completeMessages = completeMessages;
 
         startThread();
     }
-    void queueTask(void *task)
+
+    virtual void queueTask(void *task)
     {
         TTask *typedTask = static_cast<TTask *>(task);
         m_tasks->queueTask(std::move(*typedTask));
@@ -42,20 +49,18 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
         stopThread();
     }
 
-  private:
+  protected:
     bool m_waitForWorkToFinishBeforeExiting = false;
     std::shared_ptr<boost::atomic<bool>> m_shouldRun = nullptr;
     std::shared_ptr<job::TaskContainer<TTask, TQueueSize>> m_tasks = nullptr;
     TaskContainer<complete_tasks::CompleteTask, 128> *m_completeMessages = nullptr;
-    boost::thread thread = boost::thread();
-
-    std::shared_ptr<std::string> m_workerName = nullptr;
+    boost::thread thread;
+    std::string m_workerName;
 
     void startThread()
     {
         m_shouldRun->store(true);
-        thread = boost::thread(&DefaultThreadTaskHandlingPolicy::threadFunction, &m_waitForWorkToFinishBeforeExiting,
-                               m_shouldRun.get(), m_tasks.get(), m_completeMessages, m_workerName.get());
+        thread = boost::thread([this]() { threadFunction(); });
     }
 
     void stopThread()
@@ -65,19 +70,19 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
             thread.join();
     }
 
-    static void threadFunction(const bool *mustWaitForWorkToFinishBeforeExit, boost::atomic<bool> *shouldRun,
-                               job::TaskContainer<TTask, TQueueSize> *tasks,
-                               TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages,
-                               std::string *workerName)
+    virtual void wait()
     {
-        assert(shouldRun != nullptr && tasks != nullptr && completeMessages != nullptr && workerName != nullptr);
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(2));
+    }
 
-        logStart(*workerName);
+    void threadFunction()
+    {
+        logStart(m_workerName);
 
-        bool run = shouldRun->load();
+        bool run = m_shouldRun->load();
         while (run)
         {
-            std::optional<TTask> task = tasks->getQueuedTask();
+            std::optional<TTask> task = m_tasks->getQueuedTask();
 
             if (task.has_value())
             {
@@ -86,22 +91,22 @@ template <typename TTask, size_t TQueueSize> class DefaultThreadTaskHandlingPoli
                 auto message = task.value().getCompleteMessage();
                 if (message.has_value())
                 {
-                    completeMessages->queueTask(std::move(message.value()));
+                    m_completeMessages->queueTask(std::move(message.value()));
                 }
             }
             else
             {
-                boost::this_thread::sleep_for(boost::chrono::milliseconds(2));
+                wait();
             }
 
-            if (!shouldRun->load() &&
-                (!mustWaitForWorkToFinishBeforeExit || (mustWaitForWorkToFinishBeforeExit && !task.has_value())))
+            if (!m_shouldRun->load() &&
+                (!m_waitForWorkToFinishBeforeExiting || (m_waitForWorkToFinishBeforeExiting && !task.has_value())))
             {
                 run = false;
             }
         }
 
-        logStop(*workerName);
+        logStop(m_workerName);
     }
 
     static void writeLog(std::string_view workerName, boost::log::trivial::severity_level level, std::string message)

@@ -7,24 +7,21 @@
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 
+#include <absl/container/flat_hash_map.h>
 #include <memory>
 #include <typeindex>
-#include <absl/container/flat_hash_map.h>
 
 namespace star::job
 {
 class TaskManager
 {
   public:
-    TaskManager() : m_completeTasks(std::make_unique<job::TaskContainer<job::complete_tasks::CompleteTask, 128>>()) {};
-    ~TaskManager() = default;
-
+    TaskManager() : m_completeTasks(std::make_unique<job::TaskContainer<job::complete_tasks::CompleteTask, 128>>()){};
     TaskManager(const TaskManager &) = delete;
     TaskManager &operator=(const TaskManager &) = delete;
-
     TaskManager(TaskManager &&) = default;
     TaskManager &operator=(TaskManager &&) = default;
-
+    ~TaskManager() = default;
     Handle registerNewTaskType(std::string_view taskName) noexcept;
 
     Handle registerWorker(worker::Worker newWorker, std::string_view taskName) noexcept;

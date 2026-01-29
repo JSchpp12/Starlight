@@ -1,4 +1,5 @@
 #pragma once
+
 #include "StarPipeline.hpp"
 #include "job/tasks/Task.hpp"
 

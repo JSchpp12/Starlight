@@ -2,7 +2,6 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "ConfigFile.hpp"
-#include "Enums.hpp"
 #include "StarApplication.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
@@ -13,13 +12,18 @@
 #include "event/EnginePhaseComplete.hpp"
 #include "event/FrameComplete.hpp"
 #include "event/RenderReadyForFinalization.hpp"
+#include "job/worker/DefaultWorker.hpp"
+#include "job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
 #include "service/ScreenCaptureFactory.hpp"
+#include "starlight/service/IOService.hpp"
+#include "tasks/IOTask.hpp"
 #include "util/log/SystemInfo.hpp"
+
+#include <star_common/FrameTracker.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
 
 #include <concepts>
 #include <memory>
-#include <star_common/FrameTracker.hpp>
-#include <star_common/HandleTypeRegistry.hpp>
 #include <string>
 #include <vector>
 
@@ -104,6 +108,8 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             }
         }
         registerScreenshotService(m_systemManager.getContext(m_defaultDevice));
+        registerIOService(m_systemManager.getContext(m_defaultDevice));
+
         m_application.init();
     }
 
@@ -180,12 +186,27 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
     std::shared_ptr<StarScene> currentScene = nullptr;
 
   private:
-    void registerScreenshotService(core::device::DeviceContext &context)
+    void registerScreenshotService(core::device::DeviceContext &context) const
     {
-        m_systemManager.getContext(m_defaultDevice)
-            .registerService(service::screen_capture::Builder(context.getDevice(), context.getTaskManager())
-                                 .setNumWorkers(27)
-                                 .build());
+        context.registerService(
+            service::screen_capture::Builder(context.getDevice(), context.getTaskManager()).setNumWorkers(26).build());
+    }
+
+    void registerIOService(core::device::DeviceContext &context) const
+    {
+        const std::string workerName = "IOWorker";
+        Handle wHandle;
+        {
+            // star::job::worker::Worker worker;
+
+            wHandle = context.getTaskManager().registerWorker(
+                {star::job::worker::DefaultWorker(
+                    job::worker::default_worker::SleepWaitTaskHandlingPolicy<job::tasks::io::IOTask, 64>{true},
+                    workerName)},
+                job::tasks::io::IOTaskName);
+        }
+
+        // context.registerService(service::Service{service::IOService(context.getTaskManager().getWorker(worker))});
     }
 };
 } // namespace star

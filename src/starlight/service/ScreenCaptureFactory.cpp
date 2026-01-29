@@ -3,7 +3,10 @@
 #include "service/detail/screen_capture/CopyDirectorPolicy.hpp"
 #include "service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 #include "service/detail/screen_capture/WorkerControllerPolicies.hpp"
-#include "worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
+#include "worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
+#include "job/worker/DefaultWorker.hpp"
+#include "logging/LoggingFactory.hpp"
+#include "job/tasks/WriteImageToDisk.hpp"
 
 #include <ostream>
 
@@ -29,15 +32,15 @@ Service Builder::build()
 std::vector<job::worker::Worker::WorkerConcept *> Builder::registerWorkers()
 {
     auto newWorkers = std::vector<job::worker::Worker::WorkerConcept *>(m_numWorkers);
-    for (uint8_t i = 0; i < m_numWorkers; i++)
+    for (size_t i{0}; i < static_cast<size_t>(m_numWorkers); i++)
     {
         std::ostringstream oss;
         oss << "Image Writer_" << std::to_string(i);
 
         auto worker = m_taskManager.registerWorker(
-            {job::worker::DefaultWorker(job::worker::default_worker::DefaultThreadTaskHandlingPolicy<
+            {job::worker::DefaultWorker{job::worker::default_worker::BusyWaitTaskHandlingPolicy<
                                             job::tasks::write_image_to_disk::WriteImageTask, 500>{true},
-                                        oss.str())},
+                                        oss.str()}},
             job::tasks::write_image_to_disk::WriteImageTypeName);
 
         auto *newWorker = m_taskManager.getWorker(worker);
