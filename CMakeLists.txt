@@ -489,6 +489,12 @@ set(${STARLIGHT_NAME}_INCLUDE_DIRS
     "include/starlight/core/"
 )
 
+target_precompile_headers(${STARLIGHT_NAME}
+    PUBLIC
+    "include/starlight/core/logging/LoggingFactory.hpp"
+    "include/starlight/core/device/StarDevice.hpp"
+)
+
 target_link_libraries(${STARLIGHT_NAME}
     PUBLIC
         Starlight::starlight_common
