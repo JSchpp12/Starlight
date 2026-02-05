@@ -11,7 +11,7 @@ star::StarScene::StarScene(std::shared_ptr<StarCamera> camera, common::Renderer 
 star::StarScene::StarScene(std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer,
                            std::vector<common::Renderer> renderers)
     : m_camera(std::move(camera)), m_primaryRenderer(std::move(primaryRenderer)), m_renderers(std::move(renderers))
-{ 
+{
 }
 
 void star::StarScene::cleanupRender(core::device::DeviceContext &context)
@@ -20,9 +20,10 @@ void star::StarScene::cleanupRender(core::device::DeviceContext &context)
     {
         renderer.cleanupRender(context);
     }
-    
+
     m_primaryRenderer.cleanupRender(context);
 }
+
 void star::StarScene::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
     m_camera->frameUpdate(context, frameInFlightIndex);
@@ -35,7 +36,8 @@ void star::StarScene::frameUpdate(core::device::DeviceContext &context, const ui
     m_primaryRenderer.frameUpdate(context);
 }
 
-void star::StarScene::prepRender(core::device::DeviceContext &context, const common::FrameTracker::Setup &renderImageSetup)
+void star::StarScene::prepRender(core::device::DeviceContext &context,
+                                 const common::FrameTracker::Setup &renderImageSetup)
 {
     for (auto &addRender : m_renderers)
     {

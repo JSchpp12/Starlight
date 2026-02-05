@@ -9,20 +9,24 @@ using GraphicsListen =
     star::policy::ListenForRegisterMainGraphicsRenderPolicy<star::service::HeadlessRenderResultWriteService>;
 
 star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService()
-    : GraphicsListen(*this), m_renderReady(*this), m_triggerCapturePolicy(*this)
+    : GraphicsListen(*this), m_renderReady(*this), m_triggerCapturePolicy(*this), m_listenForGetFileNamePolicy(*this)
 {
 }
 
 star::service::HeadlessRenderResultWriteService::HeadlessRenderResultWriteService(
     HeadlessRenderResultWriteService &&other)
-    : GraphicsListen(*this), m_renderReady(*this), m_triggerCapturePolicy(*this)
+    : GraphicsListen(*this), m_renderReady(*this), m_triggerCapturePolicy(*this), m_listenForGetFileNamePolicy(*this)
 {
     m_eventBus = other.m_eventBus;
+    m_cmdBus = other.m_cmdBus;
 
-    if (m_eventBus != nullptr)
+    if (m_eventBus != nullptr && m_cmdBus != nullptr)
     {
-        other.cleanup(*m_eventBus);
+        other.cleanupListeners(*m_eventBus);
+        other.cleanupListeners(*m_cmdBus);
+
         initListeners(*m_eventBus);
+        initListeners(*m_cmdBus);
     }
 }
 
@@ -32,10 +36,15 @@ star::service::HeadlessRenderResultWriteService &star::service::HeadlessRenderRe
     if (this != &other)
     {
         m_eventBus = other.m_eventBus;
-        if (m_eventBus != nullptr)
+        m_cmdBus = other.m_cmdBus;
+
+        if (m_eventBus != nullptr && m_cmdBus != nullptr)
         {
-            other.cleanup(*m_eventBus);
+            other.cleanupListeners(*m_eventBus);
+            other.cleanupListeners(*m_cmdBus);
+
             initListeners(*m_eventBus);
+            initListeners(*m_cmdBus);
         }
     }
     return *this;
@@ -55,18 +64,43 @@ star::service::HeadlessRenderResultWriteService::~HeadlessRenderResultWriteServi
     }
 }
 
-void star::service::HeadlessRenderResultWriteService::cleanup(common::EventBus &eventBus)
+void star::service::HeadlessRenderResultWriteService::onGetFileNameForFrame(
+    headless_render_result_write::GetFileNameForFrame &event) const
+{
+    assert(m_frameTracker != nullptr);
+
+    event.getReply().set(getFileName(*m_frameTracker));
+}
+
+void star::service::HeadlessRenderResultWriteService::initListeners(core::CommandBus &commandBus)
+{
+    m_listenForGetFileNamePolicy.init(commandBus);
+}
+
+void star::service::HeadlessRenderResultWriteService::cleanupListeners(common::EventBus &eventBus)
 {
     GraphicsListen::cleanup(eventBus);
     m_renderReady.cleanup(eventBus);
     m_triggerCapturePolicy.cleanup(eventBus);
 }
 
+void star::service::HeadlessRenderResultWriteService::cleanupListeners(core::CommandBus &commandBus)
+{
+    m_listenForGetFileNamePolicy.cleanup(commandBus);
+}
+
+void star::service::HeadlessRenderResultWriteService::cleanup(common::EventBus &eventBus)
+{
+    cleanupListeners(*m_eventBus);
+    cleanupListeners(*m_cmdBus);
+}
+
 void star::service::HeadlessRenderResultWriteService::init()
 {
-    assert(m_eventBus != nullptr);
+    assert(m_eventBus != nullptr && m_cmdBus != nullptr);
 
     initListeners(*m_eventBus);
+    initListeners(*m_cmdBus);
 
     m_screenshotRegistrations.resize(m_frameTracker->getSetup().getNumFramesInFlight());
 }
@@ -94,10 +128,8 @@ void star::service::HeadlessRenderResultWriteService::onStartOfNextFrame(const e
         m_managerGraphicsContainer->imageManager.get(m_mainGraphicsRenderer->getRenderToColorImages()[index])->texture;
     auto commandBuffer = m_mainGraphicsRenderer->getCommandBuffer();
 
-    std::ostringstream oss;
-    oss << "Frame - " << std::to_string(m_frameTracker->getCurrent().getGlobalFrameCounter()) << ".png";
-
-    m_eventBus->emit(event::TriggerScreenshot{std::move(targetImage), oss.str(), commandBuffer,
+    const auto name = getFileName(*m_frameTracker);
+    m_eventBus->emit(event::TriggerScreenshot{std::move(targetImage), name, commandBuffer,
                                               m_screenshotRegistrations[index], std::move(semaphore)});
 
     keepAlive = true;
@@ -106,6 +138,7 @@ void star::service::HeadlessRenderResultWriteService::onStartOfNextFrame(const e
 void star::service::HeadlessRenderResultWriteService::setInitParameters(star::service::InitParameters &params)
 {
     m_eventBus = &params.eventBus;
+    m_cmdBus = &params.commandBus;
     m_frameTracker = &params.flightTracker;
     m_managerGraphicsContainer = &params.graphicsManagers;
     m_managerCommandBuffer = &params.commandBufferManager;
@@ -132,4 +165,9 @@ void star::service::HeadlessRenderResultWriteService::onRenderReadyForFinalizati
         .build();
 
     keepAlive = true;
+}
+
+std::string star::service::HeadlessRenderResultWriteService::getFileName(const common::FrameTracker &ft) const
+{
+    return "Frame - " + std::to_string(ft.getCurrent().getGlobalFrameCounter()) + ".png";
 }

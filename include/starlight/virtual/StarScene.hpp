@@ -4,9 +4,9 @@
 #include "StarCamera.hpp"
 #include "StarObject.hpp"
 
+#include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 #include <star_common/Renderer.hpp>
-#include <star_common/FrameTracker.hpp>
 
 #include <map>
 #include <memory>
