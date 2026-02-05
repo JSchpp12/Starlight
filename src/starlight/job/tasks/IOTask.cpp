@@ -22,8 +22,8 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateIOTaskComplete(void
     return std::nullopt;
 }
 
-IOTask CreateIOTask(boost::filesystem::path filePath,
-                    std::function<void(const boost::filesystem::path &)> writeFileFunction)
+IOTask CreateIOTask(std::string filePath,
+                    std::function<void(const std::string &)> writeFileFunction)
 {
     return IOTask::Builder<IOPayload>()
         .setPayload(IOPayload{.filePath = std::move(filePath), .writeFileFunction = std::move(writeFileFunction)})

@@ -54,7 +54,7 @@ class DeviceContext : public star::common::IDeviceContext
 
     CommandSubmitter begin()
     {
-        return CommandSubmitter(std::bind(&DeviceContext::submit, this, std::placeholders::_1), m_commandBus);
+        return CommandSubmitter([this](star::common::IServiceCommand &cmd) { this->submit(cmd); }, m_commandBus);
     }
 
     void submit(star::common::IServiceCommand &command);

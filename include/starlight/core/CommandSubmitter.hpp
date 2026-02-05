@@ -1,6 +1,7 @@
 #pragma once
 
 #include "starlight/core/CommandBus.hpp"
+#include "starlight/core/Exceptions.hpp"
 
 #include <star_common/IServiceCommand.hpp>
 
@@ -9,17 +10,25 @@ namespace star::core
 class CommandSubmitter
 {
   public:
-    using SubmitToDeviceContextFunction = std::function<void(star::common::IServiceCommand &)>; 
+    using SubmitToDeviceContextFunction = std::function<void(star::common::IServiceCommand &)>;
 
     CommandSubmitter() = default;
     CommandSubmitter(SubmitToDeviceContextFunction submitFun, star::core::CommandBus &cmdBus)
-        : m_submitFun(submitFun), m_cmdBus(&cmdBus)
+        : m_cachedType(0), m_submitFun(submitFun), m_isTypeCached(false), m_cmdBus(&cmdBus)
     {
     }
     template <typename T> CommandSubmitter &set(T &command)
     {
-        m_name = command.GetUniqueTypeName();
+        std::string_view name = command.GetUniqueTypeName();
+        cacheType(name); 
+
         m_command = &command;
+        return *this;
+    }
+    CommandSubmitter &update(star::common::IServiceCommand &command)
+    {
+        m_command = &command;
+
         return *this;
     }
     CommandSubmitter &setCommand(star::common::IServiceCommand &command)
@@ -32,7 +41,8 @@ class CommandSubmitter
     /// @return
     CommandSubmitter &setName(std::string_view name)
     {
-        m_name = name;
+        cacheType(name);
+
         return *this;
     }
 
@@ -42,7 +52,12 @@ class CommandSubmitter
         assert(m_submitFun);
         assert(m_cmdBus != nullptr);
 
-        m_command->setType(m_cmdBus->getRegistry().getTypeGuaranteedExist(m_name));
+        if (!m_cachedType)
+        {
+            STAR_THROW("No type information provided");
+        }
+
+        m_command->setType(m_cachedType);
         m_submitFun(*m_command);
     }
 
@@ -52,10 +67,16 @@ class CommandSubmitter
     }
 
   private:
+    uint16_t m_cachedType;
     SubmitToDeviceContextFunction m_submitFun = nullptr;
+    bool m_isTypeCached = false;
     star::core::CommandBus *m_cmdBus = nullptr;
-
-    std::string_view m_name;
     star::common::IServiceCommand *m_command = nullptr;
+
+    void cacheType(std::string_view name)
+    {
+        m_cachedType = m_cmdBus->getRegistry().registerType(name);
+        m_isTypeCached = true;
+    }
 };
 } // namespace star::core

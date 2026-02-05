@@ -1,12 +1,12 @@
 #pragma once 
 
-#include <vulkan/vulkan.hpp>
+#ifndef NDEBUG
+#define VMA_DEBUG_INITIALIZE_ALLOCATIONS 1
+#endif
+
 #include <vk_mem_alloc.h>
 
-#include <memory>
-#include <assert.h>
-#include <iostream>
-#include <vector>
+#include <vulkan/vulkan.hpp>
 
 namespace star {
 	class Allocator {

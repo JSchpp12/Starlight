@@ -190,7 +190,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
     void registerScreenshotService(core::device::DeviceContext &context) const
     {
         context.registerService(
-            service::screen_capture::Builder(context.getDevice(), context.getTaskManager()).setNumWorkers(26).build());
+            service::screen_capture::Builder(context.getDevice(), context.getTaskManager()).setNumWorkers(22).build());
     }
 
     void registerIOService(core::device::DeviceContext &context) const

@@ -2,24 +2,24 @@
 
 namespace star::command
 {
-WriteToFile::Builder &WriteToFile::Builder::setFile(boost::filesystem::path path)
+WriteToFile::Builder &WriteToFile::Builder::setFile(std::string path)
 {
-    m_filePath = std::move(path);
+    m_path = std::move(path);
     return *this;
 }
 WriteToFile::Builder &WriteToFile::Builder::setWriteFileFunction(
-    std::function<void(const boost::filesystem::path &)> writeFileFunction)
+    std::function<void(const std::string &)> writeFileFunction)
 {
     m_writeFileFunction = std::move(writeFileFunction);
     return *this;
 }
 WriteToFile WriteToFile::Builder::build()
 {
-    return WriteToFile{std::move(m_filePath), std::move(m_writeFileFunction)};
+    return WriteToFile{std::move(m_path), std::move(m_writeFileFunction)};
 }
 
-WriteToFile::WriteToFile(boost::filesystem::path path,
-                         std::function<void(const boost::filesystem::path &)> writeContentFunction)
+WriteToFile::WriteToFile(std::string path,
+                         std::function<void(const std::string &)> writeContentFunction)
     : m_path(std::move(path)), m_writeContentFunction(std::move(writeContentFunction))
 {
 }

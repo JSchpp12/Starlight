@@ -40,11 +40,7 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
             lockCounter++;
             std::this_thread::yield();
 
-            if (lockCounter == 500)
-            {
-                core::logging::log(boost::log::trivial::info, "Blocking acquire call made. Thread yielding");
-                lockCounter = 0;
-            }
+            core::logging::log(boost::log::trivial::info, "Blocking acquire call made. Thread yielding");
         }
         ensureCreated(acquired.getID());
         return acquired;
@@ -74,6 +70,11 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
     static constexpr size_t capacity()
     {
         return TCapacity;
+    }
+
+    std::vector<TObject> &getRayObjects()
+    {
+        return m_objects;
     }
 
   private:
