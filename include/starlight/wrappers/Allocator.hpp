@@ -50,11 +50,11 @@ namespace star {
 			}
 
 			private:
-			VmaAllocationCreateFlags flags; 
-			VmaMemoryUsage usage; 
-			vk::MemoryPropertyFlags requiredFlags, preferredFlags;
-			uint32_t memoryTypeBits; 
-			float priority; 
+            VmaAllocationCreateFlags flags{}; 
+			VmaMemoryUsage usage{}; 
+			vk::MemoryPropertyFlags requiredFlags{}, preferredFlags{};
+			uint32_t memoryTypeBits = 0; 
+			float priority = 0.0f; 
 		};
 		
 		Allocator() = default;

@@ -227,9 +227,11 @@ void star::core::device::DeviceContext::processCompleteMessage(job::complete_tas
 
 void star::core::device::DeviceContext::shutdownServices()
 {
-    for (auto &service : m_services)
+    // start from the back as later services might rely on earlier "core" services which are registered first
+
+    for (size_t i{m_services.size()}; i > 0; i--)
     {
-        service.shutdown();
+        m_services[i - 1].shutdown();
     }
 }
 
@@ -262,7 +264,8 @@ void star::core::device::DeviceContext::registerService(service::Service service
 {
     m_services.emplace_back(std::move(service));
 
-    service::InitParameters params{m_deviceID,
+    service::InitParameters params{begin(),
+                                   m_deviceID,
                                    m_device,
                                    m_eventBus,
                                    m_commandBus,
@@ -277,7 +280,8 @@ void star::core::device::DeviceContext::registerService(service::Service service
 
 void star::core::device::DeviceContext::setAllServiceParameters()
 {
-    service::InitParameters params{m_deviceID,
+    service::InitParameters params{begin(),
+                                   m_deviceID,
                                    m_device,
                                    m_eventBus,
                                    m_commandBus,
@@ -295,7 +299,8 @@ void star::core::device::DeviceContext::setAllServiceParameters()
 
 void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesInFlight)
 {
-    service::InitParameters params{m_deviceID,
+    service::InitParameters params{begin(),
+                                   m_deviceID,
                                    m_device,
                                    m_eventBus,
                                    m_commandBus,

@@ -1,9 +1,20 @@
 #include "starlight/job/tasks/IOTask.hpp"
 
+#include "starlight/core/logging/LoggingFactory.hpp"
+
 namespace star::job::tasks::io
 {
 void ExecuteIOTask(void *p)
 {
+    auto *payload = static_cast<IOPayload *>(p);
+
+    if (!payload->writeFileFunction)
+    {
+        core::logging::warning("No write file function provided to IOTask. Skipping and attempting to continue");
+        return;
+    }
+
+    payload->writeFileFunction(payload->filePath);
 }
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateIOTaskComplete(void *p)
@@ -15,11 +26,8 @@ IOTask CreateIOTask(boost::filesystem::path filePath,
                     std::function<void(const boost::filesystem::path &)> writeFileFunction)
 {
     return IOTask::Builder<IOPayload>()
-    .setPayload(IOPayload{
-        .filePath = std::move(filePath),
-        .writeFileFunction = std::move(writeFileFunction)
-    })
-    .setExecute(&ExecuteIOTask)
-    .build();
+        .setPayload(IOPayload{.filePath = std::move(filePath), .writeFileFunction = std::move(writeFileFunction)})
+        .setExecute(&ExecuteIOTask)
+        .build();
 }
-} // namespace star::job::tasks
+} // namespace star::job::tasks::io

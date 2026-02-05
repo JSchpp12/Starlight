@@ -95,6 +95,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
 
         m_defaultDevice = m_systemManager.registerDevice(core::device::DeviceContext{
             m_initPolicy.createNewDevice(m_renderingInstance, features, renderingFeatures)});
+
         m_systemManager.getContext(m_defaultDevice)
             .init(m_defaultDevice,
                   m_initPolicy.getFrameInFlightTrackingSetup(m_systemManager.getContext(m_defaultDevice).getDevice()),
@@ -197,8 +198,6 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         const std::string workerName = "IOWorker";
         Handle wHandle;
         {
-            // star::job::worker::Worker worker;
-
             wHandle = context.getTaskManager().registerWorker(
                 {star::job::worker::DefaultWorker(
                     job::worker::default_worker::SleepWaitTaskHandlingPolicy<job::tasks::io::IOTask, 64>{true},
@@ -206,7 +205,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
                 job::tasks::io::IOTaskName);
         }
 
-        // context.registerService(service::Service{service::IOService(context.getTaskManager().getWorker(worker))});
+        context.registerService(service::Service{service::IOService(context.getTaskManager().getWorker(wHandle))});
     }
 };
 } // namespace star

@@ -55,9 +55,9 @@ class CopyResourcesContainer
 
   private:
     core::ManagedHandleContainer<ImageChunk, 10> m_blitTexturePool;
- 
-    data_structure::dynamic::ThreadSharedObjectPool<star::StarBuffers::Buffer,
-                                                    wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 500>
+
+    data_structure::dynamic::ThreadSharedObjectPool<
+        star::StarBuffers::Buffer, wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 500>
         m_hostVisibleBufferPool;
 };
 } // namespace star::service::detail::screen_capture

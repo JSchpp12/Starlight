@@ -29,6 +29,11 @@ class DefaultCopyPolicy
 
     void registerWithCommandBufferManager();
 
+    const Handle &getCommandBuffer()
+    {
+        return m_copyCmds.getCommandBuffer();
+    }
+
   private:
     struct SemaphoreInfo
     {
@@ -40,7 +45,6 @@ class DefaultCopyPolicy
         void createSemaphoreDataAtIndex(star::common::EventBus &eventBus, const size_t &index,
                                         std::optional<uint64_t> initialSignalValueIfTimeline = std::nullopt);
     };
-    Handle m_commandBufferTransfer, m_commandBufferGraphics;
     SemaphoreInfo m_timelineInfo, m_binaryInfo;
     Handle m_startOfFrameListener;
     DeviceInfo *m_deviceInfo = nullptr;

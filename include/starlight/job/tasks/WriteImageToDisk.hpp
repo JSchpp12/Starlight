@@ -21,8 +21,8 @@ struct BufferImageInfo
     vk::Extent3D imageExtent;
     vk::Format imageFormat;
     data_structure::dynamic::ThreadSharedObjectPool<star::StarBuffers::Buffer,
-                                           wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 500>
-        *owningObjectPool = nullptr;
+                                                    wrappers::graphics::policies::GenericBufferCreateAllocatePolicy,
+                                                    500> *owningObjectPool = nullptr;
 };
 
 struct WritePayload

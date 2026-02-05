@@ -1,15 +1,13 @@
 #pragma once
 
-#include "logging/LoggingFactory.hpp"
 #include "core/Exceptions.hpp"
+#include "core/device/DeviceContext.hpp"
 
 #include <star_common/Handle.hpp>
 
-#include <boost/lockfree/stack.hpp>
+#include <boost/lockfree/queue.hpp>
 
 #include <concepts>
-#include <optional>
-#include <thread>
 #include <vector>
 
 namespace star::data_structure::dynamic
@@ -57,6 +55,7 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
         assert(handle.getID() < TCapacity);
         return m_objects[handle.getID()];
     }
+
     const TObject &get(const Handle &handle) const
     {
         assert(handle.getID() < TCapacity);
@@ -66,7 +65,7 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
     void release(Handle handle)
     {
         assert(handle.getID() < TCapacity);
-        if (!m_available.push(handle))
+        if (!m_available.push(std::move(handle)))
         {
             STAR_THROW("Release call failed to push available space");
         }
@@ -81,7 +80,7 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
     std::vector<TObject> m_objects;
     std::vector<bool> m_created;
     TCreatePolicy m_createPolicy;
-    boost::lockfree::stack<Handle, boost::lockfree::capacity<TCapacity>> m_available;
+    boost::lockfree::queue<Handle, boost::lockfree::capacity<TCapacity>> m_available;
 
     void ensureCreated(const uint32_t &idx)
     {

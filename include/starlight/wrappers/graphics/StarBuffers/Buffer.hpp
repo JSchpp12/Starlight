@@ -45,16 +45,16 @@ class Buffer
            const vk::DeviceSize &minOffsetAlignment, const VmaAllocationCreateInfo &allocCreateInfo,
            const vk::BufferCreateInfo &bufferCreateInfo, const std::string &allocName);
 
-    void map(void **mapped);
+    void map(void **mapped) const;
 
-    void unmap();
+    void unmap() const;
 
     void writeToBuffer(void *data, void *mapped, const vk::DeviceSize &size = VK_WHOLE_SIZE,
                        const vk::DeviceSize &offset = 0);
 
     void cleanupRender(vk::Device &device);
 
-    vk::Result flush(const vk::DeviceSize &size = VK_WHOLE_SIZE, const vk::DeviceSize &offset = 0);
+    vk::Result flush(const vk::DeviceSize &size = VK_WHOLE_SIZE, const vk::DeviceSize &offset = 0) const;
 
     vk::DescriptorBufferInfo descriptorInfo(const vk::DeviceSize &size = VK_WHOLE_SIZE,
                                             const vk::DeviceSize &offset = 0);

@@ -139,7 +139,7 @@ class CommandBufferContainer
 
     void cleanup(core::device::StarDevice &device);
 
-    std::vector<vk::Semaphore> submitGroupWhenReady(core::device::StarDevice &device,
+    vk::Semaphore submitGroupWhenReady(core::device::StarDevice &device,
                                                     const star::Command_Buffer_Order &order,
                                                     const common::FrameTracker &frameTracker,
                                                     const uint64_t &currentFrameIndex,

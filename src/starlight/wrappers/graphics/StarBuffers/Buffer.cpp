@@ -22,7 +22,7 @@ vk::DeviceSize StarBuffers::Buffer::GetAlignment(const vk::DeviceSize &instanceS
     return instanceSize;
 }
 
-void StarBuffers::Buffer::map(void **mapped)
+void StarBuffers::Buffer::map(void **mapped) const
 {
     assert(this->resources && this->resources->buffer && this->resources->memory &&
            "Called map on buffer before creation");
@@ -30,7 +30,7 @@ void StarBuffers::Buffer::map(void **mapped)
     vmaMapMemory(this->resources->allocator, this->resources->memory, mapped);
 }
 
-void StarBuffers::Buffer::unmap()
+void StarBuffers::Buffer::unmap() const
 {
     vmaUnmapMemory(this->resources->allocator, this->resources->memory);
 }
@@ -52,7 +52,7 @@ void StarBuffers::Buffer::writeToBuffer(void *data, void *mapped, const vk::Devi
     }
 }
 
-vk::Result StarBuffers::Buffer::flush(const vk::DeviceSize &size, const vk::DeviceSize &offset)
+vk::Result StarBuffers::Buffer::flush(const vk::DeviceSize &size, const vk::DeviceSize &offset) const
 {
     auto result = vmaFlushAllocation(this->resources->allocator, this->resources->memory, offset, size);
     return vk::Result(result);

@@ -8,13 +8,14 @@
 #include "service/Service.hpp"
 #include "starlight/core/CommandBus.hpp"
 #include "starlight/core/CommandSubmitter.hpp"
-#include "tasks/TaskFactory.hpp"
 
-#include <memory>
 #include <star_common/FrameTracker.hpp>
 #include <star_common/IDeviceContext.hpp>
-#include <vector>
+
 #include <vulkan/vulkan.hpp>
+
+#include <memory>
+#include <vector>
 
 namespace star::core::device
 {
@@ -51,9 +52,9 @@ class DeviceContext : public star::common::IDeviceContext
 
     void prepareForNextFrame();
 
-    CommandSubmitter<DeviceContext> begin()
+    CommandSubmitter begin()
     {
-        return CommandSubmitter<DeviceContext>(*this);
+        return CommandSubmitter(std::bind(&DeviceContext::submit, this, std::placeholders::_1), m_commandBus);
     }
 
     void submit(star::common::IServiceCommand &command);
@@ -155,6 +156,7 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return m_flightTracker;
     }
+
     vk::Extent2D &getEngineResolution()
     {
         return m_engineResolution;
@@ -169,8 +171,6 @@ class DeviceContext : public star::common::IDeviceContext
     void registerService(service::Service service);
 
   private:
-    friend class CommandSubmitter<DeviceContext>;
-
     StarDevice m_device;
     common::FrameTracker m_flightTracker;
     bool m_ownsResources = false;

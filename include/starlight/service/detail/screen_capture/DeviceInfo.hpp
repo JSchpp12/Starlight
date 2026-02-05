@@ -6,6 +6,7 @@
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/managers/Queue.hpp"
 #include "job/TaskManager.hpp"
+#include "core/CommandBus.hpp"
 
 #include <star_common/EventBus.hpp>
 #include <star_common/FrameTracker.hpp>
@@ -21,5 +22,6 @@ struct DeviceInfo
     core::device::manager::Queue *queueManager = nullptr; 
     job::TaskManager *taskManager = nullptr;
     star::common::FrameTracker *flightTracker = nullptr;
+    core::CommandBus *cmdBus = nullptr;
 };
 } // namespace star::service::detail::screen_capture

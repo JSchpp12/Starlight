@@ -29,7 +29,7 @@ template <typename T> class ListenForSaveSceneState
 
     void cleanupListener(core::CommandBus &commandBus)
     {
-        auto type = commandBus.registerCommandType(star::command::save_scene_state::GetSaveSceneStateCommandTypeName);
+        const auto type = commandBus.registerCommandType(star::command::save_scene_state::GetSaveSceneStateCommandTypeName);
         if (commandBus.getRegistry().contains(type))
         {
             commandBus.removeServiceCallback(type);
@@ -38,7 +38,7 @@ template <typename T> class ListenForSaveSceneState
 
     void registerListener(core::CommandBus &commandBus)
     {
-        auto type = commandBus.registerCommandType(star::command::save_scene_state::GetSaveSceneStateCommandTypeName);
+        const auto type = commandBus.registerCommandType(star::command::save_scene_state::GetSaveSceneStateCommandTypeName);
 
         commandBus.registerServiceCallback(
             type, star::common::ServiceCallback{this, [](void *ctx, star::common::IServiceCommand &base) {

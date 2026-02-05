@@ -6,9 +6,8 @@
 #include "event/GetQueue.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include <star_common/helper/CastHelpers.hpp>
-
 #include <star_common/HandleTypeRegistry.hpp>
+#include <star_common/helper/CastHelpers.hpp>
 
 namespace star::service::detail::screen_capture
 {

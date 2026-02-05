@@ -9,7 +9,7 @@ star::CommandBufferContainer::CommandBufferContainer(core::device::StarDevice &d
 {
 }
 
-std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
+vk::Semaphore star::CommandBufferContainer::submitGroupWhenReady(
     core::device::StarDevice &device, const star::Command_Buffer_Order &order, const common::FrameTracker &frameTracker,
     const uint64_t &currentFrameIndex, absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
     std::vector<vk::Semaphore> *additionalWaitSemaphores)
@@ -20,11 +20,10 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
         this->subOrderSemaphoresUpToDate = true;
     }
 
-    std::vector<vk::Semaphore> semaphores = std::vector<vk::Semaphore>();
-
     // submit buffers which have a suborder first
     bool firstProcessed = false;
     const size_t lastGroupIndex = static_cast<size_t>(star::Command_Buffer_Order_Index::fifth) + 1;
+    vk::Semaphore lastInGroup = VK_NULL_HANDLE;
     for (size_t i{1}; i < lastGroupIndex; i++)
     {
         if (!bufferGroupsWithSubOrders[order][i - 1].isInitialized())
@@ -44,28 +43,27 @@ std::vector<vk::Semaphore> star::CommandBufferContainer::submitGroupWhenReady(
                 buffer->recordBufferCallback(*buffer->commandBuffer, frameTracker, currentFrameIndex);
             }
 
-            vk::Semaphore doneSemaphore;
+            vk::Semaphore result = VK_NULL_HANDLE; 
             if (!firstProcessed)
             {
-                doneSemaphore = buffer->submitCommandBuffer(device, frameTracker, queues, additionalWaitSemaphores);
+                result = buffer->submitCommandBuffer(device, frameTracker, queues, additionalWaitSemaphores);
                 firstProcessed = true;
             }
             else
             {
-                doneSemaphore = buffer->submitCommandBuffer(device, frameTracker, queues);
+                result = buffer->submitCommandBuffer(device, frameTracker, queues);
             }
 
-            if (i == star::Command_Buffer_Order_Index::fifth ||
-                !this->bufferGroupsWithSubOrders[order][i].isInitialized())
+            if (result != VK_NULL_HANDLE)
             {
-                semaphores.push_back(doneSemaphore);
+                lastInGroup = result;
             }
 
             resetThisBufferStatus(bufferGroupsWithSubOrders[order][i - 1]);
         }
     }
 
-    return semaphores;
+    return lastInGroup;
 }
 
 star::Handle star::CommandBufferContainer::add(

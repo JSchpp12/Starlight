@@ -22,7 +22,7 @@ class IOService
     IOService &operator=(const IOService &) = delete;
     IOService(IOService &&other); 
     IOService &operator=(IOService &&other); 
-    ~IOService(); 
+    ~IOService() = default;
 
     void init();
 
