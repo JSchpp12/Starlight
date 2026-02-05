@@ -56,8 +56,7 @@ class Worker
     template <typename TWorker> struct WorkerModel : public WorkerConcept
     {
         TWorker m_worker;
-        template <typename T>
-        explicit WorkerModel(T &&worker) : m_worker(std::forward<T>(worker))
+        template <typename T> explicit WorkerModel(T &&worker) : m_worker(std::forward<T>(worker))
         {
         }
         WorkerModel(const WorkerModel &) = delete;

@@ -38,7 +38,7 @@ class DeviceContext : public star::common::IDeviceContext
         manager::ManagerCommandBuffer &m_manager;
     };
     DeviceContext() = default;
-    explicit DeviceContext(StarDevice device) : m_device(std::move(device)) {};
+    explicit DeviceContext(StarDevice device) : m_device(std::move(device)){};
 
     virtual ~DeviceContext();
     DeviceContext(DeviceContext &&other);
@@ -200,13 +200,14 @@ class DeviceContext : public star::common::IDeviceContext
 
     void setAllServiceParameters();
 
-    void initWorkers(const uint8_t &numFramesInFlight);
+    void initWorkers(core::WorkerPool &pool, const uint8_t &numFramesInFlight);
 
     void shutdownServices();
 
     void logInit(const uint8_t &numFramesInFlight) const;
 
-    void initServices(const uint8_t &numFramesInFlight);
+    void initServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
+                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved, StarDevice &device);
 
     std::vector<Handle> processAvailableQueues();
 
@@ -219,6 +220,9 @@ class DeviceContext : public star::common::IDeviceContext
 
     absl::flat_hash_map<star::Queue_Type, Handle> selectEngineReservedQueues(
         const std::vector<Handle> &allQueueHandles);
+
+    void finalizeServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
+                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved, StarDevice &device);
 
     service::Service createQueueOwnershipService(std::vector<Handle> queueHandles,
                                                  absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);

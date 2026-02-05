@@ -93,7 +93,8 @@ void QueueManagerService::cleanupListeners(common::EventBus &eventBus)
     m_getQueueListener.cleanup(eventBus);
 }
 
-Handle QueueManagerService::getAvailableQueueWithCaps(const vk::QueueFlags &caps, const uint8_t *familyIndexToAvoid)
+Handle QueueManagerService::getAvailableQueueWithCaps(const vk::QueueFlags &caps,
+                                                      const std::unordered_set<uint8_t> *familyIndexToAvoid)
 {
     Handle selectedHandle;
 
@@ -103,7 +104,7 @@ Handle QueueManagerService::getAvailableQueueWithCaps(const vk::QueueFlags &caps
         {
             if (familyIndexToAvoid == nullptr ||
                 (familyIndexToAvoid != nullptr &&
-                 m_queueManager->get(record.first)->queue.getParentQueueFamilyIndex() != *familyIndexToAvoid))
+                 !familyIndexToAvoid->contains(m_queueManager->get(record.first)->queue.getParentQueueFamilyIndex())))
             {
                 selectedHandle = record.first;
                 break;
@@ -120,7 +121,7 @@ Handle QueueManagerService::getAvailableQueueWithCaps(const vk::QueueFlags &caps
 }
 
 Handle QueueManagerService::getAvailableQueueOfTypeAvoidIndex(const star::Queue_Type &type,
-                                                              const uint8_t *familyIndexToAvoid)
+                                                              const std::unordered_set<uint8_t> *familyIndexToAvoid)
 {
     // convert queue_type to vk::QueueFlags
     if (type == star::Queue_Type::Tpresent)
@@ -149,7 +150,7 @@ Handle QueueManagerService::getAvailableQueueOfTypeAvoidIndex(const star::Queue_
 }
 
 Handle QueueManagerService::getAvailableQueueOfTypeFromIndex(const star::Queue_Type &type,
-                                                             const uint8_t &selectFromFamilyIndex)
+                                                             const std::unordered_set<uint8_t> &selectFromFamilyIndex)
 {
     vk::QueueFlags flags;
 
@@ -173,7 +174,7 @@ Handle QueueManagerService::getAvailableQueueOfTypeFromIndex(const star::Queue_T
     {
         const auto &queue = m_queueManager->get(record.first)->queue;
 
-        if (queue.getParentQueueFamilyIndex() == selectFromFamilyIndex && queue.isCompatibleWith(flags) &&
+        if (selectFromFamilyIndex.contains(queue.getParentQueueFamilyIndex()) && queue.isCompatibleWith(flags) &&
             record.second.isAvailable)
         {
             selected = record.first;
@@ -194,7 +195,8 @@ Handle QueueManagerService::getDefaultEngineQueue(const star::Queue_Type &caps)
     return m_engineReservedQueues[caps];
 }
 
-Handle QueueManagerService::searchForQueue(const star::Queue_Type &type, const uint8_t *familyIndexData,
+Handle QueueManagerService::searchForQueue(const star::Queue_Type &type,
+                                           const std::unordered_set<uint8_t> *familyIndexData,
                                            bool requestDefaultEngineQueue, bool avoidFamilyIndex,
                                            bool selectFromFamilyIndex)
 {

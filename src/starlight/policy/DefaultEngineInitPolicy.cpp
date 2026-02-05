@@ -2,8 +2,16 @@
 
 #include "starlight/common/ConfigFile.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/job/tasks/IOTask.hpp"
+#include "starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
 #include "starlight/service/FrameInFlightControllerService.hpp"
 #include "starlight/service/HeadlessRenderResultWriteService.hpp"
+#include "starlight/service/IOService.hpp"
+#include "starlight/service/SceneLoaderService.hpp"
+#include "starlight/service/ScreenCapture.hpp"
+#include "starlight/service/detail/screen_capture/CopyDirectorPolicy.hpp"
+#include "starlight/service/detail/screen_capture/CreateDependenciesPolicies.hpp"
+#include "starlight/service/detail/screen_capture/WorkerControllerPolicies.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -57,18 +65,37 @@ common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFli
 
 std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalDeviceServices()
 {
-    std::vector<service::Service> services;
-    services.emplace_back(createFrameInFlightControllerService());
-    services.emplace_back(createHeadlessCaptureService());
+    std::vector<service::Service> services = std::vector<service::Service>(4);
+    services[0] = createFrameInFlightControllerService();
+    services[1] = createScreenCaptureService();
+    services[2] = createHeadlessCaptureService();
+    services[3] = createSceneLoaderService();
     return services;
 }
 
-service::Service DefaultEngineInitPolicy::createFrameInFlightControllerService() const
+service::Service DefaultEngineInitPolicy::createScreenCaptureService()
+{
+    return service::Service{service::ScreenCapture{service::detail::screen_capture::WorkerControllerPolicy{},
+                                                   service::detail::screen_capture::DefaultCreatePolicy{},
+                                                   service::detail::screen_capture::DefaultCopyPolicy{}}};
+}
+
+service::Service DefaultEngineInitPolicy::createIOService()
+{
+    return service::Service{service::IOService()};
+}
+
+service::Service DefaultEngineInitPolicy::createSceneLoaderService()
+{
+    return service::Service{service::SceneLoaderService()}; 
+}
+
+service::Service DefaultEngineInitPolicy::createFrameInFlightControllerService()
 {
     return service::Service{service::FrameInFlightControllerService{}};
 }
 
-service::Service DefaultEngineInitPolicy::createHeadlessCaptureService() const
+service::Service DefaultEngineInitPolicy::createHeadlessCaptureService()
 {
     return service::Service{service::HeadlessRenderResultWriteService{}};
 }

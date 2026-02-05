@@ -10,9 +10,9 @@ namespace star::service::detail::screen_capture
 class WorkerControllerPolicy
 {
   public:
-    WorkerControllerPolicy(std::vector<job::worker::Worker::WorkerConcept *> workers) : m_workers(std::move(workers))
-    {
-    }
+
+    void init(std::vector<job::worker::Worker::WorkerConcept *> workers); 
+
     void addWriteTask(star::job::tasks::write_image_to_disk::WriteImageTask newTask);
 
   private:

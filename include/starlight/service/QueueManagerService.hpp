@@ -1,6 +1,7 @@
 #pragma once
 
 #include "starlight/core/MappedHandleContainer.hpp"
+#include "starlight/core/WorkerPool.hpp"
 #include "starlight/core/device/managers/Queue.hpp"
 #include "starlight/enums/Enums.hpp"
 #include "starlight/policy/ListenForGetQueuePolicy.hpp"
@@ -18,9 +19,14 @@ class QueueManagerService
     QueueManagerService(const QueueManagerService &) = delete;
     QueueManagerService &operator=(const QueueManagerService &) = delete;
     QueueManagerService(QueueManagerService &&other);
-    QueueManagerService &operator=(QueueManagerService &&other); 
+    QueueManagerService &operator=(QueueManagerService &&other);
     ~QueueManagerService() = default;
+
     void init();
+
+    void negotiateWorkers(core::WorkerPool &pool, job::TaskManager &tm)
+    {
+    }
 
     void setInitParameters(star::service::InitParameters &params);
 
@@ -44,14 +50,16 @@ class QueueManagerService
 
     void initListeners(common::EventBus &eventBus);
 
-    void cleanupListeners(common::EventBus &eventBus); 
+    void cleanupListeners(common::EventBus &eventBus);
 
-    Handle getAvailableQueueWithCaps(const vk::QueueFlags &caps, const uint8_t *familyIndexToAvoid);
-    Handle getAvailableQueueOfTypeAvoidIndex(const star::Queue_Type &type, const uint8_t *familyIndexToAvoid);
-    Handle getAvailableQueueOfTypeFromIndex(const star::Queue_Type &type, const uint8_t &selectFromFamilyIndex); 
+    Handle getAvailableQueueWithCaps(const vk::QueueFlags &caps, const std::unordered_set<uint8_t> *familyIndexToAvoid);
+    Handle getAvailableQueueOfTypeAvoidIndex(const star::Queue_Type &type,
+                                             const std::unordered_set<uint8_t> *familyIndexToAvoid);
+    Handle getAvailableQueueOfTypeFromIndex(const star::Queue_Type &type,
+                                            const std::unordered_set<uint8_t> &selectFromFamilyIndex);
     Handle getDefaultEngineQueue(const star::Queue_Type &caps);
 
-    Handle searchForQueue(const star::Queue_Type &caps, const uint8_t *familyIndexInfo, bool requestDefaultEngineQueue,
-                          bool avoidFamilyIndex, bool selectFromFamilyInfo);
+    Handle searchForQueue(const star::Queue_Type &caps, const std::unordered_set<uint8_t> *familyIndexInfo,
+                          bool requestDefaultEngineQueue, bool avoidFamilyIndex, bool selectFromFamilyInfo);
 };
 } // namespace star::service

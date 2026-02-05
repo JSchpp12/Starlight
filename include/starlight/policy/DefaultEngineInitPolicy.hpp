@@ -1,10 +1,9 @@
 #pragma once
 
-#include "starlight/core/device/StarDevice.hpp"
 #include "starlight/service/Service.hpp"
 
-#include <vulkan/vulkan.hpp>
 #include <star_common/FrameTracker.hpp>
+#include <vulkan/vulkan.hpp>
 
 #include <set>
 
@@ -26,13 +25,19 @@ class DefaultEngineInitPolicy
 
     std::vector<service::Service> getAdditionalDeviceServices();
 
-    core::RenderingInstance createRenderingInstance(std::string appName); 
-  
+    core::RenderingInstance createRenderingInstance(std::string appName);
+
+    static service::Service createScreenCaptureService();
+
+    static service::Service createIOService();
+
+    static service::Service createFrameInFlightControllerService();
+
+    static service::Service createHeadlessCaptureService();
+
+    static service::Service createSceneLoaderService();
+
   private:
     uint8_t m_maxNumFramesInFlight{1};
-
-    service::Service createFrameInFlightControllerService() const; 
-
-    service::Service createHeadlessCaptureService() const;
 };
 } // namespace star::policy

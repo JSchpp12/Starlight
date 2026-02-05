@@ -8,11 +8,11 @@
 #include "job/worker/Worker.hpp"
 #include "managers/ManagerRenderResource.hpp"
 #include "service/InitParameters.hpp"
-#include "service/QueueManagerService.hpp"
+#include "starlight/core/WorkerPool.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/event/GetQueue.hpp"
 #include "starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
-#include "starlight/service/SceneLoaderService.hpp"
+#include "starlight/service/QueueManagerService.hpp"
 #include "starlight/wrappers/graphics/QueueFamilyIndices.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
@@ -112,14 +112,28 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
     m_commandBufferManager->init(m_graphicsManagers.queueManager);
     m_renderResourceManager = std::make_unique<ManagerRenderResource>();
 
-    m_services.emplace_back(createQueueOwnershipService(availableQueues, engineReservedQueues));
-    m_services.emplace_back(createSceneLoaderService());
-    initServices(m_flightTracker.getSetup().getNumFramesInFlight());
-
-    m_transferWorker = createTransferWorker(m_device, engineReservedQueues);
-    initWorkers(m_flightTracker.getSetup().getNumFramesInFlight());
+    star::core::WorkerPool pool = core::WorkerPool(static_cast<uint8_t>(boost::thread::hardware_concurrency() - 1));
+    finalizeServices(pool, std::move(availableQueues), engineReservedQueues, m_device);
+    initWorkers(pool, m_flightTracker.getSetup().getNumFramesInFlight());
 
     m_ownsResources = true;
+}
+
+void star::core::device::DeviceContext::finalizeServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
+                                                         absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+                                                         StarDevice &device)
+{
+    {
+        auto ordered = std::vector<star::service::Service>(m_services.size() + 1);
+        ordered[0] = createQueueOwnershipService(std::move(queueHandles), engineReserved);
+        for (size_t i{0}; i < m_services.size(); i++)
+        {
+            ordered[i + 1] = std::move(m_services[i]);
+        }
+        m_services = std::move(ordered);
+    }
+
+    initServices(pool, std::move(queueHandles), std::move(engineReserved), device);
 }
 
 void star::core::device::DeviceContext::waitIdle()
@@ -176,17 +190,18 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::cr
     std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
     std::vector<StarQueue *> transferWorkerQueues = std::vector<StarQueue *>(targetNumQueuesToUse);
 
-    auto selectedTransferFamilyIndex =
+    const uint8_t selectedTransferQueueIndex =
         m_graphicsManagers.queueManager.get(engineReserved.at(star::Queue_Type::Ttransfer))
             ->queue.getParentQueueFamilyIndex();
 
-    Handle queue;
     for (size_t i{0}; i < targetNumQueuesToUse; i++)
     {
+        Handle queue;
+
         m_eventBus.emit(event::GetQueue::Builder()
                             .setQueueData(queue)
                             .setQueueType(star::Queue_Type::Ttransfer)
-                            .setSelectFromFamilyIndex(selectedTransferFamilyIndex)
+                            .setSelectFromFamilyIndex({selectedTransferQueueIndex})
                             .build());
 
         if (queue.isInitialized())
@@ -235,15 +250,23 @@ void star::core::device::DeviceContext::shutdownServices()
     }
 }
 
-void star::core::device::DeviceContext::initWorkers(const uint8_t &numFramesInFlight)
+void star::core::device::DeviceContext::initWorkers(core::WorkerPool &pool, const uint8_t &numFramesInFlight)
 {
     ManagerRenderResource::init(m_deviceID, &m_device, m_transferWorker, numFramesInFlight);
 
+    if (!pool.allocateWorker())
+    {
+        STAR_THROW("Unable to allocate worker from pool for pipeline");
+    }
     // create worker for pipeline building
     job::worker::Worker pipelineWorker{job::worker::DefaultWorker{
         job::worker::default_worker::BusyWaitTaskHandlingPolicy<job::tasks::build_pipeline::BuildPipelineTask, 64>{},
         "Pipeline_Builder"}};
 
+    if (!pool.allocateWorker())
+    {
+        STAR_THROW("Unable to allocate worker from pool for shader compiler");
+    }
     m_taskManager.registerWorker(std::move(pipelineWorker), job::tasks::build_pipeline::BuildPipelineTaskName);
 
     // create worker for shader compilation
@@ -263,19 +286,6 @@ void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight
 void star::core::device::DeviceContext::registerService(service::Service service)
 {
     m_services.emplace_back(std::move(service));
-
-    service::InitParameters params{begin(),
-                                   m_deviceID,
-                                   m_device,
-                                   m_eventBus,
-                                   m_commandBus,
-                                   m_taskManager,
-                                   m_graphicsManagers,
-                                   *m_commandBufferManager,
-                                   *m_renderResourceManager,
-                                   m_flightTracker};
-
-    m_services.back().init(params);
 }
 
 void star::core::device::DeviceContext::setAllServiceParameters()
@@ -297,7 +307,9 @@ void star::core::device::DeviceContext::setAllServiceParameters()
     }
 }
 
-void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesInFlight)
+void star::core::device::DeviceContext::initServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
+                                                     absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+                                                     StarDevice &device)
 {
     service::InitParameters params{begin(),
                                    m_deviceID,
@@ -310,9 +322,14 @@ void star::core::device::DeviceContext::initServices(const uint8_t &numOfFramesI
                                    *m_renderResourceManager,
                                    m_flightTracker};
 
-    for (auto &service : m_services)
+    // init the service 0 which should be the queue manager
+    m_services[0].init(pool, params);
+    m_transferWorker = createTransferWorker(device, std::move(engineReserved));
+
+    // init the rest after the transfer queues are created
+    for (size_t i{1}; i < m_services.size(); i++)
     {
-        service.init(params);
+        m_services[i].init(pool, params);
     }
 }
 
@@ -468,11 +485,5 @@ star::service::Service star::core::device::DeviceContext::createQueueOwnershipSe
     std::vector<Handle> queueHandles, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved)
 {
     auto service = service::QueueManagerService(std::move(queueHandles), std::move(engineReserved));
-    return star::service::Service(std::move(service));
-}
-
-star::service::Service star::core::device::DeviceContext::createSceneLoaderService()
-{
-    auto service = service::SceneLoaderService();
     return star::service::Service(std::move(service));
 }

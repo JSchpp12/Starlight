@@ -18,6 +18,10 @@ class SceneLoaderService
     SceneLoaderService &operator=(SceneLoaderService &&other) noexcept;
     ~SceneLoaderService() = default;
 
+    void negotiateWorkers(core::WorkerPool &pool, job::TaskManager &tm)
+    {
+    }
+    
     void init();
 
     void setInitParameters(star::service::InitParameters &params);

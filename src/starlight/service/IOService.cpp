@@ -4,7 +4,7 @@
 
 namespace star::service
 {
-IOService::IOService(job::worker::Worker *worker) : m_listenForFileWrite(*this), m_worker(worker)
+IOService::IOService() : m_listenForFileWrite(*this)
 {
 }
 

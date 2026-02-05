@@ -17,31 +17,45 @@ class CommandSubmitter
         : m_cachedType(0), m_submitFun(submitFun), m_isTypeCached(false), m_cmdBus(&cmdBus)
     {
     }
+
     template <typename T> CommandSubmitter &set(T &command)
     {
         std::string_view name = command.GetUniqueTypeName();
-        cacheType(name); 
+        cacheType(name);
 
         m_command = &command;
         return *this;
     }
+
     CommandSubmitter &update(star::common::IServiceCommand &command)
     {
         m_command = &command;
 
         return *this;
     }
+
     CommandSubmitter &setCommand(star::common::IServiceCommand &command)
     {
         m_command = &command;
         return *this;
     }
+
     /// @brief Manually define a unique name for the type of command to submit.
     /// @param name The unique name to be used in lookups for this type of command
     /// @return
-    CommandSubmitter &setName(std::string_view name)
+    CommandSubmitter &setType(std::string_view name)
     {
         cacheType(name);
+
+        return *this;
+    }
+
+    /// @brief Manually define a unique name for the type of command to submit.
+    /// @param name The unique name to be used in lookups for this type of command
+    /// @return
+    CommandSubmitter &setType(uint16_t type)
+    {
+        cacheType(type);
 
         return *this;
     }
@@ -75,7 +89,12 @@ class CommandSubmitter
 
     void cacheType(std::string_view name)
     {
-        m_cachedType = m_cmdBus->getRegistry().registerType(name);
+        cacheType(m_cmdBus->getRegistry().registerType(name));
+    }
+
+    void cacheType(uint16_t type)
+    {
+        m_cachedType = std::move(type);
         m_isTypeCached = true;
     }
 };

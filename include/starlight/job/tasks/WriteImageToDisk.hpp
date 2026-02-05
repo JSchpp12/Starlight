@@ -22,7 +22,7 @@ struct BufferImageInfo
     vk::Format imageFormat;
     data_structure::dynamic::ThreadSharedObjectPool<star::StarBuffers::Buffer,
                                                     wrappers::graphics::policies::GenericBufferCreateAllocatePolicy,
-                                                    500> *owningObjectPool = nullptr;
+                                                    50> *owningObjectPool = nullptr;
 };
 
 struct WritePayload

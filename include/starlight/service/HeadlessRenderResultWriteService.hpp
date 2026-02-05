@@ -22,13 +22,17 @@ class HeadlessRenderResultWriteService
 
     void init();
 
+    void negotiateWorkers(star::core::WorkerPool &pool, star::job::TaskManager &tm)
+    {
+    }
+
     void setInitParameters(star::service::InitParameters &params);
 
     void shutdown();
 
     void cleanup(common::EventBus &eventBus);
 
-    void onStartOfNextFrame(const event::StartOfNextFrame &event, bool &keepAlive); 
+    void onStartOfNextFrame(const event::StartOfNextFrame &event, bool &keepAlive);
 
     void onRegisterMainGraphics(const event::RegisterMainGraphicsRenderer &event, bool &keepAlive);
 
@@ -38,7 +42,7 @@ class HeadlessRenderResultWriteService
     friend class star::policy::ListenForRegisterMainGraphicsRenderPolicy<HeadlessRenderResultWriteService>;
 
     star::policy::ListenForRenderReadyForFinalization<HeadlessRenderResultWriteService> m_renderReady;
-    star::policy::ListenForStartOfNextFramePolicy<HeadlessRenderResultWriteService> m_triggerCapturePolicy; 
+    star::policy::ListenForStartOfNextFramePolicy<HeadlessRenderResultWriteService> m_triggerCapturePolicy;
     std::vector<Handle> m_screenshotRegistrations;
 
     common::EventBus *m_eventBus = nullptr;

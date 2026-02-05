@@ -1,11 +1,13 @@
 #pragma once
 
 #include "starlight/enums/Enums.hpp"
+
 #include <star_common/Handle.hpp>
 #include <star_common/IEvent.hpp>
 
-#include <string_view>
 #include <vulkan/vulkan.hpp>
+
+#include <string_view>
 
 namespace star::event
 {
@@ -20,8 +22,8 @@ class GetQueue : public common::IEvent
         Builder() = default;
         Builder &setQueueData(Handle &queueData); 
         Builder &setQueueType(const star::Queue_Type &type);
-        Builder &setSelectFromFamilyIndex(const uint8_t &familyIndex);
-        Builder &setAvoidFamilyIndex(const uint8_t &familyIndex);
+        Builder &setSelectFromFamilyIndex(const std::unordered_set<uint8_t> &familyIndex);
+        Builder &setAvoidFamilyIndex(const std::unordered_set<uint8_t> &familyIndex);
         Builder &getEngineDedicatedQueue();
         GetQueue build();
 
@@ -29,8 +31,8 @@ class GetQueue : public common::IEvent
         star::Queue_Type m_type;
         bool m_selectEngineQueue = false;
         Handle *m_queueData = nullptr;
-        const uint8_t *m_selectFromFamilyIndex = nullptr;
-        const uint8_t *m_avoidFamilyIndex = nullptr;
+        const std::unordered_set<uint8_t> *m_selectFromFamilyIndex = nullptr;
+        const std::unordered_set<uint8_t> *m_avoidFamilyIndex = nullptr;
     };
     virtual ~GetQueue() = default;
 
@@ -42,7 +44,7 @@ class GetQueue : public common::IEvent
     {
         return m_requestedQueueType;
     }
-    const uint8_t *getQueueFamilyInfo() const
+    const std::unordered_set<uint8_t> *getQueueFamilyInfo() const
     {
         return m_selectedQueueFamilyIndexInfo;
     }
@@ -63,13 +65,13 @@ class GetQueue : public common::IEvent
     friend class Builder;
 
     GetQueue(Handle *queueData, star::Queue_Type requestedQueueType, bool getEngineReservedQueue);
-    GetQueue(Handle *queueData, star::Queue_Type requestedQueueType, bool getEngineReservedQueue, const uint8_t &familyIndex,
+    GetQueue(Handle *queueData, star::Queue_Type requestedQueueType, bool getEngineReservedQueue, const std::unordered_set<uint8_t> &familyIndex,
              bool selectFromIndex, bool avoidIndex); 
 
     mutable Handle *m_queueData = nullptr;
     star::Queue_Type m_requestedQueueType;
     bool m_requestEngineReservedQueue;
-    const uint8_t *m_selectedQueueFamilyIndexInfo = nullptr;
+    const std::unordered_set<uint8_t> *m_selectedQueueFamilyIndexInfo = nullptr;
     bool m_selectFromIndex = false;
     bool m_avoidIndex = false; 
 };

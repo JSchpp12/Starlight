@@ -13,6 +13,8 @@
 #include "policy/command/ListenForGetScreenCaptureSyncInfo.hpp"
 #include "service/InitParameters.hpp"
 #include "starlight/core/waiter/sync_renderer/Factory.hpp"
+#include "starlight/job/worker/DefaultWorker.hpp"
+#include "starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
@@ -105,6 +107,22 @@ class ScreenCapture
     }
     ~ScreenCapture() = default;
 
+    void negotiateWorkers(star::core::WorkerPool &pool, job::TaskManager &tm)
+    {
+        size_t numToCreate = 0;
+        const size_t goal = 28;
+
+        for (size_t i{0}; i < goal; i++)
+        {
+            if (pool.allocateWorker())
+            {
+                numToCreate++;
+            }
+        }
+
+        m_workerPolicy.init(registerWorkers(numToCreate, tm));
+    }
+
     void init()
     {
         assert(m_deviceInfo.eventBus != nullptr);
@@ -156,6 +174,29 @@ class ScreenCapture
     Handle m_subscriberHandle;
     detail::screen_capture::CopyRouter m_actionRouter;
     detail::screen_capture::DeviceInfo m_deviceInfo;
+
+    std::vector<job::worker::Worker::WorkerConcept *> registerWorkers(const size_t &numToCreate, job::TaskManager &tm)
+    {
+        auto newWorkers = std::vector<job::worker::Worker::WorkerConcept *>(numToCreate);
+        for (size_t i{0}; i < numToCreate; i++)
+        {
+            std::ostringstream oss;
+            oss << "Image Writer_" << std::to_string(i);
+
+            auto worker = tm.registerWorker(
+                {job::worker::DefaultWorker{job::worker::default_worker::BusyWaitTaskHandlingPolicy<
+                                                job::tasks::write_image_to_disk::WriteImageTask, 500>{true},
+                                            oss.str()}},
+                job::tasks::write_image_to_disk::WriteImageTypeName);
+
+            auto *newWorker = tm.getWorker(worker);
+            assert(newWorker != nullptr && "Worker was not properly created");
+
+            newWorkers[i] = newWorker->getRawConcept();
+        }
+
+        return newWorkers;
+    }
 
     void eventCallback(const star::common::IEvent &e, bool &keepAlive)
     {

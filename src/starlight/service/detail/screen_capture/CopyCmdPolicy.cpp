@@ -212,7 +212,7 @@ void CopyCmdPolicy::waitForSemaphoreIfNecessary(const star::common::FrameTracker
 void CopyCmdPolicy::recordCommandBuffer(StarCommandBuffer &commandBuffer,
                                         const star::common::FrameTracker &frameTracker, const uint64_t &frameIndex)
 {
-    //waitForSemaphoreIfNecessary(frameTracker);
+    waitForSemaphoreIfNecessary(frameTracker);
 
     commandBuffer.begin(frameTracker.getCurrent().getFrameInFlightIndex());
     addMemoryDependenciesToPrepForCopy(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));

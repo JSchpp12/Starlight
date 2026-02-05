@@ -11,7 +11,7 @@ GetQueue::GetQueue(Handle *queueData, star::Queue_Type requestedQueueType, bool 
 }
 
 GetQueue::GetQueue(Handle *queueData, star::Queue_Type requestedQueueType, bool getEngineReservedQueue,
-                   const uint8_t &familyIndex, bool selectFromIndex, bool avoidIndex)
+                   const std::unordered_set<uint8_t> &familyIndex, bool selectFromIndex, bool avoidIndex)
     : IEvent(common::HandleTypeRegistry::instance().registerType(GetQueueEventTypeName)), m_queueData(queueData),
       m_requestedQueueType(std::move(requestedQueueType)), m_requestEngineReservedQueue(getEngineReservedQueue),
       m_selectedQueueFamilyIndexInfo(&familyIndex), m_selectFromIndex(selectFromIndex), m_avoidIndex(avoidIndex)
@@ -30,13 +30,13 @@ GetQueue::Builder &GetQueue::Builder::setQueueType(const star::Queue_Type &type)
     return *this;
 }
 
-GetQueue::Builder &GetQueue::Builder::setSelectFromFamilyIndex(const uint8_t &familyIndex)
+GetQueue::Builder &GetQueue::Builder::setSelectFromFamilyIndex(const std::unordered_set<uint8_t> &familyIndex)
 {
     m_selectFromFamilyIndex = &familyIndex;
     return *this;
 }
 
-GetQueue::Builder &GetQueue::Builder::setAvoidFamilyIndex(const uint8_t &familyIndex)
+GetQueue::Builder &GetQueue::Builder::setAvoidFamilyIndex(const std::unordered_set<uint8_t> &familyIndex)
 {
     m_avoidFamilyIndex = &familyIndex;
     return *this;

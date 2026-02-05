@@ -37,7 +37,7 @@ class CopyResourcesContainer
     }
 
     data_structure::dynamic::ThreadSharedObjectPool<
-        star::StarBuffers::Buffer, wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 500> &
+        star::StarBuffers::Buffer, wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 50> &
     getBufferPool()
     {
         return m_hostVisibleBufferPool;
@@ -57,7 +57,7 @@ class CopyResourcesContainer
     core::ManagedHandleContainer<ImageChunk, 10> m_blitTexturePool;
 
     data_structure::dynamic::ThreadSharedObjectPool<
-        star::StarBuffers::Buffer, wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 500>
+        star::StarBuffers::Buffer, wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 50>
         m_hostVisibleBufferPool;
 };
 } // namespace star::service::detail::screen_capture
