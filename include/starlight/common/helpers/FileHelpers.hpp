@@ -2,12 +2,12 @@
 
 #include "Enums.hpp"
 
+#include <boost/filesystem.hpp>
+
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <string>
-
-#include <boost/filesystem.hpp>
 
 namespace star::file_helpers
 {

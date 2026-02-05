@@ -1,6 +1,7 @@
 #include "SharedCompressedTexture.hpp"
 
 #include "FileHelpers.hpp"
+#include "starlight/core/Exceptions.hpp"
 
 ktx_transcode_fmt_e star::SharedCompressedTexture::GetResultTargetCompressedFormat(
     const vk::PhysicalDevice &physicalDevice)
@@ -29,7 +30,12 @@ star::SharedCompressedTexture::SharedCompressedTexture(const std::string &pathTo
                                                        const vk::PhysicalDevice &physicalDevice)
     : pathToFile(pathToFile)
 {
-    VerifyFiles(pathToFile);
+    if (!VerifyFiles(pathToFile))
+    {
+        std::ostringstream oss; 
+        oss << "File verification failed. Either file is not a ktx2 file type or does not exist: " << pathToFile; 
+        STAR_THROW(oss.str());
+    }
 
     this->selectedTranscodeTargetFormat = GetResultTargetCompressedFormat(physicalDevice);
 }
@@ -39,11 +45,12 @@ star::SharedCompressedTexture::~SharedCompressedTexture()
     ktxTexture2_Destroy(this->resource);
 }
 
-void star::SharedCompressedTexture::triggerTranscode(){
-    boost::unique_lock<boost::mutex> lock; 
+void star::SharedCompressedTexture::triggerTranscode()
+{
+    boost::unique_lock<boost::mutex> lock;
     ktxTexture2 *texture = nullptr;
 
-    giveMeTranscodedImage(lock, texture); 
+    giveMeTranscodedImage(lock, texture);
 }
 
 void star::SharedCompressedTexture::giveMeTranscodedImage(boost::unique_lock<boost::mutex> &lock, ktxTexture2 *&texture)
@@ -145,13 +152,9 @@ ktx_transcode_fmt_e star::SharedCompressedTexture::SelectTranscodeFormat(
     return targetFormat;
 }
 
-void star::SharedCompressedTexture::VerifyFiles(const std::string &imagePath)
+bool star::SharedCompressedTexture::VerifyFiles(const std::string &imagePath)
 {
-    // check extension on file
-    assert(file_helpers::GetFileExtension(imagePath) == ".ktx2");
-
-    // ensure file exists
-    assert(file_helpers::FileExists(imagePath));
+    return file_helpers::GetFileExtension(imagePath) == ".ktx2" && file_helpers::FileExists(imagePath);
 }
 
 void star::SharedCompressedTexture::loadKTX()

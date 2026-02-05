@@ -22,7 +22,7 @@ class Worker
     };
 
     template <typename TWorker>
-    Worker(TWorker worker) : m_impl(std::make_unique<WorkerModel<TWorker>>(std::move(worker)))
+    Worker(TWorker &&worker) : m_impl(std::make_unique<WorkerModel<TWorker>>(std::forward<TWorker>(worker)))
     {
     }
     Worker() = delete;
@@ -56,13 +56,13 @@ class Worker
     template <typename TWorker> struct WorkerModel : public WorkerConcept
     {
         TWorker m_worker;
-        explicit WorkerModel(TWorker worker) : m_worker(std::move(worker))
+        template <typename T> explicit WorkerModel(T &&worker) : m_worker(std::forward<T>(worker))
         {
         }
         WorkerModel(const WorkerModel &) = delete;
         WorkerModel &operator=(const WorkerModel &) = delete;
-        WorkerModel(WorkerModel &&) = default;
-        WorkerModel &operator=(WorkerModel &&) = default;
+        WorkerModel(WorkerModel &&) = delete;
+        WorkerModel &operator=(WorkerModel &&) = delete;
         virtual ~WorkerModel() = default;
 
         void doCleanup() override

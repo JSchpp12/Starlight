@@ -3,14 +3,11 @@
 #include "Color.hpp"
 #include "ConfigFile.hpp"
 #include "HeightDisplacementMaterial.hpp"
-#include "RuntimeUpdateTexture.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "StarMesh.hpp"
 #include "StarObject.hpp"
 #include "VertColorMaterial.hpp"
 #include "Vertex.hpp"
-
-#include <glm/glm.hpp>
 
 #include <memory>
 

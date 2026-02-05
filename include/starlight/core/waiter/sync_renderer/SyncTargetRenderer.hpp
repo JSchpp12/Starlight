@@ -18,10 +18,10 @@ class SyncTargetRenderer : public std::enable_shared_from_this<SyncTargetRendere
                        core::device::manager::ManagerCommandBuffer &commandBufferManager, Handle sourceCommandBuffer,
                        Handle targetCommandBuffer, vk::Semaphore targetSemaphore, uint64_t createdOnFrameCount,
                        uint8_t targetFrameIndex)
-        : m_eventBus(eventBus), m_commandBufferManager(commandBufferManager),
-          m_sourceCommandBuffer(std::move(sourceCommandBuffer)), m_targetCommandBuffer(std::move(targetCommandBuffer)),
-          m_targetSemaphore(std::move(targetSemaphore)), m_createdOnFrameCount(std::move(createdOnFrameCount)),
-          m_targetFrameIndex(targetFrameIndex), m_startOfFrameListener(*this)
+        : m_sourceCommandBuffer(std::move(sourceCommandBuffer)), m_targetCommandBuffer(std::move(targetCommandBuffer)),
+          m_targetSemaphore(std::move(targetSemaphore)), m_eventBus(eventBus),
+          m_commandBufferManager(commandBufferManager), m_targetFrameIndex(std::move(targetFrameIndex)),
+          m_createdOnFrameCount(std::move(createdOnFrameCount)), m_startOfFrameListener(*this)
     {
     }
 

@@ -140,8 +140,8 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- not a valid rendering setup");
 
     // submit before
-    std::vector<vk::Semaphore> beforeSemaphores = this->buffers.submitGroupWhenReady(
-        device, Command_Buffer_Order::before_render_pass, frameTracker, currentFrameIndex, m_preparedQueues);
+    std::vector<vk::Semaphore> beforeSemaphores = {this->buffers.submitGroupWhenReady(
+        device, Command_Buffer_Order::before_render_pass, frameTracker, currentFrameIndex, m_preparedQueues)};
 
     // need to submit each group of buffers depending on the queue family they are in
     CommandBufferContainer::CompleteRequest &mainGraphicsBuffer = this->buffers.get(*this->mainGraphicsBufferHandle);
@@ -162,12 +162,12 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
 
     std::vector<vk::Semaphore> waitSemaphores = {mainGraphicsSemaphore};
 
-    std::vector<vk::Semaphore> finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(
+    vk::Semaphore finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(
         device, Command_Buffer_Order::end_of_frame, frameTracker, currentFrameIndex, m_preparedQueues, &waitSemaphores);
 
-    if (!finalSubmissionSemaphores.empty())
+    if (finalSubmissionSemaphores != VK_NULL_HANDLE)
     {
-        return finalSubmissionSemaphores[0];
+        return finalSubmissionSemaphores;
     }
     return mainGraphicsSemaphore;
 }

@@ -75,6 +75,8 @@ class CreateDescriptorsOnEventPolicy
 
     void eventCallback(const common::IEvent &e, bool &keepAlive)
     {
+        (void)e;
+        
         m_create.create();
         keepAlive = false;
     }

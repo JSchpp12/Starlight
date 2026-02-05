@@ -30,8 +30,10 @@ add_subdirectory("extern/spirv_headers")
 set(SPIRV_SKIP_EXECUTABLES ON CACHE BOOL "" FORCE)
 set(SPIRV_SKIP_TESTS ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_tools")
+
 set(ENABLE_CTEST OFF CACHE BOOL "" FORCE)
 set(ENABLE_GLSLANG_BINARIES OFF CACHE BOOL "" FORCE)
+set(ENABLE_GLSLANG_JS OFF CACHE BOOL "" FORCE)
 add_subdirectory("extern/glslang")
 
 find_package(glm CONFIG REQUIRED)
@@ -46,7 +48,6 @@ find_package(absl CONFIG REQUIRED)
 # add all necessary dependencies
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
 set(SPIRV_REFLECT_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SPIRV_REFLECT_STATIC_LIB ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/spirv_reflect")
 
 set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "" FORCE)
@@ -56,11 +57,21 @@ set(SHADERC_SKIP_COPYRIGHT_CHECK ON CACHE BOOL "" FORCE)
 add_subdirectory("extern/shaderc")
 
 set(${STARLIGHT_NAME}_SOURCE
-    "src/starlight/StarEngine.cpp" 
+    "src/starlight/StarEngine.cpp"
+    "src/starlight/core/CommandSubmitter.cpp"
     "src/starlight/core/helper/queue/QueueHelpers.cpp"
     "src/starlight/core/helper/command_buffer/CommandBufferHelpers.cpp"
     "src/starlight/data_structure/dynamic/ThreadSharedObjectPool.cpp"
     "src/starlight/graphics/PipelineFactory.cpp"
+    "src/starlight/core/WorkerPool.cpp"
+    "src/starlight/core/CommandBus.cpp"
+    "src/starlight/command/CreateObject.cpp"
+    "src/starlight/command/detail/create_object/ObjectLoader.cpp"
+    "src/starlight/command/detail/create_object/FromObjFileLoader.cpp"
+    "src/starlight/command/detail/create_object/DirectObjCreation.cpp"
+    "src/starlight/command/SaveSceneState.cpp"
+    "src/starlight/command/WriteToFile.cpp"
+    "src/starlight/command/GetScreenCaptureSyncInfo.cpp"
     "src/starlight/core/logging/LoggingFactory.cpp"
     "src/starlight/core/renderer/LightRenderer.cpp"
     "src/starlight/core/renderer/RendererBase.cpp"
@@ -135,6 +146,11 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/event/RegisterMainGraphicsRenderer.cpp"
     "src/starlight/event/StartOfNextFrame.cpp"
     "src/starlight/event/GetQueue.cpp"
+    "src/starlight/policy/command/ListenFor.cpp"
+    "src/starlight/policy/command/ListenForCreateObject.cpp"
+    "src/starlight/policy/command/ListenForSaveSceneState.cpp"
+    "src/starlight/policy/command/ListenForWriteToFile.cpp"
+    "src/starlight/policy/command/ListenForGetScreenCaptureSyncInfo.cpp"
     "src/starlight/policy/ListenForPrepForNextFramePolicy.cpp"
     "src/starlight/policy/ListenForFrameCompletePolicy.cpp"
     "src/starlight/policy/ListenForEnginePhaseCompletePolicy.cpp"
@@ -142,8 +158,10 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/ListenForRenderReadyForFinalization.cpp"
     "src/starlight/policy/ListenForStartOfNextFramePolicy.cpp"
     "src/starlight/core/service/Service.cpp"
+    "src/starlight/service/SceneLoaderService.cpp"
+    "src/starlight/service/detail/scene_loader/SceneFile.cpp"
+    "src/starlight/service/detail/scene_loader/SceneObjectTracker.cpp"
     "src/starlight/service/FrameInFlightControllerService.cpp"
-    "src/starlight/service/ScreenCaptureFactory.cpp"
     "src/starlight/service/ScreenCapture.cpp"
     "src/starlight/service/detail/screen_capture/WorkerControllerPolicies.cpp"
     "src/starlight/service/detail/screen_capture/CreateDependenciesPolicies.cpp"
@@ -159,18 +177,18 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/detail/screen_capture/BlitCmdPolicy.cpp"
     "src/starlight/service/detail/screen_capture/CopyCmdPolicy.cpp"
     "src/starlight/service/detail/screen_capture/ExecuteCmdBuffer.cpp"
+    "src/starlight/service/QueueManagerService.cpp"
+    "src/starlight/service/detail/queue_ownership/QueueOwnershipTracker.cpp"
+    "src/starlight/service/HeadlessRenderResultWriteService.cpp"
+    "src/starlight/service/IOService.cpp"
     "src/starlight/core/waiter/sync_renderer/Factory.cpp"
     "src/starlight/core/waiter/sync_renderer/SyncTargetRendererTimeline.cpp"
     "src/starlight/core/waiter/sync_renderer/SyncTargetRendererBinary.cpp"
     "src/starlight/core/waiter/sync_renderer/SyncTargetRenderer.cpp"
-    "src/starlight/service/QueueManagerService.cpp"
-    "src/starlight/service/detail/queue_ownership/QueueOwnershipTracker.cpp"
-    "src/starlight/service/HeadlessRenderResultWriteService.cpp"
     "src/starlight/core/service/InitParameters.cpp"
     "src/starlight/templates/StarApplication.cpp"
     "src/starlight/systems/StarRenderGroup.cpp" 
     "src/starlight/common/Compiler.cpp"
-    "src/starlight/common/RuntimeUpdateTexture.cpp"
     "src/starlight/common/ThreadSharedResource.cpp"
     "src/starlight/common/materials/BumpMaterial.cpp"
     "src/starlight/common/materials/VertColorMaterial.cpp"
@@ -200,11 +218,12 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/common/helpers/GeometryHelpers.cpp"
     "src/starlight/common/helpers/FileHelpers.cpp"
     "src/starlight/internals/CommandBufferContainer.cpp"
+    "src/starlight/internals/ManagerStorageContainer.cpp"
     "src/starlight/job/worker/Worker.cpp"
     "src/starlight/job/worker/DefaultWorker.cpp"
-    "src/starlight/job/worker/default_worker/detail/ThreadTaskHandlingPolicies.cpp"
+    "src/starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.cpp"
+    "src/starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.cpp"
     "src/starlight/job/TransferWorker.cpp"
-    "src/starlight/internals/ManagerStorageContainer.cpp"
     "src/starlight/job/TaskContainer.cpp"
     "src/starlight/job/complete_tasks/CompleteTask.cpp"
     "src/starlight/job/complete_tasks/TaskFactory.cpp"
@@ -215,6 +234,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/job/tasks/WriteImageToDisk.cpp"
     "src/starlight/job/tasks/CompileShader.cpp"
     "src/starlight/job/tasks/BuildPipeline.cpp"
+    "src/starlight/job/tasks/IOTask.cpp"
     "src/starlight/job/TaskManager.cpp"
     "src/starlight/job/ImageWriterWorker.cpp"
     "src/starlight/job/FrameScheduler.cpp"
@@ -235,10 +255,19 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
 set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/StarEngine.hpp"
+    "include/starlight/core/CommandSubmitter.hpp"
+    "include/starlight/core/WorkerPool.hpp"
     "include/starlight/core/helper/queue/QueueHelpers.hpp"
     "include/starlight/core/helper/command_buffer/CommandBufferHelpers.hpp"
     "include/starlight/data_structure/dynamic/ThreadSharedObjectPool.hpp"
     "include/starlight/graphics/PipelineFactory.hpp"
+    "include/starlight/command/CreateObject.hpp"
+    "include/starlight/command/detail/create_object/ObjectLoader.hpp"
+    "include/starlight/command/detail/create_object/FromObjFileLoader.hpp"
+    "include/starlight/command/detail/create_object/DirectObjCreation.hpp"
+    "include/starlight/command/SaveSceneState.hpp"
+    "include/starlight/command/WriteToFile.hpp"
+    "include/starlight/command/GetScreenCaptureSyncInfo.hpp"
     "include/starlight/core/logging/LoggingFactory.hpp"
     "include/starlight/core/renderer/RendererBase.hpp"
     "include/starlight/core/renderer/LightRenderer.hpp"
@@ -254,7 +283,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/common/objects/BasicObject.hpp"
     "include/starlight/common/objects/Square.hpp"
     "include/starlight/common/objects/StarObjectInstance.hpp"
-    "include/starlight/common/RuntimeUpdateTexture.hpp"
     "include/starlight/common/buffers/TransferRequest_GlobalInfo.hpp"
     "include/starlight/common/buffers/TransferRequest_InstanceModelInfo.hpp"
     "include/starlight/common/buffers/TransferRequest_InstanceNormalInfo.hpp"
@@ -321,6 +349,11 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/event/RegisterMainGraphicsRenderer.hpp"
     "include/starlight/event/StartOfNextFrame.hpp"
     "include/starlight/event/GetQueue.hpp"
+    "include/starlight/policy/command/ListenFor.hpp"
+    "include/starlight/policy/command/ListenForCreateObject.hpp"
+    "include/starlight/policy/command/ListenForSaveSceneState.hpp"
+    "include/starlight/policy/command/ListenForWriteToFile.hpp"
+    "include/starlight/policy/command/ListenForGetScreenCaptureSyncInfo.hpp"
     "include/starlight/policy/ListenForFrameCompletePolicy.hpp"
     "include/starlight/policy/ListenForPrepForNextFramePolicy.hpp"
     "include/starlight/policy/ListenForEnginePhaseCompletePolicy.hpp"
@@ -329,9 +362,11 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/policy/ListenForGetQueuePolicy.hpp"
     "include/starlight/core/graphics/shader/BasicIncluder.hpp"
     "include/starlight/service/Service.hpp"
+    "include/starlight/service/SceneLoaderService.hpp"
+    "include/starlight/service/detail/scene_loader/SceneFile.hpp"
+    "include/starlight/service/detail/scene_loader/SceneObjectTracker.hpp"
     "include/starlight/service/FrameInFlightControllerService.hpp"
     "include/starlight/service/ScreenCapture.hpp"
-    "include/starlight/service/ScreenCaptureFactory.hpp"
     "include/starlight/service/detail/screen_capture/WorkerControllerPolicies.hpp"
     "include/starlight/service/detail/screen_capture/CreateDependenciesPolicies.hpp"
     "include/starlight/service/detail/screen_capture/CopyDirectorPolicy.hpp"
@@ -349,12 +384,13 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/service/detail/screen_capture/ExecuteCmdBuffer.hpp"
     "include/starlight/service/QueueManagerService.hpp"
     "include/starlight/service/detail/queue_ownership/QueueOwnershipTracker.hpp"
+    "include/starlight/service/InitParameters.hpp"
+    "include/starlight/service/HeadlessRenderResultWriteService.hpp"
+    "include/starlight/service/IOService.hpp"
     "include/starlight/core/waiter/sync_renderer/Factory.hpp"
     "include/starlight/core/waiter/sync_renderer/SyncTargetRendererTimeline.hpp"
     "include/starlight/core/waiter/sync_renderer/SyncTargetRendererBinary.hpp"
     "include/starlight/core/waiter/sync_renderer/SyncTargetRenderer.hpp"
-    "include/starlight/service/InitParameters.hpp"
-    "include/starlight/service/HeadlessRenderResultWriteService.hpp"
     "include/starlight/managers/ManagerRenderResource.hpp"
     "include/starlight/systems/StarRenderGroup.hpp"
     "include/starlight/internals/CommandBufferContainer.hpp"
@@ -373,7 +409,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/job/TransferWorker.hpp"
     "include/starlight/job/worker/DefaultWorker.hpp"
     "include/starlight/job/worker/Worker.hpp"
-    "include/starlight/job/worker/default_worker/detail/ThreadTaskHandlingPolicies.hpp"
+    "include/starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
+    "include/starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
     "include/starlight/job/TaskContainer.hpp"
     "include/starlight/job/complete_tasks/CompleteTask.hpp"
     "include/starlight/job/complete_tasks/TaskFactory.hpp"
@@ -384,6 +421,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/job/tasks/WriteImageToDisk.hpp"
     "include/starlight/job/tasks/CompileShader.hpp"
     "include/starlight/job/tasks/BuildPipeline.hpp"
+    "include/starlight/job/tasks/IOTask.hpp"
     "include/starlight/job/TaskManager.hpp"
     "include/starlight/job/ImageWriterWorker.hpp"
     "include/starlight/job/FrameScheduler.hpp"
@@ -408,7 +446,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/common/entities/Light.hpp"
     "include/starlight/virtual/StarShader.hpp"
     "include/starlight/enums/Enums.hpp"
-    "include/starlight/common/BufferHandle.hpp"
     "include/starlight/structs/LightBufferObject.hpp"
     "include/starlight/structs/Vertex.hpp"
     "include/starlight/structs/Color.hpp"
@@ -453,6 +490,12 @@ set(${STARLIGHT_NAME}_INCLUDE_DIRS
     "include/starlight/renderers/" 
     "include/starlight/job/"
     "include/starlight/core/"
+)
+
+target_precompile_headers(${STARLIGHT_NAME}
+    PUBLIC
+    "include/starlight/core/logging/LoggingFactory.hpp"
+    "include/starlight/core/device/StarDevice.hpp"
 )
 
 target_link_libraries(${STARLIGHT_NAME}

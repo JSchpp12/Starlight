@@ -62,13 +62,13 @@ void star::service::HeadlessRenderResultWriteService::cleanup(common::EventBus &
     m_triggerCapturePolicy.cleanup(eventBus);
 }
 
-void star::service::HeadlessRenderResultWriteService::init(const uint8_t &numFramesInFlight)
+void star::service::HeadlessRenderResultWriteService::init()
 {
     assert(m_eventBus != nullptr);
 
     initListeners(*m_eventBus);
 
-    m_screenshotRegistrations.resize(numFramesInFlight);
+    m_screenshotRegistrations.resize(m_frameTracker->getSetup().getNumFramesInFlight());
 }
 
 void star::service::HeadlessRenderResultWriteService::initListeners(common::EventBus &eventBus)

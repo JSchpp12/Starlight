@@ -10,8 +10,11 @@
 #include "event/TriggerScreenshot.hpp"
 #include "job/tasks/TaskFactory.hpp"
 #include "logging/LoggingFactory.hpp"
+#include "policy/command/ListenForGetScreenCaptureSyncInfo.hpp"
 #include "service/InitParameters.hpp"
 #include "starlight/core/waiter/sync_renderer/Factory.hpp"
+#include "starlight/job/worker/DefaultWorker.hpp"
+#include "starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
@@ -27,6 +30,7 @@ concept CopyPolicyLike = requires(TCopyPolicy c, detail::screen_capture::DeviceI
                                   detail::screen_capture::CopyPlan &copyPlan, const Handle &calleeHandle) {
     { c.init(deviceInfo) } -> std::same_as<void>;
     { c.triggerSubmission(copyPlan) } -> std::same_as<detail::screen_capture::GPUSynchronizationInfo>;
+    { c.getCommandBuffer() } -> std::same_as<const star::Handle &>;
 };
 
 template <typename TWorkerControllerPolicy>
@@ -61,15 +65,70 @@ class ScreenCapture
   public:
     ScreenCapture(TWorkerControllerPolicy workerPolicy, TCreateDependenciesPolicy createDependenciesPolicy,
                   TCopyPolicy copyPolicy)
-        : m_workerPolicy(std::move(workerPolicy)), m_createDependenciesPolicy(std::move(createDependenciesPolicy)),
-          m_copyPolicy(std::move(copyPolicy)),
+        : m_getSync(*this), m_workerPolicy(std::move(workerPolicy)),
+          m_createDependenciesPolicy(std::move(createDependenciesPolicy)), m_copyPolicy(std::move(copyPolicy)),
           m_calleeDependencyTracker(star::service::detail::screen_capture::common::ScreenCaptureServiceCalleeTypeName)
     {
     }
+    ScreenCapture(const ScreenCapture &) = delete;
+    ScreenCapture &operator=(const ScreenCapture &) = delete;
+    ScreenCapture(ScreenCapture &&other) noexcept
+        : m_getSync(*this), m_workerPolicy(std::move(other.m_workerPolicy)),
+          m_createDependenciesPolicy(std::move(other.m_createDependenciesPolicy)),
+          m_copyPolicy(std::move(other.m_copyPolicy)),
+          m_calleeDependencyTracker(std::move(other.m_calleeDependencyTracker)),
+          m_subscriberHandle(std::move(other.m_subscriberHandle)), m_actionRouter(std::move(other.m_actionRouter)),
+          m_deviceInfo(std::move(other.m_deviceInfo))
+    {
+        if (m_deviceInfo.cmdBus != nullptr)
+        {
+            other.m_getSync.cleanup(*m_deviceInfo.cmdBus);
+            m_getSync.init(*m_deviceInfo.cmdBus);
+        }
+    }
+    ScreenCapture &operator=(ScreenCapture &&other) noexcept
+    {
+        if (this != &other)
+        {
+            m_workerPolicy = std::move(other.m_workerPolicy);
+            m_createDependenciesPolicy = std::move(other.m_createDependenciesPolicy);
+            m_copyPolicy = std::move(other.m_copyPolicy);
+            m_calleeDependencyTracker = std::move(other.m_calleeDependencyTracker);
+            m_subscriberHandle = std::move(other.m_subscriberHandle);
+            m_deviceInfo = std::move(other.m_deviceInfo);
 
-    void init(const uint8_t &numFramesInFlight)
+            if (m_deviceInfo.cmdBus != nullptr)
+            {
+                other.cleanupDependencies(*m_deviceInfo.cmdBus);
+                m_getSync.init(*m_deviceInfo.cmdBus);
+            }
+        }
+        return *this;
+    }
+    ~ScreenCapture() = default;
+
+    void negotiateWorkers(star::core::WorkerPool &pool, job::TaskManager &tm)
+    {
+        size_t numToCreate = 0;
+        const size_t goal = 28;
+
+        for (size_t i{0}; i < goal; i++)
+        {
+            if (pool.allocateWorker())
+            {
+                numToCreate++;
+            }
+        }
+
+        m_workerPolicy.init(registerWorkers(numToCreate, tm));
+    }
+
+    void init()
     {
         assert(m_deviceInfo.eventBus != nullptr);
+        assert(m_deviceInfo.commandManager != nullptr);
+
+        m_getSync.init(*m_deviceInfo.cmdBus);
         m_actionRouter.init(&m_deviceInfo);
         m_copyPolicy.init(m_deviceInfo);
         registerWithEventBus();
@@ -85,23 +144,59 @@ class ScreenCapture
                                                .semaphoreManager = params.graphicsManagers.semaphoreManager.get(),
                                                .queueManager = &params.graphicsManagers.queueManager,
                                                .taskManager = &params.taskManager,
-                                               .flightTracker = &params.flightTracker};
+                                               .flightTracker = &params.flightTracker,
+                                               .cmdBus = &params.commandBus};
     }
 
     void shutdown()
     {
         assert(m_deviceInfo.device != nullptr && "Device must be valid");
+        assert(m_deviceInfo.cmdBus != nullptr && "Command bus must be valid");
+
+        m_getSync.cleanup(*m_deviceInfo.cmdBus);
         cleanupDependencies(*m_deviceInfo.device);
     }
 
+    void onGetSyncInfo(command::GetScreenCaptureSyncInfo &cmd)
+    {
+        cmd.getReply().set(command::get_sync_info::SyncInfo{&m_copyPolicy.getCommandBuffer()});
+    }
+
   private:
+    policy::ListenForGetScreenCaptureSyncInfo<
+        ScreenCapture<TWorkerControllerPolicy, TCreateDependenciesPolicy, TCopyPolicy>>
+        m_getSync;
     TWorkerControllerPolicy m_workerPolicy;
     TCreateDependenciesPolicy m_createDependenciesPolicy;
     TCopyPolicy m_copyPolicy;
+
     core::LinearHandleContainer<detail::screen_capture::CalleeRenderDependencies, 5> m_calleeDependencyTracker;
     Handle m_subscriberHandle;
     detail::screen_capture::CopyRouter m_actionRouter;
     detail::screen_capture::DeviceInfo m_deviceInfo;
+
+    std::vector<job::worker::Worker::WorkerConcept *> registerWorkers(const size_t &numToCreate, job::TaskManager &tm)
+    {
+        auto newWorkers = std::vector<job::worker::Worker::WorkerConcept *>(numToCreate);
+        for (size_t i{0}; i < numToCreate; i++)
+        {
+            std::ostringstream oss;
+            oss << "Image Writer_" << std::to_string(i);
+
+            auto worker = tm.registerWorker(
+                {job::worker::DefaultWorker{job::worker::default_worker::BusyWaitTaskHandlingPolicy<
+                                                job::tasks::write_image_to_disk::WriteImageTask, 500>{true},
+                                            oss.str()}},
+                job::tasks::write_image_to_disk::WriteImageTypeName);
+
+            auto *newWorker = tm.getWorker(worker);
+            assert(newWorker != nullptr && "Worker was not properly created");
+
+            newWorkers[i] = newWorker->getRawConcept();
+        }
+
+        return newWorkers;
+    }
 
     void eventCallback(const star::common::IEvent &e, bool &keepAlive)
     {

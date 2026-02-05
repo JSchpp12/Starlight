@@ -141,8 +141,6 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance,
                                      const std::set<Rendering_Device_Features> &deviceFeatures,
                                      vk::SurfaceKHR *optionalRenderingSurface)
 {
-    const bool needsPresentationSupport = optionalRenderingSurface ? true : false;
-
     vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures =
         vk::PhysicalDeviceDynamicRenderingFeatures().setDynamicRendering(true);
 

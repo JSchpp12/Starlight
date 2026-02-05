@@ -35,7 +35,7 @@ FrameInFlightControllerService &FrameInFlightControllerService::operator=(FrameI
     return *this;
 }
 
-void FrameInFlightControllerService::init(const uint8_t &numFramesInFlight)
+void FrameInFlightControllerService::init()
 {
     assert(m_deviceEventBus != nullptr); 
 

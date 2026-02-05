@@ -95,7 +95,7 @@ class CommandBufferContainer
             : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
               recordOnce(recordOnce), waitStage(waitStage), order(order),
               beforeBufferSubmissionCallback(beforeSubmissionCallback),
-              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
+              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback){};
 
         vk::Semaphore submitCommandBuffer(core::device::StarDevice &device, const common::FrameTracker &frameTracker,
                                           absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
@@ -139,7 +139,7 @@ class CommandBufferContainer
 
     void cleanup(core::device::StarDevice &device);
 
-    std::vector<vk::Semaphore> submitGroupWhenReady(core::device::StarDevice &device,
+    vk::Semaphore submitGroupWhenReady(core::device::StarDevice &device,
                                                     const star::Command_Buffer_Order &order,
                                                     const common::FrameTracker &frameTracker,
                                                     const uint64_t &currentFrameIndex,

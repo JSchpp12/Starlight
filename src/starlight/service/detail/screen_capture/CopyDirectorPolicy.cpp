@@ -6,9 +6,8 @@
 #include "event/GetQueue.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include <star_common/helper/CastHelpers.hpp>
-
 #include <star_common/HandleTypeRegistry.hpp>
+#include <star_common/helper/CastHelpers.hpp>
 
 namespace star::service::detail::screen_capture
 {
@@ -168,12 +167,15 @@ void DefaultCopyPolicy::SemaphoreInfo::createSemaphoreDataAtIndex(star::common::
     assert(index < handles.size());
 
     void *r = nullptr;
-    eventBus.emit(core::device::system::event::ManagerRequest{
-        star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-            core::device::manager::GetSemaphoreEventTypeName),
-        core::device::manager::SemaphoreRequest{.initialSignalValue = initialSignalValueOfTimeline,
-                                                .isTimelineSemaphore = initialSignalValueOfTimeline.has_value()},
-        handles[index], &r});
+
+    core::device::manager::SemaphoreRequest request =
+        initialSignalValueOfTimeline.has_value()
+            ? core::device::manager::SemaphoreRequest(initialSignalValueOfTimeline.value())
+            : core::device::manager::SemaphoreRequest();
+    eventBus.emit(
+        core::device::system::event::ManagerRequest{star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                                        core::device::manager::GetSemaphoreEventTypeName),
+                                                    std::move(request), handles[index], &r});
 
     assert(r != nullptr && handles[index].isInitialized() && "Emit did not provide a result");
     raws[index] = &static_cast<core::device::manager::SemaphoreRecord *>(r)->semaphore;

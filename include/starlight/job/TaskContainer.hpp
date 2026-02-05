@@ -8,8 +8,8 @@
 
 #include <concepts>
 #include <optional>
-#include <thread>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 namespace star::job

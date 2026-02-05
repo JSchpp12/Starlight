@@ -3,8 +3,9 @@
 #include "core/Exceptions.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include <cassert>
 #include <star_common/helper/CastHelpers.hpp>
+
+#include <cassert>
 
 namespace star::service::detail::screen_capture
 {
@@ -17,7 +18,7 @@ Handle CopyCmdPolicy::registerWithManager(core::device::StarDevice &device,
             .recordBufferCallback = std::bind(&CopyCmdPolicy::recordCommandBuffer, this, std::placeholders::_1,
                                               std::placeholders::_2, std::placeholders::_3),
             .order = Command_Buffer_Order::end_of_frame,
-            .orderIndex = Command_Buffer_Order_Index::first,
+            .orderIndex = Command_Buffer_Order_Index::fifth,
             .type = Queue_Type::Ttransfer,
             .waitStage = vk::PipelineStageFlagBits::eTransfer,
             .willBeSubmittedEachFrame = false,
@@ -124,8 +125,18 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
     uint32_t semaphoreCount = 0;
     star::common::helper::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
 
+    std::optional<std::vector<uint64_t>> waitValues = std::nullopt;
     std::vector<vk::Semaphore> waitSemaphores = std::vector<vk::Semaphore>(1);
-    if (m_inUseInfo->targetTextureReadySemaphore != nullptr)
+    if (previousSignaledValues.size() > 0)
+    {
+        // some callee has provided manual wait information. Respect that first
+        waitSemaphores[0] = dataSemaphores[0];
+        if (previousSignaledValues[0].has_value())
+        {
+            waitValues = std::vector<uint64_t>{previousSignaledValues[0].value()};
+        }
+    }
+    else if (m_inUseInfo->targetTextureReadySemaphore != nullptr)
     {
         waitSemaphores[0] = *m_inUseInfo->targetTextureReadySemaphore;
     }
@@ -135,9 +146,14 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
         waitSemaphores[0] = previousCommandBufferSemaphores->at(0);
     }
 
-    const auto timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
-                                        .setPSignalSemaphoreValues(signalSemaphoreValues.data())
-                                        .setSignalSemaphoreValueCount(semaphoreCount);
+    auto timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
+                                  .setPSignalSemaphoreValues(signalSemaphoreValues.data())
+                                  .setSignalSemaphoreValueCount(semaphoreCount);
+    if (waitValues.has_value())
+    {
+        timelineSubmitInfo.setWaitSemaphoreValues(waitValues.value());
+    }
+
     const vk::PipelineStageFlags waitPoints[]{vk::PipelineStageFlagBits::eTransfer};
     const auto submitInfo = vk::SubmitInfo()
                                 .setCommandBufferCount(1)

@@ -1,16 +1,12 @@
 #pragma once
 
 #include "TaskContainer.hpp"
-
 #include "core/logging/LoggingFactory.hpp"
-#include "default_worker/detail/ThreadTaskHandlingPolicies.hpp"
 
 #include <vulkan/vulkan.hpp>
 
 #include <concepts>
-#include <iostream>
 #include <memory>
-#include <type_traits>
 
 namespace star::job::worker
 {

@@ -25,7 +25,7 @@ void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus
 
     std::cout << "Marking shader at index [" << p->handleID << "] as ready" << std::endl;
     gm->shaderManager->get(shader)->setCompiledShader(std::move(p->compiledShaderCode));
-    eb->emit<core::device::system::event::ShaderCompiled>(core::device::system::event::ShaderCompiled{shader});
+    eb->emit(core::device::system::event::ShaderCompiled{shader});
 
     ProcessPipelinesWhichAreNowReadyForBuild(device, taskSystem, graphicsManagers);
 }

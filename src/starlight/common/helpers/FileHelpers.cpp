@@ -3,7 +3,7 @@
 #include "logging/LoggingFactory.hpp"
 #include "core/Exceptions.hpp"
 
-#include <star_common/helper/FileHelpers.hpp>
+#include <star_common/helper/PathHelpers.hpp>
 
 #include <sys/stat.h>
 #include <iostream>
@@ -83,7 +83,7 @@ std::string ReadFileBinary(const std::string &pathToFile){
     std::streamsize size = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    std::vector<char> buffer(size);
+    std::vector<char> buffer(static_cast<size_t>(size));
     if (!file.read(buffer.data(), size)) {
         std::ostringstream oss; 
         oss << "Error: Could not read from file " << pathToFile << std::endl;
@@ -161,7 +161,7 @@ void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirector
 }
 
 boost::filesystem::path GetExecutableDirectory(){
-    const std::string exePath = star::common::GetExecutablePath().string();
+    const std::string exePath = star::common::GetRuntimePath().string();
     const auto parentDir = GetParentDirectory(exePath).value(); //should always have a value
     return parentDir.string(); 
 }

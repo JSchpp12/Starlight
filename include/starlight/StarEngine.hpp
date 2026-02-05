@@ -2,28 +2,25 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "ConfigFile.hpp"
-#include "Enums.hpp"
 #include "StarApplication.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
 #include "StarScene.hpp"
 #include "TransferWorker.hpp"
-#include "util/log/SystemInfo.hpp"
 #include "core/SystemContext.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "event/EnginePhaseComplete.hpp"
 #include "event/FrameComplete.hpp"
 #include "event/RenderReadyForFinalization.hpp"
-#include "service/ScreenCaptureFactory.hpp"
+#include "util/log/SystemInfo.hpp"
 
 #include <star_common/FrameTracker.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 
+#include <concepts>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include <concepts>
 
 namespace star
 {
@@ -86,17 +83,13 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             int readFramesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
             if (!common::helper::SafeCast(readFramesInFlight, framesInFlight))
             {
-                throw std::runtime_error("Invalid number of frames in flight in config file");
+                STAR_THROW("Invalid number of frames in flight in config file");
             }
             m_initPolicy.init(framesInFlight);
         }
 
         m_defaultDevice = m_systemManager.registerDevice(core::device::DeviceContext{
             m_initPolicy.createNewDevice(m_renderingInstance, features, renderingFeatures)});
-        m_systemManager.getContext(m_defaultDevice)
-            .init(m_defaultDevice,
-                  m_initPolicy.getFrameInFlightTrackingSetup(m_systemManager.getContext(m_defaultDevice).getDevice()),
-                  m_initPolicy.getEngineRenderingResolution());
 
         {
             std::vector<service::Service> additionalServices = m_initPolicy.getAdditionalDeviceServices();
@@ -106,7 +99,11 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             }
         }
 
-        registerScreenshotService(m_systemManager.getContext(m_defaultDevice));
+        m_systemManager.getContext(m_defaultDevice)
+            .init(m_defaultDevice,
+                  m_initPolicy.getFrameInFlightTrackingSetup(m_systemManager.getContext(m_defaultDevice).getDevice()),
+                  m_initPolicy.getEngineRenderingResolution());
+
         m_application.init();
     }
 
@@ -163,6 +160,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         }
 
         m_systemManager.getContext(m_defaultDevice).waitIdle();
+        m_application.shutdown(m_systemManager.getContext(m_defaultDevice));
         currentScene->cleanupRender(m_systemManager.getContext(m_defaultDevice));
         // need to cleanup services first
         m_systemManager.getContext(m_defaultDevice).cleanupRender();
@@ -182,12 +180,5 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
     std::shared_ptr<StarScene> currentScene = nullptr;
 
   private:
-    void registerScreenshotService(core::device::DeviceContext &context)
-    {
-        m_systemManager.getContext(m_defaultDevice)
-            .registerService(service::screen_capture::Builder(context.getDevice(), context.getTaskManager())
-                                 .setNumWorkers(27)
-                                 .build());
-    }
 };
 } // namespace star

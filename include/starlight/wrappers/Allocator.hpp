@@ -1,12 +1,12 @@
 #pragma once 
 
-#include <vulkan/vulkan.hpp>
+#ifndef NDEBUG
+#define VMA_DEBUG_INITIALIZE_ALLOCATIONS 1
+#endif
+
 #include <vk_mem_alloc.h>
 
-#include <memory>
-#include <assert.h>
-#include <iostream>
-#include <vector>
+#include <vulkan/vulkan.hpp>
 
 namespace star {
 	class Allocator {
@@ -50,11 +50,11 @@ namespace star {
 			}
 
 			private:
-			VmaAllocationCreateFlags flags; 
-			VmaMemoryUsage usage; 
-			vk::MemoryPropertyFlags requiredFlags, preferredFlags;
-			uint32_t memoryTypeBits; 
-			float priority; 
+            VmaAllocationCreateFlags flags{}; 
+			VmaMemoryUsage usage{}; 
+			vk::MemoryPropertyFlags requiredFlags{}, preferredFlags{};
+			uint32_t memoryTypeBits = 0; 
+			float priority = 0.0f; 
 		};
 		
 		Allocator() = default;

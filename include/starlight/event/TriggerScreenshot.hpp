@@ -25,21 +25,21 @@ class TriggerScreenshot : public star::common::IEvent
                       Handle &calleeRegistration, vk::Semaphore targetTextureReadySemaphore)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
           m_targetTexture(std::move(targetTexture)), m_screenshotName(std::move(screenshotName)),
-          m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration),
-          m_targetTextureReadySemaphore(std::move(targetTextureReadySemaphore))
+          m_targetTextureReadySemaphore(std::move(targetTextureReadySemaphore)),
+          m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration)
     {
     }
     TriggerScreenshot(StarTextures::Texture targetTexture, std::string screenshotName, Handle &targetCommandBuffer,
                       Handle &calleeRegistration)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
           m_targetTexture(std::move(targetTexture)), m_screenshotName(std::move(screenshotName)),
-          m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration),
-          m_targetTextureReadySemaphore(nullptr)
+          m_targetTextureReadySemaphore(nullptr), m_targetCommandBuffer(targetCommandBuffer),
+          m_calleeRegistration(calleeRegistration)
     {
     }
     virtual ~TriggerScreenshot() = default;
 
-    StarTextures::Texture getTexture() const
+    const StarTextures::Texture &getTexture() const
     {
         return m_targetTexture;
     }

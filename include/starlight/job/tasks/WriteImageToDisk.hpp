@@ -13,7 +13,7 @@
 namespace star::job::tasks::write_image_to_disk
 {
 
-constexpr std::string_view WriteImageTypeName = "star::job::tasks::write_image_to_disk";
+inline static constexpr std::string_view WriteImageTypeName = "star::job::tasks::write_image_to_disk";
 
 struct BufferImageInfo
 {
@@ -21,8 +21,8 @@ struct BufferImageInfo
     vk::Extent3D imageExtent;
     vk::Format imageFormat;
     data_structure::dynamic::ThreadSharedObjectPool<star::StarBuffers::Buffer,
-                                           wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 500>
-        *owningObjectPool = nullptr;
+                                                    wrappers::graphics::policies::GenericBufferCreateAllocatePolicy,
+                                                    50> *owningObjectPool = nullptr;
 };
 
 struct WritePayload

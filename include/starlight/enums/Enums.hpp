@@ -61,7 +61,8 @@ namespace star {
         frames_in_flight, 
 		required_device_feature_shader_float64,
         resolution_x, 
-        resolution_y
+        resolution_y,
+        tmp_directory
     };
 
     namespace Type {

@@ -1,17 +1,17 @@
 #include "ConfigFile.hpp"
 
-#include "FileHelpers.hpp"
+#include "common/helpers/FileHelpers.hpp"
 #include "core/Exceptions.hpp"
 #include "logging/LoggingFactory.hpp"
 
+#include <star_common/helper/PathHelpers.hpp>
+
 #include <nlohmann/json.hpp>
 
-#include <assert.h>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <memory>
-#include <ostream>
 #include <sstream>
 
 using json = nlohmann::json;
@@ -30,16 +30,18 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
     std::pair<std::string, star::Config_Settings>("required_device_feature_shader_float64",
                                                   star::Config_Settings::required_device_feature_shader_float64),
     std::make_pair("resolution_x", star::Config_Settings::resolution_x),
-    std::make_pair("resolution_y", star::Config_Settings::resolution_y)};
+    std::make_pair("resolution_y", star::Config_Settings::resolution_y),
+    std::make_pair("tmp_dir", star::Config_Settings::tmp_directory)};
 
 void star::ConfigFile::load(const std::string &configFilePath)
 {
     if (!file_helpers::FileExists(configFilePath))
     {
-        std::ostringstream oss; 
-        oss << "Provided config file was not found: " << configFilePath << std::endl << "A default config file should have been created with the starlight app builder project" << std::endl;
+        std::ostringstream oss;
+        oss << "Provided config file was not found: " << configFilePath << std::endl
+            << "A default config file should have been created with the starlight app builder project" << std::endl;
 
-        STAR_THROW(oss.str()); 
+        STAR_THROW(oss.str());
     }
 
     json configJson;
@@ -55,7 +57,7 @@ void star::ConfigFile::load(const std::string &configFilePath)
 
         oss << "Error reading config file: ";
         oss << e.what();
-        STAR_THROW(oss.str()); 
+        STAR_THROW(oss.str());
     }
 
     for (auto &setting : availableSettings)
@@ -77,6 +79,17 @@ void star::ConfigFile::load(const std::string &configFilePath)
                 break;
             case Config_Settings::frames_in_flight:
                 settings[setting.second] = "2";
+                break;
+            case Config_Settings::tmp_directory: {
+                const auto path = star::file_helpers::GetExecutableDirectory() / "tmp";
+                settings[setting.second] = path.string();
+
+                if (!boost::filesystem::exists(path)){
+                    core::logging::info("Creating temporary data directory"); 
+                    boost::filesystem::create_directories(path);
+                }
+                break;
+            }
             default:
                 STAR_THROW("Setting not found and has no available default: " + setting.first);
             }
@@ -121,6 +134,9 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
         break;
     case (Config_Settings::texture_filtering):
         settingName = "texture_filtering";
+        break;
+    case (Config_Settings::tmp_directory):
+        settingName = "tmp_directory";
         break;
     default:
         settingName = "UNKNOWN";

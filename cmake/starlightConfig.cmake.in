@@ -23,6 +23,7 @@ find_dependency(Boost REQUIRED COMPONENTS container thread filesystem log log_se
 find_dependency(Ktx CONFIG REQUIRED)                       # KTX
 find_dependency(Stb REQUIRED)
 find_dependency(absl CONFIG REQUIRED)                      # absl::hash
+find_dependency(pix CONFIG REQUIRED)
 
 # If spirv-reflect is required at link time (static lib), keep its name consistent
 # with what you export/link in the build:

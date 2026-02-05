@@ -12,6 +12,22 @@ struct SemaphoreRequest
 {
     std::optional<uint64_t> initialSignalValue;
     bool isTimelineSemaphore;
+
+    /// Triggers creation of binary semaphore
+    SemaphoreRequest() : initialSignalValue(std::nullopt), isTimelineSemaphore(false)
+    {
+    }
+
+    /// Trigger creation of timeline semaphore
+    explicit SemaphoreRequest(uint64_t initialSignalValue)
+        : initialSignalValue(std::make_optional(std::move(initialSignalValue))), isTimelineSemaphore(true)
+    {
+    }
+
+    explicit SemaphoreRequest(bool isTimeline)
+        : initialSignalValue(isTimeline ? std::make_optional(0) : std::nullopt), isTimelineSemaphore(isTimeline)
+    {
+    }
 };
 
 struct SemaphoreRecord

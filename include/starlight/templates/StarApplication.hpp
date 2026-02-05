@@ -20,6 +20,8 @@ class StarApplication
 
     virtual void frameUpdate(core::SystemContext &systemContext) = 0;
 
+    virtual void shutdown(core::device::DeviceContext &context) = 0;
+
     // virtual void onKeyPress(int key, int scancode, int mods) override {};
 
     // virtual void onKeyRelease(int key, int scancode, int mods) override {};

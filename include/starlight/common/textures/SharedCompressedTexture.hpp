@@ -53,7 +53,7 @@ class SharedCompressedTexture : private ThreadSharedResource<ktxTexture2>
     static ktx_transcode_fmt_e SelectTranscodeFormat(const std::vector<ktx_transcode_fmt_e> &availableFormats,
                                                      const std::vector<std::string> &availableFormatNames);
 
-    static void VerifyFiles(const std::string &imagePath);
+    static bool VerifyFiles(const std::string &imagePath);
 
     void loadKTX();
 

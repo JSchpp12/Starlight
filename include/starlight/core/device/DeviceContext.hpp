@@ -6,7 +6,8 @@
 #include "device/managers/ManagerCommandBuffer.hpp"
 #include "device/managers/Pipeline.hpp"
 #include "service/Service.hpp"
-#include "tasks/TaskFactory.hpp"
+#include "starlight/core/CommandBus.hpp"
+#include "starlight/core/CommandSubmitter.hpp"
 
 #include <star_common/FrameTracker.hpp>
 #include <star_common/IDeviceContext.hpp>
@@ -37,7 +38,7 @@ class DeviceContext : public star::common::IDeviceContext
         manager::ManagerCommandBuffer &m_manager;
     };
     DeviceContext() = default;
-    explicit DeviceContext(StarDevice device) : m_device(std::move(device)) {};
+    explicit DeviceContext(StarDevice device) : m_device(std::move(device)){};
 
     virtual ~DeviceContext();
     DeviceContext(DeviceContext &&other);
@@ -50,6 +51,13 @@ class DeviceContext : public star::common::IDeviceContext
     void waitIdle();
 
     void prepareForNextFrame();
+
+    CommandSubmitter begin()
+    {
+        return CommandSubmitter([this](star::common::IServiceCommand &cmd) { this->submit(cmd); }, m_commandBus);
+    }
+
+    void submit(star::common::IServiceCommand &command);
 
     StarDevice &getDevice()
     {
@@ -148,6 +156,7 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return m_flightTracker;
     }
+
     vk::Extent2D &getEngineResolution()
     {
         return m_engineResolution;
@@ -167,6 +176,7 @@ class DeviceContext : public star::common::IDeviceContext
     bool m_ownsResources = false;
     Handle m_deviceID;
     common::EventBus m_eventBus;
+    core::CommandBus m_commandBus;
     job::TaskManager m_taskManager;
     manager::GraphicsContainer m_graphicsManagers;
     std::unique_ptr<manager::ManagerCommandBuffer> m_commandBufferManager;
@@ -190,13 +200,14 @@ class DeviceContext : public star::common::IDeviceContext
 
     void setAllServiceParameters();
 
-    void initWorkers(const uint8_t &numFramesInFlight);
+    void initWorkers(core::WorkerPool &pool, const uint8_t &numFramesInFlight);
 
     void shutdownServices();
 
     void logInit(const uint8_t &numFramesInFlight) const;
 
-    void initServices(const uint8_t &numFramesInFlight);
+    void initServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
+                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved, StarDevice &device);
 
     std::vector<Handle> processAvailableQueues();
 
@@ -210,8 +221,13 @@ class DeviceContext : public star::common::IDeviceContext
     absl::flat_hash_map<star::Queue_Type, Handle> selectEngineReservedQueues(
         const std::vector<Handle> &allQueueHandles);
 
+    void finalizeServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
+                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved, StarDevice &device);
+
     service::Service createQueueOwnershipService(std::vector<Handle> queueHandles,
                                                  absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
+
+    service::Service createSceneLoaderService();
 
     std::unique_ptr<manager::ManagerCommandBuffer> createManagerCommandBuffer(
         const absl::flat_hash_map<star::Queue_Type, Handle> &engineReserved);

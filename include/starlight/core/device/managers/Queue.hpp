@@ -25,6 +25,7 @@ struct QueueRecord
 
     void cleanupRender(device::StarDevice &device)
     {
+        (void)device;
         queue.getVulkanQueue() = VK_NULL_HANDLE;
     }
 };

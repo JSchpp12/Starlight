@@ -32,7 +32,7 @@ static std::vector<star::StarTextures::Texture> CreateImages(DeviceInfo *deviceI
                                                              const vk::Extent2D &extent)
 {
     assert(deviceInfo != nullptr && deviceInfo->flightTracker != nullptr);
-    assert(deviceInfo->queueManager != nullptr); 
+    assert(deviceInfo->queueManager != nullptr);
 
     auto policy = CreateImagePolicy(deviceInfo, targetImageFormat, extent);
     const size_t numTargetImages =

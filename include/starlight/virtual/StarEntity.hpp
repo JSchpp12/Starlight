@@ -51,13 +51,24 @@ class StarEntity
 
     void setForwardVector(const glm::vec3 &newForward)
     {
-        // TODO: setting this vector should probably update the
-        this->forwardVector = glm::vec4(glm::normalize(newForward), 1.0f);
+        glm::vec3 f = glm::normalize(newForward);
+        // RH, Y-up world up
+        const glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
 
-        glm::vec3 forward = glm::vec3(this->forwardVector);
-        glm::vec3 rightVec = glm::cross(forward, glm::vec3{0.0f, 1.0f, 0.0f});
+        // Protect against parallel forward/up
+        glm::vec3 u = worldUp;
+        if (std::abs(glm::dot(f, worldUp)) > 0.9995f)
+        {
+            u = glm::vec3(0.0f, 0.0f, 1.0f); // fallback up if nearly parallel
+        }
 
-        this->upVector = glm::vec4(glm::cross(rightVec, forward), 1.0);
+        // RH orthonormal frame:
+        glm::vec3 r = glm::normalize(glm::cross(u, f)); // right = up × forward
+        u = glm::normalize(glm::cross(f, r));           // recompute exact up
+
+        forwardVector = glm::vec4(f, 0.0f);
+        upVector = glm::vec4(u, 0.0f);
+        rightVector = glm::vec4(r, 0.0f);
     }
 
     const glm::vec4 &getForwardVector() const
@@ -72,6 +83,10 @@ class StarEntity
     {
         return translationMat * rotationMat * scaleMat;
     }
+    const glm::mat4 &getRotationMat() const
+    {
+        return rotationMat;
+    }
 
   protected:
     glm::vec3 positionCoords = glm::vec3();
@@ -80,28 +95,17 @@ class StarEntity
     glm::mat4 scaleMat = glm::mat4(1.0f);
 
   private:
-    glm::vec4 xAxis = glm::vec4{1.0f, 0.0, 0.0f, 0.0f};
-    glm::vec4 yAxis = glm::vec4{0.0f, 1.0f, 0.0f, 0.0f};
-    glm::vec4 zAxis = glm::vec4{0.0f, 0.0f, 1.0f, 0.0f};
-
+    glm::vec4 rightVector = glm::vec4{1.0f, 0.0f, 0.0f, 0.0f};
     glm::vec4 upVector = glm::vec4{0.0f, 1.0f, 0.0f, 0.0f};     // original up vector of object
-    glm::vec4 forwardVector = glm::vec4{1.0f, 0.0, 0.0f, 0.0f}; // original forward vector of object
+    glm::vec4 forwardVector = glm::vec4{0.0f, 0.0, 1.0f, 0.0f}; // original forward vector of object
 
     void updateCoordsRot(const glm::mat4 &rotMat)
     {
-        xAxis = glm::normalize(rotMat * xAxis);
-        yAxis = glm::normalize(rotMat * yAxis);
-        zAxis = glm::normalize(rotMat * zAxis);
-
         this->upVector = glm::normalize(rotMat * this->upVector);
         this->forwardVector = glm::normalize(rotMat * this->forwardVector);
-    }
 
-    void updateCoordsTranslation(const glm::mat4 &transMat)
-    {
-        xAxis = glm::normalize(transMat * xAxis);
-        yAxis = glm::normalize(transMat * yAxis);
-        zAxis = glm::normalize(transMat * zAxis);
+        const auto r = glm::normalize(glm::cross(glm::vec3(upVector), glm::vec3(forwardVector)));
+        this->rightVector = glm::vec4(r, 0.0);
     }
 };
 } // namespace star
