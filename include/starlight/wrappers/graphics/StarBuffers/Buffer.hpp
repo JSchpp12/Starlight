@@ -70,7 +70,7 @@ class Buffer
         return storage;
     }
 
-    const vk::Buffer &getVulkanBuffer() const
+    vk::Buffer getVulkanBuffer() const
     {
         return this->resources->buffer;
     }
