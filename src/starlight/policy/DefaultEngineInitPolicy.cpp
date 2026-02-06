@@ -65,11 +65,19 @@ common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFli
 
 std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalDeviceServices()
 {
-    std::vector<service::Service> services = std::vector<service::Service>(4);
+    std::vector<service::Service> services = std::vector<service::Service>(5);
     services[0] = createFrameInFlightControllerService();
-    services[1] = createScreenCaptureService();
-    services[2] = createHeadlessCaptureService();
-    services[3] = createSceneLoaderService();
+    services[1] = createIOService();
+    services[2] = createScreenCaptureService();
+    services[3] = createHeadlessCaptureService();
+    services[4] = createSceneLoaderService();
+
+    auto addServices = addAdditionalServices();
+    for (size_t i{0}; i < addServices.size(); i++)
+    {
+        services.emplace_back(std::move(addServices[i]));
+    }
+
     return services;
 }
 
@@ -87,7 +95,7 @@ service::Service DefaultEngineInitPolicy::createIOService()
 
 service::Service DefaultEngineInitPolicy::createSceneLoaderService()
 {
-    return service::Service{service::SceneLoaderService()}; 
+    return service::Service{service::SceneLoaderService()};
 }
 
 service::Service DefaultEngineInitPolicy::createFrameInFlightControllerService()

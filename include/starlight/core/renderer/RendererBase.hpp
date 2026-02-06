@@ -52,6 +52,15 @@ class RendererBase
     {
         return m_renderToDepthImages;
     }
+    std::vector<std::shared_ptr<StarObject>> &getObjects()
+    {
+        return m_objects;
+    }
+    const std::vector<std::shared_ptr<StarObject>> &getObjects() const
+    {
+        return m_objects;
+    }
+
   protected:
     std::vector<std::shared_ptr<StarObject>> m_objects;
     std::vector<Handle> m_renderToImages;

@@ -170,6 +170,8 @@ class DeviceContext : public star::common::IDeviceContext
 
     void registerService(service::Service service);
 
+    void manualTriggerOfCheckForMessages();
+
   private:
     StarDevice m_device;
     common::FrameTracker m_flightTracker;

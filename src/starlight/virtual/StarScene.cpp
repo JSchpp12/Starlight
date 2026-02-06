@@ -1,17 +1,23 @@
 #include "StarScene.hpp"
 
-#include "ManagerController_RenderResource_GlobalInfo.hpp"
-#include "ManagerController_RenderResource_LightInfo.hpp"
-
-star::StarScene::StarScene(std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer)
-    : m_camera(std::move(camera)), m_primaryRenderer(std::move(primaryRenderer))
+star::StarScene::StarScene(star::StarScene::IsReadyFunction isReady, std::shared_ptr<StarCamera> camera,
+                           common::Renderer primaryRenderer)
+    : m_isReady(std::move(isReady)), m_camera(std::move(camera)), m_primaryRenderer(std::move(primaryRenderer))
 {
 }
 
-star::StarScene::StarScene(std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer,
-                           std::vector<common::Renderer> renderers)
-    : m_camera(std::move(camera)), m_primaryRenderer(std::move(primaryRenderer)), m_renderers(std::move(renderers))
+star::StarScene::StarScene(star::StarScene::IsReadyFunction isReady, std::shared_ptr<StarCamera> camera,
+                           common::Renderer primaryRenderer, std::vector<common::Renderer> renderers)
+    : m_isReady(std::move(isReady)), m_camera(std::move(camera)), m_primaryRenderer(std::move(primaryRenderer)),
+      m_renderers(std::move(renderers))
 {
+}
+
+bool star::StarScene::isReady(core::device::DeviceContext &context)
+{
+    assert(m_isReady);
+
+    return m_isReady(context);
 }
 
 void star::StarScene::cleanupRender(core::device::DeviceContext &context)

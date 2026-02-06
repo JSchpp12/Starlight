@@ -13,6 +13,8 @@ namespace star::policy
 class DefaultEngineInitPolicy
 {
   public:
+    virtual ~DefaultEngineInitPolicy() = default;
+
     void init(uint8_t requestedNumFramesInFlight);
     void cleanup(core::RenderingInstance &instance);
     core::device::StarDevice createNewDevice(core::RenderingInstance &renderingInstance,
@@ -36,6 +38,12 @@ class DefaultEngineInitPolicy
     static service::Service createHeadlessCaptureService();
 
     static service::Service createSceneLoaderService();
+
+  protected:
+    virtual std::vector<service::Service> addAdditionalServices()
+    {
+        return {};
+    };
 
   private:
     uint8_t m_maxNumFramesInFlight{1};

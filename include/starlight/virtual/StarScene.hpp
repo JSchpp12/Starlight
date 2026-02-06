@@ -8,9 +8,7 @@
 #include <star_common/Handle.hpp>
 #include <star_common/Renderer.hpp>
 
-#include <map>
-#include <memory>
-#include <optional>
+#include <functional>
 #include <vector>
 
 namespace star
@@ -21,8 +19,10 @@ namespace star
 class StarScene
 {
   public:
-    StarScene(std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer);
-    StarScene(std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer,
+    using IsReadyFunction = std::function<bool(core::device::DeviceContext &)>;
+
+    StarScene(IsReadyFunction isReady, std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer);
+    StarScene(IsReadyFunction isReady, std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer,
               std::vector<common::Renderer> renderers);
 
     /// Function called every frame
@@ -31,6 +31,8 @@ class StarScene
     void prepRender(core::device::DeviceContext &context, const common::FrameTracker::Setup &renderImageSetup);
 
     void cleanupRender(core::device::DeviceContext &context);
+
+    bool isReady(core::device::DeviceContext &context);
 
     std::shared_ptr<StarCamera> getCamera()
     {
@@ -47,8 +49,32 @@ class StarScene
     }
 
   protected:
+    IsReadyFunction m_isReady;
     std::shared_ptr<StarCamera> m_camera;
     common::Renderer m_primaryRenderer;
     std::vector<common::Renderer> m_renderers;
 };
+
+namespace star_scene
+{
+inline auto makeAlwaysReadyPolicy() -> StarScene::IsReadyFunction
+{
+    return [](core::device::DeviceContext &context) -> bool { return true; };
+}
+
+inline auto makeWaitForAllObjectsReadyPolicy(std::vector<std::shared_ptr<star::StarObject>> objects)
+    -> StarScene::IsReadyFunction
+{
+    return [objects](core::device::DeviceContext &context) -> bool {
+        for (size_t i{0}; i < objects.size(); i++)
+        {
+            if (!objects[i]->isRenderReady(context))
+            {
+                return false;
+            }
+        }
+        return true;
+    };
+}
+} // namespace star_scene
 } // namespace star

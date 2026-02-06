@@ -63,7 +63,7 @@ void star::StarEntity::moveRelative(const glm::vec3 &movementDirection, const fl
 static inline void RefreshBasisFromMatrix(glm::mat4 &m, glm::vec3 &right, glm::vec3 &up, glm::vec3 &forward)
 {
     right = glm::normalize(glm::vec3(m[0]));
-    up  = glm::normalize(glm::vec3(m[1]));
+    up = glm::normalize(glm::vec3(m[1]));
     forward = glm::normalize(glm::cross(right, up));
 
     m[0] = glm::vec4(right, 0.0f);

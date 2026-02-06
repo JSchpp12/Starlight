@@ -80,9 +80,8 @@ void star::StarShaderInfo::ShaderInfoSet::build(const star::Handle &deviceID)
 {
     this->isBuilt = true;
 
-    StarDescriptorPool *pool =nullptr; 
-    this->descriptorWriter = std::make_unique<StarDescriptorWriter>(
-        this->device, this->setLayout, m_pool);
+    StarDescriptorPool *pool = nullptr;
+    this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, m_pool);
     for (size_t i = 0; i < this->shaderInfos.size(); i++)
     {
         buildIndex(deviceID, i);
@@ -93,8 +92,7 @@ void star::StarShaderInfo::ShaderInfoSet::rebuildSet()
 {
     if (!this->descriptorWriter)
     {
-        this->descriptorWriter = std::make_unique<StarDescriptorWriter>(
-            this->device, this->setLayout, m_pool);
+        this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, m_pool);
     }
 
     this->descriptorSet = std::make_shared<vk::DescriptorSet>(this->descriptorWriter->build());
@@ -109,61 +107,32 @@ bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
     {
         for (size_t i = 0; i < set->shaderInfos.size(); i++)
         {
-            if (set->shaderInfos.at(i).m_willCheckForIfReady)
+
+            if (set->shaderInfos.at(i).bufferInfo.has_value() &&
+                set->shaderInfos.at(i).bufferInfo.value().handle.has_value())
             {
-                if (set->shaderInfos.at(i).bufferInfo.has_value() &&
-                    set->shaderInfos.at(i).bufferInfo.value().handle.has_value())
+                if (!ManagerRenderResource::isReady(m_deviceID,
+                                                    set->shaderInfos.at(i).bufferInfo.value().handle.value()))
+                    return false;
+            }
+            else if (set->shaderInfos.at(i).textureInfo.has_value())
+            {
+                if (set->shaderInfos.at(i).textureInfo.value().handle.has_value() &&
+                    !ManagerRenderResource::isReady(m_deviceID,
+                                                    set->shaderInfos.at(i).textureInfo.value().handle.value()))
                 {
-                    if (!ManagerRenderResource::isReady(m_deviceID,
-                                                        set->shaderInfos.at(i).bufferInfo.value().handle.value()))
-                        return false;
+                    return false;
                 }
-                else if (set->shaderInfos.at(i).textureInfo.has_value())
-                {
-                    if (set->shaderInfos.at(i).textureInfo.value().handle.has_value() &&
-                        !ManagerRenderResource::isReady(m_deviceID,
-                                                        set->shaderInfos.at(i).textureInfo.value().handle.value()))
-                    {
-                        return false;
-                    }
-                }
-                else
-                {
-                    throw std::runtime_error("Unknown shader info encountered while checking for ready status");
-                }
+            }
+            else
+            {
+                throw std::runtime_error("Unknown shader info encountered while checking for ready status");
             }
         }
     }
 
     return true;
 }
-
-// std::set<vk::Semaphore> star::StarShaderInfo::getDependentSemaphores(const uint8_t &frameInFlight) const
-// {
-//     assert(frameInFlight <= shaderInfoSets.size());
-
-//     std::set<vk::Semaphore> semaphores;
-
-//     for (const auto &set : shaderInfoSets[frameInFlight])
-//     {
-//         for (size_t i = 0; i < set->shaderInfos.size(); i++)
-//         {
-//             if (!set->shaderInfos.at(i).m_willCheckForIfReady)
-//             {
-//                 if (set->shaderInfos.at(i).bufferInfo.has_value() || set->shaderInfos.at(i).textureInfo.has_value())
-//                 {
-//                     semaphores.insert(set->shaderInfos.at(i).m_resourceSemaphore);
-//                 }
-//                 else
-//                 {
-//                     throw std::runtime_error("Unknown shader info encountered while gathering semaphores");
-//                 }
-//             }
-//         }
-//     }
-
-//     return semaphores;
-// }
 
 std::vector<vk::DescriptorSetLayout> star::StarShaderInfo::getDescriptorSetLayouts()
 {

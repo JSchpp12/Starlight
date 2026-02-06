@@ -119,6 +119,11 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
     m_ownsResources = true;
 }
 
+void star::core::device::DeviceContext::manualTriggerOfCheckForMessages()
+{
+    handleCompleteMessages(); 
+}
+
 void star::core::device::DeviceContext::finalizeServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
                                                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
                                                          StarDevice &device)
