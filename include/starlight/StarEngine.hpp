@@ -17,6 +17,7 @@
 #include <star_common/FrameTracker.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 
+#include <chrono>
 #include <concepts>
 #include <memory>
 #include <string>
@@ -129,6 +130,8 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         m_systemManager.getContext(m_defaultDevice)
             .getEventBus()
             .emit(event::EnginePhaseComplete{event::Phase::init, event::GetEnginePhaseCompleteLoadTypeName});
+            
+        waitForSceneReady(*currentScene);
 
         while (!m_exitPolicy.shouldExit())
         {
@@ -167,7 +170,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         m_initPolicy.cleanup(m_renderingInstance); // destroy surface
     }
 
-  protected:
+  private:
     TEngineInitPolicy m_initPolicy;
     TMainLoopPolicy m_loopPolicy;
     TEngineExitPolicy m_exitPolicy;
@@ -177,8 +180,24 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
     core::SystemContext m_systemManager;
     Handle m_defaultDevice;
     uint64_t m_frameCounter = 0;
-    std::shared_ptr<StarScene> currentScene = nullptr;
 
-  private:
+    void waitForSceneReady(star::StarScene &scene)
+    {
+        using namespace std::chrono_literals;
+
+        if (!scene.isReady(m_systemManager.getContext(m_defaultDevice)))
+        {
+            core::logging::info("Scene is not ready. Entering wait loop");
+            while (!scene.isReady(m_systemManager.getContext(m_defaultDevice)))
+            {
+                std::this_thread::sleep_for(200ms);
+
+                // allow context to handle complete messages
+                m_systemManager.getContext(m_defaultDevice).manualTriggerOfCheckForMessages();
+            }
+
+            core::logging::info("Scene is ready. Continuing...");
+        }
+    }
 };
 } // namespace star

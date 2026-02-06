@@ -49,6 +49,8 @@ class StarObject
     virtual ~StarObject() = default;
 
     virtual void init(core::device::DeviceContext &device);
+    
+    virtual bool isRenderReady(core::device::DeviceContext &context);
 
     virtual void cleanupRender(core::device::DeviceContext &device);
 
@@ -196,7 +198,6 @@ class StarObject
     virtual void createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds);
 
     std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(const uint8_t &numFramesInFlight);
-    virtual bool isRenderReady(core::device::DeviceContext &context);
 
     virtual void updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                                      const Handle &targetCommandBuffer);

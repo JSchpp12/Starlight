@@ -40,7 +40,7 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
             lockCounter++;
             std::this_thread::yield();
 
-            if (lockCounter == 25)
+            if (lockCounter == 50)
             {
                 core::logging::log(boost::log::trivial::info, "Blocking acquire call made. Thread yielding");
                 lockCounter = 0;

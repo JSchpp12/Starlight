@@ -457,7 +457,19 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
     assert(this->meshes.size() > 0 &&
            "Meshes have not yet been prepared. Need to have been created in the constructors");
 
-    return context.getPipelineManager().get(this->pipeline)->isReady();
+    if (!context.getPipelineManager().get(this->pipeline)->isReady())
+    {
+        return false;
+    }
+    for (size_t i{0}; i < meshes.size(); i++)
+    {
+        if (!meshes[i]->isKnownToBeReady(context.getFrameTracker().getCurrent().getFrameInFlightIndex()))
+        {
+            return false;
+        }
+    }
+    
+    return true;
 }
 
 void star::StarObject::updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
