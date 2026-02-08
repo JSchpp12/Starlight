@@ -82,9 +82,9 @@ void CommandOrderService::onDeclarePass(star::command_order::DeclarePass &cmd)
 {
     const Handle &passHandle = cmd.getPassHandle();
     const uint32_t queueFamilyIndex = cmd.getQueueFamily();
+    auto mem = std::vector<bool>(m_ft->getSetup().getNumFramesInFlight(), false);
 
-    m_passes.insert({passHandle, PassDescription{queueFamilyIndex,
-                                                 std::vector<bool>(m_ft->getSetup().getNumFramesInFlight(), false)}});
+    m_passes.insert(std::make_pair(passHandle, PassDescription{queueFamilyIndex, std::move(mem)}));
 
     m_notTriggeredPasses.emplace_back(passHandle);
 }
@@ -109,20 +109,19 @@ void CommandOrderService::onStartOfNextFrame(const event::StartOfNextFrame &even
 {
     assert(m_ft != nullptr);
 
-    for (size_t i{0}; i < m_triggeredPasses.size(); i++)
+    for (size_t i{0}; i < m_notTriggeredPasses.size(); i++)
     {
-        auto &record = m_passes[m_triggeredPasses[i]];
-        for (size_t j{0}; j < record.wasProcessedOnLastFrame.size(); j++)
-        {
-            if (j == m_lastFrameInFlightIndex)
-            {
-                record.wasProcessedOnLastFrame[j] = false;
-            }
-        }
+        m_passes[m_notTriggeredPasses[i]].wasProcessedOnLastFrame[m_lastFrameInFlightIndex] = false;
     }
 
-    m_lastFrameInFlightIndex = m_ft->getCurrent().getFrameInFlightIndex();
+    for (auto &record : m_triggeredPasses)
+    {
+        m_passes[record].wasProcessedOnLastFrame[m_lastFrameInFlightIndex] = true;
+        m_notTriggeredPasses.emplace_back(record); 
+    }
 
+    m_triggeredPasses.clear();
+    m_lastFrameInFlightIndex = m_ft->getCurrent().getFrameInFlightIndex();
     keepAlive = true;
 }
 
