@@ -49,14 +49,15 @@ class Buffer
 
     void unmap() const;
 
-    void writeToBuffer(void *data, void *mapped, const vk::DeviceSize &size = VK_WHOLE_SIZE,
+    void writeToBuffer(void *data, void *mapped, const vk::DeviceSize &size = vk::WholeSize,
                        const vk::DeviceSize &offset = 0);
 
     void cleanupRender(vk::Device &device);
 
-    vk::Result flush(const vk::DeviceSize &size = VK_WHOLE_SIZE, const vk::DeviceSize &offset = 0) const;
+    vk::Result invalidate(const vk::DeviceSize &size = vk::WholeSize, const vk::DeviceSize &offset = 0) const;
+    vk::Result flush(const vk::DeviceSize &size = vk::WholeSize, const vk::DeviceSize &offset = 0) const;
 
-    vk::DescriptorBufferInfo descriptorInfo(const vk::DeviceSize &size = VK_WHOLE_SIZE,
+    vk::DescriptorBufferInfo descriptorInfo(const vk::DeviceSize &size = vk::WholeSize,
                                             const vk::DeviceSize &offset = 0);
 
     void writeToIndex(void *data, void *mapped, const size_t &index);
