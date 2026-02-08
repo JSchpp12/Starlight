@@ -7,9 +7,18 @@
 
 namespace star::event
 {
-constexpr std::string_view GetEnginePhaseCompleteInitTypeName = "star::event::EnginePhaseComplete::init";
-constexpr std::string_view GetEnginePhaseCompleteLoadTypeName = "star::event::EnginePhaseComplete::load";
-constexpr std::string_view GetEnginePhaseCompleteFrameTypeName = "star::event::EnginePhaseComplete::frame";
+inline constexpr const char *GetEnginePhaseCompleteInitTypeName()
+{
+    return "epcInit";
+}
+inline constexpr const char *GetEnginePhaseCompleteLoadTypeName()
+{
+    return "epcFrame";
+}
+inline constexpr const char *GetEnginePhaseCompleteFrameTypeName()
+{
+    return "epcFrame";
+}
 
 enum class Phase
 {

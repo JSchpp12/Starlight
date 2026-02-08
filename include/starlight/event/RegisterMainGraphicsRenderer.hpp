@@ -6,7 +6,10 @@
 #include <string_view>
 namespace star::event
 {
-inline constexpr std::string_view GetRegisterMainGraphicsRendererTypeName = "star::event::RegisterMainGraphicsRenderer";
+inline constexpr const char *GetRegisterMainGraphicsRendererTypeName()
+{
+    return "eRMainGfx";
+}
 
 class RegisterMainGraphicsRenderer : public common::IEvent
 {

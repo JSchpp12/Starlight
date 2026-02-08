@@ -73,6 +73,8 @@ class CommandSubmitter
 
         m_command->setType(m_cachedType);
         m_submitFun(*m_command);
+
+        m_command = nullptr;
     }
 
     bool isInitialized() const

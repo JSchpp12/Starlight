@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace star::policy
+namespace star::policy::command
 {
 template <typename TOwner, typename TCommand, auto TTypeNameProvider, auto THandler> class ListenFor
 {

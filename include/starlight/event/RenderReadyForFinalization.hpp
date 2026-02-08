@@ -6,8 +6,11 @@
 
 namespace star::event
 {
+inline constexpr const char *GetRenderReadyForFinalizationTypeName()
+{
+    return "eFinal";
+}
 
-constexpr std::string_view GetRenderReadyForFinalizationTypeName = "star::event::finalization";
 class RenderReadyForFinalization : public common::IEvent
 {
   public:

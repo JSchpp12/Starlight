@@ -8,7 +8,7 @@
 namespace star::policy
 {
 template <typename T>
-concept ListenForWriteToFileLike = requires(T listener, command::WriteToFile &event) {
+concept ListenForWriteToFileLike = requires(T listener, star::command::WriteToFile &event) {
     { listener.onWriteToFile(event) } -> std::same_as<void>;
 };
 template <typename T> class ListenForWriteToFile
@@ -36,7 +36,7 @@ template <typename T> class ListenForWriteToFile
         bus.registerServiceCallback(
             type, star::common::ServiceCallback{this, [](void *ctx, star::common::IServiceCommand &base) {
                                                     auto *self = static_cast<ListenForWriteToFile<T> *>(ctx);
-                                                    auto &cmd = static_cast<command::WriteToFile &>(base);
+                                                    auto &cmd = static_cast<star::command::WriteToFile &>(base);
 
                                                     self->m_me.onWriteToFile(cmd);
                                                 }});

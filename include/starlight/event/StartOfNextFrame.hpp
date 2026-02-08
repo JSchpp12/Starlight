@@ -3,12 +3,12 @@
 #include <star_common/FrameTracker.hpp>
 #include <star_common/IEvent.hpp>
 
-#include <stdint.h>
-#include <string_view>
-
 namespace star::event
 {
-constexpr std::string_view GetStartOfNextFrameTypeName = "star::event::start_of_next_frame";
+inline constexpr const char *GetStartOfNextFrameTypeName()
+{
+    return "eStFrame";
+}
 
 class StartOfNextFrame : public star::common::IEvent
 {

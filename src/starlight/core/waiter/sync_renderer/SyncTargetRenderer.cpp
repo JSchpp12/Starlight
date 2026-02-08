@@ -7,7 +7,7 @@ void SyncTargetRenderer::registerListener(star::common::EventBus &eventBus)
     std::shared_ptr<SyncTargetRenderer> sharedThis = shared_from_this();
 
     eventBus.subscribe(
-        common::HandleTypeRegistry::instance().registerType(event::GetStartOfNextFrameTypeName),
+        common::HandleTypeRegistry::instance().registerType(star::event::GetStartOfNextFrameTypeName()),
         common::SubscriberCallbackInfo{
             [sharedThis](const star::common::IEvent &e, bool &keepAlive) {
                 sharedThis->m_startOfFrameListener.eventCallback(e, keepAlive);

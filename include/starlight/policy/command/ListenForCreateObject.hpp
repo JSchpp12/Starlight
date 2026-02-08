@@ -43,7 +43,7 @@ template <typename T> class ListenForCreateObject
         commandBus.registerServiceCallback(
             type, star::common::ServiceCallback{this, [](void *ctx, star::common::IServiceCommand &base) {
                                                     auto *self = static_cast<ListenForCreateObject<T> *>(ctx);
-                                                    auto &cmd = static_cast<command::CreateObject &>(base);
+                                                    auto &cmd = static_cast<star::command::CreateObject &>(base);
 
                                                     self->m_me.onCreateObject(cmd);
                                                 }});

@@ -454,12 +454,12 @@ absl::flat_hash_map<star::Queue_Type, star::Handle> star::core::device::DeviceCo
     }
 
     // try to get dedicated transfer queue
-    selected = getQueueOfType(allQueueHandles, star::Queue_Type::Ttransfer, &selectedFamilyInds);
+    auto selectedTransfer = getQueueOfType(allQueueHandles, star::Queue_Type::Ttransfer, &selectedFamilyInds);
     if (selected.isInitialized())
     {
         selectedQueues.insert(
-            std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Ttransfer, Handle(selected)));
-        selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selected)->queue.getParentQueueFamilyIndex());
+            std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Ttransfer, Handle(selectedTransfer)));
+        selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selectedTransfer)->queue.getParentQueueFamilyIndex());
     }
     else
     {
@@ -469,10 +469,10 @@ absl::flat_hash_map<star::Queue_Type, star::Handle> star::core::device::DeviceCo
     }
 
     // try to get dedicated compute queue
-    selected = getQueueOfType(allQueueHandles, star::Queue_Type::Tcompute, &selectedFamilyInds);
-    if (selected.isInitialized())
+    auto computeSelected = getQueueOfType(allQueueHandles, star::Queue_Type::Tcompute, &selectedFamilyInds);
+    if (computeSelected.isInitialized())
     {
-        auto pair = std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tcompute, Handle(selected));
+        auto pair = std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tcompute, Handle(computeSelected));
         selectedQueues.insert(std::move(pair));
         selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selected)->queue.getParentQueueFamilyIndex());
     }

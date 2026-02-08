@@ -5,7 +5,7 @@
 namespace star::event
 {
 PrepForNextFrame::PrepForNextFrame(common::FrameTracker &frameTracker)
-    : common::IEvent(star::common::HandleTypeRegistry::instance().registerType(GetPrepForNextFrameEventTypeName)),
+    : common::IEvent(star::common::HandleTypeRegistry::instance().registerType(GetPrepForNextFrameEventTypeName())),
       m_frameTracker(&frameTracker)
 {
 }

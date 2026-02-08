@@ -7,7 +7,10 @@
 
 namespace star::event
 {
-constexpr std::string_view GetPrepForNextFrameEventTypeName = "star::event::FramePrep";
+inline constexpr const char *GetPrepForNextFrameEventTypeName()
+{
+    return "eFrPrep";
+}
 
 class PrepForNextFrame : public common::IEvent
 {
