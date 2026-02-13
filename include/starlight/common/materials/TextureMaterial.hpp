@@ -1,7 +1,8 @@
 #pragma once
 
-#include <star_common/Handle.hpp>
 #include "StarMaterial.hpp"
+
+#include <star_common/Handle.hpp>
 
 namespace star
 {
@@ -31,6 +32,5 @@ class TextureMaterial : public StarMaterial
       StarShaderInfo::Builder builder) override; 
 
   private:
-  static std::string GetMatchingFile(const std::string &filePath);
 };
 } // namespace star

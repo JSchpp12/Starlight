@@ -110,7 +110,7 @@ class ScreenCapture
     void negotiateWorkers(star::core::WorkerPool &pool, job::TaskManager &tm)
     {
         size_t numToCreate = 0;
-        const size_t goal = 28;
+        const size_t goal = 6;
 
         for (size_t i{0}; i < goal; i++)
         {
