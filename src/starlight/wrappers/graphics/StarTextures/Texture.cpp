@@ -448,6 +448,8 @@ void star::StarTextures::Texture::LogImageCreateFailure(const vk::Result &result
 
     if (result == vk::Result::eErrorFeatureNotPresent){
         oss << "eErrorFeatureNotPresent"; 
+    }else{
+        oss << "Undefined error";
     }
 
     core::logging::log(boost::log::trivial::error, oss.str());
