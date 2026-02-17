@@ -39,6 +39,10 @@ class DefaultEngineInitPolicy
 
     static service::Service createSceneLoaderService();
 
+    static service::Service createCommandOrderService(); 
+
+    static service::Service createResourceOwnershipService(); 
+
   protected:
     virtual std::vector<service::Service> addAdditionalServices()
     {

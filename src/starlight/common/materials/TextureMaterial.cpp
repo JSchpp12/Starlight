@@ -1,12 +1,11 @@
 #include "TextureMaterial.hpp"
 
+#include "FileHelpers.hpp"
 #include "ManagerRenderResource.hpp"
 #include "StarShaderInfo.hpp"
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "TransferRequest_TextureFile.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
-
-#include "FileHelpers.hpp"
 
 #include <cassert>
 
@@ -14,8 +13,11 @@ star::TextureMaterial::TextureMaterial(std::string texturePath, const glm::vec4 
                                        const glm::vec4 &highlightColor, const glm::vec4 &ambient,
                                        const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny)
     : StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
-      m_texturePath(GetMatchingFile(texturePath))
+      m_texturePath(std::move(texturePath))
 {
+    if (!file_helpers::FileExists(m_texturePath)){
+                STAR_THROW("Provided texture path for material does not exist");
+    }
 }
 
 void star::TextureMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &constBuilder) const
@@ -24,11 +26,12 @@ void star::TextureMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLay
                             vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 }
 
-star::TextureMaterial::TextureMaterial(std::string texturePath) : m_texturePath(std::move(texturePath))
+star::TextureMaterial::TextureMaterial(std::string texturePath)
+    : m_texturePath(std::move(texturePath))
 {
     if (!file_helpers::FileExists(m_texturePath))
     {
-        throw std::runtime_error("Provided texture path for material does not exist");
+        STAR_THROW("Provided texture path for material does not exist");
     }
 }
 
@@ -87,18 +90,4 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::get
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, numFramesInFlight)};
-}
-
-std::string star::TextureMaterial::GetMatchingFile(const std::string &filePath)
-{
-    const auto foundPath = file_helpers::FindFileInDirectoryWithSameNameIgnoreFileType(
-        file_helpers::GetParentDirectory(filePath).value().string(),
-        file_helpers::GetFileNameWithoutExtension(filePath));
-
-    if (!foundPath.has_value())
-    {
-        throw std::runtime_error("Failed to find matching file for texture");
-    }
-
-    return foundPath.value();
 }

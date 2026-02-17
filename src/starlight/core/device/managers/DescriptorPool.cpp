@@ -30,7 +30,7 @@ void DescriptorPool::init(device::StarDevice *device)
 void DescriptorPool::registerListenForEnginePhaseComplete(common::EventBus &bus)
 {
     uint16_t type =
-        common::HandleTypeRegistry::instance().registerType(star::event::GetEnginePhaseCompleteInitTypeName);
+        common::HandleTypeRegistry::instance().registerType(star::event::GetEnginePhaseCompleteInitTypeName());
     bus.subscribe(type,
                   common::SubscriberCallbackInfo(
                       std::bind(&DescriptorPool::eventCallback, this, std::placeholders::_1, std::placeholders::_2),

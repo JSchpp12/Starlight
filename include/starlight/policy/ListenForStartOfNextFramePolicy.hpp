@@ -10,9 +10,10 @@
 namespace star::policy
 {
 template <typename T>
-concept ListenerForStartOfFrameLike = requires(T listener, const event::StartOfNextFrame &event, bool &keepAlive) {
-    { listener.onStartOfNextFrame(event, keepAlive) } -> std::same_as<void>;
-};
+concept ListenerForStartOfFrameLike =
+    requires(T listener, const star::event::StartOfNextFrame &event, bool &keepAlive) {
+        { listener.onStartOfNextFrame(event, keepAlive) } -> std::same_as<void>;
+    };
 template <typename T> class ListenForStartOfNextFramePolicy
 {
   public:
@@ -53,20 +54,21 @@ template <typename T> class ListenForStartOfNextFramePolicy
     void eventCallback(const common::IEvent &e, bool &keepAlive)
         requires ListenerForStartOfFrameLike<T>
     {
-        const auto &event = static_cast<const event::StartOfNextFrame &>(e);
+        const auto &event = static_cast<const star::event::StartOfNextFrame &>(e);
 
         m_me.onStartOfNextFrame(event, keepAlive);
     }
 
     void registerListener(common::EventBus &eventBus)
     {
-        eventBus.subscribe(common::HandleTypeRegistry::instance().registerType(event::GetStartOfNextFrameTypeName),
-                           common::SubscriberCallbackInfo{
-                               std::bind(&ListenForStartOfNextFramePolicy<T>::eventCallback, this,
-                                         std::placeholders::_1, std::placeholders::_2),
-                               std::bind(&ListenForStartOfNextFramePolicy<T>::getHandleForEventBus, this),
-                               std::bind(&ListenForStartOfNextFramePolicy<T>::notificationFromEventBusOfDeletion, this,
-                                         std::placeholders::_1)});
+        eventBus.subscribe(
+            common::HandleTypeRegistry::instance().registerType(star::event::GetStartOfNextFrameTypeName()),
+            common::SubscriberCallbackInfo{
+                std::bind(&ListenForStartOfNextFramePolicy<T>::eventCallback, this, std::placeholders::_1,
+                          std::placeholders::_2),
+                std::bind(&ListenForStartOfNextFramePolicy<T>::getHandleForEventBus, this),
+                std::bind(&ListenForStartOfNextFramePolicy<T>::notificationFromEventBusOfDeletion, this,
+                          std::placeholders::_1)});
     }
 
   private:

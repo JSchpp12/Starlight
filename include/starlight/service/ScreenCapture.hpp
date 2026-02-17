@@ -110,9 +110,19 @@ class ScreenCapture
     void negotiateWorkers(star::core::WorkerPool &pool, job::TaskManager &tm)
     {
         size_t numToCreate = 0;
-        const size_t goal = 28;
 
-        for (size_t i{0}; i < goal; i++)
+        const int goal = pool.getNumAvailableWorkers() - 2; 
+        {
+            std::string msg = "Num workers for image capture: " + std::to_string(goal);
+            star::core::info(msg);
+        }
+
+        if (goal < 0)
+        {
+            STAR_THROW("Not enough available workers to create screen capture service");
+        }
+
+        for (int i{0}; i < goal; i++)
         {
             if (pool.allocateWorker())
             {

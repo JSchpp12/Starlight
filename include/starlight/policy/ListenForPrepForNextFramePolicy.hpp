@@ -8,9 +8,10 @@
 namespace star::policy
 {
 template <typename T>
-concept ListenerForPrepForNextFrameLike = requires(T listener, const event::PrepForNextFrame &event, bool &keepAlive) {
-    { listener.onPrepForNextFrame(event, keepAlive) } -> std::same_as<void>;
-};
+concept ListenerForPrepForNextFrameLike =
+    requires(T listener, const star::event::PrepForNextFrame &event, bool &keepAlive) {
+        { listener.onPrepForNextFrame(event, keepAlive) } -> std::same_as<void>;
+    };
 
 template <typename T> class ListenForPrepForNextFramePolicy
 {
@@ -43,7 +44,8 @@ template <typename T> class ListenForPrepForNextFramePolicy
 
     void registerListener(common::EventBus &eventBus)
     {
-        eventBus.subscribe(common::HandleTypeRegistry::instance().registerType(event::GetPrepForNextFrameEventTypeName),
+        eventBus.subscribe(common::HandleTypeRegistry::instance().registerType(
+                               star::event::GetPrepForNextFrameEventTypeName()),
                            common::SubscriberCallbackInfo{
                                std::bind(&ListenForPrepForNextFramePolicy<T>::eventCallback, this,
                                          std::placeholders::_1, std::placeholders::_2),
@@ -54,7 +56,7 @@ template <typename T> class ListenForPrepForNextFramePolicy
 
     void eventCallback(const common::IEvent &e, bool &keepAlive)
     {
-        const auto &event = static_cast<const event::PrepForNextFrame &>(e);
+        const auto &event = static_cast<const star::event::PrepForNextFrame &>(e);
 
         m_me.onPrepForNextFrame(event, keepAlive);
     }

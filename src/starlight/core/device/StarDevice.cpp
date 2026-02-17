@@ -412,7 +412,7 @@ void StarDevice::createImageWithInfo(const vk::ImageCreateInfo &imageInfo, vk::M
     image = this->vulkanDevice.createImage(imageInfo);
     if (!image)
     {
-        throw std::runtime_error("failed to create image");
+        STAR_THROW("Failed to create vulkan image");
     }
 
     /* Allocate the memory for the imag*/
@@ -426,7 +426,7 @@ void StarDevice::createImageWithInfo(const vk::ImageCreateInfo &imageInfo, vk::M
     imageMemory = this->vulkanDevice.allocateMemory(allocInfo);
     if (!imageMemory)
     {
-        throw std::runtime_error("failed to allocate image memory!");
+        STAR_THROW("Failed to allocate image memory");
     }
 
     this->vulkanDevice.bindImageMemory(image, imageMemory, 0);

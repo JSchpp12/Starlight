@@ -10,8 +10,8 @@
 
 #if defined(_WIN32)
 #include <intrin.h>
-#include <versionhelpers.h>
 #include <windows.h>
+#include <versionhelpers.h>
 #include <winreg.h>
 #elif defined(__APPLE__)
 #include <sys/sysctl.h>

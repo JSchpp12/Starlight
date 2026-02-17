@@ -43,7 +43,7 @@ template <typename T> class ListenForSaveSceneState
         commandBus.registerServiceCallback(
             type, star::common::ServiceCallback{this, [](void *ctx, star::common::IServiceCommand &base) {
                                                     auto *self = static_cast<ListenForSaveSceneState<T> *>(ctx);
-                                                    auto &cmd = static_cast<command::SaveSceneState &>(base);
+                                                    auto &cmd = static_cast<star::command::SaveSceneState &>(base);
 
                                                     self->m_me.onSaveSceneState(cmd);
                                                 }});

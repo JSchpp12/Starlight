@@ -19,7 +19,7 @@ template <typename T> class ListenForRegisterMainGraphicsRenderPolicy
   public:
     explicit ListenForRegisterMainGraphicsRenderPolicy(T &me)
         requires OnRegisterMainGraphicsListenerLike<T>
-        : m_listenerHandle(), m_me(me) {};
+        : m_listenerHandle(), m_me(me){};
 
     ListenForRegisterMainGraphicsRenderPolicy(const ListenForRegisterMainGraphicsRenderPolicy &) = delete;
     ListenForRegisterMainGraphicsRenderPolicy &operator=(const ListenForRegisterMainGraphicsRenderPolicy &) = delete;
@@ -52,7 +52,7 @@ template <typename T> class ListenForRegisterMainGraphicsRenderPolicy
     void registerListener(common::EventBus &eventBus)
     {
         eventBus.subscribe(
-            common::HandleTypeRegistry::instance().registerType(event::GetRegisterMainGraphicsRendererTypeName),
+            common::HandleTypeRegistry::instance().registerType(star::event::GetRegisterMainGraphicsRendererTypeName()),
             common::SubscriberCallbackInfo{
                 std::bind(&ListenForRegisterMainGraphicsRenderPolicy<T>::eventCallback, this, std::placeholders::_1,
                           std::placeholders::_2),
@@ -63,7 +63,7 @@ template <typename T> class ListenForRegisterMainGraphicsRenderPolicy
 
     void eventCallback(const common::IEvent &e, bool &keepAlive)
     {
-        const auto &event = static_cast<const event::RegisterMainGraphicsRenderer &>(e);
+        const auto &event = static_cast<const star::event::RegisterMainGraphicsRenderer &>(e);
 
         m_me.onRegisterMainGraphics(event, keepAlive);
     }

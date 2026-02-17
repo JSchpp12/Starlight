@@ -4,6 +4,7 @@
 #include "starlight/core/Exceptions.hpp"
 #include "starlight/job/tasks/IOTask.hpp"
 #include "starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
+#include "starlight/service/CommandOrderService.hpp"
 #include "starlight/service/FrameInFlightControllerService.hpp"
 #include "starlight/service/HeadlessRenderResultWriteService.hpp"
 #include "starlight/service/IOService.hpp"
@@ -65,12 +66,13 @@ common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFli
 
 std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalDeviceServices()
 {
-    std::vector<service::Service> services = std::vector<service::Service>(5);
+    std::vector<service::Service> services = std::vector<service::Service>(6);
     services[0] = createFrameInFlightControllerService();
     services[1] = createIOService();
     services[2] = createScreenCaptureService();
     services[3] = createHeadlessCaptureService();
     services[4] = createSceneLoaderService();
+    services[5] = createCommandOrderService();
 
     auto addServices = addAdditionalServices();
     for (size_t i{0}; i < addServices.size(); i++)
@@ -106,6 +108,11 @@ service::Service DefaultEngineInitPolicy::createFrameInFlightControllerService()
 service::Service DefaultEngineInitPolicy::createHeadlessCaptureService()
 {
     return service::Service{service::HeadlessRenderResultWriteService{}};
+}
+
+service::Service DefaultEngineInitPolicy::createCommandOrderService()
+{
+    return service::Service{service::CommandOrderService()};
 }
 
 core::RenderingInstance DefaultEngineInitPolicy::createRenderingInstance(std::string appName)

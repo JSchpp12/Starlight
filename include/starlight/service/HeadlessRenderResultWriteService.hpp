@@ -13,10 +13,10 @@
 namespace star::service
 {
 template <typename T>
-using ListenForGetFileNameForFrame = star::policy::ListenFor<
-    T, headless_render_result_write::GetFileNameForFrame,
-    headless_render_result_write::get_file_name_for_frame::GetFileNameForFrameTypeName,
-    &T::onGetFileNameForFrame>;
+using ListenForGetFileNameForFrame =
+    star::policy::command::ListenFor<T, headless_render_result_write::GetFileNameForFrame,
+                                     headless_render_result_write::get_file_name_for_frame::GetFileNameForFrameTypeName,
+                                     &T::onGetFileNameForFrame>;
 
 class HeadlessRenderResultWriteService
     : private star::policy::ListenForRegisterMainGraphicsRenderPolicy<HeadlessRenderResultWriteService>

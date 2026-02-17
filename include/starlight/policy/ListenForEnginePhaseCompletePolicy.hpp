@@ -48,7 +48,7 @@ template <typename T> class ListenForEnginePhaseCompletePolicy
     void registerListener(common::EventBus &eventBus)
     {
         eventBus.subscribe(
-            common::HandleTypeRegistry::instance().registerType(star::event::GetEnginePhaseCompleteLoadTypeName),
+            common::HandleTypeRegistry::instance().registerType(star::event::GetEnginePhaseCompleteLoadTypeName()),
             common::SubscriberCallbackInfo{
                 std::bind(&ListenForEnginePhaseCompletePolicy<T>::eventCallback, this, std::placeholders::_1,
                           std::placeholders::_2, std::placeholders::_3),

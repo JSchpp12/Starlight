@@ -52,6 +52,12 @@ void StarBuffers::Buffer::writeToBuffer(void *data, void *mapped, const vk::Devi
     }
 }
 
+vk::Result StarBuffers::Buffer::invalidate(const vk::DeviceSize &size, const vk::DeviceSize &offset) const
+{
+    auto result = vmaInvalidateAllocation(this->resources->allocator, this->resources->memory, offset, size);
+    return vk::Result(result);
+}
+
 vk::Result StarBuffers::Buffer::flush(const vk::DeviceSize &size, const vk::DeviceSize &offset) const
 {
     auto result = vmaFlushAllocation(this->resources->allocator, this->resources->memory, offset, size);

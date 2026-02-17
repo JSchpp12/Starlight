@@ -11,7 +11,7 @@ namespace star::policy
 {
 template <typename T>
 concept ListenerRenderReadyLike =
-    requires(T listener, const event::RenderReadyForFinalization &event, bool &keepAlive) {
+    requires(T listener, const star::event::RenderReadyForFinalization &event, bool &keepAlive) {
         { listener.onRenderReadyForFinalization(event, keepAlive) } -> std::same_as<void>;
     };
 
@@ -52,7 +52,7 @@ template <typename T> class ListenForRenderReadyForFinalization
     void registerListener(common::EventBus &eventBus)
     {
         eventBus.subscribe(
-            common::HandleTypeRegistry::instance().registerType(event::GetRenderReadyForFinalizationTypeName),
+            common::HandleTypeRegistry::instance().registerType(star::event::GetRenderReadyForFinalizationTypeName()),
             common::SubscriberCallbackInfo{
                 std::bind(&ListenForRenderReadyForFinalization<T>::eventCallback, this, std::placeholders::_1,
                           std::placeholders::_2),
@@ -64,7 +64,7 @@ template <typename T> class ListenForRenderReadyForFinalization
     void eventCallback(const common::IEvent &e, bool &keepAlive)
         requires ListenerRenderReadyLike<T>
     {
-        const auto &event = static_cast<const event::RenderReadyForFinalization &>(e);
+        const auto &event = static_cast<const star::event::RenderReadyForFinalization &>(e);
 
         m_me.onRenderReadyForFinalization(event, keepAlive);
     }
