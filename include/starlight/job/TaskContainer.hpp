@@ -32,11 +32,17 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
     TaskContainer &operator=(TaskContainer &&) = delete;
     ~TaskContainer() = default;
 
-    void queueTask(TTask newTask)
+    void queueTask(TTask&& newTask)
     {
         const uint32_t newSpace = getNextAvailableSpace();
-
         m_tasks[newSpace] = std::move(newTask);
+        m_queuedTasks.push(newSpace);
+    }
+
+    void queueTask(const TTask &newTask)
+    {
+        const uint32_t newSpace = getNextAvailableSpace(); 
+        m_tasks[newSpace] = newTask; 
         m_queuedTasks.push(newSpace);
     }
 

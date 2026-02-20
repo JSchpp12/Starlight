@@ -4,11 +4,11 @@
 
 #include <string_view>
 
-namespace star::command
+namespace star::command::file_io
 {
 namespace write_to_file
 {
-inline constexpr std::string_view GetWriteToFileCommandTypeName = "star::command::write_to_file";
+inline constexpr std::string_view GetWriteToFileCommandTypeName = "scwf";
 }
 
 class WriteToFile : public common::IServiceCommand

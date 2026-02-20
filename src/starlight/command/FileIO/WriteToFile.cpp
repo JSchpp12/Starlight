@@ -1,6 +1,6 @@
-#include "starlight/command/WriteToFile.hpp"
+#include "starlight/command/FileIO/WriteToFile.hpp"
 
-namespace star::command
+namespace star::command::file_io
 {
 WriteToFile::Builder &WriteToFile::Builder::setFile(std::string path)
 {
@@ -18,10 +18,9 @@ WriteToFile WriteToFile::Builder::build()
     return WriteToFile{std::move(m_path), std::move(m_writeFileFunction)};
 }
 
-WriteToFile::WriteToFile(std::string path,
-                         std::function<void(const std::string &)> writeContentFunction)
+WriteToFile::WriteToFile(std::string path, std::function<void(const std::string &)> writeContentFunction)
     : m_path(std::move(path)), m_writeContentFunction(std::move(writeContentFunction))
 {
 }
 
-} // namespace star::command
+} // namespace star::command::file_io

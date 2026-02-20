@@ -39,4 +39,4 @@ template <typename TOwner, typename TCommand, auto TTypeNameProvider, auto THand
   private:
     TOwner &m_me;
 };
-} // namespace star::policy
+} // namespace star::policy::command

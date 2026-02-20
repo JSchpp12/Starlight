@@ -1,6 +1,6 @@
 #pragma once
 
-#include "starlight/command/WriteToFile.hpp"
+#include "starlight/command/FileIO/WriteToFile.hpp"
 #include "starlight/core/CommandBus.hpp"
 
 #include <concepts>
@@ -8,7 +8,7 @@
 namespace star::policy
 {
 template <typename T>
-concept ListenForWriteToFileLike = requires(T listener, star::command::WriteToFile &event) {
+concept ListenForWriteToFileLike = requires(T listener, star::command::file_io::WriteToFile &event) {
     { listener.onWriteToFile(event) } -> std::same_as<void>;
 };
 template <typename T> class ListenForWriteToFile
@@ -17,7 +17,7 @@ template <typename T> class ListenForWriteToFile
 
     uint16_t getType(core::CommandBus &bus) const
     {
-        return bus.registerCommandType(star::command::write_to_file::GetWriteToFileCommandTypeName);
+        return bus.registerCommandType(star::command::file_io::write_to_file::GetWriteToFileCommandTypeName);
     }
 
     void cleanupListener(core::CommandBus &bus)
@@ -36,7 +36,7 @@ template <typename T> class ListenForWriteToFile
         bus.registerServiceCallback(
             type, star::common::ServiceCallback{this, [](void *ctx, star::common::IServiceCommand &base) {
                                                     auto *self = static_cast<ListenForWriteToFile<T> *>(ctx);
-                                                    auto &cmd = static_cast<star::command::WriteToFile &>(base);
+                                                    auto &cmd = static_cast<star::command::file_io::WriteToFile &>(base);
 
                                                     self->m_me.onWriteToFile(cmd);
                                                 }});

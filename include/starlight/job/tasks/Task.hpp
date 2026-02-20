@@ -1,16 +1,18 @@
 #pragma once
 
 #include "complete_tasks/CompleteTask.hpp"
+#include "starlight/core/Exceptions.hpp"
 
 #include <cassert>
 #include <optional>
 #include <stdexcept>
+#include <string_view>
 
 namespace star::job::tasks
 {
-constexpr const std::string GetTaskNameType()
+constexpr const std::string_view GetTaskNameType()
 {
-    return "star::job::task";
+    return "sjTask";
 }
 using ExecuteFunction = void (*)(void *);
 using DestructorFunction = void (*)(void *);
@@ -38,7 +40,9 @@ class Task
             }
             catch (const std::runtime_error &ex)
             {
-                throw std::runtime_error("Failed to move payload");
+                std::ostringstream oss;
+                oss << "Exception during DefaultMovePayload call" << ex.what();
+                STAR_THROW(oss.str());
             }
 
             s->~PayloadType();
@@ -48,6 +52,12 @@ class Task
         {
             static_cast<PayloadType *>(data)->~PayloadType();
         }
+
+        //static void DefaultExecThunc(void *p) noexcept
+        //{
+        //    auto *s = static_cast<PayloadType *>(p);
+        //    s->operator()();
+        //}
         Builder &setPayload(const PayloadType &data)
         {
             m_hasData = true;
@@ -86,16 +96,19 @@ class Task
             static_assert(alignof(PayloadType) <= StorageAlign, "Payload alignment too strict");
 
             if (!m_hasData)
-                throw std::runtime_error("Data must be provided");
-
-            if (!m_executeFunction)
-                throw std::runtime_error("Execute function must be provided");
+            {
+                STAR_THROW("Data must be provided");
+            }
 
             if (!m_destroyPayloadFunction)
+            {
                 m_destroyPayloadFunction = &Builder<PayloadType>::DefaultDestroyPayload;
+            }
 
             if (!m_movePayloadFunction)
+            {
                 m_movePayloadFunction = &Builder<PayloadType>::DefaultMovePayload;
+            }
 
             Task<StorageBytes, StorageAlign> task{};
             new (task.m_data) PayloadType(std::forward<PayloadType>(m_data));
@@ -117,7 +130,7 @@ class Task
         PayloadType m_data;
     };
     Task() = default;
-    Task(Task &&other)
+    Task(Task &&other) noexcept
     {
         if (other.m_movePayloadFunction)
             other.m_movePayloadFunction(m_data, other.m_data);
@@ -164,13 +177,16 @@ class Task
 
     void run()
     {
+        assert(m_executeFunction && "Execute function is not valid");
         m_executeFunction(payload());
     }
 
     std::optional<complete_tasks::CompleteTask> getCompleteMessage()
     {
         if (m_createCompleteFunction)
+        {
             return m_createCompleteFunction(payload());
+        }
 
         return std::nullopt;
     }
@@ -189,12 +205,11 @@ class Task
     }
 
   private:
+    alignas(StorageAlign) std::byte m_data[StorageBytes];
     ExecuteFunction m_executeFunction = nullptr;
     DestructorFunction m_destroyPayloadFunction = nullptr;
     MovePayloadFunction m_movePayloadFunction = nullptr;
     CreateCompleteTaskFunction m_createCompleteFunction = nullptr;
-
-    alignas(StorageAlign) std::byte m_data[StorageBytes];
 
     void *payload() noexcept
     {
