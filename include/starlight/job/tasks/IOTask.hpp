@@ -23,7 +23,11 @@ template <class TFn> struct WritePayload
 
     int operator()()
     {
-        return std::invoke(writeFunction, filePath);
+        star::core::logging::info("Starting file write: " + filePath);
+        auto result = std::invoke(writeFunction, filePath);
+        star::core::logging::info("Done writing file: " + filePath);
+
+        return result;
     }
 };
 
@@ -40,7 +44,11 @@ template <class TFn> struct ReadPayload
 
     int operator()()
     {
-        return std::invoke(readFunction, filePath);
+        star::core::logging::info("Starting file read: " + filePath);
+        auto result = std::invoke(readFunction, filePath);
+        star::core::logging::info("Done reading file: " + filePath);
+
+        return result;
     }
 };
 
@@ -48,25 +56,31 @@ using IOTask = star::job::tasks::Task<128, alignof(std::max_align_t)>;
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateWriteTaskComplete(void *p);
 
-template <class TFn> void ExecuteIOTask(void *p)
+template <class TFn> void ExecuteWriteTask(void *p)
+{
+    auto *payload = static_cast<WritePayload<TFn> *>(p);
+    payload->operator()();
+}
+
+template <class TFn> void ExecuteReadTask(void *p)
 {
     auto *payload = static_cast<ReadPayload<TFn> *>(p);
     payload->operator()();
 }
 
-template <class TFn> IOTask CreateIOTask(WritePayload<TFn> writePayload)
+template <class TFn> IOTask CreateWriteTask(WritePayload<TFn> writePayload)
 {
     return IOTask::Builder<WritePayload<TFn>>()
         .setPayload(std::move(writePayload))
-        .setExecute(&ExecuteIOTask<TFn>)
+        .setExecute(&ExecuteWriteTask<TFn>)
         .build();
 }
 
-template <class TFn> IOTask CreateIOTask(ReadPayload<TFn> readPayload)
+template <class TFn> IOTask CreateReadTask(ReadPayload<TFn> readPayload)
 {
     return IOTask::Builder<ReadPayload<TFn>>()
         .setPayload(std::move(readPayload))
-        .setExecute(&ExecuteIOTask<TFn>)
+        .setExecute(&ExecuteReadTask<TFn>)
         .build();
 }
 
