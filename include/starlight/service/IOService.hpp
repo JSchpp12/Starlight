@@ -34,9 +34,9 @@ class IOService
 
     void setInitParameters(InitParameters &params);
 
-    void onReadFromFile(star::command::file_io::ReadFromFile &read);
+    void onReadFromFile(star::command::file_io::ReadFromFile &cmd);
 
-    void onWriteToFile(command::file_io::WriteToFile &event);
+    void onWriteToFile(command::file_io::WriteToFile &cmd);
 
     void negotiateWorkers(core::WorkerPool &pool, job::TaskManager &tm)
     {

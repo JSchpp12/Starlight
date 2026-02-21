@@ -17,11 +17,11 @@ star::job::TransferManagerThread::~TransferManagerThread()
 void star::job::TransferManagerThread::startAsync(core::device::StarDevice &device)
 {
     this->shouldRun.store(true);
-    this->thread = boost::thread(
-        job::TransferManagerThread::mainLoop,
-        job::TransferManagerThread::SubThreadInfo(&this->shouldRun, &m_completeTaskContainer, device.getVulkanDevice(),
-                                                  this->myQueue, device.getAllocator().get(), this->deviceProperties,
-                                                  m_taskContainer, this->allTransferQueueFamilyIndicesInUse));
+    this->thread = boost::thread(job::TransferManagerThread::mainLoop,
+                                 job::TransferManagerThread::SubThreadInfo(&this->shouldRun, device.getVulkanDevice(),
+                                                                           this->myQueue, device.getAllocator().get(),
+                                                                           this->deviceProperties, m_taskContainer,
+                                                                           this->allTransferQueueFamilyIndicesInUse));
 
     if (!this->thread.joinable())
         throw std::runtime_error("Failed to launch transfer thread");
@@ -122,8 +122,8 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
 
     CheckForCleanups(myInfo.device, processRequestInfos);
 
-    //cleanup command pools
-    pool->cleanupRender(myInfo.device); 
+    // cleanup command pools
+    pool->cleanupRender(myInfo.device);
 }
 
 void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
@@ -254,11 +254,9 @@ void star::job::TransferManagerThread::EnsureInfoReady(vk::Device &device, Proce
 
 star::job::TransferManagerThread::TransferManagerThread(
     std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer,
-    job::TaskContainer<complete_tasks::CompleteTask, 128> &completeTaskContainer,
     const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse)
-    : m_taskContainer(taskContainer), m_completeTaskContainer(completeTaskContainer),
-      deviceProperties(deviceProperties), myQueue(myQueue),
+    : m_taskContainer(taskContainer), deviceProperties(deviceProperties), myQueue(myQueue),
       allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse)
 {
 }
@@ -268,13 +266,10 @@ star::job::TransferWorker::~TransferWorker()
     stopAll();
 }
 
-star::job::TransferWorker::TransferWorker(TaskContainer<complete_tasks::CompleteTask, 128> &completeMessages,
-                                          star::core::device::StarDevice &device, bool overrideToSingleThreadMode,
+star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device, bool overrideToSingleThreadMode,
                                           std::vector<StarQueue *> &queuesToUse)
-    : m_completeMessageContainer(completeMessages)
 {
-    this->threads =
-        CreateThreads(device, queuesToUse, completeMessages, m_highPriorityTaskContainer, m_standardTaskContainer);
+    this->threads = CreateThreads(device, queuesToUse, m_highPriorityTaskContainer, m_standardTaskContainer);
 
     if (this->threads.size() == 0)
     {
@@ -333,7 +328,6 @@ void star::job::TransferWorker::insertRequest(job::TransferManagerThread::InterT
 
 std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::TransferWorker::CreateThreads(
     core::device::StarDevice &device, const std::vector<StarQueue *> &queuesToUse,
-    job::TaskContainer<complete_tasks::CompleteTask, 128> &completeTaskContainer,
     std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> highPriorityQueue,
     std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> standardQueue)
 {
@@ -361,15 +355,14 @@ std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::Transf
         if (createHighPriority)
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
-                highPriorityQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), *queue,
+                highPriorityQueue, device.getPhysicalDevice().getProperties(), *queue,
                 allTransferQueueFamilyIndicesInUse));
             createHighPriority = false;
         }
         else
         {
             newThreads.emplace_back(std::make_unique<job::TransferManagerThread>(
-                standardQueue, completeTaskContainer, device.getPhysicalDevice().getProperties(), *queue,
-                allTransferQueueFamilyIndicesInUse));
+                standardQueue, device.getPhysicalDevice().getProperties(), *queue, allTransferQueueFamilyIndicesInUse));
         }
     }
 

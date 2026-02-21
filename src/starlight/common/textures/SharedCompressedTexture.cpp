@@ -32,8 +32,8 @@ star::SharedCompressedTexture::SharedCompressedTexture(const std::string &pathTo
 {
     if (!VerifyFiles(pathToFile))
     {
-        std::ostringstream oss; 
-        oss << "File verification failed. Either file is not a ktx2 file type or does not exist: " << pathToFile; 
+        std::ostringstream oss;
+        oss << "File verification failed. Either file is not a ktx2 file type or does not exist: " << pathToFile;
         STAR_THROW(oss.str());
     }
 
@@ -166,7 +166,8 @@ void star::SharedCompressedTexture::loadKTX()
 
     if (result != KTX_SUCCESS)
     {
-        throw std::runtime_error("Could not load the requested image file");
+        const std::string msg = "KTX Reported an error with the requested ktx file: " + pathToFile;
+        STAR_THROW(msg);
     }
 }
 
@@ -182,7 +183,8 @@ void star::SharedCompressedTexture::transcode()
         result = ktxTexture2_TranscodeBasis(this->resource, this->selectedTranscodeTargetFormat, 0);
         if (result != KTX_SUCCESS)
         {
-            throw std::runtime_error("Could not transcode the requested image file");
+            const std::string msg = "KTX could not transcode the requested image file: " + pathToFile;
+            STAR_THROW(msg);
         }
     }
 

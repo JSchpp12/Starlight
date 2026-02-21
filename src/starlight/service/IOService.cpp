@@ -71,16 +71,15 @@ void IOService::onReadFromFile(command::file_io::ReadFromFile &cmd)
 {
     assert(m_worker != nullptr);
 
-    m_worker->queueTask(&cmd.m_readTask);
+    m_worker->queueTask(&cmd.readTask);
 }
 
-void IOService::onWriteToFile(command::file_io::WriteToFile &event)
+void IOService::onWriteToFile(command::file_io::WriteToFile &cmd)
 {
     assert(m_worker != nullptr);
 
     // create the event and dispatch to worker
-    auto task = job::tasks::io::IOTask(star::job::tasks::io::CreateIOTask(event.getPath(), event.getFunction()));
-    m_worker->queueTask(&task);
+    m_worker->queueTask(&cmd.writeTask);
 }
 
 } // namespace star::service

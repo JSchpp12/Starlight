@@ -1,4 +1,4 @@
-#pragma
+#pragma once
 
 #include "starlight/job/tasks/IOTask.hpp"
 
@@ -17,18 +17,17 @@ inline constexpr const char *GetReadFromFileCommandTypeName()
 }
 } // namespace read_from_file
 
-class ReadFromFile : public common::IServiceCommand
+struct ReadFromFile : public common::IServiceCommand
 {
-  public:
     static inline constexpr std::string_view GetUniqueTypeName()
     {
         return read_from_file::GetReadFromFileCommandTypeName();
     }
 
-    explicit ReadFromFile(star::job::tasks::io::IOTask readTask) : m_readTask(std::move(readTask))
+    explicit ReadFromFile(star::job::tasks::io::IOTask readTask) : readTask(std::move(readTask))
     {
     }
 
-    star::job::tasks::io::IOTask m_readTask;
+    star::job::tasks::io::IOTask readTask;
 };
 } // namespace star::command::file_io
