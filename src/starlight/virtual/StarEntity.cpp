@@ -71,7 +71,7 @@ static inline void RefreshBasisFromMatrix(glm::mat4 &m, glm::vec3 &right, glm::v
     m[2] = glm::vec4(forward, 0.0f);
 }
 
-void star::StarEntity::rotateRelative(const star::Type::Axis &axis, const float &amt, const bool &inDegrees)
+void star::StarEntity::rotateRelative(star::Type::Axis axis, const float &amt, bool inDegrees)
 {
     float radians = 0.0f;
     glm::vec3 rotationVector = glm::vec3();
@@ -110,7 +110,7 @@ void star::StarEntity::rotateRelative(const star::Type::Axis &axis, const float 
     forwardVector = glm::vec4(f, 0.0);
 }
 
-void star::StarEntity::rotateGlobal(const Type::Axis &axis, const float &amt, const bool &inDegrees)
+void star::StarEntity::rotateGlobal(Type::Axis axis, const float &amt, bool inDegrees)
 {
     float radians = 0.0f;
     glm::vec3 rotationVector = glm::vec3();

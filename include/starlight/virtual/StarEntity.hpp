@@ -45,9 +45,9 @@ class StarEntity
     /// <param name="amt">Ammount of rotation to apply</param>
     /// <param name="rotationVector">Vector around which to apply rotation</param>
     /// <param name="inDegrees">Is the amount provided in degrees</param>
-    void rotateRelative(const Type::Axis &axis, const float &amt, const bool &inDegrees = true);
+    void rotateRelative(Type::Axis axis, const float &amt, bool inDegrees = true);
 
-    void rotateGlobal(const Type::Axis &axis, const float &amt, const bool &inDegrees = true);
+    void rotateGlobal(Type::Axis axis, const float &amt, bool inDegrees = true);
 
     void setForwardVector(const glm::vec3 &newForward)
     {
