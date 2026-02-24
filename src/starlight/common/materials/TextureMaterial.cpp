@@ -15,8 +15,9 @@ star::TextureMaterial::TextureMaterial(std::string texturePath, const glm::vec4 
     : StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
       m_texturePath(std::move(texturePath))
 {
-    if (!file_helpers::FileExists(m_texturePath)){
-                STAR_THROW("Provided texture path for material does not exist");
+    if (!file_helpers::FileExists(m_texturePath))
+    {
+        STAR_THROW("Provided texture path for material does not exist: " + m_texturePath);
     }
 }
 
@@ -26,12 +27,11 @@ void star::TextureMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLay
                             vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 }
 
-star::TextureMaterial::TextureMaterial(std::string texturePath)
-    : m_texturePath(std::move(texturePath))
+star::TextureMaterial::TextureMaterial(std::string texturePath) : m_texturePath(std::move(texturePath))
 {
     if (!file_helpers::FileExists(m_texturePath))
     {
-        STAR_THROW("Provided texture path for material does not exist");
+        STAR_THROW("Provided texture path for material does not exist: " + m_texturePath);
     }
 }
 
