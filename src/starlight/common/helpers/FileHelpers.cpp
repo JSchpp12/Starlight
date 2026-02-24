@@ -13,9 +13,9 @@ namespace star::file_helpers
 {
 bool FileExists(std::string_view filePath)
 {
-    if (boost::filesystem::exists(filePath))
+    if (std::filesystem::exists(filePath))
     {
-        if (boost::filesystem::is_regular_file(filePath))
+        if (std::filesystem::is_regular_file(filePath))
         {
             return true;
         }
@@ -23,19 +23,19 @@ bool FileExists(std::string_view filePath)
     return false;
 }
 
-std::vector<boost::filesystem::path> FindFilesInDirectoryWithSameNameIgnoreFileType(const std::string &directoryPath,
+std::vector<std::filesystem::path> FindFilesInDirectoryWithSameNameIgnoreFileType(const std::string &directoryPath,
                                                                                     const std::string &name)
 {
-    std::vector<boost::filesystem::path> found;
+    std::vector<std::filesystem::path> found;
 
-    boost::filesystem::path path = boost::filesystem::path(directoryPath);
-    boost::filesystem::path target = boost::filesystem::path(name);
+    std::filesystem::path path = std::filesystem::path(directoryPath);
+    std::filesystem::path target = std::filesystem::path(name);
 
-    if (boost::filesystem::exists(path) && boost::filesystem::is_directory(path))
+    if (std::filesystem::exists(path) && std::filesystem::is_directory(path))
     {
-        for (auto &&x : boost::filesystem::directory_iterator(path))
+        for (auto &&x : std::filesystem::directory_iterator(path))
         {
-            boost::filesystem::path xP = boost::filesystem::path(x);
+            std::filesystem::path xP = std::filesystem::path(x);
 
             if (xP.stem() == target.stem())
             {
@@ -102,19 +102,19 @@ std::string ReadFileBinary(const std::string &pathToFile)
 
 std::string GetFileExtension(std::string_view pathToFile)
 {
-    boost::filesystem::path path = boost::filesystem::path(pathToFile);
+    std::filesystem::path path = std::filesystem::path(pathToFile);
 
     return path.extension().string();
 }
 
 std::string GetFullPath(const std::string &pathToFile)
 {
-    return boost::filesystem::canonical(boost::filesystem::path(pathToFile)).string();
+    return std::filesystem::canonical(std::filesystem::path(pathToFile)).string();
 }
 
 std::string GetFileNameWithoutExtension(const std::string &pathToFile)
 {
-    const auto path = boost::filesystem::path(pathToFile);
+    const auto path = std::filesystem::path(pathToFile);
     if (!path.has_filename())
     {
         STAR_THROW("No filename provided in path");
@@ -125,9 +125,9 @@ std::string GetFileNameWithoutExtension(const std::string &pathToFile)
     return mainFileName.substr(0, posOfExt);
 }
 
-std::optional<boost::filesystem::path> GetParentDirectory(const std::string &pathToFile)
+std::optional<std::filesystem::path> GetParentDirectory(const std::string &pathToFile)
 {
-    auto path = boost::filesystem::path(pathToFile);
+    auto path = std::filesystem::path(pathToFile);
     if (!path.has_parent_path())
     {
         return std::nullopt;
@@ -156,13 +156,13 @@ star::Shader_Stage GetStageOfShader(std::string_view pathToFile)
     STAR_THROW("Unsupported stage type for shader");
 }
 
-void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirectory)
+void CreateDirectoryIfDoesNotExist(const std::filesystem::path &pathToDirectory)
 {
     try
     {
-        boost::filesystem::create_directories(pathToDirectory);
+        std::filesystem::create_directories(pathToDirectory);
     }
-    catch (const boost::filesystem::filesystem_error &e)
+    catch (const std::filesystem::filesystem_error &e)
     {
         std::ostringstream oss;
         oss << "Filesystem error: " << e.what();
@@ -171,7 +171,7 @@ void CreateDirectoryIfDoesNotExist(const boost::filesystem::path &pathToDirector
     }
 }
 
-boost::filesystem::path GetExecutableDirectory()
+std::filesystem::path GetExecutableDirectory()
 {
     const std::string exePath = star::common::GetRuntimePath().string();
     const auto parentDir = GetParentDirectory(exePath).value(); // should always have a value

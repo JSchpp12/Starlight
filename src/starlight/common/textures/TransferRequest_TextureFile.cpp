@@ -10,13 +10,12 @@
 #include "stb_image.h"
 
 #include <star_common/helper/CastHelpers.hpp>
-#include <boost/filesystem/path.hpp>
 
 #include <cassert>
 
 static bool IsTextureFile(const std::string path)
 {
-    const boost::filesystem::path fPath(path); 
+    const std::filesystem::path fPath(path); 
     const auto ext = fPath.extension(); 
     if (ext == ".png" || ext == ".jpg")
     {

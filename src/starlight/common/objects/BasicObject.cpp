@@ -10,7 +10,6 @@
 #include "VertColorMaterial.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 
-#include <boost/filesystem.hpp>
 #include <star_common/helper/CastHelpers.hpp>
 
 std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
