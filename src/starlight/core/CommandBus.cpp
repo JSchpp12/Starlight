@@ -5,19 +5,19 @@
 namespace star::core
 {
 
+void CommandBus::submitKnownType(common::IServiceCommand &command) const
+{
+    assert(m_serviceCallbacks.contains(command.getType()) &&
+           "Command does not have registered callback");
+    m_serviceCallbacks.at(command.getType())(command);
+}
+
 uint16_t CommandBus::registerCommandType(std::string_view typeName)
 {
     return m_types.registerType(typeName);
 }
 
-void CommandBus::submit(star::common::IServiceCommand &command) const noexcept
-{
-    assert(m_serviceCallbacks.contains(command.getType()) && "Command does not have registered callback");
-
-    m_serviceCallbacks.at(command.getType())(command);
-}
-
-void CommandBus::removeServiceCallback(const uint16_t &commandType)
+void CommandBus::removeServiceCallback(uint16_t commandType)
 {
     assert(m_serviceCallbacks.contains(commandType) &&
            "Attempted to delete service callback for type which does not exist in container");
@@ -25,12 +25,10 @@ void CommandBus::removeServiceCallback(const uint16_t &commandType)
     m_serviceCallbacks.erase(commandType);
 }
 
-void CommandBus::registerServiceCallback(const uint16_t &commandType, star::common::ServiceCallback callback)
+void CommandBus::registerServiceCallback(uint16_t commandType, star::common::ServiceCallback callback)
 {
-    assert(!m_serviceCallbacks.contains(commandType) &&
-           "Command already has registerd callback. Only one callback per type is allowed");
-
-    m_serviceCallbacks.insert(std::pair<uint16_t, common::ServiceCallback>(commandType, std::move(callback)));
+    auto [it, ok] = m_serviceCallbacks.try_emplace(commandType, std::move(callback));
+    assert(ok && "Command already has a registered callback");
 }
 
 } // namespace star::core

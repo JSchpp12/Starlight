@@ -7,8 +7,8 @@
 #include "starlight/job/worker/Worker.hpp"
 #include "starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
 #include "starlight/policy/command/ListenFor.hpp"
-#include "starlight/policy/command/ListenForWriteToFile.hpp"
 #include "starlight/service/InitParameters.hpp"
+#include "starlight/command/FileIO/WriteToFile.hpp"
 
 namespace star::service
 {
@@ -17,6 +17,11 @@ using ListenForReadFromFile =
     star::policy::command::ListenFor<T, star::command::file_io::ReadFromFile,
                                      star::command::file_io::read_from_file::GetReadFromFileCommandTypeName,
                                      &T::onReadFromFile>;
+template <typename T>
+using ListenForWriteToFile =
+    star::policy::command::ListenFor<T, star::command::file_io::WriteToFile,
+                                     star::command::file_io::write_to_file::GetWriteToFileCommandTypeName,
+                                     &T::onWriteToFile>;
 
 class IOService
 {
@@ -45,7 +50,7 @@ class IOService
 
   private:
     ListenForReadFromFile<IOService> m_listenForReadFromFile;
-    policy::ListenForWriteToFile<IOService> m_listenForFileWrite;
+    ListenForWriteToFile<IOService> m_listenForWriteToFile;
     job::worker::Worker *m_worker = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
 

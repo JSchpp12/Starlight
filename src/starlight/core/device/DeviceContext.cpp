@@ -42,7 +42,7 @@ star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
 
 void star::core::device::DeviceContext::submit(star::common::IServiceCommand &command)
 {
-    m_commandBus.submit(command);
+    m_commandBus.submitKnownType(command);
 }
 
 star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(DeviceContext &&other)

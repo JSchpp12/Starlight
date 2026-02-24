@@ -24,7 +24,13 @@ struct ReadFromFile : public common::IServiceCommand
         return read_from_file::GetReadFromFileCommandTypeName();
     }
 
-    explicit ReadFromFile(star::job::tasks::io::IOTask readTask) : readTask(std::move(readTask))
+    explicit ReadFromFile(star::job::tasks::io::IOTask readTask)
+        : common::IServiceCommand(), readTask(std::move(readTask))
+    {
+    }
+
+    ReadFromFile(star::job::tasks::io::IOTask readTask, uint16_t type)
+        : common::IServiceCommand(type), readTask(std::move(readTask))
     {
     }
 

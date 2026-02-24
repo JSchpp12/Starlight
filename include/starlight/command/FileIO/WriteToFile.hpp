@@ -10,17 +10,26 @@ namespace star::command::file_io
 {
 namespace write_to_file
 {
-inline constexpr std::string_view GetWriteToFileCommandTypeName = "scwf";
+inline constexpr const char *GetWriteToFileCommandTypeName()
+{
+    return "scwf";
+};
 }
 
 struct WriteToFile : public common::IServiceCommand
 {
     static inline constexpr std::string_view GetUniqueTypeName()
     {
-        return write_to_file::GetWriteToFileCommandTypeName;
+        return write_to_file::GetWriteToFileCommandTypeName();
     }
 
-    WriteToFile(star::job::tasks::io::IOTask writeTask) : writeTask(std::move(writeTask))
+    explicit WriteToFile(star::job::tasks::io::IOTask writeTask)
+        : common::IServiceCommand(), writeTask(std::move(writeTask))
+    {
+    }
+
+    WriteToFile(star::job::tasks::io::IOTask writeTask, uint16_t type)
+        : common::IServiceCommand(type), writeTask(std::move(writeTask))
     {
     }
 
