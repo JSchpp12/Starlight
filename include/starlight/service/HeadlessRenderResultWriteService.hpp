@@ -72,6 +72,10 @@ class HeadlessRenderResultWriteService
 
     void cleanupListeners(core::CommandBus &commandBus);
 
+    static void CheckAndCreateImageDir(); 
+
     std::string getFileName(const common::FrameTracker &ft) const;
+
+    static std::filesystem::path GetImageDirectory(); 
 };
 } // namespace star::service

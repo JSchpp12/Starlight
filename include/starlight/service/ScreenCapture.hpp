@@ -267,6 +267,7 @@ class ScreenCapture
 
     void cleanupDependencies(core::device::StarDevice &device)
     {
+        (void)device; 
         m_actionRouter.cleanupRender(&m_deviceInfo);
     }
 

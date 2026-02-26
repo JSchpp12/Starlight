@@ -3,7 +3,6 @@
 #include "BumpMaterial.hpp"
 #include "ConfigFile.hpp"
 #include "FileHelpers.hpp"
-#include "StarGraphicsPipeline.hpp"
 #include "StarMesh.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
