@@ -56,14 +56,6 @@ void star::service::HeadlessRenderResultWriteService::shutdown()
     cleanup(*m_eventBus);
 }
 
-star::service::HeadlessRenderResultWriteService::~HeadlessRenderResultWriteService()
-{
-    if (m_eventBus != nullptr)
-    {
-        cleanup(*m_eventBus);
-    }
-}
-
 void star::service::HeadlessRenderResultWriteService::onGetFileNameForFrame(
     headless_render_result_write::GetFileNameForFrame &event) const
 {

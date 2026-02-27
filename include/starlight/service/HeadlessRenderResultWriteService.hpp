@@ -27,7 +27,7 @@ class HeadlessRenderResultWriteService
     HeadlessRenderResultWriteService &operator=(const HeadlessRenderResultWriteService &) = delete;
     HeadlessRenderResultWriteService(HeadlessRenderResultWriteService &&other);
     HeadlessRenderResultWriteService &operator=(HeadlessRenderResultWriteService &&other);
-    ~HeadlessRenderResultWriteService();
+    ~HeadlessRenderResultWriteService() = default;
 
     void init();
 
