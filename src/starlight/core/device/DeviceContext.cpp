@@ -42,7 +42,7 @@ star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
 
 void star::core::device::DeviceContext::submit(star::common::IServiceCommand &command)
 {
-    m_commandBus.submit(command);
+    m_commandBus.submitKnownType(command);
 }
 
 star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(DeviceContext &&other)
@@ -121,7 +121,7 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
 
 void star::core::device::DeviceContext::manualTriggerOfCheckForMessages()
 {
-    handleCompleteMessages(); 
+    handleCompleteMessages();
 }
 
 void star::core::device::DeviceContext::finalizeServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
@@ -219,8 +219,7 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::cr
         }
     }
 
-    return std::make_shared<job::TransferWorker>(*m_taskManager.getCompleteMessages(), device, false,
-                                                 transferWorkerQueues);
+    return std::make_shared<job::TransferWorker>(device, false, transferWorkerQueues);
 }
 
 void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t maxMessagesCounter)
@@ -459,7 +458,8 @@ absl::flat_hash_map<star::Queue_Type, star::Handle> star::core::device::DeviceCo
     {
         selectedQueues.insert(
             std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Ttransfer, Handle(selectedTransfer)));
-        selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selectedTransfer)->queue.getParentQueueFamilyIndex());
+        selectedFamilyInds.insert(
+            m_graphicsManagers.queueManager.get(selectedTransfer)->queue.getParentQueueFamilyIndex());
     }
     else
     {

@@ -93,7 +93,7 @@ shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath)
     if (compileDebug)
         options.SetGenerateDebugInfo();
 
-    boost::filesystem::path parent;
+    std::filesystem::path parent;
     try
     {
         parent = file_helpers::GetParentDirectory(filePath).value();

@@ -84,9 +84,9 @@ void star::ConfigFile::load(const std::string &configFilePath)
                 const auto path = star::file_helpers::GetExecutableDirectory() / "tmp";
                 settings[setting.second] = path.string();
 
-                if (!boost::filesystem::exists(path)){
-                    core::logging::info("Creating temporary data directory"); 
-                    boost::filesystem::create_directories(path);
+                if (!std::filesystem::exists(path)){
+                    core::logging::info("Creating temporary data directory: " + path.string()); 
+                    std::filesystem::create_directories(path);
                 }
                 break;
             }

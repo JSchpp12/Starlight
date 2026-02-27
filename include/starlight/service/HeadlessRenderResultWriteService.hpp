@@ -27,7 +27,7 @@ class HeadlessRenderResultWriteService
     HeadlessRenderResultWriteService &operator=(const HeadlessRenderResultWriteService &) = delete;
     HeadlessRenderResultWriteService(HeadlessRenderResultWriteService &&other);
     HeadlessRenderResultWriteService &operator=(HeadlessRenderResultWriteService &&other);
-    ~HeadlessRenderResultWriteService();
+    ~HeadlessRenderResultWriteService() = default;
 
     void init();
 
@@ -72,6 +72,10 @@ class HeadlessRenderResultWriteService
 
     void cleanupListeners(core::CommandBus &commandBus);
 
+    static void CheckAndCreateImageDir();
+
     std::string getFileName(const common::FrameTracker &ft) const;
+
+    static std::filesystem::path GetImageDirectory();
 };
 } // namespace star::service

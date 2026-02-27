@@ -2,8 +2,6 @@
 
 #include "FileHelpers.hpp"
 
-#include <boost/filesystem.hpp>
-
 #include <fstream>
 #include <vector>
 
@@ -12,11 +10,11 @@ namespace star::core::graphics::shader
 shaderc_include_result *BasicIncluder::GetInclude(const char *requestedSource, shaderc_include_type type,
                                                   const char *requestingSource, size_t includeDepth)
 {
-    std::vector<boost::filesystem::path> searchPaths;
+    std::vector<std::filesystem::path> searchPaths;
 
     if (type == shaderc_include_type_relative && requestedSource && *requestingSource)
     {
-        boost::filesystem::path path = boost::filesystem::path(requestedSource); 
+        std::filesystem::path path = std::filesystem::path(requestedSource); 
         if (path.has_parent_path())
         {
             searchPaths.emplace_back(path.parent_path());
@@ -25,18 +23,18 @@ shaderc_include_result *BasicIncluder::GetInclude(const char *requestedSource, s
 
     for (auto &inc : m_additionalIncludePaths)
     {
-        searchPaths.emplace_back(boost::filesystem::path(inc));
+        searchPaths.emplace_back(std::filesystem::path(inc));
     }
 
-    boost::filesystem::path resolved;
+    std::filesystem::path resolved;
     for (auto &path : searchPaths)
     {
         boost::system::error_code error;
 
         auto candidate = path / requestedSource;
-        if (boost::filesystem::exists(candidate, error))
+        if (std::filesystem::exists(candidate, error))
         {
-            resolved = boost::filesystem::canonical(candidate);
+            resolved = std::filesystem::canonical(candidate);
             if (!error)
             {
                 break;

@@ -61,6 +61,7 @@ template <typename TTransferType, typename TDataType> class Controller
     bool submitUpdateIfNeeded(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                               vk::Semaphore &semaphore)
     {
+        const uint8_t &fIndex = context.getFrameTracker().getCurrent().getFrameInFlightIndex();
         assert(frameInFlightIndex < m_resourceHandles.size() && m_resourceHandles[frameInFlightIndex].isInitialized() &&
                "Resources must be properly prepared before use");
         if (hasAlreadyBeenUpdatedThisFrame(context.getFrameTracker().getCurrent().getGlobalFrameCounter()))
@@ -70,7 +71,7 @@ template <typename TTransferType, typename TDataType> class Controller
                             ->resourceSemaphore;
             return true;
         }
-        if (!doesFrameInFlightDataNeedUpdated(frameInFlightIndex))
+        if (!doesFrameInFlightDataNeedUpdated(fIndex))
         {
             return false;
         }

@@ -56,14 +56,6 @@ void star::service::HeadlessRenderResultWriteService::shutdown()
     cleanup(*m_eventBus);
 }
 
-star::service::HeadlessRenderResultWriteService::~HeadlessRenderResultWriteService()
-{
-    if (m_eventBus != nullptr)
-    {
-        cleanup(*m_eventBus);
-    }
-}
-
 void star::service::HeadlessRenderResultWriteService::onGetFileNameForFrame(
     headless_render_result_write::GetFileNameForFrame &event) const
 {
@@ -99,10 +91,29 @@ void star::service::HeadlessRenderResultWriteService::init()
 {
     assert(m_eventBus != nullptr && m_cmdBus != nullptr);
 
+    CheckAndCreateImageDir();
+
     initListeners(*m_eventBus);
     initListeners(*m_cmdBus);
 
     m_screenshotRegistrations.resize(m_frameTracker->getSetup().getNumFramesInFlight());
+}
+
+void star::service::HeadlessRenderResultWriteService::CheckAndCreateImageDir()
+{
+    if (!std::filesystem::exists(GetImageDirectory()))
+    {
+        try
+        {
+            std::filesystem::create_directory(GetImageDirectory());
+        }
+        catch (std::exception &ex)
+        {
+            std::ostringstream oss;
+            oss << "Failed to create target image capture directory: " << ex.what();
+            STAR_THROW(oss.str());
+        }
+    }
 }
 
 void star::service::HeadlessRenderResultWriteService::initListeners(common::EventBus &eventBus)
@@ -169,5 +180,11 @@ void star::service::HeadlessRenderResultWriteService::onRenderReadyForFinalizati
 
 std::string star::service::HeadlessRenderResultWriteService::getFileName(const common::FrameTracker &ft) const
 {
-    return "Frame - " + std::to_string(ft.getCurrent().getGlobalFrameCounter()) + ".png";
+    const std::string fileName = "Frame -" + std::to_string(ft.getCurrent().getGlobalFrameCounter()) + ".png";
+    return (GetImageDirectory() / fileName).string();
+}
+
+std::filesystem::path star::service::HeadlessRenderResultWriteService::GetImageDirectory()
+{
+    return (star::file_helpers::GetExecutableDirectory() / "images").string();
 }

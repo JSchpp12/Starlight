@@ -3,7 +3,6 @@
 #include "BumpMaterial.hpp"
 #include "ConfigFile.hpp"
 #include "FileHelpers.hpp"
-#include "StarGraphicsPipeline.hpp"
 #include "StarMesh.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
@@ -11,7 +10,6 @@
 #include "core/helper/queue/QueueHelpers.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
-#include <boost/filesystem.hpp>
 
 std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
 {
@@ -110,7 +108,6 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
                                             star::Queue_Type::Tgraphics)
             ->getParentQueueFamilyIndex();
 
-
     // need to scale object so that it fits on screen
     // combine all attributes into a single object
     int dIndex = 0;
@@ -162,8 +159,7 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
                 context.getDeviceID(), context.getSemaphoreManager().get(meshVertSemaphore)->semaphore,
                 std::make_unique<TransferRequest::VertInfo>(graphicsQueueFamilyIndex, vertices));
 
-            const auto indSemaphore =
-                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
+            const auto indSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
 
             const Handle meshIndBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(), context.getSemaphoreManager().get(indSemaphore)->semaphore,
@@ -178,6 +174,19 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
     }
 
     return meshes;
+}
+
+static std::optional<std::string> LookForTextureFile(const std::string &parentDir, const std::string &textureFileName)
+{
+    std::optional<std::string> found = std::nullopt;
+
+    const auto files = star::file_helpers::FindFilesInDirectoryWithSameNameIgnoreFileType(parentDir, textureFileName);
+    if (files.size() > 0)
+    {
+        found = files[0].string();
+    }
+
+    return found;
 }
 
 std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(const std::string &filePath)
@@ -223,18 +232,36 @@ std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterial
 
         if (isBumpMaterial)
         {
-            auto path = parentDirectory / boost::filesystem::path(fMaterial.bump_texname);
+            const auto bumpFile = LookForTextureFile(parentDirectory, fMaterial.bump_texname);
+            const auto texFile = LookForTextureFile(parentDirectory, fMaterial.diffuse_texname);
+
+            if (!bumpFile.has_value())
+            {
+                STAR_THROW("Unable to find corresponding bump file for material with bump name: " +
+                           fMaterial.bump_texname);
+            }
+            if (!texFile.has_value())
+            {
+                STAR_THROW("Unable to find coresponding texture file for material with texture name: " +
+                           fMaterial.diffuse_texname);
+            }
             materials.emplace_back(std::make_shared<star::BumpMaterial>(
-                path.string(), fMaterial.diffuse_texname, glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                bumpFile.value(), texFile.value(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
                 glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
                 glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
                 fMaterial.shininess));
         }
         else if (isTextureMaterial)
         {
-            auto path = parentDirectory / boost::filesystem::path(fMaterial.diffuse_texname);
+            const auto texFile = LookForTextureFile(parentDirectory, fMaterial.diffuse_texname);
+            if (!texFile.has_value())
+            {
+                STAR_THROW("Unable to find corresponding texture file for material with texture name: " +
+                           fMaterial.diffuse_texname);
+            }
+
             materials.emplace_back(std::make_shared<star::TextureMaterial>(
-                path.string(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                texFile.value(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
                 glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
                 glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
                 fMaterial.shininess));

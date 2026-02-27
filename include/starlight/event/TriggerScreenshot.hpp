@@ -21,18 +21,18 @@ constexpr std::string TriggerScreenshotTypeName()
 class TriggerScreenshot : public star::common::IEvent
 {
   public:
-    TriggerScreenshot(StarTextures::Texture targetTexture, std::string screenshotName, Handle &targetCommandBuffer,
+    TriggerScreenshot(StarTextures::Texture targetTexture, std::string screenshotPath, Handle &targetCommandBuffer,
                       Handle &calleeRegistration, vk::Semaphore targetTextureReadySemaphore)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
-          m_targetTexture(std::move(targetTexture)), m_screenshotName(std::move(screenshotName)),
+          m_targetTexture(std::move(targetTexture)), m_screenshotPath(std::move(screenshotPath)),
           m_targetTextureReadySemaphore(std::move(targetTextureReadySemaphore)),
           m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration)
     {
     }
-    TriggerScreenshot(StarTextures::Texture targetTexture, std::string screenshotName, Handle &targetCommandBuffer,
+    TriggerScreenshot(StarTextures::Texture targetTexture, std::string screenshotPath, Handle &targetCommandBuffer,
                       Handle &calleeRegistration)
         : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
-          m_targetTexture(std::move(targetTexture)), m_screenshotName(std::move(screenshotName)),
+          m_targetTexture(std::move(targetTexture)), m_screenshotPath(std::move(screenshotPath)),
           m_targetTextureReadySemaphore(nullptr), m_targetCommandBuffer(targetCommandBuffer),
           m_calleeRegistration(calleeRegistration)
     {
@@ -55,14 +55,14 @@ class TriggerScreenshot : public star::common::IEvent
     {
         return m_calleeRegistration;
     }
-    const std::string &getName() const
+    const std::string &getPath() const
     {
-        return m_screenshotName;
+        return m_screenshotPath;
     }
 
   private:
     StarTextures::Texture m_targetTexture;
-    std::string m_screenshotName;
+    std::string m_screenshotPath;
     vk::Semaphore m_targetTextureReadySemaphore = VK_NULL_HANDLE;
     Handle &m_targetCommandBuffer;
     Handle &m_calleeRegistration;

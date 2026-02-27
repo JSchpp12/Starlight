@@ -238,7 +238,7 @@ class ScreenCapture
                                              syncInfo.signalValue);
 
         job::tasks::write_image_to_disk::WritePayload payload{
-            .path = screenEvent.getName(),
+            .path = screenEvent.getPath(),
             .semaphore = syncInfo.timelineSemaphoreForMainCopyCommandsDone,
             .device = m_deviceInfo.device->getVulkanDevice(),
             .bufferImageInfo = std::make_unique<job::tasks::write_image_to_disk::BufferImageInfo>(
@@ -267,6 +267,7 @@ class ScreenCapture
 
     void cleanupDependencies(core::device::StarDevice &device)
     {
+        (void)device; 
         m_actionRouter.cleanupRender(&m_deviceInfo);
     }
 

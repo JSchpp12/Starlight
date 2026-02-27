@@ -7,17 +7,35 @@
 #include <star_common/ServiceCallbackInfo.hpp>
 #include <star_common/TypeRegistry.hpp>
 
+#include <cassert>
 #include <string_view>
 
 namespace star::core
 {
 
+namespace command_bus
+{
+template <typename TCmd> uint16_t ResolveTypeID(const common::TypeRegistry &registry)
+{
+    static const uint16_t cached = registry.getTypeGuaranteedExist(TCmd::GetUniqueTypeName());
+    return cached;
+}
+} // namespace command_bus
+
 class CommandBus
 {
   public:
-    void submit(star::common::IServiceCommand &command) const noexcept;
-    void registerServiceCallback(const uint16_t &commandType, star::common::ServiceCallback callback);
-    void removeServiceCallback(const uint16_t &commandType);
+    template <typename TCmd> void submit(TCmd &command) const noexcept
+    {
+        const uint16_t typeID = command_bus::ResolveTypeID<TCmd>(m_types);
+
+        command.setType(typeID);
+        submitKnownType(static_cast<common::IServiceCommand &>(command));
+    }
+
+    void submitKnownType(common::IServiceCommand &command) const;
+    void registerServiceCallback(uint16_t commandType, star::common::ServiceCallback callback);
+    void removeServiceCallback(uint16_t commandType);
     uint16_t registerCommandType(std::string_view typeName);
     common::TypeRegistry &getRegistry()
     {

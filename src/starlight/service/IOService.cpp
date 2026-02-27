@@ -4,12 +4,12 @@
 
 namespace star::service
 {
-IOService::IOService() : m_listenForFileWrite(*this)
+IOService::IOService() : m_listenForReadFromFile(*this), m_listenForWriteToFile(*this)
 {
 }
 
 IOService::IOService(IOService &&other)
-    : m_listenForFileWrite(*this), m_worker(other.m_worker), m_cmdBus(other.m_cmdBus)
+    : m_listenForReadFromFile(*this), m_listenForWriteToFile(*this), m_worker(other.m_worker), m_cmdBus(other.m_cmdBus)
 {
     if (m_cmdBus != nullptr)
     {
@@ -38,12 +38,14 @@ IOService &IOService::operator=(IOService &&other)
 
 void IOService::initListeners(star::core::CommandBus &bus)
 {
-    m_listenForFileWrite.init(bus);
+    m_listenForReadFromFile.init(bus);
+    m_listenForWriteToFile.init(bus);
 }
 
 void IOService::cleanupListeners(star::core::CommandBus &bus)
 {
-    m_listenForFileWrite.cleanup(bus);
+    m_listenForReadFromFile.cleanup(bus);
+    m_listenForWriteToFile.cleanup(bus);
 }
 
 void IOService::init()
@@ -65,15 +67,19 @@ void IOService::setInitParameters(InitParameters &params)
     m_cmdBus = &params.commandBus;
 }
 
-void IOService::onWriteToFile(command::WriteToFile &event)
+void IOService::onReadFromFile(command::file_io::ReadFromFile &cmd)
+{
+    assert(m_worker != nullptr);
+
+    m_worker->queueTask(&cmd.readTask);
+}
+
+void IOService::onWriteToFile(command::file_io::WriteToFile &cmd)
 {
     assert(m_worker != nullptr);
 
     // create the event and dispatch to worker
-    job::tasks::io::IOTask *task =
-        new job::tasks::io::IOTask(star::job::tasks::io::CreateIOTask(event.getPath(), event.getFunction()));
-    m_worker->queueTask(task);
-    delete task;
+    m_worker->queueTask(&cmd.writeTask);
 }
 
 } // namespace star::service
