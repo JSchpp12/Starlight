@@ -91,8 +91,8 @@ void star::service::HeadlessRenderResultWriteService::init()
 {
     assert(m_eventBus != nullptr && m_cmdBus != nullptr);
 
-    CheckAndCreateImageDir(); 
-    
+    CheckAndCreateImageDir();
+
     initListeners(*m_eventBus);
     initListeners(*m_cmdBus);
 
