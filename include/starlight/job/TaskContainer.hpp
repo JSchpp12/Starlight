@@ -4,8 +4,9 @@
 #include "logging/LoggingFactory.hpp"
 
 #include <boost/atomic/atomic.hpp>
-#include <boost/lockfree/stack.hpp>
+#include <boost/lockfree/queue.hpp>
 
+#include <atomic>
 #include <concepts>
 #include <optional>
 #include <sstream>
@@ -32,18 +33,19 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
     TaskContainer &operator=(TaskContainer &&) = delete;
     ~TaskContainer() = default;
 
-    void queueTask(TTask&& newTask)
+    void queueTask(TTask &&newTask)
     {
+        static_assert(std::is_nothrow_move_assignable_v<TTask> && std::is_nothrow_move_constructible_v<TTask>,
+                      "TTask must be noexcept moveable for lock-free placement.");
+
         const uint32_t newSpace = getNextAvailableSpace();
         m_tasks[newSpace] = std::move(newTask);
-        m_queuedTasks.push(newSpace);
-    }
 
-    void queueTask(const TTask &newTask)
-    {
-        const uint32_t newSpace = getNextAvailableSpace(); 
-        m_tasks[newSpace] = newTask; 
-        m_queuedTasks.push(newSpace);
+        m_pending.fetch_add(1, std::memory_order_release);
+        while (!m_queuedTasks.push(newSpace))
+        {
+            std::this_thread::yield();
+        }
     }
 
     std::optional<TTask> getQueuedTask()
@@ -59,17 +61,25 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
         auto tmp = std::make_optional<TTask>(std::move(m_tasks[queuedIndex]));
         if (!m_availableSpaces.push(queuedIndex))
         {
-            throw std::runtime_error("Failed to push available space");
+            STAR_THROW("Failed to push available space");
         }
+
+        m_pending.fetch_sub(1, std::memory_order_acq_rel);
         return tmp;
+    }
+
+    bool empty() noexcept
+    {
+        return m_pending.load(std::memory_order_acquire) == 0;
     }
 
   private:
     std::vector<TTask> m_tasks;
-    boost::lockfree::stack<uint32_t, boost::lockfree::capacity<TMaxSize>> m_availableSpaces =
-        boost::lockfree::stack<uint32_t, boost::lockfree::capacity<TMaxSize>>();
-    boost::lockfree::stack<uint32_t, boost::lockfree::capacity<TMaxSize>> m_queuedTasks =
-        boost::lockfree::stack<uint32_t, boost::lockfree::capacity<TMaxSize>>();
+    boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>> m_availableSpaces =
+        boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>>();
+    boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>> m_queuedTasks =
+        boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>>();
+    std::atomic<uint32_t> m_pending{0};
 
     uint32_t getNextAvailableSpace()
     {
@@ -87,7 +97,7 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
 
                 if (sleepCounter == 1000)
                 {
-                    throw std::runtime_error("Failed to wait for free spot to become available");
+                    STAR_THROW("Failed to wait for free spot to become available");
                 }
             }
 
@@ -107,7 +117,7 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
         {
             if (!m_availableSpaces.push(i))
             {
-                throw std::runtime_error("Failed to initialize space");
+                STAR_THROW("Failed to initialize space");
             }
         }
     }
