@@ -180,7 +180,7 @@ void star::service::HeadlessRenderResultWriteService::onRenderReadyForFinalizati
 
 std::string star::service::HeadlessRenderResultWriteService::getFileName(const common::FrameTracker &ft) const
 {
-    const std::string fileName = "Frame -" + std::to_string(ft.getCurrent().getGlobalFrameCounter()) + ".png";
+    const std::string fileName = "Frame - " + std::to_string(ft.getCurrent().getGlobalFrameCounter()) + ".png";
     return (GetImageDirectory() / fileName).string();
 }
 
