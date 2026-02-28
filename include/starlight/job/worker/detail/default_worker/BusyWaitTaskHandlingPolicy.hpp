@@ -100,7 +100,7 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
             }
 
             if (!m_shouldRun->load() &&
-                (!m_waitForWorkToFinishBeforeExiting || (m_waitForWorkToFinishBeforeExiting && !task.has_value())))
+                (!m_waitForWorkToFinishBeforeExiting || (m_waitForWorkToFinishBeforeExiting && m_tasks->empty())))
             {
                 run = false;
             }
