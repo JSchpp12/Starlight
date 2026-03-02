@@ -524,6 +524,7 @@ target_link_libraries(${STARLIGHT_NAME}
         shaderc_combined
         GPUOpen::VulkanMemoryAllocator
     PRIVATE
+        SPIRV-Tools
         tinyobjloader::tinyobjloader
         GPUOpen::VulkanMemoryAllocator
         Boost::log

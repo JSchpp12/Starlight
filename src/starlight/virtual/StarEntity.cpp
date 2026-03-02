@@ -58,6 +58,7 @@ void star::StarEntity::moveRelative(const glm::vec3 &movementDirection, const fl
     glm::vec3 movement = glm::vec3{normMove.x * movementAmt, normMove.y * movementAmt, normMove.z * movementAmt};
 
     this->translationMat = glm::translate(translationMat, movement);
+    this->positionCoords = translationMat * glm::vec4(positionCoords, 1.0);
 }
 
 static inline void RefreshBasisFromMatrix(glm::mat4 &m, glm::vec3 &right, glm::vec3 &up, glm::vec3 &forward)
@@ -118,7 +119,7 @@ void star::StarEntity::setForwardVector(const glm::vec3 &newForward)
     }
 
     // RH orthonormal frame:
-    glm::vec3 r = glm::normalize(glm::cross(f, u)); // right = up × forward
+    glm::vec3 r = glm::normalize(glm::cross(f, u)); // right = up ï¿½ forward
     u = glm::normalize(glm::cross(r, f));           // recompute exact up
     rotationMat[0] = glm::vec4(r, 0.0f);
     rotationMat[1] = glm::vec4(u, 0.0f);

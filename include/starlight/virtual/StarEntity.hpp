@@ -14,10 +14,9 @@ class StarEntity
     StarEntity(const glm::vec3 &position, const glm::vec3 &scale);
     virtual ~StarEntity() = default;
 
-    glm::vec3 getPosition() const
+    const glm::vec3 &getPosition() const
     {
-        glm::mat4 matrixCopy = getDisplayMatrix();
-        return glm::vec3{matrixCopy[3][0], matrixCopy[3][1], matrixCopy[3][2]};
+        return positionCoords;
     }
 
     glm::vec3 getScale() const;

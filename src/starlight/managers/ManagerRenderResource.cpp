@@ -179,8 +179,8 @@ star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &
         }
         else
         {
-            throw std::runtime_error("Unknown error has occurred during getBuffer. This can happen if the transfer "
-                                     "flag is not properly reset");
+            STAR_THROW("Unknown error has occurred during getBuffer. This can happen if the transfer "
+                       "flag is not properly reset");
         }
     }
 
@@ -191,8 +191,8 @@ star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &
 
 star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const Handle &deviceID, const star::Handle &handle)
 {
-    assert(handle.getType() == common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                   common::special_types::TextureTypeName) &&
+    assert(handle.getType() ==
+               common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName) &&
            "Handle provided is not a texture handle");
 
     const auto &container = textureStorage.at(deviceID)->get(handle);
