@@ -42,9 +42,22 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
         m_tasks[newSpace] = std::move(newTask);
 
         m_pending.fetch_add(1, std::memory_order_release);
+
+        bool printedMessage = false;
+        int pushTryCounter = 0;
         while (!m_queuedTasks.push(newSpace))
         {
-            std::this_thread::yield();
+            if (!printedMessage)
+            {
+                star::core::logging::warning("Failed to push queued task. Entering try loop");
+                printedMessage = true;
+            }
+
+            pushTryCounter++;
+            if (pushTryCounter % 50 == 0)
+            {
+                std::this_thread::yield();
+            }
         }
     }
 
@@ -59,9 +72,20 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
         assert(queuedIndex < TMaxSize && "Popped queued task is beyond available range");
 
         auto tmp = std::make_optional<TTask>(std::move(m_tasks[queuedIndex]));
-        if (!m_availableSpaces.push(queuedIndex))
+
+        int pushTryCounter = 0;
+        bool printedMessage = false;
+        while (!m_availableSpaces.push(queuedIndex))
         {
-            STAR_THROW("Failed to push available space");
+            if (!printedMessage)
+            {
+                star::core::logging::warning("Failed to push available space. Entering try loop");
+                if (pushTryCounter % 50 == 0)
+                {
+                    std::this_thread::yield();
+                }
+                printedMessage = true;
+            }
         }
 
         m_pending.fetch_sub(1, std::memory_order_acq_rel);
@@ -84,28 +108,30 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
     uint32_t getNextAvailableSpace()
     {
         uint32_t nextSpace = 0;
-        if (!m_availableSpaces.pop(nextSpace))
+
+        int sleepCounter = 0;
+        bool hasPrintedWarning = false;
+        while (!m_availableSpaces.pop(nextSpace))
         {
-            core::logging::log(boost::log::trivial::warning,
-                               "Task container is out of space. Consider increasing size.");
-
-            int sleepCounter = 0;
-            while (!m_availableSpaces.pop(nextSpace))
+            if (!hasPrintedWarning)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                sleepCounter++;
-
-                if (sleepCounter == 1000)
-                {
-                    STAR_THROW("Failed to wait for free spot to become available");
-                }
+                core::logging::log(boost::log::trivial::warning,
+                                   "Task container is out of space. Consider increasing size.");
+                hasPrintedWarning = true;
             }
 
-            {
-                std::ostringstream oss;
-                oss << "Waiting done. Sleep looper counter: " << sleepCounter;
-                core::logging::log(boost::log::trivial::info, oss.str());
+            if (sleepCounter % 50 == 0){
+                std::this_thread::yield();
             }
+
+            sleepCounter++;
+        }
+
+        if (hasPrintedWarning)
+        {
+            std::ostringstream oss;
+            oss << "Waiting done. Sleep looper counter: " << sleepCounter;
+            core::logging::log(boost::log::trivial::info, oss.str());
         }
 
         return nextSpace;
@@ -115,9 +141,14 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
     {
         for (uint32_t i = 0; i < size; i++)
         {
-            if (!m_availableSpaces.push(i))
+            int tryCounter = 0;
+            while (!m_availableSpaces.push(i))
             {
-                STAR_THROW("Failed to initialize space");
+                tryCounter++;
+                if (tryCounter == 25)
+                {
+                    STAR_THROW("Failed to initialize space");
+                }
             }
         }
     }

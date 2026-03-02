@@ -41,9 +41,15 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
 
     virtual void queueTask(void *task)
     {
+        if (!thread.joinable())
+        {
+            STAR_THROW("Attempted to queue task for worker which has stopped or is not running"); 
+        }
+
         TTask *typedTask = static_cast<TTask *>(task);
         m_tasks->queueTask(std::move(*typedTask));
     }
+    
     void cleanup()
     {
         stopThread();

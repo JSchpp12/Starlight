@@ -14,11 +14,6 @@ class StarEntity
     StarEntity(const glm::vec3 &position, const glm::vec3 &scale);
     virtual ~StarEntity() = default;
 
-    const glm::vec3 &getPosition() const
-    {
-        return positionCoords;
-    }
-
     glm::vec3 getScale() const;
 
     virtual void setScale(const glm::vec3 &scale);
@@ -65,6 +60,10 @@ class StarEntity
     const glm::mat4 &getRotationMat() const
     {
         return rotationMat;
+    }
+    const glm::vec3 &getPosition() const
+    {
+        return positionCoords;
     }
 
   protected:

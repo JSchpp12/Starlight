@@ -42,23 +42,25 @@ glm::vec3 star::StarEntity::getScale() const
 void star::StarEntity::setPosition(const glm::vec3 &newPosition)
 {
     this->positionCoords = newPosition;
-    this->translationMat = glm::translate(newPosition);
+    this->translationMat = glm::translate(glm::mat4(1.0f), newPosition);
 }
 
 void star::StarEntity::moveRelative(const glm::vec3 &movement)
 {
     // need to update model matrix before applying further translations
-    this->translationMat = glm::translate(translationMat, movement);
-    this->positionCoords = translationMat * glm::vec4(positionCoords, 1.0);
+    this->positionCoords += movement; 
+    this->translationMat = glm::translate(glm::mat4(1.0f), positionCoords); 
 }
 
 void star::StarEntity::moveRelative(const glm::vec3 &movementDirection, const float &movementAmt)
 {
-    auto normMove = glm::normalize(movementDirection);
-    glm::vec3 movement = glm::vec3{normMove.x * movementAmt, normMove.y * movementAmt, normMove.z * movementAmt};
+    const float len2 = glm::dot(movementDirection, movementDirection);
+    if (len2 == 0.0f) return;
 
-    this->translationMat = glm::translate(translationMat, movement);
-    this->positionCoords = translationMat * glm::vec4(positionCoords, 1.0);
+    const glm::vec3 movement = glm::normalize(movementDirection) * movementAmt;
+
+    positionCoords += movement;
+    translationMat = glm::translate(glm::mat4(1.0f), positionCoords);
 }
 
 static inline void RefreshBasisFromMatrix(glm::mat4 &m, glm::vec3 &right, glm::vec3 &up, glm::vec3 &forward)
@@ -101,8 +103,8 @@ void star::StarEntity::rotateRelative(star::Type::Axis axis, const float &amt, b
     }
     // might want to normalize vector
     rotationVector = glm::normalize(rotationVector);
-    const auto rDelta = glm::rotate(glm::mat4(1.0), radians, rotationVector);
-    rotationMat = rotationMat * rDelta;
+    const auto R = glm::rotate(glm::mat4(1.0), radians, rotationVector);
+    rotationMat = rotationMat * R;
 }
 
 void star::StarEntity::setForwardVector(const glm::vec3 &newForward)
@@ -155,5 +157,5 @@ void star::StarEntity::rotateGlobal(Type::Axis axis, const float &amt, bool inDe
     }
 
     const glm::mat4 R = glm::rotate(glm::mat4(1.0f), radians, glm::normalize(rotationVector));
-    rotationMat = rotationMat * R; // WORLD rotation: pre-multiply
+    rotationMat = R * rotationMat; 
 }

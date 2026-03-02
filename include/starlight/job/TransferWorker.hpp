@@ -109,7 +109,7 @@ class TransferManagerThread
         SubThreadInfo(
             boost::atomic<bool> *shouldRun, vk::Device device, StarQueue queue, VmaAllocator &allocator,
             vk::PhysicalDeviceProperties deviceProperties,
-            std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer,
+            std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> taskContainer,
             std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
             : shouldRun(shouldRun), device(device), queue(queue), allocator(allocator),
               deviceProperties(deviceProperties),
@@ -123,11 +123,11 @@ class TransferManagerThread
         VmaAllocator &allocator;
         vk::PhysicalDeviceProperties deviceProperties = vk::PhysicalDeviceProperties();
         std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
-        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer = nullptr;
+        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> taskContainer = nullptr;
     };
 
     TransferManagerThread(
-        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer,
+        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> taskContainer,
         const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
         const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
 
@@ -169,7 +169,7 @@ class TransferManagerThread
     static void EnsureInfoReady(vk::Device &device, ProcessRequestInfo &processInfo);
 
   protected:
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> m_taskContainer;
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> m_taskContainer;
     vk::PhysicalDeviceProperties deviceProperties;
     StarQueue myQueue;
     std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
@@ -202,10 +202,10 @@ class TransferWorker
     ~TransferWorker();
 
   private:
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> m_highPriorityTaskContainer =
-        std::make_shared<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>>();
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> m_standardTaskContainer =
-        std::make_shared<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>>();
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> m_highPriorityTaskContainer =
+        std::make_shared<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>>();
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> m_standardTaskContainer =
+        std::make_shared<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>>();
 
     std::vector<std::unique_ptr<TransferManagerThread>> threads = std::vector<std::unique_ptr<TransferManagerThread>>();
 
@@ -213,7 +213,7 @@ class TransferWorker
 
     static std::vector<std::unique_ptr<TransferManagerThread>> CreateThreads(
         core::device::StarDevice &device, const std::vector<StarQueue *> &queuesToUse,
-        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> highPriorityQueue,
-        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> standardQueue);
+        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> highPriorityQueue,
+        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> standardQueue);
 };
 } // namespace star::job

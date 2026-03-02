@@ -24,7 +24,9 @@ void star::job::TransferManagerThread::startAsync(core::device::StarDevice &devi
                                                                            this->allTransferQueueFamilyIndicesInUse));
 
     if (!this->thread.joinable())
-        throw std::runtime_error("Failed to launch transfer thread");
+    {
+        STAR_THROW("Failed to launch transfer thread");
+    }
 }
 
 void star::job::TransferManagerThread::stopAsync()
@@ -45,7 +47,7 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
         std::queue<std::unique_ptr<ProcessRequestInfo>>();
     auto pool = std::make_shared<StarCommandPool>(myInfo.device, myInfo.queue.getParentQueueFamilyIndex(), true);
 
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i < 10; i++)
     {
         processRequestInfos.push(std::make_unique<ProcessRequestInfo>(
             pool, std::make_unique<StarCommandBuffer>(myInfo.device, 1, pool.get(), star::Queue_Type::Ttransfer, true,
@@ -54,55 +56,50 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
 
     while (myInfo.shouldRun->load())
     {
-        InterThreadRequest *request = nullptr;
-        bool allEmpty = true;
-
         // try to get a request
         if (auto result = myInfo.taskContainer->getQueuedTask())
         {
-            request = &result.value();
+            InterThreadRequest &request = result.value();
             std::unique_ptr<ProcessRequestInfo> workingInfo = std::move(processRequestInfos.front());
             processRequestInfos.pop();
 
             EnsureInfoReady(myInfo.device, *workingInfo);
 
-            if (request->bufferTransferRequest)
+            if (request.bufferTransferRequest)
             {
-                assert(request->resultingBuffer.has_value() && request->resultingBuffer.value() != nullptr &&
+                assert(request.resultingBuffer.has_value() && request.resultingBuffer.value() != nullptr &&
                        "Buffer request must contain both a request and a resulting address");
 
-                request->bufferTransferRequest->prep();
+                request.bufferTransferRequest->prep();
 
-                CreateBuffer(myInfo.device, myInfo.allocator, myInfo.queue, request->gpuWorkDoneSemaphore,
+                CreateBuffer(myInfo.device, myInfo.allocator, myInfo.queue, request.gpuWorkDoneSemaphore,
                              myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
-                             request->bufferTransferRequest.get(), request->resultingBuffer.value(),
-                             request->gpuDoneNotificationToMain);
+                             request.bufferTransferRequest.get(), request.resultingBuffer.value(),
+                             request.gpuDoneNotificationToMain);
             }
-            else if (request->textureTransferRequest)
+            else if (request.textureTransferRequest)
             {
-                assert(request->resultingTexture.has_value() && request->resultingTexture.value() != nullptr &&
+                assert(request.resultingTexture.has_value() && request.resultingTexture.value() != nullptr &&
                        "Texture request must contain both a request and a resulting address");
 
-                request->textureTransferRequest->prep();
+                request.textureTransferRequest->prep();
 
                 core::logging::log(boost::log::trivial::info, "Creating Texture");
 
-                CreateTexture(myInfo.device, myInfo.allocator, myInfo.queue, request->gpuWorkDoneSemaphore,
+                CreateTexture(myInfo.device, myInfo.allocator, myInfo.queue, request.gpuWorkDoneSemaphore,
                               myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
-                              request->textureTransferRequest.get(), request->resultingTexture.value(),
-                              request->gpuDoneNotificationToMain);
+                              request.textureTransferRequest.get(), request.resultingTexture.value(),
+                              request.gpuDoneNotificationToMain);
             }
 
             processRequestInfos.push(std::move(workingInfo));
 
-            request->gpuDoneNotificationToMain->store(true);
-            request->gpuDoneNotificationToMain->notify_all();
+            request.gpuDoneNotificationToMain->store(true);
+            request.gpuDoneNotificationToMain->notify_all();
         }
         else
         {
             CheckForCleanups(myInfo.device, processRequestInfos);
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
     }
 
@@ -138,14 +135,14 @@ void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAlloc
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
     if (transferSrcBuffer->getBufferSize() == 0)
     {
-        throw std::runtime_error("Failed to create transfer src buffer");
+        STAR_THROW("Failed to create transfer src buffer"); 
     }
 
     {
         auto newResult = newBufferRequest->createFinal(device, allocator, allTransferQueueFamilyIndicesInUse);
         if (newResult->getBufferSize() == 0)
         {
-            throw std::runtime_error("Failed to create final buffer");
+            STAR_THROW("Failed to create final buffer");
         }
         if (!*resultingBuffer ||
             (resultingBuffer->get() && newResult->getBufferSize() > resultingBuffer->get()->getBufferSize()))
@@ -191,7 +188,7 @@ void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllo
     if (!newImageCreated)
     {
         // Not sure how to manage vulkan images since we wont know what layout they might be in at this point
-        throw std::runtime_error("unsupported image operation in transfer manager");
+        STAR_THROW("Unsupported image operation in transfer manager");
     }
 
     newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(),
@@ -253,7 +250,7 @@ void star::job::TransferManagerThread::EnsureInfoReady(vk::Device &device, Proce
 }
 
 star::job::TransferManagerThread::TransferManagerThread(
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> taskContainer,
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> taskContainer,
     const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
     const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse)
     : m_taskContainer(taskContainer), deviceProperties(deviceProperties), myQueue(myQueue),
@@ -286,8 +283,6 @@ void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransf
                                     std::unique_ptr<star::StarBuffers::Buffer> &resultingBuffer,
                                     const bool &isHighPriority)
 {
-    auto newRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>;
-
     insertRequest({&isBeingWorkedOnByTransferThread, std::move(signalWhenDoneSemaphore), std::move(newBufferRequest),
                    resultingBuffer},
                   isHighPriority);
@@ -328,8 +323,8 @@ void star::job::TransferWorker::insertRequest(job::TransferManagerThread::InterT
 
 std::vector<std::unique_ptr<star::job::TransferManagerThread>> star::job::TransferWorker::CreateThreads(
     core::device::StarDevice &device, const std::vector<StarQueue *> &queuesToUse,
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> highPriorityQueue,
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 1000>> standardQueue)
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> highPriorityQueue,
+    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> standardQueue)
 {
     std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
 
