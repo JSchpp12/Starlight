@@ -57,7 +57,7 @@ class SleepWaitTaskHandlingPolicy : public BusyWaitTaskHandlingPolicy<TTask, TQu
     virtual void wait() override
     {
         boost::unique_lock<boost::mutex> lock(*m_taskMutex);
-        m_hasTask->wait_for(lock, boost::chrono::milliseconds(100));
+        m_hasTask->wait_for(lock, boost::chrono::milliseconds(5));
     }
 };
 } // namespace star::job::worker::default_worker

@@ -126,7 +126,6 @@ void star::service::HeadlessRenderResultWriteService::initListeners(common::Even
 void star::service::HeadlessRenderResultWriteService::onStartOfNextFrame(const event::StartOfNextFrame &event,
                                                                          bool &keepAlive)
 {
-    // todo grab the final renderer somehow and get the images from it to dispatch to the screen capture service
     assert(m_eventBus != nullptr);
     assert(m_frameTracker != nullptr);
     assert(m_managerGraphicsContainer != nullptr);
