@@ -15,132 +15,133 @@ namespace star
 class Light : public StarEntity
 {
   public:
-    Type::Light type = Type::Light::point;
-    glm::vec4 direction = glm::vec4{0.0f, 1.0f, 0.0f, 0.0f};
-    glm::vec4 ambient = glm::vec4{0.5f, 0.5f, 0.5f, 1.0f};
-    glm::vec4 diffuse = glm::vec4{0.5f, 0.5f, 0.5f, 1.0f};
-    glm::vec4 specular = glm::vec4{0.5f, 0.5f, 0.5f, 1.0f};
     Light() = default;
-    Light(const glm::vec3 &position, const Type::Light &type) : StarEntity(position), type(type)
-    {
-    }
-
-    Light(const glm::vec3 &position, const Type::Light &type, const glm::vec3 &direction)
-        : StarEntity(position), type(type), direction(glm::vec4(direction, 1.0))
-    {
-    }
-
-    virtual ~Light() = default;
-
-    /// <summary>
-    /// Turn the light off or on. Default behavior is to simply switch the light status.
-    /// </summary>
-    /// <param name="state">the state to set the light to. If none is provided, default state is used</param>
-    virtual void setEnabled(const bool *state = nullptr)
-    {
-        if (state != nullptr)
-        {
-            enabled = *state;
-        }
-        else
-        {
-            // flip value
-            enabled = !enabled;
-        }
-    }
-
-    virtual void setInnerDiameter(const float &amt)
-    {
-        // inner diameter must always be less than outer diameter and greater than 0
-        if (amt < outerDiameter && amt > 0)
-        {
-            innerDiameter = amt;
-        }
-    }
-
-    virtual void setOuterDiameter(const float &amt)
-    {
-        // outer diamater must always be greater than inner diameter
-        if (amt > innerDiameter)
-        {
-            outerDiameter = amt;
-        }
-    }
 
     /// <summary>
     /// Calculate the view matrix for this light source. Used when the light is being used as a shadow caster
     /// </summary>
-    virtual glm::mat4 getViewMatrix()
+    virtual glm::mat4 getViewMatrix() const
     {
-        assert(direction != glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) &&
+        assert(m_direction != glm::vec3(0.0f, 0.0f, 1.0f) &&
                "The light cannot be pointed in the same direction as the arb vector in calculations.");
         glm::vec3 tmpArbVector{0.0f, 0.0f, 1.0f};
-        glm::vec3 minDirection = glm::vec3(this->direction);
+        glm::vec3 minDirection = glm::vec3(m_direction);
         auto rightVector = glm::normalize(glm::cross(tmpArbVector, minDirection));
 
         auto upVector = glm::normalize(glm::cross(minDirection, rightVector));
 
-        return glm::lookAt(type == Type::directional ? glm::normalize(-minDirection) * glm::vec3(3.0f)
-                                                     : this->positionCoords,
-                           type == Type::directional ? minDirection : this->positionCoords + minDirection, upVector);
+        return glm::lookAt(m_type == Type::directional ? glm::normalize(-minDirection) * glm::vec3(3.0f)
+                                                       : this->positionCoords,
+                           m_type == Type::directional ? minDirection : this->positionCoords + minDirection, upVector);
     }
 
-    bool &getEnabled()
+    // Getters
+    const glm::vec3 &getDirection() const
     {
-        return enabled;
+        return m_direction;
     }
-    const bool &getEnabled() const
+
+    const glm::vec3 &getAmbient() const
     {
-        return enabled;
+        return m_ambient;
     }
-    Type::Light &getType()
+
+    const glm::vec3 &getDiffuse() const
     {
-        return type;
+        return m_diffuse;
     }
-    const Type::Light &getType() const
+
+    const glm::vec3 &getSpecular() const
     {
-        return type;
+        return m_specular;
     }
-    const glm::vec4 &getAmbient() const
+
+    float getInnerDiameter() const
     {
-        return ambient;
+        return m_innerDiameter;
     }
-    glm::vec4 &getAmbient()
-    {
-        return ambient;
-    }
-    glm::vec4 &getDiffuse()
-    {
-        return diffuse;
-    }
-    const glm::vec4 &getDiffuse() const
-    {
-        return diffuse;
-    }
-    glm::vec4 &getSpecular()
-    {
-        return specular;
-    }
-    const glm::vec4 &getSpecular() const
-    {
-        return specular;
-    }
-    float &getInnerDiameter()
-    {
-        return innerDiameter;
-    }
-    const float &getInnerDiameter() const
-    {
-        return innerDiameter;
-    }
+
     float getOuterDiameter() const
     {
-        return outerDiameter;
+        return m_outerDiameter;
+    }
+
+    bool isEnabled() const
+    {
+        return m_enabled;
+    }
+
+    Type::Light getType() const
+    {
+        return m_type;
+    }
+
+    bool getEnabled() const
+    {
+        return m_enabled;
+    }
+
+    // setters
+    virtual Light &setPosition(glm::vec3 position) override
+    {
+        this->StarEntity::setPosition(std::move(position));
+        return *this;
+    }
+    Light &setDirection(glm::vec3 direction)
+    {
+        m_direction = std::move(direction);
+        return *this;
+    }
+    Light &setAmbient(glm::vec3 ambient)
+    {
+        m_ambient = std::move(ambient);
+        return *this;
+    }
+    Light &setDiffuse(glm::vec3 diffuse)
+    {
+        m_diffuse = std::move(diffuse);
+        return *this;
+    }
+    Light &setSpecular(glm::vec3 specular)
+    {
+        m_specular = std::move(specular);
+        return *this;
+    }
+    Light &setInnerDiameter(float innerDiameter)
+    {
+        m_innerDiameter = m_innerDiameter;
+        return *this;
+    }
+    Light &setOuterDiameter(float outerDiameter)
+    {
+        m_outerDiameter = m_outerDiameter;
+        return *this;
+    }
+    Light &setLuminance(uint32_t luminance)
+    {
+        m_luminance = luminance;
+        return *this;
+    }
+    Light &setEnabled(bool enabled)
+    {
+        m_enabled = enabled;
+        return *this;
+    }
+    Light &setType(star::Type::Light type)
+    {
+        m_type = type;
+        return *this;
     }
 
   private:
-    float innerDiameter = 0.0f;
-    float outerDiameter = 1.0f;
-    bool enabled = true;
+    glm::vec3 m_direction{0.0f, 1.0f, 0.0f};
+    glm::vec3 m_ambient{0.5f, 0.5f, 0.5f};
+    glm::vec3 m_diffuse{0.5f, 0.5f, 0.5f};
+    glm::vec3 m_specular{0.5f, 0.5f, 0.5f};
+    float m_innerDiameter{0.0f};
+    float m_outerDiameter{1.0f};
+    uint32_t m_luminance{1};
+    Type::Light m_type = Type::Light::point;
+    bool m_enabled = true;
 };
 } // namespace star

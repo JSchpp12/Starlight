@@ -10,15 +10,15 @@ class StarEntity
 {
   public:
     StarEntity();
-    StarEntity(const glm::vec3 &position);
+    explicit StarEntity(const glm::vec3 &position);
     StarEntity(const glm::vec3 &position, const glm::vec3 &scale);
     virtual ~StarEntity() = default;
 
     glm::vec3 getScale() const;
 
-    virtual void setScale(const glm::vec3 &scale);
+    StarEntity &setScale(const glm::vec3 &scale);
 
-    virtual void setPosition(const glm::vec3 &newPosition);
+    virtual StarEntity &setPosition(glm::vec3 newPosition);
 
     /// <summary>
     /// Apply translation to object's current position vector and update accordingly
