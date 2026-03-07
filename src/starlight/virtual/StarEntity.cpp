@@ -25,9 +25,10 @@ star::StarEntity::StarEntity(const glm::vec3 &position, const glm::vec3 &scale)
     this->setScale(scale);
 }
 
-void star::StarEntity::setScale(const glm::vec3 &scale)
+star::StarEntity &star::StarEntity::setScale(const glm::vec3 &scale)
 {
     scaleMat = glm::scale(glm::mat4(1.0f), scale);
+    return *this;
 }
 
 glm::vec3 star::StarEntity::getScale() const
@@ -39,10 +40,11 @@ glm::vec3 star::StarEntity::getScale() const
     return glm::vec3(glm::length(col0), glm::length(col1), glm::length(col2));
 }
 
-void star::StarEntity::setPosition(const glm::vec3 &newPosition)
+star::StarEntity &star::StarEntity::setPosition(glm::vec3 newPosition)
 {
-    this->positionCoords = newPosition;
+    this->positionCoords = std::move(newPosition);
     this->translationMat = glm::translate(glm::mat4(1.0f), newPosition);
+    return *this;
 }
 
 void star::StarEntity::moveRelative(const glm::vec3 &movement)

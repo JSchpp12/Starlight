@@ -258,6 +258,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/ListenForGetQueuePolicy.cpp"
     "src/starlight/policy/event/ListenFor.cpp"
     "src/starlight/core/renderer/HeadlessRenderer.cpp"
+    "src/starlight/common/entities/Light.cpp"
 )
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
@@ -458,10 +459,10 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/policy/event/ListenFor.hpp"
     "include/starlight/core/Exceptions.hpp"
     "include/starlight/core/renderer/HeadlessRenderer.hpp"
+    "include/starlight/common/entities/Light.hpp"
     #header only
     "include/starlight/util/log/PhysicalDeviceLogging.hpp"
     "include/starlight/util/log/SystemInfo.hpp"
-    "include/starlight/common/entities/Light.hpp"
     "include/starlight/virtual/StarShader.hpp"
     "include/starlight/enums/Enums.hpp"
     "include/starlight/structs/LightBufferObject.hpp"
