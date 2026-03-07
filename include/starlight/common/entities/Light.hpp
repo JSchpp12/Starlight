@@ -109,12 +109,12 @@ class Light : public StarEntity
     }
     Light &setInnerDiameter(float innerDiameter)
     {
-        m_innerDiameter = m_innerDiameter;
+        m_innerDiameter = innerDiameter;
         return *this;
     }
     Light &setOuterDiameter(float outerDiameter)
     {
-        m_outerDiameter = m_outerDiameter;
+        m_outerDiameter = outerDiameter;
         return *this;
     }
     Light &setLuminance(uint32_t luminance)
