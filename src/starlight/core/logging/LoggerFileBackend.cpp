@@ -4,6 +4,8 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include <thread>
+
 namespace star::core::logging
 {
 namespace expr = boost::log::expressions;
