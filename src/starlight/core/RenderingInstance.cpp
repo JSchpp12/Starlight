@@ -42,10 +42,10 @@ vk::Instance star::core::RenderingInstance::createInstance(const std::string &ap
     }
 
     uint32_t extensionCount = 0;
-    common::helper::SafeCast<size_t, uint32_t>(extensions.size(), extensionCount);
+    star::common::casts::SafeCast<size_t, uint32_t>(extensions.size(), extensionCount);
 
     uint32_t validationLayerCount = 0;
-    common::helper::SafeCast<size_t, uint32_t>(m_validationLayers.size(), validationLayerCount);
+    star::common::casts::SafeCast<size_t, uint32_t>(m_validationLayers.size(), validationLayerCount);
 
     auto appInfo = vk::ApplicationInfo()
                        .setPApplicationName(applicationName.c_str())

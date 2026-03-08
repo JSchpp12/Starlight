@@ -16,7 +16,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
                 .setSize(sizeof(int))
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "LightList_Stage")
-        .setInstanceCount(common::helper::size_t_to_unsigned_int(1))
+        .setInstanceCount(star::common::casts::size_t_to_unsigned_int(1))
         .setInstanceSize(sizeof(int))
         .buildUnique();
 }
@@ -46,7 +46,7 @@ void star::TransferRequest::LightInfo::writeDataToStageBuffer(star::StarBuffers:
     buffer.map(&mapped);
 
     uint32_t num; 
-    star::common::helper::SafeCast<size_t, uint32_t>(m_numLights, num); 
+    star::common::casts::SafeCast<size_t, uint32_t>(m_numLights, num); 
 
     Info info = Info{
         .numLights = num

@@ -32,7 +32,7 @@ void CopyCmdPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &co
 {
     auto imageBarriers = getImageBarriersForCleanup();
     uint32_t numImageBarriers;
-    star::common::helper::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
+    star::common::casts::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
 
     commandBuffer.pipelineBarrier2(vk::DependencyInfo()
                                        .setImageMemoryBarrierCount(numImageBarriers)
@@ -123,7 +123,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
     *m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue = m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal;
 
     uint32_t semaphoreCount = 0;
-    star::common::helper::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
+    star::common::casts::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
 
     std::optional<std::vector<uint64_t>> waitValues = std::nullopt;
     std::vector<vk::Semaphore> waitSemaphores = std::vector<vk::Semaphore>(1);
@@ -233,7 +233,7 @@ void CopyCmdPolicy::addMemoryDependenciesToPrepForCopy(vk::CommandBuffer &comman
     // assuming that the target image is not in the proper layout for transfer SRC
     auto imageBarriers = getImageBarriersForPrep();
     uint32_t numImageBarriers;
-    star::common::helper::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
+    star::common::casts::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
 
     commandBuffer.pipelineBarrier2(vk::DependencyInfo()
                                        .setImageMemoryBarrierCount(numImageBarriers)

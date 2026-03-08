@@ -136,13 +136,13 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
 
     vk::Format format = getColorAttachmentFormat(device);
     uint32_t numIndices;
-    common::helper::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
+    star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
 
     int width, height;
     {
         const auto &resolution = device.getEngineResolution();
-        common::helper::SafeCast<vk::DeviceSize, int>(resolution.width, width);
-        common::helper::SafeCast<vk::DeviceSize, int>(resolution.height, height);
+        star::common::casts::SafeCast<vk::DeviceSize, int>(resolution.width, width);
+        star::common::casts::SafeCast<vk::DeviceSize, int>(resolution.height, height);
     }
 
     auto builder =
@@ -246,8 +246,8 @@ std::vector<star::StarTextures::Texture> star::core::renderer::DefaultRenderer::
     int width, height;
     {
         const auto &resolution = device.getEngineResolution();
-        common::helper::SafeCast<vk::DeviceSize, int>(resolution.width, width);
-        common::helper::SafeCast<vk::DeviceSize, int>(resolution.height, height);
+        star::common::casts::SafeCast<vk::DeviceSize, int>(resolution.width, width);
+        star::common::casts::SafeCast<vk::DeviceSize, int>(resolution.height, height);
     }
 
     auto builder =

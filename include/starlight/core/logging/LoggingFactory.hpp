@@ -39,7 +39,7 @@ inline constexpr boost::log::trivial::severity_level to_boost(LogLevel lvl) noex
     }
 }
 
-void init();
+void init(const std::string logName);
 
 boost::log::sources::severity_logger<boost::log::trivial::severity_level> &getLoggerForThread();
 

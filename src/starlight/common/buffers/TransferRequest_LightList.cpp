@@ -5,7 +5,7 @@
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const
 {
     uint32_t numLights = 0; 
-    common::helper::SafeCast<size_t, uint32_t>(myLights.size(), numLights); 
+    star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights); 
 
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
@@ -30,8 +30,8 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
 		indices.push_back(index);
 
     uint32_t numIndices, numLights; 
-    common::helper::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
-    common::helper::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
+    star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
+    star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
 
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(

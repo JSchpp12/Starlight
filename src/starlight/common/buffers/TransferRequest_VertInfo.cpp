@@ -10,7 +10,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
         indices.push_back(index);
 
     uint32_t numVerts = 0, numInds = 0;
-    if (!common::helper::SafeCast<size_t, uint32_t>(vertices.size(), numVerts) || !common::helper::SafeCast<size_t, uint32_t>(indices.size(), numInds)){
+    if (!star::common::casts::SafeCast<size_t, uint32_t>(vertices.size(), numVerts) || !star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numInds)){
         throw std::runtime_error("Failed to parse numerical values for vert info buffer creation"); 
     } 
 
@@ -36,7 +36,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::VertInfo::crea
     vk::Device &device, VmaAllocator &allocator) const
 {
     uint32_t numVerts = 0; 
-    if (!common::helper::SafeCast<size_t, uint32_t>(this->vertices.size(), numVerts)){
+    if (!star::common::casts::SafeCast<size_t, uint32_t>(this->vertices.size(), numVerts)){
         throw std::runtime_error("Failed to cast numerical info for vert info creation"); 
     } 
 

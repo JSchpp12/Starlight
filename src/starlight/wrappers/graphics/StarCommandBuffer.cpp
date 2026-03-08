@@ -185,13 +185,13 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
     }
 
     uint32_t signalSemaphoreCount = 0;
-    if (!common::helper::SafeCast<size_t, uint32_t>(signalSemaphores.size(), signalSemaphoreCount))
+    if (!star::common::casts::SafeCast<size_t, uint32_t>(signalSemaphores.size(), signalSemaphoreCount))
     {
         throw std::runtime_error("Failed to cast signal semaphore counts");
     }
 
     uint32_t waitValueCount = 0;
-    common::helper::SafeCast(waitSignalValues.size(), waitValueCount);
+    star::common::casts::SafeCast(waitSignalValues.size(), waitValueCount);
 
     const vk::TimelineSemaphoreSubmitInfo time = vk::TimelineSemaphoreSubmitInfo()
                                                      .setWaitSemaphoreValueCount(waitValueCount)

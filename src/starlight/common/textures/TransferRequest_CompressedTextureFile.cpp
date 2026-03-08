@@ -46,7 +46,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         indices.push_back(index);
 
     uint32_t numIndices = 0;
-    common::helper::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
+    star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
 
     core::logging::log(boost::log::trivial::info, "Done");
 

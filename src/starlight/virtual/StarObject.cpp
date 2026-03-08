@@ -260,7 +260,7 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
     for (auto &rmesh : this->meshes)
     {
         uint32_t instanceCount;
-        common::helper::SafeCast<size_t, uint32_t>(m_instanceInfo.getSize(), instanceCount);
+        star::common::casts::SafeCast<size_t, uint32_t>(m_instanceInfo.getSize(), instanceCount);
         rmesh.get()->recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
     }
 

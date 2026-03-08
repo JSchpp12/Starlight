@@ -106,7 +106,7 @@ void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance,
             // try to pick the device that has the most seperate queue families
             if (indicies.getUniques().size() > largestQueueFamilyCount)
             {
-                largestQueueFamilyCount = common::helper::size_t_to_unsigned_int(indicies.getUniques().size());
+                largestQueueFamilyCount = star::common::casts::size_t_to_unsigned_int(indicies.getUniques().size());
                 picked = nDevice;
             }
         }
@@ -158,11 +158,11 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance,
         auto families = queueInfo.getQueueFamilies();
 
         uint32_t numDeviceExtensions = uint32_t();
-        common::helper::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
+        star::common::casts::SafeCast<size_t, uint32_t>(requiredDeviceExtensions.size(), numDeviceExtensions);
 
         std::vector<const char *> validationLayerNames = instance.getValidationLayerNames();
         uint32_t numValidationLayers = uint32_t();
-        common::helper::SafeCast<size_t, uint32_t>(validationLayerNames.size(), numValidationLayers);
+        star::common::casts::SafeCast<size_t, uint32_t>(validationLayerNames.size(), numValidationLayers);
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos =
             std::vector<vk::DeviceQueueCreateInfo>(families.size());
@@ -175,7 +175,7 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance,
         }
 
         uint32_t numQueues = 0;
-        common::helper::SafeCast(queueCreateInfos.size(), numQueues);
+        star::common::casts::SafeCast(queueCreateInfos.size(), numQueues);
 
         const vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
                                                     .setQueueCreateInfoCount(numQueues)

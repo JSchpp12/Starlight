@@ -37,7 +37,7 @@ void TaskManager::registerWorker(worker::Worker newWorker, Handle &registeredTas
     assert(index >= 1);
     index--;
 
-    common::helper::SafeCast<size_t, uint32_t>(index,
+    star::common::casts::SafeCast<size_t, uint32_t>(index,
                                             registeredTaskTypeHandle.id);
 }
 
@@ -83,7 +83,7 @@ worker::Worker *TaskManager::getWorker(const Handle &registeredTaskType) noexcep
     }
 
     size_t workerIndex = 0;
-    common::helper::SafeCast<uint16_t, size_t>(registeredTaskType.getID(), workerIndex);
+    star::common::casts::SafeCast<uint16_t, size_t>(registeredTaskType.getID(), workerIndex);
 
     return &pool->at(workerIndex);
 }

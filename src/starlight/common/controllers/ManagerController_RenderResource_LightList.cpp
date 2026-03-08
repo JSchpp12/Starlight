@@ -31,7 +31,7 @@ void star::ManagerController::RenderResource::LightList::storeLightCount(const u
     assert(frameInFlightIndex < m_lastWriteNumLights.size());
 
     uint16_t numLights = 0;
-    common::helper::SafeCast<size_t, uint16_t>(m_lights->size(), numLights);
+    star::common::casts::SafeCast<size_t, uint16_t>(m_lights->size(), numLights);
 
     m_lastWriteNumLights[frameInFlightIndex] = std::move(numLights);
 }

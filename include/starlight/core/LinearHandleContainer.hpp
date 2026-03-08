@@ -66,7 +66,7 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
     {
         assert(handle.getID() < m_records.size() && "Handle references location outside of available storage");
         size_t index = 0;
-        star::common::helper::SafeCast<uint32_t, size_t>(handle.getID(), index);
+        star::common::casts::SafeCast<uint32_t, size_t>(handle.getID(), index);
 
         return m_records[index];
     }
@@ -75,7 +75,7 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
     {
         assert(handle.getID() < m_records.size() && "Handle references location outside of available storage");
         size_t index = 0;
-        star::common::helper::SafeCast<uint32_t, size_t>(handle.getID(), index);
+        star::common::casts::SafeCast<uint32_t, size_t>(handle.getID(), index);
 
         return m_records[index];
     }
