@@ -45,7 +45,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
             record.numCompiled == record.request.pipeline.getShaders().size())
         {
             uint32_t recordHandle = 0;
-            if (!star::common::helper::SafeCast<size_t, uint32_t>(i, recordHandle))
+            if (!star::common::casts::SafeCast<size_t, uint32_t>(i, recordHandle))
             {
                 throw std::runtime_error("Unknown error. Failed to process record handle");
             }

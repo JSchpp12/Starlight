@@ -138,7 +138,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
         }
 
         uint32_t indexCount = 0;
-        common::helper::SafeCast<size_t, uint32_t>(indices.size(), indexCount);
+        star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), indexCount);
 
         return star::StarTextures::Texture::Builder(device, allocator)
             .setCreateInfo(Allocator::AllocationBuilder()

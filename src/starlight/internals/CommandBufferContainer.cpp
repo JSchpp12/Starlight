@@ -72,7 +72,7 @@ star::Handle star::CommandBufferContainer::add(
     const star::Command_Buffer_Order_Index &subOrder)
 {
     uint32_t count = 0;
-    common::helper::SafeCast<size_t, uint32_t>(this->allBuffers.size(), count);
+    star::common::casts::SafeCast<size_t, uint32_t>(this->allBuffers.size(), count);
 
     star::Handle newHandle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
                                common::special_types::CommandBufferTypeName),

@@ -7,7 +7,7 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
     createTransferRequest(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
     uint32_t numLights;
-    star::common::helper::SafeCast<size_t, uint32_t>(this->lights->size(), numLights);
+    star::common::casts::SafeCast<size_t, uint32_t>(this->lights->size(), numLights);
 
     this->lastWriteNumLights[frameInFlightIndex] = numLights;
 

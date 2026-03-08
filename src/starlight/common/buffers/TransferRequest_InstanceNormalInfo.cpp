@@ -16,10 +16,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(common::helper::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
+                .setSize(star::common::casts::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
                 .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
             "InstanceNormalInfo_SRC")
-        .setInstanceCount(common::helper::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
+        .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
         .setInstanceSize(sizeof(glm::mat4))
         .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
         .buildUnique();
@@ -45,10 +45,10 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
                 .setSharingMode(vk::SharingMode::eConcurrent)
                 .setQueueFamilyIndexCount(2)
                 .setQueueFamilyIndices(indices)
-                .setSize(common::helper::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
+                .setSize(star::common::casts::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
             "InstanceNormalInfo")
-        .setInstanceCount(common::helper::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
+        .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->normalMatrixInfo.size()))
         .setInstanceSize(sizeof(glm::mat4))
         .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
         .buildUnique();

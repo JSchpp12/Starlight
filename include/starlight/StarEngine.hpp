@@ -61,7 +61,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         m_defaultDevice = {
             .type = common::HandleTypeRegistry::instance().getType(common::special_types::DeviceTypeName).value(),
             .id = 0};
-        core::logging::init();
+        core::logging::init("main");
         core::logging::log(boost::log::trivial::info, "Logger initialized");
         star::log::logSystemOverview();
 
@@ -82,7 +82,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         {
             uint8_t framesInFlight;
             int readFramesInFlight = std::stoi(ConfigFile::getSetting(Config_Settings::frames_in_flight));
-            if (!common::helper::SafeCast(readFramesInFlight, framesInFlight))
+            if (!star::common::casts::SafeCast(readFramesInFlight, framesInFlight))
             {
                 STAR_THROW("Invalid number of frames in flight in config file");
             }

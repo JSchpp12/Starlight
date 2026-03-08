@@ -173,7 +173,7 @@ void CreateDirectoryIfDoesNotExist(const std::filesystem::path &pathToDirectory)
 
 std::filesystem::path GetExecutableDirectory()
 {
-    const std::string exePath = star::common::GetRuntimePath().string();
+    const std::string exePath = star::common::paths::GetRuntimePath().string();
     const auto parentDir = GetParentDirectory(exePath).value(); // should always have a value
     return parentDir.string();
 }

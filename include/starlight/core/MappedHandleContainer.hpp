@@ -62,7 +62,7 @@ template <typename TData> class MappedHandleContainer : public HandleContainer<T
     Handle createNewHandle() const
     {
         uint32_t newId = 0;
-        common::helper::SafeCast<size_t, uint32_t>(m_records.size(), newId);
+        star::common::casts::SafeCast<size_t, uint32_t>(m_records.size(), newId);
 
         Handle newHandle{.type = this->getHandleType(), .id = std::move(newId)};
 

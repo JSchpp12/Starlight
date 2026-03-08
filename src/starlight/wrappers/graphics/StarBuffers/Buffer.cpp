@@ -93,7 +93,7 @@ StarBuffers::Buffer::Buffer(VmaAllocator &allocator, const uint32_t &requestedIn
 {
     assert(bufferCreateInfo.size != 0 && requestedInstanceCount != 0 && requestedInstanceSize != 0);
 
-    if (!star::common::helper::SafeCast<vk::DeviceSize, uint32_t>(requestedInstanceCount, this->instanceCount))
+    if (!star::common::casts::SafeCast<vk::DeviceSize, uint32_t>(requestedInstanceCount, this->instanceCount))
         throw std::runtime_error("Failed to cast instance count");
 
     this->resources = CreateBuffer(allocator, allocCreateInfo, bufferCreateInfo, this->size, this->offset, allocName);

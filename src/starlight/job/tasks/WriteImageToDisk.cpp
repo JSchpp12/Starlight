@@ -106,9 +106,9 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     }
 
     int w = 0;
-    common::helper::SafeCast(width, w);
+    star::common::casts::SafeCast(width, w);
     int h = 0;
-    common::helper::SafeCast(height, h);
+    star::common::casts::SafeCast(height, h);
     const int rowStride = w * comp; // tightly packed
     
     // ---- PNG write ----------------------------------------------------------

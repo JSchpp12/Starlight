@@ -40,7 +40,7 @@ vk::Extent2D star::policy::DefaultEngineInitPolicy::getEngineRenderingResolution
     uint32_t width;
     {
         int w{std::stoi(star::ConfigFile::getSetting(Config_Settings::resolution_x))};
-        if (!star::common::helper::SafeCast(w, width))
+        if (!star::common::casts::SafeCast(w, width))
         {
             STAR_THROW("Failed to parse and process config setting resolution_x");
         }
@@ -49,7 +49,7 @@ vk::Extent2D star::policy::DefaultEngineInitPolicy::getEngineRenderingResolution
     uint32_t height;
     {
         int h{std::stoi(star::ConfigFile::getSetting(Config_Settings::resolution_y))};
-        if (!star::common::helper::SafeCast(h, height))
+        if (!star::common::casts::SafeCast(h, height))
         {
             STAR_THROW("Failed to parse and process config settings resolution_y");
         }

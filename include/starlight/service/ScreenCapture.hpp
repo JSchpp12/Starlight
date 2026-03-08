@@ -231,7 +231,7 @@ class ScreenCapture
         detail::screen_capture::GPUSynchronizationInfo syncInfo = m_copyPolicy.triggerSubmission(copyPlan);
 
         uint64_t signalValue;
-        common::helper::SafeCast(syncInfo.signalValue, signalValue);
+        star::common::casts::SafeCast(syncInfo.signalValue, signalValue);
         createCallbackForSyncingMainRenderer(syncInfo.copyCommandBuffer, screenEvent.getTargetCommandBuffer(),
                                              syncInfo.timelineSemaphoreForMainCopyCommandsDone,
                                              m_deviceInfo.flightTracker->getCurrent().getGlobalFrameCounter(),

@@ -169,9 +169,9 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     {
         int rWidth, rHeight, rChannels;
         GetTextureInfo(m_imagePath, rWidth, rHeight, rChannels);
-        if (!common::helper::SafeCast<int, uint32_t>(rWidth, width) ||
-            !common::helper::SafeCast<int, uint32_t>(rHeight, height) ||
-            !common::helper::SafeCast<int, uint32_t>(rChannels, channels))
+        if (!star::common::casts::SafeCast<int, uint32_t>(rWidth, width) ||
+            !star::common::casts::SafeCast<int, uint32_t>(rHeight, height) ||
+            !star::common::casts::SafeCast<int, uint32_t>(rChannels, channels))
         {
             throw std::runtime_error("Invalid values read from texture");
         }
