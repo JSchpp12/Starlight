@@ -1,6 +1,7 @@
 #pragma once
 
 #include "starlight/command/headless_render_result_write/GetFileNameForFrame.hpp"
+#include "starlight/command/headless_render_result_write/GetSetOutputDir.hpp"
 #include "starlight/core/renderer/RendererBase.hpp"
 #include "starlight/policy/ListenForRegisterMainGraphicsRendererPolicy.hpp"
 #include "starlight/policy/ListenForRenderReadyForFinalization.hpp"
@@ -10,6 +11,8 @@
 
 #include <star_common/EventBus.hpp>
 
+#include <optional>
+
 namespace star::service
 {
 template <typename T>
@@ -18,6 +21,13 @@ using ListenForGetFileNameForFrame =
                                      headless_render_result_write::get_file_name_for_frame::GetFileNameForFrameTypeName,
                                      &T::onGetFileNameForFrame>;
 
+template <typename T>
+using ListenForGetSetOutputDir =
+    star::policy::command::ListenFor<T, headless_render_result_write::GetSetOutputDir,
+                                     headless_render_result_write::get_set_output_dir::GetUniqueTypeName,
+                                     &T::onGetSetOutputDir>;
+
+
 class HeadlessRenderResultWriteService
     : private star::policy::ListenForRegisterMainGraphicsRenderPolicy<HeadlessRenderResultWriteService>
 {
@@ -25,8 +35,8 @@ class HeadlessRenderResultWriteService
     HeadlessRenderResultWriteService();
     HeadlessRenderResultWriteService(const HeadlessRenderResultWriteService &) = delete;
     HeadlessRenderResultWriteService &operator=(const HeadlessRenderResultWriteService &) = delete;
-    HeadlessRenderResultWriteService(HeadlessRenderResultWriteService &&other);
-    HeadlessRenderResultWriteService &operator=(HeadlessRenderResultWriteService &&other);
+    HeadlessRenderResultWriteService(HeadlessRenderResultWriteService &&other) noexcept;
+    HeadlessRenderResultWriteService &operator=(HeadlessRenderResultWriteService &&other) noexcept;
     ~HeadlessRenderResultWriteService() = default;
 
     void init();
@@ -49,13 +59,17 @@ class HeadlessRenderResultWriteService
 
     void onGetFileNameForFrame(headless_render_result_write::GetFileNameForFrame &event) const;
 
+    void onGetSetOutputDir(headless_render_result_write::GetSetOutputDir &cmd) noexcept;
+
   private:
     friend class star::policy::ListenForRegisterMainGraphicsRenderPolicy<HeadlessRenderResultWriteService>;
 
+    std::optional<std::filesystem::path> m_outputDir;
+    std::vector<Handle> m_screenshotRegistrations;
     star::policy::ListenForRenderReadyForFinalization<HeadlessRenderResultWriteService> m_renderReady;
     star::policy::ListenForStartOfNextFramePolicy<HeadlessRenderResultWriteService> m_triggerCapturePolicy;
     ListenForGetFileNameForFrame<HeadlessRenderResultWriteService> m_listenForGetFileNamePolicy;
-    std::vector<Handle> m_screenshotRegistrations;
+    ListenForGetSetOutputDir<HeadlessRenderResultWriteService> m_listenForSetOutput;
 
     common::EventBus *m_eventBus = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
@@ -72,10 +86,8 @@ class HeadlessRenderResultWriteService
 
     void cleanupListeners(core::CommandBus &commandBus);
 
-    static void CheckAndCreateImageDir();
-
     std::string getFileName(const common::FrameTracker &ft) const;
 
-    static std::filesystem::path GetImageDirectory();
+    static std::filesystem::path GetDefaultImageDirectory();
 };
 } // namespace star::service

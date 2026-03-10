@@ -32,6 +32,13 @@ class CommandBus
         command.setType(typeID);
         submitKnownType(static_cast<common::IServiceCommand &>(command));
     }
+    template <typename TCmd> void submit(TCmd &&command) const noexcept
+    {
+        const uint16_t typeID = command_bus::ResolveTypeID<TCmd>(m_types); 
+
+        command.setType(typeID); 
+        submitKnownType(static_cast<common::IServiceCommand &>(command)); 
+    }
 
     void submitKnownType(common::IServiceCommand &command) const;
     void registerServiceCallback(uint16_t commandType, star::common::ServiceCallback callback);
