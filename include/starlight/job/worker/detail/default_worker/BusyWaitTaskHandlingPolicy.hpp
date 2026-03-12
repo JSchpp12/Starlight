@@ -29,7 +29,12 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
     BusyWaitTaskHandlingPolicy &operator=(const BusyWaitTaskHandlingPolicy &&) = delete;
     BusyWaitTaskHandlingPolicy(BusyWaitTaskHandlingPolicy &&) = default;
     BusyWaitTaskHandlingPolicy &operator=(BusyWaitTaskHandlingPolicy &&) = default;
-    virtual ~BusyWaitTaskHandlingPolicy() = default;
+    virtual ~BusyWaitTaskHandlingPolicy() {
+        if (thread.joinable())
+        {
+            stopThread(); 
+        }
+    };
 
     void init(std::string workerName, TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
     {
@@ -43,13 +48,13 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
     {
         if (!thread.joinable())
         {
-            STAR_THROW("Attempted to queue task for worker which has stopped or is not running"); 
+            STAR_THROW("Attempted to queue task for worker which has stopped or is not running");
         }
 
         TTask *typedTask = static_cast<TTask *>(task);
         m_tasks->queueTask(std::move(*typedTask));
     }
-    
+
     void cleanup()
     {
         stopThread();
@@ -69,7 +74,7 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
         thread = boost::thread([this]() { threadFunction(); });
     }
 
-    void stopThread()
+    virtual void stopThread()
     {
         m_shouldRun->store(false);
         if (thread.joinable())

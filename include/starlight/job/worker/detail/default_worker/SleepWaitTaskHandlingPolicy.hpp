@@ -37,7 +37,23 @@ class SleepWaitTaskHandlingPolicy : public BusyWaitTaskHandlingPolicy<TTask, TQu
         }
         return *this;
     };
-    virtual ~SleepWaitTaskHandlingPolicy() = default;
+    virtual ~SleepWaitTaskHandlingPolicy()
+    {
+        if (this->thread.joinable())
+        {
+            stopThread();
+        }
+    };
+
+    virtual void stopThread() override
+    {
+        this->m_shouldRun->store(false); 
+        wakeupThread(); 
+        if (this->thread.joinable())
+        {
+            this->thread.join();
+        }
+    }
 
     virtual void queueTask(void *task) override
     {
