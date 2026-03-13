@@ -31,6 +31,7 @@ template <ThreadFunctionPolicyLike TThreadPolicy> class DefaultWorker
     DefaultWorker &operator=(const DefaultWorker &) = delete;
     DefaultWorker(DefaultWorker &&other) = default;
     DefaultWorker &operator=(DefaultWorker &&) = default;
+    ~DefaultWorker() = default;
 
     void cleanup()
     {
