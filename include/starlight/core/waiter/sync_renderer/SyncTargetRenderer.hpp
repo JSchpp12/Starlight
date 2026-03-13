@@ -45,7 +45,7 @@ class SyncTargetRenderer : public std::enable_shared_from_this<SyncTargetRendere
   protected:
     Handle m_sourceCommandBuffer;
     Handle m_targetCommandBuffer;
-    vk::Semaphore m_targetSemaphore = VK_NULL_HANDLE;
+    vk::Semaphore m_targetSemaphore{VK_NULL_HANDLE};
     star::common::EventBus &m_eventBus;
     core::device::manager::ManagerCommandBuffer &m_commandBufferManager;
 

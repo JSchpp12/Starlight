@@ -1,6 +1,5 @@
 #include "renderer/DefaultRenderer.hpp"
 
-#include "starlight/wrappers/graphics/policies/CreateDescriptorsOnEventPolicy.hpp"
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
 #include "ManagerController_RenderResource_LightList.hpp"
@@ -8,6 +7,8 @@
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/helper/command_buffer/CommandBufferHelpers.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
+#include "starlight/policy/event/OneShotListener.hpp"
+#include "starlight/wrappers/graphics/policies/CreateDescriptorsOnEventPolicy.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 #include <vma/vk_mem_alloc.h>
@@ -68,21 +69,72 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
         }
     }
 
-    RenderingTargetInfo renderInfo =
-        RenderingTargetInfo({this->getColorAttachmentFormat(c)}, this->getDepthAttachmentFormat(c));
-
     for (auto &group : m_renderGroups)
     {
-        group.prepRender(c, c.getEngineResolution(), c.getFrameTracker().getSetup().getNumFramesInFlight(),
-                         renderInfo);
+        group.prepRender(c);
     }
 
-     // needs to wait until after prepRenderPhase ==> when descriptor pool will be created
+    // needs to wait until after prepRenderPhase ==> when descriptor pool will be created
+    star::core::waiter::OneShotListener<WaitForDescriptorPoolReady, star::event::DescriptorPoolReady>::Builder(
+        c.getEventBus())
+        .setPayload(WaitForDescriptorPoolReady{
+            RenderingTargetInfo({this->getColorAttachmentFormat(c)}, this->getDepthAttachmentFormat(c)),
+            std::bind(&DefaultRenderer::manualCreateDescriptors, this, std::placeholders::_1), c, m_renderGroups})
+        .build();
+}
 
-    for (auto &group : m_renderGroups)
+star::StarShaderInfo::Builder DefaultRenderer::manualCreateDescriptors(star::core::device::DeviceContext &context)
+{
+    assert(m_infoManagerCamera &&
+           "Camera info does not always need to exist. But it should. Hitting this means a change is needed");
+
+    StarDescriptorPool *defaultPool{nullptr};
     {
-        group.onDescriptorPoolReady(c, rendererDescriptors);
+        const Handle dHandle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                 core::device::manager::GetDescriptorPoolTypeName),
+                             .id = 0};
+
+        defaultPool = context.getDescriptorPoolManager().get(dHandle)->pool.get();
     }
+
+    assert(defaultPool != nullptr &&
+           "Pool has not been created yet. Descriptor pools are created after engine prep phase is complete");
+
+    this->globalSetLayout =
+        createGlobalDescriptorSetLayout(context, context.getFrameTracker().getSetup().getNumFramesInFlight());
+    auto globalBuilder = StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool,
+                                                 context.getFrameTracker().getSetup().getNumFramesInFlight())
+                             .addSetLayout(this->globalSetLayout);
+    for (int i = 0; i < context.getFrameTracker().getSetup().getNumFramesInFlight(); i++)
+    {
+        const auto &lightInfoHandle = m_infoManagerLightData->getHandle(i);
+        const auto &lightListHandle = m_infoManagerLightList->getHandle(i);
+        const auto &cameraHandle = m_infoManagerCamera->getHandle(i);
+
+        globalBuilder.startOnFrameIndex(i)
+            .startSet()
+            .add(cameraHandle, &context.getManagerRenderResource()
+                                    .get<StarBuffers::Buffer>(context.getDeviceID(), cameraHandle)
+                                    ->resourceSemaphore)
+            .add(lightInfoHandle, &context.getManagerRenderResource()
+                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
+                                       ->resourceSemaphore)
+            .add(lightListHandle, &context.getManagerRenderResource()
+                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
+                                       ->resourceSemaphore);
+    }
+
+    return globalBuilder;
+}
+
+std::shared_ptr<star::StarDescriptorSetLayout> DefaultRenderer::createGlobalDescriptorSetLayout(
+    device::DeviceContext &context, const uint8_t &numFramesInFlight)
+{
+    return StarDescriptorSetLayout::Builder()
+        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+        .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+        .addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
+        .build();
 }
 
 void DefaultRenderer::cleanupRender(common::IDeviceContext &context)
@@ -355,13 +407,6 @@ vk::ImageView DefaultRenderer::createImageView(star::core::device::DeviceContext
     return imageView;
 }
 
-star::StarShaderInfo::Builder DefaultRenderer::manualCreateDescriptors(star::core::device::DeviceContext &context,
-                                                                       const uint8_t &numFramesInFlight)
-{
-
-}
-
-
 void DefaultRenderer::createImage(star::core::device::DeviceContext &device, uint32_t width, uint32_t height,
                                   vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage,
                                   vk::MemoryPropertyFlags properties, vk::Image &image, VmaAllocation &imageMemory)
@@ -617,7 +662,8 @@ vk::Viewport DefaultRenderer::prepareRenderingViewport(const vk::Extent2D &resol
     viewport.y = 0.0f;
     viewport.width = (float)resolution.width;
     viewport.height = (float)resolution.height;
-    // Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at default
+    // Specify values range of depth values to use for the framebuffer. If not doing anything special, leave at
+    // default
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     return viewport;

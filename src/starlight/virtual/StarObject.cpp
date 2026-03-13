@@ -172,16 +172,18 @@ const star::StarObjectInstance &star::StarObject::getInstance(const size_t &inde
     return m_instanceInfo.getInstance(index);
 }
 
-void star::StarObject::prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
-                                  const uint8_t &numFramesInFlight, core::renderer::RenderingTargetInfo renderingInfo)
+void star::StarObject::prepRender(star::core::device::DeviceContext &context)
 {
     prepStarObject(context);
 }
 
 void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
                                              StarShaderInfo::Builder fullEngineBuilder,
-                                             vk::PipelineLayout pipelineLayout)
+                                             vk::PipelineLayout pipelineLayout,
+                                             const core::renderer::RenderingTargetInfo &renderingInfo)
 {
+    this->pipeline = buildPipeline(context, context.getEngineResolution(), pipelineLayout, renderingInfo);
+
     prepMaterials(context, fullEngineBuilder);
 }
 

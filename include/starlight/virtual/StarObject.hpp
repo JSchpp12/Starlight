@@ -57,11 +57,11 @@ class StarObject
     virtual Handle buildPipeline(core::device::DeviceContext &device, vk::Extent2D swapChainExtent,
                                  vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderInfo);
 
-    virtual void prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
-                            const uint8_t &numSwapChainImages, core::renderer::RenderingTargetInfo renderingInfo);
+    virtual void prepRender(star::core::device::DeviceContext &context);
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context, StarShaderInfo::Builder fullEngineBuilder,
-                                       vk::PipelineLayout pipelineLayout);
+                                       vk::PipelineLayout pipelineLayout,
+                                       const core::renderer::RenderingTargetInfo &renderingInfo);
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context,
                                        star::StarShaderInfo::Builder fullEngineBuilder, const Handle &sharedPipeline);
@@ -108,11 +108,7 @@ class StarObject
     /// <returns></returns>
     virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() = 0;
 #pragma region getters
-    Handle &getPipline()
-    {
-        return this->pipeline;
-    }
-    const Handle &getPipeline() const
+    const Handle &getPipline() const
     {
         return this->pipeline;
     }

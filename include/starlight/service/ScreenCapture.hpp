@@ -111,7 +111,7 @@ class ScreenCapture
     {
         size_t numToCreate = 0;
 
-        const int goal = pool.getNumAvailableWorkers() - 2; 
+        const int goal = pool.getNumAvailableWorkers() - 2;
         {
             std::string msg = "Num workers for image capture: " + std::to_string(goal);
             star::core::info(msg);
@@ -267,7 +267,7 @@ class ScreenCapture
 
     void cleanupDependencies(core::device::StarDevice &device)
     {
-        (void)device; 
+        (void)device;
         m_actionRouter.cleanupRender(&m_deviceInfo);
     }
 

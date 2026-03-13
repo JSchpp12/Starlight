@@ -205,7 +205,7 @@ class Task
     }
 
   private:
-    alignas(StorageAlign) std::byte m_data[StorageBytes];
+    alignas(StorageAlign) std::byte m_data[StorageBytes]{};
     ExecuteFunction m_executeFunction = nullptr;
     DestructorFunction m_destroyPayloadFunction = nullptr;
     MovePayloadFunction m_movePayloadFunction = nullptr;

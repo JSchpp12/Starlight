@@ -33,7 +33,7 @@ star::job::complete_tasks::CompleteTask star::job::complete_tasks::task_factory:
 {
     return CompleteTask::Builder<PipelineBuildCompletePayload>()
         .setPayload(PipelineBuildCompletePayload{.handleID = std::move(handleID), .pipeline = std::move(pipeline)})
-        .setEngineExecuteFunction(&ExecuteBuildPipelineComplete)
+        .setExecuteFunction(&ExecuteBuildPipelineComplete)
         .build();
 }
 

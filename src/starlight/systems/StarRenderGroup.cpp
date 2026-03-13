@@ -32,9 +32,11 @@ void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
     m_pipelineLayout = VK_NULL_HANDLE;
 }
 
-void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &context, StarShaderInfo::Builder rendererBuilder)
+void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &context,
+                                            StarShaderInfo::Builder rendererBuilder,
+                                            star::core::renderer::RenderingTargetInfo &rendererInfo)
 {
-    //create shared pipeline layout
+    // create shared pipeline layout
     {
         auto fullSetLayout = rendererBuilder.getCurrentSetLayouts();
         for (auto &set : this->largestDescriptorSet)
@@ -46,15 +48,13 @@ void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &c
         m_pipelineLayout = createPipelineLayout(context, fullSetLayout);
     }
 
-
     for (auto &group : this->groups)
     {
-        group.baseObject.object->onDescriptorPoolReady(context, rendererBuilder, m_pipelineLayout);
-
+        group.baseObject.object->onDescriptorPoolReady(context, rendererBuilder, m_pipelineLayout, rendererInfo);
 
         for (auto &object : group.objects)
         {
-            object.object->onDescriptorPoolReady(context, rendererBuilder, group.baseObject.object->getPipeline());
+            object.object->onDescriptorPoolReady(context, rendererBuilder, group.baseObject.object->getPipline());
         }
     }
 }
@@ -73,10 +73,9 @@ void StarRenderGroup::frameUpdate(core::device::DeviceContext &context, const ui
     }
 }
 
-void StarRenderGroup::prepRender(core::device::DeviceContext &context, const vk::Extent2D &renderingResolution,
-                                 const uint8_t &numFramesInFlight, core::renderer::RenderingTargetInfo renderingInfo)
+void StarRenderGroup::prepRender(core::device::DeviceContext &context)
 {
-    prepareObjects(renderingInfo, context.getEngineResolution(), numFramesInFlight);
+    prepareObjects(context);
 }
 
 void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
@@ -225,19 +224,17 @@ bool StarRenderGroup::isObjectCompatible(StarObject &object)
     return true;
 }
 
-void StarRenderGroup::prepareObjects(core::renderer::RenderingTargetInfo renderingInfo,
-                                     const vk::Extent2D &swapChainExtent, const uint8_t &numFramesInFlight)
+void StarRenderGroup::prepareObjects(star::core::device::DeviceContext &context)
 {
     // get descriptor sets from objects and place into render structs
     for (auto &group : this->groups)
     {
         // prepare base object
-        group.baseObject.object->prepRender(*device, swapChainExtent, numFramesInFlight,
-                                            renderingInfo);
+        group.baseObject.object->prepRender(*device);
 
         for (auto &renderObject : group.objects)
         {
-            renderObject.object->prepRender(*device, swapChainExtent, numFramesInFlight, renderingInfo);
+            renderObject.object->prepRender(*device);
         }
     }
 }

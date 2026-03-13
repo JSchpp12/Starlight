@@ -2,6 +2,7 @@
 
 #include "event/ConsumeDescriptorRequests.hpp"
 #include "event/EnginePhaseComplete.hpp"
+#include "event/DescriptorPoolReady.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 
@@ -62,6 +63,7 @@ void DescriptorPool::eventCallback(const star::common::IEvent &e, bool &keepAliv
 
         this->insert({std::move(processedTypes)});
 
+        this->m_eventBus->emit(event::DescriptorPoolReady{});
         keepAlive = false;
     }
     else

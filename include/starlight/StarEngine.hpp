@@ -125,7 +125,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
 
         m_systemManager.getContext(m_defaultDevice)
             .getEventBus()
-            .emit(event::EnginePhaseComplete{event::EnginePhaseComplete::Phase::init, event::EnginePhaseComplete::GetUniqueTypeName()});
+            .emit(event::EnginePhaseComplete{event::EnginePhaseComplete::Phase::load, event::EnginePhaseComplete::GetUniqueTypeName()});
 
         waitForSceneReady(*currentScene);
 
