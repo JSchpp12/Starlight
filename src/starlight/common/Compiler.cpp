@@ -57,7 +57,7 @@ shaderc_shader_kind Compiler::getShaderCStageFlag(const std::string &pathToFile)
         return shaderc_shader_kind::shaderc_geometry_shader;
     }
 
-    throw std::runtime_error("Compiler::GetShaderCStageFlag invalid shader stage");
+    STAR_THROW("Compiler::GetShaderCStageFlag invalid shader stage");
 }
 
 std::string Compiler::preprocessShader(shaderc::Compiler &compiler, shaderc::CompileOptions options,
@@ -72,8 +72,9 @@ std::string Compiler::preprocessShader(shaderc::Compiler &compiler, shaderc::Com
 
     if (result.GetCompilationStatus() != shaderc_compilation_status_success)
     {
-        std::cerr << result.GetErrorMessage();
-        throw std::runtime_error("Failed to preprocess shader");
+        std::ostringstream oss; 
+        oss << "Failed to preprocess shader with error: " << result.GetErrorMessage();
+        STAR_THROW(oss.str());
     }
 
     return {result.cbegin(), result.cend()};
