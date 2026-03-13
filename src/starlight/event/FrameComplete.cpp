@@ -5,7 +5,7 @@
 namespace star::event
 {
 FrameComplete::FrameComplete()
-    : common::IEvent(common::HandleTypeRegistry::instance().registerType(GetFrameCompleteTypeName))
+    : common::IEvent(common::HandleTypeRegistry::instance().registerType(GetUniqueTypeName()))
 {
 }
 }

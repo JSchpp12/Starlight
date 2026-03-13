@@ -16,14 +16,14 @@ void SubmitDescriptorRequestsPolicy::subscribeToEventBus(common::EventBus &event
 {
     auto sharedThis = shared_from_this();
 
-    if (!common::HandleTypeRegistry::instance().contains(star::event::GetConsumeDescriptorRequestsTypeName))
+    if (!common::HandleTypeRegistry::instance().contains(star::event::ConsumeDescriptorRequests::GetUniqueTypeName()))
     {
-        common::HandleTypeRegistry::instance().registerType(star::event::GetConsumeDescriptorRequestsTypeName);
+        common::HandleTypeRegistry::instance().registerType(star::event::ConsumeDescriptorRequests::GetUniqueTypeName());
     }
 
     eventBus.subscribe(
         common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-            star::event::GetConsumeDescriptorRequestsTypeName),
+            star::event::ConsumeDescriptorRequests::GetUniqueTypeName()),
         common::SubscriberCallbackInfo{
             [sharedThis](const star::common::IEvent &e, bool &keepAlive) { sharedThis->eventCallback(e, keepAlive); },
             [sharedThis]() { return sharedThis->getHandleForUpdate(); },

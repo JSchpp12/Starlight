@@ -34,8 +34,7 @@ class StarRenderGroup
     virtual ~StarRenderGroup() = default;
 
     void prepRender(core::device::DeviceContext &context, const vk::Extent2D &renderingResolution,
-                    const uint8_t &numFramesInFlight, StarShaderInfo::Builder initEngineBuilder,
-                    core::renderer::RenderingTargetInfo renderingInfo);
+                    const uint8_t &numFramesInFlight, core::renderer::RenderingTargetInfo renderingInfo);
 
     void cleanupRender(core::device::DeviceContext &context);
 
@@ -50,6 +49,8 @@ class StarRenderGroup
     {
         this->lights.push_back(newLight);
     }
+
+    void onDescriptorPoolReady(star::core::device::DeviceContext &context, StarShaderInfo::Builder initEngineBuilder);
 
     void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                      const Handle &targetCommandBuffer);
@@ -92,7 +93,7 @@ class StarRenderGroup
     /// <summary>
     /// Create descriptors for binding render buffers to shaders.
     /// </summary>
-    void prepareObjects(StarShaderInfo::Builder &groupBuilder, core::renderer::RenderingTargetInfo renderingInfo,
+    void prepareObjects(core::renderer::RenderingTargetInfo renderingInfo,
                         const vk::Extent2D &swapChainExtent, const uint8_t &numFramesInFlight);
 
     virtual vk::PipelineLayout createPipelineLayout(

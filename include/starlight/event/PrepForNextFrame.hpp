@@ -7,14 +7,23 @@
 
 namespace star::event
 {
-inline constexpr const char *GetPrepForNextFrameEventTypeName()
+namespace prep_for_next_frame
+{
+inline constexpr const char *GetUniqueTypeName()
 {
     return "eFrPrep";
 }
 
+} // namespace prep_for_next_frame
+
 class PrepForNextFrame : public common::IEvent
 {
   public:
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return prep_for_next_frame::GetUniqueTypeName();
+    }
+
     explicit PrepForNextFrame(common::FrameTracker &frameTracker);
     virtual ~PrepForNextFrame() = default;
 

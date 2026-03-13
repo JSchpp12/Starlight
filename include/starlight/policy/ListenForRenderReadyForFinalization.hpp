@@ -52,7 +52,7 @@ template <typename T> class ListenForRenderReadyForFinalization
     void registerListener(common::EventBus &eventBus)
     {
         eventBus.subscribe(
-            common::HandleTypeRegistry::instance().registerType(star::event::GetRenderReadyForFinalizationTypeName()),
+            common::HandleTypeRegistry::instance().registerType(star::event::RenderReadyForFinalization::GetUniqueTypeName()),
             common::SubscriberCallbackInfo{
                 std::bind(&ListenForRenderReadyForFinalization<T>::eventCallback, this, std::placeholders::_1,
                           std::placeholders::_2),

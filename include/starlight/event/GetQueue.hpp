@@ -11,16 +11,27 @@
 
 namespace star::event
 {
-constexpr std::string_view GetQueueEventTypeName = "star::event::GetQueue";
+namespace get_queue
+{
+constexpr const char *GetUniqueTypeName()
+{
+    return "EvtGQ";
+}
+} // namespace get_queue
 
 class GetQueue : public common::IEvent
 {
   public:
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return get_queue::GetUniqueTypeName();
+    }
+
     class Builder
     {
       public:
         Builder() = default;
-        Builder &setQueueData(Handle &queueData); 
+        Builder &setQueueData(Handle &queueData);
         Builder &setQueueType(const star::Queue_Type &type);
         Builder &setSelectFromFamilyIndex(const std::unordered_set<uint8_t> &familyIndex);
         Builder &setAvoidFamilyIndex(const std::unordered_set<uint8_t> &familyIndex);
@@ -65,14 +76,14 @@ class GetQueue : public common::IEvent
     friend class Builder;
 
     GetQueue(Handle *queueData, star::Queue_Type requestedQueueType, bool getEngineReservedQueue);
-    GetQueue(Handle *queueData, star::Queue_Type requestedQueueType, bool getEngineReservedQueue, const std::unordered_set<uint8_t> &familyIndex,
-             bool selectFromIndex, bool avoidIndex); 
+    GetQueue(Handle *queueData, star::Queue_Type requestedQueueType, bool getEngineReservedQueue,
+             const std::unordered_set<uint8_t> &familyIndex, bool selectFromIndex, bool avoidIndex);
 
     mutable Handle *m_queueData = nullptr;
     star::Queue_Type m_requestedQueueType;
     bool m_requestEngineReservedQueue;
     const std::unordered_set<uint8_t> *m_selectedQueueFamilyIndexInfo = nullptr;
     bool m_selectFromIndex = false;
-    bool m_avoidIndex = false; 
+    bool m_avoidIndex = false;
 };
 } // namespace star::event

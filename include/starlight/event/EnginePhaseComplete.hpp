@@ -7,31 +7,31 @@
 
 namespace star::event
 {
-inline constexpr const char *GetEnginePhaseCompleteInitTypeName()
+namespace engine_phase_complete
 {
-    return "epcInit";
-}
-inline constexpr const char *GetEnginePhaseCompleteLoadTypeName()
+inline constexpr const char *GetUniqueTypeName()
 {
-    return "epcFrame";
+    return "EvtEpc";
 }
-inline constexpr const char *GetEnginePhaseCompleteFrameTypeName()
-{
-    return "epcFrame";
-}
+} // namespace engine_phase_complete
 
-enum class Phase
-{
-    init,
-    load, // called after all of the prepRender functions are complete
-    frame
-};
+
 class EnginePhaseComplete : public common::IEvent
 {
   public:
+    enum class Phase
+    {
+        load,
+        frame
+    };
+
     EnginePhaseComplete(Phase phase, std::string_view enginePhaseName)
         : common::IEvent(common::HandleTypeRegistry::instance().getTypeGuaranteedExist(enginePhaseName)), m_phase(phase)
     {
+    }
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return engine_phase_complete::GetUniqueTypeName();
     }
     virtual ~EnginePhaseComplete() = default;
 

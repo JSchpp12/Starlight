@@ -43,7 +43,7 @@ template <typename T> class ListenForGetQueuePolicy
     void registerListener(common::EventBus &eventBus)
     {
         eventBus.subscribe(
-            common::HandleTypeRegistry::instance().registerType(event::GetQueueEventTypeName),
+            common::HandleTypeRegistry::instance().registerType(event::GetQueue::GetUniqueTypeName()),
             common::SubscriberCallbackInfo{std::bind(&ListenForGetQueuePolicy<T>::eventCallback, this,
                                                      std::placeholders::_1, std::placeholders::_2),
                                            std::bind(&ListenForGetQueuePolicy<T>::getHandleForEventBus, this),

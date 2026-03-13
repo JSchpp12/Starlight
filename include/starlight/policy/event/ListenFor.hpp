@@ -6,6 +6,11 @@
 
 namespace star::policy::event
 {
+template <typename TEvent> uint16_t ResolveTypeID(const common::TypeRegistry &registry)
+{
+    static const uint16_t cached = registry.getTypeGuaranteedExist(TEvent::GetUniqueTypeName());
+}
+
 template <typename TOwner, typename TEvent, auto TTypeNameProvider, auto THandler> class ListenFor
 {
   public:

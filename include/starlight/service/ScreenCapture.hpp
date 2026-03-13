@@ -276,7 +276,7 @@ class ScreenCapture
         assert(m_deviceInfo.eventBus != nullptr);
 
         this->m_deviceInfo.eventBus->subscribe(
-            star::event::TriggerScreenshotTypeName(),
+            star::event::TriggerScreenshot::GetUniqueTypeName(),
             {[this](const star::common::IEvent &e, bool &keepAlive) { this->eventCallback(e, keepAlive); },
              [this]() -> Handle * { return this->notificationFromEventBusGetHandle(); },
              [this](const Handle &handle) { this->notificationFromEventBusDeleteHandle(handle); }});

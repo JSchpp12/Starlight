@@ -45,7 +45,7 @@ template <typename T> class ListenForPrepForNextFramePolicy
     void registerListener(common::EventBus &eventBus)
     {
         eventBus.subscribe(common::HandleTypeRegistry::instance().registerType(
-                               star::event::GetPrepForNextFrameEventTypeName()),
+                               star::event::PrepForNextFrame::GetUniqueTypeName()),
                            common::SubscriberCallbackInfo{
                                std::bind(&ListenForPrepForNextFramePolicy<T>::eventCallback, this,
                                          std::placeholders::_1, std::placeholders::_2),

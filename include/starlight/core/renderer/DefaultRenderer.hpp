@@ -80,6 +80,7 @@ class DefaultRenderer : public RendererBase
     }
 
   protected:
+
     bool ownsRenderResourceControllers = false;
     bool isReady = false;
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,

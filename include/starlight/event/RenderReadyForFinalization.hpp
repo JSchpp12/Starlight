@@ -6,14 +6,21 @@
 
 namespace star::event
 {
-inline constexpr const char *GetRenderReadyForFinalizationTypeName()
+namespace render_ready_for_finalization
 {
-    return "eFinal";
+inline constexpr const char *GetUniqueTypeName()
+{
+    return "EvtRRFin";
 }
+} // namespace render_ready_for_finalization
 
 class RenderReadyForFinalization : public common::IEvent
 {
   public:
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return render_ready_for_finalization::GetUniqueTypeName();
+    }
     RenderReadyForFinalization(core::device::StarDevice &device, vk::Semaphore finalDoneSemaphore);
 
     virtual ~RenderReadyForFinalization() = default;

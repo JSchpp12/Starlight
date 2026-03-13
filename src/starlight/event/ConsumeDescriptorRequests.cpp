@@ -6,7 +6,7 @@ namespace star::event
 {
 ConsumeDescriptorRequests::ConsumeDescriptorRequests(void *requestsData)
     : common::IEvent(
-          common::HandleTypeRegistry::instance().getTypeGuaranteedExist(GetConsumeDescriptorRequestsTypeName)),
+          common::HandleTypeRegistry::instance().getTypeGuaranteedExist(GetUniqueTypeName())),
       m_requestsData(requestsData)
 {
 }

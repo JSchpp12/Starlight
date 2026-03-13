@@ -28,12 +28,12 @@ using ListenForDeclareDependency =
                                      &T::onDeclareDependency>;
 template <typename T>
 using ListenForInitComplete =
-    star::policy::event::ListenFor<T, star::event::EnginePhaseComplete, star::event::GetEnginePhaseCompleteInitTypeName,
+    star::policy::event::ListenFor<T, star::event::EnginePhaseComplete, star::event::engine_phase_complete::GetUniqueTypeName,
                                    &T::onInitEnginePhaseComplete>;
 
 template <typename T>
 using ListenForStartOfNextFrame =
-    star::policy::event::ListenFor<T, star::event::StartOfNextFrame, star::event::GetStartOfNextFrameTypeName,
+    star::policy::event::ListenFor<T, star::event::StartOfNextFrame, star::event::start_of_next_frame::GetUniqueTypeName,
                                    &T::onStartOfNextFrame>;
 
 template <typename T>

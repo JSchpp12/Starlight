@@ -32,8 +32,6 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
 
     m_renderingContext.targetResolution = c.getEngineResolution();
 
-    // needs to wait until after prepRenderPhase ==> when descriptor pool will be created
-    auto rendererDescriptors = manualCreateDescriptors(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
     {
         auto images = createRenderToImages(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
         m_colorFormat = images.front().getBaseFormat();
@@ -76,7 +74,14 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
     for (auto &group : m_renderGroups)
     {
         group.prepRender(c, c.getEngineResolution(), c.getFrameTracker().getSetup().getNumFramesInFlight(),
-                         rendererDescriptors, renderInfo);
+                         renderInfo);
+    }
+
+     // needs to wait until after prepRenderPhase ==> when descriptor pool will be created
+
+    for (auto &group : m_renderGroups)
+    {
+        group.onDescriptorPoolReady(c, rendererDescriptors);
     }
 }
 
@@ -353,57 +358,9 @@ vk::ImageView DefaultRenderer::createImageView(star::core::device::DeviceContext
 star::StarShaderInfo::Builder DefaultRenderer::manualCreateDescriptors(star::core::device::DeviceContext &context,
                                                                        const uint8_t &numFramesInFlight)
 {
-    assert(m_infoManagerCamera &&
-           "Camera info does not always need to exist. But it should. Hitting this means a change is needed");
 
-    StarDescriptorPool *defaultPool{nullptr};
-    {
-        const Handle dHandle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                     core::device::manager::GetDescriptorPoolTypeName),
-                                 .id = 0};
-
-        defaultPool = context.getDescriptorPoolManager().get(dHandle)->pool.get();
-    }
-
-    assert(defaultPool != nullptr &&
-           "Pool has not been created yet. Descriptor pools are created after engine prep phase is complete"); 
-
-    this->globalSetLayout = createGlobalDescriptorSetLayout(context, numFramesInFlight);
-    auto globalBuilder =
-        StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(),
-                                *defaultPool, numFramesInFlight)
-            .addSetLayout(this->globalSetLayout);
-    for (int i = 0; i < numFramesInFlight; i++)
-    {
-        const auto &lightInfoHandle = m_infoManagerLightData->getHandle(i);
-        const auto &lightListHandle = m_infoManagerLightList->getHandle(i);
-        const auto &cameraHandle = m_infoManagerCamera->getHandle(i);
-
-        globalBuilder.startOnFrameIndex(i)
-            .startSet()
-            .add(cameraHandle, &context.getManagerRenderResource()
-                                    .get<StarBuffers::Buffer>(context.getDeviceID(), cameraHandle)
-                                    ->resourceSemaphore)
-            .add(lightInfoHandle, &context.getManagerRenderResource()
-                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
-                                       ->resourceSemaphore)
-            .add(lightListHandle, &context.getManagerRenderResource()
-                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
-                                       ->resourceSemaphore);
-    }
-
-    return globalBuilder;
 }
 
-std::shared_ptr<star::StarDescriptorSetLayout> DefaultRenderer::createGlobalDescriptorSetLayout(
-    device::DeviceContext &context, const uint8_t &numFramesInFlight)
-{
-    return StarDescriptorSetLayout::Builder()
-        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-        .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-        .addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
-        .build();
-}
 
 void DefaultRenderer::createImage(star::core::device::DeviceContext &device, uint32_t width, uint32_t height,
                                   vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage,

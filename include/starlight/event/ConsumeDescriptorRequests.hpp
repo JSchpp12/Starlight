@@ -7,11 +7,22 @@
 
 namespace star::event
 {
-constexpr std::string_view GetConsumeDescriptorRequestsTypeName = "star::event::ConsumeDescriptorRequests";
+namespace consume_descriptor_requests
+{
+constexpr const char *GetUniqueTypeName()
+{
+    return "EvtCdr";
+};
+}
 
 class ConsumeDescriptorRequests : public common::IEvent
 {
   public:
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return consume_descriptor_requests::GetUniqueTypeName();
+    }
+
     explicit ConsumeDescriptorRequests(void *requestsData);
 
     virtual ~ConsumeDescriptorRequests() = default;
