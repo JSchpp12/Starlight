@@ -2,171 +2,173 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 namespace star::job::complete_tasks
 {
+
 using DestroyPayloadFunction = void (*)(void *);
 using MovePayloadFunction = void (*)(void *, void *);
 using EngineOnCompleteFunction = void (*)(void *, void *, void *, void *, void *);
 
-#define MAX_COMPLETE_TASK_SIZE 128
+struct EngineContext
+{
+    void *device = nullptr;
+    void *taskSystem = nullptr;
+    void *eventBus = nullptr;
+    void *graphicsManagers = nullptr;
+};
+
 class CompleteTask
 {
   public:
-    static const size_t StorageBytes = size_t(MAX_COMPLETE_TASK_SIZE - sizeof(EngineOnCompleteFunction) -
-                                              sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction));
-    static const size_t StorageAlign = alignof(std::max_align_t);
+    static constexpr size_t StorageBytes =
+        128 - sizeof(EngineOnCompleteFunction) - sizeof(DestroyPayloadFunction) - sizeof(MovePayloadFunction);
+    static constexpr size_t StorageAlign = alignof(std::max_align_t);
+
     template <typename PayloadType> class Builder
     {
       public:
-        static void DefaultMovePayload(void *dest, void *src)
+        [[nodiscard]] Builder &setPayload(const PayloadType &data)
         {
-            new (dest) PayloadType(std::move(*static_cast<PayloadType *>(src)));
-            static_cast<PayloadType *>(src)->~PayloadType();
-        }
-
-        static void DefaultDestroyPayload(void *data)
-        {
-            static_cast<PayloadType *>(data)->~PayloadType();
-        }
-
-        Builder &setPayload(const PayloadType &data)
-        {
-            m_hasData = true;
             m_data = data;
             return *this;
         }
-        Builder &setPayload(PayloadType &&data)
+
+        [[nodiscard]] Builder &setPayload(PayloadType &&data)
         {
-            m_hasData = true;
             m_data = std::move(data);
             return *this;
         }
-        Builder &setDestroyFunction(DestroyPayloadFunction destroyPayloadFunction)
+
+        [[nodiscard]] Builder &setDestroyFunction(DestroyPayloadFunction fn)
         {
-            m_destroyPayloadFunction = destroyPayloadFunction;
+            m_destroyFn = fn;
             return *this;
         }
-        Builder &setMovePayloadFunction(MovePayloadFunction movePayloadFunction)
+
+        [[nodiscard]] Builder &setMoveFunction(MovePayloadFunction fn)
         {
-            m_movePayloadFunction = movePayloadFunction;
+            m_moveFn = fn;
             return *this;
         }
-        Builder &setEngineExecuteFunction(EngineOnCompleteFunction onCompleteFunction)
+
+        [[nodiscard]] Builder &setExecuteFunction(EngineOnCompleteFunction fn)
         {
-            m_engineOnCompleteFunction = onCompleteFunction;
+            m_onCompleteFn = fn;
             return *this;
         }
-        CompleteTask build()
+
+        [[nodiscard]] CompleteTask build()
         {
-            static_assert(sizeof(PayloadType) <= StorageBytes,
-                          "Payload too large for message inline storage restrictions");
+            static_assert(sizeof(PayloadType) <= StorageBytes, "Payload too large for CompleteTask inline storage");
             static_assert(alignof(PayloadType) <= StorageAlign,
-                          "Payload alignment too strict against restricted alignment");
+                          "Payload alignment too strict for CompleteTask storage");
 
-            if (!m_hasData)
-                throw std::runtime_error("Data must be provided");
-            if (!m_engineOnCompleteFunction)
-                throw std::runtime_error("On complete function must be provided");
-            if (!m_destroyPayloadFunction)
-                m_destroyPayloadFunction = &Builder<PayloadType>::DefaultDestroyPayload;
-            if (!m_movePayloadFunction)
-                m_movePayloadFunction = &Builder<PayloadType>::DefaultMovePayload;
+            if (!m_data)
+                throw std::runtime_error("Payload must be provided before building");
+            if (!m_onCompleteFn)
+                throw std::runtime_error("Execute function must be provided before building");
 
-            CompleteTask complete{};
-            new (complete.m_data) PayloadType(std::forward<PayloadType>(m_data));
-            complete.m_engineOnCompleteFunction = m_engineOnCompleteFunction;
-            complete.m_movePayloadFunction = m_movePayloadFunction;
-            complete.m_destroyPayloadFunction = m_destroyPayloadFunction;
+            if (!m_destroyFn)
+                m_destroyFn = [](void *p) { static_cast<PayloadType *>(p)->~PayloadType(); };
+            if (!m_moveFn)
+                m_moveFn = [](void *dest, void *src) {
+                    new (dest) PayloadType(std::move(*static_cast<PayloadType *>(src)));
+                    static_cast<PayloadType *>(src)->~PayloadType();
+                };
 
-            return complete;
+            CompleteTask task{};
+            new (task.m_data) PayloadType(std::move(*m_data));
+            task.m_onCompleteFn = m_onCompleteFn;
+            task.m_moveFn = m_moveFn;
+            task.m_destroyFn = m_destroyFn;
+            return task;
         }
 
       private:
-        EngineOnCompleteFunction m_engineOnCompleteFunction = nullptr;
-        MovePayloadFunction m_movePayloadFunction = nullptr;
-        DestroyPayloadFunction m_destroyPayloadFunction = nullptr;
-
-        bool m_hasData = false;
-        PayloadType m_data;
+        EngineOnCompleteFunction m_onCompleteFn = nullptr;
+        MovePayloadFunction m_moveFn = nullptr;
+        DestroyPayloadFunction m_destroyFn = nullptr;
+        std::optional<PayloadType> m_data;
     };
 
     CompleteTask() = default;
+
     CompleteTask(CompleteTask &&other) noexcept
     {
-        if (other.m_movePayloadFunction)
-            other.m_movePayloadFunction(m_data, other.m_data);
-
-        m_engineOnCompleteFunction = other.m_engineOnCompleteFunction;
-        m_movePayloadFunction = other.m_movePayloadFunction;
-        m_destroyPayloadFunction = other.m_destroyPayloadFunction;
-
-        other.m_engineOnCompleteFunction = nullptr;
-        other.m_movePayloadFunction = nullptr;
-        other.m_destroyPayloadFunction = nullptr;
+        moveFrom(std::move(other));
     }
+
     CompleteTask &operator=(CompleteTask &&other) noexcept
     {
         if (this != &other)
         {
-            if (m_destroyPayloadFunction)
-                m_destroyPayloadFunction(m_data);
-
-            m_engineOnCompleteFunction = other.m_engineOnCompleteFunction;
-            m_destroyPayloadFunction = other.m_destroyPayloadFunction;
-            m_movePayloadFunction = other.m_movePayloadFunction;
-
-            if (m_movePayloadFunction)
-                m_movePayloadFunction(m_data, other.m_data);
-
-            other.m_engineOnCompleteFunction = nullptr;
-            other.m_destroyPayloadFunction = nullptr;
-            other.m_movePayloadFunction = nullptr;
+            destroyPayload();
+            moveFrom(std::move(other));
         }
-
         return *this;
     }
-    CompleteTask &operator=(const CompleteTask &) = delete;
+
     CompleteTask(const CompleteTask &) = delete;
+    CompleteTask &operator=(const CompleteTask &) = delete;
+
     ~CompleteTask()
     {
-        if (m_destroyPayloadFunction)
-            m_destroyPayloadFunction(m_data);
+        destroyPayload();
     }
 
-    // will be run on the MAIN engine thread
-    void run(void *device, void *taskSystem, void *eventBus, void *graphicsManagers)
+    // Must be called on the main engine thread
+    void run(const EngineContext &ctx)
     {
-        m_engineOnCompleteFunction(device, taskSystem, eventBus, graphicsManagers, payload());
+        m_onCompleteFn(ctx.device, ctx.taskSystem, ctx.eventBus, ctx.graphicsManagers, payload());
     }
 
     void reset()
     {
-        if (m_destroyPayloadFunction)
-        {
-            m_destroyPayloadFunction(m_data);
-        }
-
-        m_movePayloadFunction = nullptr;
-        m_destroyPayloadFunction = nullptr;
-        m_engineOnCompleteFunction = nullptr;
+        destroyPayload();
+        m_onCompleteFn = nullptr;
+        m_moveFn = nullptr;
+        m_destroyFn = nullptr;
     }
 
   private:
-    MovePayloadFunction m_movePayloadFunction = nullptr;
-    DestroyPayloadFunction m_destroyPayloadFunction = nullptr;
-    EngineOnCompleteFunction m_engineOnCompleteFunction = nullptr;
-    alignas(StorageAlign) std::byte m_data[StorageBytes];
+    EngineOnCompleteFunction m_onCompleteFn = nullptr;
+    MovePayloadFunction m_moveFn = nullptr;
+    DestroyPayloadFunction m_destroyFn = nullptr;
+    alignas(StorageAlign) std::byte m_data[StorageBytes]{};
 
     void *payload() noexcept
     {
         return static_cast<void *>(m_data);
     }
-
     const void *payload() const noexcept
     {
         return static_cast<const void *>(m_data);
     }
+
+    void destroyPayload() noexcept
+    {
+        if (m_destroyFn)
+            m_destroyFn(m_data);
+    }
+
+    void moveFrom(CompleteTask &&other) noexcept
+    {
+        if (other.m_moveFn)
+            other.m_moveFn(m_data, other.m_data);
+
+        m_onCompleteFn = other.m_onCompleteFn;
+        m_moveFn = other.m_moveFn;
+        m_destroyFn = other.m_destroyFn;
+
+        other.m_onCompleteFn = nullptr;
+        other.m_moveFn = nullptr;
+        other.m_destroyFn = nullptr;
+    }
 };
+
+static_assert(sizeof(CompleteTask) <= 128, "CompleteTask exceeds expected size budget");
+
 } // namespace star::job::complete_tasks

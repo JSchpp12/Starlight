@@ -13,17 +13,25 @@
 
 namespace star::event
 {
-constexpr std::string TriggerScreenshotTypeName()
+namespace trigger_screenshot
 {
-    return "star::event::trigger_screenshot";
+constexpr const char *GetUniqueTypeName()
+{
+    return "EvtTS";
 }
+} // namespace trigger_screenshot
 
 class TriggerScreenshot : public star::common::IEvent
 {
   public:
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return trigger_screenshot::GetUniqueTypeName();
+    }
+
     TriggerScreenshot(StarTextures::Texture targetTexture, std::string screenshotPath, Handle &targetCommandBuffer,
                       Handle &calleeRegistration, vk::Semaphore targetTextureReadySemaphore)
-        : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
+        : common::IEvent(common::HandleTypeRegistry::instance().registerType(GetUniqueTypeName())),
           m_targetTexture(std::move(targetTexture)), m_screenshotPath(std::move(screenshotPath)),
           m_targetTextureReadySemaphore(std::move(targetTextureReadySemaphore)),
           m_targetCommandBuffer(targetCommandBuffer), m_calleeRegistration(calleeRegistration)
@@ -31,7 +39,7 @@ class TriggerScreenshot : public star::common::IEvent
     }
     TriggerScreenshot(StarTextures::Texture targetTexture, std::string screenshotPath, Handle &targetCommandBuffer,
                       Handle &calleeRegistration)
-        : common::IEvent(common::HandleTypeRegistry::instance().registerType(TriggerScreenshotTypeName())),
+        : common::IEvent(common::HandleTypeRegistry::instance().registerType(GetUniqueTypeName())),
           m_targetTexture(std::move(targetTexture)), m_screenshotPath(std::move(screenshotPath)),
           m_targetTextureReadySemaphore(nullptr), m_targetCommandBuffer(targetCommandBuffer),
           m_calleeRegistration(calleeRegistration)

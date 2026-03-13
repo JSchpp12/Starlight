@@ -10,7 +10,7 @@ namespace star::command_order
 
 namespace declare_dependency
 {
-inline constexpr const char *GetDeclareDependencyCommandTypeName()
+constexpr const char *GetDeclareDependencyCommandTypeName()
 {
     return "coDecDep";
 }
@@ -19,7 +19,7 @@ inline constexpr const char *GetDeclareDependencyCommandTypeName()
 class DeclareDependency : public common::IServiceCommand
 {
   public:
-    static inline constexpr std::string_view GetUniqueTypeName()
+    static constexpr std::string_view GetUniqueTypeName()
     {
         return declare_dependency::GetDeclareDependencyCommandTypeName();
     }

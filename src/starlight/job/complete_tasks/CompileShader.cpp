@@ -81,9 +81,7 @@ star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(
         .setPayload(CompileCompletePayload{.handleID = std::move(handleID),
                                            .finalizedShaderObject = std::move(finalizedShaderObject),
                                            .compiledShaderCode = std::move(finalizedCompiledShader)})
-        .setEngineExecuteFunction(&ExecuteShaderCompileComplete)
-        // .setMovePayloadFunction(&MoveShaderCompletePaylod)
-        // .setDestroyFunction(&DestroyShaderCompletePayload)
+        .setExecuteFunction(&ExecuteShaderCompileComplete)
         .build();
 }
 } // namespace star::job::complete_tasks::compile_shader

@@ -35,10 +35,6 @@ class RendererBase
     {
         return m_commandBuffer;
     }
-    std::vector<Handle> &getRenderToColorImages()
-    {
-        return m_renderToImages;
-    }
     const std::vector<Handle> &getRenderToColorImages() const
     {
         return m_renderToImages;

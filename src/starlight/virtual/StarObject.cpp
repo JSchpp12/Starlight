@@ -172,29 +172,33 @@ const star::StarObjectInstance &star::StarObject::getInstance(const size_t &inde
     return m_instanceInfo.getInstance(index);
 }
 
-void star::StarObject::prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
-                                  const uint8_t &numFramesInFlight, star::StarShaderInfo::Builder fullEngineBuilder,
-                                  Handle sharedPipeline)
+void star::StarObject::prepRender(star::core::device::DeviceContext &context)
+{
+    prepStarObject(context);
+}
+
+void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
+                                             StarShaderInfo::Builder fullEngineBuilder,
+                                             vk::PipelineLayout pipelineLayout,
+                                             const core::renderer::RenderingTargetInfo &renderingInfo)
+{
+    this->pipeline = buildPipeline(context, context.getEngineResolution(), pipelineLayout, renderingInfo);
+
+    prepMaterials(context, fullEngineBuilder);
+}
+
+void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
+                                             star::StarShaderInfo::Builder fullEngineBuilder,
+                                             const Handle &sharedPipeline)
 {
     this->sharedPipeline = sharedPipeline;
 
-    prepStarObject(context, numFramesInFlight, fullEngineBuilder);
+    prepMaterials(context, fullEngineBuilder);
 }
 
-void star::StarObject::prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
-                                  const uint8_t &numFramesInFlight, StarShaderInfo::Builder fullEngineBuilder,
-                                  vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo)
+void star::StarObject::prepStarObject(core::device::DeviceContext &context)
 {
-    this->pipeline = buildPipeline(context, swapChainExtent, pipelineLayout, renderingInfo);
-
-    prepStarObject(context, numFramesInFlight, fullEngineBuilder);
-}
-
-void star::StarObject::prepStarObject(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                                      StarShaderInfo::Builder &frameBuilder)
-{
-    createInstanceBuffers(context, numFramesInFlight);
-    prepMaterials(context, numFramesInFlight, frameBuilder);
+    createInstanceBuffers(context);
 
     this->meshes = loadMeshes(context);
     m_deviceID = context.getDeviceID();
@@ -323,12 +327,12 @@ void star::StarObject::prepareMeshes(star::core::device::DeviceContext &device)
     }
 }
 
-void star::StarObject::prepMaterials(star::core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
                                      star::StarShaderInfo::Builder &frameBuilder)
 {
     assert(m_meshMaterials.size() > 0 && "Mesh materials should exist");
 
-    for (uint8_t i = 0; i < numFramesInFlight; i++)
+    for (uint8_t i = 0; i < context.getFrameTracker().getSetup().getNumFramesInFlight(); i++)
     {
         const auto &instanceModelHandle = m_instanceInfo.getControllerModel()->getHandle(i);
         const auto &instanceNormalHandle = m_instanceInfo.getControllerNormal()->getHandle(i);
@@ -347,18 +351,17 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
     for (auto &material : m_meshMaterials)
     {
         // descriptors
-        material->prepRender(context, numFramesInFlight, frameBuilder);
+        material->prepRender(context, context.getFrameTracker().getSetup().getNumFramesInFlight(), frameBuilder);
     }
 }
 
-void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &context,
-                                             const uint8_t &numFramesInFlight)
+void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &context)
 {
     assert(m_instanceInfo.getSize() > 0 &&
            "Call to create instance buffers made but this object does not have any instances");
     assert(m_instanceInfo.getSize() < 1024 && "Max number of supported instances is 1024");
 
-    m_instanceInfo.prepRender(context, numFramesInFlight);
+    m_instanceInfo.prepRender(context, context.getFrameTracker().getSetup().getNumFramesInFlight());
 }
 
 void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)
@@ -468,7 +471,7 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
             return false;
         }
     }
-    
+
     return true;
 }
 

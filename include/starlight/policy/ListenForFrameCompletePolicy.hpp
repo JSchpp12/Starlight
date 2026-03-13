@@ -47,7 +47,7 @@ template <typename TListener> class ListenForFrameCompletePolicy
 
     void registerListener(common::EventBus &eventBus)
     {
-        eventBus.subscribe(common::HandleTypeRegistry::instance().registerType(event::GetFrameCompleteTypeName),
+        eventBus.subscribe(common::HandleTypeRegistry::instance().registerType(event::FrameComplete::GetUniqueTypeName()),
                            common::SubscriberCallbackInfo{
                                std::bind(&ListenForFrameCompletePolicy<TListener>::eventCallback, this,
                                          std::placeholders::_1, std::placeholders::_2),

@@ -240,8 +240,11 @@ void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t max
 
 void star::core::device::DeviceContext::processCompleteMessage(job::complete_tasks::CompleteTask completeTask)
 {
-    completeTask.run(static_cast<void *>(&m_device), static_cast<void *>(&m_taskManager),
-                     static_cast<void *>(&m_eventBus), static_cast<void *>(&m_graphicsManagers));
+
+    completeTask.run(job::complete_tasks::EngineContext{.device = &m_device,
+                                                        .taskSystem = &m_taskManager,
+                                                        .eventBus = &m_eventBus,
+                                                        .graphicsManagers = &m_graphicsManagers});
 }
 
 void star::core::device::DeviceContext::shutdownServices()

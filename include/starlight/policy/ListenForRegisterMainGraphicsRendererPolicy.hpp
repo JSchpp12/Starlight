@@ -52,7 +52,7 @@ template <typename T> class ListenForRegisterMainGraphicsRenderPolicy
     void registerListener(common::EventBus &eventBus)
     {
         eventBus.subscribe(
-            common::HandleTypeRegistry::instance().registerType(star::event::GetRegisterMainGraphicsRendererTypeName()),
+            common::HandleTypeRegistry::instance().registerType(star::event::RegisterMainGraphicsRenderer::GetUniqueTypeName()),
             common::SubscriberCallbackInfo{
                 std::bind(&ListenForRegisterMainGraphicsRenderPolicy<T>::eventCallback, this, std::placeholders::_1,
                           std::placeholders::_2),

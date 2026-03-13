@@ -110,6 +110,10 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return *m_graphicsManagers.descriptorPoolManager;
     }
+    const manager::DescriptorPool &getDescriptorPoolManager() const
+    {
+        return *m_graphicsManagers.descriptorPoolManager;
+    }
 
     manager::Shader &getShaderManager()
     {

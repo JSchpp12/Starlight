@@ -2,6 +2,7 @@
 
 #include "event/ConsumeDescriptorRequests.hpp"
 #include "event/EnginePhaseComplete.hpp"
+#include "event/DescriptorPoolReady.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 
@@ -30,7 +31,7 @@ void DescriptorPool::init(device::StarDevice *device)
 void DescriptorPool::registerListenForEnginePhaseComplete(common::EventBus &bus)
 {
     uint16_t type =
-        common::HandleTypeRegistry::instance().registerType(star::event::GetEnginePhaseCompleteInitTypeName());
+        common::HandleTypeRegistry::instance().registerType(star::event::EnginePhaseComplete::GetUniqueTypeName());
     bus.subscribe(type,
                   common::SubscriberCallbackInfo(
                       std::bind(&DescriptorPool::eventCallback, this, std::placeholders::_1, std::placeholders::_2),
@@ -40,26 +41,35 @@ void DescriptorPool::registerListenForEnginePhaseComplete(common::EventBus &bus)
 
 void DescriptorPool::eventCallback(const star::common::IEvent &e, bool &keepAlive)
 {
-    // on engine phase complete we will now need to emit another event
-    auto requests = emitAndGetRequests();
-
-    absl::flat_hash_map<vk::DescriptorType, uint32_t> processedTypes;
-
-    for (size_t i = 0; i < requests.size(); i++)
+    const auto &event = static_cast<const star::event::EnginePhaseComplete &>(e); 
+    if (event.getPhase() == star::event::EnginePhaseComplete::Phase::load)
     {
-        if (processedTypes.contains(requests[i].first))
+        // on engine phase complete we will now need to emit another event
+        auto requests = emitAndGetRequests();
+
+        absl::flat_hash_map<vk::DescriptorType, uint32_t> processedTypes;
+
+        for (size_t i = 0; i < requests.size(); i++)
         {
-            processedTypes.find(requests[i].first)->second += requests[i].second;
+            if (processedTypes.contains(requests[i].first))
+            {
+                processedTypes.find(requests[i].first)->second += requests[i].second;
+            }
+            else
+            {
+                processedTypes.insert(std::make_pair(requests[i].first, requests[i].second));
+            }
         }
-        else
-        {
-            processedTypes.insert(std::make_pair(requests[i].first, requests[i].second));
-        }
+
+        this->insert({std::move(processedTypes)});
+
+        this->m_eventBus->emit(event::DescriptorPoolReady{});
+        keepAlive = false;
     }
-
-    this->insert({std::move(processedTypes)});
-
-    keepAlive = false;
+    else
+    {
+        keepAlive = true;
+    }
 }
 
 DescriptorPoolRecord DescriptorPool::createRecord(DescriptorPoolRequest &&request) const

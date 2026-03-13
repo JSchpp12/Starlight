@@ -11,6 +11,7 @@
 #include "StarShaderInfo.hpp"
 #include "StarTextures/Texture.hpp"
 #include "core/renderer/RendererBase.hpp"
+#include "starlight/event/DescriptorPoolReady.hpp"
 
 #include <star_common/FrameTracker.hpp>
 
@@ -24,6 +25,54 @@ namespace star::core::renderer
 class DefaultRenderer : public RendererBase
 {
   public:
+    class WaitForDescriptorPoolReady
+    {
+      public:
+        WaitForDescriptorPoolReady(
+            RenderingTargetInfo renderingInfo,
+            std::function<star::StarShaderInfo::Builder(star::core::device::DeviceContext &context)> createDescriptors,
+            star::core::device::DeviceContext &context, std::vector<StarRenderGroup> &renderGroups)
+            : m_renderingTargetInfo(std::move(renderingInfo)), m_createDescriptors(std::move(createDescriptors)),
+              m_context(context), m_renderGroups(renderGroups)
+        {
+        }
+        WaitForDescriptorPoolReady(WaitForDescriptorPoolReady &&other) noexcept
+            : m_renderingTargetInfo(std::move(other.m_renderingTargetInfo)),
+              m_createDescriptors(std::move(other.m_createDescriptors)), m_context(other.m_context),
+              m_renderGroups(other.m_renderGroups)
+        {
+        }
+        WaitForDescriptorPoolReady &operator=(WaitForDescriptorPoolReady &&other) noexcept
+        {
+            if (this != &other)
+            {
+                m_renderingTargetInfo = std::move(other.m_renderingTargetInfo);
+                m_createDescriptors = std::move(other.m_createDescriptors);
+                m_context = std::move(other.m_context);
+                m_renderGroups = std::move(other.m_renderGroups);
+            }
+            return *this;
+        }
+        int operator()(const star::event::DescriptorPoolReady &event, bool &keepAlive)
+        {
+            assert(m_createDescriptors);
+
+            auto rendererSet = m_createDescriptors(m_context);
+            for (auto &group : m_renderGroups)
+            {
+                group.onDescriptorPoolReady(m_context, rendererSet, m_renderingTargetInfo);
+            }
+
+            return 0;
+        }
+
+      private:
+        RenderingTargetInfo m_renderingTargetInfo;
+        std::function<star::StarShaderInfo::Builder(star::core::device::DeviceContext &context)> m_createDescriptors;
+        star::core::device::DeviceContext &m_context;
+        std::vector<StarRenderGroup> &m_renderGroups;
+    };
+
     DefaultRenderer() = default;
     DefaultRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                     std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera,
@@ -80,14 +129,13 @@ class DefaultRenderer : public RendererBase
     }
 
   protected:
-    bool ownsRenderResourceControllers = false;
-    bool isReady = false;
+    core::renderer::RenderingContext m_renderingContext;
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
-
-    std::shared_ptr<StarDescriptorSetLayout> globalSetLayout = nullptr;
-    core::renderer::RenderingContext m_renderingContext = core::renderer::RenderingContext();
+    std::shared_ptr<StarDescriptorSetLayout> globalSetLayout;
     vk::Format m_colorFormat, m_depthFormat;
+    bool ownsRenderResourceControllers = false;
+    bool isReady = false;
 
     void initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                      std::shared_ptr<std::vector<Light>> lights);
@@ -101,15 +149,11 @@ class DefaultRenderer : public RendererBase
     virtual std::vector<StarTextures::Texture> createRenderToDepthImages(core::device::DeviceContext &context,
                                                                          const uint8_t &numFramesInFlight);
 
-    /// Create the descriptor set layout that will be shared by all objects within this renderer
-    virtual std::shared_ptr<StarDescriptorSetLayout> createGlobalDescriptorSetLayout(
-        core::device::DeviceContext &context, const uint8_t &numFramesInFlight);
-
     vk::ImageView createImageView(core::device::DeviceContext &device, vk::Image image, vk::Format format,
                                   vk::ImageAspectFlags aspectFlags);
 
-    virtual StarShaderInfo::Builder manualCreateDescriptors(core::device::DeviceContext &device,
-                                                            const uint8_t &numFramesInFlight);
+    // virtual StarShaderInfo::Builder manualCreateDescriptors(core::device::DeviceContext &device,
+    //                                                         const uint8_t &numFramesInFlight);
 
     /// <summary>
     /// Create Vulkan Image object with properties provided in function arguments.
@@ -145,6 +189,7 @@ class DefaultRenderer : public RendererBase
     virtual void recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &frameInFlightIndex,
                                      const uint64_t &frameIndex);
 
+    virtual star::StarShaderInfo::Builder manualCreateDescriptors(star::core::device::DeviceContext &context);
     /**
      * @brief Target functionfrom recordCommandBuffer() but without the start and end
      *
@@ -167,9 +212,11 @@ class DefaultRenderer : public RendererBase
                                    this->getDepthAttachmentFormat(context));
     }
 
+    virtual std::shared_ptr<star::StarDescriptorSetLayout> createGlobalDescriptorSetLayout(
+        device::DeviceContext &context, const uint8_t &numFramesInFlight);
+
 #pragma endregion
   private:
-    // Inherited via DescriptorModifier
     std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int &numFramesInFlight);
     void createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight);
 };

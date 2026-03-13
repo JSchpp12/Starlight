@@ -5,14 +5,21 @@
 
 namespace star::event
 {
-inline constexpr const char *GetStartOfNextFrameTypeName()
+namespace start_of_next_frame
 {
-    return "eStFrame";
+inline constexpr const char *GetUniqueTypeName()
+{
+    return "EvtSONF";
 }
+} // namespace start_of_next_frame
 
 class StartOfNextFrame : public star::common::IEvent
 {
   public:
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return start_of_next_frame::GetUniqueTypeName();
+    }
     StartOfNextFrame(const common::FrameTracker &frameTracker);
 
     const common::FrameTracker &getFrameTracker() const

@@ -44,12 +44,12 @@ class StarObject
     StarObject() = default;
 
     explicit StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials)
-        : m_meshMaterials(std::move(meshMaterials)){};
+        : m_meshMaterials(std::move(meshMaterials)) {};
 
     virtual ~StarObject() = default;
 
     virtual void init(core::device::DeviceContext &device);
-    
+
     virtual bool isRenderReady(core::device::DeviceContext &context);
 
     virtual void cleanupRender(core::device::DeviceContext &device);
@@ -57,13 +57,14 @@ class StarObject
     virtual Handle buildPipeline(core::device::DeviceContext &device, vk::Extent2D swapChainExtent,
                                  vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderInfo);
 
-    virtual void prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
-                            const uint8_t &numSwapChainImages, StarShaderInfo::Builder fullEngineBuilder,
-                            vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderingInfo);
+    virtual void prepRender(star::core::device::DeviceContext &context);
 
-    virtual void prepRender(star::core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
-                            const uint8_t &numSwapChainImages, star::StarShaderInfo::Builder fullEngineBuilder,
-                            Handle sharedPipeline);
+    virtual void onDescriptorPoolReady(core::device::DeviceContext &context, StarShaderInfo::Builder fullEngineBuilder,
+                                       vk::PipelineLayout pipelineLayout,
+                                       const core::renderer::RenderingTargetInfo &renderingInfo);
+
+    virtual void onDescriptorPoolReady(core::device::DeviceContext &context,
+                                       star::StarShaderInfo::Builder fullEngineBuilder, const Handle &sharedPipeline);
 
     virtual core::renderer::RenderingContext buildRenderingContext(star::core::device::DeviceContext &context);
 
@@ -107,11 +108,7 @@ class StarObject
     /// <returns></returns>
     virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() = 0;
 #pragma region getters
-    Handle &getPipline()
-    {
-        return this->pipeline;
-    }
-    const Handle &getPipeline() const
+    const Handle &getPipline() const
     {
         return this->pipeline;
     }
@@ -193,7 +190,7 @@ class StarObject
 
     virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes(star::core::device::DeviceContext &device) = 0;
 
-    virtual void createInstanceBuffers(star::core::device::DeviceContext &context, const uint8_t &numImagesInFlight);
+    virtual void createInstanceBuffers(star::core::device::DeviceContext &context);
 
     virtual void createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds);
 
@@ -219,11 +216,9 @@ class StarObject
     Handle vertBuffer, indBuffer;
     uint32_t boundingBoxIndsCount = 0;
 
-    void prepStarObject(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                        StarShaderInfo::Builder &frameBuilder);
+    void prepStarObject(core::device::DeviceContext &context);
 
-    void prepMaterials(star::core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                       StarShaderInfo::Builder &frameBuilder);
+    void prepMaterials(star::core::device::DeviceContext &context, StarShaderInfo::Builder &frameBuilder);
 
     void recordDrawCommandNormals(vk::CommandBuffer &commandBuffer);
 

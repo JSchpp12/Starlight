@@ -91,9 +91,16 @@ void CommandOrderService::onDeclarePass(star::command_order::DeclarePass &cmd)
 
 void CommandOrderService::onInitEnginePhaseComplete(const star::event::EnginePhaseComplete &event, bool &keepAlive)
 {
-    keepAlive = false;
+    if (event.getPhase() == star::event::EnginePhaseComplete::Phase::load)
+    {
+        keepAlive = false;
 
-    compileOrder();
+        compileOrder();
+    }
+    else
+    {
+        keepAlive = true;
+    }
 }
 
 void CommandOrderService::onTriggerPass(star::command_order::TriggerPass &cmd)

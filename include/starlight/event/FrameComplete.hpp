@@ -6,13 +6,23 @@
 
 namespace star::event
 {
-inline constexpr std::string_view GetFrameCompleteTypeName = "star::event::FrameComplete";
+namespace frame_complete
+{
+constexpr const char *GetUniqueTypeName()
+{
+    return "EvtFC";
+}
+} // namespace frame_complete
 
 class FrameComplete : public common::IEvent
 {
   public:
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return frame_complete::GetUniqueTypeName();
+    }
     FrameComplete();
 
-    private:
+  private:
 };
-}
+} // namespace star::event
