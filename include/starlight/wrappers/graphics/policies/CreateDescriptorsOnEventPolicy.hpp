@@ -12,7 +12,7 @@ namespace star::wrappers::graphics::policies
 {
 template <typename TCreateDescriptorsPolicy>
 concept CreateDescriptorsPolicyLike = requires(TCreateDescriptorsPolicy p) {
-    { p.create() } -> std::same_as<void>;
+    { p() } -> std::same_as<int>;
 };
 
 template <CreateDescriptorsPolicyLike TCreateDescriptorsPolicy>
@@ -76,8 +76,9 @@ class CreateDescriptorsOnEventPolicy
     void eventCallback(const common::IEvent &e, bool &keepAlive)
     {
         (void)e;
-        
-        m_create.create();
+
+        m_create();
+
         keepAlive = false;
     }
 

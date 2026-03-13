@@ -1,5 +1,6 @@
 #include "renderer/DefaultRenderer.hpp"
 
+#include "starlight/wrappers/graphics/policies/CreateDescriptorsOnEventPolicy.hpp"
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
 #include "ManagerController_RenderResource_LightList.hpp"
@@ -31,6 +32,7 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
 
     m_renderingContext.targetResolution = c.getEngineResolution();
 
+    // needs to wait until after prepRenderPhase ==> when descriptor pool will be created
     auto rendererDescriptors = manualCreateDescriptors(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
     {
         auto images = createRenderToImages(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
@@ -354,14 +356,22 @@ star::StarShaderInfo::Builder DefaultRenderer::manualCreateDescriptors(star::cor
     assert(m_infoManagerCamera &&
            "Camera info does not always need to exist. But it should. Hitting this means a change is needed");
 
-    auto defaultPool = Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                  core::device::manager::GetDescriptorPoolTypeName),
-                              .id = 0};
+    StarDescriptorPool *defaultPool{nullptr};
+    {
+        const Handle dHandle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                     core::device::manager::GetDescriptorPoolTypeName),
+                                 .id = 0};
+
+        defaultPool = context.getDescriptorPoolManager().get(dHandle)->pool.get();
+    }
+
+    assert(defaultPool != nullptr &&
+           "Pool has not been created yet. Descriptor pools are created after engine prep phase is complete"); 
 
     this->globalSetLayout = createGlobalDescriptorSetLayout(context, numFramesInFlight);
     auto globalBuilder =
         StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(),
-                                *context.getDescriptorPoolManager().get(defaultPool)->pool, numFramesInFlight)
+                                *defaultPool, numFramesInFlight)
             .addSetLayout(this->globalSetLayout);
     for (int i = 0; i < numFramesInFlight; i++)
     {

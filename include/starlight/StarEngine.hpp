@@ -120,10 +120,6 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             m_systemManager.getContext(m_defaultDevice).getFrameTracker().getSetup().getNumFramesInFlight());
 
         assert(currentScene && "Application must provide a proper instance of a scene object");
-        m_systemManager.getContext(m_defaultDevice)
-            .getEventBus()
-            .emit(event::EnginePhaseComplete{event::Phase::init, event::GetEnginePhaseCompleteInitTypeName()});
-
         currentScene->prepRender(m_systemManager.getContext(m_defaultDevice),
                                  m_systemManager.getContext(m_defaultDevice).getFrameTracker().getSetup());
 
