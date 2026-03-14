@@ -134,10 +134,10 @@ class CompleteTask
     }
 
   private:
+    alignas(StorageAlign) std::byte m_data[StorageBytes]{};
     EngineOnCompleteFunction m_onCompleteFn = nullptr;
     MovePayloadFunction m_moveFn = nullptr;
     DestroyPayloadFunction m_destroyFn = nullptr;
-    alignas(StorageAlign) std::byte m_data[StorageBytes]{};
 
     void *payload() noexcept
     {
