@@ -7,8 +7,8 @@
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/helper/command_buffer/CommandBufferHelpers.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
-#include "starlight/policy/event/OneShotListener.hpp"
-#include "starlight/wrappers/graphics/policies/CreateDescriptorsOnEventPolicy.hpp"
+#include "starlight/core/waiter/one_shot/GenericEvent.hpp"
+#include "starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 #include <vma/vk_mem_alloc.h>
@@ -75,7 +75,7 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
     }
 
     // needs to wait until after prepRenderPhase ==> when descriptor pool will be created
-    star::core::waiter::OneShotListener<WaitForDescriptorPoolReady, star::event::DescriptorPoolReady>::Builder(
+    star::core::waiter::one_shot::GenericEvent<WaitForDescriptorPoolReady, star::event::DescriptorPoolReady>::Builder(
         c.getEventBus())
         .setPayload(WaitForDescriptorPoolReady{
             RenderingTargetInfo({this->getColorAttachmentFormat(c)}, this->getDepthAttachmentFormat(c)),

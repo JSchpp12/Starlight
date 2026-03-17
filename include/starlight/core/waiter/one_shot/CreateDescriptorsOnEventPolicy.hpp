@@ -97,4 +97,4 @@ class CreateDescriptorsOnEventPolicy
 
     friend class Builder;
 };
-} // namespace star::wrappers::graphics::policies
+} // namespace star::core::waiter::one_shot

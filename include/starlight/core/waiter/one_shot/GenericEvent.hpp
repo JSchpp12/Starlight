@@ -2,13 +2,12 @@
 
 #include "starlight/policy/event/ListenFor.hpp"
 
-namespace star::core::waiter
+namespace star::core::waiter::one_shot
 {
 template <typename T, typename TEvent>
 using ListenForEvent = star::policy::event::ListenFor<T, TEvent, TEvent::GetUniqueTypeName, &T::onEvent>;
 
-template <typename T, typename TEvent>
-class OneShotListener : public std::enable_shared_from_this<OneShotListener<T, TEvent>>
+template <typename T, typename TEvent> class GenericEvent : public std::enable_shared_from_this<GenericEvent<T, TEvent>>
 {
   public:
     friend class Builder;
@@ -27,8 +26,8 @@ class OneShotListener : public std::enable_shared_from_this<OneShotListener<T, T
         void build()
         {
             assert(m_payload.has_value());
-            auto shared = std::shared_ptr<OneShotListener<T, TEvent>>(
-                new OneShotListener<T, TEvent>(std::move(m_payload.value())));
+            auto shared =
+                std::shared_ptr<GenericEvent<T, TEvent>>(new GenericEvent<T, TEvent>(std::move(m_payload.value())));
             shared->registerListener(m_evtBus);
         }
 
@@ -37,7 +36,7 @@ class OneShotListener : public std::enable_shared_from_this<OneShotListener<T, T
         std::optional<T> m_payload{std::nullopt};
     };
     /// <summary>
-    ///Captures shared_from_this() into the event bus callback.
+    /// Captures shared_from_this() into the event bus callback.
     /// The event bus is the sole owner after this call.
     /// When the callback sets keepAlive = false, the lambda is
     /// destroyed, the shared_ptr drops, and this object is deleted.
@@ -69,8 +68,8 @@ class OneShotListener : public std::enable_shared_from_this<OneShotListener<T, T
     T m_payload;
     Handle m_registration;
 
-    explicit OneShotListener(T payload) : m_payload(std::move(payload))
+    explicit GenericEvent(T payload) : m_payload(std::move(payload))
     {
     }
 };
-} // namespace star::core::waiter
+} // namespace star::core::waiter::one_shot
