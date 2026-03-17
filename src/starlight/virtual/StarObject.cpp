@@ -339,10 +339,11 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
-        frameBuilder.add(instanceModelHandle, &context.getManagerRenderResource()
+        frameBuilder.add(StarShaderInfo::BufferInfo{instanceModelHandle},
+                         &context.getManagerRenderResource()
                                                    .get<StarBuffers::Buffer>(context.getDeviceID(), instanceModelHandle)
                                                    ->resourceSemaphore);
-        frameBuilder.add(instanceNormalHandle,
+        frameBuilder.add(StarShaderInfo::BufferInfo{instanceNormalHandle},
                          &context.getManagerRenderResource()
                               .get<StarBuffers::Buffer>(context.getDeviceID(), instanceNormalHandle)
                               ->resourceSemaphore);

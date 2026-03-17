@@ -28,7 +28,8 @@ bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout &co
     for (const auto &binding : this->bindings)
     {
         // check if the other layout has a binding of the same type
-        if (compare.bindings.find(binding.first) == compare.bindings.end() || binding.second.descriptorType != compare.bindings.at(binding.first).descriptorType)
+        if (compare.bindings.find(binding.first) == compare.bindings.end() ||
+            binding.second.descriptorType != compare.bindings.at(binding.first).descriptorType)
         {
             return false;
         }
@@ -57,7 +58,8 @@ void StarDescriptorSetLayout::prepRender(core::device::StarDevice &device)
     }
 }
 
-void StarDescriptorSetLayout::cleanupRender(core::device::StarDevice &device){
+void StarDescriptorSetLayout::cleanupRender(core::device::StarDevice &device)
+{
     device.getVulkanDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
     this->descriptorSetLayout = VK_NULL_HANDLE;
 }
@@ -139,14 +141,13 @@ bool StarDescriptorPool::allocateDescriptorSet(const vk::DescriptorSetLayout des
 
     if (result != vk::Result::eSuccess)
     {
+        std::string msg = "Failed to allocate descriptor set with error: ";
         if (result == vk::Result::eErrorOutOfPoolMemory)
-        {
-            std::cout << "Out of pool memory" << std::endl;
-        }
+            msg += "Out of pool memory";
         else
-        {
-            std::cout << "Failed to allocate descriptor set " << result << std::endl;
-        }
+            msg += "Unknown error";
+
+        star::core::logging::error(msg); 
 
         return false;
     }
@@ -206,20 +207,22 @@ StarDescriptorWriter &StarDescriptorWriter::writeImage(uint32_t binding, vk::Des
 
 vk::DescriptorSet StarDescriptorWriter::build()
 {
-    vk::DescriptorSet set;
-
-    bool success = this->pool.allocateDescriptorSet(setLayout.getDescriptorSetLayout(), set);
-    if (!success)
+    if (m_allocatedSet == VK_NULL_HANDLE)
     {
-        STAR_THROW("Failed to allocate descriptor set");
+        bool success = this->pool.allocateDescriptorSet(setLayout.getDescriptorSetLayout(), m_allocatedSet);
+        if (!success)
+        {
+            STAR_THROW("Failed to allocate descriptor set");
+        }
     }
-    overwrite(set);
-    return set;
+
+    overwrite(m_allocatedSet);
+
+    return m_allocatedSet;
 }
 
 void StarDescriptorWriter::overwrite(vk::DescriptorSet &set)
 {
-
     std::vector<vk::WriteDescriptorSet> nSet;
 
     for (auto &write : this->writeSets)

@@ -113,15 +113,18 @@ star::StarShaderInfo::Builder DefaultRenderer::manualCreateDescriptors(star::cor
 
         globalBuilder.startOnFrameIndex(i)
             .startSet()
-            .add(cameraHandle, &context.getManagerRenderResource()
-                                    .get<StarBuffers::Buffer>(context.getDeviceID(), cameraHandle)
-                                    ->resourceSemaphore)
-            .add(lightInfoHandle, &context.getManagerRenderResource()
-                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
-                                       ->resourceSemaphore)
-            .add(lightListHandle, &context.getManagerRenderResource()
-                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
-                                       ->resourceSemaphore);
+            .add(star::StarShaderInfo::BufferInfo{cameraHandle},
+                                                  &context.getManagerRenderResource()
+                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), cameraHandle)
+                                                       ->resourceSemaphore)
+            .add(star::StarShaderInfo::BufferInfo{lightInfoHandle},
+                                                  &context.getManagerRenderResource()
+                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
+                                                       ->resourceSemaphore)
+            .add(star::StarShaderInfo::BufferInfo{lightListHandle},
+                                                  &context.getManagerRenderResource()
+                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
+                                                       ->resourceSemaphore);
     }
 
     return globalBuilder;

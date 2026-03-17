@@ -36,8 +36,8 @@ std::unique_ptr<star::StarShaderInfo> star::BumpMaterial::buildShaderInfo(core::
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
         builder.startOnFrameIndex(i);
-        builder.add(m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal);
-        builder.add(m_bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal);
+        builder.add(star::StarShaderInfo::TextureInfo{m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal});
+        builder.add(star::StarShaderInfo::TextureInfo{m_bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal});
     }
 
     return builder.build();
