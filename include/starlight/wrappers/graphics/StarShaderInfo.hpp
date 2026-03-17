@@ -193,7 +193,7 @@ class StarShaderInfo
                    std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> shaderInfoSets)
         : m_deviceID(deviceID), layouts(std::move(layouts)), shaderInfoSets(std::move(shaderInfoSets)) {};
 
-    bool isReady(const uint8_t &frameInFlight);
+    bool isReady(uint8_t frameInFlight);
 
     void setNewResource(size_t frameInFlightIndex, size_t setIndex, size_t bindingIndex, TextureInfo texture); 
 
@@ -201,7 +201,7 @@ class StarShaderInfo
 
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
-    std::vector<vk::DescriptorSet> getDescriptors(const int &frameInFlight);
+    std::vector<vk::DescriptorSet> getDescriptors(size_t frameInFlight);
 
     void cleanupRender(core::device::StarDevice &device);
 

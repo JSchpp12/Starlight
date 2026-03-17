@@ -97,7 +97,6 @@ class StarDescriptorPool
 
     void resetPool();
 
-  protected:
   private:
     core::device::StarDevice &m_device;
     vk::DescriptorPool descriptorPool;
