@@ -79,7 +79,7 @@ std::unique_ptr<star::StarShaderInfo> star::TextureMaterial::buildShaderInfo(cor
     {
         builder.startOnFrameIndex(i);
         builder.startSet();
-        builder.add(m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal);
+        builder.add(StarShaderInfo::TextureInfo{m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal});
     }
 
     return builder.build();

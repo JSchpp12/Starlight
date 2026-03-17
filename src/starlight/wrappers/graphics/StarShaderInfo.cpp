@@ -1,7 +1,15 @@
 #include "StarShaderInfo.hpp"
 
-vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet()
+vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet(const Handle &deviceID)
 {
+    while (!m_pendingBuildIndices.empty())
+    {
+        auto &ele = m_pendingBuildIndices.back();
+        buildIndex(deviceID, ele);
+        m_pendingBuildIndices.pop_back();
+        setNeedsRebuild = true; 
+    }
+
     if (this->setNeedsRebuild)
     {
         rebuildSet();
@@ -10,15 +18,21 @@ vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet()
     return *this->descriptorSet;
 }
 
+void star::StarShaderInfo::ShaderInfoSet::setNewResource(size_t index, ShaderInfo newInfo)
+{
+    m_pendingBuildIndices.emplace_back(static_cast<uint32_t>(index));
+
+    this->shaderInfos[index] = std::move(newInfo);
+}
+
 void star::StarShaderInfo::ShaderInfoSet::add(const star::StarShaderInfo::ShaderInfo &shaderInfo)
 {
     this->shaderInfos.push_back(shaderInfo);
 }
 
-void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceID, const int &index)
+void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceID, size_t index)
 {
     assert(this->descriptorWriter && "Dependencies must have been built first");
-    this->setNeedsRebuild = true;
 
     if (shaderInfos[index].bufferInfo.has_value())
     {
@@ -49,18 +63,17 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceI
     else if (shaderInfos[index].textureInfo.has_value())
     {
         const StarTextures::Texture *texture = nullptr;
-        if (shaderInfos[index].textureInfo.value().texture.has_value())
-            texture = shaderInfos[index].textureInfo.value().texture.value();
-        else if (shaderInfos[index].textureInfo.value().handle.has_value())
-            texture = &star::ManagerRenderResource::getTexture(deviceID,
-                                                               shaderInfos[index].textureInfo.value().handle.value());
-        else if (shaderInfos[index].textureInfo.value().texture.has_value())
+        if (shaderInfos[index].textureInfo.value().texture != nullptr)
+            texture = shaderInfos[index].textureInfo.value().texture;
+        else if (shaderInfos[index].textureInfo.value().handle.isInitialized())
+            texture = &star::ManagerRenderResource::getTexture(deviceID, shaderInfos[index].textureInfo.value().handle);
+        else if (shaderInfos[index].textureInfo.value().texture != nullptr)
         {
-            texture = shaderInfos[index].textureInfo.value().texture.value();
+            texture = shaderInfos[index].textureInfo.value().texture;
         }
         else
         {
-            throw std::runtime_error("Unknown error regarding texture binding");
+            STAR_THROW("Unknown error regarding texture binding");
         }
         assert(texture != nullptr && "Texture cannot be found");
 
@@ -117,16 +130,15 @@ bool star::StarShaderInfo::isReady(const uint8_t &frameInFlight)
             }
             else if (set->shaderInfos.at(i).textureInfo.has_value())
             {
-                if (set->shaderInfos.at(i).textureInfo.value().handle.has_value() &&
-                    !ManagerRenderResource::isReady(m_deviceID,
-                                                    set->shaderInfos.at(i).textureInfo.value().handle.value()))
+                if (set->shaderInfos.at(i).textureInfo.value().handle.isInitialized() &&
+                    !ManagerRenderResource::isReady(m_deviceID, set->shaderInfos.at(i).textureInfo.value().handle))
                 {
                     return false;
                 }
             }
             else
             {
-                throw std::runtime_error("Unknown shader info encountered while checking for ready status");
+                STAR_THROW("Unknown shader info encountered while checking for ready status");
             }
         }
     }
@@ -170,19 +182,18 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int &f
                     auto &handle = set->shaderInfos.at(i).bufferInfo.value().handle.value();
 
                     const auto &buffer = ManagerRenderResource::getBuffer(m_deviceID, handle).getVulkanBuffer();
-                    if (!info.currentBuffer.has_value() || info.currentBuffer.value() != buffer)
+                    if (info.currentBuffer != VK_NULL_HANDLE || info.currentBuffer != buffer)
                     {
                         info.currentBuffer = buffer;
                         set->buildIndex(m_deviceID, i);
                     }
                 }
                 else if (set->shaderInfos.at(i).textureInfo.has_value() &&
-                         set->shaderInfos.at(i).textureInfo.value().handle.has_value())
+                         set->shaderInfos.at(i).textureInfo.value().handle.isInitialized())
                 {
                     auto &info = set->shaderInfos.at(i).textureInfo.value();
 
-                    const auto &texture =
-                        ManagerRenderResource::getTexture(m_deviceID, info.handle.value()).getVulkanImage();
+                    const auto &texture = ManagerRenderResource::getTexture(m_deviceID, info.handle).getVulkanImage();
                     if (!info.currentImage.has_value() || info.currentImage.value() != texture)
                     {
                         info.currentImage = texture;
@@ -196,16 +207,27 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(const int &f
     auto allSets = std::vector<vk::DescriptorSet>();
     for (size_t i = 0; i < this->shaderInfoSets[frameInFlight].size(); i++)
     {
-        allSets.push_back(this->shaderInfoSets[frameInFlight].at(i)->getDescriptorSet());
+        allSets.push_back(this->shaderInfoSets[frameInFlight].at(i)->getDescriptorSet(m_deviceID));
     }
 
     return allSets;
 }
 
+void star::StarShaderInfo::setNewResource(size_t frameInFlightIndex, size_t setIndex, size_t bindingIndex,
+                                          BufferInfo buffer)
+{
+    shaderInfoSets[frameInFlightIndex][setIndex]->setNewResource(bindingIndex, std::move(buffer));
+}
+
+void star::StarShaderInfo::setNewResource(size_t frameInFlightIndex, size_t setIndex, size_t bindingIndex,
+                                          TextureInfo texture)
+{
+    shaderInfoSets[frameInFlightIndex][setIndex]->setNewResource(bindingIndex, std::move(texture));
+}
+
 star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::startSet()
 {
     auto size = this->activeSet->size();
-    assert(size < this->layouts.size() && "Pushed beyond size defined in set layout");
 
     this->activeSet->push_back(std::make_shared<ShaderInfoSet>(this->device, m_pool, *this->layouts[size]));
     return *this;

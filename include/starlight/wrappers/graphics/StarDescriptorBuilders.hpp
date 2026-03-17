@@ -150,6 +150,7 @@ class StarDescriptorWriter
         }
     };
 
+    vk::DescriptorSet m_allocatedSet{VK_NULL_HANDLE};
     core::device::StarDevice &m_device;
     StarDescriptorSetLayout &setLayout;
     StarDescriptorPool &pool;
