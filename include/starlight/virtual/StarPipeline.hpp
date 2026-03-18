@@ -116,6 +116,11 @@ class StarPipeline
 
     void bind(vk::CommandBuffer &commandBuffer);
 
+    vk::Pipeline getVulkanPipeline() const
+    {
+        return m_pipeline;
+    }
+
     const std::vector<Handle> &getShaders()
     {
         return m_shaders;

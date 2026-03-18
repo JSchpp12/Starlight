@@ -163,11 +163,11 @@ void star::StarShaderInfo::cleanupRender(core::device::StarDevice &device)
     }
 }
 
-std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(size_t frameInFlight)
+std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(uint8_t frameInFlight)
 {
-    assert(frameInFlight < shaderInfoSets.size() && "Requested frameInFlight is beyond sizwe of createdSets"); 
+    assert(static_cast<size_t>(frameInFlight) < shaderInfoSets.size() && "Requested frameInFlight is beyond sizwe of createdSets"); 
 
-    for (auto &set : this->shaderInfoSets[frameInFlight])
+    for (auto &set : this->shaderInfoSets[static_cast<size_t>(frameInFlight)])
     {
         if (!set->getIsBuilt())
             set->build(m_deviceID);

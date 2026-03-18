@@ -57,6 +57,12 @@ class DeviceContext : public star::common::IDeviceContext
         return CommandSubmitter([this](star::common::IServiceCommand &cmd) { this->submit(cmd); }, m_commandBus);
     }
 
+    void cleanupRender();
+
+    void registerService(service::Service service);
+
+    void manualTriggerOfCheckForMessages();
+
     void submit(star::common::IServiceCommand &command);
 
     StarDevice &getDevice()
@@ -82,8 +88,16 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return m_eventBus;
     }
+    const common::EventBus &getEventBus() const
+    {
+        return m_eventBus;
+    }
 
     job::TaskManager &getManager()
+    {
+        return m_taskManager;
+    }
+    const job::TaskManager &getManager() const
     {
         return m_taskManager;
     }
@@ -101,8 +115,16 @@ class DeviceContext : public star::common::IDeviceContext
 
         return *m_renderResourceManager;
     }
+    const ManagerRenderResource &getrManagerRenderResource()
+    {
+        return *m_renderResourceManager;
+    }
 
     manager::GraphicsContainer &getGraphicsManagers()
+    {
+        return m_graphicsManagers;
+    }
+    const manager::GraphicsContainer &getGraphicsManagers() const
     {
         return m_graphicsManagers;
     }
@@ -119,8 +141,16 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return *m_graphicsManagers.shaderManager;
     }
+    const manager::Shader &getShaderManager() const
+    {
+        return *m_graphicsManagers.shaderManager;
+    }
 
     manager::Pipeline &getPipelineManager()
+    {
+        return *m_graphicsManagers.pipelineManager;
+    }
+    const manager::Pipeline &getPipelineManager() const
     {
         return *m_graphicsManagers.pipelineManager;
     }
@@ -129,8 +159,15 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return *m_graphicsManagers.semaphoreManager;
     }
-
+    const manager::Semaphore &getSemaphoreManager() const
+    {
+        return *m_graphicsManagers.semaphoreManager;
+    }
     manager::Fence &getFenceManager()
+    {
+        return *m_graphicsManagers.fenceManager;
+    }
+    const manager::Fence &getFenceManager() const
     {
         return *m_graphicsManagers.fenceManager;
     }
@@ -141,8 +178,13 @@ class DeviceContext : public star::common::IDeviceContext
 
         return *m_transferWorker;
     }
+    const job::TransferWorker &getTransferWorker() const
+    {
+        assert(m_transferWorker);
+        return *m_transferWorker;
+    }
 
-    Handle &getDeviceID()
+    const Handle &getDeviceID()
     {
         return m_deviceID;
     }
@@ -161,22 +203,16 @@ class DeviceContext : public star::common::IDeviceContext
         return m_flightTracker;
     }
 
-    vk::Extent2D &getEngineResolution()
-    {
-        return m_engineResolution;
-    }
     const vk::Extent2D &getEngineResolution() const
     {
         return m_engineResolution;
     }
 
-    void cleanupRender();
-
-    void registerService(service::Service service);
-
-    void manualTriggerOfCheckForMessages();
-
     core::CommandBus &getCmdBus()
+    {
+        return m_commandBus;
+    }
+    const core::CommandBus &getCmdBus() const
     {
         return m_commandBus;
     }

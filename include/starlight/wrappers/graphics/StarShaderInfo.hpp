@@ -201,7 +201,7 @@ class StarShaderInfo
 
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
-    std::vector<vk::DescriptorSet> getDescriptors(size_t frameInFlight);
+    std::vector<vk::DescriptorSet> getDescriptors(uint8_t frameInFlight);
 
     void cleanupRender(core::device::StarDevice &device);
 
