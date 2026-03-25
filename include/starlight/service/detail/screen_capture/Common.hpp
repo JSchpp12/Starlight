@@ -1,5 +1,7 @@
 #pragma once
 
+#include <star_common/Handle.hpp>
+
 #include <vulkan/vulkan.hpp>
 
 #include <string_view>
@@ -18,6 +20,7 @@ enum class RoutePath
 
 struct GatheredSemaphoreInfo
 {
+    star::Handle record; 
     uint64_t valueToSignal; 
     std::optional<uint64_t> *signaledValue = nullptr;
     vk::Semaphore *semaphore = nullptr;

@@ -17,15 +17,10 @@ inline constexpr const char *GetPassInfoTypeName()
 
 struct GatheredPassInfo
 {
-    GatheredPassInfo() = default;
-    GatheredPassInfo(bool isTriggeredThisFrame, const uint32_t *queueFamilyIndex,
-                     const std::vector<bool> *wasProcessedOnLastFrame,
-                     const std::vector<star::service::command_order::EdgeDescription> *edges)
-        : isTriggeredThisFrame(isTriggeredThisFrame), queueFamilyIndex(queueFamilyIndex),
-          wasProcessedOnLastFrame(wasProcessedOnLastFrame), edges(edges)
-    {
-    }
-    
+    vk::Semaphore signaledSemaphore;
+    uint64_t toSignalValue{0};
+    uint64_t currentSignalValue{0};
+
     bool isTriggeredThisFrame = false;
     const uint32_t *queueFamilyIndex = nullptr;
     const std::vector<bool> *wasProcessedOnLastFrame = nullptr;
@@ -35,12 +30,16 @@ struct GatheredPassInfo
 
 struct GetPassInfo : public star::common::IServiceCommandWithReply<get_pass_info::GatheredPassInfo>
 {
-    GetPassInfo(uint16_t type, Handle pass)
-        : star::common::IServiceCommandWithReply<get_pass_info::GatheredPassInfo>(std::move(type)),
-          pass(std::move(pass)){};
-    explicit GetPassInfo(Handle pass)
-        : star::common::IServiceCommandWithReply<get_pass_info::GatheredPassInfo>(), pass(std::move(pass)){};
+    static std::string_view GetUniqueTypeName()
+    {
+        return get_pass_info::GetPassInfoTypeName();
+    }
 
-    Handle pass;
+    GetPassInfo(uint16_t type, const Handle &pass)
+        : star::common::IServiceCommandWithReply<get_pass_info::GatheredPassInfo>(std::move(type)), pass(&pass) {};
+    explicit GetPassInfo(const Handle &pass)
+        : star::common::IServiceCommandWithReply<get_pass_info::GatheredPassInfo>(), pass(&pass) {};
+
+    const Handle *pass{nullptr};
 };
 } // namespace star::command_order

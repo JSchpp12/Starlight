@@ -19,7 +19,7 @@ struct SyncInfo
 };
 } // namespace get_sync_info
 
-struct GetScreenCaptureSyncInfo : public common::IServiceCommandWithReply<get_sync_info::SyncInfo>
+struct GetScreenCaptureCommandBufferInfo : public common::IServiceCommandWithReply<get_sync_info::SyncInfo>
 {
     static inline constexpr std::string_view GetUniqueTypeName()
     {

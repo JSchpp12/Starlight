@@ -158,8 +158,6 @@ void star::core::device::DeviceContext::prepareForNextFrame()
 
     broadcastFramePrepToService();
 
-    // assuming external service will handle updating the tracker
-    m_flightTracker.triggerIncrementForCurrentFrame();
     broadcastFrameStart();
 }
 

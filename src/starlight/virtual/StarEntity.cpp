@@ -107,6 +107,9 @@ void star::StarEntity::rotateRelative(star::Type::Axis axis, const float &amt, b
     rotationVector = glm::normalize(rotationVector);
     const auto R = glm::rotate(glm::mat4(1.0), radians, rotationVector);
     rotationMat = rotationMat * R;
+
+    glm::vec3 right, up, forward; 
+    RefreshBasisFromMatrix(rotationMat, right, up, forward);
 }
 
 void star::StarEntity::setForwardVector(const glm::vec3 &newForward)
@@ -119,7 +122,7 @@ void star::StarEntity::setForwardVector(const glm::vec3 &newForward)
     glm::vec3 u = worldUp;
     if (std::abs(glm::dot(f, worldUp)) > 0.9995f)
     {
-        u = glm::vec3(0.0f, 1.0f, 0.0f); // fallback up if nearly parallel
+        u = glm::vec3(0.0f, 0.0f, 1.0f); // fallback up if nearly parallel
     }
 
     // RH orthonormal frame:
@@ -160,4 +163,7 @@ void star::StarEntity::rotateGlobal(Type::Axis axis, const float &amt, bool inDe
 
     const glm::mat4 R = glm::rotate(glm::mat4(1.0f), radians, glm::normalize(rotationVector));
     rotationMat = R * rotationMat; 
+
+    glm::vec3 right, up, forward; 
+    RefreshBasisFromMatrix(rotationMat, right, up, forward); 
 }

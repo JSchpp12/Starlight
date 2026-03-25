@@ -23,11 +23,7 @@ template <class TFn> struct WritePayload
 
     int operator()()
     {
-        star::core::logging::info("Starting file write: " + filePath);
-        auto result = std::invoke(writeFunction, filePath);
-        star::core::logging::info("Done writing file: " + filePath);
-
-        return result;
+        return std::invoke(writeFunction, filePath);
     }
 };
 

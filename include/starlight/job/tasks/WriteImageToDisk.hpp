@@ -27,11 +27,16 @@ struct BufferImageInfo
 
 struct WritePayload
 {
+    struct Data
+    {
+        BufferImageInfo bufferImageInfo; 
+        uint64_t signalValue; 
+    };
+
     std::string path;
-    vk::Semaphore semaphore;
-    vk::Device device;
-    std::unique_ptr<BufferImageInfo> bufferImageInfo = nullptr;
-    std::unique_ptr<uint64_t> signalValue = nullptr;
+    vk::Semaphore semaphore{VK_NULL_HANDLE};
+    vk::Device device{VK_NULL_HANDLE};
+    std::unique_ptr<Data> addData{nullptr};
 };
 
 using WriteImageTask = star::job::tasks::Task<sizeof(WritePayload), alignof(WritePayload)>;

@@ -218,6 +218,5 @@ class DefaultRenderer : public RendererBase
 #pragma endregion
   private:
     std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(const int &numFramesInFlight);
-    void createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight);
 };
 } // namespace star::core::renderer

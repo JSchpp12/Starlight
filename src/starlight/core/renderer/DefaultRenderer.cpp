@@ -8,7 +8,6 @@
 #include "core/helper/command_buffer/CommandBufferHelpers.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "starlight/core/waiter/one_shot/GenericEvent.hpp"
-#include "starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 #include <vma/vk_mem_alloc.h>
@@ -195,6 +194,16 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
             indices.push_back(presentQueue->getParentQueueFamilyIndex());
         }
     }
+    {
+        StarQueue *presentQueue = core::helper::GetEngineDefaultQueue(
+            device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Ttransfer);
+
+        if (presentQueue != nullptr && presentQueue->getParentQueueFamilyIndex() != indices.back())
+        {
+            indices.push_back(presentQueue->getParentQueueFamilyIndex());
+        }
+    }
+
 
     vk::Format format = getColorAttachmentFormat(device);
     uint32_t numIndices;
@@ -511,10 +520,6 @@ std::vector<std::pair<vk::DescriptorType, const int>> DefaultRenderer::getDescri
     return std::vector<std::pair<vk::DescriptorType, const int>>{
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eUniformBuffer, numFramesInFlight * 2),
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)};
-}
-
-void DefaultRenderer::createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight)
-{
 }
 
 void DefaultRenderer::recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,

@@ -8,13 +8,12 @@
 #include "DeviceInfo.hpp"
 #include "ExecuteCmdBuffer.hpp"
 #include "GPUSynchronizationInfo.hpp"
-#include "wrappers/graphics/StarCommandBuffer.hpp"
-
-#include <absl/container/flat_hash_map.h>
 
 namespace star::service::detail::screen_capture
 {
-
+/// <summary>
+/// Decides how copies will be executed
+/// </summary>
 class DefaultCopyPolicy
 {
   public:
@@ -42,7 +41,7 @@ class DefaultCopyPolicy
 
         void init(const uint8_t &numFramesInFlight);
 
-        void createSemaphoreDataAtIndex(star::common::EventBus &eventBus, const size_t &index,
+        void registerSemaphoreWithManagerAtIndex(star::common::EventBus &eventBus, const size_t &index,
                                         std::optional<uint64_t> initialSignalValueIfTimeline = std::nullopt);
     };
     SemaphoreInfo m_timelineInfo, m_binaryInfo;
@@ -58,7 +57,7 @@ class DefaultCopyPolicy
 
     void initSemaphores(const uint8_t &numFramesInFlight);
 
-    vk::Queue getQueueToUse() const;
+    StarQueue &getQueueToUse() const;
 
     StarTextures::Texture createBlitTargetTexture(const vk::Extent2D &extent) const;
 };

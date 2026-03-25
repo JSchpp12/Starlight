@@ -3,20 +3,22 @@
 #include "FileHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include <star_common/helper/CastHelpers.hpp>
 #include "starlight/core/Exceptions.hpp"
+#include <star_common/helper/CastHelpers.hpp>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 namespace star::job::tasks::write_image_to_disk
 {
 
-void LogStart(const std::string &fileName)
+static void LogStart(const std::string &fileName)
 {
-    std::ostringstream oss; 
-    oss << "Start write - " << fileName << std::endl;
+    core::logging::info("Start write - " + fileName);
+}
 
-    core::logging::info(oss.str());
+static void LogDone(const std::string &fileName)
+{
+    core::logging::info("Done write - " + fileName);
 }
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
@@ -36,25 +38,21 @@ void Execute(void *p)
     //     }
     // }
 
-    if (payload->signalValue == nullptr)
+    if (payload->addData == nullptr)
     {
-        STAR_THROW("No signal value provided");
+        STAR_THROW("Additional data is invalid");
     }
-    if (payload->semaphore == nullptr)
-    {
-        STAR_THROW("No semaphore provided");
-    }
-    LogStart(payload->path); 
-    WaitUntilSemaphoreIsReady(payload->device, payload->semaphore, *payload->signalValue);
-    WriteImageToDisk(payload->bufferImageInfo->owningObjectPool->get(payload->bufferImageInfo->registrationHandle),
-                     *payload->bufferImageInfo, payload->path);
+    LogStart(payload->path);
 
-    {
-        std::ostringstream oss;
-        oss << "Done write - " << payload->path;
-        core::logging::log(boost::log::trivial::info, oss.str());
-    }
-    payload->bufferImageInfo->owningObjectPool->release(payload->bufferImageInfo->registrationHandle);
+    star::core::logging::info(
+        payload->path + " - Starting wait for semaphore. Value: " + std::to_string(payload->addData->signalValue));
+    WaitUntilSemaphoreIsReady(payload->device, payload->semaphore, payload->addData->signalValue);
+    star::core::logging::info(payload->path + " - Done waiting for semaphore");
+    WriteImageToDisk(
+        payload->addData->bufferImageInfo.owningObjectPool->get(payload->addData->bufferImageInfo.registrationHandle),
+        payload->addData->bufferImageInfo, payload->path);
+    LogDone(payload->path);
+    payload->addData->bufferImageInfo.owningObjectPool->release(payload->addData->bufferImageInfo.registrationHandle);
 }
 
 WriteImageTask Create(WritePayload payload)
@@ -88,6 +86,8 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     {
         STAR_THROW("Failed to map buffer for image write");
     }
+    const auto result = buffer.invalidate();
+
 
     // ---- Format handling ----------------------------------------------------
     int comp = 4; // RGBA
@@ -110,7 +110,7 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     int h = 0;
     star::common::casts::SafeCast(height, h);
     const int rowStride = w * comp; // tightly packed
-    
+
     // ---- PNG write ----------------------------------------------------------
     int ok = stbi_write_png(path.c_str(), w, h, comp, mapped, rowStride);
 

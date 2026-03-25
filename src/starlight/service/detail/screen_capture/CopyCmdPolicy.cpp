@@ -18,14 +18,26 @@ Handle CopyCmdPolicy::registerWithManager(core::device::StarDevice &device,
             .recordBufferCallback = std::bind(&CopyCmdPolicy::recordCommandBuffer, this, std::placeholders::_1,
                                               std::placeholders::_2, std::placeholders::_3),
             .order = Command_Buffer_Order::end_of_frame,
-            .orderIndex = Command_Buffer_Order_Index::fifth,
+            .orderIndex = Command_Buffer_Order_Index::first,
             .type = Queue_Type::Ttransfer,
-            .waitStage = vk::PipelineStageFlagBits::eTransfer,
+            .waitStage = vk::PipelineStageFlagBits::eAllCommands,
             .willBeSubmittedEachFrame = false,
             .recordOnce = false,
             .overrideBufferSubmissionCallback =
                 std::bind(&CopyCmdPolicy::submitBuffer, this, std::placeholders::_1, std::placeholders::_2,
                           std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)});
+}
+
+static vk::BufferMemoryBarrier2 GetBarrierPrepForCPURead(vk::Buffer buffer) noexcept
+{
+    return vk::BufferMemoryBarrier2()
+        .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+        .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+        .setDstStageMask(vk::PipelineStageFlagBits2::eHost)
+        .setDstAccessMask(vk::AccessFlagBits2::eHostRead)
+        .setBuffer(buffer)
+        .setOffset(0)
+        .setSize(VK_WHOLE_SIZE);
 }
 
 void CopyCmdPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &commandBuffer)
@@ -34,9 +46,12 @@ void CopyCmdPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &co
     uint32_t numImageBarriers;
     star::common::casts::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
 
+    const vk::BufferMemoryBarrier2 buffBarrier[1]{GetBarrierPrepForCPURead(m_inUseInfo->buffer)};
+
     commandBuffer.pipelineBarrier2(vk::DependencyInfo()
                                        .setImageMemoryBarrierCount(numImageBarriers)
-                                       .setPImageMemoryBarriers(imageBarriers.data()));
+                                       .setPImageMemoryBarriers(imageBarriers.data())
+                                       .setBufferMemoryBarriers(buffBarrier));
 }
 
 void CopyCmdPolicy::init(core::device::StarDevice &device)
@@ -77,7 +92,7 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForPrep() co
                           .setImage(m_inUseInfo->targetImage)
                           .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                           .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+                          .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
                           .setSrcAccessMask(vk::AccessFlagBits2::eNone)
                           .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
                           .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
@@ -112,62 +127,66 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
                                           std::vector<vk::Semaphore> dataSemaphores,
                                           std::vector<vk::PipelineStageFlags> dataWaitPoints,
                                           std::vector<std::optional<uint64_t>> previousSignaledValues)
-{
-    assert(m_inUseInfo->timelineSemaphoreForCopyDone.semaphore &&
+{    assert(m_inUseInfo->timelineSemaphoreForCopyDone.semaphore &&
            m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue && m_inUseInfo->binarySemaphoreForCopyDone &&
            "Timeline semaphore should have been set previously");
 
-    const std::vector<uint64_t> signalSemaphoreValues{m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal, 0};
-    const std::vector<vk::Semaphore> signalTimelineSemaphores{*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore,
-                                                              *m_inUseInfo->binarySemaphoreForCopyDone};
+    const uint64_t signalSemaphoreValues[2]{m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal, 0};
+    const vk::Semaphore signalTimelineSemaphores[2]{*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore,
+                                                    *m_inUseInfo->binarySemaphoreForCopyDone};
     *m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue = m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal;
+    std::vector<vk::SemaphoreSubmitInfo> signalInfo(2);
+    for (int i{0}; i < 2; i++)
+    {
+        signalInfo[i] = vk::SemaphoreSubmitInfo()
+                            .setSemaphore(signalTimelineSemaphores[i])
+                            .setStageMask(vk::PipelineStageFlagBits2::eAllCommands)
+                            .setValue(signalSemaphoreValues[i]);
+    }
 
-    uint32_t semaphoreCount = 0;
-    star::common::casts::SafeCast<size_t, uint32_t>(signalSemaphoreValues.size(), semaphoreCount);
-
+    uint32_t semaphoreCount = 2;
     std::optional<std::vector<uint64_t>> waitValues = std::nullopt;
-    std::vector<vk::Semaphore> waitSemaphores = std::vector<vk::Semaphore>(1);
+    std::vector<vk::SemaphoreSubmitInfo> waitSemaphores = std::vector<vk::SemaphoreSubmitInfo>(1);
     if (previousSignaledValues.size() > 0)
     {
         // some callee has provided manual wait information. Respect that first
-        waitSemaphores[0] = dataSemaphores[0];
-        if (previousSignaledValues[0].has_value())
-        {
-            waitValues = std::vector<uint64_t>{previousSignaledValues[0].value()};
-        }
+        waitSemaphores[0] =
+            vk::SemaphoreSubmitInfo()
+                .setSemaphore(dataSemaphores[0])
+                .setStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                .setValue(previousSignaledValues[0].has_value() ? previousSignaledValues[0].value() : 0);
     }
     else if (m_inUseInfo->targetTextureReadySemaphore != nullptr)
     {
-        waitSemaphores[0] = *m_inUseInfo->targetTextureReadySemaphore;
+        waitSemaphores[0] = vk::SemaphoreSubmitInfo()
+                                .setSemaphore(*m_inUseInfo->targetTextureReadySemaphore)
+                                .setStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                                .setValue(0);
     }
     else
     {
         assert(previousCommandBufferSemaphores != nullptr);
-        waitSemaphores[0] = previousCommandBufferSemaphores->at(0);
+        waitSemaphores[0] = vk::SemaphoreSubmitInfo()
+                                .setSemaphore(previousCommandBufferSemaphores->at(0))
+                                .setStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                                .setValue(0);
     }
 
-    auto timelineSubmitInfo = vk::TimelineSemaphoreSubmitInfo()
-                                  .setPSignalSemaphoreValues(signalSemaphoreValues.data())
-                                  .setSignalSemaphoreValueCount(semaphoreCount);
-    if (waitValues.has_value())
-    {
-        timelineSubmitInfo.setWaitSemaphoreValues(waitValues.value());
-    }
+    const auto subInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(
+        buffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));
 
-    const vk::PipelineStageFlags waitPoints[]{vk::PipelineStageFlagBits::eTransfer};
-    const auto submitInfo = vk::SubmitInfo()
-                                .setCommandBufferCount(1)
-                                .setCommandBuffers(buffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()))
-                                .setWaitSemaphoreCount(1)
-                                .setPWaitSemaphores(waitSemaphores.data())
-                                .setPWaitDstStageMask(waitPoints)
-                                .setPSignalSemaphores(signalTimelineSemaphores.data())
-                                .setSignalSemaphoreCount(semaphoreCount)
-                                .setPNext(&timelineSubmitInfo);
+    const auto submitInfo = vk::SubmitInfo2()
+                                .setWaitSemaphoreInfos(waitSemaphores)
+                                .setCommandBufferInfos(subInfo)
+                                .setSignalSemaphoreInfos(signalInfo);
 
     assert(m_inUseInfo->queueToUse != nullptr);
 
-    m_inUseInfo->queueToUse.submit({submitInfo});
+    const auto result = m_inUseInfo->queueToUse.submit2(1, &submitInfo, VK_NULL_HANDLE);
+    if (result != vk::Result::eSuccess)
+    {
+        STAR_THROW("Failed to submit buffer");
+    }
 
     return *m_inUseInfo->binarySemaphoreForCopyDone;
 }

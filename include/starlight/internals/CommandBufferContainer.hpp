@@ -29,6 +29,7 @@ class CommandBufferContainer
         std::optional<uint64_t> previousSignaledValue =
             std::nullopt; // if this has a value, this signifies that the semaphore is a TIMELINE semaphore
     };
+
     class SemaphoreInfo
     {
       public:
@@ -77,7 +78,7 @@ class CommandBufferContainer
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
         std::optional<std::function<vk::Semaphore(
             StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *, std::vector<vk::Semaphore>,
-            std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>)>>
+            std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>, star::StarQueue &queue)>>
             overrideBufferSubmissionCallback;
         SemaphoreInfo oneTimeWaitSemaphoreInfo;
 
@@ -88,14 +89,15 @@ class CommandBufferContainer
             const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order,
             std::optional<std::function<void(const int &)>> beforeSubmissionCallback =
                 std::optional<std::function<void(const int &)>>(),
-            std::optional<std::function<vk::Semaphore(
-                StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *,
-                std::vector<vk::Semaphore>, std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>)>>
+            std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const common::FrameTracker &,
+                                                      std::vector<vk::Semaphore> *, std::vector<vk::Semaphore>,
+                                                      std::vector<vk::PipelineStageFlags>,
+                                                      std::vector<std::optional<uint64_t>>, star::StarQueue &)>>
                 overrideBufferSubmissionCallback = std::nullopt)
             : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
               recordOnce(recordOnce), waitStage(waitStage), order(order),
               beforeBufferSubmissionCallback(beforeSubmissionCallback),
-              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback){};
+              overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
 
         vk::Semaphore submitCommandBuffer(core::device::StarDevice &device, const common::FrameTracker &frameTracker,
                                           absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
@@ -108,9 +110,12 @@ class CommandBufferContainer
 
             if (overrideBufferSubmissionCallback.has_value())
             {
-                return overrideBufferSubmissionCallback.value()(*commandBuffer, frameTracker, beforeSemaphores,
-                                                                std::move(waits), std::move(waitPoints),
-                                                                std::move(previousSignaledValues));
+                StarQueue *queue{queues[commandBuffer->getType()]};
+                assert(queue != nullptr); 
+
+                return overrideBufferSubmissionCallback.value()(
+                    *commandBuffer, frameTracker, beforeSemaphores, std::move(waits), std::move(waitPoints),
+                    std::move(previousSignaledValues), *queue);
             }
             else
             {
@@ -139,12 +144,10 @@ class CommandBufferContainer
 
     void cleanup(core::device::StarDevice &device);
 
-    vk::Semaphore submitGroupWhenReady(core::device::StarDevice &device,
-                                                    const star::Command_Buffer_Order &order,
-                                                    const common::FrameTracker &frameTracker,
-                                                    const uint64_t &currentFrameIndex,
-                                                    absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
-                                                    std::vector<vk::Semaphore> *waitSemaphores = nullptr);
+    vk::Semaphore submitGroupWhenReady(core::device::StarDevice &device, const star::Command_Buffer_Order &order,
+                                       const common::FrameTracker &frameTracker, const uint64_t &currentFrameIndex,
+                                       absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
+                                       std::vector<vk::Semaphore> *waitSemaphores = nullptr);
 
     star::Handle add(std::shared_ptr<CompleteRequest> newRequest, const bool &willBeSubmittedEachFrame,
                      const star::Queue_Type &type, const star::Command_Buffer_Order &order,

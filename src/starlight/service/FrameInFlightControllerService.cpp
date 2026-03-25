@@ -58,6 +58,10 @@ void FrameInFlightControllerService::shutdown()
 void FrameInFlightControllerService::onPrepForNextFrame(const event::PrepForNextFrame &event, bool &keepAlive)
 {
     auto *frameTracker = event.getFrameTracker();
+
+    //update the previous count of the last frame
+    frameTracker->triggerIncrementForCurrentFrame();
+    
     const uint8_t nextIndex = incrementNextFrameInFlight(*frameTracker);
     frameTracker->getCurrent().setFrameInFlightIndex(nextIndex);
     frameTracker->getCurrent().setFinalTargetImageIndex(nextIndex);

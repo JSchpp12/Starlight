@@ -11,7 +11,8 @@ CommandOrderService::CommandOrderService()
 CommandOrderService::CommandOrderService(CommandOrderService &&other)
     : m_passes(std::move(other.m_passes)), m_listenForDeclareDependency(*this), m_listenForDeclarePass(*this),
       m_listenForTriggerPass(*this), m_listenForGetPassInfo(*this), m_listenForInitPhaseComplete(*this),
-      m_listenForStartOfNextFrame(*this)
+      m_listenForStartOfNextFrame(*this), m_cmdBus(other.m_cmdBus), m_evtBus(other.m_evtBus), m_ft(other.m_ft),
+      m_sem(other.m_sem)
 {
     if (m_cmdBus != nullptr && m_evtBus != nullptr)
     {
@@ -28,6 +29,10 @@ CommandOrderService &CommandOrderService::operator=(CommandOrderService &&other)
     if (this != &other)
     {
         m_passes = std::move(other.m_passes);
+        m_cmdBus = other.m_cmdBus;
+        m_evtBus = other.m_evtBus;
+        m_ft = other.m_ft;
+        m_sem = other.m_sem;
 
         if (m_cmdBus != nullptr && m_evtBus != nullptr)
         {
@@ -61,6 +66,7 @@ void CommandOrderService::setInitParameters(star::service::InitParameters &param
     m_cmdBus = &params.commandBus;
     m_evtBus = &params.eventBus;
     m_ft = &params.flightTracker;
+    m_sem = params.graphicsManagers.semaphoreManager.get();
 }
 
 void CommandOrderService::shutdown()
@@ -84,7 +90,8 @@ void CommandOrderService::onDeclarePass(star::command_order::DeclarePass &cmd)
     const uint32_t queueFamilyIndex = cmd.getQueueFamily();
     auto mem = std::vector<bool>(m_ft->getSetup().getNumFramesInFlight(), false);
 
-    m_passes.insert(std::make_pair(passHandle, PassDescription{queueFamilyIndex, std::move(mem)}));
+    m_passes.insert(std::make_pair(
+        passHandle, PassDescription{.queueFamilyIndex = queueFamilyIndex, .wasProcessedOnLastFrame = std::move(mem)}));
 
     m_notTriggeredPasses.emplace_back(passHandle);
 }
@@ -105,11 +112,13 @@ void CommandOrderService::onInitEnginePhaseComplete(const star::event::EnginePha
 
 void CommandOrderService::onTriggerPass(star::command_order::TriggerPass &cmd)
 {
-    assert(m_passes.contains(cmd.passHandle) && "Pass handle is not valid");
+    assert(cmd.description.passDefinition.isInitialized() && "No handle was provided to TriggerPass command");
+    assert(m_passes.contains(cmd.description.passDefinition) && "Pass handle is not valid");
 
-    m_triggeredPasses.emplace_back(cmd.passHandle);
+    Handle passHandle = cmd.description.passDefinition;
+    m_triggeredPasses.emplace_back(std::move(cmd.description));
 
-    removeElementFromNotTriggeredPasses(cmd.passHandle);
+    removeElementFromNotTriggeredPasses(passHandle);
 }
 
 void CommandOrderService::onStartOfNextFrame(const event::StartOfNextFrame &event, bool &keepAlive)
@@ -123,8 +132,15 @@ void CommandOrderService::onStartOfNextFrame(const event::StartOfNextFrame &even
 
     for (auto &record : m_triggeredPasses)
     {
-        m_passes[record].wasProcessedOnLastFrame[m_lastFrameInFlightIndex] = true;
-        m_notTriggeredPasses.emplace_back(record); 
+        // update semaphore manager records for timeilnes
+        if (std::holds_alternative<command_order::TriggerDescription::TimelineSemaphore>(record.semaphoreInfo))
+        {
+            const auto &rec = std::get<command_order::TriggerDescription::TimelineSemaphore>(record.semaphoreInfo);
+            m_sem->get(rec.record)->timelineValue.value() = rec.signalValue;
+        }
+
+        m_passes[record.passDefinition].wasProcessedOnLastFrame[m_lastFrameInFlightIndex] = true;
+        m_notTriggeredPasses.emplace_back(record.passDefinition);
     }
 
     m_triggeredPasses.clear();
@@ -134,22 +150,46 @@ void CommandOrderService::onStartOfNextFrame(const event::StartOfNextFrame &even
 
 void CommandOrderService::onGetPassInfo(star::command_order::GetPassInfo &cmd)
 {
-    assert(m_passes.contains(cmd.pass) && "Provided pass does not exist");
+    assert(m_passes.contains(*cmd.pass) && "Provided pass does not exist");
 
     bool isTriggered = false;
+    vk::Semaphore signaledSemaphore{VK_NULL_HANDLE};
+    uint64_t signaledValue{0};
+    uint64_t currentSignalValue{0};
+
     for (const auto &triggered : m_triggeredPasses)
     {
-        if (triggered == cmd.pass)
+        if (triggered.passDefinition == *cmd.pass)
         {
+            if (std::holds_alternative<command_order::TriggerDescription::TimelineSemaphore>(triggered.semaphoreInfo))
+            {
+                const auto &r = std::get<command_order::TriggerDescription::TimelineSemaphore>(triggered.semaphoreInfo);
+                const auto *sr = m_sem->get(r.record);
+
+                assert(sr != nullptr && "Failed to obtain semaphore record from manager");
+                signaledSemaphore = sr->semaphore;
+                assert(sr->timelineValue.has_value() &&
+                       "Stored timeline record does not have a timeline value implying that it is a binary semaphore");
+
+                signaledValue = r.signalValue;
+                currentSignalValue = sr->timelineValue.value();
+            }
+            else
+            {
+                const auto &r = std::get<command_order::TriggerDescription::BinarySemaphore>(triggered.semaphoreInfo);
+                signaledSemaphore = r.semaphore;
+            }
+
             isTriggered = true;
             break;
         }
     }
 
-    const auto &info = m_passes[cmd.pass];
-    cmd.getReply().set(star::command_order::get_pass_info::GatheredPassInfo(
-        isTriggered, &info.queueFamilyIndex, &info.wasProcessedOnLastFrame,
-        m_edges.contains(cmd.pass) ? &m_edges[cmd.pass] : nullptr));
+    const auto &info = m_passes[*cmd.pass];
+    cmd.getReply().set(star::command_order::get_pass_info::GatheredPassInfo{
+        std::move(signaledSemaphore), std::move(signaledValue), std::move(currentSignalValue), isTriggered,
+        &info.queueFamilyIndex, &info.wasProcessedOnLastFrame,
+        m_edges.contains(*cmd.pass) ? &m_edges[*cmd.pass] : nullptr});
 }
 
 void CommandOrderService::initListeners(core::CommandBus &cmdBus)

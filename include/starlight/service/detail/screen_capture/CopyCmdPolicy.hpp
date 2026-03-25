@@ -1,9 +1,7 @@
 #pragma once
 
 #include "core/device/managers/ManagerCommandBuffer.hpp"
-#include "core/device/managers/Semaphore.hpp"
 #include "service/detail/screen_capture/Common.hpp"
-#include "service/detail/screen_capture/DeviceInfo.hpp"
 
 #include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>

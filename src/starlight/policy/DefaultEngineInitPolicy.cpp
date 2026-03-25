@@ -69,10 +69,10 @@ std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAddition
     std::vector<service::Service> services = std::vector<service::Service>(6);
     services[0] = createFrameInFlightControllerService();
     services[1] = createIOService();
-    services[2] = createScreenCaptureService();
-    services[3] = createHeadlessCaptureService();
-    services[4] = createSceneLoaderService();
-    services[5] = createCommandOrderService();
+    services[2] = createCommandOrderService();
+    services[3] = createScreenCaptureService();
+    services[4] = createHeadlessCaptureService();
+    services[5] = createSceneLoaderService();
 
     auto addServices = addAdditionalServices();
     for (size_t i{0}; i < addServices.size(); i++)

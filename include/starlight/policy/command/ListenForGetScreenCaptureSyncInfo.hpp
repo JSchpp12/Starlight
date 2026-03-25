@@ -8,7 +8,7 @@
 namespace star::policy
 {
 template <typename T>
-concept ListenForGetSyncInfoLike = requires(T t, star::command::GetScreenCaptureSyncInfo &cmd) {
+concept ListenForGetSyncInfoLike = requires(T t, star::command::GetScreenCaptureCommandBufferInfo &cmd) {
     { t.onGetSyncInfo(cmd) } -> std::same_as<void>;
 };
 
@@ -51,7 +51,7 @@ template <typename T> class ListenForGetScreenCaptureSyncInfo
         bus.registerServiceCallback(type, star::common::ServiceCallback{
                                               this, [](void *ctx, star::common::IServiceCommand &base) {
                                                   auto *self = static_cast<ListenForGetScreenCaptureSyncInfo<T> *>(ctx);
-                                                  auto &cmd = static_cast<star::command::GetScreenCaptureSyncInfo &>(base);
+                                                  auto &cmd = static_cast<star::command::GetScreenCaptureCommandBufferInfo &>(base);
 
                                                   self->m_me.onGetSyncInfo(cmd);
                                               }});

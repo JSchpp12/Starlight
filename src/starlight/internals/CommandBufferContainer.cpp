@@ -43,7 +43,7 @@ vk::Semaphore star::CommandBufferContainer::submitGroupWhenReady(
                 buffer->recordBufferCallback(*buffer->commandBuffer, frameTracker, currentFrameIndex);
             }
 
-            vk::Semaphore result = VK_NULL_HANDLE; 
+            vk::Semaphore result = VK_NULL_HANDLE;
             if (!firstProcessed)
             {
                 result = buffer->submitCommandBuffer(device, frameTracker, queues, additionalWaitSemaphores);

@@ -1,13 +1,12 @@
 #include "service/detail/screen_capture/CopyDirectorPolicy.hpp"
-
 #include "core/device/managers/Semaphore.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
-#include "event/GetQueue.hpp"
 #include "logging/LoggingFactory.hpp"
+#include "starlight/command/command_order/DeclarePass.hpp"
+#include "starlight/command/command_order/TriggerPass.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
-#include <star_common/helper/CastHelpers.hpp>
 
 namespace star::service::detail::screen_capture
 {
@@ -65,7 +64,18 @@ static void RecordBlitImage(vk::CommandBuffer cmd, vk::Image srcImage, vk::Image
 void DefaultCopyPolicy::init(DeviceInfo &deviceInfo)
 {
     m_deviceInfo = &deviceInfo;
+
     initSemaphores(m_deviceInfo->flightTracker->getSetup().getNumUniqueTargetFramesForFinalization());
+}
+
+static void TriggerWithCommandOrderManager(const star::core::CommandBus &cmdBus, const Handle &cmdHandle, Handle record,
+                                           uint64_t signalValue) noexcept
+{
+    using tp = star::command_order::TriggerPass;
+    using td = star::service::command_order::TriggerDescription;
+
+    cmdBus.submit(
+        tp().setPass(cmdHandle).setTimelineSemaphore(std::move(record)).setSignalValue(std::move(signalValue)));
 }
 
 GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
@@ -73,6 +83,10 @@ GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
     prepareInProgressResources(copyPlan);
 
     assert(m_deviceInfo->commandManager != nullptr);
+    TriggerWithCommandOrderManager(*m_deviceInfo->cmdBus, m_copyCmds.getCommandBuffer(),
+                                   m_inUseResources->timelineSemaphoreForCopyDone.record,
+                                   m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal);
+
     m_copyCmds.trigger(*m_deviceInfo->commandManager);
 
     return GPUSynchronizationInfo{.signalValue = m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal,
@@ -108,12 +122,13 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
 
         if (!m_timelineInfo.handles[frameInFlight].isInitialized())
         {
-            m_timelineInfo.createSemaphoreDataAtIndex(
+            m_timelineInfo.registerSemaphoreWithManagerAtIndex(
                 *m_deviceInfo->eventBus, frameInFlight,
                 m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed());
         }
 
         auto *record = m_deviceInfo->semaphoreManager->get(m_timelineInfo.handles[frameInFlight]);
+        m_inUseResources->timelineSemaphoreForCopyDone.record = m_timelineInfo.handles[frameInFlight];
         m_inUseResources->timelineSemaphoreForCopyDone.semaphore = &record->semaphore;
         m_inUseResources->timelineSemaphoreForCopyDone.signaledValue = &record->timelineValue;
     }
@@ -122,21 +137,21 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
 
         if (!m_binaryInfo.handles[index].isInitialized())
         {
-            m_binaryInfo.createSemaphoreDataAtIndex(*m_deviceInfo->eventBus, index);
+            m_binaryInfo.registerSemaphoreWithManagerAtIndex(*m_deviceInfo->eventBus, index);
         }
 
         m_inUseResources->binarySemaphoreForCopyDone =
             &m_deviceInfo->semaphoreManager->get(m_binaryInfo.handles[index])->semaphore;
     }
 
-    m_inUseResources->queueToUse = getQueueToUse();
+    m_inUseResources->queueToUse = getQueueToUse().getVulkanQueue();
     {
         uint64_t signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed() + 1;
         m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal = signalValue;
     }
 }
 
-vk::Queue DefaultCopyPolicy::getQueueToUse() const
+StarQueue &DefaultCopyPolicy::getQueueToUse() const
 {
     auto *defaultTransferQueue = core::helper::GetEngineDefaultQueue(
         *m_deviceInfo->eventBus, *m_deviceInfo->queueManager, star::Queue_Type::Ttransfer);
@@ -146,13 +161,24 @@ vk::Queue DefaultCopyPolicy::getQueueToUse() const
         STAR_THROW("Failed to obtain default transfer queue to use");
     }
 
-    return defaultTransferQueue->getVulkanQueue();
+    return *defaultTransferQueue;
+}
+
+static void DeclarePassWithManager(const star::core::CommandBus &cmdBus, const Handle &passHandle,
+                                   const StarQueue &queue)
+{
+    cmdBus.submit(star::command_order::DeclarePass{passHandle, queue.getParentQueueFamilyIndex()});
 }
 
 void DefaultCopyPolicy::registerWithCommandBufferManager()
 {
+    const auto &queue = getQueueToUse();
+
     m_copyCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
+    DeclarePassWithManager(*m_deviceInfo->cmdBus, m_copyCmds.getCommandBuffer(), queue);
+
     m_blitCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
+    DeclarePassWithManager(*m_deviceInfo->cmdBus, m_blitCmds.getCommandBuffer(), queue);
 }
 
 void DefaultCopyPolicy::SemaphoreInfo::init(const uint8_t &numFramesInFlight)
@@ -161,8 +187,8 @@ void DefaultCopyPolicy::SemaphoreInfo::init(const uint8_t &numFramesInFlight)
     raws.resize(numFramesInFlight);
 }
 
-void DefaultCopyPolicy::SemaphoreInfo::createSemaphoreDataAtIndex(star::common::EventBus &eventBus, const size_t &index,
-                                                                  std::optional<uint64_t> initialSignalValueOfTimeline)
+void DefaultCopyPolicy::SemaphoreInfo::registerSemaphoreWithManagerAtIndex(
+    star::common::EventBus &eventBus, const size_t &index, std::optional<uint64_t> initialSignalValueOfTimeline)
 {
     assert(index < handles.size());
 
