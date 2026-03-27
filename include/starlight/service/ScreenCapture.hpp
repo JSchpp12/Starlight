@@ -306,15 +306,15 @@ class ScreenCapture
     {
         assert(m_deviceInfo.eventBus && m_deviceInfo.commandManager);
 
-        //core::waiter::sync_renderer::Factory(*m_deviceInfo.eventBus, *m_deviceInfo.commandManager)
-        //    .setWaitPipelineStage(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-        //    .setCreatedOnFrameCount(std::move(currentFrameCount))
-        //    .setSemaphoreSignalValue(signalValue)
-        //    .setSemaphore(std::move(signalSemaphore))
-        //    .setTargetFrameInFlightIndex(m_deviceInfo.flightTracker->getCurrent().getFrameInFlightIndex())
-        //    .setSourceCommandBuffer(std::move(copyCommandBuffer))
-        //    .setTargetCommandBuffer(std::move(targetCommandBuffer))
-        //    .build();
+        core::waiter::sync_renderer::Factory(*m_deviceInfo.eventBus, *m_deviceInfo.commandManager)
+            .setWaitPipelineStage(vk::PipelineStageFlagBits::eAllCommands)
+            .setCreatedOnFrameCount(std::move(currentFrameCount))
+            .setSemaphoreSignalValue(signalValue)
+            .setSemaphore(std::move(signalSemaphore))
+            .setTargetFrameInFlightIndex(m_deviceInfo.flightTracker->getCurrent().getFrameInFlightIndex())
+            .setSourceCommandBuffer(std::move(copyCommandBuffer))
+            .setTargetCommandBuffer(std::move(targetCommandBuffer))
+            .build();
     }
 };
 } // namespace star::service

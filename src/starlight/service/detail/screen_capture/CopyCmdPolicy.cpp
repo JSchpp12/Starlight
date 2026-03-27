@@ -23,9 +23,9 @@ Handle CopyCmdPolicy::registerWithManager(core::device::StarDevice &device,
             .waitStage = vk::PipelineStageFlagBits::eAllCommands,
             .willBeSubmittedEachFrame = false,
             .recordOnce = false,
-            .overrideBufferSubmissionCallback =
-                std::bind(&CopyCmdPolicy::submitBuffer, this, std::placeholders::_1, std::placeholders::_2,
-                          std::placeholders::_3, std::placeholders::_4, std::placeholders::_5, std::placeholders::_6)});
+            .overrideBufferSubmissionCallback = std::bind(
+                &CopyCmdPolicy::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7)});
 }
 
 static vk::BufferMemoryBarrier2 GetBarrierPrepForCPURead(vk::Buffer buffer) noexcept
@@ -42,16 +42,16 @@ static vk::BufferMemoryBarrier2 GetBarrierPrepForCPURead(vk::Buffer buffer) noex
 
 void CopyCmdPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &commandBuffer)
 {
-    auto imageBarriers = getImageBarriersForCleanup();
-    uint32_t numImageBarriers;
-    star::common::casts::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
+    //auto imageBarriers = getImageBarriersForCleanup();
+    //uint32_t numImageBarriers;
+    //star::common::casts::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
 
-    const vk::BufferMemoryBarrier2 buffBarrier[1]{GetBarrierPrepForCPURead(m_inUseInfo->buffer)};
+    //const vk::BufferMemoryBarrier2 buffBarrier[1]{GetBarrierPrepForCPURead(m_inUseInfo->buffer)};
 
-    commandBuffer.pipelineBarrier2(vk::DependencyInfo()
-                                       .setImageMemoryBarrierCount(numImageBarriers)
-                                       .setPImageMemoryBarriers(imageBarriers.data())
-                                       .setBufferMemoryBarriers(buffBarrier));
+    //commandBuffer.pipelineBarrier2(vk::DependencyInfo()
+    //                                   .setImageMemoryBarrierCount(numImageBarriers)
+    //                                   .setPImageMemoryBarriers(imageBarriers.data())
+    //                                   .setBufferMemoryBarriers(buffBarrier));
 }
 
 void CopyCmdPolicy::init(core::device::StarDevice &device)
@@ -92,7 +92,7 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForPrep() co
                           .setImage(m_inUseInfo->targetImage)
                           .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                           .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
+                          .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
                           .setSrcAccessMask(vk::AccessFlagBits2::eNone)
                           .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
                           .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
@@ -126,8 +126,9 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
                                           std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
                                           std::vector<vk::Semaphore> dataSemaphores,
                                           std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                                          std::vector<std::optional<uint64_t>> previousSignaledValues)
-{    assert(m_inUseInfo->timelineSemaphoreForCopyDone.semaphore &&
+                                          std::vector<std::optional<uint64_t>> previousSignaledValues, StarQueue &queue)
+{
+    assert(m_inUseInfo->timelineSemaphoreForCopyDone.semaphore &&
            m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue && m_inUseInfo->binarySemaphoreForCopyDone &&
            "Timeline semaphore should have been set previously");
 
@@ -144,7 +145,6 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
                             .setValue(signalSemaphoreValues[i]);
     }
 
-    uint32_t semaphoreCount = 2;
     std::optional<std::vector<uint64_t>> waitValues = std::nullopt;
     std::vector<vk::SemaphoreSubmitInfo> waitSemaphores = std::vector<vk::SemaphoreSubmitInfo>(1);
     if (previousSignaledValues.size() > 0)
@@ -160,7 +160,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
     {
         waitSemaphores[0] = vk::SemaphoreSubmitInfo()
                                 .setSemaphore(*m_inUseInfo->targetTextureReadySemaphore)
-                                .setStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands)
                                 .setValue(0);
     }
     else
@@ -168,7 +168,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
         assert(previousCommandBufferSemaphores != nullptr);
         waitSemaphores[0] = vk::SemaphoreSubmitInfo()
                                 .setSemaphore(previousCommandBufferSemaphores->at(0))
-                                .setStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands)
                                 .setValue(0);
     }
 
@@ -182,11 +182,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
 
     assert(m_inUseInfo->queueToUse != nullptr);
 
-    const auto result = m_inUseInfo->queueToUse.submit2(1, &submitInfo, VK_NULL_HANDLE);
-    if (result != vk::Result::eSuccess)
-    {
-        STAR_THROW("Failed to submit buffer");
-    }
+    m_inUseInfo->queueToUse.submit2(submitInfo);
 
     return *m_inUseInfo->binarySemaphoreForCopyDone;
 }

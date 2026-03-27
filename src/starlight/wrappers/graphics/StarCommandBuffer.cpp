@@ -148,6 +148,7 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
     std::vector<vk::PipelineStageFlags> waitPoints = std::vector<vk::PipelineStageFlags>();
     std::vector<uint64_t> waitSignalValues;
 
+    bool useTimeline = false;
     if (overrideWait != nullptr)
     {
         for (size_t i{0}; i < overrideWait->size(); i++)
@@ -156,6 +157,10 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
             waitPoints.push_back(overrideWait->at(i).second);
             waitSignalValues.push_back(
                 additionalWaitsSignaledValues->at(i).has_value() ? additionalWaitsSignaledValues->at(i).value() : 0);
+            if (additionalWaitsSignaledValues->at(i).has_value())
+            {
+                useTimeline = true;
+            }
         }
     }
 
@@ -198,7 +203,7 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
                                                      .setWaitSemaphoreValues(waitSignalValues);
 
     vk::SubmitInfo submitInfo = vk::SubmitInfo()
-                                    .setPNext(&time)
+                                    .setPNext(useTimeline ? &time : nullptr)
                                     .setCommandBufferCount(1)
                                     .setPCommandBuffers(&this->commandBuffers.at(bufferIndex))
                                     .setWaitSemaphoreCount(waits.size() > 0 ? waits.size() : 0)

@@ -83,15 +83,33 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
 
     virtual void prepRender(common::IDeviceContext &c) override;
 
+    const std::vector<Handle> &getTimelineSemaphores() const
+    {
+        return m_timelineSemaphores;
+    }
+
   private:
     vk::PipelineStageFlags m_waitPoint{vk::PipelineStageFlagBits::eFragmentShader};
     std::vector<std::variant<pre_pass::DoNothing, pre_pass::GetImageFromNeighbor>> m_prepScheme;
     std::vector<std::variant<post_pass::DoNothing, post_pass::PrepImageForNeighbor>> m_postScheme;
-    const star::core::CommandBus *m_cachedBus{nullptr};
+    std::vector<Handle> m_timelineSemaphores;
+    vk::Device m_device{VK_NULL_HANDLE};
+    const star::core::device::manager::Image *m_imgMgr{nullptr};
+    const star::core::CommandBus *m_cmdBus{nullptr};
+
+    //void applyPrePipelineBarriers(vk::CommandBuffer commandBuffer, const star::common::FrameTracker &ft) const;
+
+    void waitForSemaphore(const common::FrameTracker &Ft) const;
 
     core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
-    void recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
-                        const uint64_t &frameIndex) override;
+    virtual void recordCommandBuffer(star::StarCommandBuffer &commandBuffer, const common::FrameTracker &ft,
+                                const uint64_t &frameIndex) override;
+
+    vk::Semaphore submitBuffer(star::StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
+                               std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
+                               std::vector<vk::Semaphore> dataSemaphores,
+                               std::vector<vk::PipelineStageFlags> dataWaitPoints,
+                               std::vector<std::optional<uint64_t>> previousSignaledValues, star::StarQueue &queue);
 };
 } // namespace star::core::renderer

@@ -113,17 +113,17 @@ star::StarShaderInfo::Builder DefaultRenderer::manualCreateDescriptors(star::cor
         globalBuilder.startOnFrameIndex(i)
             .startSet()
             .add(star::StarShaderInfo::BufferInfo{cameraHandle},
-                                                  &context.getManagerRenderResource()
-                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), cameraHandle)
-                                                       ->resourceSemaphore)
+                 &context.getManagerRenderResource()
+                      .get<StarBuffers::Buffer>(context.getDeviceID(), cameraHandle)
+                      ->resourceSemaphore)
             .add(star::StarShaderInfo::BufferInfo{lightInfoHandle},
-                                                  &context.getManagerRenderResource()
-                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
-                                                       ->resourceSemaphore)
+                 &context.getManagerRenderResource()
+                      .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
+                      ->resourceSemaphore)
             .add(star::StarShaderInfo::BufferInfo{lightListHandle},
-                                                  &context.getManagerRenderResource()
-                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
-                                                       ->resourceSemaphore);
+                 &context.getManagerRenderResource()
+                      .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
+                      ->resourceSemaphore);
     }
 
     return globalBuilder;
@@ -203,7 +203,6 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
             indices.push_back(presentQueue->getParentQueueFamilyIndex());
         }
     }
-
 
     vk::Format format = getColorAttachmentFormat(device);
     uint32_t numIndices;
@@ -543,7 +542,6 @@ void DefaultRenderer::recordCommands(vk::CommandBuffer &commandBuffer, const com
     recordCommandBufferDependencies(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
 
     {
-        // dynamic rendering used...so dont need all that extra stuff
         vk::RenderingAttachmentInfo colorAttachmentInfo = prepareDynamicRenderingInfoColorAttachment(frameTracker);
         vk::RenderingAttachmentInfo depthAttachmentInfo = prepareDynamicRenderingInfoDepthAttachment(frameTracker);
 
@@ -636,9 +634,10 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderer::prepareDynami
 {
     size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
 
+    const auto *r = m_renderingContext.recordDependentImage.get(m_renderToImages[index]);
+
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-    colorAttachmentInfo.imageView =
-        m_renderingContext.recordDependentImage.get(m_renderToImages[index])->getImageView();
+    colorAttachmentInfo.imageView = r->getImageView();
     colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
     colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;

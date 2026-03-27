@@ -39,6 +39,6 @@ class CopyCmdPolicy
                                std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
                                std::vector<vk::Semaphore> dataSemaphores,
                                std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                               std::vector<std::optional<uint64_t>> previousSignaledValues);
+                               std::vector<std::optional<uint64_t>> previousSignaledValues, StarQueue &queue);
 };
 } // namespace star::service::detail::screen_capture

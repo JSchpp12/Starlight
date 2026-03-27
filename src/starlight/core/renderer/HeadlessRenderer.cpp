@@ -7,6 +7,7 @@ namespace star::core::renderer
 {
 namespace pre_pass
 {
+
 vk::ImageMemoryBarrier2 GetImageFromNeighbor::getBarrier() const noexcept
 {
     assert(targetTexture != nullptr && "The target texture must be provided during init");
@@ -23,6 +24,29 @@ vk::ImageMemoryBarrier2 PrepImageForNeighbor::getBarrier() const noexcept
 }
 } // namespace post_pass
 
+static std::vector<star::Handle> CreateSemaphores(star::common::EventBus &evtBus,
+                                                  const star::common::FrameTracker &ft) noexcept
+{
+    const size_t num = static_cast<size_t>(ft.getSetup().getNumFramesInFlight());
+
+    auto handles = std::vector<star::Handle>(num);
+    for (size_t i{0}; i < handles.size(); i++)
+    {
+        void *r = nullptr;
+        evtBus.emit(star::core::device::system::event::ManagerRequest(
+            star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                star::core::device::manager::GetSemaphoreEventTypeName),
+            star::core::device::manager::SemaphoreRequest{true}, handles[i], &r));
+
+        if (r == nullptr)
+        {
+            STAR_THROW("Unable to create new semaphore");
+        }
+    }
+
+    return handles;
+}
+
 void HeadlessRenderer::frameUpdate(common::IDeviceContext &c)
 {
     this->DefaultRenderer::frameUpdate(c);
@@ -34,8 +58,13 @@ void HeadlessRenderer::frameUpdate(common::IDeviceContext &c)
             .m_manager.get(m_commandBuffer)
             .commandBuffer->getCompleteSemaphores()[context.getFrameTracker().getCurrent().getFrameInFlightIndex()];
 
+    size_t ii = static_cast<size_t>(context.getFrameTracker().getCurrent().getFrameInFlightIndex());
+
     context.getCmdBus().submit(
-        star::command_order::TriggerPass().setBinarySemaphore(semaphore).setPass(m_commandBuffer));
+        star::command_order::TriggerPass()
+            .setTimelineSemaphore(m_timelineSemaphores[ii])
+            .setSignalValue(context.getFrameTracker().getCurrent().getNumTimesFrameProcessed() + 1)
+            .setPass(m_commandBuffer));
 }
 
 core::device::manager::ManagerCommandBuffer::Request HeadlessRenderer::getCommandBufferRequest()
@@ -48,98 +77,133 @@ core::device::manager::ManagerCommandBuffer::Request HeadlessRenderer::getComman
         .type = Queue_Type::Tgraphics,
         .waitStage = m_waitPoint,
         .willBeSubmittedEachFrame = true,
-        .recordOnce = false};
+        .recordOnce = false,
+        .overrideBufferSubmissionCallback = std::bind(
+            &HeadlessRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+            std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7)};
 }
 
-static void PostApplyPipelineBarriers(vk::CommandBuffer &commandBuffer,
-                                      const star::StarTextures::Texture &renderToColorTexture,
-                                      uint32_t neighborQueueFamilyIndex)
+void HeadlessRenderer::waitForSemaphore(const common::FrameTracker &ft) const
 {
+    uint64_t signalValue{0};
+    vk::Semaphore semaphore{VK_NULL_HANDLE};
+    {
+        star::command_order::GetPassInfo get{m_commandBuffer};
+        m_cmdBus->submit(get);
+        signalValue = get.getReply().get().currentSignalValue;
+        semaphore = get.getReply().get().signaledSemaphore;
+    }
+
+    const uint64_t frameCount = ft.getCurrent().getNumTimesFrameProcessed();
+    if (frameCount == signalValue)
+    {
+
+        auto result =
+            m_device.waitSemaphores(vk::SemaphoreWaitInfo().setValues(frameCount).setSemaphores(semaphore), UINT64_MAX);
+
+        if (result != vk::Result::eSuccess)
+        {
+            STAR_THROW("Failed to wait for timeline semaphores");
+        }
+    }
 }
 
-static void PreApplyPipelineBarriers(vk::CommandBuffer &commandBuffer,
-                                     const star::StarTextures::Texture &renderToColorTexture,
-                                     uint32_t neighborQueueFamilyIndex)
+void HeadlessRenderer::recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &ft,
+                                           const uint64_t &frameIndex)
 {
+    waitForSemaphore(ft);
 
-    const vk::ImageMemoryBarrier2 barriers[1]{vk::ImageMemoryBarrier2()
-                                                  .setImage(renderToColorTexture.getVulkanImage())
-                                                  .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
-                                                  .setSrcAccessMask(vk::AccessFlagBits2::eNone)
-                                                  .setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
-                                                  .setDstAccessMask(vk::AccessFlagBits2::eShaderWrite)};
+    this->DefaultRenderer::recordCommandBuffer(commandBuffer, ft, frameIndex);
 }
 
 void HeadlessRenderer::prepRender(common::IDeviceContext &c)
 {
     this->DefaultRenderer::prepRender(c);
 
-    const auto &context = static_cast<star::core::device::DeviceContext &>(c);
-    m_cachedBus = &context.getCmdBus();
+    auto &context = static_cast<star::core::device::DeviceContext &>(c);
+    m_cmdBus = &context.getCmdBus();
+    m_device = context.getDevice().getVulkanDevice();
+    m_imgMgr = &context.getGraphicsManagers().imageManager;
 
     m_prepScheme.resize(context.getFrameTracker().getSetup().getNumFramesInFlight(), pre_pass::DoNothing{});
     m_postScheme.resize(context.getFrameTracker().getSetup().getNumFramesInFlight(), post_pass::DoNothing{});
+
+    // create timeline semaphores to use
+    m_timelineSemaphores = CreateSemaphores(context.getEventBus(), context.getFrameTracker());
 }
 
-void HeadlessRenderer::recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
-                                      const uint64_t &frameIndex)
+vk::Semaphore HeadlessRenderer::submitBuffer(star::StarCommandBuffer &buffer,
+                                             const star::common::FrameTracker &frameTracker,
+                                             std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
+                                             std::vector<vk::Semaphore> dataSemaphores,
+                                             std::vector<vk::PipelineStageFlags> dataWaitPoints,
+                                             std::vector<std::optional<uint64_t>> previousSignaledValues,
+                                             star::StarQueue &queue)
 {
-    //// get neighbor information
-    // Handle neighbor;
     const size_t ii = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
+    assert(m_cmdBus != nullptr);
 
-    // assert(m_cachedBus != nullptr);
-    //{
-    //     auto cmd = star::command_order::GetPassInfo{m_commandBuffer};
-    //     m_cachedBus->submit(cmd);
-
-    //    const auto &ele = cmd.getReply().get();
-    //    if (ele.edges != nullptr)
-    //    {
-    //        // only checking for one neighbor right now
-    //        auto &consumer = ele.edges->front();
-
-    //        for (const auto &edge : *cmd.getReply().get().edges)
-    //        {
-    //            if (edge.producer == m_commandBuffer)
-    //            {
-    //                // need to check if neighbor was run this frame
-    //                auto nCmd = star::command_order::GetPassInfo{edge.consumer};
-    //                if (nCmd.getReply().get().isTriggeredThisFrame)
-    //                {
-    //                    // next frame will have to acquire
-    //                }
-    //                // this is producing something for some other buffer
-    //                // right now assuming that it is the color texture
-    //                m_prepScheme = pre_pass::GetImageFromNeighbor()
-    //            }
-    //        }
-    //    }
-
-    //    m_prepScheme = pre_pass::DoNothing{};
-    //}
-
-    const auto *renderColor = m_renderingContext.recordDependentImage.get(
-        m_renderToImages[frameTracker.getCurrent().getFrameInFlightIndex()]);
-    assert(renderColor && "Color texture was never prepared in the rendering context");
-
-    if (std::holds_alternative<pre_pass::GetImageFromNeighbor>(m_prepScheme[ii]))
+    std::vector<vk::Semaphore> nSemaphore;
+    std::vector<uint64_t> nSemaphoreValues;
+    vk::Semaphore mySemaphore{VK_NULL_HANDLE};
+    uint64_t mySemaphoreSignalValue{0};
     {
-    }
-    // check neighbors and see if they are on a different queue
-    //
-    // PreApplyPipelineBarriers(commandBuffer, *renderColor);
+        auto cmd = star::command_order::GetPassInfo{m_commandBuffer};
+        m_cmdBus->submit(cmd);
+        mySemaphore = cmd.getReply().get().signaledSemaphore;
+        mySemaphoreSignalValue = cmd.getReply().get().toSignalValue;
 
-    this->DefaultRenderer::recordCommands(commandBuffer, frameTracker, frameIndex);
+        for (const auto &edge : *cmd.getReply().get().edges)
+        {
+            if (edge.consumer == m_commandBuffer)
+            {
+                auto nCmd = star::command_order::GetPassInfo{edge.producer};
+                m_cmdBus->submit(nCmd);
 
-    if (std::holds_alternative<post_pass::PrepImageForNeighbor>(m_postScheme[ii]))
-    {
+                nSemaphore.emplace_back(nCmd.getReply().get().signaledSemaphore);
+                nSemaphoreValues.emplace_back(nCmd.getReply().get().toSignalValue);
+            }
+        }
     }
 
-    // PostApplyPipelineBarriers(commandBuffer, *renderColor);
+    const auto cbInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(
+        buffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));
 
-    const size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
-    m_renderingContext.recordDependentImage.get(m_renderToImages[index])
-        ->setImageLayout(vk::ImageLayout::eColorAttachmentOptimal);
+    std::vector<vk::SemaphoreSubmitInfo> waitInfo;
+    for (size_t i{0}; i < nSemaphore.size(); i++)
+    {
+        waitInfo.push_back(vk::SemaphoreSubmitInfo()
+                               .setSemaphore(nSemaphore[i])
+                               .setValue(nSemaphoreValues[i])
+                               .setStageMask(vk::PipelineStageFlagBits2::eAllCommands));
+    }
+
+    assert(dataSemaphores.size() == dataWaitPoints.size());
+    for (size_t i{0}; i < dataWaitPoints.size(); i++)
+    {
+        waitInfo.emplace_back(
+            vk::SemaphoreSubmitInfo()
+                .setSemaphore(dataSemaphores[i])
+                .setValue(previousSignaledValues[i].has_value() ? previousSignaledValues[i].value() : 0)
+                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands));
+    }
+
+    vk::Semaphore binarySemaphore{buffer.getCompleteSemaphores()[ii]};
+    const vk::SemaphoreSubmitInfo signalInfo[2]{vk::SemaphoreSubmitInfo()
+                                                    .setSemaphore(mySemaphore)
+                                                    .setValue(mySemaphoreSignalValue)
+                                                    .setStageMask(vk::PipelineStageFlagBits2::eAllCommands),
+                                                vk::SemaphoreSubmitInfo()
+                                                    .setSemaphore(binarySemaphore)
+                                                    .setValue(0)
+                                                    .setStageMask(vk::PipelineStageFlagBits2::eAllCommands)};
+
+    const auto submitInfo =
+        vk::SubmitInfo2().setWaitSemaphoreInfos(waitInfo).setCommandBufferInfos(cbInfo).setSignalSemaphoreInfos(
+            signalInfo);
+
+    queue.getVulkanQueue().submit2(submitInfo);
+
+    return binarySemaphore;
 }
 } // namespace star::core::renderer

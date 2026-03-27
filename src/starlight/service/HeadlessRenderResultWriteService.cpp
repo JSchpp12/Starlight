@@ -218,13 +218,13 @@ void star::service::HeadlessRenderResultWriteService::onRenderReadyForFinalizati
     // create a waiter to update the target renderer
     auto cmdBuffer = m_mainGraphicsRenderer->getCommandBuffer(); 
 
-    core::waiter::sync_renderer::Factory(*m_eventBus, *m_managerCommandBuffer)
-        .setWaitPipelineStage(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-        .setSemaphore(event.getFinalDoneSemaphore())
-        .setCreatedOnFrameCount(m_frameTracker->getCurrent().getGlobalFrameCounter())
-        .setTargetFrameInFlightIndex(m_frameTracker->getCurrent().getFinalTargetImageIndex())
-        .setTargetCommandBuffer(cmdBuffer)
-        .build();
+    //core::waiter::sync_renderer::Factory(*m_eventBus, *m_managerCommandBuffer)
+    //    .setWaitPipelineStage(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+    //    .setSemaphore(event.getFinalDoneSemaphore())
+    //    .setCreatedOnFrameCount(m_frameTracker->getCurrent().getGlobalFrameCounter())
+    //    .setTargetFrameInFlightIndex(m_frameTracker->getCurrent().getFinalTargetImageIndex())
+    //    .setTargetCommandBuffer(cmdBuffer)
+    //    .build();
 
     keepAlive = true;
 }

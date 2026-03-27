@@ -88,7 +88,6 @@ bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::s
     }
     const auto result = buffer.invalidate();
 
-
     // ---- Format handling ----------------------------------------------------
     int comp = 4; // RGBA
     vk::Format fmt = info.imageFormat;
