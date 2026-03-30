@@ -42,16 +42,11 @@ static vk::BufferMemoryBarrier2 GetBarrierPrepForCPURead(vk::Buffer buffer) noex
 
 void CopyCmdPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &commandBuffer)
 {
-    //auto imageBarriers = getImageBarriersForCleanup();
-    //uint32_t numImageBarriers;
-    //star::common::casts::SafeCast<size_t, uint32_t>(imageBarriers.size(), numImageBarriers);
+    // auto imageBarriers = getImageBarriersForCleanup();
 
-    //const vk::BufferMemoryBarrier2 buffBarrier[1]{GetBarrierPrepForCPURead(m_inUseInfo->buffer)};
+    const vk::BufferMemoryBarrier2 buffBarrier[1]{GetBarrierPrepForCPURead(m_inUseInfo->buffer)};
 
-    //commandBuffer.pipelineBarrier2(vk::DependencyInfo()
-    //                                   .setImageMemoryBarrierCount(numImageBarriers)
-    //                                   .setPImageMemoryBarriers(imageBarriers.data())
-    //                                   .setBufferMemoryBarriers(buffBarrier));
+    commandBuffer.pipelineBarrier2(vk::DependencyInfo().setBufferMemoryBarriers(buffBarrier));
 }
 
 void CopyCmdPolicy::init(core::device::StarDevice &device)
@@ -132,12 +127,11 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
            m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue && m_inUseInfo->binarySemaphoreForCopyDone &&
            "Timeline semaphore should have been set previously");
 
-    const uint64_t signalSemaphoreValues[2]{m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal, 0};
-    const vk::Semaphore signalTimelineSemaphores[2]{*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore,
-                                                    *m_inUseInfo->binarySemaphoreForCopyDone};
+    const uint64_t signalSemaphoreValues[1]{m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal};
+    const vk::Semaphore signalTimelineSemaphores[1]{*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore};
     *m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue = m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal;
-    std::vector<vk::SemaphoreSubmitInfo> signalInfo(2);
-    for (int i{0}; i < 2; i++)
+    std::vector<vk::SemaphoreSubmitInfo> signalInfo(1);
+    for (int i{0}; i < 1; i++)
     {
         signalInfo[i] = vk::SemaphoreSubmitInfo()
                             .setSemaphore(signalTimelineSemaphores[i])

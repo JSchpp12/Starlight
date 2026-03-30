@@ -18,12 +18,12 @@ static void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star:
     cmdBus.submit(star::command_order::DeclarePass{std::move(commandBuffer), queue->getParentQueueFamilyIndex()});
 }
 
-void RendererBase::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                               const uint64_t &frameIndex)
+void RendererBase::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft)
 {
     for (auto &group : m_renderGroups)
     {
-        group.recordPreRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
+        group.recordPreRenderPassCommands(commandBuffer, ft.getCurrent().getFrameInFlightIndex(),
+                                          ft.getCurrent().getGlobalFrameCounter());
     }
 }
 
@@ -36,11 +36,11 @@ void RendererBase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const 
     }
 }
 
-void RendererBase::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void RendererBase::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft)
 {
     for (auto &group : m_renderGroups)
     {
-        group.recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
+        group.recordPostRenderPassCommands(commandBuffer, ft.getCurrent().getFrameInFlightIndex());
     }
 }
 

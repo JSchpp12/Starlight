@@ -537,7 +537,7 @@ void DefaultRenderer::recordCommands(vk::CommandBuffer &commandBuffer, const com
     vk::Viewport viewport = this->prepareRenderingViewport(m_renderingContext.targetResolution);
     commandBuffer.setViewport(0, viewport);
 
-    recordPreRenderPassCommands(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
+    recordPreRenderPassCommands(commandBuffer, frameTracker);
 
     recordCommandBufferDependencies(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
 
@@ -559,7 +559,7 @@ void DefaultRenderer::recordCommands(vk::CommandBuffer &commandBuffer, const com
 
     commandBuffer.endRendering();
 
-    recordPostRenderingCalls(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex());
+    recordPostRenderingCalls(commandBuffer, frameTracker);
 }
 
 void DefaultRenderer::recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer,

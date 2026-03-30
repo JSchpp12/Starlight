@@ -81,6 +81,11 @@ class Light : public StarEntity
         return m_enabled;
     }
 
+    uint32_t getLuminance() const
+    {
+        return m_luminance;
+    }
+
     // setters
     virtual Light &setPosition(glm::vec3 position) override
     {
