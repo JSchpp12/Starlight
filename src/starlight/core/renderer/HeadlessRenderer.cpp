@@ -195,12 +195,13 @@ vk::Semaphore HeadlessRenderer::submitBuffer(star::StarCommandBuffer &buffer,
                                                     .setStageMask(vk::PipelineStageFlagBits2::eAllCommands),
                                                 vk::SemaphoreSubmitInfo()
                                                     .setSemaphore(binarySemaphore)
-                                                    .setValue(0)
                                                     .setStageMask(vk::PipelineStageFlagBits2::eAllCommands)};
 
-    const auto submitInfo =
-        vk::SubmitInfo2().setWaitSemaphoreInfos(waitInfo).setCommandBufferInfos(cbInfo).setSignalSemaphoreInfos(
-            signalInfo);
+    const auto submitInfo = vk::SubmitInfo2()
+                                .setPWaitSemaphoreInfos(waitInfo.data())
+                                .setWaitSemaphoreInfoCount(waitInfo.size())
+                                .setCommandBufferInfos(cbInfo)
+                                .setSignalSemaphoreInfos(signalInfo);
 
     queue.getVulkanQueue().submit2(submitInfo);
 

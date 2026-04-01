@@ -59,38 +59,38 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForPrep() co
     const auto range = vk::ImageSubresourceRange()
                            .setAspectMask(vk::ImageAspectFlagBits::eColor)
                            .setBaseMipLevel(0)
-                           .setLevelCount(1)
+                           .setLevelCount(vk::RemainingMipLevels)
                            .setBaseArrayLayer(0)
-                           .setLayerCount(1);
+                           .setLayerCount(vk::RemainingArrayLayers);
 
     auto barriers = std::vector<vk::ImageMemoryBarrier2>(1);
     if (m_inUseInfo->targetImageLayout == vk::ImageLayout::ePresentSrcKHR)
     {
-        barriers[0] = vk::ImageMemoryBarrier2()
-                          .setOldLayout(vk::ImageLayout::ePresentSrcKHR)
-                          .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                          .setSubresourceRange(range)
-                          .setImage(m_inUseInfo->targetImage)
-                          .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
-                          .setSrcAccessMask(vk::AccessFlagBits2::eNone)
-                          .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                          .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
+        barriers[0]
+            .setOldLayout(vk::ImageLayout::ePresentSrcKHR)
+            .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+            .setSubresourceRange(range)
+            .setImage(m_inUseInfo->targetImage)
+            .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+            .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
     }
     else
     {
-        barriers[0] = vk::ImageMemoryBarrier2()
-                          .setOldLayout(m_inUseInfo->targetImageLayout)
-                          .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                          .setSubresourceRange(range)
-                          .setImage(m_inUseInfo->targetImage)
-                          .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                          .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
-                          .setSrcAccessMask(vk::AccessFlagBits2::eNone)
-                          .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                          .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
+        barriers[0]
+            .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
+            .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+            .setSubresourceRange(range)
+            .setImage(m_inUseInfo->targetImage)
+            .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+            .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
+            .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
     }
 
     return barriers;
@@ -98,16 +98,15 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForPrep() co
 
 std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForCleanup() const
 {
-    const auto range = vk::ImageSubresourceRange()
-                           .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                           .setBaseMipLevel(0)
-                           .setLevelCount(1)
-                           .setBaseArrayLayer(0)
-                           .setLayerCount(1);
     return {vk::ImageMemoryBarrier2()
                 .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
                 .setNewLayout(m_inUseInfo->targetImageLayout)
-                .setSubresourceRange(range)
+                .setSubresourceRange(vk::ImageSubresourceRange()
+                                         .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                         .setBaseMipLevel(0)
+                                         .setLevelCount(1)
+                                         .setBaseArrayLayer(0)
+                                         .setLayerCount(1))
                 .setImage(m_inUseInfo->targetImage)
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
@@ -178,23 +177,23 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
 
     m_inUseInfo->queueToUse.submit2(submitInfo);
 
-    return *m_inUseInfo->binarySemaphoreForCopyDone;
+    return vk::Semaphore();
 }
 
 void CopyCmdPolicy::recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk::Image targetSrcImage) const
 {
-    commandBuffer.copyImageToBuffer2(
-        vk::CopyImageToBufferInfo2()
-            .setSrcImage(targetSrcImage)
-            .setSrcImageLayout(vk::ImageLayout::eTransferSrcOptimal)
-            .setDstBuffer(m_inUseInfo->buffer)
-            .setRegions({vk::BufferImageCopy2()
-                             .setImageExtent(m_inUseInfo->targetImageExtent)
-                             .setImageSubresource(vk::ImageSubresourceLayers()
-                                                      .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                                      .setBaseArrayLayer(0)
-                                                      .setLayerCount(1)
-                                                      .setMipLevel(0))}));
+    const auto copy = vk::BufferImageCopy2()
+                          .setImageExtent(m_inUseInfo->targetImageExtent)
+                          .setImageSubresource(vk::ImageSubresourceLayers()
+                                                   .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                                   .setBaseArrayLayer(0)
+                                                   .setLayerCount(1)
+                                                   .setMipLevel(0));
+    commandBuffer.copyImageToBuffer2(vk::CopyImageToBufferInfo2()
+                                         .setSrcImage(targetSrcImage)
+                                         .setSrcImageLayout(vk::ImageLayout::eTransferSrcOptimal)
+                                         .setDstBuffer(m_inUseInfo->buffer)
+                                         .setRegions(copy));
 }
 
 void CopyCmdPolicy::waitForSemaphoreIfNecessary(const star::common::FrameTracker &frameTracker) const

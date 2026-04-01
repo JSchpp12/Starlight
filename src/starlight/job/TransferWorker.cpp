@@ -135,7 +135,7 @@ void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAlloc
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
     if (transferSrcBuffer->getBufferSize() == 0)
     {
-        STAR_THROW("Failed to create transfer src buffer"); 
+        STAR_THROW("Failed to create transfer src buffer");
     }
 
     {

@@ -581,6 +581,9 @@ std::vector<vk::BufferMemoryBarrier2> DefaultRenderer::getMemoryBarriersForThisF
     {
         if (m_infoManagerCamera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
         {
+            auto buffer =
+                m_renderingContext.bufferTransferRecords.get(m_infoManagerCamera->getHandle(frameInFlightIndex));
+
             barriers.emplace_back(
                 vk::BufferMemoryBarrier2()
                     .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
@@ -590,8 +593,7 @@ std::vector<vk::BufferMemoryBarrier2> DefaultRenderer::getMemoryBarriersForThisF
                     .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
                     .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                     .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setBuffer(m_renderingContext.bufferTransferRecords.get(
-                        m_infoManagerCamera->getHandle(frameInFlightIndex)))
+                    .setBuffer(buffer)
                     .setSize(vk::WholeSize));
         }
 
