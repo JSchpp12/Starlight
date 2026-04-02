@@ -25,12 +25,7 @@ class RendererBase
     virtual void frameUpdate(common::IDeviceContext &context);
     virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
 
-    Handle getCommandBuffer() const
-    {
-        return m_commandBuffer;
-    }
-
-    Handle &getCommandBuffer()
+    const Handle &getCommandBuffer() const
     {
         return m_commandBuffer;
     }

@@ -1,12 +1,11 @@
 #pragma once
 
-
 #include <star_common/Handle.hpp>
 
 #include <vulkan/vulkan_handles.hpp>
 
-#include <variant>
 #include <cstdint>
+#include <variant>
 
 namespace star::service::command_order
 {
@@ -18,11 +17,11 @@ struct TriggerDescription
     };
     struct TimelineSemaphore
     {
-        Handle record;
-        uint64_t signalValue;
+        Handle record{};
+        uint64_t signalValue{0};
     };
 
     Handle passDefinition;
-    std::variant<BinarySemaphore, TimelineSemaphore> semaphoreInfo;
+    std::variant<BinarySemaphore, TimelineSemaphore> semaphoreInfo{BinarySemaphore{}};
 };
-}
+} // namespace star::service::command_order

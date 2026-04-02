@@ -1,6 +1,6 @@
 #pragma once
 
-#include "starlight/core/exceptions.hpp"
+#include "starlight/core/Exceptions.hpp"
 #include "starlight/service/detail/command_order/TriggerDescription.hpp"
 
 #include <star_common/IServiceCommand.hpp>
