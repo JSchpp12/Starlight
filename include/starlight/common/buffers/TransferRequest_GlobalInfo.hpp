@@ -10,8 +10,8 @@ namespace star::TransferRequest
 class GlobalInfo : public Buffer
 {
   public:
-    GlobalInfo(const StarCamera &camera, const uint32_t &graphicsQueueIndex)
-        : camera(camera), graphicsQueueIndex(graphicsQueueIndex)
+    GlobalInfo(const StarCamera &camera, std::vector<uint32_t> queueFamilyIndices)
+        : camera(camera), m_queueFamilyIndices(std::move(queueFamilyIndices))
     {
     }
 
@@ -28,7 +28,7 @@ class GlobalInfo : public Buffer
 
   private:
     const StarCamera camera;
-    const uint32_t graphicsQueueIndex;
+    std::vector<uint32_t> m_queueFamilyIndices; 
 
     struct GlobalUniformBufferObject
     {

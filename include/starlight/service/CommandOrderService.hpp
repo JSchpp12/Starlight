@@ -11,11 +11,14 @@
 #include "starlight/policy/event/ListenFor.hpp"
 #include "starlight/service/InitParameters.hpp"
 #include "starlight/service/detail/command_order/EdgeDescription.hpp"
+#include "starlight/service/detail/command_order/TriggerDescription.hpp"
 
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 
 #include <absl/container/flat_hash_map.h>
+
+#include <variant>
 
 namespace star::service
 {
@@ -27,14 +30,14 @@ using ListenForDeclareDependency =
                                      star::command_order::declare_dependency::GetDeclareDependencyCommandTypeName,
                                      &T::onDeclareDependency>;
 template <typename T>
-using ListenForInitComplete =
-    star::policy::event::ListenFor<T, star::event::EnginePhaseComplete, star::event::engine_phase_complete::GetUniqueTypeName,
-                                   &T::onInitEnginePhaseComplete>;
+using ListenForInitComplete = star::policy::event::ListenFor<T, star::event::EnginePhaseComplete,
+                                                             star::event::engine_phase_complete::GetUniqueTypeName,
+                                                             &T::onInitEnginePhaseComplete>;
 
 template <typename T>
 using ListenForStartOfNextFrame =
-    star::policy::event::ListenFor<T, star::event::StartOfNextFrame, star::event::start_of_next_frame::GetUniqueTypeName,
-                                   &T::onStartOfNextFrame>;
+    star::policy::event::ListenFor<T, star::event::StartOfNextFrame,
+                                   star::event::start_of_next_frame::GetUniqueTypeName, &T::onStartOfNextFrame>;
 
 template <typename T>
 using ListenForDeclarePass =
@@ -60,6 +63,7 @@ class CommandOrderService
     struct PassDescription
     {
         uint32_t queueFamilyIndex;
+
         std::vector<bool> wasProcessedOnLastFrame;
     };
 
@@ -108,13 +112,14 @@ class CommandOrderService
     command_order::ListenForInitComplete<CommandOrderService> m_listenForInitPhaseComplete;
     command_order::ListenForStartOfNextFrame<CommandOrderService> m_listenForStartOfNextFrame;
     Phase m_currentPhase = Phase::Record;
-    std::vector<Handle> m_triggeredPasses;
+    std::vector<command_order::TriggerDescription> m_triggeredPasses;
     std::vector<Handle> m_notTriggeredPasses;
 
     uint8_t m_lastFrameInFlightIndex = 0;
     star::core::CommandBus *m_cmdBus = nullptr;
     common::EventBus *m_evtBus = nullptr;
     star::common::FrameTracker *m_ft = nullptr;
+    star::core::device::manager::Semaphore *m_sem{nullptr};
 
     void initListeners(core::CommandBus &cmdBus);
 

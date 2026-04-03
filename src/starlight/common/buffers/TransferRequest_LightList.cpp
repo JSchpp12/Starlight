@@ -73,7 +73,7 @@ void star::TransferRequest::LightList::writeDataToStageBuffer(StarBuffers::Buffe
             glm::radians(currLight.getInnerDiameter())); // represent the diameter of light as the cos of the light
                                                          // (increase shader performance when doing comparison)
         newBufferObject.controls.y = glm::cos(glm::radians(currLight.getOuterDiameter()));
-        newBufferObject.luminance = 1; 
+        newBufferObject.luminance = myLights[i].getLuminance(); 
         lightInformation[i] = newBufferObject;
     }
 

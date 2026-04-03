@@ -8,7 +8,6 @@
 #include "core/helper/command_buffer/CommandBufferHelpers.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "starlight/core/waiter/one_shot/GenericEvent.hpp"
-#include "starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 #include <vma/vk_mem_alloc.h>
@@ -114,17 +113,17 @@ star::StarShaderInfo::Builder DefaultRenderer::manualCreateDescriptors(star::cor
         globalBuilder.startOnFrameIndex(i)
             .startSet()
             .add(star::StarShaderInfo::BufferInfo{cameraHandle},
-                                                  &context.getManagerRenderResource()
-                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), cameraHandle)
-                                                       ->resourceSemaphore)
+                 &context.getManagerRenderResource()
+                      .get<StarBuffers::Buffer>(context.getDeviceID(), cameraHandle)
+                      ->resourceSemaphore)
             .add(star::StarShaderInfo::BufferInfo{lightInfoHandle},
-                                                  &context.getManagerRenderResource()
-                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
-                                                       ->resourceSemaphore)
+                 &context.getManagerRenderResource()
+                      .get<StarBuffers::Buffer>(context.getDeviceID(), lightInfoHandle)
+                      ->resourceSemaphore)
             .add(star::StarShaderInfo::BufferInfo{lightListHandle},
-                                                  &context.getManagerRenderResource()
-                                                       .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
-                                                       ->resourceSemaphore);
+                 &context.getManagerRenderResource()
+                      .get<StarBuffers::Buffer>(context.getDeviceID(), lightListHandle)
+                      ->resourceSemaphore);
     }
 
     return globalBuilder;
@@ -189,6 +188,15 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
     {
         StarQueue *presentQueue = core::helper::GetEngineDefaultQueue(
             device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tpresent);
+
+        if (presentQueue != nullptr && presentQueue->getParentQueueFamilyIndex() != indices.back())
+        {
+            indices.push_back(presentQueue->getParentQueueFamilyIndex());
+        }
+    }
+    {
+        StarQueue *presentQueue = core::helper::GetEngineDefaultQueue(
+            device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Ttransfer);
 
         if (presentQueue != nullptr && presentQueue->getParentQueueFamilyIndex() != indices.back())
         {
@@ -513,10 +521,6 @@ std::vector<std::pair<vk::DescriptorType, const int>> DefaultRenderer::getDescri
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eStorageBuffer, numFramesInFlight)};
 }
 
-void DefaultRenderer::createDescriptors(star::core::device::DeviceContext &device, const int &numFramesInFlight)
-{
-}
-
 void DefaultRenderer::recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                           const uint64_t &frameIndex)
 {
@@ -533,12 +537,11 @@ void DefaultRenderer::recordCommands(vk::CommandBuffer &commandBuffer, const com
     vk::Viewport viewport = this->prepareRenderingViewport(m_renderingContext.targetResolution);
     commandBuffer.setViewport(0, viewport);
 
-    recordPreRenderPassCommands(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
+    recordPreRenderPassCommands(commandBuffer, frameTracker);
 
     recordCommandBufferDependencies(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
 
     {
-        // dynamic rendering used...so dont need all that extra stuff
         vk::RenderingAttachmentInfo colorAttachmentInfo = prepareDynamicRenderingInfoColorAttachment(frameTracker);
         vk::RenderingAttachmentInfo depthAttachmentInfo = prepareDynamicRenderingInfoDepthAttachment(frameTracker);
 
@@ -556,7 +559,7 @@ void DefaultRenderer::recordCommands(vk::CommandBuffer &commandBuffer, const com
 
     commandBuffer.endRendering();
 
-    recordPostRenderingCalls(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex());
+    recordPostRenderingCalls(commandBuffer, frameTracker);
 }
 
 void DefaultRenderer::recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer,
@@ -578,6 +581,9 @@ std::vector<vk::BufferMemoryBarrier2> DefaultRenderer::getMemoryBarriersForThisF
     {
         if (m_infoManagerCamera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
         {
+            auto buffer =
+                m_renderingContext.bufferTransferRecords.get(m_infoManagerCamera->getHandle(frameInFlightIndex));
+
             barriers.emplace_back(
                 vk::BufferMemoryBarrier2()
                     .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
@@ -587,8 +593,7 @@ std::vector<vk::BufferMemoryBarrier2> DefaultRenderer::getMemoryBarriersForThisF
                     .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
                     .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                     .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setBuffer(m_renderingContext.bufferTransferRecords.get(
-                        m_infoManagerCamera->getHandle(frameInFlightIndex)))
+                    .setBuffer(buffer)
                     .setSize(vk::WholeSize));
         }
 
@@ -631,9 +636,10 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderer::prepareDynami
 {
     size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
 
+    const auto *r = m_renderingContext.recordDependentImage.get(m_renderToImages[index]);
+
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-    colorAttachmentInfo.imageView =
-        m_renderingContext.recordDependentImage.get(m_renderToImages[index])->getImageView();
+    colorAttachmentInfo.imageView = r->getImageView();
     colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
     colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;

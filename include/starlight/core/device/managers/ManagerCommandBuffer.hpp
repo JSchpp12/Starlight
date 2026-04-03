@@ -35,7 +35,7 @@ class ManagerCommandBuffer
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback = std::nullopt;
         std::optional<std::function<vk::Semaphore(
             StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *, std::vector<vk::Semaphore>,
-            std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>)>>
+            std::vector<vk::PipelineStageFlags>, std::vector<std::optional<uint64_t>>, star::StarQueue &)>>
             overrideBufferSubmissionCallback = std::nullopt;
     };
     struct InUseQueueInfo

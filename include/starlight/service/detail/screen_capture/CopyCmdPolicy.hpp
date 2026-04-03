@@ -1,9 +1,7 @@
 #pragma once
 
 #include "core/device/managers/ManagerCommandBuffer.hpp"
-#include "core/device/managers/Semaphore.hpp"
 #include "service/detail/screen_capture/Common.hpp"
-#include "service/detail/screen_capture/DeviceInfo.hpp"
 
 #include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
@@ -41,6 +39,6 @@ class CopyCmdPolicy
                                std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
                                std::vector<vk::Semaphore> dataSemaphores,
                                std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                               std::vector<std::optional<uint64_t>> previousSignaledValues);
+                               std::vector<std::optional<uint64_t>> previousSignaledValues, StarQueue &queue);
 };
 } // namespace star::service::detail::screen_capture

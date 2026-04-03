@@ -19,6 +19,9 @@ concept TExecutePolicyLike =
 
 template <TExecutePolicyLike TExecuteBufferPolicy> class ExecuteCmdBuffer
 {
+    TExecuteBufferPolicy m_executePolicy;
+    Handle m_commandBuffer;
+
   public:
     explicit ExecuteCmdBuffer(TExecuteBufferPolicy executePolicy) : m_executePolicy(std::move(executePolicy))
     {
@@ -44,9 +47,5 @@ template <TExecutePolicyLike TExecuteBufferPolicy> class ExecuteCmdBuffer
     {
         return m_commandBuffer;
     }
-
-  private:
-    TExecuteBufferPolicy m_executePolicy;
-    Handle m_commandBuffer;
 };
 } // namespace star::service::detail::screen_capture

@@ -2,7 +2,7 @@
 
 #include "ManagedHandleContainer.hpp"
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
-#include "detail/screen_capture/CapabilityCache.hpp"
+#include "starlight/command/command_order/DeclareDependency.hpp"
 #include "detail/screen_capture/Common.hpp"
 #include "detail/screen_capture/CopyRouter.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
@@ -140,7 +140,10 @@ class ScreenCapture
 
         m_getSync.init(*m_deviceInfo.cmdBus);
         m_actionRouter.init(&m_deviceInfo);
+
         m_copyPolicy.init(m_deviceInfo);
+        auto cmdBuff = m_copyPolicy.getCommandBuffer(); 
+
         registerWithEventBus();
         initCommandBuffer();
     }
@@ -167,7 +170,7 @@ class ScreenCapture
         cleanupDependencies(*m_deviceInfo.device);
     }
 
-    void onGetSyncInfo(command::GetScreenCaptureSyncInfo &cmd)
+    void onGetSyncInfo(command::GetScreenCaptureCommandBufferInfo &cmd)
     {
         cmd.getReply().set(command::get_sync_info::SyncInfo{&m_copyPolicy.getCommandBuffer()});
     }
@@ -184,6 +187,10 @@ class ScreenCapture
     Handle m_subscriberHandle;
     detail::screen_capture::CopyRouter m_actionRouter;
     detail::screen_capture::DeviceInfo m_deviceInfo;
+
+    void registerNewDependencyPass(const Handle &copyCmdBuffer, const Handle &targetCmdBuffer) const noexcept {
+        m_deviceInfo.cmdBus->submit(star::command_order::DeclareDependency{targetCmdBuffer, copyCmdBuffer});
+    }
 
     std::vector<job::worker::Worker::WorkerConcept *> registerWorkers(const size_t &numToCreate, job::TaskManager &tm)
     {
@@ -220,6 +227,8 @@ class ScreenCapture
                                                              screenEvent.getTargetTextureReadySemaphore());
             auto newHandle = m_calleeDependencyTracker.insert(std::move(newDeps));
 
+            registerNewDependencyPass(m_copyPolicy.getCommandBuffer(), screenEvent.getTargetCommandBuffer());
+
             screenEvent.getCalleeRegistration() = newHandle;
         }
 
@@ -241,12 +250,13 @@ class ScreenCapture
             .path = screenEvent.getPath(),
             .semaphore = syncInfo.timelineSemaphoreForMainCopyCommandsDone,
             .device = m_deviceInfo.device->getVulkanDevice(),
-            .bufferImageInfo = std::make_unique<job::tasks::write_image_to_disk::BufferImageInfo>(
-                copyPlan.resources.bufferInfo.containerRegistration,
-                copyPlan.calleeDependencies->targetTexture.getBaseExtent(),
-                copyPlan.calleeDependencies->targetTexture.getBaseFormat(),
-                &copyPlan.resources.bufferInfo.container->getBufferPool()),
-            .signalValue = std::make_unique<uint64_t>(std::move(signalValue))};
+            .addData = std::make_unique<job::tasks::write_image_to_disk::WritePayload::Data>(
+                job::tasks::write_image_to_disk::BufferImageInfo{
+                    copyPlan.resources.bufferInfo.containerRegistration,
+                    copyPlan.calleeDependencies->targetTexture.getBaseExtent(),
+                    copyPlan.calleeDependencies->targetTexture.getBaseFormat(),
+                    &copyPlan.resources.bufferInfo.container->getBufferPool()},
+                std::move(signalValue))};
         m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(std::move(payload)));
 
         keepAlive = true;
@@ -297,7 +307,7 @@ class ScreenCapture
         assert(m_deviceInfo.eventBus && m_deviceInfo.commandManager);
 
         core::waiter::sync_renderer::Factory(*m_deviceInfo.eventBus, *m_deviceInfo.commandManager)
-            .setWaitPipelineStage(vk::PipelineStageFlagBits::eFragmentShader)
+            .setWaitPipelineStage(vk::PipelineStageFlagBits::eAllCommands)
             .setCreatedOnFrameCount(std::move(currentFrameCount))
             .setSemaphoreSignalValue(signalValue)
             .setSemaphore(std::move(signalSemaphore))
