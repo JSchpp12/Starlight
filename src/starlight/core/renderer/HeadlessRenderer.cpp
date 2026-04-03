@@ -194,11 +194,14 @@ vk::Semaphore HeadlessRenderer::submitBuffer(star::StarCommandBuffer &buffer,
         vk::SemaphoreSubmitInfo().setSemaphore(binarySemaphore).setStageMask(vk::PipelineStageFlagBits2::eAllCommands)};
     const uint8_t signalInfoCount{2};
 
+    const auto submitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(
+        buffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));
+
     queue.getVulkanQueue().submit2(vk::SubmitInfo2()
                                        .setPWaitSemaphoreInfos(waitInfo)
                                        .setWaitSemaphoreInfoCount(waitInfoCount)
-                                       .setCommandBufferInfos(vk::CommandBufferSubmitInfo().setCommandBuffer(
-                                           buffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex())))
+                                       .setPCommandBufferInfos(&submitInfo)
+                                       .setCommandBufferInfoCount(1)
                                        .setPSignalSemaphoreInfos(signalInfo)
                                        .setSignalSemaphoreInfoCount(signalInfoCount));
 

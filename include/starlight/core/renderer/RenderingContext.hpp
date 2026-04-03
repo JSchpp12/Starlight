@@ -23,8 +23,8 @@ class RenderingContext
         MappedHandleContainer<vk::Semaphore>(common::special_types::SemaphoreTypeName);
     MappedHandleContainer<vk::Fence> recordDependentFence =
         MappedHandleContainer<vk::Fence>(common::special_types::FenceTypeName);
-    MappedHandleContainer<StarTextures::Texture*> recordDependentImage =
-        MappedHandleContainer<StarTextures::Texture*>(common::special_types::GetImageTypeName);
+    MappedHandleContainer<StarTextures::Texture *> recordDependentImage =
+        MappedHandleContainer<StarTextures::Texture *>(common::special_types::GetImageTypeName);
 
     void addBufferToRenderingContext(core::device::DeviceContext &context, const Handle &handle)
     {

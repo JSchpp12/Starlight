@@ -122,21 +122,10 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
                                           std::vector<vk::PipelineStageFlags> dataWaitPoints,
                                           std::vector<std::optional<uint64_t>> previousSignaledValues, StarQueue &queue)
 {
-    assert(m_inUseInfo->timelineSemaphoreForCopyDone.semaphore &&
-           m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue && m_inUseInfo->binarySemaphoreForCopyDone &&
-           "Timeline semaphore should have been set previously");
-
-    const uint64_t signalSemaphoreValues[1]{m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal};
-    const vk::Semaphore signalTimelineSemaphores[1]{*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore};
-    *m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue = m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal;
-    std::vector<vk::SemaphoreSubmitInfo> signalInfo(1);
-    for (int i{0}; i < 1; i++)
-    {
-        signalInfo[i] = vk::SemaphoreSubmitInfo()
-                            .setSemaphore(signalTimelineSemaphores[i])
-                            .setStageMask(vk::PipelineStageFlagBits2::eAllCommands)
-                            .setValue(signalSemaphoreValues[i]);
-    }
+    const vk::SemaphoreSubmitInfo signalInfo = vk::SemaphoreSubmitInfo()
+                                                   .setSemaphore(*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore)
+                                                   .setValue(m_inUseInfo->timelineSemaphoreForCopyDone.valueToSignal)
+                                                   .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
     std::optional<std::vector<uint64_t>> waitValues = std::nullopt;
     std::vector<vk::SemaphoreSubmitInfo> waitSemaphores = std::vector<vk::SemaphoreSubmitInfo>(1);
@@ -171,12 +160,12 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
     const auto submitInfo = vk::SubmitInfo2()
                                 .setWaitSemaphoreInfos(waitSemaphores)
                                 .setCommandBufferInfos(subInfo)
-                                .setSignalSemaphoreInfos(signalInfo);
+                                .setPSignalSemaphoreInfos(&signalInfo)
+                                .setSignalSemaphoreInfoCount(1);
 
     assert(m_inUseInfo->queueToUse != nullptr);
 
     m_inUseInfo->queueToUse.submit2(submitInfo);
-
     return vk::Semaphore();
 }
 
@@ -199,7 +188,7 @@ void CopyCmdPolicy::recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk
 void CopyCmdPolicy::waitForSemaphoreIfNecessary(const star::common::FrameTracker &frameTracker) const
 {
     const uint64_t &frameCount = frameTracker.getCurrent().getNumTimesFrameProcessed();
-    if (frameCount == m_inUseInfo->timelineSemaphoreForCopyDone.signaledValue->value())
+    if (frameCount == m_inUseInfo->timelineSemaphoreForCopyDone.currentSignalValue)
     {
         assert(m_inUseInfo->timelineSemaphoreForCopyDone.semaphore && "Semaphore was not assigned");
         assert(m_device != nullptr && "Init() was never called");

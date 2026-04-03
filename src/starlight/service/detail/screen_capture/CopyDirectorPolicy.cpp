@@ -92,7 +92,6 @@ GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
     return GPUSynchronizationInfo{.signalValue = m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal,
                                   .copyCommandBuffer = m_copyCmds.getCommandBuffer(),
                                   .binarySemaphoreForMainCopyDone = *m_inUseResources->binarySemaphoreForCopyDone,
-
                                   .timelineSemaphoreForMainCopyCommandsDone =
                                       *m_inUseResources->timelineSemaphoreForCopyDone.semaphore};
 }
@@ -130,7 +129,9 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
         auto *record = m_deviceInfo->semaphoreManager->get(m_timelineInfo.handles[frameInFlight]);
         m_inUseResources->timelineSemaphoreForCopyDone.record = m_timelineInfo.handles[frameInFlight];
         m_inUseResources->timelineSemaphoreForCopyDone.semaphore = &record->semaphore;
-        m_inUseResources->timelineSemaphoreForCopyDone.signaledValue = &record->timelineValue;
+        m_inUseResources->timelineSemaphoreForCopyDone.currentSignalValue = record->timelineValue.value();
+        const uint64_t signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed() + 1;
+        m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal = signalValue;
     }
     {
         const size_t index = static_cast<size_t>(m_deviceInfo->flightTracker->getCurrent().getFinalTargetImageIndex());
@@ -145,10 +146,6 @@ void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
     }
 
     m_inUseResources->queueToUse = getQueueToUse().getVulkanQueue();
-    {
-        uint64_t signalValue = m_deviceInfo->flightTracker->getCurrent().getNumTimesFrameProcessed() + 1;
-        m_inUseResources->timelineSemaphoreForCopyDone.valueToSignal = signalValue;
-    }
 }
 
 StarQueue &DefaultCopyPolicy::getQueueToUse() const
