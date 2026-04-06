@@ -1,5 +1,6 @@
 #include "starlight/service/HeadlessRenderResultWriteService.hpp"
 
+#include "starlight/command/frames/GetFrameTracker.hpp"
 #include "starlight/common/helpers/FileHelpers.hpp"
 #include "starlight/core/logging/LoggingFactory.hpp"
 #include "starlight/core/waiter/sync_renderer/Factory.hpp"
@@ -115,11 +116,11 @@ void star::service::HeadlessRenderResultWriteService::onGetSetOutputDir(
                 "HeadlessRenderResultWriteService: No output directory encountered when "
                 "processing a GetSetOutputDir command. Falling back to default output directory");
 
-            m_outputDir = GetDefaultImageDirectory(); 
+            m_outputDir = GetDefaultImageDirectory();
         }
         else
         {
-            m_outputDir = *setterDir; 
+            m_outputDir = *setterDir;
         }
 
         star::file_helpers::CreateDirectoryIfDoesNotExist(m_outputDir.value());
@@ -198,9 +199,14 @@ void star::service::HeadlessRenderResultWriteService::setInitParameters(star::se
 {
     m_eventBus = &params.eventBus;
     m_cmdBus = &params.commandBus;
-    m_frameTracker = &params.flightTracker;
     m_managerGraphicsContainer = &params.graphicsManagers;
     m_managerCommandBuffer = &params.commandBufferManager;
+
+    star::frames::GetFrameTracker ftCmd{};
+    params.commandBus.submit(ftCmd);
+    assert(ftCmd.getReply().get() != nullptr);
+
+    m_frameTracker = ftCmd.getReply().get();
 }
 
 void star::service::HeadlessRenderResultWriteService::onRegisterMainGraphics(
@@ -216,15 +222,15 @@ void star::service::HeadlessRenderResultWriteService::onRenderReadyForFinalizati
 {
     assert(m_eventBus && m_managerCommandBuffer);
     // create a waiter to update the target renderer
-    auto cmdBuffer = m_mainGraphicsRenderer->getCommandBuffer(); 
+    auto cmdBuffer = m_mainGraphicsRenderer->getCommandBuffer();
 
-    //core::waiter::sync_renderer::Factory(*m_eventBus, *m_managerCommandBuffer)
-    //    .setWaitPipelineStage(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-    //    .setSemaphore(event.getFinalDoneSemaphore())
-    //    .setCreatedOnFrameCount(m_frameTracker->getCurrent().getGlobalFrameCounter())
-    //    .setTargetFrameInFlightIndex(m_frameTracker->getCurrent().getFinalTargetImageIndex())
-    //    .setTargetCommandBuffer(cmdBuffer)
-    //    .build();
+    // core::waiter::sync_renderer::Factory(*m_eventBus, *m_managerCommandBuffer)
+    //     .setWaitPipelineStage(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+    //     .setSemaphore(event.getFinalDoneSemaphore())
+    //     .setCreatedOnFrameCount(m_frameTracker->getCurrent().getGlobalFrameCounter())
+    //     .setTargetFrameInFlightIndex(m_frameTracker->getCurrent().getFinalTargetImageIndex())
+    //     .setTargetCommandBuffer(cmdBuffer)
+    //     .build();
 
     keepAlive = true;
 }

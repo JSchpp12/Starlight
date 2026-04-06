@@ -9,6 +9,7 @@
 #include "detail/screen_capture/GPUSynchronizationInfo.hpp"
 #include "event/TriggerScreenshot.hpp"
 #include "job/tasks/TaskFactory.hpp"
+#include "starlight/command/frames/GetFrameTracker.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "policy/command/ListenForGetScreenCaptureSyncInfo.hpp"
 #include "service/InitParameters.hpp"
@@ -150,6 +151,10 @@ class ScreenCapture
 
     void setInitParameters(InitParameters &params)
     {
+        star::frames::GetFrameTracker ftCmd{};
+        params.commandBus.submit(ftCmd); 
+        assert(ftCmd.getReply().get() != nullptr); 
+
         m_deviceInfo =
             detail::screen_capture::DeviceInfo{.device = &params.device,
                                                .commandManager = &params.commandBufferManager,
@@ -157,7 +162,7 @@ class ScreenCapture
                                                .semaphoreManager = params.graphicsManagers.semaphoreManager.get(),
                                                .queueManager = &params.graphicsManagers.queueManager,
                                                .taskManager = &params.taskManager,
-                                               .flightTracker = &params.flightTracker,
+                                               .flightTracker = ftCmd.getReply().get(),
                                                .cmdBus = &params.commandBus};
     }
 

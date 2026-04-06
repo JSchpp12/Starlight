@@ -264,7 +264,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/event/ListenFor.cpp"
     "src/starlight/core/renderer/HeadlessRenderer.cpp"
     "src/starlight/common/entities/Light.cpp"
-)
+ "src/starlight/command/frames/GetFrameTracker.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 

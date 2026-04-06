@@ -1,5 +1,8 @@
 #include "starlight/service/CommandOrderService.hpp"
 
+
+#include <starlight/command/frames/GetFrameTracker.hpp>
+
 namespace star::service
 {
 CommandOrderService::CommandOrderService()
@@ -65,8 +68,13 @@ void CommandOrderService::setInitParameters(star::service::InitParameters &param
 {
     m_cmdBus = &params.commandBus;
     m_evtBus = &params.eventBus;
-    m_ft = &params.flightTracker;
     m_sem = params.graphicsManagers.semaphoreManager.get();
+
+    star::frames::GetFrameTracker ftCmd{};
+    m_cmdBus->submit(ftCmd); 
+    assert(ftCmd.getReply().get() != nullptr); 
+
+    m_ft = ftCmd.getReply().get();
 }
 
 void CommandOrderService::shutdown()

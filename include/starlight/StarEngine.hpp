@@ -155,7 +155,9 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
 
             this->m_systemManager.getContext(m_defaultDevice).getTransferWorker().update();
 
-            m_systemManager.getContext(m_defaultDevice).getEventBus().emit(star::event::FrameComplete{});
+
+            auto &evtBus = m_systemManager.getContext(m_defaultDevice).getEventBus();
+            evtBus.emit(star::event::FrameComplete{});
         }
 
         m_systemManager.getContext(m_defaultDevice).waitIdle();

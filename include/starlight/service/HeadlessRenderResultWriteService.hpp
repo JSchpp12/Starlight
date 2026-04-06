@@ -73,7 +73,7 @@ class HeadlessRenderResultWriteService
 
     common::EventBus *m_eventBus = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
-    common::FrameTracker *m_frameTracker = nullptr;
+    const common::FrameTracker *m_frameTracker = nullptr;
     core::device::manager::ManagerCommandBuffer *m_managerCommandBuffer = nullptr;
     core::device::manager::GraphicsContainer *m_managerGraphicsContainer = nullptr;
     const core::renderer::RendererBase *m_mainGraphicsRenderer = nullptr;
