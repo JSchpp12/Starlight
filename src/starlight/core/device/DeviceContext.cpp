@@ -41,7 +41,6 @@ star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
         {
             m_commandBufferManager->init(m_graphicsManagers.queueManager);
         }
-
     }
 
     other.m_ownsResources = false;
@@ -158,8 +157,6 @@ void star::core::device::DeviceContext::waitIdle()
 void star::core::device::DeviceContext::prepareForNextFrame()
 {
     handleCompleteMessages();
-
-    // broadcastFramePrepToService();
 
     broadcastFrameStart();
 }
@@ -376,11 +373,6 @@ void star::core::device::DeviceContext::broadcastFrameStart()
 {
     m_eventBus.emit(event::StartOfNextFrame{getFrameTracker()});
 }
-
-// void star::core::device::DeviceContext::broadcastFramePrepToService()
-//{
-//     m_eventBus.emit(star::event::PrepForNextFrame{m_flightTracker});
-// }
 
 static vk::QueueFlags EnumToQueueFlags(const star::Queue_Type &type)
 {
