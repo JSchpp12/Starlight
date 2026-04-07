@@ -198,7 +198,7 @@ class DeviceContext : public star::common::IDeviceContext
         return m_taskManager;
     }
 
-    const common::FrameTracker &getFrameTracker() const;
+    const common::FrameTracker &frameTracker() const;
 
     const vk::Extent2D &getEngineResolution() const
     {

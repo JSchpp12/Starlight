@@ -36,7 +36,7 @@ star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
         setAllServiceParameters();
 
         m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
-                                static_cast<uint8_t>(getFrameTracker().getSetup().getNumFramesInFlight()));
+                                static_cast<uint8_t>(frameTracker().getSetup().getNumFramesInFlight()));
         if (m_commandBufferManager)
         {
             m_commandBufferManager->init(m_graphicsManagers.queueManager);
@@ -71,7 +71,7 @@ star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(
 
             m_ownsResources = std::move(other.m_ownsResources);
             m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
-                                    static_cast<uint8_t>(getFrameTracker().getSetup().getNumFramesInFlight()));
+                                    static_cast<uint8_t>(frameTracker().getSetup().getNumFramesInFlight()));
             if (m_commandBufferManager)
             {
                 m_commandBufferManager->init(m_graphicsManagers.queueManager);
@@ -176,7 +176,7 @@ std::unordered_set<uint32_t> star::core::device::DeviceContext::gatherEngineDedi
     return dedicated;
 }
 
-const star::common::FrameTracker &star::core::device::DeviceContext::getFrameTracker() const
+const star::common::FrameTracker &star::core::device::DeviceContext::frameTracker() const
 {
     auto ftCmd = star::frames::GetFrameTracker{};
     m_commandBus.submit(ftCmd);
@@ -315,7 +315,7 @@ void star::core::device::DeviceContext::setAllServiceParameters()
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_renderResourceManager,
-                                   getFrameTracker().getSetup()};
+                                   frameTracker().getSetup()};
 
     for (auto &service : m_services)
     {
@@ -371,7 +371,7 @@ std::vector<star::Handle> star::core::device::DeviceContext::processAvailableQue
 
 void star::core::device::DeviceContext::broadcastFrameStart()
 {
-    m_eventBus.emit(event::StartOfNextFrame{getFrameTracker()});
+    m_eventBus.emit(event::StartOfNextFrame{frameTracker()});
 }
 
 static vk::QueueFlags EnumToQueueFlags(const star::Queue_Type &type)
