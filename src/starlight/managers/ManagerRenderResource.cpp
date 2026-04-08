@@ -109,7 +109,7 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     container.cpuWorkDoneByTransferThread.store(false);
 
     managerWorker->add(container.cpuWorkDoneByTransferThread, container.resourceSemaphore, std::move(newRequest),
-                       container.resource, isHighPriority);
+                       container.resource, isHighPriority, std::move(waitInfo));
 
     if (isHighPriority)
     {
