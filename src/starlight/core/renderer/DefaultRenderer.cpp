@@ -157,7 +157,7 @@ void DefaultRenderer::frameUpdate(common::IDeviceContext &context)
     m_renderingContext.recordDependentImage.manualInsert(m_renderToDepthImages[i],
                                                          &c.getImageManager().get(m_renderToDepthImages[i])->texture);
 
-    updateDependentData(c, c.frameTracker().getCurrent().getFrameInFlightIndex());
+    updateDependentData(c);
 }
 
 void DefaultRenderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
@@ -473,42 +473,39 @@ vk::Format DefaultRenderer::getDepthAttachmentFormat(star::core::device::DeviceC
     return selectedFormat;
 }
 
-void DefaultRenderer::updateDependentData(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
+void DefaultRenderer::updateDependentData(star::core::device::DeviceContext &context)
 {
+    const size_t fi = static_cast<size_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
+
     auto dataSemaphore = vk::Semaphore();
 
     auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer);
 
     if (ownsRenderResourceControllers)
     {
-        if (m_infoManagerCamera &&
-            m_infoManagerCamera->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+        if (m_infoManagerCamera && m_infoManagerCamera->submitUpdateIfNeeded(context, fi, dataSemaphore))
         {
-            record.oneTimeWaitSemaphoreInfo.insert(
-                m_infoManagerCamera->getHandle(frameInFlightIndex), std::move(dataSemaphore),
-                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
+            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerCamera->getHandle(fi), std::move(dataSemaphore),
+                                                   vk::PipelineStageFlagBits::eVertexShader |
+                                                       vk::PipelineStageFlagBits::eFragmentShader);
 
-            m_renderingContext.addBufferToRenderingContext(context, m_infoManagerCamera->getHandle(frameInFlightIndex));
+            m_renderingContext.addBufferToRenderingContext(context, m_infoManagerCamera->getHandle(fi));
         }
 
-        if (m_infoManagerLightData->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+        if (m_infoManagerLightData->submitUpdateIfNeeded(context, fi, dataSemaphore))
         {
-            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightData->getHandle(frameInFlightIndex),
-                                                   std::move(dataSemaphore),
+            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightData->getHandle(fi), std::move(dataSemaphore),
                                                    vk::PipelineStageFlagBits::eFragmentShader);
 
-            m_renderingContext.addBufferToRenderingContext(context,
-                                                           m_infoManagerLightData->getHandle(frameInFlightIndex));
+            m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightData->getHandle(fi));
         }
 
-        if (m_infoManagerLightList->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+        if (m_infoManagerLightList->submitUpdateIfNeeded(context, fi, dataSemaphore))
         {
-            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightList->getHandle(frameInFlightIndex),
-                                                   std::move(dataSemaphore),
+            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightList->getHandle(fi), std::move(dataSemaphore),
                                                    vk::PipelineStageFlagBits::eFragmentShader);
 
-            m_renderingContext.addBufferToRenderingContext(context,
-                                                           m_infoManagerLightList->getHandle(frameInFlightIndex));
+            m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightList->getHandle(fi));
         }
     }
 }

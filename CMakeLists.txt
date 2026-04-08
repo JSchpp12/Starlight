@@ -268,7 +268,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/command/ListenForGetFrameTracker.cpp"
     "src/starlight/policy/event/ListenForFrameComplete.cpp"
     "src/starlight/policy/event/ListenForPrepForNextFrame.cpp"
-)
+ "src/starlight/core/graphics/GPUWorkSyncInfo.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 

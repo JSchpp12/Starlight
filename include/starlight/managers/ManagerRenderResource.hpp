@@ -6,6 +6,7 @@
 #include "StarManager.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "device/StarDevice.hpp"
 
 #include <star_common/Handle.hpp>
@@ -82,9 +83,11 @@ class ManagerRenderResource : public StarManager
 
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
+    /// @param waitInfo GPU synchronization info which transfer worker will wait on before submitting its commands to the gpu
     /// @param handle Handle to resource
     static void updateRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
-                              const Handle &handle, const bool &isHighPriority = false);
+                              const Handle &handle, std::optional<core::graphics::GPUWorkSyncInfo> waitInfo = std::nullopt,
+                              const bool &isHighPriority = false);
 
     static void frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex);
 

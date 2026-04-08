@@ -3,6 +3,7 @@
 #include "StarCommandBuffer.hpp"
 #include "core/device/DeviceContext.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 
 #include <star_common/Handle.hpp>
 
@@ -59,30 +60,30 @@ template <typename TTransferType, typename TDataType> class Controller
 
     /// Call any frame updates. Returns true if the controller submitted an update
     bool submitUpdateIfNeeded(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                              vk::Semaphore &semaphore)
+                              vk::Semaphore &submissionSemaphore,
+                              std::optional<star::core::graphics::GPUWorkSyncInfo> transferGPUWorkWaitOnSyncInfo = std::nullopt)
     {
         const uint8_t &fIndex = context.frameTracker().getCurrent().getFrameInFlightIndex();
         assert(frameInFlightIndex < m_resourceHandles.size() && m_resourceHandles[frameInFlightIndex].isInitialized() &&
                "Resources must be properly prepared before use");
-        if (hasAlreadyBeenUpdatedThisFrame(context.frameTracker().getCurrent().getGlobalFrameCounter()))
-        {
-            semaphore = context.getManagerRenderResource()
-                            .get<TDataType>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
-                            ->resourceSemaphore;
-            return true;
-        }
         if (!doesFrameInFlightDataNeedUpdated(fIndex))
         {
             return false;
         }
 
+        submissionSemaphore = context.getManagerRenderResource()
+                                  .get<TDataType>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
+                                  ->resourceSemaphore;
+
+        if (hasAlreadyBeenUpdatedThisFrame(context.frameTracker().getCurrent().getGlobalFrameCounter()))
+        {
+            return true;
+        }
+
         m_lastFrameUpdate = context.frameTracker().getCurrent().getGlobalFrameCounter();
         context.getManagerRenderResource().updateRequest(context.getDeviceID(),
                                                          createTransferRequest(context, frameInFlightIndex),
-                                                         m_resourceHandles[frameInFlightIndex], true);
-        semaphore = context.getManagerRenderResource()
-                        .get<TDataType>(context.getDeviceID(), m_resourceHandles[frameInFlightIndex])
-                        ->resourceSemaphore;
+                                                         m_resourceHandles[frameInFlightIndex], std::nullopt, true);
         return true;
     }
 
