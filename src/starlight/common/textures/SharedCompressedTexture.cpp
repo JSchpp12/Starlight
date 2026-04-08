@@ -42,7 +42,7 @@ star::SharedCompressedTexture::SharedCompressedTexture(const std::string &pathTo
 
 star::SharedCompressedTexture::~SharedCompressedTexture()
 {
-    ktxTexture2_Destroy(this->resource);
+    ktxTexture2_Destroy(m_compTexture);
 }
 
 void star::SharedCompressedTexture::triggerTranscode()
@@ -50,31 +50,18 @@ void star::SharedCompressedTexture::triggerTranscode()
     boost::unique_lock<boost::mutex> lock;
     ktxTexture2 *texture = nullptr;
 
-    giveMeTranscodedImage(lock, texture);
+    giveMeTranscodedImage(texture);
 }
 
-void star::SharedCompressedTexture::giveMeTranscodedImage(boost::unique_lock<boost::mutex> &lock, ktxTexture2 *&texture)
+void star::SharedCompressedTexture::giveMeTranscodedImage(ktxTexture2 *&texture)
 {
+    if (m_compTexture == nullptr)
+        loadKTX();
 
-    // check for load or transcode
-    {
-        boost::unique_lock<boost::mutex> internalLock = boost::unique_lock<boost::mutex>();
-        ktxTexture2 *internalPtr = nullptr;
+    if (!hasBeenTranscoded)
+        transcode();
 
-        this->giveMeResource(internalLock, internalPtr);
-
-        if (this->resource == nullptr)
-        {
-            loadKTX();
-        }
-
-        if (!this->hasBeenTranscoded)
-        {
-            transcode();
-        }
-    }
-
-    this->giveMeResource(lock, texture);
+    texture = m_compTexture;
 }
 
 void star::SharedCompressedTexture::GetSupportedCompressedTextureFormats(
@@ -159,10 +146,10 @@ bool star::SharedCompressedTexture::VerifyFiles(const std::string &imagePath)
 
 void star::SharedCompressedTexture::loadKTX()
 {
-    assert(this->resource == nullptr && "KTX file has already been loaded");
+    assert(m_compTexture == nullptr && "KTX file has already been loaded");
 
     KTX_error_code result =
-        ktxTexture2_CreateFromNamedFile(pathToFile.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &this->resource);
+        ktxTexture2_CreateFromNamedFile(pathToFile.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &m_compTexture);
 
     if (result != KTX_SUCCESS)
     {
@@ -173,14 +160,14 @@ void star::SharedCompressedTexture::loadKTX()
 
 void star::SharedCompressedTexture::transcode()
 {
-    assert(this->resource != nullptr && "Invalid k texture. Might have failed transcode.");
+    assert(m_compTexture != nullptr && "Invalid k texture. Might have failed transcode.");
     assert(this->selectedTranscodeTargetFormat && "Format has not been selected");
 
     KTX_error_code result;
 
-    if (ktxTexture2_NeedsTranscoding(this->resource))
+    if (ktxTexture2_NeedsTranscoding(m_compTexture))
     {
-        result = ktxTexture2_TranscodeBasis(this->resource, this->selectedTranscodeTargetFormat, 0);
+        result = ktxTexture2_TranscodeBasis(m_compTexture, this->selectedTranscodeTargetFormat, 0);
         if (result != KTX_SUCCESS)
         {
             const std::string msg = "KTX could not transcode the requested image file: " + pathToFile;

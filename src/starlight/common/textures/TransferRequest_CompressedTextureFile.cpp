@@ -10,9 +10,8 @@
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
-    boost::unique_lock<boost::mutex> lock;
     ktxTexture2 *texture = nullptr;
-    this->compressedTexture->giveMeTranscodedImage(lock, texture);
+    this->compressedTexture->giveMeTranscodedImage(texture);
 
     return star::StarBuffers::Buffer::Builder(allocator)
         .setInstanceCount(1)
@@ -36,10 +35,9 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         const std::string msg = "Beginning compressed texture transcode" + compressedTexture->getPathToFile();
         core::logging::log(boost::log::trivial::info, msg);
     }
-    
-    boost::unique_lock<boost::mutex> lock;
+
     ktxTexture2 *texture = nullptr;
-    this->compressedTexture->giveMeTranscodedImage(lock, texture);
+    this->compressedTexture->giveMeTranscodedImage(texture);
 
     std::vector<uint32_t> indices = std::vector<uint32_t>{uint32_t(this->graphicsQueueFamilyIndex)};
     for (const auto &index : transferQueueFamilyIndex)
@@ -103,9 +101,8 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
                                                                             StarTextures::Texture &dst,
                                                                             vk::CommandBuffer &commandBuffer) const
 {
-    boost::unique_lock<boost::mutex> lock;
     ktxTexture2 *texture = nullptr;
-    this->compressedTexture->giveMeTranscodedImage(lock, texture);
+    this->compressedTexture->giveMeTranscodedImage(texture);
 
     {
         vk::ImageMemoryBarrier barrier{};
@@ -192,9 +189,8 @@ void star::TransferRequest::CompressedTextureFile::writeDataToStageBuffer(StarBu
     buffer.map(&mapped);
 
     {
-        boost::unique_lock<boost::mutex> lock;
         ktxTexture2 *texture = nullptr;
-        this->compressedTexture->giveMeTranscodedImage(lock, texture);
+        this->compressedTexture->giveMeTranscodedImage(texture);
 
         buffer.writeToBuffer(texture->pData, mapped, texture->dataSize);
     }
