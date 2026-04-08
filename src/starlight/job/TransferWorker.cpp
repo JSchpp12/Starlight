@@ -170,8 +170,6 @@ void star::job::TransferManagerThread::CreateBuffer(
             .setValue(v.workWaitOn.signalValue)
             .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
         waitInfoCount++;
-
-        core::logging::info("Waiting for semaphore with value: " + std::to_string(v.workWaitOn.signalValue)); 
     }
 
     const auto cbInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(processInfo.commandBuffer->buffer(0));
