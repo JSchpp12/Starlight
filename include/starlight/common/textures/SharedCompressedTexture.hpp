@@ -1,11 +1,8 @@
 #pragma once
 
-#include "ThreadSharedResource.hpp"
-#include "device/StarDevice.hpp"
+#include <vulkan/vulkan.hpp>
 
 #include <ktx.h>
-
-#include <boost/thread/mutex.hpp>
 
 namespace star
 {

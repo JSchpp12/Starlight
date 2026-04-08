@@ -47,7 +47,6 @@ star::SharedCompressedTexture::~SharedCompressedTexture()
 
 void star::SharedCompressedTexture::triggerTranscode()
 {
-    boost::unique_lock<boost::mutex> lock;
     ktxTexture2 *texture = nullptr;
 
     giveMeTranscodedImage(texture);
