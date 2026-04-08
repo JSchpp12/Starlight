@@ -1,6 +1,5 @@
 #include "starlight/service/CommandOrderService.hpp"
 
-
 #include <starlight/command/frames/GetFrameTracker.hpp>
 
 namespace star::service
@@ -71,8 +70,8 @@ void CommandOrderService::setInitParameters(star::service::InitParameters &param
     m_sem = params.graphicsManagers.semaphoreManager.get();
 
     star::frames::GetFrameTracker ftCmd{};
-    m_cmdBus->submit(ftCmd); 
-    assert(ftCmd.getReply().get() != nullptr); 
+    m_cmdBus->submit(ftCmd);
+    assert(ftCmd.getReply().get() != nullptr);
 
     m_ft = ftCmd.getReply().get();
 }
@@ -195,9 +194,13 @@ void CommandOrderService::onGetPassInfo(star::command_order::GetPassInfo &cmd)
 
     const auto &info = m_passes[*cmd.pass];
     cmd.getReply().set(star::command_order::get_pass_info::GatheredPassInfo{
-        std::move(signaledSemaphore), std::move(signaledValue), std::move(currentSignalValue), isTriggered,
-        &info.queueFamilyIndex, &info.wasProcessedOnLastFrame,
-        m_edges.contains(*cmd.pass) ? &m_edges[*cmd.pass] : nullptr});
+        .signaledSemaphore = std::move(signaledSemaphore),
+        .toSignalValue = std::move(signaledValue),
+        .currentSignalValue = std::move(currentSignalValue),
+        .isTriggeredThisFrame = isTriggered,
+        .queueFamilyIndex = &info.queueFamilyIndex,
+        .wasProcessedOnLastFrame = &info.wasProcessedOnLastFrame,
+        .edges = m_edges.contains(*cmd.pass) ? &m_edges[*cmd.pass] : nullptr});
 }
 
 void CommandOrderService::initListeners(core::CommandBus &cmdBus)
