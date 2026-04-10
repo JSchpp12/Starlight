@@ -61,14 +61,14 @@ void RendererBase::prepRender(common::IDeviceContext &context)
     m_renderGroups = CreateRenderingGroups(c, m_objects);
 
     m_commandBuffer = c.getManagerCommandBuffer().submit(getCommandBufferRequest(),
-                                                         c.getFrameTracker().getCurrent().getGlobalFrameCounter());
+                                                         c.frameTracker().getCurrent().getGlobalFrameCounter());
     RegisterWithCommandOrder(c.getCmdBus(), c.getEventBus(), c.getGraphicsManagers().queueManager, m_commandBuffer);
 }
 
 void RendererBase::frameUpdate(common::IDeviceContext &context)
 {
     auto &c = static_cast<core::device::DeviceContext &>(context);
-    updateRenderingGroups(c, c.getFrameTracker().getCurrent().getFrameInFlightIndex());
+    updateRenderingGroups(c, c.frameTracker().getCurrent().getFrameInFlightIndex());
 }
 
 std::vector<star::StarRenderGroup> RendererBase::CreateRenderingGroups(core::device::DeviceContext &context,

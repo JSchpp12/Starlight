@@ -192,7 +192,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/CommandOrderService.cpp"
     "src/starlight/service/detail/command_order/EdgeDescription.cpp"
     "src/starlight/service/detail/command_order/TriggerDescription.cpp"
-    "src/starlight/service/ResourceOwnershipService.cpp"
+    
     "src/starlight/core/waiter/sync_renderer/Factory.cpp"
     "src/starlight/core/waiter/sync_renderer/SyncTargetRendererTimeline.cpp"
     "src/starlight/core/waiter/sync_renderer/SyncTargetRendererBinary.cpp"
@@ -264,7 +264,11 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/event/ListenFor.cpp"
     "src/starlight/core/renderer/HeadlessRenderer.cpp"
     "src/starlight/common/entities/Light.cpp"
-)
+    "src/starlight/command/frames/GetFrameTracker.cpp" 
+    "src/starlight/policy/command/ListenForGetFrameTracker.cpp"
+    "src/starlight/policy/event/ListenForFrameComplete.cpp"
+    "src/starlight/policy/event/ListenForPrepForNextFrame.cpp"
+ "src/starlight/core/graphics/GPUWorkSyncInfo.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
@@ -413,7 +417,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/service/CommandOrderService.hpp"
     "include/starlight/service/detail/command_order/EdgeDescription.hpp"
     "include/starlight/service/detail/command_order/TriggerDescription.hpp"
-    "include/starlight/service/ResourceOwnershipService.hpp"
     "include/starlight/core/waiter/sync_renderer/Factory.hpp"
     "include/starlight/core/waiter/sync_renderer/SyncTargetRendererTimeline.hpp"
     "include/starlight/core/waiter/sync_renderer/SyncTargetRendererBinary.hpp"

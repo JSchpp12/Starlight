@@ -21,7 +21,7 @@ struct DeviceInfo
     core::device::manager::Semaphore *semaphoreManager = nullptr;
     core::device::manager::Queue *queueManager = nullptr; 
     job::TaskManager *taskManager = nullptr;
-    star::common::FrameTracker *flightTracker = nullptr;
+    const star::common::FrameTracker *flightTracker = nullptr;
     core::CommandBus *cmdBus = nullptr;
 };
 } // namespace star::service::detail::screen_capture

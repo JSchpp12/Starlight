@@ -8,6 +8,7 @@
 #include "job/worker/Worker.hpp"
 #include "managers/ManagerRenderResource.hpp"
 #include "service/InitParameters.hpp"
+#include "starlight/command/frames/GetFrameTracker.hpp"
 #include "starlight/core/WorkerPool.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/event/GetQueue.hpp"
@@ -21,20 +22,25 @@
 #include <cassert>
 
 star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
-    : m_device(std::move(other.m_device)), m_flightTracker(std::move(other.m_flightTracker)),
-      m_deviceID(std::move(other.m_deviceID)), m_eventBus(), m_taskManager(std::move(other.m_taskManager)),
-      m_graphicsManagers(), m_commandBufferManager(std::move(other.m_commandBufferManager)),
+    : m_device(std::move(other.m_device)), m_deviceID(std::move(other.m_deviceID)), m_eventBus(),
+      m_taskManager(std::move(other.m_taskManager)), m_graphicsManagers(),
+      m_commandBufferManager(std::move(other.m_commandBufferManager)),
       m_transferWorker(std::move(other.m_transferWorker)),
       m_renderResourceManager(std::move(other.m_renderResourceManager)), m_services(std::move(other.m_services))
 {
     m_graphicsManagers = std::move(other.m_graphicsManagers);
     m_eventBus = std::move(other.m_eventBus);
 
-    m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
-                            static_cast<uint8_t>(m_flightTracker.getSetup().getNumFramesInFlight()));
-    if (m_commandBufferManager)
+    if (m_ownsResources)
     {
-        m_commandBufferManager->init(m_graphicsManagers.queueManager);
+        setAllServiceParameters();
+
+        m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
+                                static_cast<uint8_t>(frameTracker().getSetup().getNumFramesInFlight()));
+        if (m_commandBufferManager)
+        {
+            m_commandBufferManager->init(m_graphicsManagers.queueManager);
+        }
     }
 
     other.m_ownsResources = false;
@@ -49,7 +55,6 @@ star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(
 {
     if (this != &other)
     {
-        m_flightTracker = std::move(other.m_flightTracker);
         m_deviceID = std::move(other.m_deviceID);
         m_device = std::move(other.m_device);
         m_taskManager = std::move(other.m_taskManager);
@@ -57,21 +62,20 @@ star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(
         m_transferWorker = std::move(other.m_transferWorker);
         m_renderResourceManager = std::move(other.m_renderResourceManager);
         m_services = std::move(other.m_services);
-
         m_graphicsManagers = std::move(other.m_graphicsManagers);
         m_eventBus = std::move(other.m_eventBus);
-        m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
-                                static_cast<uint8_t>(m_flightTracker.getSetup().getNumFramesInFlight()));
-        if (m_commandBufferManager)
-        {
-            m_commandBufferManager->init(m_graphicsManagers.queueManager);
-        }
 
         if (other.m_ownsResources)
         {
-            m_ownsResources = std::move(other.m_ownsResources);
-
             setAllServiceParameters();
+
+            m_ownsResources = std::move(other.m_ownsResources);
+            m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager,
+                                    static_cast<uint8_t>(frameTracker().getSetup().getNumFramesInFlight()));
+            if (m_commandBufferManager)
+            {
+                m_commandBufferManager->init(m_graphicsManagers.queueManager);
+            }
         }
 
         other.m_ownsResources = false;
@@ -97,24 +101,22 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
     assert(!m_ownsResources && "Dont call init twice");
     assert(deviceID.getType() ==
            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::DeviceTypeName));
-    m_flightTracker = common::FrameTracker(std::move(setup));
 
-    logInit(m_flightTracker.getSetup().getNumFramesInFlight());
+    logInit(setup.getNumFramesInFlight());
     m_deviceID = deviceID;
     m_engineResolution = std::move(engineResolution);
 
-    m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager, m_flightTracker.getSetup().getNumFramesInFlight());
+    m_graphicsManagers.init(&m_device, m_eventBus, m_taskManager, setup.getNumFramesInFlight());
     auto availableQueues = processAvailableQueues();
     auto engineReservedQueues = selectEngineReservedQueues(availableQueues);
     m_commandBufferManager = std::make_unique<core::device::manager::ManagerCommandBuffer>(
-        m_device, m_graphicsManagers.queueManager, m_flightTracker.getSetup().getNumFramesInFlight(),
-        engineReservedQueues);
+        m_device, m_graphicsManagers.queueManager, setup.getNumFramesInFlight(), engineReservedQueues);
     m_commandBufferManager->init(m_graphicsManagers.queueManager);
     m_renderResourceManager = std::make_unique<ManagerRenderResource>();
 
     star::core::WorkerPool pool = core::WorkerPool(static_cast<uint8_t>(boost::thread::hardware_concurrency() - 1));
-    finalizeServices(pool, std::move(availableQueues), engineReservedQueues, m_device);
-    initWorkers(pool, m_flightTracker.getSetup().getNumFramesInFlight());
+    finalizeServices(pool, std::move(availableQueues), engineReservedQueues, setup, m_device);
+    initWorkers(pool, setup.getNumFramesInFlight());
 
     m_ownsResources = true;
 }
@@ -126,7 +128,7 @@ void star::core::device::DeviceContext::manualTriggerOfCheckForMessages()
 
 void star::core::device::DeviceContext::finalizeServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
                                                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
-                                                         StarDevice &device)
+                                                         common::FrameTracker::Setup frameSetup, StarDevice &device)
 {
     {
         auto ordered = std::vector<star::service::Service>(m_services.size() + 1);
@@ -138,7 +140,7 @@ void star::core::device::DeviceContext::finalizeServices(core::WorkerPool &pool,
         m_services = std::move(ordered);
     }
 
-    initServices(pool, std::move(queueHandles), std::move(engineReserved), device);
+    initServices(pool, std::move(queueHandles), std::move(engineReserved), device, frameSetup);
 }
 
 void star::core::device::DeviceContext::waitIdle()
@@ -156,8 +158,6 @@ void star::core::device::DeviceContext::prepareForNextFrame()
 {
     handleCompleteMessages();
 
-    broadcastFramePrepToService();
-
     broadcastFrameStart();
 }
 
@@ -174,6 +174,17 @@ std::unordered_set<uint32_t> star::core::device::DeviceContext::gatherEngineDedi
         core::helper::GetEngineDefaultQueue(m_eventBus, m_graphicsManagers.queueManager, star::Queue_Type::Tgraphics);
 
     return dedicated;
+}
+
+const star::common::FrameTracker &star::core::device::DeviceContext::frameTracker() const
+{
+    auto ftCmd = star::frames::GetFrameTracker{};
+    m_commandBus.submit(ftCmd);
+
+    assert(ftCmd.getReply().get() != nullptr &&
+           "No service is managing the frame tracker. One must always be provided");
+
+    return *ftCmd.getReply().get();
 }
 
 std::vector<star::Handle> star::core::device::DeviceContext::gatherTransferQueues(
@@ -304,7 +315,7 @@ void star::core::device::DeviceContext::setAllServiceParameters()
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_renderResourceManager,
-                                   m_flightTracker};
+                                   frameTracker().getSetup()};
 
     for (auto &service : m_services)
     {
@@ -314,7 +325,7 @@ void star::core::device::DeviceContext::setAllServiceParameters()
 
 void star::core::device::DeviceContext::initServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
                                                      absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
-                                                     StarDevice &device)
+                                                     StarDevice &device, common::FrameTracker::Setup frameSetup)
 {
     service::InitParameters params{begin(),
                                    m_deviceID,
@@ -325,7 +336,7 @@ void star::core::device::DeviceContext::initServices(core::WorkerPool &pool, std
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_renderResourceManager,
-                                   m_flightTracker};
+                                   frameSetup};
 
     // init the service 0 which should be the queue manager
     m_services[0].init(pool, params);
@@ -360,12 +371,7 @@ std::vector<star::Handle> star::core::device::DeviceContext::processAvailableQue
 
 void star::core::device::DeviceContext::broadcastFrameStart()
 {
-    m_eventBus.emit(event::StartOfNextFrame{m_flightTracker});
-}
-
-void star::core::device::DeviceContext::broadcastFramePrepToService()
-{
-    m_eventBus.emit(star::event::PrepForNextFrame{m_flightTracker});
+    m_eventBus.emit(event::StartOfNextFrame{frameTracker()});
 }
 
 static vk::QueueFlags EnumToQueueFlags(const star::Queue_Type &type)

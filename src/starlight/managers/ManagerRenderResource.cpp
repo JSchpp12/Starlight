@@ -96,7 +96,9 @@ void star::ManagerRenderResource::frameUpdate(const Handle &deviceID, const uint
 
 void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                                 std::unique_ptr<TransferRequest::Buffer> newRequest,
-                                                const star::Handle &handle, const bool &isHighPriority)
+                                                const star::Handle &handle,
+                                                std::optional<core::graphics::GPUWorkSyncInfo> waitInfo,
+                                                const bool &isHighPriority)
 {
     auto &container = bufferStorage.at(deviceID)->get(handle);
 
@@ -107,7 +109,7 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     container.cpuWorkDoneByTransferThread.store(false);
 
     managerWorker->add(container.cpuWorkDoneByTransferThread, container.resourceSemaphore, std::move(newRequest),
-                       container.resource, isHighPriority);
+                       container.resource, isHighPriority, std::move(waitInfo));
 
     if (isHighPriority)
     {

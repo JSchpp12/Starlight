@@ -75,7 +75,7 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
                 CreateBuffer(myInfo.device, myInfo.allocator, myInfo.queue, request.gpuWorkDoneSemaphore,
                              myInfo.deviceProperties, myInfo.allTransferQueueFamilyIndicesInUse, *workingInfo,
                              request.bufferTransferRequest.get(), request.resultingBuffer.value(),
-                             request.gpuDoneNotificationToMain);
+                             request.gpuDoneNotificationToMain, request.workSyncInfo);
             }
             else if (request.textureTransferRequest)
             {
@@ -123,14 +123,12 @@ void star::job::TransferManagerThread::mainLoop(job::TransferManagerThread::SubT
     pool->cleanupRender(myInfo.device);
 }
 
-void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
-                                                    vk::Semaphore signalWhenDoneSemaphore,
-                                                    const vk::PhysicalDeviceProperties &deviceProperties,
-                                                    const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                                                    ProcessRequestInfo &processInfo,
-                                                    TransferRequest::Buffer *newBufferRequest,
-                                                    std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
-                                                    boost::atomic<bool> *gpuDoneSignalMain)
+void star::job::TransferManagerThread::CreateBuffer(
+    vk::Device &device, VmaAllocator &allocator, StarQueue &queue, vk::Semaphore signalWhenDoneSemaphore,
+    const vk::PhysicalDeviceProperties &deviceProperties,
+    const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse, ProcessRequestInfo &processInfo,
+    TransferRequest::Buffer *newBufferRequest, std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
+    boost::atomic<bool> *gpuDoneSignalMain, std::optional<core::graphics::GPUWorkSyncInfo> &syncInfo)
 {
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
     if (transferSrcBuffer->getBufferSize() == 0)
@@ -158,8 +156,33 @@ void star::job::TransferManagerThread::CreateBuffer(vk::Device &device, VmaAlloc
 
     processInfo.commandBuffer->buffer(0).end();
 
-    auto signalSemaphore = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
-    processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, nullptr, &signalSemaphore);
+    const auto signalInfo = vk::SemaphoreSubmitInfo()
+                                .setSemaphore(signalWhenDoneSemaphore)
+                                .setValue(0)
+                                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
+
+    uint8_t waitInfoCount{0};
+    vk::SemaphoreSubmitInfo waitInfo;
+    if (syncInfo.has_value())
+    {
+        const auto &v = syncInfo.value();
+        waitInfo.setSemaphore(v.workWaitOn.semaphore)
+            .setValue(v.workWaitOn.signalValue)
+            .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
+        waitInfoCount++;
+    }
+
+    const auto cbInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(processInfo.commandBuffer->buffer(0));
+
+    const auto submitInfo = vk::SubmitInfo2()
+                                .setPWaitSemaphoreInfos(&waitInfo)
+                                .setWaitSemaphoreInfoCount(waitInfoCount)
+                                .setPCommandBufferInfos(&cbInfo)
+                                .setCommandBufferInfoCount(1)
+                                .setPSignalSemaphoreInfos(&signalInfo)
+                                .setSignalSemaphoreInfoCount(1);
+
+     queue.getVulkanQueue().submit2(submitInfo, processInfo.commandBuffer->getFence(0));
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
@@ -280,23 +303,23 @@ star::job::TransferWorker::TransferWorker(star::core::device::StarDevice &device
 void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
                                     vk::Semaphore signalWhenDoneSemaphore,
                                     std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
-                                    std::unique_ptr<star::StarBuffers::Buffer> &resultingBuffer,
-                                    const bool &isHighPriority)
+                                    std::unique_ptr<star::StarBuffers::Buffer> &resultingBuffer, bool isHighPriority,
+                                    std::optional<core::graphics::GPUWorkSyncInfo> waitSyncInfo)
 {
     insertRequest({&isBeingWorkedOnByTransferThread, std::move(signalWhenDoneSemaphore), std::move(newBufferRequest),
-                   resultingBuffer},
+                   resultingBuffer, std::move(waitSyncInfo)},
                   isHighPriority);
 }
 
 void star::job::TransferWorker::add(boost::atomic<bool> &isBeingWorkedOnByTransferThread,
                                     vk::Semaphore signalWhenDoneSemaphore,
                                     std::unique_ptr<star::TransferRequest::Texture> newTextureRequest,
-                                    std::unique_ptr<StarTextures::Texture> &resultingTexture,
-                                    const bool &isHighPriority)
+                                    std::unique_ptr<StarTextures::Texture> &resultingTexture, bool isHighPriority,
+                                    std::optional<core::graphics::GPUWorkSyncInfo> waitSyncInfo)
 {
-    insertRequest(job::TransferManagerThread::InterThreadRequest(&isBeingWorkedOnByTransferThread,
-                                                                 std::move(signalWhenDoneSemaphore),
-                                                                 std::move(newTextureRequest), resultingTexture),
+    insertRequest(job::TransferManagerThread::InterThreadRequest(
+                      &isBeingWorkedOnByTransferThread, std::move(signalWhenDoneSemaphore),
+                      std::move(newTextureRequest), resultingTexture, std::move(waitSyncInfo)),
                   isHighPriority);
 }
 

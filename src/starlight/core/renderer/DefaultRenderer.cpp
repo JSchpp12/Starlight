@@ -22,18 +22,18 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
     RendererBase::prepRender(device);
 
     auto &c = static_cast<core::device::DeviceContext &>(device);
-    m_infoManagerLightData->prepRender(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
-    m_infoManagerLightList->prepRender(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
+    m_infoManagerLightData->prepRender(c, c.frameTracker().getSetup().getNumFramesInFlight());
+    m_infoManagerLightList->prepRender(c, c.frameTracker().getSetup().getNumFramesInFlight());
 
     if (m_infoManagerCamera)
     {
-        m_infoManagerCamera->prepRender(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
+        m_infoManagerCamera->prepRender(c, c.frameTracker().getSetup().getNumFramesInFlight());
     }
 
     m_renderingContext.targetResolution = c.getEngineResolution();
 
     {
-        auto images = createRenderToImages(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
+        auto images = createRenderToImages(c, c.frameTracker().getSetup().getNumFramesInFlight());
         m_colorFormat = images.front().getBaseFormat();
         m_renderToImages.resize(images.size());
 
@@ -51,7 +51,7 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
         }
     }
     {
-        auto images = createRenderToDepthImages(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
+        auto images = createRenderToDepthImages(c, c.frameTracker().getSetup().getNumFramesInFlight());
         m_depthFormat = images.front().getBaseFormat();
         m_renderToDepthImages.resize(images.size());
 
@@ -100,11 +100,11 @@ star::StarShaderInfo::Builder DefaultRenderer::manualCreateDescriptors(star::cor
            "Pool has not been created yet. Descriptor pools are created after engine prep phase is complete");
 
     this->globalSetLayout =
-        createGlobalDescriptorSetLayout(context, context.getFrameTracker().getSetup().getNumFramesInFlight());
+        createGlobalDescriptorSetLayout(context, context.frameTracker().getSetup().getNumFramesInFlight());
     auto globalBuilder = StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool,
-                                                 context.getFrameTracker().getSetup().getNumFramesInFlight())
+                                                 context.frameTracker().getSetup().getNumFramesInFlight())
                              .addSetLayout(this->globalSetLayout);
-    for (int i = 0; i < context.getFrameTracker().getSetup().getNumFramesInFlight(); i++)
+    for (int i = 0; i < context.frameTracker().getSetup().getNumFramesInFlight(); i++)
     {
         const auto &lightInfoHandle = m_infoManagerLightData->getHandle(i);
         const auto &lightListHandle = m_infoManagerLightList->getHandle(i);
@@ -151,13 +151,13 @@ void DefaultRenderer::frameUpdate(common::IDeviceContext &context)
     RendererBase::frameUpdate(context);
 
     auto &c = static_cast<core::device::DeviceContext &>(context);
-    size_t i = static_cast<size_t>(c.getFrameTracker().getCurrent().getFrameInFlightIndex());
+    size_t i = static_cast<size_t>(c.frameTracker().getCurrent().getFrameInFlightIndex());
     m_renderingContext.recordDependentImage.manualInsert(m_renderToImages[i],
                                                          &c.getImageManager().get(m_renderToImages[i])->texture);
     m_renderingContext.recordDependentImage.manualInsert(m_renderToDepthImages[i],
                                                          &c.getImageManager().get(m_renderToDepthImages[i])->texture);
 
-    updateDependentData(c, c.getFrameTracker().getCurrent().getFrameInFlightIndex());
+    updateDependentData(c);
 }
 
 void DefaultRenderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
@@ -473,42 +473,39 @@ vk::Format DefaultRenderer::getDepthAttachmentFormat(star::core::device::DeviceC
     return selectedFormat;
 }
 
-void DefaultRenderer::updateDependentData(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
+void DefaultRenderer::updateDependentData(star::core::device::DeviceContext &context)
 {
+    const size_t fi = static_cast<size_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
+
     auto dataSemaphore = vk::Semaphore();
 
     auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer);
 
     if (ownsRenderResourceControllers)
     {
-        if (m_infoManagerCamera &&
-            m_infoManagerCamera->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+        if (m_infoManagerCamera && m_infoManagerCamera->submitUpdateIfNeeded(context, fi, dataSemaphore))
         {
-            record.oneTimeWaitSemaphoreInfo.insert(
-                m_infoManagerCamera->getHandle(frameInFlightIndex), std::move(dataSemaphore),
-                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
+            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerCamera->getHandle(fi), std::move(dataSemaphore),
+                                                   vk::PipelineStageFlagBits::eVertexShader |
+                                                       vk::PipelineStageFlagBits::eFragmentShader);
 
-            m_renderingContext.addBufferToRenderingContext(context, m_infoManagerCamera->getHandle(frameInFlightIndex));
+            m_renderingContext.addBufferToRenderingContext(context, m_infoManagerCamera->getHandle(fi));
         }
 
-        if (m_infoManagerLightData->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+        if (m_infoManagerLightData->submitUpdateIfNeeded(context, fi, dataSemaphore))
         {
-            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightData->getHandle(frameInFlightIndex),
-                                                   std::move(dataSemaphore),
+            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightData->getHandle(fi), std::move(dataSemaphore),
                                                    vk::PipelineStageFlagBits::eFragmentShader);
 
-            m_renderingContext.addBufferToRenderingContext(context,
-                                                           m_infoManagerLightData->getHandle(frameInFlightIndex));
+            m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightData->getHandle(fi));
         }
 
-        if (m_infoManagerLightList->submitUpdateIfNeeded(context, frameInFlightIndex, dataSemaphore))
+        if (m_infoManagerLightList->submitUpdateIfNeeded(context, fi, dataSemaphore))
         {
-            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightList->getHandle(frameInFlightIndex),
-                                                   std::move(dataSemaphore),
+            record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightList->getHandle(fi), std::move(dataSemaphore),
                                                    vk::PipelineStageFlagBits::eFragmentShader);
 
-            m_renderingContext.addBufferToRenderingContext(context,
-                                                           m_infoManagerLightList->getHandle(frameInFlightIndex));
+            m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightList->getHandle(fi));
         }
     }
 }

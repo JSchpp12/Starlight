@@ -198,10 +198,7 @@ class DeviceContext : public star::common::IDeviceContext
         return m_taskManager;
     }
 
-    const common::FrameTracker &getFrameTracker() const
-    {
-        return m_flightTracker;
-    }
+    const common::FrameTracker &frameTracker() const;
 
     const vk::Extent2D &getEngineResolution() const
     {
@@ -216,10 +213,10 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return m_commandBus;
     }
+    //void broadcastFramePrepToService();
 
   private:
     StarDevice m_device;
-    common::FrameTracker m_flightTracker;
     bool m_ownsResources = false;
     Handle m_deviceID;
     common::EventBus m_eventBus;
@@ -254,13 +251,12 @@ class DeviceContext : public star::common::IDeviceContext
     void logInit(const uint8_t &numFramesInFlight) const;
 
     void initServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
-                      absl::flat_hash_map<star::Queue_Type, Handle> engineReserved, StarDevice &device);
+                      absl::flat_hash_map<star::Queue_Type, Handle> engineReserved, StarDevice &device,
+                      common::FrameTracker::Setup frameSetup);
 
     std::vector<Handle> processAvailableQueues();
 
     void broadcastFrameStart();
-
-    void broadcastFramePrepToService();
 
     Handle getQueueOfType(const std::vector<Handle> &allQueueHandles, const star::Queue_Type &type,
                           const std::unordered_set<uint32_t> *queueFamilyIndsToAvoid);
@@ -269,7 +265,8 @@ class DeviceContext : public star::common::IDeviceContext
         const std::vector<Handle> &allQueueHandles);
 
     void finalizeServices(core::WorkerPool &pool, std::vector<Handle> queueHandles,
-                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved, StarDevice &device);
+                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+                          common::FrameTracker::Setup frameSetup, StarDevice &device);
 
     service::Service createQueueOwnershipService(std::vector<Handle> queueHandles,
                                                  absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);

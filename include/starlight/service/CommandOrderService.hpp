@@ -118,7 +118,7 @@ class CommandOrderService
     uint8_t m_lastFrameInFlightIndex = 0;
     star::core::CommandBus *m_cmdBus = nullptr;
     common::EventBus *m_evtBus = nullptr;
-    star::common::FrameTracker *m_ft = nullptr;
+    const star::common::FrameTracker *m_ft = nullptr;
     star::core::device::manager::Semaphore *m_sem{nullptr};
 
     void initListeners(core::CommandBus &cmdBus);

@@ -332,7 +332,7 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 {
     assert(m_meshMaterials.size() > 0 && "Mesh materials should exist");
 
-    for (uint8_t i = 0; i < context.getFrameTracker().getSetup().getNumFramesInFlight(); i++)
+    for (uint8_t i = 0; i < context.frameTracker().getSetup().getNumFramesInFlight(); i++)
     {
         const auto &instanceModelHandle = m_instanceInfo.getControllerModel()->getHandle(i);
         const auto &instanceNormalHandle = m_instanceInfo.getControllerNormal()->getHandle(i);
@@ -352,7 +352,7 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
     for (auto &material : m_meshMaterials)
     {
         // descriptors
-        material->prepRender(context, context.getFrameTracker().getSetup().getNumFramesInFlight(), frameBuilder);
+        material->prepRender(context, context.frameTracker().getSetup().getNumFramesInFlight(), frameBuilder);
     }
 }
 
@@ -362,7 +362,7 @@ void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &
            "Call to create instance buffers made but this object does not have any instances");
     assert(m_instanceInfo.getSize() < 1024 && "Max number of supported instances is 1024");
 
-    m_instanceInfo.prepRender(context, context.getFrameTracker().getSetup().getNumFramesInFlight());
+    m_instanceInfo.prepRender(context, context.frameTracker().getSetup().getNumFramesInFlight());
 }
 
 void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)
@@ -467,7 +467,7 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
     }
     for (size_t i{0}; i < meshes.size(); i++)
     {
-        if (!meshes[i]->isKnownToBeReady(context.getFrameTracker().getCurrent().getFrameInFlightIndex()))
+        if (!meshes[i]->isKnownToBeReady(context.frameTracker().getCurrent().getFrameInFlightIndex()))
         {
             return false;
         }

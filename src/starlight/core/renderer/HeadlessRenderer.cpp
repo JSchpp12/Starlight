@@ -56,14 +56,14 @@ void HeadlessRenderer::frameUpdate(common::IDeviceContext &c)
     auto semaphore =
         context.getManagerCommandBuffer()
             .m_manager.get(m_commandBuffer)
-            .commandBuffer->getCompleteSemaphores()[context.getFrameTracker().getCurrent().getFrameInFlightIndex()];
+            .commandBuffer->getCompleteSemaphores()[context.frameTracker().getCurrent().getFrameInFlightIndex()];
 
-    size_t ii = static_cast<size_t>(context.getFrameTracker().getCurrent().getFrameInFlightIndex());
+    size_t ii = static_cast<size_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
 
     context.getCmdBus().submit(
         star::command_order::TriggerPass()
             .setTimelineSemaphore(m_timelineSemaphores[ii])
-            .setSignalValue(context.getFrameTracker().getCurrent().getNumTimesFrameProcessed() + 1)
+            .setSignalValue(context.frameTracker().getCurrent().getNumTimesFrameProcessed() + 1)
             .setPass(m_commandBuffer));
 }
 
@@ -125,11 +125,11 @@ void HeadlessRenderer::prepRender(common::IDeviceContext &c)
     m_device = context.getDevice().getVulkanDevice();
     m_imgMgr = &context.getGraphicsManagers().imageManager;
 
-    m_prepScheme.resize(context.getFrameTracker().getSetup().getNumFramesInFlight(), pre_pass::DoNothing{});
-    m_postScheme.resize(context.getFrameTracker().getSetup().getNumFramesInFlight(), post_pass::DoNothing{});
+    m_prepScheme.resize(context.frameTracker().getSetup().getNumFramesInFlight(), pre_pass::DoNothing{});
+    m_postScheme.resize(context.frameTracker().getSetup().getNumFramesInFlight(), post_pass::DoNothing{});
 
     // create timeline semaphores to use
-    m_timelineSemaphores = CreateSemaphores(context.getEventBus(), context.getFrameTracker());
+    m_timelineSemaphores = CreateSemaphores(context.getEventBus(), context.frameTracker());
 }
 
 vk::Semaphore HeadlessRenderer::submitBuffer(star::StarCommandBuffer &buffer,
@@ -143,7 +143,7 @@ vk::Semaphore HeadlessRenderer::submitBuffer(star::StarCommandBuffer &buffer,
     const size_t ii = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
     assert(m_cmdBus != nullptr);
 
-    vk::SemaphoreSubmitInfo waitInfo[8];
+    vk::SemaphoreSubmitInfo waitInfo[10];
     uint8_t waitInfoCount{0};
 
     vk::Semaphore mySemaphore{VK_NULL_HANDLE};
@@ -156,8 +156,8 @@ vk::Semaphore HeadlessRenderer::submitBuffer(star::StarCommandBuffer &buffer,
 
         assert(cmd.getReply().get().edges != nullptr &&
                "No neighbor command buffers were registered. At least one is expected");
-        assert(cmd.getReply().get().edges->size() + dataWaitPoints.size() < 8 &&
-               "Static size container for wait semaphore info only expects a max of 8");
+        assert(cmd.getReply().get().edges->size() + dataWaitPoints.size() < 10 &&
+               "Static size container for wait semaphore info only expects a max of 10");
         for (const auto &edge : *cmd.getReply().get().edges)
         {
             if (edge.consumer == m_commandBuffer)

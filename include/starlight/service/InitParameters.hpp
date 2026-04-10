@@ -26,6 +26,6 @@ struct InitParameters
     core::device::manager::GraphicsContainer &graphicsManagers;
     core::device::manager::ManagerCommandBuffer &commandBufferManager;
     ManagerRenderResource &renderResourceManager;
-    common::FrameTracker &flightTracker;
+    common::FrameTracker::Setup flightTrackerSetup;
 };
 } // namespace star::service

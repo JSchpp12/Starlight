@@ -1,17 +1,12 @@
 #pragma once
 
-#include "ThreadSharedResource.hpp"
-#include "device/StarDevice.hpp"
+#include <vulkan/vulkan.hpp>
 
 #include <ktx.h>
 
-#include <boost/thread/mutex.hpp>
-
-#include <memory>
-
 namespace star
 {
-class SharedCompressedTexture : private ThreadSharedResource<ktxTexture2>
+class SharedCompressedTexture
 {
   public:
     static ktx_transcode_fmt_e GetResultTargetCompressedFormat(const vk::PhysicalDevice &physicalDevice);
@@ -28,7 +23,7 @@ class SharedCompressedTexture : private ThreadSharedResource<ktxTexture2>
 
     void triggerTranscode(); 
 
-    void giveMeTranscodedImage(boost::unique_lock<boost::mutex> &lock, ktxTexture2 *&texture);
+    void giveMeTranscodedImage(ktxTexture2 *&texture);
 
     uint8_t getHeight() const;
     uint8_t getWidth() const;
@@ -43,6 +38,7 @@ class SharedCompressedTexture : private ThreadSharedResource<ktxTexture2>
     const std::string pathToFile;
     bool hasBeenTranscoded = false;
     ktx_transcode_fmt_e selectedTranscodeTargetFormat;
+    ktxTexture2 *m_compTexture{nullptr};
 
     static void GetSupportedCompressedTextureFormats(const vk::PhysicalDevice &physicalDevice,
                                                      std::vector<ktx_transcode_fmt_e> &availableFormats,

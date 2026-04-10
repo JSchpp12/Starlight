@@ -1,7 +1,8 @@
 #pragma once
-
 #include "starlight/core/WorkerPool.hpp"
-#include "starlight/policy/ListenForPrepForNextFramePolicy.hpp"
+#include "starlight/event/FrameComplete.hpp"
+#include "starlight/policy/command/ListenForGetFrameTracker.hpp"
+#include "starlight/policy/event/ListenForFrameComplete.hpp"
 #include "starlight/service/InitParameters.hpp"
 
 #include <star_common/EventBus.hpp>
@@ -9,7 +10,6 @@
 namespace star::service
 {
 class FrameInFlightControllerService
-    : private star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>
 {
   public:
     FrameInFlightControllerService();
@@ -28,17 +28,25 @@ class FrameInFlightControllerService
 
     void shutdown();
 
-    void cleanup(common::EventBus &eventBus);
+    void cleanup(common::EventBus &eventBus, core::CommandBus &cmdBus);
 
-  protected:
-    void onPrepForNextFrame(const event::PrepForNextFrame &event, bool &keepAlive);
+    void onGetFrameTracker(frames::GetFrameTracker &evt) const;
+
+    void onFrameComplete(const event::FrameComplete &event, bool &keepAlive);
 
   private:
-    friend class star::policy::ListenForPrepForNextFramePolicy<FrameInFlightControllerService>;
+    common::FrameTracker m_frameTracker;
+    star::policy::command::ListenForGetFrameTracker<FrameInFlightControllerService> m_getFT;
+    star::policy::event::ListenForFrameComplete<FrameInFlightControllerService> m_EOF;
+
     common::EventBus *m_deviceEventBus = nullptr;
-    common::FrameTracker *m_deviceFrameTracker = nullptr;
+    star::core::CommandBus *m_deviceCmdBus = nullptr;
 
     void initListeners(common::EventBus &eventBus);
+
+    void initListeners(core::CommandBus &cmdBus);
+
+    void cleanupListeners(core::CommandBus &cmdBus);
 
     uint8_t incrementNextFrameInFlight(const common::FrameTracker &frameTracker) const noexcept;
 };

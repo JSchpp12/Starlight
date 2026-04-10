@@ -73,7 +73,7 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForPrep() co
             .setImage(m_inUseInfo->targetImage)
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-            .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
             .setSrcAccessMask(vk::AccessFlagBits2::eNone)
             .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
             .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
@@ -81,13 +81,13 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForPrep() co
     else
     {
         barriers[0]
-            .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
+            .setOldLayout(vk::ImageLayout::eColorAttachmentOptimal)
             .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
             .setSubresourceRange(range)
             .setImage(m_inUseInfo->targetImage)
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-            .setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
             .setSrcAccessMask(vk::AccessFlagBits2::eNone)
             .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
             .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
@@ -112,7 +112,7 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForCleanup()
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
                 .setSrcAccessMask(vk::AccessFlagBits2::eTransferRead)
-                .setDstStageMask(vk::PipelineStageFlagBits2::eBottomOfPipe)
+                .setDstStageMask(vk::PipelineStageFlagBits2::eNone)
                 .setDstAccessMask(vk::AccessFlagBits2::eNone)};
 }
 

@@ -83,9 +83,11 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
 
     virtual void prepRender(common::IDeviceContext &c) override;
 
-    const std::vector<Handle> &getTimelineSemaphores() const
+    const Handle &getSemaphores(size_t index) const
     {
-        return m_timelineSemaphores;
+        assert(index < m_timelineSemaphores.size()); 
+
+        return m_timelineSemaphores[index];
     }
 
   private:
@@ -97,14 +99,14 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
     const star::core::device::manager::Image *m_imgMgr{nullptr};
     const star::core::CommandBus *m_cmdBus{nullptr};
 
-    //void applyPrePipelineBarriers(vk::CommandBuffer commandBuffer, const star::common::FrameTracker &ft) const;
+    // void applyPrePipelineBarriers(vk::CommandBuffer commandBuffer, const star::common::FrameTracker &ft) const;
 
     void waitForSemaphore(const common::FrameTracker &Ft) const;
 
     core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override;
 
     virtual void recordCommandBuffer(star::StarCommandBuffer &commandBuffer, const common::FrameTracker &ft,
-                                const uint64_t &frameIndex) override;
+                                     const uint64_t &frameIndex) override;
 
     vk::Semaphore submitBuffer(star::StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
                                std::vector<vk::Semaphore> *previousCommandBufferSemaphores,

@@ -117,11 +117,11 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
     {
         std::shared_ptr<StarScene> currentScene = m_application.loadScene(
             m_systemManager.getContext(m_defaultDevice),
-            m_systemManager.getContext(m_defaultDevice).getFrameTracker().getSetup().getNumFramesInFlight());
+            m_systemManager.getContext(m_defaultDevice).frameTracker().getSetup().getNumFramesInFlight());
 
         assert(currentScene && "Application must provide a proper instance of a scene object");
         currentScene->prepRender(m_systemManager.getContext(m_defaultDevice),
-                                 m_systemManager.getContext(m_defaultDevice).getFrameTracker().getSetup());
+                                 m_systemManager.getContext(m_defaultDevice).frameTracker().getSetup());
 
         m_systemManager.getContext(m_defaultDevice)
             .getEventBus()
@@ -139,15 +139,15 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             m_application.frameUpdate(m_systemManager);
             currentScene->frameUpdate(
                 m_systemManager.getContext(m_defaultDevice),
-                m_systemManager.getContext(m_defaultDevice).getFrameTracker().getCurrent().getFrameInFlightIndex());
+                m_systemManager.getContext(m_defaultDevice).frameTracker().getCurrent().getFrameInFlightIndex());
 
             ManagerRenderResource::frameUpdate(
                 m_systemManager.getContext(m_defaultDevice).getDeviceID(),
-                m_systemManager.getContext(m_defaultDevice).getFrameTracker().getCurrent().getFrameInFlightIndex());
+                m_systemManager.getContext(m_defaultDevice).frameTracker().getCurrent().getFrameInFlightIndex());
             vk::Semaphore allBuffersSubmitted =
                 m_systemManager.getContext(m_defaultDevice)
                     .getManagerCommandBuffer()
-                    .update(m_systemManager.getContext(m_defaultDevice).getFrameTracker());
+                    .update(m_systemManager.getContext(m_defaultDevice).frameTracker());
             m_systemManager.getContext(m_defaultDevice)
                 .getEventBus()
                 .emit(event::RenderReadyForFinalization(m_systemManager.getContext(m_defaultDevice).getDevice(),
@@ -155,7 +155,9 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
 
             this->m_systemManager.getContext(m_defaultDevice).getTransferWorker().update();
 
-            m_systemManager.getContext(m_defaultDevice).getEventBus().emit(star::event::FrameComplete{});
+
+            auto &evtBus = m_systemManager.getContext(m_defaultDevice).getEventBus();
+            evtBus.emit(star::event::FrameComplete{});
         }
 
         m_systemManager.getContext(m_defaultDevice).waitIdle();

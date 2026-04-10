@@ -115,24 +115,19 @@ void star::StarEntity::rotateRelative(star::Type::Axis axis, const float &amt, b
 void star::StarEntity::setForwardVector(const glm::vec3 &newForward)
 {
     glm::vec3 f = glm::normalize(newForward);
-    // RH, Y-up world up
     const glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
 
-    // Protect against parallel forward/up
     glm::vec3 u = worldUp;
     if (std::abs(glm::dot(f, worldUp)) > 0.9995f)
-    {
-        u = glm::vec3(0.0f, 0.0f, 1.0f); // fallback up if nearly parallel
-    }
+        u = glm::vec3(0.0f, 0.0f, 1.0f);
 
-    // RH orthonormal frame:
-    glm::vec3 r = glm::normalize(glm::cross(f, u)); // right = up � forward
-    u = glm::normalize(glm::cross(r, f));           // recompute exact up
+    glm::vec3 r = glm::normalize(glm::cross(u, f));   // was cross(f, u) — this is the key change
+    u = glm::normalize(glm::cross(f, r));
+
     rotationMat[0] = glm::vec4(r, 0.0f);
     rotationMat[1] = glm::vec4(u, 0.0f);
     rotationMat[2] = glm::vec4(f, 0.0f);
 }
-
 void star::StarEntity::rotateGlobal(Type::Axis axis, const float &amt, bool inDegrees)
 {
     float radians = 0.0f;
