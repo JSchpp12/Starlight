@@ -2,6 +2,7 @@
 
 #include "FileHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
+#include "starlight/core/Exceptions.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -47,6 +48,22 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
     star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
 
     core::logging::log(boost::log::trivial::info, "Done");
+
+    if (texture->baseHeight == 0)
+    {
+        const std::string msg =
+            "Transcoded compressed texture has a height which is 0: " + compressedTexture->getPathToFile();
+
+        STAR_THROW(msg);
+    }
+
+    if (texture->baseWidth == 0)
+    {
+        const std::string msg =
+            "Transcoded compressed texture has a width which is 0: " + compressedTexture->getPathToFile();
+
+        STAR_THROW(msg);
+    }
 
     return StarTextures::Texture::Builder(device, allocator)
         .setCreateInfo(
@@ -140,13 +157,32 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
             throw std::runtime_error("Failed to get image offset into compressed texture");
         }
 
+        const uint32_t width{texture->baseWidth >> i};
+        const uint32_t height{texture->baseHeight >> i};
+
+        if (width == 0)
+        {
+            const std::string msg = "Invalid layout when handling mip level: " + std::to_string(i) +
+                                    "Transcoded compressed texture has a width which is 0" +
+                                    compressedTexture->getPathToFile();
+            star::core::logging::warning(msg);
+        }
+
+        if (height == 0)
+        {
+            const std::string msg = "Invalid layout when handling mip level: " + std::to_string(i) +
+                                    "Transcoded compressed texture has a height which is 0" +
+                                    compressedTexture->getPathToFile();
+            star::core::logging::warning(msg);
+        }
+
         vk::BufferImageCopy copyRegion{};
         copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
         copyRegion.imageSubresource.mipLevel = i;
         copyRegion.imageSubresource.baseArrayLayer = 0;
         copyRegion.imageSubresource.layerCount = 1;
-        copyRegion.imageExtent.width = texture->baseWidth >> i;
-        copyRegion.imageExtent.height = texture->baseHeight >> i;
+        copyRegion.imageExtent.width = width;
+        copyRegion.imageExtent.height = height;
         copyRegion.imageExtent.depth = 1;
         copyRegion.bufferOffset = offset;
 
