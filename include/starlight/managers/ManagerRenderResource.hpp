@@ -123,12 +123,12 @@ class ManagerRenderResource : public StarManager
     static std::unordered_map<Handle, core::device::StarDevice *, star::HandleHash> devices;
     static std::unordered_map<
         Handle,
-        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 1000>>,
+        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 2000>>,
         star::HandleHash>
         textureStorage;
     static std::unordered_map<
         Handle,
-        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 2000>>,
+        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 3500>>,
         star::HandleHash>
         bufferStorage;
 
