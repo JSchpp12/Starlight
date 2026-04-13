@@ -6,8 +6,7 @@
 
 namespace star::service
 {
-SceneLoaderService::SceneLoaderService()
-    : m_objectTracker(), m_onCreate(*this), m_onSceneSave(*this)
+SceneLoaderService::SceneLoaderService() : m_objectTracker(), m_onCreate(*this), m_onSceneSave(*this)
 {
 }
 
@@ -42,6 +41,12 @@ SceneLoaderService &SceneLoaderService::operator=(SceneLoaderService &&other) no
 void SceneLoaderService::init()
 {
     assert(m_deviceCommandBus != nullptr);
+
+    {
+        const std::string msg = "Initializing scene loader service. Scene file: " +
+                                star::ConfigFile::getSetting(star::Config_Settings::scene_file);
+        star::core::logging::info(msg);
+    }
 
     registerCommands(*m_deviceCommandBus);
 }
@@ -82,15 +87,17 @@ void SceneLoaderService::onCreateObject(command::CreateObject &event)
 
     auto newObject = event.load();
     m_objectTracker.insert(std::make_pair(uniqueName, newObject));
-    
+
     auto file = scene_loader::SceneFile(star::ConfigFile::getSetting(star::Config_Settings::scene_file));
-    auto fileData = file.tryReadObjectInfo(uniqueName); 
+    auto fileData = file.tryReadObjectInfo(uniqueName);
     newObject->createInstance();
 
-    if (fileData.has_value()){
-        newObject->getInstance().setPosition(fileData.value().position); 
-        newObject->getInstance().setScale(fileData.value().scale); 
-        for (const auto &rot : fileData.value().rotationsToApply){
+    if (fileData.has_value())
+    {
+        newObject->getInstance().setPosition(fileData.value().position);
+        newObject->getInstance().setScale(fileData.value().scale);
+        for (const auto &rot : fileData.value().rotationsToApply)
+        {
             newObject->getInstance().rotateRelative(rot.first, rot.second, true);
         }
     }
@@ -101,7 +108,7 @@ void SceneLoaderService::onCreateObject(command::CreateObject &event)
 void SceneLoaderService::onSaveSceneState(command::SaveSceneState &event)
 {
     (void)event;
-    auto file = scene_loader::SceneFile(star::ConfigFile::getSetting(star::Config_Settings::scene_file)); 
+    auto file = scene_loader::SceneFile(star::ConfigFile::getSetting(star::Config_Settings::scene_file));
     file.write(m_objectTracker);
 }
 
