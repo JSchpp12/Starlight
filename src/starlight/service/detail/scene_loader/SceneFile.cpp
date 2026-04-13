@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <sstream>
 
 namespace star::service::scene_loader
 {
@@ -106,9 +105,7 @@ std::optional<SceneFile::LoadedObjectInfo> SceneFile::tryReadObjectInfo(const st
     // Load file
     std::ifstream ifs(m_path, std::ios::binary);
     if (!ifs)
-    {
-        return std::nullopt; // not found or not readable
-    }
+        return std::nullopt;
 
     nlohmann::json root;
     try

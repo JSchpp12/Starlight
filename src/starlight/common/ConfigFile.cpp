@@ -4,19 +4,14 @@
 #include "core/Exceptions.hpp"
 #include "logging/LoggingFactory.hpp"
 
-#include <star_common/helper/PathHelpers.hpp>
-
 #include <nlohmann/json.hpp>
 
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <memory>
 #include <sstream>
 
 using json = nlohmann::json;
-
-boost::mutex star::ConfigFile::mutex = boost::mutex();
 
 std::map<star::Config_Settings, std::string> star::ConfigFile::settings =
     std::map<star::Config_Settings, std::string>();
@@ -31,7 +26,8 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
                                                   star::Config_Settings::required_device_feature_shader_float64),
     std::make_pair("resolution_x", star::Config_Settings::resolution_x),
     std::make_pair("resolution_y", star::Config_Settings::resolution_y),
-    std::make_pair("tmp_dir", star::Config_Settings::tmp_directory)};
+    std::make_pair("tmp_dir", star::Config_Settings::tmp_directory),
+    std::make_pair("scene_file", star::Config_Settings::scene_file)};
 
 void star::ConfigFile::load(const std::string &configFilePath)
 {
@@ -84,12 +80,16 @@ void star::ConfigFile::load(const std::string &configFilePath)
                 const auto path = star::file_helpers::GetExecutableDirectory() / "tmp";
                 settings[setting.second] = path.string();
 
-                if (!std::filesystem::exists(path)){
-                    core::logging::info("Creating temporary data directory: " + path.string()); 
+                if (!std::filesystem::exists(path))
+                {
+                    core::logging::info("Creating temporary data directory: " + path.string());
                     std::filesystem::create_directories(path);
                 }
                 break;
             }
+            case Config_Settings::scene_file:
+                settings[setting.second] = "StarScene.json";
+                break;
             default:
                 STAR_THROW("Setting not found and has no available default: " + setting.first);
             }
@@ -99,8 +99,6 @@ void star::ConfigFile::load(const std::string &configFilePath)
 
 std::string star::ConfigFile::getSetting(Config_Settings setting)
 {
-    boost::unique_lock<boost::mutex> lock = boost::unique_lock<boost::mutex>(mutex);
-
     auto settingsRecord = settings.find(setting);
 
     if (settingsRecord != settings.end())
@@ -137,6 +135,9 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
         break;
     case (Config_Settings::tmp_directory):
         settingName = "tmp_directory";
+        break;
+    case (Config_Settings::scene_file): 
+        settingName = "scene_file";
         break;
     default:
         settingName = "UNKNOWN";

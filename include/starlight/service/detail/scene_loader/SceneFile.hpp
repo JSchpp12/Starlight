@@ -3,7 +3,6 @@
 #include "starlight/enums/Enums.hpp"
 #include "starlight/service/detail/scene_loader/SceneObjectTracker.hpp"
 
-#include <absl/container/flat_hash_map.h>
 #include <array>
 #include <glm/glm.hpp>
 #include <optional>

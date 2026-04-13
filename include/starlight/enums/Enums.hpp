@@ -62,7 +62,8 @@ namespace star {
 		required_device_feature_shader_float64,
         resolution_x, 
         resolution_y,
-        tmp_directory
+        tmp_directory,
+        scene_file
     };
 
     namespace Type {
