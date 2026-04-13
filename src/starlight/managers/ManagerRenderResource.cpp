@@ -6,11 +6,11 @@ auto star::ManagerRenderResource::highPriorityRequestCompleteFlags =
     std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>();
 auto star::ManagerRenderResource::bufferStorage = std::unordered_map<
     star::Handle,
-    std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 2000>>,
+    std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 3500>>,
     star::HandleHash>();
 auto star::ManagerRenderResource::textureStorage = std::unordered_map<
     star::Handle,
-    std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 1000>>,
+    std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 2000>>,
     star::HandleHash>();
 
 void star::ManagerRenderResource::init(const Handle &deviceID, star::core::device::StarDevice *device,
@@ -19,11 +19,11 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
     devices.insert(std::make_pair(deviceID, std::move(device)));
     bufferStorage.insert(std::make_pair(
         deviceID,
-        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 2000>>(
+        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 3500>>(
             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))));
     textureStorage.insert(std::make_pair(
         deviceID,
-        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 1000>>(
+        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 2000>>(
             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName))));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
