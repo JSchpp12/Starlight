@@ -70,7 +70,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/command/command_order/TriggerPass.cpp"
     "src/starlight/command/command_order/DeclareDependency.cpp"
     "src/starlight/command/command_order/GetPassInfo.cpp"
-    "src/starlight/command/detail/create_object/ObjectLoader.cpp"
+    "src/starlight/service/detail/scene_loader/ObjectReader.cpp"
     "src/starlight/command/detail/create_object/FromObjFileLoader.cpp"
     "src/starlight/command/detail/create_object/DirectObjCreation.cpp"
     "src/starlight/command/SaveSceneState.cpp"
@@ -167,7 +167,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/ListenForStartOfNextFramePolicy.cpp"
     "src/starlight/core/service/Service.cpp"
     "src/starlight/service/SceneLoaderService.cpp"
-    "src/starlight/service/detail/scene_loader/SceneFile.cpp"
     "src/starlight/service/detail/scene_loader/SceneObjectTracker.cpp"
     "src/starlight/service/FrameInFlightControllerService.cpp"
     "src/starlight/service/ScreenCapture.cpp"
@@ -268,7 +267,18 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/command/ListenForGetFrameTracker.cpp"
     "src/starlight/policy/event/ListenForFrameComplete.cpp"
     "src/starlight/policy/event/ListenForPrepForNextFrame.cpp"
- "src/starlight/core/graphics/GPUWorkSyncInfo.cpp")
+    "src/starlight/core/graphics/GPUWorkSyncInfo.cpp" 
+    "src/starlight/command/CreateLight.cpp" 
+    "src/starlight/policy/command/ListenForCreateLight.cpp" 
+    "src/starlight/service/detail/scene_loader/LightReader.cpp" 
+    "src/starlight/service/detail/scene_loader/ObjectReader.cpp"
+    "src/starlight/service/detail/scene_loader/IEntityReader.cpp" 
+    "src/starlight/service/detail/scene_loader/ObjectWriter.cpp"
+    "src/starlight/service/detail/scene_loader/LightWriter.cpp"
+    "src/starlight/service/detail/scene_loader/ObjectUtils.cpp"
+    "src/starlight/common/io/JSONFileWriter.cpp"
+    "src/starlight/common/entities/Light_json.cpp" 
+    "src/starlight/core/json/glm_json.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
@@ -390,7 +400,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/graphics/shader/BasicIncluder.hpp"
     "include/starlight/service/Service.hpp"
     "include/starlight/service/SceneLoaderService.hpp"
-    "include/starlight/service/detail/scene_loader/SceneFile.hpp"
     "include/starlight/service/detail/scene_loader/SceneObjectTracker.hpp"
     "include/starlight/service/FrameInFlightControllerService.hpp"
     "include/starlight/service/ScreenCapture.hpp"
