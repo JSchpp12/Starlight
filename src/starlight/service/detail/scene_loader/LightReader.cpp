@@ -6,7 +6,7 @@ namespace star::service::scene_loader
 {
 bool LightReader::canLoad(const nlohmann::json &lightData, const std::string &uniqueName) const noexcept
 {
-    return true;
+    return lightData.contains(uniqueName);
 }
 
 void LightReader::load(const nlohmann::json &lightDatas, const std::string &uniqueName, std::vector<Light> &light) const noexcept

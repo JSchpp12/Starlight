@@ -2,7 +2,66 @@
 
 #include "starlight/core/json/glm_json.hpp"
 
-void star::to_json(nlohmann::json &j, const Light &light)
+namespace star
+{
+void to_json(nlohmann::json &j, const Type::Light &t)
+{
+    switch (t)
+    {
+    case Type::Light::point:
+        j = "point";
+        break;
+    case Type::Light::directional:
+        j = "directional";
+        break;
+    case Type::Light::spot:
+        j = "spot";
+        break;
+    default:
+        j = "unknown";
+        break;
+    }
+}
+
+void from_json(const nlohmann::json &j, Type::Light &t)
+{
+    if (j.is_number_integer())
+    {
+        // Handle legacy integer values
+        switch (j.get<int>())
+        {
+        case 0:
+            t = Type::Light::point;
+            break;
+        case 1:
+            t = Type::Light::directional;
+            break;
+        case 2:
+            t = Type::Light::spot;
+            break;
+        default:
+            throw std::invalid_argument("Unknown Type::Light integer value: " + std::to_string(j.get<int>()));
+        }
+    }
+    else if (j.is_string())
+    {
+        const std::string s = j.get<std::string>();
+        if (s == "point")
+            t = Type::Light::point;
+        else if (s == "directional")
+            t = Type::Light::directional;
+        else if (s == "spot")
+            t = Type::Light::spot;
+        else
+            throw std::invalid_argument("Unknown Type::Light string value: " + s);
+    }
+    else
+    {
+        throw nlohmann::json::type_error::create(302, "Type::Light must be a string or integer", &j);
+    }
+}
+
+void to_json(nlohmann::json &j, const Light &light)
 {
     j = nlohmann::json{// StarEntity base field
                        {"position", light.getPosition()},
@@ -19,7 +78,7 @@ void star::to_json(nlohmann::json &j, const Light &light)
                        {"enabled", light.getEnabled()}};
 }
 
-void star::from_json(const nlohmann::json &j, Light &light)
+void from_json(const nlohmann::json &j, Light &light)
 {
     // StarEntity base field
     if (j.contains("position"))
@@ -53,3 +112,5 @@ void star::from_json(const nlohmann::json &j, Light &light)
     if (j.contains("enabled"))
         light.setEnabled(j.at("enabled").get<bool>());
 }
+
+} // namespace star

@@ -192,7 +192,7 @@ void SceneLoaderService::onCreateLight(star::command::CreateLight &cmd)
             const auto &lData = sData["Lights"];
 
             const scene_loader::LightReader reader;
-            if (reader.canLoad(name, lData))
+            if (reader.canLoad(lData, name))
             {
                 result = command::create_light::success;
                 reader.load(lData, name, *newLight);
