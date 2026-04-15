@@ -182,7 +182,16 @@ void star::job::TransferManagerThread::CreateBuffer(
                                 .setPSignalSemaphoreInfos(&signalInfo)
                                 .setSignalSemaphoreInfoCount(1);
 
-     queue.getVulkanQueue().submit2(submitInfo, processInfo.commandBuffer->getFence(0));
+    try
+    {
+        queue.getVulkanQueue().submit2(submitInfo, processInfo.commandBuffer->getFence(0));
+    }
+    catch (const vk::Error &e)
+    {
+        std::ostringstream oss;
+        oss << "Vulkan error encountered while submitting queue. Terminating. " << e.what();
+        STAR_THROW(oss.str());
+    }
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
@@ -219,7 +228,16 @@ void star::job::TransferManagerThread::CreateTexture(vk::Device &device, VmaAllo
 
     processInfo.commandBuffer->buffer(0).end();
     auto signalSemaphores = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
-    processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, nullptr, &signalSemaphores);
+    try
+    {
+        processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, nullptr, &signalSemaphores);
+    }
+    catch (const vk::Error &e)
+    {
+        std::ostringstream oss;
+        oss << "Vulkan error encountered while submitting queue. Terminating. " << e.what();
+        STAR_THROW(oss.str());
+    }
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
