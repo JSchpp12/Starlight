@@ -18,12 +18,13 @@ namespace star
 class StarCommandBuffer
 {
   public:
+    StarCommandBuffer() = default;
     StarCommandBuffer(const StarCommandBuffer &) = delete;
     StarCommandBuffer &operator=(const StarCommandBuffer &) = delete;
     StarCommandBuffer(StarCommandBuffer &&) = default;
     StarCommandBuffer &operator=(StarCommandBuffer &&) = default;
 
-    StarCommandBuffer(vk::Device &device, int numBuffersToCreate, const StarCommandPool *parentPool,
+    StarCommandBuffer(vk::Device device, int numBuffersToCreate, const StarCommandPool *parentPool,
                       const Queue_Type type, bool initFences, bool initSemaphores);
 
     ~StarCommandBuffer();
@@ -75,7 +76,7 @@ class StarCommandBuffer
     /// </summary>
     std::vector<vk::Semaphore> &getCompleteSemaphores();
 
-    vk::CommandBuffer &buffer(const size_t &buffIndex = 0)
+    vk::CommandBuffer &buffer(size_t buffIndex = 0)
     {
         assert(buffIndex < commandBuffers.size());
         return commandBuffers[buffIndex];
@@ -94,6 +95,9 @@ class StarCommandBuffer
 
     void wait(int bufferIndex = 0);
 
+    void prepRender(vk::Device vulkanDevice, const StarCommandPool *parentPool, int numBuffersToCreate, bool initFences,
+                    bool initSemaphores);
+
     Queue_Type getType() const
     {
         return this->type;
@@ -105,15 +109,15 @@ class StarCommandBuffer
     }
 
   protected:
-    vk::Device vulkanDevice = VK_NULL_HANDLE;
-    Queue_Type type;
-    const StarCommandPool *parentPool = nullptr;
-    StarCommandBuffer *mustWaitFor = nullptr;
-
     std::vector<vk::CommandBuffer> commandBuffers;
     std::vector<vk::Semaphore> completeSemaphores;
     std::vector<vk::Fence> readyFence;
     std::vector<std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>>> waitSemaphores;
+
+    vk::Device vulkanDevice{VK_NULL_HANDLE};
+    const StarCommandPool *parentPool = nullptr;
+    StarCommandBuffer *mustWaitFor = nullptr;
+    Queue_Type type;
 
     bool recorded = false;
 

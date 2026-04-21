@@ -2,10 +2,15 @@
 
 #include <star_common/helper/CastHelpers.hpp>
 
-star::StarCommandBuffer::StarCommandBuffer(vk::Device &vulkanDevice, int numBuffersToCreate,
-                                           const StarCommandPool *parentPool, const star::Queue_Type type,
-                                           bool initFences, bool initSemaphores)
-    : vulkanDevice(vulkanDevice), parentPool(parentPool), type(type)
+star::StarCommandBuffer::StarCommandBuffer(vk::Device device, int numBuffersToCreate, const StarCommandPool *parentPool,
+                                           const Queue_Type type, bool initFences, bool initSemaphores)
+    : vulkanDevice(device), parentPool(parentPool), type(type)
+{
+    prepRender(device, parentPool, numBuffersToCreate, initFences, initSemaphores);
+}
+
+void star::StarCommandBuffer::prepRender(vk::Device vulkanDevice, const StarCommandPool *parentPool,
+                                         int numBuffersToCreate, bool initFences, bool initSemaphores)
 {
     this->waitSemaphores.resize(numBuffersToCreate);
     vk::CommandBufferAllocateInfo allocateInfo = vk::CommandBufferAllocateInfo()
@@ -13,7 +18,7 @@ star::StarCommandBuffer::StarCommandBuffer(vk::Device &vulkanDevice, int numBuff
                                                      .setLevel(vk::CommandBufferLevel::ePrimary)
                                                      .setCommandBufferCount(static_cast<uint32_t>(numBuffersToCreate));
 
-    this->commandBuffers = this->vulkanDevice.allocateCommandBuffers(allocateInfo);
+    this->commandBuffers = vulkanDevice.allocateCommandBuffers(allocateInfo);
 
     if (initFences)
         createFences();

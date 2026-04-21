@@ -129,12 +129,12 @@ void SceneLoaderService::onCreateObject(command::CreateObject &event)
         }
         else
         {
-            star::core::logging::info("Requested object key does not exist in scene file : " + uniqueName);
+            star::core::logging::warning("Requested object key does not exist in scene file : " + uniqueName);
         }
     }
     else
     {
-        star::core::logging::info("Provided scene file is not valid: " +
+        star::core::logging::warning("Provided scene file is not valid: " +
                                   star::ConfigFile::getSetting(star::Config_Settings::scene_file));
     }
 
