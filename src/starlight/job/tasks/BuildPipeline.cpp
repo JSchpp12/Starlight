@@ -1,7 +1,6 @@
 #include "job/tasks/BuildPipeline.hpp"
 
-#include "complete_tasks/TaskFactory.hpp"
-
+#include "starlight/job/complete_tasks/BuildPipeline.hpp"
 namespace star::job::tasks::build_pipeline
 {
 
@@ -19,7 +18,7 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateBuildComplete(void 
     assert(p->pipeline && "Pipeline not a valid object in the payload");
 
     return std::make_optional<complete_tasks::CompleteTask>(
-        job::complete_tasks::task_factory::CreateBuildPipelineComplete(p->handleID, std::move(p->pipeline)));
+        job::complete_tasks::CreateBuildPipelineComplete(p->handleID, std::move(p->pipeline)));
 }
 
 BuildPipelineTask CreateBuildPipeline(vk::Device device, Handle handle, StarPipeline::RenderResourceDependencies deps,
