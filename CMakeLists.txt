@@ -277,7 +277,10 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/detail/scene_loader/ObjectUtils.cpp"
     "src/starlight/common/io/JSONFileWriter.cpp"
     "src/starlight/common/entities/Light_json.cpp" 
-    "src/starlight/core/json/glm_json.cpp" "src/starlight/event/PipelineReady.cpp")
+    "src/starlight/core/json/glm_json.cpp" 
+    "src/starlight/event/PipelineReady.cpp" 
+    "src/starlight/core/waiter/one_shot/WaiterFactory.cpp" 
+    "src/starlight/core/waiter/one_shot/detail/CachedPipelinePayload.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 

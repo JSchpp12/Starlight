@@ -35,6 +35,7 @@ template <typename T, typename TEvent> class GenericEvent : public std::enable_s
         star::common::EventBus &m_evtBus;
         std::optional<T> m_payload{std::nullopt};
     };
+
     /// <summary>
     /// Captures shared_from_this() into the event bus callback.
     /// The event bus is the sole owner after this call.
