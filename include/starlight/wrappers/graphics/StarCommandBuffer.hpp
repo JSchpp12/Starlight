@@ -23,6 +23,10 @@ class StarCommandBuffer
     StarCommandBuffer &operator=(const StarCommandBuffer &) = delete;
     StarCommandBuffer(StarCommandBuffer &&) = default;
     StarCommandBuffer &operator=(StarCommandBuffer &&) = default;
+    bool operator!() const noexcept
+    {
+        return commandBuffers.size() == 0;
+    }
 
     StarCommandBuffer(vk::Device device, int numBuffersToCreate, const StarCommandPool *parentPool,
                       const Queue_Type type, bool initFences, bool initSemaphores);

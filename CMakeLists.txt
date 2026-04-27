@@ -4,6 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
+    VERSION 1.0.1
 )
 
 include(CheckIncludeFile)
@@ -238,7 +239,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/job/TransferWorker.cpp"
     "src/starlight/job/TaskContainer.cpp"
     "src/starlight/job/complete_tasks/CompleteTask.cpp"
-    "src/starlight/job/complete_tasks/TaskFactory.cpp"
     "src/starlight/job/complete_tasks/BuildPipeline.cpp"
     "src/starlight/job/complete_tasks/CompileShader.cpp"
     "src/starlight/job/tasks/Task.cpp"
@@ -278,7 +278,10 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/detail/scene_loader/ObjectUtils.cpp"
     "src/starlight/common/io/JSONFileWriter.cpp"
     "src/starlight/common/entities/Light_json.cpp" 
-    "src/starlight/core/json/glm_json.cpp")
+    "src/starlight/core/json/glm_json.cpp" 
+    "src/starlight/event/PipelineReady.cpp" 
+    "src/starlight/core/waiter/one_shot/WaiterFactory.cpp" 
+    "src/starlight/core/waiter/one_shot/detail/CachedPipelinePayload.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
@@ -453,7 +456,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
     "include/starlight/job/TaskContainer.hpp"
     "include/starlight/job/complete_tasks/CompleteTask.hpp"
-    "include/starlight/job/complete_tasks/TaskFactory.hpp"
     "include/starlight/job/complete_tasks/BuildPipeline.hpp"
     "include/starlight/job/complete_tasks/CompileShader.hpp"
     "include/starlight/job/tasks/Task.hpp"

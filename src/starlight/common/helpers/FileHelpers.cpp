@@ -109,7 +109,18 @@ std::string GetFileExtension(std::string_view pathToFile)
 
 std::string GetFullPath(const std::string &pathToFile)
 {
-    return std::filesystem::canonical(std::filesystem::path(pathToFile)).string();
+    try
+    {
+        return std::filesystem::canonical(std::filesystem::path(pathToFile)).string();
+    }
+    catch (const std::runtime_error& e)
+    {
+        std::ostringstream oss; 
+        oss << "An error ocurred while compiling full path for file. The following message was provided: " << e.what();
+        STAR_THROW(oss.str());
+    }
+
+    return ""; 
 }
 
 std::string GetFileNameWithoutExtension(const std::string &pathToFile)

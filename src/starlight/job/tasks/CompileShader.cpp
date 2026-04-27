@@ -1,7 +1,6 @@
 #include "job/tasks/CompileShader.hpp"
 
 #include "job/complete_tasks/CompileShader.hpp"
-#include "job/complete_tasks/TaskFactory.hpp"
 #include "logging/LoggingFactory.hpp"
 
 namespace star::job::tasks::compile_shader

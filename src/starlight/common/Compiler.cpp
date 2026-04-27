@@ -7,11 +7,13 @@
 namespace star
 {
 
-#ifdef NDEBUG
-bool Compiler::compileDebug = false;
-#else
+// #ifdef NDEBUG
+// bool Compiler::compileDebug = false;
+// #else
+// bool Compiler::compileDebug = true;
+// #endif
+
 bool Compiler::compileDebug = true;
-#endif
 
 std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool optimize)
 {
@@ -72,7 +74,7 @@ std::string Compiler::preprocessShader(shaderc::Compiler &compiler, shaderc::Com
 
     if (result.GetCompilationStatus() != shaderc_compilation_status_success)
     {
-        std::ostringstream oss; 
+        std::ostringstream oss;
         oss << "Failed to preprocess shader with error: " << result.GetErrorMessage();
         STAR_THROW(oss.str());
     }
