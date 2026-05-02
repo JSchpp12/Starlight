@@ -5,6 +5,11 @@ namespace glm
 
 // ---- to_json ----
 
+void to_json(nlohmann::json &j, const glm::dvec2 &v)
+{
+    j = nlohmann::json{{"x", v.x}, {"y", v.y}};
+}
+
 void to_json(nlohmann::json &j, const glm::vec2 &v)
 {
     j = nlohmann::json{{"x", v.x}, {"y", v.y}};
@@ -37,6 +42,12 @@ void to_json(nlohmann::json &j, const glm::mat4 &m)
 }
 
 // ---- from_json ----
+
+void from_json(const nlohmann::json &j, glm::dvec2 &v)
+{
+    j.at("x").get_to(v.x);
+    j.at("y").get_to(v.y);
+}
 
 void from_json(const nlohmann::json &j, glm::vec2 &v)
 {
