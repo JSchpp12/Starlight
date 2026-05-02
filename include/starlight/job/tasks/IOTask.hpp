@@ -2,6 +2,7 @@
 
 #include "job/tasks/Task.hpp"
 
+#include <filesystem>
 #include <functional>
 #include <future>
 #include <string_view>
@@ -12,37 +13,29 @@ inline static constexpr std::string_view IOTaskName = "star::job::tasks::io";
 
 template <class TFn> struct WritePayload
 {
-    std::string filePath;
+    std::filesystem::path filePath;
     TFn writeFunction;
-
-    WritePayload() = default;
-    WritePayload(std::string filePath, TFn writeFunction)
-        : filePath(std::move(filePath)), writeFunction(std::move(writeFunction))
-    {
-    }
 
     int operator()()
     {
-        return std::invoke(writeFunction, filePath);
+        star::core::logging::info("Starting file write: " + filePath.string()); 
+        auto result = std::invoke(writeFunction, filePath);
+        star::core::logging::info("Done file write: " + filePath.string());
+
+        return result;
     }
 };
 
 template <class TFn> struct ReadPayload
 {
-    std::string filePath;
+    std::filesystem::path filePath;
     TFn readFunction;
-
-    ReadPayload() = default;
-    ReadPayload(std::string filePath, TFn readFunction)
-        : filePath(std::move(filePath)), readFunction(std::move(readFunction))
-    {
-    }
 
     int operator()()
     {
-        star::core::logging::info("Starting file read: " + filePath);
+        star::core::logging::info("Starting file read: " + filePath.string());
         auto result = std::invoke(readFunction, filePath);
-        star::core::logging::info("Done reading file: " + filePath);
+        star::core::logging::info("Done reading file: " + filePath.string());
 
         return result;
     }
