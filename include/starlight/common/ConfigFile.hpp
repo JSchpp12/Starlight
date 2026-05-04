@@ -2,22 +2,34 @@
 
 #include "enums/Enums.hpp"
 
-#include <string> 
+#include <filesystem>
 #include <map>
+#include <string>
+
+namespace star::config {
+struct ConfigReader;
+} // namespace star::config
 
 namespace star {
-    class ConfigFile {
-    public:
-        ConfigFile() = default; 
-        ~ConfigFile() = default;
 
-        static void load(const std::string& configFilePath); 
+class ConfigFile {
+public:
+    ConfigFile() = default;
+    ~ConfigFile() = default;
 
-        static std::string getSetting(Config_Settings setting); 
+    /// Load config from disk (for simple use cases without I/O threading)
+    static void load(const std::filesystem::path &configPath);
 
-    private:
-        static std::map<Config_Settings, std::string> settings;
+    /// Load config from a pre-read raw map (e.g. from your I/O thread)
+    static void load(const std::map<std::string, std::string> &rawValues);
 
-        static std::map<std::string, Config_Settings> availableSettings; 
-    };
-}
+    static std::string getSetting(Config_Settings setting);
+
+private:
+    /// Applies defaults for any missing keys into `m_settings`
+    static void applyDefaults(std::map<std::string, std::string> values);
+
+    static std::map<Config_Settings, std::string> settings;
+    static std::map<std::string, Config_Settings> availableSettings;
+};
+} // namespace star

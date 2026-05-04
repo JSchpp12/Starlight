@@ -14,6 +14,8 @@
 #include "starlight/service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 #include "starlight/service/detail/screen_capture/WorkerControllerPolicies.hpp"
 
+#include <string>
+
 #include <star_common/helper/CastHelpers.hpp>
 
 namespace star::policy
@@ -85,9 +87,20 @@ std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAddition
 
 service::Service DefaultEngineInitPolicy::createScreenCaptureService()
 {
+    uint32_t maxWorkers{0};
+    {
+        auto workerCountStr = star::ConfigFile::getSetting(star::Config_Settings::max_image_worker_count);
+        int parsed = std::stoi(workerCountStr);
+        if (!star::common::casts::SafeCast(parsed, maxWorkers))
+        {
+            STAR_THROW("Failed to parse config setting max_image_worker_count");
+        }
+    }
+
     return service::Service{service::ScreenCapture{service::detail::screen_capture::WorkerControllerPolicy{},
                                                    service::detail::screen_capture::DefaultCreatePolicy{},
-                                                   service::detail::screen_capture::DefaultCopyPolicy{}}};
+                                                   service::detail::screen_capture::DefaultCopyPolicy{},
+                                                   maxWorkers}};
 }
 
 service::Service DefaultEngineInitPolicy::createIOService()

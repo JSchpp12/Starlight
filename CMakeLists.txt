@@ -211,6 +211,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/common/objects/Grid.cpp"
     "src/starlight/common/objects/StarObjectInstance.cpp"
     "src/starlight/common/ConfigFile.cpp"
+    "src/starlight/common/ConfigReader.cpp"
     "src/starlight/common/buffers/TransferRequest_GlobalInfo.cpp"
     "src/starlight/common/buffers/TransferRequest_InstanceModelInfo.cpp"
     "src/starlight/common/buffers/TransferRequest_InstanceNormalInfo.cpp"
