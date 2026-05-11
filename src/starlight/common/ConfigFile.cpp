@@ -1,13 +1,16 @@
 #include "ConfigFile.hpp"
 
 #include "common/ConfigReader.hpp"
-
 #include "common/helpers/FileHelpers.hpp"
 #include "core/Exceptions.hpp"
 #include "logging/LoggingFactory.hpp"
 
+#include <star_common/helper/CastHelpers.hpp>
+
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <stdexcept>
+#include <string_view>
 
 using json = nlohmann::json;
 
@@ -86,6 +89,18 @@ void star::ConfigFile::applyDefaults(std::map<std::string, std::string> values)
             case Config_Settings::max_image_worker_count:
                 settings[configKey] = "8";
                 break;
+            case Config_Settings::resolution_x:
+                settings[configKey] = "1920";
+                break;
+            case Config_Settings::resolution_y:
+                settings[configKey] = "1080";
+                break;
+            case Config_Settings::app_name:
+                settings[configKey] = "Starlight App";
+                break;
+            case Config_Settings::required_device_feature_shader_float64:
+                settings[configKey] = "true";
+                break;
             default:
                 STAR_THROW("Setting not found and has no available default: " + jsonKey);
             }
@@ -145,4 +160,81 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
     std::ostringstream oss;
     oss << "Setting not found: " << name << std::endl;
     STAR_THROW(oss.str());
+}
+
+namespace
+{
+    uint32_t parseUint32(std::string_view value)
+    {
+        auto v = std::string(value);
+        int parsed = std::stoi(v);
+        if (parsed < 0)
+        {
+            return 0;
+        }
+        uint32_t result;
+        if (!star::common::casts::SafeCast(parsed, result))
+        {
+            return 0;
+        }
+        return result;
+    }
+
+    int parseInt(std::string_view value)
+    {
+        return std::stoi(std::string(value));
+    }
+
+    double parseDouble(std::string_view value)
+    {
+        return std::stod(std::string(value));
+    }
+} // namespace
+
+uint32_t star::ConfigFile::getUint32(Config_Settings setting, uint32_t defaultVal)
+{
+    try
+    {
+        return parseUint32(getSetting(setting));
+    }
+    catch (const std::exception &)
+    {
+        return defaultVal;
+    }
+}
+
+int star::ConfigFile::getInt(Config_Settings setting, int defaultVal)
+{
+    try
+    {
+        return parseInt(getSetting(setting));
+    }
+    catch (const std::exception &)
+    {
+        return defaultVal;
+    }
+}
+
+double star::ConfigFile::getDouble(Config_Settings setting, double defaultVal)
+{
+    try
+    {
+        return parseDouble(getSetting(setting));
+    }
+    catch (const std::exception &)
+    {
+        return defaultVal;
+    }
+}
+
+std::string star::ConfigFile::getString(Config_Settings setting, std::string_view defaultVal)
+{
+    try
+    {
+        return getSetting(setting);
+    }
+    catch (const std::exception &)
+    {
+        return std::string(defaultVal);
+    }
 }
