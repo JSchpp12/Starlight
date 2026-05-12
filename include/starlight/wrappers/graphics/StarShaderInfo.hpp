@@ -123,7 +123,7 @@ class StarShaderInfo
         core::device::StarDevice &device;
         StarDescriptorPool &m_pool;
         StarDescriptorSetLayout &setLayout;
-        std::vector<size_t> m_pendingBuildIndices; 
+        std::vector<size_t> m_pendingBuildIndices;
         bool setNeedsRebuild = true;
         bool isBuilt = false;
         std::shared_ptr<vk::DescriptorSet> descriptorSet = std::shared_ptr<vk::DescriptorSet>();
@@ -195,9 +195,11 @@ class StarShaderInfo
 
     bool isReady(uint8_t frameInFlight);
 
-    void setNewResource(size_t frameInFlightIndex, size_t setIndex, size_t bindingIndex, TextureInfo texture); 
+    void setNewResource(size_t setIndex, size_t bindingIndex, TextureInfo texture,
+                        std::optional<size_t> frameInFlightIndex = std::nullopt);
 
-    void setNewResource(size_t frameInFlightIndex, size_t setIndex, size_t bindingIndex, BufferInfo buffer);
+    void setNewResource(size_t setIndex, size_t bindingIndex, BufferInfo buffer,
+                        std::optional<size_t> frameInFlightIndex = std::nullopt);
 
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 

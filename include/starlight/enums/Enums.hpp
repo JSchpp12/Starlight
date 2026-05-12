@@ -63,7 +63,8 @@ namespace star {
         resolution_x, 
         resolution_y,
         tmp_directory,
-        scene_file
+        scene_file,
+        max_image_worker_count
     };
 
     namespace Type {

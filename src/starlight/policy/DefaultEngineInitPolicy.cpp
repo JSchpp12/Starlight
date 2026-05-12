@@ -14,6 +14,8 @@
 #include "starlight/service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 #include "starlight/service/detail/screen_capture/WorkerControllerPolicies.hpp"
 
+#include <string>
+
 #include <star_common/helper/CastHelpers.hpp>
 
 namespace star::policy
@@ -37,25 +39,9 @@ star::core::device::StarDevice star::policy::DefaultEngineInitPolicy::createNewD
 
 vk::Extent2D star::policy::DefaultEngineInitPolicy::getEngineRenderingResolution()
 {
-    uint32_t width;
-    {
-        int w{std::stoi(star::ConfigFile::getSetting(Config_Settings::resolution_x))};
-        if (!star::common::casts::SafeCast(w, width))
-        {
-            STAR_THROW("Failed to parse and process config setting resolution_x");
-        }
-    }
-
-    uint32_t height;
-    {
-        int h{std::stoi(star::ConfigFile::getSetting(Config_Settings::resolution_y))};
-        if (!star::common::casts::SafeCast(h, height))
-        {
-            STAR_THROW("Failed to parse and process config settings resolution_y");
-        }
-    }
-
-    return vk::Extent2D().setWidth(width).setHeight(height);
+    return vk::Extent2D()
+        .setWidth(static_cast<uint32_t>(star::ConfigFile::getInt(Config_Settings::resolution_x, 1920)))
+        .setHeight(static_cast<uint32_t>(star::ConfigFile::getInt(Config_Settings::resolution_y, 1080)));
 }
 
 common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFlightTrackingSetup(
@@ -85,9 +71,13 @@ std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAddition
 
 service::Service DefaultEngineInitPolicy::createScreenCaptureService()
 {
-    return service::Service{service::ScreenCapture{service::detail::screen_capture::WorkerControllerPolicy{},
-                                                   service::detail::screen_capture::DefaultCreatePolicy{},
-                                                   service::detail::screen_capture::DefaultCopyPolicy{}}};
+    uint32_t maxWorkers = star::ConfigFile::getUint32(star::Config_Settings::max_image_worker_count, 8);
+
+    return service::Service{service::ScreenCapture{
+        service::detail::screen_capture::WorkerControllerPolicy{},
+        service::detail::screen_capture::DefaultCreatePolicy{},
+        service::detail::screen_capture::DefaultCopyPolicy{},
+        maxWorkers}};
 }
 
 service::Service DefaultEngineInitPolicy::createIOService()
@@ -97,7 +87,8 @@ service::Service DefaultEngineInitPolicy::createIOService()
 
 service::Service DefaultEngineInitPolicy::createSceneLoaderService()
 {
-    return service::Service{service::SceneLoaderService()};
+    return service::Service{service::SceneLoaderService(star::ConfigFile::getString(
+        star::Config_Settings::scene_file, "default_scene"))};
 }
 
 service::Service DefaultEngineInitPolicy::createFrameInFlightControllerService()

@@ -7,13 +7,11 @@
 namespace star
 {
 
-// #ifdef NDEBUG
-// bool Compiler::compileDebug = false;
-// #else
-// bool Compiler::compileDebug = true;
-// #endif
-
+#ifdef NDEBUG
+bool Compiler::compileDebug = false;
+#else
 bool Compiler::compileDebug = true;
+#endif
 
 std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool optimize)
 {

@@ -29,10 +29,11 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
     BusyWaitTaskHandlingPolicy &operator=(const BusyWaitTaskHandlingPolicy &&) = delete;
     BusyWaitTaskHandlingPolicy(BusyWaitTaskHandlingPolicy &&) = default;
     BusyWaitTaskHandlingPolicy &operator=(BusyWaitTaskHandlingPolicy &&) = default;
-    virtual ~BusyWaitTaskHandlingPolicy() {
+    virtual ~BusyWaitTaskHandlingPolicy()
+    {
         if (thread.joinable())
         {
-            stopThread(); 
+            stopThread();
         }
     };
 
@@ -91,7 +92,8 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
         logStart(m_workerName);
 
         bool run = m_shouldRun->load();
-        while (run)
+
+        while (true)
         {
             std::optional<TTask> task = m_tasks->getQueuedTask();
 
@@ -104,17 +106,19 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
                 {
                     m_completeMessages->queueTask(std::move(message.value()));
                 }
-            }
-            else
-            {
-                wait();
+
+                continue;
             }
 
-            if (!m_shouldRun->load() &&
-                (!m_waitForWorkToFinishBeforeExiting || (m_waitForWorkToFinishBeforeExiting && m_tasks->empty())))
+            if (!m_shouldRun->load())
             {
-                run = false;
+                if (!m_waitForWorkToFinishBeforeExiting || m_tasks->empty())
+                {
+                    break;
+                }
             }
+
+            wait();
         }
 
         logStop(m_workerName);

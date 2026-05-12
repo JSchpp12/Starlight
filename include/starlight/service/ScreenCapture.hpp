@@ -65,10 +65,11 @@ class ScreenCapture
 {
   public:
     ScreenCapture(TWorkerControllerPolicy workerPolicy, TCreateDependenciesPolicy createDependenciesPolicy,
-                  TCopyPolicy copyPolicy)
+                  TCopyPolicy copyPolicy, uint32_t workerCount)
         : m_getSync(*this), m_workerPolicy(std::move(workerPolicy)),
           m_createDependenciesPolicy(std::move(createDependenciesPolicy)), m_copyPolicy(std::move(copyPolicy)),
-          m_calleeDependencyTracker(star::service::detail::screen_capture::common::ScreenCaptureServiceCalleeTypeName)
+          m_calleeDependencyTracker(star::service::detail::screen_capture::common::ScreenCaptureServiceCalleeTypeName),
+          m_numWorkers(workerCount)
     {
     }
     ScreenCapture(const ScreenCapture &) = delete;
@@ -79,7 +80,7 @@ class ScreenCapture
           m_copyPolicy(std::move(other.m_copyPolicy)),
           m_calleeDependencyTracker(std::move(other.m_calleeDependencyTracker)),
           m_subscriberHandle(std::move(other.m_subscriberHandle)), m_actionRouter(std::move(other.m_actionRouter)),
-          m_deviceInfo(std::move(other.m_deviceInfo))
+          m_deviceInfo(std::move(other.m_deviceInfo)), m_numWorkers(other.m_numWorkers)
     {
         if (m_deviceInfo.cmdBus != nullptr)
         {
@@ -112,18 +113,18 @@ class ScreenCapture
     {
         size_t numToCreate = 0;
 
-        const int goal = pool.getNumAvailableWorkers() - 2;
+        const size_t goal = m_numWorkers;
         {
             std::string msg = "Num workers for image capture: " + std::to_string(goal);
             star::core::info(msg);
         }
 
-        if (goal < 0)
+        if (goal == 0)
         {
-            STAR_THROW("Not enough available workers to create screen capture service");
+            STAR_THROW("No workers configured for image capture service");
         }
 
-        for (int i{0}; i < goal; i++)
+        for (size_t i{0}; i < goal; i++)
         {
             if (pool.allocateWorker())
             {
@@ -192,6 +193,7 @@ class ScreenCapture
     Handle m_subscriberHandle;
     detail::screen_capture::CopyRouter m_actionRouter;
     detail::screen_capture::DeviceInfo m_deviceInfo;
+    uint32_t m_numWorkers;
 
     void registerNewDependencyPass(const Handle &copyCmdBuffer, const Handle &targetCmdBuffer) const noexcept {
         m_deviceInfo.cmdBus->submit(star::command_order::DeclareDependency{targetCmdBuffer, copyCmdBuffer});

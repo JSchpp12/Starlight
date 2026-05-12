@@ -12,13 +12,12 @@ namespace star::service
 class SceneLoaderService
 {
   public:
-    SceneLoaderService();
+    explicit SceneLoaderService(std::string sceneFilePath);
     SceneLoaderService(const SceneLoaderService &) = delete;
     SceneLoaderService &operator=(const SceneLoaderService &) = delete;
     SceneLoaderService(SceneLoaderService &&other) noexcept;
     SceneLoaderService &operator=(SceneLoaderService &&other) noexcept;
     ~SceneLoaderService() = default;
-
     void negotiateWorkers(core::WorkerPool &pool, job::TaskManager &tm)
     {
     }
@@ -38,6 +37,7 @@ class SceneLoaderService
     void onCreateLight(command::CreateLight &cmd);
 
   private:
+    std::string m_sceneFilePath;
     absl::flat_hash_map<std::string, std::shared_ptr<StarObject>> m_objectTracker;
     absl::flat_hash_map<std::string, std::shared_ptr<std::vector<star::Light>>> m_lightTracker;
     policy::ListenForCreateObject<SceneLoaderService> m_onCreate;

@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.0.2
+    VERSION 1.0.4
 )
 
 include(CheckIncludeFile)
@@ -211,6 +211,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/common/objects/Grid.cpp"
     "src/starlight/common/objects/StarObjectInstance.cpp"
     "src/starlight/common/ConfigFile.cpp"
+    "src/starlight/common/ConfigReader.cpp"
     "src/starlight/common/buffers/TransferRequest_GlobalInfo.cpp"
     "src/starlight/common/buffers/TransferRequest_InstanceModelInfo.cpp"
     "src/starlight/common/buffers/TransferRequest_InstanceNormalInfo.cpp"
