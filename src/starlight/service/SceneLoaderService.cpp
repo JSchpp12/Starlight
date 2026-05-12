@@ -19,8 +19,8 @@ SceneLoaderService::SceneLoaderService(std::string sceneFilePath)
 }
 
 SceneLoaderService::SceneLoaderService(SceneLoaderService &&other) noexcept
-    : m_sceneFilePath(std::move(other.m_sceneFilePath)), m_objectTracker(std::move(other.m_objectTracker)), m_onCreate(*this), m_onSceneSave(*this),
-      m_onCreateLight(*this), m_deviceCommandBus(other.m_deviceCommandBus)
+    : m_sceneFilePath(std::move(other.m_sceneFilePath)), m_objectTracker(std::move(other.m_objectTracker)),
+      m_onCreate(*this), m_onSceneSave(*this), m_onCreateLight(*this), m_deviceCommandBus(other.m_deviceCommandBus)
 {
 
     if (m_deviceCommandBus != nullptr)
@@ -145,9 +145,33 @@ void SceneLoaderService::onSaveSceneState(command::SaveSceneState &event)
 {
     (void)event;
 
+    // Start with the existing scene file data, or an empty object
     nlohmann::json root = nlohmann::json::object();
-    root["Scene"] = nlohmann::json::object();
-    root["Scene"]["Objects"] = nlohmann::json::object();
+    // Read existing scene data to preserve objects not in the current run
+    auto existingScene = TryReadFile(m_sceneFilePath);
+    if (existingScene.has_value())
+    {
+        root = existingScene.value();
+        // Preserve existing scene Objects/Lights and overlay tracked ones
+        if (root.contains("Objects"))
+        {
+            root["Scene"]["Objects"] = root["Objects"];
+        }
+        if (root.contains("Lights"))
+        {
+            root["Scene"]["Lights"] = root["Lights"];
+        }
+        else
+        {
+            root["Scene"]["Lights"] = nlohmann::json::object();
+        }
+    }
+    else
+    {
+        root["Scene"] = nlohmann::json::object();
+        root["Scene"]["Objects"] = nlohmann::json::object();
+    }
+
     for (const auto &ele : m_objectTracker)
     {
         const std::string &name = ele.first;
