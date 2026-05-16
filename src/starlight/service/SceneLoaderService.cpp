@@ -5,7 +5,6 @@
 #include "starlight/service/detail/scene_loader/LightReader.hpp"
 #include "starlight/service/detail/scene_loader/LightWriter.hpp"
 #include "starlight/service/detail/scene_loader/ObjectReader.hpp"
-#include "starlight/service/detail/scene_loader/ObjectUtils.hpp"
 #include "starlight/service/detail/scene_loader/ObjectWriter.hpp"
 
 #include <nlohmann/json.hpp>

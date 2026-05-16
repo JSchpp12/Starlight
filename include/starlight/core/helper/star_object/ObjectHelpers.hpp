@@ -2,13 +2,12 @@
 
 #include "starlight/virtual/StarObject.hpp"
 
-#include <array>
 #include <glm/glm.hpp>
 
-namespace star::service::scene_loader
+namespace star::core::helper::star_object
 {
 std::array<std::pair<star::Type::Axis, float>, 3> ConvertFromEulerToGlobalRotations(const glm::vec3 &rDeg);
 
-glm::vec3 ExtractRotationDegrees(const StarObject &object);
+glm::vec3 ExtractRotationDegrees(const glm::mat4 &objectRotationMatrix);
 
-}
+} // namespace star::core::helper::star_object
