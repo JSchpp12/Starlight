@@ -2,7 +2,7 @@
 
 #include "starlight/core/json/glm_json.hpp"
 
-#include "starlight/service/detail/scene_loader/ObjectUtils.hpp"
+#include "starlight/core/helper/star_object/ObjectHelpers.hpp"
 
 namespace star::service::scene_loader
 {
@@ -31,7 +31,7 @@ void ObjectLoader::load(const nlohmann::json &objectDatas, const std::string &un
     glm::vec3 scale = jData["scale"];
     glm::vec3 rotation = jData["rotation_deg"];
 
-    const auto rotToApply = ConvertFromEulerToGlobalRotations(rotation);
+    const auto rotToApply = core::helper::star_object::ConvertFromEulerToGlobalRotations(rotation);
 
     obj.getInstance().setPosition(position);
     obj.getInstance().setScale(scale);

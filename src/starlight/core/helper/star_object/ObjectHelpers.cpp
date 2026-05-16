@@ -1,6 +1,6 @@
-#include "starlight/service/detail/scene_loader/ObjectUtils.hpp"
+#include "starlight/core/helper/star_object/ObjectHelpers.hpp"
 
-namespace star::service::scene_loader
+namespace star::core::helper::star_object
 {
 std::array<std::pair<star::Type::Axis, float>, 3> ConvertFromEulerToGlobalRotations(const glm::vec3 &rDeg)
 {
@@ -14,10 +14,8 @@ std::array<std::pair<star::Type::Axis, float>, 3> ConvertFromEulerToGlobalRotati
     };
 }
 
-glm::vec3 ExtractRotationDegrees(const StarObject &object)
+glm::vec3 ExtractRotationDegrees(const glm::mat4 &r)
 {
-    const auto r = glm::mat3(object.getInstance().getRotationMat());
-
     float sy = -r[0][2];
     float cy = sqrtf(1.0f - sy * sy);
 
@@ -40,4 +38,4 @@ glm::vec3 ExtractRotationDegrees(const StarObject &object)
 
     return glm::degrees(glm::vec3(x, y, z));
 }
-} // namespace star::service::scene_loader
+} // namespace star::core::helper::star_object
