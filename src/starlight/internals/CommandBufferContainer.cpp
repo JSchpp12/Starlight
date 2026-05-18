@@ -9,6 +9,72 @@ star::CommandBufferContainer::CommandBufferContainer(core::device::StarDevice &d
 {
 }
 
+star::CommandBufferContainer::CompleteRequest::CompleteRequest(
+    std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback,
+    std::unique_ptr<StarCommandBuffer> commandBuffer, const Queue_Type &type, const bool &recordOnce,
+    const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order,
+    std::optional<std::function<void(const int &)>> beforeSubmissionCallback,
+    std::optional<std::function<vk::Semaphore(
+        StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *, std::vector<vk::Semaphore> &,
+        std::vector<vk::PipelineStageFlags> &, std::vector<std::optional<uint64_t>> &, star::StarQueue &)>>
+        overrideBufferSubmissionCallback)
+    : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
+      recordOnce(recordOnce), waitStage(waitStage), order(order),
+      beforeBufferSubmissionCallback(beforeSubmissionCallback),
+      overrideBufferSubmissionCallback(overrideBufferSubmissionCallback)
+{
+    scratch.semaphores.reserve(8);
+    scratch.waitPoints.reserve(8);
+    scratch.signalValues.reserve(8);
+    scratch.waitTimelineInfo.reserve(8);
+};
+
+vk::Semaphore star::CommandBufferContainer::CompleteRequest::submitCommandBuffer(
+    core::device::StarDevice &device, const common::FrameTracker &frameTracker,
+    absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues, std::vector<vk::Semaphore> *beforeSemaphores)
+{
+    auto &waits = scratch.semaphores;
+    auto &waitPoints = scratch.waitPoints;
+    auto &previousSignaledValues = scratch.signalValues;
+    waits.clear();
+    waitPoints.clear();
+    previousSignaledValues.clear();
+
+    oneTimeWaitSemaphoreInfo.giveMeOneTimeSemaphoreWaitInfo(waits, waitPoints, previousSignaledValues);
+
+    if (overrideBufferSubmissionCallback.has_value())
+    {
+        StarQueue *queue{queues[commandBuffer->getType()]};
+        assert(queue != nullptr);
+
+        return overrideBufferSubmissionCallback.value()(*commandBuffer, frameTracker, beforeSemaphores, waits,
+                                                        waitPoints, previousSignaledValues, *queue);
+    }
+    else
+    {
+        auto &additionalWaits = scratch.waitTimelineInfo;
+        additionalWaits.clear();
+        additionalWaits.resize(waits.size() + 1); // since beforeSemaphores can also be provided as additional 1
+
+        for (size_t i = 0; i < waits.size(); i++)
+        {
+            additionalWaits[i] = std::make_pair(waits[i], waitPoints[i]);
+        }
+
+        if (beforeSemaphores != nullptr)
+        {
+            additionalWaits.push_back(std::make_pair(beforeSemaphores->front(), waitStage));
+            previousSignaledValues.push_back(std::nullopt);
+        }
+
+        commandBuffer->submit(frameTracker.getCurrent().getFrameInFlightIndex(),
+                              queues[commandBuffer->getType()]->getVulkanQueue(), &additionalWaits,
+                              &previousSignaledValues);
+    }
+
+    return commandBuffer->getCompleteSemaphores().at(frameTracker.getCurrent().getFrameInFlightIndex());
+}
+
 vk::Semaphore star::CommandBufferContainer::submitGroupWhenReady(
     core::device::StarDevice &device, const star::Command_Buffer_Order &order, const common::FrameTracker &frameTracker,
     const uint64_t &currentFrameIndex, absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
