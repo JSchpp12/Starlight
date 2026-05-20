@@ -3,6 +3,7 @@
 #include "starlight/common/helpers/FileHelpers.hpp"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/log/trivial.hpp>
 
 #include <thread>
 

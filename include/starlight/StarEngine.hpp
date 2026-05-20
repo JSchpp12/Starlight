@@ -12,7 +12,8 @@
 #include "event/EnginePhaseComplete.hpp"
 #include "event/FrameComplete.hpp"
 #include "event/RenderReadyForFinalization.hpp"
-#include "util/log/SystemInfo.hpp"
+#include "util/log/CPUInfo.hpp"
+#include "util/log/PhysicalDeviceLogging.hpp"
 
 #include <star_common/FrameTracker.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
@@ -89,6 +90,8 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             m_initPolicy.init(framesInFlight);
         }
 
+        star::log::makeAvailableDeviceOverview(m_renderingInstance.getVulkanInstance());
+
         m_defaultDevice = m_systemManager.registerDevice(core::device::DeviceContext{
             m_initPolicy.createNewDevice(m_renderingInstance, features, renderingFeatures)});
 
@@ -125,7 +128,8 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
 
         m_systemManager.getContext(m_defaultDevice)
             .getEventBus()
-            .emit(event::EnginePhaseComplete{event::EnginePhaseComplete::Phase::load, event::EnginePhaseComplete::GetUniqueTypeName()});
+            .emit(event::EnginePhaseComplete{event::EnginePhaseComplete::Phase::load,
+                                             event::EnginePhaseComplete::GetUniqueTypeName()});
 
         waitForSceneReady(*currentScene);
 
@@ -144,17 +148,15 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             ManagerRenderResource::frameUpdate(
                 m_systemManager.getContext(m_defaultDevice).getDeviceID(),
                 m_systemManager.getContext(m_defaultDevice).frameTracker().getCurrent().getFrameInFlightIndex());
-            vk::Semaphore allBuffersSubmitted =
-                m_systemManager.getContext(m_defaultDevice)
-                    .getManagerCommandBuffer()
-                    .update(m_systemManager.getContext(m_defaultDevice).frameTracker());
+            vk::Semaphore allBuffersSubmitted = m_systemManager.getContext(m_defaultDevice)
+                                                    .getManagerCommandBuffer()
+                                                    .update(m_systemManager.getContext(m_defaultDevice).frameTracker());
             m_systemManager.getContext(m_defaultDevice)
                 .getEventBus()
                 .emit(event::RenderReadyForFinalization(m_systemManager.getContext(m_defaultDevice).getDevice(),
                                                         allBuffersSubmitted));
 
             this->m_systemManager.getContext(m_defaultDevice).getTransferWorker().update();
-
 
             auto &evtBus = m_systemManager.getContext(m_defaultDevice).getEventBus();
             evtBus.emit(star::event::FrameComplete{});

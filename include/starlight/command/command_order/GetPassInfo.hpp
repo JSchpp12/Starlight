@@ -5,6 +5,8 @@
 #include <star_common/Handle.hpp>
 #include <star_common/IServiceCommandWithReply.hpp>
 
+#include <vulkan/vulkan.hpp>
+
 namespace star::command_order
 {
 namespace get_pass_info
