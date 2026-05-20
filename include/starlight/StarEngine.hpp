@@ -90,7 +90,11 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             m_initPolicy.init(framesInFlight);
         }
 
-        star::log::makeAvailableDeviceOverview(m_renderingInstance.getVulkanInstance());
+        {
+            const auto availableDeviceInfo =
+                star::log::makeAvailableDeviceOverviewLog(m_renderingInstance.getVulkanInstance());
+            star::core::logging::info(availableDeviceInfo);
+        }
 
         m_defaultDevice = m_systemManager.registerDevice(core::device::DeviceContext{
             m_initPolicy.createNewDevice(m_renderingInstance, features, renderingFeatures)});

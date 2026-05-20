@@ -10,7 +10,8 @@ namespace star::core::device
 {
 inline static void LogPhysicalDeviceInfo(const vk::PhysicalDevice &physicalDevice)
 {
-    const std::string log = star::log::makePhysicalDeviceLog(physicalDevice);
+    std::string log = "Selected physical device info: \n";
+    log += star::log::makePhysicalDeviceLog(physicalDevice);
     star::core::logging::log(core::logging::LogLevel::info, log);
 }
 
@@ -162,15 +163,18 @@ vk::PhysicalDevice StarDevice::Builder::pickPhysicalDevice(vk::PhysicalDeviceFea
     std::vector<vk::PhysicalDevice> devices = m_instance.getVulkanInstance().enumeratePhysicalDevices();
     std::vector<vk::PhysicalDevice> suitableDevices;
     suitableDevices.reserve(devices.size());
-
     vk::PhysicalDevice picked{VK_NULL_HANDLE};
 
     // check devices and see if they are suitable for use
     if (m_overrideDevice.has_value() && m_overrideDevice.value().deviceID != -1)
     {
-        if (m_overrideDevice.value().deviceID < devices.size())
+        if (m_overrideDevice.value().deviceID > devices.size())
         {
-            throw std::invalid_argument("overriden device ID does not exist");
+            std::ostringstream oss;
+            oss << "Attempted to manually select device by index which is larger than available devices. Selected "
+                   "index: "
+                << m_overrideDevice.value().deviceID;
+            throw std::invalid_argument(oss.str());
         }
         if (IsDeviceSuitable(m_extensions, deviceFeatures, devices[m_overrideDevice.value().deviceID],
                              m_surface.has_value() ? &m_surface.value() : nullptr))
@@ -276,13 +280,15 @@ StarDevice StarDevice::Builder::build()
 
     physicalDevice = pickPhysicalDevice(requiredPhysicalDeviceFeatures);
     LogPhysicalDeviceInfo(physicalDevice);
-    if (device == VK_NULL_HANDLE)
+    if (physicalDevice == VK_NULL_HANDLE)
     {
         STAR_THROW("Failed to pick a proper physical device");
     }
 
     device = CreateLogicalDevice(physicalDevice, m_instance, requiredPhysicalDeviceFeatures, m_extensions,
                                  m_deviceFeatures, m_surface);
+    if (device == VK_NULL_HANDLE)
+        STAR_THROW("Failed to create logical vulkan device");
 
     Allocator allocator(device, physicalDevice, m_instance.getVulkanInstance());
     return m_surface ? StarDevice(std::move(allocator), std::move(device), std::move(physicalDevice), m_surface.value())

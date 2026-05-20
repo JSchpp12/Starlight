@@ -276,14 +276,16 @@ inline std::string makePhysicalDeviceLog(const vk::PhysicalDevice &pd)
     return oss.str();
 }
 
-inline void makeAvailableDeviceOverview(vk::Instance instance)
+inline std::string makeAvailableDeviceOverviewLog(vk::Instance instance)
 {
+    std::ostringstream log;
+
     std::vector<vk::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
 
     std::ostringstream header;
     header << "Available Physical Devices (" << devices.size() << " found):\n";
-    header << std::string(48, '-');
-    star::core::logging::log(core::logging::LogLevel::info, header.str());
+    header << std::string(48, '-') << "\n";
+    log << header.str();
 
     for (int i{0}; i < static_cast<int>(devices.size()); i++)
     {
@@ -318,12 +320,14 @@ inline void makeAvailableDeviceOverview(vk::Instance instance)
               << "       Device ID:      0x" << std::hex << std::uppercase << props.deviceID << std::dec << "\n"
               << "       Driver Version: " << driverVersionStr << "\n"
               << "       API Version:    " << VK_VERSION_MAJOR(props.apiVersion) << "."
-              << VK_VERSION_MINOR(props.apiVersion) << "." << VK_VERSION_PATCH(props.apiVersion);
+              << VK_VERSION_MINOR(props.apiVersion) << "." << VK_VERSION_PATCH(props.apiVersion) << "\n";
 
-        star::core::logging::log(core::logging::LogLevel::info, entry.str());
+        log << entry.str();
     }
 
-    star::core::logging::log(core::logging::LogLevel::info, std::string(48, '-'));
+    log << std::string(48, '-') << "\n";
+
+    return log.str();
 }
 
 } // namespace star::log
