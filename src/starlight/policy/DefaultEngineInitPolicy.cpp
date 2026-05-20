@@ -30,7 +30,6 @@ star::core::device::StarDevice star::policy::DefaultEngineInitPolicy::createNewD
     std::set<Rendering_Device_Features> &engineRenderingDeviceFeatures)
 {
     auto builder = core::device::StarDevice::Builder(renderingInstance)
-                       .setAdditionalExtensions({VK_KHR_SWAPCHAIN_EXTENSION_NAME})
                        .setRenderingDeviceFeatures(engineRenderingDeviceFeatures)
                        .setRenderingFeatures(engineRenderingFeatures);
 
