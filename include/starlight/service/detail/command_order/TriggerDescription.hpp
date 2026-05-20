@@ -2,7 +2,7 @@
 
 #include <star_common/Handle.hpp>
 
-#include <vulkan/vulkan_handles.hpp>
+#include <vulkan/vulkan.hpp>
 
 #include <cstdint>
 #include <variant>

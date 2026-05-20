@@ -8,13 +8,13 @@
 
 #include <star_common/IRenderDevice.hpp>
 
-#include <vulkan/vulkan.hpp>
-
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <unordered_set>
 #include <vector>
+
+#include <vulkan/vulkan.hpp>
 
 namespace star::core::device
 {
@@ -22,20 +22,62 @@ namespace star::core::device
 class StarDevice : public star::common::IRenderDevice
 {
   public:
+    class Builder
+    {
+        struct OverridenDeviceSelected
+        {
+            int deviceID;
+        };
+
+        std::optional<OverridenDeviceSelected> m_overrideDevice{std::nullopt};
+        core::RenderingInstance &m_instance;
+        std::set<star::Rendering_Features> m_deviceRenderingFeatures;
+        std::set<Rendering_Device_Features> m_deviceFeatures;
+        std::vector<const char *> m_extensions;
+        std::optional<vk::SurfaceKHR> m_surface{std::nullopt};
+
+        vk::PhysicalDevice pickPhysicalDevice(vk::PhysicalDeviceFeatures deviceFeatures) const;
+
+        constexpr std::vector<const char *> GetRequiredDeviceExtensions() const noexcept
+        {
+            return {VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
+                    VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
+                    VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+                    VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+                    VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
+                    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+                    VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
+        };
+
+      public:
+        explicit Builder(core::RenderingInstance &instance) : m_instance(instance) {};
+        Builder &setOverrideDeviceID(int deviceID);
+        Builder &setRenderingFeatures(std::set<star::Rendering_Features> features);
+        Builder &setRenderingDeviceFeatures(std::set<Rendering_Device_Features> features);
+        Builder &setAdditionalExtensions(const std::vector<const char *> &extensions);
+        Builder &setOptionalSurface(vk::SurfaceKHR surface);
+        StarDevice build();
+    };
+
+    friend class Builder;
     StarDevice() = default;
-
     ~StarDevice();
-
-    // Not copyable
     StarDevice(const StarDevice &) = delete;
     StarDevice &operator=(const StarDevice &) = delete;
     StarDevice(StarDevice &&other) noexcept;
     StarDevice &operator=(StarDevice &&other) noexcept;
 
-    StarDevice(core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures,
-               const std::set<star::Rendering_Device_Features> &requiredRenderingDeviceFeatures,
-               const std::vector<const char *> additionalRequiredPhysicalDeviceExtensions,
-               vk::SurfaceKHR *optionalRenderingSurface = nullptr);
+    /// <summary>
+    /// Request specific details about swap chain support for a given device
+    /// </summary>
+    static core::SwapChainSupportDetails QuerySwapchainSupport(const vk::PhysicalDevice &device,
+                                                               vk::SurfaceKHR surface);
+    /// <summary>
+    /// Find what queues are available for the device
+    /// Queues support different types of commands such as : processing compute commands or memory transfer commands
+    /// </summary>
+    static QueueFamilyIndices FindQueueFamilies(const vk::PhysicalDevice &device,
+                                                const vk::SurfaceKHR *optionalRenderingSurface);
 
     /// <summary>
     /// Check the hardware to make sure that the supplied formats are compatible with the current system.
@@ -90,66 +132,19 @@ class StarDevice : public star::common::IRenderDevice
 
     bool verifyImageCreate(vk::ImageCreateInfo imageInfo);
 
-    QueueFamilyIndices getQueueInfo(); 
+    QueueFamilyIndices getQueueInfo();
 #pragma endregion
 
   protected:
     star::Allocator allocator;
     vk::Device vulkanDevice = VK_NULL_HANDLE;
     vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    vk::SurfaceKHR m_optionalRenderingSurface = VK_NULL_HANDLE; 
+    std::optional<vk::SurfaceKHR> m_renderingSurface{std::nullopt};
 
-    // Pick a proper physical GPU that matches the required extensions
-    void pickPhysicalDevice(core::RenderingInstance &instance, const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                            const std::vector<const char *> &requiredDeviceExtensions,
-                            vk::SurfaceKHR *optionalRenderingSurface);
-    // Create a logical device to communicate with the physical device
-    void createLogicalDevice(core::RenderingInstance &instance,
-                             const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                             const std::vector<const char *> &requiredDeviceExtensions,
-                             const std::set<Rendering_Device_Features> &deviceFeatures,
-                             vk::SurfaceKHR *optionalRenderingSurface);
+    StarDevice(star::Allocator allocator, vk::Device device, vk::PhysicalDevice physicalDevice);
+    StarDevice(star::Allocator allocator, vk::Device device, vk::PhysicalDevice physicalDevice,
+               vk::SurfaceKHR optionalRenderingSurface);
 
-    void createAllocator(core::RenderingInstance &instance);
 
-    std::vector<const char *> getDefaultPhysicalDeviceExtensions() const
-    {
-        return {VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
-                VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
-                VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
-                VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-                VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
-                VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-                VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
-    }
-
-    /* Helper Functions */
-
-    // Helper function to test each potential GPU device
-    static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
-                                 const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                                 const vk::PhysicalDevice &device, vk::SurfaceKHR *optionalRenderingSurface = nullptr);
-
-    /// <summary>
-    /// Find what queues are available for the device
-    /// Queues support different types of commands such as : processing compute commands or memory transfer commands
-    /// </summary>
-    static QueueFamilyIndices FindQueueFamilies(const vk::PhysicalDevice &device,
-                                                 vk::SurfaceKHR *optionalRenderingSurface);
-
-    /// <summary>
-    /// Check if the given device supports required extensions.
-    /// </summary>
-    static bool CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
-                                            const std::vector<const char *> &requiredDeviceExtensions);
-
-    /// <summary>
-    /// Request specific details about swap chain support for a given device
-    /// </summary>
-    static core::SwapChainSupportDetails QuerySwapchainSupport(const vk::PhysicalDevice &device,
-                                                               vk::SurfaceKHR surface);
-
-  private:
-    static bool DoesDeviceSupportPresentation(vk::PhysicalDevice device, const vk::SurfaceKHR &surface);
 };
 } // namespace star::core::device

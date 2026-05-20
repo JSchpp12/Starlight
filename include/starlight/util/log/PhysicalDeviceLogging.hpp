@@ -203,8 +203,9 @@ inline std::string summarizeExtensions(const std::vector<vk::ExtensionProperties
     oss << "Device Extensions (" << exts.size() << "):\n";
     // Sort for stable output
     auto sorted = exts;
-    std::sort(sorted.begin(), sorted.end(),
-              [](auto &a, auto &b) { return std::string(a.extensionName.data()) < std::string(b.extensionName.data()); });
+    std::sort(sorted.begin(), sorted.end(), [](auto &a, auto &b) {
+        return std::string(a.extensionName.data()) < std::string(b.extensionName.data());
+    });
     for (const auto &e : sorted)
     {
         oss << "  " << e.extensionName << " (ver " << e.specVersion << ")\n";
@@ -275,4 +276,54 @@ inline std::string makePhysicalDeviceLog(const vk::PhysicalDevice &pd)
     return oss.str();
 }
 
-} // namespace vklog
+inline void makeAvailableDeviceOverview(vk::Instance instance)
+{
+    std::vector<vk::PhysicalDevice> devices = instance.enumeratePhysicalDevices();
+
+    std::ostringstream header;
+    header << "Available Physical Devices (" << devices.size() << " found):\n";
+    header << std::string(48, '-');
+    star::core::logging::log(core::logging::LogLevel::info, header.str());
+
+    for (int i{0}; i < static_cast<int>(devices.size()); i++)
+    {
+        const vk::PhysicalDeviceProperties props = devices[i].getProperties();
+
+        const std::string deviceTypeName = [&]() -> std::string {
+            switch (props.deviceType)
+            {
+            case vk::PhysicalDeviceType::eDiscreteGpu:
+                return "Discrete GPU";
+            case vk::PhysicalDeviceType::eIntegratedGpu:
+                return "Integrated GPU";
+            case vk::PhysicalDeviceType::eVirtualGpu:
+                return "Virtual GPU";
+            case vk::PhysicalDeviceType::eCpu:
+                return "CPU";
+            default:
+                return "Other";
+            }
+        }();
+
+        // Driver version is vendor-encoded; decode the major.minor.patch fields
+        const uint32_t driverVersion = props.driverVersion;
+        const std::string driverVersionStr = std::to_string(VK_VERSION_MAJOR(driverVersion)) + "." +
+                                             std::to_string(VK_VERSION_MINOR(driverVersion)) + "." +
+                                             std::to_string(VK_VERSION_PATCH(driverVersion));
+
+        std::ostringstream entry;
+        entry << "  [" << i << "] " << props.deviceName << "\n"
+              << "       Type:           " << deviceTypeName << "\n"
+              << "       Vendor ID:      0x" << std::hex << std::uppercase << props.vendorID << std::dec << "\n"
+              << "       Device ID:      0x" << std::hex << std::uppercase << props.deviceID << std::dec << "\n"
+              << "       Driver Version: " << driverVersionStr << "\n"
+              << "       API Version:    " << VK_VERSION_MAJOR(props.apiVersion) << "."
+              << VK_VERSION_MINOR(props.apiVersion) << "." << VK_VERSION_PATCH(props.apiVersion);
+
+        star::core::logging::log(core::logging::LogLevel::info, entry.str());
+    }
+
+    star::core::logging::log(core::logging::LogLevel::info, std::string(48, '-'));
+}
+
+} // namespace star::log

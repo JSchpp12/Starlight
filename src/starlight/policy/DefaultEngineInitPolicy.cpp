@@ -1,9 +1,6 @@
 #include "starlight/policy/DefaultEngineInitPolicy.hpp"
 
 #include "starlight/common/ConfigFile.hpp"
-#include "starlight/core/Exceptions.hpp"
-#include "starlight/job/tasks/IOTask.hpp"
-#include "starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
 #include "starlight/service/CommandOrderService.hpp"
 #include "starlight/service/FrameInFlightControllerService.hpp"
 #include "starlight/service/HeadlessRenderResultWriteService.hpp"
@@ -16,7 +13,6 @@
 
 #include <string>
 
-#include <star_common/helper/CastHelpers.hpp>
 
 namespace star::policy
 {
@@ -33,8 +29,16 @@ star::core::device::StarDevice star::policy::DefaultEngineInitPolicy::createNewD
     core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> &engineRenderingFeatures,
     std::set<Rendering_Device_Features> &engineRenderingDeviceFeatures)
 {
-    return core::device::StarDevice(renderingInstance, engineRenderingFeatures, engineRenderingDeviceFeatures, {},
-                                    nullptr);
+    auto builder = core::device::StarDevice::Builder(renderingInstance)
+                       .setAdditionalExtensions({VK_KHR_SWAPCHAIN_EXTENSION_NAME})
+                       .setRenderingDeviceFeatures(engineRenderingDeviceFeatures)
+                       .setRenderingFeatures(engineRenderingFeatures);
+
+    const int overridenEngineID = star::ConfigFile::getInt(star::Config_Settings::required_device_feature_gpu_index, -1);
+    if (overridenEngineID != -1)
+        builder.setOverrideDeviceID(overridenEngineID); 
+
+    return builder.build();
 }
 
 vk::Extent2D star::policy::DefaultEngineInitPolicy::getEngineRenderingResolution()

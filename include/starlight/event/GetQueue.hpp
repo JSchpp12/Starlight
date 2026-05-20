@@ -7,6 +7,7 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <unordered_set>
 #include <string_view>
 
 namespace star::event
