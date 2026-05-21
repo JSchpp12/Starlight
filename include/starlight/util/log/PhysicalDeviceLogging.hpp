@@ -73,17 +73,31 @@ inline std::string vendorHint(uint32_t vendorId)
     }
 }
 
-inline std::string summarizeProperties(const vk::PhysicalDeviceProperties &p)
+inline std::string uuidToString(const uint8_t uuid[VK_UUID_SIZE])
 {
     std::ostringstream oss;
-    oss << "Device: " << p.deviceName << "\n"
-        << "Type: " << deviceTypeToStr(p.deviceType) << "\n"
-        << "API Version: " << formatApiVersion(p.apiVersion) << "\n"
-        << "Driver Version: 0x" << std::hex << p.driverVersion << std::dec << "\n"
-        << "Vendor ID: 0x" << std::hex << p.vendorID << std::dec << vendorHint(p.vendorID) << "\n"
-        << "Device ID: 0x" << std::hex << p.deviceID << std::dec << "\n";
+    for (int i = 0; i < VK_UUID_SIZE; i++)
+    {
+        if (i == 4 || i == 6 || i == 8 || i == 10)
+            oss << "-";
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)uuid[i];
+    }
+    return oss.str();
+}
 
-    const auto &lim = p.limits;
+inline std::string summarizeProperties(const vk::PhysicalDeviceProperties2 &p,
+                                       const vk::PhysicalDeviceIDProperties &idP)
+{
+    std::ostringstream oss;
+    oss << "Device: " << p.properties.deviceName << "\n"
+        << "Type: " << deviceTypeToStr(p.properties.deviceType) << "\n"
+        << "API Version: " << formatApiVersion(p.properties.apiVersion) << "\n"
+        << "Driver Version: 0x" << std::hex << p.properties.driverVersion << std::dec << "\n"
+        << "Vendor ID: 0x" << std::hex << p.properties.vendorID << std::dec << vendorHint(p.properties.vendorID) << "\n"
+        << "Device Model ID: 0x" << std::hex << p.properties.deviceID << std::dec << "\n"
+        << "Device UUID: 0x" << uuidToString(idP.deviceUUID) << "\n";
+
+    const auto &lim = p.properties.limits;
     oss << "Limits:\n"
         << "  Max image dimension 2D: " << lim.maxImageDimension2D << "\n"
         << "  Max uniform buffer range: " << lim.maxUniformBufferRange << " bytes\n"
@@ -243,8 +257,12 @@ inline std::string makePhysicalDeviceLog(const vk::PhysicalDevice &pd)
     std::ostringstream oss;
 
     // Properties (core)
-    vk::PhysicalDeviceProperties props = pd.getProperties();
-    oss << summarizeProperties(props) << "\n";
+    vk::PhysicalDeviceIDProperties idProps;
+    vk::PhysicalDeviceProperties2 props;
+    props.pNext = &idProps;
+
+    pd.getProperties2(&props);
+    oss << summarizeProperties(props, idProps) << "\n";
 
     // Queue families
     auto queues = pd.getQueueFamilyProperties();
@@ -289,10 +307,13 @@ inline std::string makeAvailableDeviceOverviewLog(vk::Instance instance)
 
     for (int i{0}; i < static_cast<int>(devices.size()); i++)
     {
-        const vk::PhysicalDeviceProperties props = devices[i].getProperties();
+        vk::PhysicalDeviceIDProperties idProps;
+        vk::PhysicalDeviceProperties2 props;
+        props.pNext = &idProps;
+        devices[i].getProperties2(&props);
 
         const std::string deviceTypeName = [&]() -> std::string {
-            switch (props.deviceType)
+            switch (props.properties.deviceType)
             {
             case vk::PhysicalDeviceType::eDiscreteGpu:
                 return "Discrete GPU";
@@ -308,19 +329,23 @@ inline std::string makeAvailableDeviceOverviewLog(vk::Instance instance)
         }();
 
         // Driver version is vendor-encoded; decode the major.minor.patch fields
-        const uint32_t driverVersion = props.driverVersion;
+        const uint32_t driverVersion = props.properties.driverVersion;
         const std::string driverVersionStr = std::to_string(VK_VERSION_MAJOR(driverVersion)) + "." +
                                              std::to_string(VK_VERSION_MINOR(driverVersion)) + "." +
                                              std::to_string(VK_VERSION_PATCH(driverVersion));
 
         std::ostringstream entry;
-        entry << "  [" << i << "] " << props.deviceName << "\n"
+        entry << "  [" << i << "] " << props.properties.deviceName << "\n"
               << "       Type:           " << deviceTypeName << "\n"
-              << "       Vendor ID:      0x" << std::hex << std::uppercase << props.vendorID << std::dec << "\n"
-              << "       Device ID:      0x" << std::hex << std::uppercase << props.deviceID << std::dec << "\n"
+              << "       Vendor ID:      0x" << std::hex << std::uppercase << props.properties.vendorID << std::dec
+              << "\n"
+              << "       Device Model ID:      0x" << std::hex << std::uppercase << props.properties.deviceID
+              << std::dec << "\n"
+              << "       Device UUID:      0x" << uuidToString(idProps.deviceUUID) << std::dec << "\n"
               << "       Driver Version: " << driverVersionStr << "\n"
-              << "       API Version:    " << VK_VERSION_MAJOR(props.apiVersion) << "."
-              << VK_VERSION_MINOR(props.apiVersion) << "." << VK_VERSION_PATCH(props.apiVersion) << "\n";
+              << "       API Version:    " << VK_VERSION_MAJOR(props.properties.apiVersion) << "."
+              << VK_VERSION_MINOR(props.properties.apiVersion) << "." << VK_VERSION_PATCH(props.properties.apiVersion)
+              << "\n";
 
         log << entry.str();
     }
