@@ -10,137 +10,19 @@ namespace star::core::device
 {
 inline static void LogPhysicalDeviceInfo(const vk::PhysicalDevice &physicalDevice)
 {
-    const std::string log = star::log::makePhysicalDeviceLog(physicalDevice);
+    std::string log = "Selected physical device info: \n";
+    log += star::log::makePhysicalDeviceLog(physicalDevice);
     star::core::logging::log(core::logging::LogLevel::info, log);
 }
-StarDevice::StarDevice(StarDevice &&other) noexcept
-    : vulkanDevice(other.vulkanDevice), allocator(std::move(other.allocator)), physicalDevice(other.physicalDevice),
-      m_optionalRenderingSurface(std::move(other.m_optionalRenderingSurface))
+
+static vk::Device CreateLogicalDevice(vk::PhysicalDevice physicalDevice, core::RenderingInstance &instance,
+                                      const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
+                                      const std::vector<const char *> &requiredDeviceExtensions,
+                                      const std::set<Rendering_Device_Features> &deviceFeatures,
+                                      std::optional<vk::SurfaceKHR> renderingSurface)
 {
-    other.vulkanDevice = VK_NULL_HANDLE;
-}
+    vk::Device device{VK_NULL_HANDLE};
 
-StarDevice &StarDevice::operator=(StarDevice &&other) noexcept
-{
-    if (this != &other)
-    {
-        vulkanDevice = std::move(other.vulkanDevice);
-        allocator = std::move(other.allocator);
-        physicalDevice = std::move(other.physicalDevice);
-        m_optionalRenderingSurface = std::move(other.m_optionalRenderingSurface);
-
-        other.vulkanDevice = VK_NULL_HANDLE;
-    }
-
-    return *this;
-}
-
-StarDevice::StarDevice(core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> requiredFeatures,
-                       const std::set<star::Rendering_Device_Features> &requiredRenderingDeviceFeatures,
-                       const std::vector<const char *> additionalRequiredPhysicalDeviceExtensions,
-                       vk::SurfaceKHR *optionalRenderingSurface)
-    : allocator(), vulkanDevice(VK_NULL_HANDLE), physicalDevice(VK_NULL_HANDLE),
-      m_optionalRenderingSurface(optionalRenderingSurface != nullptr ? *optionalRenderingSurface : VK_NULL_HANDLE)
-{
-    vk::PhysicalDeviceFeatures requiredPhysicalDeviceFeatures{};
-
-    if (requiredFeatures.find(star::Rendering_Features::shader_float64) != requiredFeatures.end())
-        requiredPhysicalDeviceFeatures.shaderFloat64 = VK_TRUE;
-
-    requiredPhysicalDeviceFeatures.geometryShader = VK_TRUE;
-    requiredPhysicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
-    requiredPhysicalDeviceFeatures.fillModeNonSolid = VK_TRUE;
-    requiredPhysicalDeviceFeatures.logicOp = VK_TRUE;
-
-    auto physicalDeviceExtensions = getDefaultPhysicalDeviceExtensions();
-    for (size_t i{0}; i < additionalRequiredPhysicalDeviceExtensions.size(); i++)
-    {
-        physicalDeviceExtensions.emplace_back(additionalRequiredPhysicalDeviceExtensions[i]);
-    }
-
-    pickPhysicalDevice(renderingInstance, requiredPhysicalDeviceFeatures, physicalDeviceExtensions,
-                       optionalRenderingSurface);
-    createLogicalDevice(renderingInstance, requiredPhysicalDeviceFeatures, physicalDeviceExtensions,
-                        requiredRenderingDeviceFeatures, optionalRenderingSurface);
-    createAllocator(renderingInstance);
-}
-
-StarDevice::~StarDevice()
-{
-    if (vulkanDevice != VK_NULL_HANDLE)
-    {
-        allocator.cleanupRender();
-        vulkanDevice.destroy();
-        vulkanDevice = VK_NULL_HANDLE;
-    }
-}
-
-void StarDevice::pickPhysicalDevice(core::RenderingInstance &instance,
-                                    const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                                    const std::vector<const char *> &requiredDeviceExtensions,
-                                    vk::SurfaceKHR *optionalRenderingSurface)
-{
-    const bool needsPresentationSupport = optionalRenderingSurface ? true : false;
-    std::vector<vk::PhysicalDevice> devices = instance.getVulkanInstance().enumeratePhysicalDevices();
-    std::vector<vk::PhysicalDevice> suitableDevices;
-    vk::PhysicalDevice picked;
-
-    // check devices and see if they are suitable for use
-    for (const auto &nDevice : devices)
-    {
-        if (IsDeviceSuitable(requiredDeviceExtensions, requiredDeviceFeatures, nDevice, optionalRenderingSurface))
-        {
-            if (nDevice)
-                suitableDevices.push_back(nDevice);
-        }
-    }
-
-    // pick the best device of the potential devices that are suitable
-    std::vector<vk::PhysicalDevice> optimalDevices = std::vector<vk::PhysicalDevice>();
-    uint32_t largestQueueFamilyCount = 0;
-    for (const auto &nDevice : suitableDevices)
-    {
-        auto indicies = FindQueueFamilies(nDevice, optionalRenderingSurface);
-        if (indicies.isOptimalSupport(needsPresentationSupport))
-        {
-            // try to pick the device that has the most seperate queue families
-            if (indicies.getUniques().size() > largestQueueFamilyCount)
-            {
-                largestQueueFamilyCount = star::common::casts::size_t_to_unsigned_int(indicies.getUniques().size());
-                picked = nDevice;
-            }
-        }
-    }
-
-    // check for a fully supported device
-    if (!picked)
-    {
-        for (const auto &nDevice : devices)
-        {
-            auto indicies = FindQueueFamilies(nDevice, optionalRenderingSurface);
-            if (indicies.isFullySupported(needsPresentationSupport))
-            {
-                picked = nDevice;
-            }
-        }
-    }
-
-    LogPhysicalDeviceInfo(picked);
-    this->physicalDevice = picked;
-
-    if ((devices.size() == 0) || !physicalDevice)
-    {
-        core::logging::log(boost::log::trivial::fatal, "Failed to find suitable GPU");
-        throw std::runtime_error("failed to find suitable GPU!");
-    }
-}
-
-void StarDevice::createLogicalDevice(core::RenderingInstance &instance,
-                                     const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                                     const std::vector<const char *> &requiredDeviceExtensions,
-                                     const std::set<Rendering_Device_Features> &deviceFeatures,
-                                     vk::SurfaceKHR *optionalRenderingSurface)
-{
     vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures =
         vk::PhysicalDeviceDynamicRenderingFeatures().setDynamicRendering(true);
 
@@ -154,7 +36,8 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance,
     auto syncFeatures = vk::PhysicalDeviceSynchronization2Features().setSynchronization2(true).setPNext(next);
 
     {
-        auto queueInfo = getQueueInfo();
+        auto queueInfo = StarDevice::FindQueueFamilies(
+            physicalDevice, renderingSurface.has_value() ? &renderingSurface.value() : nullptr);
         auto families = queueInfo.getQueueFamilies();
 
         uint32_t numDeviceExtensions = uint32_t();
@@ -188,54 +71,30 @@ void StarDevice::createLogicalDevice(core::RenderingInstance &instance,
                                                     .setPNext(syncFeatures);
 
         // call to create the logical device
-        this->vulkanDevice = physicalDevice.createDevice(createInfo);
-    }
-}
-
-QueueFamilyIndices StarDevice::getQueueInfo()
-{
-    return FindQueueFamilies(physicalDevice,
-                             m_optionalRenderingSurface != VK_NULL_HANDLE ? &m_optionalRenderingSurface : nullptr);
-}
-
-void StarDevice::createAllocator(core::RenderingInstance &instance)
-{
-    allocator = Allocator(this->getVulkanDevice(), this->getPhysicalDevice(), instance.getVulkanInstance());
-}
-
-bool StarDevice::IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
-                                  const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
-                                  const vk::PhysicalDevice &device, vk::SurfaceKHR *optionalRenderingSurface)
-{
-    bool swapChainAdequate = false;
-    QueueFamilyIndices indicies = FindQueueFamilies(device, optionalRenderingSurface);
-    bool extensionsSupported = CheckDeviceExtensionSupport(device, requiredDeviceExtensions);
-    if (extensionsSupported && optionalRenderingSurface != nullptr &&
-        DoesDeviceSupportPresentation(device, *optionalRenderingSurface))
-    {
-        core::SwapChainSupportDetails swapChainSupport = QuerySwapchainSupport(device, *optionalRenderingSurface);
-        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        device = physicalDevice.createDevice(createInfo);
     }
 
-    vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
-    bool supportsRequiredRenderingFeatures = true;
+    return device;
+}
 
-    if (requiredDeviceFeatures.samplerAnisotropy && !supportedFeatures.samplerAnisotropy)
-        supportsRequiredRenderingFeatures = false;
-    if (requiredDeviceFeatures.geometryShader && !supportedFeatures.geometryShader)
-        supportsRequiredRenderingFeatures = false;
+static bool DoesDeviceSupportPresentation(vk::PhysicalDevice physicalDevice, const vk::SurfaceKHR &surface)
+{
+    uint32_t queueFamilyCount;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
 
-    const bool properQueueFamilySupport = indicies.isSuitable(optionalRenderingSurface ? true : false);
-    if (properQueueFamilySupport && extensionsSupported && supportsRequiredRenderingFeatures &&
-        (!optionalRenderingSurface || (optionalRenderingSurface && swapChainAdequate)))
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+    for (uint32_t i = 0; i < queueFamilyCount; ++i)
     {
-        return true;
+        if (physicalDevice.getSurfaceSupportKHR(i, surface))
+            return true;
     }
     return false;
 }
 
-bool StarDevice::CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
-                                             const std::vector<const char *> &requiredDeviceExtensions)
+static bool CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
+                                        const std::vector<const char *> &requiredDeviceExtensions)
 {
     uint32_t extensionCount;
     {
@@ -266,8 +125,225 @@ bool StarDevice::CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
     return requiredExtensions.empty();
 }
 
+static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
+                             const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const vk::PhysicalDevice &device,
+                             const vk::SurfaceKHR *optionalRenderingSurface)
+{
+    bool swapChainAdequate = false;
+    QueueFamilyIndices indicies = StarDevice::FindQueueFamilies(device, optionalRenderingSurface);
+    bool extensionsSupported = CheckDeviceExtensionSupport(device, requiredDeviceExtensions);
+    if (extensionsSupported && optionalRenderingSurface != nullptr &&
+        DoesDeviceSupportPresentation(device, *optionalRenderingSurface))
+    {
+        core::SwapChainSupportDetails swapChainSupport =
+            StarDevice::QuerySwapchainSupport(device, *optionalRenderingSurface);
+        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+    }
+
+    vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
+    bool supportsRequiredRenderingFeatures = true;
+
+    if (requiredDeviceFeatures.samplerAnisotropy && !supportedFeatures.samplerAnisotropy)
+        supportsRequiredRenderingFeatures = false;
+    if (requiredDeviceFeatures.geometryShader && !supportedFeatures.geometryShader)
+        supportsRequiredRenderingFeatures = false;
+
+    const bool properQueueFamilySupport = indicies.isSuitable(optionalRenderingSurface ? true : false);
+    if (properQueueFamilySupport && extensionsSupported && supportsRequiredRenderingFeatures &&
+        (!optionalRenderingSurface || (optionalRenderingSurface && swapChainAdequate)))
+    {
+        return true;
+    }
+    return false;
+}
+
+vk::PhysicalDevice StarDevice::Builder::pickPhysicalDevice(vk::PhysicalDeviceFeatures deviceFeatures) const
+{
+    const bool needsPresentationSupport = m_surface ? true : false;
+    std::vector<vk::PhysicalDevice> devices = m_instance.getVulkanInstance().enumeratePhysicalDevices();
+    std::vector<vk::PhysicalDevice> suitableDevices;
+    suitableDevices.reserve(devices.size());
+    vk::PhysicalDevice picked{VK_NULL_HANDLE};
+
+    // check devices and see if they are suitable for use
+    if (m_overrideDevice.has_value() && m_overrideDevice.value().deviceID != -1)
+    {
+        if (m_overrideDevice.value().deviceID > devices.size())
+        {
+            std::ostringstream oss;
+            oss << "Attempted to manually select device by index which is larger than available devices. Selected "
+                   "index: "
+                << m_overrideDevice.value().deviceID;
+            throw std::invalid_argument(oss.str());
+        }
+        if (IsDeviceSuitable(m_extensions, deviceFeatures, devices[m_overrideDevice.value().deviceID],
+                             m_surface.has_value() ? &m_surface.value() : nullptr))
+        {
+            suitableDevices.push_back(devices[m_overrideDevice.value().deviceID]);
+        }
+    }
+    else
+    {
+        for (const auto &nDevice : devices)
+        {
+            if (IsDeviceSuitable(m_extensions, deviceFeatures, nDevice,
+                                 m_surface.has_value() ? &m_surface.value() : nullptr))
+            {
+                if (nDevice)
+                    suitableDevices.push_back(nDevice);
+            }
+        }
+    }
+
+    // pick the best device of the potential devices that are suitable
+    std::vector<vk::PhysicalDevice> optimalDevices = std::vector<vk::PhysicalDevice>();
+    uint32_t largestQueueFamilyCount = 0;
+    for (const auto &nDevice : suitableDevices)
+    {
+        auto indicies = FindQueueFamilies(nDevice, m_surface.has_value() ? &m_surface.value() : nullptr);
+        if (indicies.isOptimalSupport(needsPresentationSupport))
+        {
+            // try to pick the device that has the most seperate queue families
+            if (indicies.getUniques().size() > largestQueueFamilyCount)
+            {
+                largestQueueFamilyCount = star::common::casts::size_t_to_unsigned_int(indicies.getUniques().size());
+                picked = nDevice;
+            }
+        }
+    }
+
+    // check for a fully supported device
+    if (!picked)
+    {
+        for (const auto &nDevice : devices)
+        {
+            auto indicies = FindQueueFamilies(nDevice, m_surface.has_value() ? &m_surface.value() : nullptr);
+            if (indicies.isFullySupported(needsPresentationSupport))
+            {
+                picked = nDevice;
+            }
+        }
+    }
+
+    return picked;
+}
+
+StarDevice::Builder &StarDevice::Builder::setOverrideDeviceID(int deviceID)
+{
+    assert(!m_overrideDevice);
+    m_overrideDevice = OverridenDeviceSelected{.deviceID = std::move(deviceID)};
+    return *this;
+}
+
+StarDevice::Builder &StarDevice::Builder::setRenderingFeatures(std::set<star::Rendering_Features> renderingFeatures)
+{
+    m_deviceRenderingFeatures = std::move(renderingFeatures);
+    return *this;
+}
+
+StarDevice::Builder &StarDevice::Builder::setRenderingDeviceFeatures(std::set<Rendering_Device_Features> features)
+{
+    m_deviceFeatures = std::move(features);
+    return *this;
+}
+
+StarDevice::Builder &StarDevice::Builder::setAdditionalExtensions(const std::vector<const char *> &extensions)
+{
+    m_extensions = extensions;
+    return *this;
+}
+
+StarDevice::Builder &StarDevice::Builder::setOptionalSurface(vk::SurfaceKHR surface)
+{
+    m_surface = surface;
+    return *this;
+}
+
+StarDevice StarDevice::Builder::build()
+{
+    vk::PhysicalDevice physicalDevice{VK_NULL_HANDLE};
+    vk::Device device{VK_NULL_HANDLE};
+
+    vk::PhysicalDeviceFeatures requiredPhysicalDeviceFeatures{};
+    requiredPhysicalDeviceFeatures.geometryShader = VK_TRUE;
+    requiredPhysicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
+    requiredPhysicalDeviceFeatures.fillModeNonSolid = VK_TRUE;
+    requiredPhysicalDeviceFeatures.logicOp = VK_TRUE;
+    if (m_deviceRenderingFeatures.find(star::Rendering_Features::shader_float64) != m_deviceRenderingFeatures.end())
+        requiredPhysicalDeviceFeatures.shaderFloat64 = VK_TRUE;
+
+    auto physicalDeviceExtensions = GetRequiredDeviceExtensions();
+    for (size_t i{0}; i < m_extensions.size(); i++)
+    {
+        physicalDeviceExtensions.emplace_back(m_extensions[i]);
+    }
+
+    physicalDevice = pickPhysicalDevice(requiredPhysicalDeviceFeatures);
+    LogPhysicalDeviceInfo(physicalDevice);
+    if (physicalDevice == VK_NULL_HANDLE)
+    {
+        STAR_THROW("Failed to pick a proper physical device");
+    }
+
+    device = CreateLogicalDevice(physicalDevice, m_instance, requiredPhysicalDeviceFeatures, m_extensions,
+                                 m_deviceFeatures, m_surface);
+    if (device == VK_NULL_HANDLE)
+        STAR_THROW("Failed to create logical vulkan device");
+
+    Allocator allocator(device, physicalDevice, m_instance.getVulkanInstance());
+    return m_surface ? StarDevice(std::move(allocator), std::move(device), std::move(physicalDevice), m_surface.value())
+                     : StarDevice(std::move(allocator), std::move(device), std::move(physicalDevice));
+}
+
+StarDevice::StarDevice(StarDevice &&other) noexcept
+    : vulkanDevice(other.vulkanDevice), allocator(std::move(other.allocator)), physicalDevice(other.physicalDevice)
+{
+    other.vulkanDevice = VK_NULL_HANDLE;
+}
+
+StarDevice &StarDevice::operator=(StarDevice &&other) noexcept
+{
+    if (this != &other)
+    {
+        vulkanDevice = std::move(other.vulkanDevice);
+        allocator = std::move(other.allocator);
+        physicalDevice = std::move(other.physicalDevice);
+
+        other.vulkanDevice = VK_NULL_HANDLE;
+    }
+
+    return *this;
+}
+
+StarDevice::StarDevice(star::Allocator allocator, vk::Device device, vk::PhysicalDevice physicalDevice)
+    : allocator(std::move(allocator)), vulkanDevice(std::move(device)), physicalDevice(std::move(physicalDevice))
+{
+}
+
+StarDevice::StarDevice(star::Allocator allocator, vk::Device device, vk::PhysicalDevice physicalDevice,
+                       vk::SurfaceKHR optionalRenderingSurface)
+    : allocator(std::move(allocator)), vulkanDevice(std::move(device)), physicalDevice(std::move(physicalDevice)),
+      m_renderingSurface(std::move(optionalRenderingSurface))
+{
+}
+
+StarDevice::~StarDevice()
+{
+    if (vulkanDevice != VK_NULL_HANDLE)
+    {
+        allocator.cleanupRender();
+        vulkanDevice.destroy();
+        vulkanDevice = VK_NULL_HANDLE;
+    }
+}
+
+QueueFamilyIndices StarDevice::getQueueInfo()
+{
+    return FindQueueFamilies(physicalDevice, m_renderingSurface.has_value() ? &m_renderingSurface.value() : nullptr);
+}
+
 QueueFamilyIndices StarDevice::FindQueueFamilies(const vk::PhysicalDevice &device,
-                                                 vk::SurfaceKHR *optionalRenderingSurface)
+                                                 const vk::SurfaceKHR *optionalRenderingSurface)
 {
     QueueFamilyIndices indicies;
 
@@ -482,21 +558,5 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
     }
 
     return details;
-}
-
-bool StarDevice::DoesDeviceSupportPresentation(vk::PhysicalDevice physicalDevice, const vk::SurfaceKHR &surface)
-{
-    uint32_t queueFamilyCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
-
-    for (uint32_t i = 0; i < queueFamilyCount; ++i)
-    {
-        if (physicalDevice.getSurfaceSupportKHR(i, surface))
-            return true;
-    }
-    return false;
 }
 } // namespace star::core::device

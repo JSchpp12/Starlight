@@ -2,6 +2,8 @@
 
 #include "FileHelpers.hpp"
 
+#include <boost/system/errc.hpp>
+
 #include <fstream>
 #include <vector>
 

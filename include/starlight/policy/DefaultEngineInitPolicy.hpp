@@ -17,9 +17,9 @@ class DefaultEngineInitPolicy
 
     void init(uint8_t requestedNumFramesInFlight);
     void cleanup(core::RenderingInstance &instance);
-    core::device::StarDevice createNewDevice(core::RenderingInstance &renderingInstance,
-                                             std::set<star::Rendering_Features> &engineRenderingFeatures,
-                                             std::set<Rendering_Device_Features> &engineRenderingDeviceFeatures);
+    virtual core::device::StarDevice createNewDevice(
+        core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> &engineRenderingFeatures,
+        std::set<Rendering_Device_Features> &engineRenderingDeviceFeatures);
 
     vk::Extent2D getEngineRenderingResolution();
 
@@ -39,9 +39,9 @@ class DefaultEngineInitPolicy
 
     static service::Service createSceneLoaderService();
 
-    static service::Service createCommandOrderService(); 
+    static service::Service createCommandOrderService();
 
-    static service::Service createResourceOwnershipService(); 
+    static service::Service createResourceOwnershipService();
 
   protected:
     virtual std::vector<service::Service> addAdditionalServices()

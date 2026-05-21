@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.0.6
+    VERSION 1.0.7
 )
 
 include(CheckIncludeFile)
@@ -282,7 +282,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/json/glm_json.cpp" 
     "src/starlight/event/PipelineReady.cpp" 
     "src/starlight/core/waiter/one_shot/WaiterFactory.cpp" 
-    "src/starlight/core/waiter/one_shot/detail/CachedPipelinePayload.cpp" "src/starlight/core/helper/star_object/ObjectHelpers.cpp")
+    "src/starlight/core/waiter/one_shot/detail/CachedPipelinePayload.cpp" 
+    "src/starlight/core/helper/star_object/ObjectHelpers.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
@@ -487,7 +488,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/common/entities/Light.hpp"
     #header only
     "include/starlight/util/log/PhysicalDeviceLogging.hpp"
-    "include/starlight/util/log/SystemInfo.hpp"
     "include/starlight/virtual/StarShader.hpp"
     "include/starlight/enums/Enums.hpp"
     "include/starlight/structs/LightBufferObject.hpp"

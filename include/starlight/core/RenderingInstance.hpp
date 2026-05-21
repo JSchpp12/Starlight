@@ -10,6 +10,7 @@ namespace star::core
 class RenderingInstance
 {
   public:
+    RenderingInstance() = default;
     RenderingInstance(const std::string &applicationName, std::vector<const char *> &extensions);
     ~RenderingInstance();
 
@@ -27,7 +28,7 @@ class RenderingInstance
     }
     RenderingInstance &operator=(RenderingInstance &other) = delete;
 
-    vk::Instance &getVulkanInstance()
+    vk::Instance getVulkanInstance() const
     {
         return m_instance;
     }
@@ -45,7 +46,7 @@ class RenderingInstance
     std::vector<const char *> getRequiredDisplayExtensions() const;
 
   private:
-    vk::Instance m_instance;
+    vk::Instance m_instance{VK_NULL_HANDLE};
 
 #ifdef NDEBUG
     const bool m_enableValidationLayers = false;

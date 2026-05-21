@@ -24,6 +24,8 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
     std::pair<std::string, star::Config_Settings>("frames_in_flight", star::Config_Settings::frames_in_flight),
     std::make_pair("required_device_feature_shader_float64",
                    star::Config_Settings::required_device_feature_shader_float64),
+    std::make_pair("required_device_feature_gpu_index",
+                   star::Config_Settings::required_device_feature_gpu_index),
     std::make_pair("resolution_x", star::Config_Settings::resolution_x),
     std::make_pair("resolution_y", star::Config_Settings::resolution_y),
     std::make_pair("tmp_dir", star::Config_Settings::tmp_directory),
@@ -101,6 +103,9 @@ void star::ConfigFile::applyDefaults(std::map<std::string, std::string> values)
             case Config_Settings::required_device_feature_shader_float64:
                 settings[configKey] = "true";
                 break;
+            case Config_Settings::required_device_feature_gpu_index:
+                settings[configKey] = "-1";
+                break;
             default:
                 STAR_THROW("Setting not found and has no available default: " + jsonKey);
             }
@@ -130,6 +135,9 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
         break;
     case (Config_Settings::required_device_feature_shader_float64):
         name = "required_device_feature_shader_float64";
+        break;
+    case (Config_Settings::required_device_feature_gpu_index):
+        name = "required_device_feature_gpu_index";
         break;
     case (Config_Settings::resolution_x):
         name = "resolution_x";

@@ -3,6 +3,8 @@
 #include <star_common/Handle.hpp>
 #include <star_common/IEvent.hpp>
 
+#include <string_view>
+
 namespace star::event
 {
 namespace pipeline_ready
