@@ -59,8 +59,6 @@ class RendererBase
 
     void updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 
-    void prepRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
-
     static std::vector<StarRenderGroup> CreateRenderingGroups(core::device::DeviceContext &context,
                                                               std::vector<std::shared_ptr<StarObject>> objects);
 };

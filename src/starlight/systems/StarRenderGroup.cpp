@@ -1,6 +1,5 @@
 #include "StarRenderGroup.hpp"
 
-#include <algorithm>
 namespace star
 {
 StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, std::shared_ptr<StarObject> baseObject)
@@ -11,8 +10,6 @@ StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, std::share
 
     auto layoutBuilder = StarDescriptorSetLayout::Builder();
     this->largestDescriptorSet = this->groups.front().baseObject.object->getDescriptorSetLayouts(device);
-
-    this->numObjects++;
 }
 
 void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
@@ -157,8 +154,6 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
         }
     }
     this->largestDescriptorSet = combinedSet;
-
-    this->numObjects++;
 }
 
 void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &frameInFlightIndex,
@@ -242,7 +237,6 @@ void StarRenderGroup::prepareObjects(star::core::device::DeviceContext &context)
 vk::PipelineLayout StarRenderGroup::createPipelineLayout(
     core::device::DeviceContext &context, std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout)
 {
-
     auto sets = std::vector<vk::DescriptorSetLayout>();
     for (auto &set : fullSetLayout)
     {

@@ -4,7 +4,6 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include <iostream>
 #include <memory>
 #include <unordered_map>
 
@@ -22,13 +21,15 @@ class StarDescriptorSetLayout
 
         Builder &addBinding(uint32_t binding, vk::DescriptorType descriptorType, vk::ShaderStageFlags stageFlags,
                             uint32_t count = 1);
-        std::unique_ptr<StarDescriptorSetLayout> build() const{
-              return std::make_unique<StarDescriptorSetLayout>(this->bindings);
+        std::unique_ptr<StarDescriptorSetLayout> build() const
+        {
+            return std::make_unique<StarDescriptorSetLayout>(this->bindings);
         }
-        std::unique_ptr<StarDescriptorSetLayout> build(core::device::StarDevice &device) const{
-          auto newLayout = std::make_unique<StarDescriptorSetLayout>(bindings); 
-          newLayout->prepRender(device);
-          return newLayout; 
+        std::unique_ptr<StarDescriptorSetLayout> build(core::device::StarDevice &device) const
+        {
+            auto newLayout = std::make_unique<StarDescriptorSetLayout>(bindings);
+            newLayout->prepRender(device);
+            return newLayout;
         }
 
       private:
@@ -42,7 +43,8 @@ class StarDescriptorSetLayout
 
     vk::DescriptorSetLayout getDescriptorSetLayout()
     {
-        assert(this->descriptorSetLayout != VK_NULL_HANDLE && "Descriptor set layout has not been built. Call build() on this object before attempting to get the layout");
+        assert(this->descriptorSetLayout != VK_NULL_HANDLE && "Descriptor set layout has not been built. Call build() "
+                                                              "on this object before attempting to get the layout");
 
         return this->descriptorSetLayout;
     };
@@ -58,8 +60,9 @@ class StarDescriptorSetLayout
 
   private:
     std::unordered_map<uint32_t, vk::DescriptorSetLayoutBinding> bindings;
-    vk::DescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    vk::DescriptorSetLayout descriptorSetLayout{VK_NULL_HANDLE};
 
+    vk::DescriptorSetLayout buildSetLayout(star::core::device::StarDevice &device) const;
     // allow access to the descriptor writer
     friend class StarDescriptorWriter;
 };

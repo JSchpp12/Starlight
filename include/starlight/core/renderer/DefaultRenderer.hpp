@@ -99,11 +99,6 @@ class DefaultRenderer : public RendererBase
     virtual void cleanupRender(common::IDeviceContext &device) override;
     virtual void frameUpdate(common::IDeviceContext &context) override;
 
-    StarDescriptorSetLayout &getGlobalShaderInfo()
-    {
-        return *this->globalSetLayout;
-    }
-
     virtual RenderingTargetInfo getRenderTargetInfo() const
     {
         return RenderingTargetInfo({m_colorFormat}, m_depthFormat);

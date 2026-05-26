@@ -15,7 +15,6 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include <map>
 #include <memory>
 #include <vector>
 
@@ -39,15 +38,7 @@ class StarRenderGroup
 
     virtual bool isObjectCompatible(StarObject &object);
 
-    /// <summary>
-    /// Register a light color and location for rendering light effects on objects
-    /// </summary>
     virtual void addObject(std::shared_ptr<StarObject> newRenderObject);
-
-    virtual void addLight(Light *newLight)
-    {
-        this->lights.push_back(newLight);
-    }
 
     void onDescriptorPoolReady(star::core::device::DeviceContext &context, StarShaderInfo::Builder initEngineBuilder,
                                star::core::renderer::RenderingTargetInfo &rendererInfo);
@@ -62,11 +53,6 @@ class StarRenderGroup
                                              const uint64_t &frameIndex);
 
     virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
-
-    int getNumObjects()
-    {
-        return numObjects;
-    }
 
   protected:
     struct RenderObjectInfo
@@ -83,12 +69,10 @@ class StarRenderGroup
         RenderObjectInfo baseObject;
         std::vector<RenderObjectInfo> objects;
     };
-    core::device::DeviceContext *device = nullptr;
-    int numObjects = 0;
-    vk::PipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
-    std::vector<Light *> lights;
     std::vector<Group> groups;
+    core::device::DeviceContext *device{nullptr};
+    vk::PipelineLayout m_pipelineLayout{VK_NULL_HANDLE};
 
     void prepareObjects(star::core::device::DeviceContext &context);
 

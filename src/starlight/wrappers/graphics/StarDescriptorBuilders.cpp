@@ -39,8 +39,23 @@ bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout &co
 
 void StarDescriptorSetLayout::prepRender(core::device::StarDevice &device)
 {
-    std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings;
+    //check if this set has already been prepared, skip if so
+    if (this->descriptorSetLayout != VK_NULL_HANDLE)
+        return;
 
+    descriptorSetLayout = buildSetLayout(device);
+}
+
+void StarDescriptorSetLayout::cleanupRender(core::device::StarDevice &device)
+{
+    device.getVulkanDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
+    this->descriptorSetLayout = VK_NULL_HANDLE;
+}
+
+vk::DescriptorSetLayout StarDescriptorSetLayout::buildSetLayout(star::core::device::StarDevice &device) const
+{
+    std::vector<vk::DescriptorSetLayoutBinding> setLayoutBindings;
+    setLayoutBindings.reserve(bindings.size());
     for (auto &binding : bindings)
     {
         setLayoutBindings.push_back(binding.second);
@@ -51,17 +66,12 @@ void StarDescriptorSetLayout::prepRender(core::device::StarDevice &device)
     createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
     createInfo.pBindings = setLayoutBindings.data();
 
-    this->descriptorSetLayout = device.getVulkanDevice().createDescriptorSetLayout(createInfo);
-    if (!this->descriptorSetLayout)
+    auto layout = device.getVulkanDevice().createDescriptorSetLayout(createInfo);
+    if (!layout)
     {
         throw std::runtime_error("failed to create descriptor set layout");
     }
-}
-
-void StarDescriptorSetLayout::cleanupRender(core::device::StarDevice &device)
-{
-    device.getVulkanDevice().destroyDescriptorSetLayout(this->descriptorSetLayout);
-    this->descriptorSetLayout = VK_NULL_HANDLE;
+    return layout;
 }
 
 /* Descriptor Pool */

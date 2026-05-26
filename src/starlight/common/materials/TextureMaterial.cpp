@@ -89,5 +89,5 @@ std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::get
     const int &numFramesInFlight) const
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
-        std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, numFramesInFlight)};
+        std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 2*numFramesInFlight)};
 }
