@@ -11,6 +11,130 @@
 
 #include <star_common/helper/CastHelpers.hpp>
 
+static std::optional<std::filesystem::path> LookForTextureFile(const std::filesystem::path &searchDir,
+                                                               const std::string &textureFileName)
+{
+    std::optional<std::filesystem::path> found = std::nullopt;
+
+    const auto files =
+        star::file_helpers::FindFilesInDirectoryWithSameNameIgnoreFileType(searchDir.string(), textureFileName);
+    if (files.size() > 0)
+    {
+        found = files[0];
+    }
+
+    return found;
+}
+
+static std::vector<std::shared_ptr<star::StarMaterial>> LoadMaterials(
+    const std::filesystem::path &filePath, std::optional<std::filesystem::path> mediaSearchPath = std::nullopt)
+{
+    auto searchDir = mediaSearchPath.has_value() ? mediaSearchPath.value() : filePath.parent_path();
+
+    if (!std::filesystem::exists(filePath))
+    {
+        std::ostringstream oss;
+        oss << "Attempted to load object file which does not exist: " << filePath.string();
+        STAR_THROW(oss.str());
+    }
+
+    /* Load Object From File */
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> fileMaterials;
+    std::string warn, err;
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &fileMaterials, &warn, &err, filePath.string().c_str(),
+                          searchDir.string().c_str()))
+    {
+        std::ostringstream oss;
+        oss << "An error occurred while loading obj file: " << filePath << "\n";
+        oss << "Msg: " << warn + err;
+        STAR_THROW(oss.str());
+    }
+    if (warn != "")
+    {
+        std::ostringstream oss;
+        oss << "An error occurred while loading obj file" << std::endl;
+        oss << warn << std::endl;
+        oss << "Loading will continue..." << std::endl;
+        star::core::logging::warning(oss.str());
+    }
+
+    std::vector<std::shared_ptr<star::StarMaterial>> materials;
+
+    for (auto &fMaterial : fileMaterials)
+    {
+        const bool isTextureMaterial = !fMaterial.diffuse_texname.empty();
+        const bool isBumpMaterial = isTextureMaterial && !fMaterial.bump_texname.empty();
+
+        if (fMaterial.ambient[0] == 0)
+        {
+            fMaterial.ambient[0] = 1.0;
+            fMaterial.ambient[1] = 1.0;
+            fMaterial.ambient[2] = 1.0;
+        }
+
+        if (isBumpMaterial)
+        {
+            const auto bumpFile = LookForTextureFile(searchDir, fMaterial.bump_texname);
+            const auto texFile = LookForTextureFile(searchDir, fMaterial.diffuse_texname);
+
+            if (!bumpFile.has_value())
+            {
+                STAR_THROW("Unable to find corresponding bump file for material with bump name: " +
+                           fMaterial.bump_texname);
+            }
+            if (!texFile.has_value())
+            {
+                STAR_THROW("Unable to find coresponding texture file for material with texture name: " +
+                           fMaterial.diffuse_texname);
+            }
+            materials.emplace_back(std::make_shared<star::BumpMaterial>(
+                bumpFile.value().string(), texFile.value().string(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
+                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
+                fMaterial.shininess));
+        }
+        else if (isTextureMaterial)
+        {
+            const auto texFile = LookForTextureFile(searchDir, fMaterial.diffuse_texname);
+            if (!texFile.has_value())
+            {
+                STAR_THROW("Unable to find corresponding texture file for material with texture name: " +
+                           fMaterial.diffuse_texname);
+            }
+
+            materials.emplace_back(std::make_shared<star::TextureMaterial>(
+                texFile.value().string(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
+                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
+                fMaterial.shininess));
+        }
+        else
+        {
+            // fall back to vert color material
+            materials.emplace_back(std::make_shared<star::VertColorMaterial>(
+                glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
+                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
+                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
+                fMaterial.shininess));
+        }
+    }
+
+    return materials;
+}
+
+star::BasicObject::BasicObject(std::string objFilePath)
+    : StarObject(LoadMaterials(objFilePath)), m_objFilePath(std::move(objFilePath))
+{
+}
+
+star::BasicObject::BasicObject(std::string objFilePath, const std::filesystem::path &materialDir)
+    : StarObject(LoadMaterials(objFilePath, materialDir)), m_objFilePath(std::move(objFilePath))
+{
+}
+
 std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
 {
     std::unordered_map<star::Shader_Stage, StarShader> shaders;
@@ -174,110 +298,6 @@ std::vector<std::unique_ptr<star::StarMesh>> star::BasicObject::loadMeshes(core:
     }
 
     return meshes;
-}
-
-static std::optional<std::string> LookForTextureFile(const std::string &parentDir, const std::string &textureFileName)
-{
-    std::optional<std::string> found = std::nullopt;
-
-    const auto files = star::file_helpers::FindFilesInDirectoryWithSameNameIgnoreFileType(parentDir, textureFileName);
-    if (files.size() > 0)
-    {
-        found = files[0].string();
-    }
-
-    return found;
-}
-
-std::vector<std::shared_ptr<star::StarMaterial>> star::BasicObject::LoadMaterials(const std::string &filePath)
-{
-    auto parentDirectory = file_helpers::GetParentDirectory(filePath).value().string();
-
-    if (!star::file_helpers::FileExists(filePath))
-    {
-        throw std::runtime_error("Provided object file does not exist");
-    }
-
-    /* Load Object From File */
-    tinyobj::attrib_t attrib;
-    std::vector<tinyobj::shape_t> shapes;
-    std::vector<tinyobj::material_t> fileMaterials;
-    std::string warn, err;
-
-    if (!tinyobj::LoadObj(&attrib, &shapes, &fileMaterials, &warn, &err, filePath.c_str(), parentDirectory.c_str(),
-                          true))
-    {
-        throw std::runtime_error(warn + err);
-    }
-    if (warn != "")
-    {
-        std::cout << "An error occurred while loading obj file" << std::endl;
-        std::cout << warn << std::endl;
-        std::cout << "Loading will continue..." << std::endl;
-    }
-
-    std::vector<std::shared_ptr<StarMaterial>> materials;
-
-    for (auto &fMaterial : fileMaterials)
-    {
-        const bool isTextureMaterial = !fMaterial.diffuse_texname.empty();
-        const bool isBumpMaterial = isTextureMaterial && !fMaterial.bump_texname.empty();
-
-        if (fMaterial.ambient[0] == 0)
-        {
-            fMaterial.ambient[0] = 1.0;
-            fMaterial.ambient[1] = 1.0;
-            fMaterial.ambient[2] = 1.0;
-        }
-
-        if (isBumpMaterial)
-        {
-            const auto bumpFile = LookForTextureFile(parentDirectory, fMaterial.bump_texname);
-            const auto texFile = LookForTextureFile(parentDirectory, fMaterial.diffuse_texname);
-
-            if (!bumpFile.has_value())
-            {
-                STAR_THROW("Unable to find corresponding bump file for material with bump name: " +
-                           fMaterial.bump_texname);
-            }
-            if (!texFile.has_value())
-            {
-                STAR_THROW("Unable to find coresponding texture file for material with texture name: " +
-                           fMaterial.diffuse_texname);
-            }
-            materials.emplace_back(std::make_shared<star::BumpMaterial>(
-                bumpFile.value(), texFile.value(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
-                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
-                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
-                fMaterial.shininess));
-        }
-        else if (isTextureMaterial)
-        {
-            const auto texFile = LookForTextureFile(parentDirectory, fMaterial.diffuse_texname);
-            if (!texFile.has_value())
-            {
-                STAR_THROW("Unable to find corresponding texture file for material with texture name: " +
-                           fMaterial.diffuse_texname);
-            }
-
-            materials.emplace_back(std::make_shared<star::TextureMaterial>(
-                texFile.value(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
-                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
-                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
-                fMaterial.shininess));
-        }
-        else
-        {
-            // fall back to vert color material
-            materials.emplace_back(std::make_shared<star::VertColorMaterial>(
-                glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
-                glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
-                glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
-                fMaterial.shininess));
-        }
-    }
-
-    return materials;
 }
 
 void star::BasicObject::getTypeOfMaterials(bool &isTextureMaterial, bool &isBumpMaterial) const

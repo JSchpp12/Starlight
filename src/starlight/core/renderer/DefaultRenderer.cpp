@@ -160,17 +160,18 @@ void DefaultRenderer::frameUpdate(common::IDeviceContext &context)
     updateDependentData(c);
 }
 
-void DefaultRenderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                                  std::shared_ptr<std::vector<Light>> lights)
+void DefaultRenderer::initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights)
 {
-    m_infoManagerLightData = std::make_shared<ManagerController::RenderResource::LightInfo>(numFramesInFlight, lights);
-    m_infoManagerLightList = std::make_shared<ManagerController::RenderResource::LightList>(numFramesInFlight, lights);
+    m_infoManagerLightData = std::make_shared<ManagerController::RenderResource::LightInfo>(
+        context.frameTracker().getSetup().getNumFramesInFlight(), lights);
+    m_infoManagerLightList = std::make_shared<ManagerController::RenderResource::LightList>(
+        context.frameTracker().getSetup().getNumFramesInFlight(), lights);
 }
 
-void DefaultRenderer::initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                                  std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera)
+void DefaultRenderer::initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights,
+                                  std::shared_ptr<StarCamera> camera)
 {
-    initBuffers(context, numFramesInFlight, std::move(lights));
+    initBuffers(context, std::move(lights));
 
     m_infoManagerCamera = std::make_unique<ManagerController::RenderResource::GlobalInfo>(camera);
 }

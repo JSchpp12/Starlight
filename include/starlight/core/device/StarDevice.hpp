@@ -38,7 +38,7 @@ class StarDevice : public star::common::IRenderDevice
 
         vk::PhysicalDevice pickPhysicalDevice(vk::PhysicalDeviceFeatures deviceFeatures) const;
 
-        constexpr std::vector<const char *> GetRequiredDeviceExtensions() const noexcept
+        std::vector<const char *> GetRequiredDeviceExtensions() const noexcept
         {
             return {VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
                     VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
@@ -144,7 +144,5 @@ class StarDevice : public star::common::IRenderDevice
     StarDevice(star::Allocator allocator, vk::Device device, vk::PhysicalDevice physicalDevice);
     StarDevice(star::Allocator allocator, vk::Device device, vk::PhysicalDevice physicalDevice,
                vk::SurfaceKHR optionalRenderingSurface);
-
-
 };
 } // namespace star::core::device

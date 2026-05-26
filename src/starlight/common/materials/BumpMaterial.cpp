@@ -1,6 +1,7 @@
 #include "BumpMaterial.hpp"
 
-#include "TransferRequest_TextureFile.hpp"
+#include <starlight/common/textures/TransferRequest_CompressedTextureFile.hpp>
+#include <starlight/common/textures/TransferRequest_TextureFile.hpp>
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "event/GetQueue.hpp"
 
@@ -15,13 +16,26 @@ void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const 
 {
     auto bumpSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
 
-    m_bumpMap = ManagerRenderResource::addRequest(
-        context.getDeviceID(), context.getSemaphoreManager().get(bumpSemaphore)->semaphore,
-        std::make_unique<TransferRequest::TextureFile>(
-            star::core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
-                                                      Queue_Type::Tgraphics)
-                ->getParentQueueFamilyIndex(),
-            context.getDevice().getPhysicalDevice().getProperties(), m_bumpMapFilePath));
+    if (star::TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_bumpMapFilePath))
+    {
+        m_bumpMap = ManagerRenderResource::addRequest(
+            context.getDeviceID(), context.getSemaphoreManager().get(bumpSemaphore)->semaphore,
+            std::make_unique<TransferRequest::CompressedTextureFile>(
+                star::core::helper::GetEngineDefaultQueue(
+                    context.getEventBus(), context.getGraphicsManagers().queueManager, Queue_Type::Tgraphics)
+                    ->getParentQueueFamilyIndex(),
+                context.getDevice().getPhysicalDevice().getProperties(), std::make_unique<SharedCompressedTexture>(m_bumpMapFilePath)));
+    }
+    else
+    {
+        m_bumpMap = ManagerRenderResource::addRequest(
+            context.getDeviceID(), context.getSemaphoreManager().get(bumpSemaphore)->semaphore,
+            std::make_unique<TransferRequest::TextureFile>(
+                star::core::helper::GetEngineDefaultQueue(
+                    context.getEventBus(), context.getGraphicsManagers().queueManager, Queue_Type::Tgraphics)
+                    ->getParentQueueFamilyIndex(),
+                context.getDevice().getPhysicalDevice().getProperties(), m_bumpMapFilePath));
+    }
 
     TextureMaterial::prepRender(context, numFramesInFlight, frameBuilder);
 }
@@ -36,6 +50,7 @@ std::unique_ptr<star::StarShaderInfo> star::BumpMaterial::buildShaderInfo(core::
     for (uint8_t i = 0; i < numFramesInFlight; i++)
     {
         builder.startOnFrameIndex(i);
+        builder.startSet();
         builder.add(star::StarShaderInfo::TextureInfo{m_textureHandle, vk::ImageLayout::eShaderReadOnlyOptimal});
         builder.add(star::StarShaderInfo::TextureInfo{m_bumpMap, vk::ImageLayout::eShaderReadOnlyOptimal});
     }

@@ -341,8 +341,8 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
         frameBuilder.startSet();
         frameBuilder.add(StarShaderInfo::BufferInfo{instanceModelHandle},
                          &context.getManagerRenderResource()
-                                                   .get<StarBuffers::Buffer>(context.getDeviceID(), instanceModelHandle)
-                                                   ->resourceSemaphore);
+                              .get<StarBuffers::Buffer>(context.getDeviceID(), instanceModelHandle)
+                              ->resourceSemaphore);
         frameBuilder.add(StarShaderInfo::BufferInfo{instanceNormalHandle},
                          &context.getManagerRenderResource()
                               .get<StarBuffers::Buffer>(context.getDeviceID(), instanceNormalHandle)
@@ -442,7 +442,7 @@ std::vector<std::pair<vk::DescriptorType, const uint32_t>> star::StarObject::get
     const uint8_t &numFramesInFlight)
 {
     std::vector<std::pair<vk::DescriptorType, const uint32_t>> requests{
-        std::make_pair(vk::DescriptorType::eUniformBuffer, 2)};
+        std::make_pair(vk::DescriptorType::eUniformBuffer, 2), std::make_pair(vk::DescriptorType::eStorageBuffer, 2)};
 
     for (auto &material : m_meshMaterials)
     {

@@ -63,10 +63,21 @@ std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAddition
     services[4] = createHeadlessCaptureService();
     services[5] = createSceneLoaderService();
 
-    auto addServices = addAdditionalServices();
-    for (size_t i{0}; i < addServices.size(); i++)
     {
-        services.emplace_back(std::move(addServices[i]));
+        auto addServices = addAdditionalServices();
+        for (size_t i{0}; i < addServices.size(); i++)
+        {
+            services.emplace_back(std::move(addServices[i]));
+        }
+    }
+
+    if (m_addServiceLoader)
+    {
+        auto addServices = m_addServiceLoader();
+        for (size_t i{ 0 }; i < addServices.size(); i++)
+        {
+            services.emplace_back(std::move(addServices[i]));
+        }
     }
 
     return services;

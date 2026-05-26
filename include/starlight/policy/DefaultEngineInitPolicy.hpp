@@ -13,6 +13,11 @@ namespace star::policy
 class DefaultEngineInitPolicy
 {
   public:
+    using LoadAdditionalServices = std::function<std::vector<service::Service>()>;
+
+    DefaultEngineInitPolicy() = default;
+    explicit DefaultEngineInitPolicy(LoadAdditionalServices addServiceLoader)
+        : m_addServiceLoader(std::move(addServiceLoader)) {};
     virtual ~DefaultEngineInitPolicy() = default;
 
     void init(uint8_t requestedNumFramesInFlight);
@@ -41,8 +46,6 @@ class DefaultEngineInitPolicy
 
     static service::Service createCommandOrderService();
 
-    static service::Service createResourceOwnershipService();
-
   protected:
     virtual std::vector<service::Service> addAdditionalServices()
     {
@@ -50,6 +53,7 @@ class DefaultEngineInitPolicy
     };
 
   private:
+    LoadAdditionalServices m_addServiceLoader;
     uint8_t m_maxNumFramesInFlight{1};
 };
 } // namespace star::policy

@@ -18,11 +18,8 @@ namespace star
 class BasicObject : public StarObject
 {
   public:
-    BasicObject(std::string objFilePath)
-        : StarObject(LoadMaterials(objFilePath)), m_objFilePath(std::move(objFilePath)) 
-    {
-    }
-
+    explicit BasicObject(std::string objFilePath);
+    BasicObject(std::string objFilePath, const std::filesystem::path &materialDir);
     virtual ~BasicObject() = default;
 
     virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
@@ -35,8 +32,6 @@ class BasicObject : public StarObject
     std::string objectFilePath;
 
     std::vector<std::unique_ptr<StarMesh>> loadMeshes(core::device::DeviceContext &context) override;
-
-    std::vector<std::shared_ptr<StarMaterial>> LoadMaterials(const std::string &filePath);
 
     void getTypeOfMaterials(bool &isTextureMaterial, bool &isBumpMaterial) const; 
 };

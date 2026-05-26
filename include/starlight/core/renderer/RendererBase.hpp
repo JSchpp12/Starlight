@@ -11,9 +11,8 @@ class RendererBase
 {
   public:
     RendererBase() = default;
-    RendererBase(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                 std::vector<std::shared_ptr<StarObject>> objects)
-        : m_objects(std::move(objects)){};
+    RendererBase(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects)
+        : m_objects(std::move(objects)) {};
     virtual ~RendererBase() = default;
 
     virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft);

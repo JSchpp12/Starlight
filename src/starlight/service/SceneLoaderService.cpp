@@ -222,6 +222,10 @@ void SceneLoaderService::onCreateLight(star::command::CreateLight &cmd)
             }
         }
     }
+    else
+    {
+        newLight->push_back(Light()); 
+    }
 
     m_lightTracker[name] = newLight;
 

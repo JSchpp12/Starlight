@@ -1,11 +1,9 @@
 #pragma once
 
-#include "Light.hpp"
 #include "StarCamera.hpp"
 #include "StarObject.hpp"
 
 #include <star_common/FrameTracker.hpp>
-#include <star_common/Handle.hpp>
 #include <star_common/Renderer.hpp>
 
 #include <functional>

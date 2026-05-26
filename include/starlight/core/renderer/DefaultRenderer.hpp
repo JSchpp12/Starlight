@@ -15,9 +15,7 @@
 
 #include <star_common/FrameTracker.hpp>
 
-#include <chrono>
 #include <memory>
-#include <optional>
 #include <vulkan/vulkan.hpp>
 
 namespace star::core::renderer
@@ -74,20 +72,18 @@ class DefaultRenderer : public RendererBase
     };
 
     DefaultRenderer() = default;
-    DefaultRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                    std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera,
-                    std::vector<std::shared_ptr<StarObject>> objects)
-        : RendererBase(context, numFramesInFlight, std::move(objects)), ownsRenderResourceControllers(true)
+    DefaultRenderer(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights,
+                    std::shared_ptr<StarCamera> camera, std::vector<std::shared_ptr<StarObject>> objects)
+        : RendererBase(context, std::move(objects)), ownsRenderResourceControllers(true)
     {
-        initBuffers(context, numFramesInFlight, std::move(lights), camera);
+        initBuffers(context, std::move(lights), camera);
     }
 
-    DefaultRenderer(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                    std::vector<std::shared_ptr<StarObject>> objects,
+    DefaultRenderer(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects,
                     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
                     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
                     std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData)
-        : RendererBase(context, numFramesInFlight, std::move(objects)), m_infoManagerLightData(std::move(lightData)),
+        : RendererBase(context, std::move(objects)), m_infoManagerLightData(std::move(lightData)),
           ownsRenderResourceControllers(false), m_infoManagerLightList(std::move(lightListData)),
           m_infoManagerCamera(std::move(cameraData))
     {
@@ -137,11 +133,10 @@ class DefaultRenderer : public RendererBase
     bool ownsRenderResourceControllers = false;
     bool isReady = false;
 
-    void initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                     std::shared_ptr<std::vector<Light>> lights);
+    void initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights);
 
-    void initBuffers(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                     std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera);
+    void initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights,
+                     std::shared_ptr<StarCamera> camera);
 
     virtual std::vector<StarTextures::Texture> createRenderToImages(core::device::DeviceContext &context,
                                                                     const uint8_t &numFramesInFlight);

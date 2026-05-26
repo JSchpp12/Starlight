@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.0.7
+    VERSION 1.0.8
 )
 
 include(CheckIncludeFile)
@@ -276,14 +276,14 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/detail/scene_loader/IEntityReader.cpp" 
     "src/starlight/service/detail/scene_loader/ObjectWriter.cpp"
     "src/starlight/service/detail/scene_loader/LightWriter.cpp"
-    
     "src/starlight/common/io/JSONFileWriter.cpp"
     "src/starlight/common/entities/Light_json.cpp" 
     "src/starlight/core/json/glm_json.cpp" 
     "src/starlight/event/PipelineReady.cpp" 
     "src/starlight/core/waiter/one_shot/WaiterFactory.cpp" 
     "src/starlight/core/waiter/one_shot/detail/CachedPipelinePayload.cpp" 
-    "src/starlight/core/helper/star_object/ObjectHelpers.cpp")
+    "src/starlight/core/helper/star_object/ObjectHelpers.cpp" 
+    "src/starlight/core/renderer/TimelineSynchronizer.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
@@ -552,7 +552,6 @@ target_link_libraries(${STARLIGHT_NAME}
     PRIVATE
         SPIRV-Tools
         tinyobjloader::tinyobjloader
-        GPUOpen::VulkanMemoryAllocator
         Boost::log
         Boost::log_setup
         Boost::thread

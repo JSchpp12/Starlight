@@ -122,9 +122,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
 
     void run()
     {
-        std::shared_ptr<StarScene> currentScene = m_application.loadScene(
-            m_systemManager.getContext(m_defaultDevice),
-            m_systemManager.getContext(m_defaultDevice).frameTracker().getSetup().getNumFramesInFlight());
+        std::shared_ptr<StarScene> currentScene = m_application.loadScene(m_systemManager.getContext(m_defaultDevice));
 
         assert(currentScene && "Application must provide a proper instance of a scene object");
         currentScene->prepRender(m_systemManager.getContext(m_defaultDevice),
