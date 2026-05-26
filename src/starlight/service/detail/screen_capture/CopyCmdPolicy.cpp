@@ -42,11 +42,10 @@ static vk::BufferMemoryBarrier2 GetBarrierPrepForCPURead(vk::Buffer buffer) noex
 
 void CopyCmdPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &commandBuffer)
 {
-    // auto imageBarriers = getImageBarriersForCleanup();
-
     const vk::BufferMemoryBarrier2 buffBarrier[1]{GetBarrierPrepForCPURead(m_inUseInfo->buffer)};
 
-    commandBuffer.pipelineBarrier2(vk::DependencyInfo().setBufferMemoryBarriers(buffBarrier));
+    commandBuffer.pipelineBarrier2(
+        vk::DependencyInfo().setBufferMemoryBarriers(buffBarrier));
 }
 
 void CopyCmdPolicy::init(core::device::StarDevice &device)

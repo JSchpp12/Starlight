@@ -54,14 +54,14 @@ vk::Semaphore star::CommandBufferContainer::CompleteRequest::submitCommandBuffer
     {
         auto &additionalWaits = scratch.waitTimelineInfo;
         additionalWaits.clear();
-        additionalWaits.resize(waits.size() + 1); // since beforeSemaphores can also be provided as additional 1
+        additionalWaits.reserve(waits.size() + 1); // since beforeSemaphores can also be provided as additional 1
 
         for (size_t i = 0; i < waits.size(); i++)
         {
-            additionalWaits[i] = std::make_pair(waits[i], waitPoints[i]);
+            additionalWaits.push_back(std::make_pair(waits[i], waitPoints[i]));
         }
 
-        if (beforeSemaphores != nullptr)
+        if (beforeSemaphores != nullptr && beforeSemaphores->front() != VK_NULL_HANDLE)
         {
             additionalWaits.push_back(std::make_pair(beforeSemaphores->front(), waitStage));
             previousSignaledValues.push_back(std::nullopt);

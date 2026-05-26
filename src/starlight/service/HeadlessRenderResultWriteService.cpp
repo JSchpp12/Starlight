@@ -181,7 +181,7 @@ void star::service::HeadlessRenderResultWriteService::onStartOfNextFrame(const e
     assert(m_managerCommandBuffer != nullptr);
 
     const size_t index = static_cast<size_t>(m_frameTracker->getCurrent().getFrameInFlightIndex());
-    vk::Semaphore semaphore = m_managerCommandBuffer->getDefault().commandBuffer->getCompleteSemaphores()[index];
+    // vk::Semaphore semaphore = m_managerCommandBuffer->getDefault().commandBuffer->getCompleteSemaphores()[index];
     star::StarTextures::Texture targetImage =
         m_managerGraphicsContainer->imageManager.get(m_mainGraphicsRenderer->getRenderToColorImages()[index])->texture;
     auto commandBuffer = m_mainGraphicsRenderer->getCommandBuffer();
@@ -190,7 +190,7 @@ void star::service::HeadlessRenderResultWriteService::onStartOfNextFrame(const e
                                               : GetDefaultImageDirectory() / getFileName(*m_frameTracker);
 
     m_eventBus->emit(event::TriggerScreenshot{std::move(targetImage), path.string(), commandBuffer,
-                                              m_screenshotRegistrations[index], std::move(semaphore)});
+                                              m_screenshotRegistrations[index]});
 
     keepAlive = true;
 }
