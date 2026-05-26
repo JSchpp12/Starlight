@@ -3,15 +3,6 @@
 #include "TransferRequest_InstanceNormalInfo.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 
-#include <cassert>
-
-star::ManagerController::RenderResource::InstanceNormalInfo::InstanceNormalInfo(
-    std::shared_ptr<std::vector<StarObjectInstance>> instances)
-    : m_instances(std::move(instances))
-{
-    assert(m_instances && "Instances must be valid");
-}
-
 void star::ManagerController::RenderResource::InstanceNormalInfo::setForUpdate()
 {
     for (size_t i = 0; i < m_needsUpdatedThisFrame.size(); i++)

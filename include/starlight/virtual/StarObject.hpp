@@ -119,61 +119,57 @@ class StarObject
     {
       public:
         InstanceInfo()
-            : m_instances(std::make_shared<std::vector<StarObjectInstance>>()),
-              m_infoManagerInstanceModel(
-                  std::make_shared<ManagerController::RenderResource::InstanceModelInfo>(m_instances)),
-              m_infoManagerInstanceNormal(
-                  std::make_shared<ManagerController::RenderResource::InstanceNormalInfo>(m_instances))
+            : m_instances(), m_infoManagerInstanceModel(&m_instances), m_infoManagerInstanceNormal(&m_instances)
         {
         }
 
         void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
         {
-            m_infoManagerInstanceModel->prepRender(context, numFramesInFlight);
-            m_infoManagerInstanceNormal->prepRender(context, numFramesInFlight);
+            m_infoManagerInstanceModel.prepRender(context, numFramesInFlight);
+            m_infoManagerInstanceNormal.prepRender(context, numFramesInFlight);
         }
 
         size_t getSize()
         {
-            return m_instances->size();
+            return m_instances.size();
         }
 
         StarObjectInstance &create()
         {
-            m_instances->emplace_back();
-            return m_instances->back();
+            m_instances.emplace_back();
+            return m_instances.back();
         }
 
         StarObjectInstance &getInstance(const size_t &index)
         {
-            assert(index < m_instances->size());
+            assert(index < m_instances.size());
             setManagersToUpdate();
 
-            return m_instances->at(index);
+            return m_instances[index];
         }
         const StarObjectInstance &getInstance(const size_t &index) const
         {
-            assert(index < m_instances->size());
-            return m_instances->at(index);
+            assert(index < m_instances.size());
+            return m_instances[index];
         }
-        std::shared_ptr<ManagerController::RenderResource::InstanceModelInfo> getControllerModel()
+        ManagerController::RenderResource::InstanceModelInfo &getControllerModel()
         {
             return m_infoManagerInstanceModel;
         }
-        std::shared_ptr<ManagerController::RenderResource::InstanceNormalInfo> getControllerNormal()
+        ManagerController::RenderResource::InstanceNormalInfo &getControllerNormal()
         {
             return m_infoManagerInstanceNormal;
         }
 
       private:
-        std::shared_ptr<std::vector<StarObjectInstance>> m_instances = nullptr;
-        std::shared_ptr<ManagerController::RenderResource::InstanceModelInfo> m_infoManagerInstanceModel = nullptr;
-        std::shared_ptr<ManagerController::RenderResource::InstanceNormalInfo> m_infoManagerInstanceNormal = nullptr;
+        std::vector<StarObjectInstance> m_instances;
+        ManagerController::RenderResource::InstanceModelInfo m_infoManagerInstanceModel;
+        ManagerController::RenderResource::InstanceNormalInfo m_infoManagerInstanceNormal;
 
         void setManagersToUpdate()
         {
-            m_infoManagerInstanceModel->setToUpdate();
-            m_infoManagerInstanceNormal->setForUpdate();
+            m_infoManagerInstanceModel.setToUpdate();
+            m_infoManagerInstanceNormal.setForUpdate();
         }
     };
     /// pipeline + rendering infos

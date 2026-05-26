@@ -6,7 +6,7 @@
 #include <cassert>
 
 star::ManagerController::RenderResource::InstanceModelInfo::InstanceModelInfo(
-    std::shared_ptr<std::vector<StarObjectInstance>> instances)
+    std::vector<StarObjectInstance> *instances)
     : m_instances(std::move(instances))
 {
     assert(m_instances && "Instances must be provided before use");

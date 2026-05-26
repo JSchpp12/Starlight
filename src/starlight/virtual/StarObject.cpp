@@ -334,8 +334,8 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
     for (uint8_t i = 0; i < context.frameTracker().getSetup().getNumFramesInFlight(); i++)
     {
-        const auto &instanceModelHandle = m_instanceInfo.getControllerModel()->getHandle(i);
-        const auto &instanceNormalHandle = m_instanceInfo.getControllerNormal()->getHandle(i);
+        const auto &instanceModelHandle = m_instanceInfo.getControllerModel().getHandle(i);
+        const auto &instanceNormalHandle = m_instanceInfo.getControllerNormal().getHandle(i);
 
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
@@ -491,34 +491,34 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
         context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
     vk::Semaphore doneSemaphore;
 
-    if (m_instanceInfo.getControllerModel()->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    if (m_instanceInfo.getControllerModel().submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
     {
         updateInstanceModel = true;
 
         request.oneTimeWaitSemaphoreInfo.insert(
-            m_instanceInfo.getControllerModel()->getHandle(frameInFlightIndex), std::move(doneSemaphore),
+            m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex), std::move(doneSemaphore),
             vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
-    if (m_instanceInfo.getControllerNormal()->submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    if (m_instanceInfo.getControllerNormal().submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
     {
         updateInstanceNormal = true;
 
         request.oneTimeWaitSemaphoreInfo.insert(
-            m_instanceInfo.getControllerNormal()->getHandle(frameInFlightIndex), std::move(doneSemaphore),
+            m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex), std::move(doneSemaphore),
             vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
     if (updateInstanceNormal)
     {
         renderingContext.addBufferToRenderingContext(
-            context, m_instanceInfo.getControllerNormal()->getHandle(frameInFlightIndex));
+            context, m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex));
     }
 
     if (updateInstanceModel)
     {
         renderingContext.addBufferToRenderingContext(
-            context, m_instanceInfo.getControllerModel()->getHandle(frameInFlightIndex));
+            context, m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex));
     }
 }
 
@@ -546,7 +546,7 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
 {
     auto barriers = std::vector<vk::BufferMemoryBarrier2>();
 
-    if (m_instanceInfo.getControllerModel()->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.getControllerModel().willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()
@@ -558,11 +558,11 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setBuffer(renderingContext.bufferTransferRecords.get(
-                    m_instanceInfo.getControllerModel()->getHandle(frameInFlightIndex)))
+                    m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex)))
                 .setSize(vk::WholeSize));
     }
 
-    if (m_instanceInfo.getControllerNormal()->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.getControllerNormal().willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()
@@ -574,7 +574,7 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setBuffer(renderingContext.bufferTransferRecords.get(
-                    m_instanceInfo.getControllerNormal()->getHandle(frameInFlightIndex)))
+                    m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex)))
                 .setSize(vk::WholeSize));
     }
 

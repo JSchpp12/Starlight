@@ -10,7 +10,7 @@ class InstanceNormalInfo : public ManagerController::RenderResource::Buffer
 {
   public:
     InstanceNormalInfo() = default;
-    InstanceNormalInfo(std::shared_ptr<std::vector<StarObjectInstance>> instances);
+    InstanceNormalInfo(std::vector<StarObjectInstance> *instances) : m_instances(instances) {};
     virtual ~InstanceNormalInfo() = default;
 
     void setForUpdate();
@@ -23,7 +23,7 @@ class InstanceNormalInfo : public ManagerController::RenderResource::Buffer
     bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameinFlightIndex) const override;
 
   private:
-    std::shared_ptr<std::vector<StarObjectInstance>> m_instances = nullptr;
+    std::vector<StarObjectInstance> *m_instances{nullptr};
     std::vector<bool> m_needsUpdatedThisFrame;
 };
 } // namespace star::ManagerController::RenderResource

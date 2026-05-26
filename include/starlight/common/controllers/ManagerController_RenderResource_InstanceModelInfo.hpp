@@ -9,7 +9,7 @@ class InstanceModelInfo : public Buffer
 {
   public:
     InstanceModelInfo() = default;
-    InstanceModelInfo(std::shared_ptr<std::vector<StarObjectInstance>> instances);
+    InstanceModelInfo(std::vector<StarObjectInstance> *instances);
 
     virtual ~InstanceModelInfo() = default;
 
@@ -24,7 +24,7 @@ class InstanceModelInfo : public Buffer
     bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const override;
 
   private:
-    std::shared_ptr<std::vector<StarObjectInstance>> m_instances = std::shared_ptr<std::vector<StarObjectInstance>>();
+    std::vector<StarObjectInstance> *m_instances{nullptr};
     std::vector<bool> m_needsUpdatedThisFrame;
 };
 } // namespace star::ManagerController::RenderResource
