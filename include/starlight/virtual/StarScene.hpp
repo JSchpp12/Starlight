@@ -1,7 +1,7 @@
 #pragma once
 
 #include "StarCamera.hpp"
-#include "StarObject.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include <star_common/FrameTracker.hpp>
 #include <star_common/Renderer.hpp>

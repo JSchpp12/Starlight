@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarObject.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include <tiny_obj_loader.h>
 

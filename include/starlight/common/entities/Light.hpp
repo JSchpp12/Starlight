@@ -2,7 +2,6 @@
 
 #include "Enums.hpp"
 #include "StarEntity.hpp"
-#include "StarObject.hpp"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

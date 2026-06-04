@@ -5,9 +5,9 @@
 #include "HeightDisplacementMaterial.hpp"
 #include "StarGraphicsPipeline.hpp"
 #include "StarMesh.hpp"
-#include "StarObject.hpp"
 #include "VertColorMaterial.hpp"
 #include "Vertex.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include <memory>
 

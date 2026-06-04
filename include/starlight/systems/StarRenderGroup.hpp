@@ -5,11 +5,11 @@
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarGraphicsPipeline.hpp"
-#include "StarObject.hpp"
 #include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
 #include "VulkanVertex.hpp"
 #include "core/device/DeviceContext.hpp"
+#include "starlight/object/StarObject.hpp"
 #include <star_common/Handle.hpp>
 #include <star_common/helper/CastHelpers.hpp>
 

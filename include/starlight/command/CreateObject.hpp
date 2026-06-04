@@ -1,7 +1,7 @@
 #pragma once
 
 #include "starlight/command/detail/create_object/ObjectLoader.hpp"
-#include "starlight/virtual/StarObject.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include <star_common/IServiceCommand.hpp>
 #include <star_common/ServiceReply.hpp>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "starlight/service/detail/scene_loader/IEntityReader.hpp"
-#include "starlight/virtual/StarObject.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include <nlohmann/json.hpp>
 
