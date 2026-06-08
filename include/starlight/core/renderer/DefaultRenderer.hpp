@@ -7,11 +7,11 @@
 #include "StarCamera.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
-#include "StarObject.hpp"
 #include "StarShaderInfo.hpp"
 #include "StarTextures/Texture.hpp"
 #include "core/renderer/RendererBase.hpp"
 #include "starlight/event/DescriptorPoolReady.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include <star_common/FrameTracker.hpp>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "starlight/virtual/StarObject.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include <memory>
 

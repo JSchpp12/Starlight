@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarObjectInstance.hpp"
+#include "starlight/virtual/StarEntity.hpp"
 #include "TransferRequest_Buffer.hpp"
 
 #include <glm/glm.hpp>
@@ -10,7 +10,7 @@ namespace star::TransferRequest
 class InstanceNormalInfo : public Buffer
 {
   public:
-    InstanceNormalInfo(const std::vector<StarObjectInstance> &objectInstances, const uint32_t &graphicsQueueFamilyIndex,
+    InstanceNormalInfo(const std::vector<StarEntity> &objectInstances, const uint32_t &graphicsQueueFamilyIndex,
                        const vk::DeviceSize &minUniformBufferOffsetAlignment)
         : graphicsQueueFamilyIndex(graphicsQueueFamilyIndex),
           minUniformBufferOffsetAlignment(minUniformBufferOffsetAlignment),

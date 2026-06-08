@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ManagerController_RenderResource_Buffer.hpp"
-#include "StarObjectInstance.hpp"
+#include "starlight/virtual/StarEntity.hpp"
 #include "TransferRequest_Buffer.hpp"
 
 namespace star::ManagerController::RenderResource
@@ -10,7 +10,7 @@ class InstanceNormalInfo : public ManagerController::RenderResource::Buffer
 {
   public:
     InstanceNormalInfo() = default;
-    InstanceNormalInfo(std::vector<StarObjectInstance> *instances) : m_instances(instances) {};
+    InstanceNormalInfo(std::vector<StarEntity> *instances) : m_instances(instances) {};
     virtual ~InstanceNormalInfo() = default;
 
     void setForUpdate();
@@ -23,7 +23,7 @@ class InstanceNormalInfo : public ManagerController::RenderResource::Buffer
     bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameinFlightIndex) const override;
 
   private:
-    std::vector<StarObjectInstance> *m_instances{nullptr};
+    std::vector<StarEntity> *m_instances{nullptr};
     std::vector<bool> m_needsUpdatedThisFrame;
 };
 } // namespace star::ManagerController::RenderResource

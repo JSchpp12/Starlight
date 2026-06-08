@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarObjectInstance.hpp"
+#include "starlight/virtual/StarEntity.hpp"
 #include "TransferRequest_Buffer.hpp"
 
 #include <glm/glm.hpp>
@@ -10,7 +10,7 @@ namespace star::TransferRequest
 class InstanceModelInfo : public star::TransferRequest::Buffer
 {
   public:
-    InstanceModelInfo(const std::vector<star::StarObjectInstance> &objectInstances,
+    InstanceModelInfo(const std::vector<star::StarEntity> &objectInstances,
                       const uint32_t &graphicsQueueFamilyIndex, const vk::DeviceSize &minUniformBufferOffsetAlignment)
         : displayMatrixInfo(std::vector<glm::mat4>(objectInstances.size())),
           graphicsQueueFamilyIndex(graphicsQueueFamilyIndex),

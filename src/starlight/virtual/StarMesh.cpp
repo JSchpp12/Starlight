@@ -1,5 +1,54 @@
 #include "StarMesh.hpp"
 
+namespace star
+{
+static void CalcBoundingBox(const std::vector<star::Vertex> &verts, glm::vec3 &upperBoundingBoxCoord,
+                            glm::vec3 &lowerBoundingBoxCoord)
+{
+    glm::vec3 max{}, min{};
+
+    // calcualte bounding box info
+    for (size_t i = 1; i < verts.size(); i++)
+    {
+        if (verts.at(i).pos.x < min.x)
+            min.x = verts.at(i).pos.x;
+        if (verts.at(i).pos.y < min.y)
+            min.y = verts.at(i).pos.y;
+        if (verts.at(i).pos.z < min.z)
+            min.z = verts.at(i).pos.z;
+
+        if (verts.at(i).pos.x > max.x)
+            max.x = verts.at(i).pos.x;
+        if (verts.at(i).pos.y > max.y)
+            max.y = verts.at(i).pos.y;
+        if (verts.at(i).pos.z > max.z)
+            max.z = verts.at(i).pos.z;
+    }
+
+    lowerBoundingBoxCoord = min;
+    upperBoundingBoxCoord = max;
+}
+
+StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vector<Vertex> &vertices,
+                   std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked)
+    : material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), triangular(indices.size() % 3 == 0),
+      numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
+      numInds(star::common::casts::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
+{
+    CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
+}
+
+StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vector<Vertex> &vertices,
+                   std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material,
+                   const glm::vec3 &boundBoxMinCoord, const glm::vec3 &boundBoxMaxCoord, bool packAdjacencies)
+    : material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), triangular(indices.size() % 3 == 0),
+      aaboundingBoxBounds{boundBoxMinCoord, boundBoxMaxCoord},
+      numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
+      numInds(star::common::casts::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
+{
+    CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
+}
+
 void star::StarMesh::prepRender(star::core::device::DeviceContext &context)
 {
     m_deviceID = context.getDeviceID();
@@ -35,30 +84,4 @@ void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, 
     commandBuffer.bindIndexBuffer(iBuff.getVulkanBuffer(), offset, vk::IndexType::eUint32);
     commandBuffer.drawIndexed(this->numInds, instanceCount, 0, 0, 0);
 }
-
-void star::StarMesh::CalcBoundingBox(const std::vector<star::Vertex> &verts, glm::vec3 &upperBoundingBoxCoord,
-                                     glm::vec3 &lowerBoundingBoxCoord)
-{
-    glm::vec3 max{}, min{};
-
-    // calcualte bounding box info
-    for (size_t i = 1; i < verts.size(); i++)
-    {
-        if (verts.at(i).pos.x < min.x)
-            min.x = verts.at(i).pos.x;
-        if (verts.at(i).pos.y < min.y)
-            min.y = verts.at(i).pos.y;
-        if (verts.at(i).pos.z < min.z)
-            min.z = verts.at(i).pos.z;
-
-        if (verts.at(i).pos.x > max.x)
-            max.x = verts.at(i).pos.x;
-        if (verts.at(i).pos.y > max.y)
-            max.y = verts.at(i).pos.y;
-        if (verts.at(i).pos.z > max.z)
-            max.z = verts.at(i).pos.z;
-    }
-
-    lowerBoundingBoxCoord = min;
-    upperBoundingBoxCoord = max;
-}
+} // namespace star

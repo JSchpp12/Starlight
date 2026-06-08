@@ -6,7 +6,7 @@
 #include <cassert>
 
 star::ManagerController::RenderResource::InstanceModelInfo::InstanceModelInfo(
-    std::vector<StarObjectInstance> *instances)
+    std::vector<StarEntity> *instances)
     : m_instances(std::move(instances))
 {
     assert(m_instances && "Instances must be provided before use");

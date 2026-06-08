@@ -29,10 +29,9 @@ class StarMaterial
     StarMaterial(const glm::vec4 &surfaceColor, const glm::vec4 &highlightColor, const glm::vec4 &ambient,
                  const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny)
         : surfaceColor(surfaceColor), highlightColor(highlightColor), ambient(ambient), diffuse(diffuse),
-          specular(specular), shinyCoefficient(shiny){};
+          specular(specular), shinyCoefficient(shiny) {};
 
     StarMaterial() = default;
-
     virtual ~StarMaterial() = default;
 
     /// <summary>
