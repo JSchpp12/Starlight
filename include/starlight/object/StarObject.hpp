@@ -90,7 +90,8 @@ class StarObject
     const StarEntity &getInstance(const size_t &index = 0) const;
 
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                             const Handle &targetCommandBuffer);
+                             const Handle &targetCommandBuffer,
+                             const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo);
 
     /// @brief Create descriptor set layouts for this object.
     /// @param device
@@ -190,7 +191,8 @@ class StarObject
     std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(const uint8_t &numFramesInFlight);
 
     virtual void updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                     const Handle &targetCommandBuffer);
+                                     const Handle &targetCommandBuffer,
+                                     const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo);
 
   private:
     static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
@@ -222,7 +224,8 @@ class StarObject
     void prepareMeshes(star::core::device::DeviceContext &context);
 
     void updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                            const Handle &targetCommandBuffer);
+                            const Handle &targetCommandBuffer,
+                            const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo);
 
     bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex);
 

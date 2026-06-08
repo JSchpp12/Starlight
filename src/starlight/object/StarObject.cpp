@@ -1,6 +1,5 @@
 #include "starlight/object/StarObject.hpp"
 
-#include "ConfigFile.hpp"
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
@@ -280,7 +279,8 @@ star::StarEntity &star::StarObject::createInstance()
 }
 
 void star::StarObject::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                   const Handle &targetCommandBuffer)
+                                   const Handle &targetCommandBuffer,
+                                   const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo)
 {
     if (!isReady && isRenderReady(context))
     {
@@ -291,7 +291,7 @@ void star::StarObject::frameUpdate(core::device::DeviceContext &context, const u
     {
         renderingContext = buildRenderingContext(context);
 
-        updateDependentData(context, frameInFlightIndex, targetCommandBuffer);
+        updateDependentData(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
     }
 }
 
@@ -477,21 +477,24 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
 }
 
 void star::StarObject::updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                           const Handle &targetCommandBuffer)
+                                           const Handle &targetCommandBuffer,
+                                           const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo)
 {
-    updateInstanceData(context, frameInFlightIndex, targetCommandBuffer);
+    updateInstanceData(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
 }
 
 void star::StarObject::updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                          const Handle &targetCommandBuffer)
+                                          const Handle &targetCommandBuffer,
+                                          const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo)
 {
     bool updateInstanceModel = false, updateInstanceNormal = false;
 
     CommandBufferContainer::CompleteRequest &request =
         context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
-    vk::Semaphore doneSemaphore;
 
-    if (m_instanceInfo.getControllerModel().submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    vk::Semaphore doneSemaphore;
+    if (m_instanceInfo.getControllerModel().submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore,
+                                                                 transferReuqestSyncInfo))
     {
         updateInstanceModel = true;
 
@@ -500,7 +503,8 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
             vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
     }
 
-    if (m_instanceInfo.getControllerNormal().submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore))
+    if (m_instanceInfo.getControllerNormal().submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore,
+                                                                  transferReuqestSyncInfo))
     {
         updateInstanceNormal = true;
 
@@ -517,8 +521,8 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
 
     if (updateInstanceModel)
     {
-        renderingContext.addBufferToRenderingContext(
-            context, m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex));
+        renderingContext.addBufferToRenderingContext(context,
+                                                     m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex));
     }
 }
 

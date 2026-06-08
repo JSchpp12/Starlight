@@ -25,7 +25,7 @@ star::StarEntity::StarEntity(const glm::vec3 &position, const glm::vec3 &scale)
     this->setScale(scale);
 }
 
-star::StarEntity &star::StarEntity::setScale(glm::vec3 scale)
+star::StarEntity &star::StarEntity::setScale(const glm::vec3 &scale)
 {
     scaleMat = glm::scale(glm::mat4(1.0f), scale);
     return *this;

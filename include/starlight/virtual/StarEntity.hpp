@@ -16,7 +16,7 @@ class StarEntity
 
     glm::vec3 getScale() const;
 
-    StarEntity &setScale(glm::vec3 scale);
+    StarEntity &setScale(const glm::vec3 &scale);
 
     virtual StarEntity &setPosition(glm::vec3 newPosition);
 

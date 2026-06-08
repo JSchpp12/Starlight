@@ -1,6 +1,7 @@
 #include "core/renderer/RendererBase.hpp"
 
 #include "starlight/command/command_order/DeclarePass.hpp"
+#include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 
 #include <star_common/EventBus.hpp>
@@ -105,11 +106,32 @@ std::vector<star::StarRenderGroup> RendererBase::CreateRenderingGroups(core::dev
     return renderingGroups;
 }
 
+static std::tuple<vk::Semaphore, uint64_t> GetCurrentSyncInfo(const star::Handle &registration,
+                                                              const star::core::CommandBus &cmdBus)
+{
+    auto cmd = star::command_order::GetPassInfo{registration};
+    cmdBus.submit(cmd);
+    const auto &r = cmd.getReply().get();
+
+    return std::make_tuple(r.signaledSemaphore, r.currentSignalValue);
+}
+
+static star::core::graphics::GPUWorkSyncInfo GetTransferRequestSyncToPreviousDraw(const star::Handle &registration,
+                                                                             const star::core::CommandBus &cmdBus)
+{
+    auto [semaphore, currentSignalValue] = GetCurrentSyncInfo(registration, cmdBus);
+
+    return star::core::graphics::GPUWorkSyncInfo{
+        .workWaitOn = star::core::graphics::SemaphoreInfo{.signalValue = currentSignalValue, .semaphore = semaphore}};
+}
+
 void RendererBase::updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
 {
+    const auto &transferSyncInfoToUse = GetTransferRequestSyncToPreviousDraw(m_commandBuffer, context.getCmdBus());
+
     for (auto &group : m_renderGroups)
     {
-        group.frameUpdate(context, frameInFlightIndex, m_commandBuffer);
+        group.frameUpdate(context, frameInFlightIndex, m_commandBuffer, transferSyncInfoToUse);
     }
 }
 } // namespace star::core::renderer
