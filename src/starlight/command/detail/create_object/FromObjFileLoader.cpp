@@ -1,6 +1,6 @@
 #include "starlight/command/detail/create_object/FromObjFileLoader.hpp"
 
-#include "starlight/common/objects/BasicObject.hpp"
+#include "starlight/object/BasicObject.hpp"
 
 namespace star::command::create_object
 {

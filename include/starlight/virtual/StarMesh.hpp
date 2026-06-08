@@ -8,7 +8,6 @@
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
 
-
 #include <vulkan/vulkan.hpp>
 
 #include <array>
@@ -19,25 +18,11 @@ class StarMesh
 {
   public:
     StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vector<Vertex> &vertices,
-             std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked)
-        : material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked),
-          triangular(indices.size() % 3 == 0), numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
-          numInds(star::common::casts::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
-    {
-
-        CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
-    }
+             std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked);
 
     StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vector<Vertex> &vertices,
              std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, const glm::vec3 &boundBoxMinCoord,
-             const glm::vec3 &boundBoxMaxCoord, bool packAdjacencies = false)
-        : material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), triangular(indices.size() % 3 == 0),
-          aaboundingBoxBounds{boundBoxMinCoord, boundBoxMaxCoord},
-          numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
-          numInds(star::common::casts::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
-    {
-        CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
-    }
+             const glm::vec3 &boundBoxMaxCoord, bool packAdjacencies = false);
 
     virtual ~StarMesh() = default;
 
@@ -77,14 +62,11 @@ class StarMesh
   protected:
     Handle m_deviceID;
     Handle vertBuffer, indBuffer;
-    bool hasAdjacenciesPacked = false;
-    bool triangular = false;
     glm::vec3 aaboundingBoxBounds[2];
     std::shared_ptr<StarMaterial> material;
     uint32_t numVerts = 0, numInds = 0;
+    bool hasAdjacenciesPacked = false;
+    bool triangular = false;
     bool isReady = false;
-
-    static void CalcBoundingBox(const std::vector<Vertex> &verts, glm::vec3 &upperBoundingBoxCoord,
-                                glm::vec3 &lowerBoundingBoxCoord);
 };
 } // namespace star

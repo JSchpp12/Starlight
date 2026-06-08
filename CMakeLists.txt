@@ -205,8 +205,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/common/materials/BumpMaterial.cpp"
     "src/starlight/common/materials/VertColorMaterial.cpp"
     "src/starlight/common/materials/HeightDisplacementMaterial.cpp"
-    "src/starlight/common/objects/BasicObject.cpp"
-    "src/starlight/common/objects/Square.cpp"
+    "src/starlight/object/BasicObject.cpp"
     "src/starlight/common/objects/Grid.cpp"
     "src/starlight/common/ConfigFile.cpp"
     "src/starlight/common/ConfigReader.cpp"
@@ -281,7 +280,14 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/waiter/one_shot/WaiterFactory.cpp" 
     "src/starlight/core/waiter/one_shot/detail/CachedPipelinePayload.cpp" 
     "src/starlight/core/helper/star_object/ObjectHelpers.cpp" 
-    "src/starlight/core/renderer/TimelineSynchronizer.cpp")
+    "src/starlight/core/renderer/TimelineSynchronizer.cpp" 
+    "src/starlight/debug/DebugPrimitives.cpp"
+    "src/starlight/primitive/SquareObject.cpp"
+    "src/starlight/primitive/SquareMeshBuilder.cpp"
+    "src/starlight/primitive/CubeObject.cpp"
+    "src/starlight/primitive/CubeMeshBuilder.cpp"
+    "src/starlight/material/InstanceColorMaterial.cpp"
+     "src/starlight/common/buffers/TransferRequest_InstanceColorInfo.cpp")
 
 set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 
@@ -320,8 +326,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/common/materials/BumpMaterial.hpp"
     "include/starlight/common/materials/VertColorMaterial.hpp"
     "include/starlight/common/materials/TextureMaterial.hpp"
-    "include/starlight/common/objects/BasicObject.hpp"
-    "include/starlight/common/objects/Square.hpp"
+    "include/starlight/object/BasicObject.hpp"
     "include/starlight/common/buffers/TransferRequest_GlobalInfo.hpp"
     "include/starlight/common/buffers/TransferRequest_InstanceModelInfo.hpp"
     "include/starlight/common/buffers/TransferRequest_InstanceNormalInfo.hpp"

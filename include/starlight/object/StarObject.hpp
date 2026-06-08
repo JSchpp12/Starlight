@@ -39,9 +39,7 @@ class StarObject
                                     core::renderer::RenderingTargetInfo renderingInfo);
 
     static void cleanupSharedResources(core::device::DeviceContext &device);
-
     StarObject() = default;
-
     explicit StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials)
         : m_meshMaterials(std::move(meshMaterials)) {};
 
@@ -180,10 +178,10 @@ class StarObject
     std::unique_ptr<StarDescriptorSetLayout> setLayout;
     InstanceInfo m_instanceInfo;
 
-    std::vector<std::unique_ptr<StarMesh>> meshes;
+    std::vector<StarMesh> meshes;
     bool isReady = false;
 
-    virtual std::vector<std::unique_ptr<StarMesh>> loadMeshes(star::core::device::DeviceContext &device) = 0;
+    virtual std::vector<StarMesh> loadMeshes(star::core::device::DeviceContext &device) = 0;
 
     virtual void createInstanceBuffers(star::core::device::DeviceContext &context);
 
@@ -226,7 +224,7 @@ class StarObject
     void updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                             const Handle &targetCommandBuffer);
 
-    bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex) const;
+    bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex);
 
     void recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                              const uint64_t &frameIndex);

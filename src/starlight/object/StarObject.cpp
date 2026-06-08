@@ -265,7 +265,7 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
     {
         uint32_t instanceCount;
         star::common::casts::SafeCast<size_t, uint32_t>(m_instanceInfo.getSize(), instanceCount);
-        rmesh.get()->recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
+        rmesh.recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
     }
 
     if (this->drawNormals)
@@ -323,7 +323,7 @@ void star::StarObject::prepareMeshes(star::core::device::DeviceContext &device)
 
     for (auto &mesh : this->meshes)
     {
-        mesh->prepRender(device);
+        mesh.prepRender(device);
     }
 }
 
@@ -367,11 +367,11 @@ void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &
 
 void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds)
 {
-    std::array<glm::vec3, 2> bbBounds = this->meshes.front()->getBoundingBoxCoords();
+    std::array<glm::vec3, 2> bbBounds = this->meshes.front().getBoundingBoxCoords();
 
     for (size_t i = 1; i < this->meshes.size(); i++)
     {
-        std::array<glm::vec3, 2> curbbBounds = this->meshes.at(i)->getBoundingBoxCoords();
+        std::array<glm::vec3, 2> curbbBounds = this->meshes.at(i).getBoundingBoxCoords();
 
         if (curbbBounds[0].x < bbBounds[0].x)
             bbBounds[0].x = curbbBounds[0].x;
@@ -467,7 +467,7 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
     }
     for (size_t i{0}; i < meshes.size(); i++)
     {
-        if (!meshes[i]->isKnownToBeReady(context.frameTracker().getCurrent().getFrameInFlightIndex()))
+        if (!meshes[i].isKnownToBeReady(context.frameTracker().getCurrent().getFrameInFlightIndex()))
         {
             return false;
         }
@@ -522,7 +522,7 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
     }
 }
 
-bool star::StarObject::isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex) const
+bool star::StarObject::isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex)
 {
     if (!isReady)
     {
@@ -531,7 +531,7 @@ bool star::StarObject::isKnownToBeReadyForRecordRender(const uint8_t &frameInFli
 
     for (auto &rmesh : this->meshes)
     {
-        if (!rmesh->isKnownToBeReady(frameInFlightIndex))
+        if (!rmesh.isKnownToBeReady(frameInFlightIndex))
         {
             return false;
         }
