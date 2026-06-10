@@ -63,13 +63,13 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForPrep() co
                            .setLayerCount(vk::RemainingArrayLayers);
 
     auto barriers = std::vector<vk::ImageMemoryBarrier2>(1);
-    if (m_inUseInfo->targetImageLayout == vk::ImageLayout::ePresentSrcKHR)
+    if (m_inUseInfo->targetTexture.getImageLayout() == vk::ImageLayout::ePresentSrcKHR)
     {
         barriers[0]
             .setOldLayout(vk::ImageLayout::ePresentSrcKHR)
             .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
             .setSubresourceRange(range)
-            .setImage(m_inUseInfo->targetImage)
+            .setImage(m_inUseInfo->targetTexture.getVulkanImage())
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
@@ -83,7 +83,7 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForPrep() co
             .setOldLayout(vk::ImageLayout::eColorAttachmentOptimal)
             .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
             .setSubresourceRange(range)
-            .setImage(m_inUseInfo->targetImage)
+            .setImage(m_inUseInfo->targetTexture.getVulkanImage())
             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
             .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
@@ -99,14 +99,14 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForCleanup()
 {
     return {vk::ImageMemoryBarrier2()
                 .setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
-                .setNewLayout(m_inUseInfo->targetImageLayout)
+                .setNewLayout(m_inUseInfo->targetTexture.getImageLayout())
                 .setSubresourceRange(vk::ImageSubresourceRange()
                                          .setAspectMask(vk::ImageAspectFlagBits::eColor)
                                          .setBaseMipLevel(0)
                                          .setLevelCount(1)
                                          .setBaseArrayLayer(0)
                                          .setLayerCount(1))
-                .setImage(m_inUseInfo->targetImage)
+                .setImage(m_inUseInfo->targetTexture.getVulkanImage())
                 .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                 .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
@@ -140,9 +140,9 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
     else if (m_inUseInfo->targetTextureReadySemaphore != nullptr)
     {
         waitSemaphores[0] = vk::SemaphoreSubmitInfo()
-                                .setSemaphore(*m_inUseInfo->targetTextureReadySemaphore)
+                                .setSemaphore(m_inUseInfo->targetTextureReadySemaphore->vkSemaphore)
                                 .setStageMask(vk::PipelineStageFlagBits2::eAllCommands)
-                                .setValue(0);
+                                .setValue(m_inUseInfo->targetTextureReadySemaphore->signalValue);
     }
     else
     {
@@ -171,7 +171,7 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
 void CopyCmdPolicy::recordCopyImageToBuffer(vk::CommandBuffer &commandBuffer, vk::Image targetSrcImage) const
 {
     const auto copy = vk::BufferImageCopy2()
-                          .setImageExtent(m_inUseInfo->targetImageExtent)
+                          .setImageExtent(m_inUseInfo->targetTexture.getBaseExtent())
                           .setImageSubresource(vk::ImageSubresourceLayers()
                                                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
                                                    .setBaseArrayLayer(0)
@@ -213,16 +213,17 @@ void CopyCmdPolicy::recordCommandBuffer(StarCommandBuffer &commandBuffer,
     commandBuffer.begin(frameTracker.getCurrent().getFrameInFlightIndex());
     addMemoryDependenciesToPrepForCopy(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));
     recordCopyImageToBuffer(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()),
-                            m_inUseInfo->targetImage);
+                            m_inUseInfo->targetTexture.getVulkanImage());
+    // m_inUseInfo->targetTexture.setImageLayout(vk::ImageLayout::eTransferSrcOptimal);
     addMemoryDependenciesToCleanupFromCopy(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));
 
     commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
 }
-
-void CopyCmdPolicy::recordCopyCommands(vk::CommandBuffer &commandBuffer) const
-{
-    recordCopyImageToBuffer(commandBuffer, m_inUseInfo->targetImage);
-}
+//
+// void CopyCmdPolicy::recordCopyCommands(vk::CommandBuffer &commandBuffer) const
+//{
+//    recordCopyImageToBuffer(commandBuffer, m_inUseInfo->targetImage);
+//}
 
 void CopyCmdPolicy::addMemoryDependenciesToPrepForCopy(vk::CommandBuffer &commandBuffer)
 {

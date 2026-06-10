@@ -99,10 +99,8 @@ GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
 void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
 {
     m_inUseResources->path = copyPlan.path;
-    m_inUseResources->targetImage = copyPlan.calleeDependencies->targetTexture.getVulkanImage();
+    m_inUseResources->targetTexture = copyPlan.calleeDependencies->targetTexture;
     m_inUseResources->buffer = copyPlan.resources.bufferInfo.hostVisibleBuffer.getVulkanBuffer();
-    m_inUseResources->targetImageLayout = copyPlan.calleeDependencies->targetTexture.getImageLayout();
-    m_inUseResources->targetImageExtent = copyPlan.calleeDependencies->targetTexture.getBaseExtent();
     m_inUseResources->blitFilter = copyPlan.blitFilter;
 
     if (copyPlan.resources.blitTargetTexture.has_value())

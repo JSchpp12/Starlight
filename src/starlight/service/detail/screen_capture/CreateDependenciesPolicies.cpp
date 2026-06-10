@@ -35,13 +35,14 @@ std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuf
 
 CalleeRenderDependencies DefaultCreatePolicy::create(DeviceInfo &deviceInfo, StarTextures::Texture targetTexture,
                                                      const Handle &commandBufferContainingTarget,
-                                                     vk::Semaphore targetTextureReadySemaphore)
+                                                     vk::Semaphore targetTextureReadySemaphore, uint64_t signalValue)
 {
     assert(deviceInfo.device != nullptr);
 
     auto builder = CalleeRenderDependencies::Builder();
-    if (targetTextureReadySemaphore != VK_NULL_HANDLE){
-        builder.setTargetTextureReadySemaphore(targetTextureReadySemaphore);
+    if (targetTextureReadySemaphore != VK_NULL_HANDLE)
+    {
+        builder.setTargetTextureReadySemaphore(targetTextureReadySemaphore, signalValue);
     }
     return builder.setCommandBufferContainingTarget(commandBufferContainingTarget)
         .setTargetTexture(std::move(targetTexture))

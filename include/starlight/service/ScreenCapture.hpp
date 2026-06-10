@@ -2,17 +2,17 @@
 
 #include "ManagedHandleContainer.hpp"
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
-#include "starlight/command/command_order/DeclareDependency.hpp"
 #include "detail/screen_capture/Common.hpp"
 #include "detail/screen_capture/CopyRouter.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
 #include "detail/screen_capture/GPUSynchronizationInfo.hpp"
 #include "event/TriggerScreenshot.hpp"
 #include "job/tasks/TaskFactory.hpp"
-#include "starlight/command/frames/GetFrameTracker.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "policy/command/ListenForGetScreenCaptureSyncInfo.hpp"
 #include "service/InitParameters.hpp"
+#include "starlight/command/command_order/DeclareDependency.hpp"
+#include "starlight/command/frames/GetFrameTracker.hpp"
 #include "starlight/core/waiter/sync_renderer/Factory.hpp"
 #include "starlight/job/worker/DefaultWorker.hpp"
 #include "starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
@@ -144,7 +144,7 @@ class ScreenCapture
         m_actionRouter.init(&m_deviceInfo);
 
         m_copyPolicy.init(m_deviceInfo);
-        auto cmdBuff = m_copyPolicy.getCommandBuffer(); 
+        auto cmdBuff = m_copyPolicy.getCommandBuffer();
 
         registerWithEventBus();
         initCommandBuffer();
@@ -153,8 +153,8 @@ class ScreenCapture
     void setInitParameters(InitParameters &params)
     {
         star::frames::GetFrameTracker ftCmd{};
-        params.commandBus.submit(ftCmd); 
-        assert(ftCmd.getReply().get() != nullptr); 
+        params.commandBus.submit(ftCmd);
+        assert(ftCmd.getReply().get() != nullptr);
 
         m_deviceInfo =
             detail::screen_capture::DeviceInfo{.device = &params.device,
@@ -195,7 +195,8 @@ class ScreenCapture
     detail::screen_capture::DeviceInfo m_deviceInfo;
     uint32_t m_numWorkers;
 
-    void registerNewDependencyPass(const Handle &copyCmdBuffer, const Handle &targetCmdBuffer) const noexcept {
+    void registerNewDependencyPass(const Handle &copyCmdBuffer, const Handle &targetCmdBuffer) const noexcept
+    {
         m_deviceInfo.cmdBus->submit(star::command_order::DeclareDependency{targetCmdBuffer, copyCmdBuffer});
     }
 
@@ -229,9 +230,18 @@ class ScreenCapture
 
         if (!screenEvent.getCalleeRegistration().isInitialized())
         {
+            // semaphore is handle...get from manager first
+            vk::Semaphore calleeReadySemaphore{VK_NULL_HANDLE};
+            uint64_t signalValue{0};
+            if (screenEvent.getTargetTextureReadySemaphore())
+            {
+                const auto *record = m_deviceInfo.semaphoreManager->get(*screenEvent.getTargetTextureReadySemaphore());
+                calleeReadySemaphore = record->semaphore;
+                signalValue = record->timelineValue.has_value() ? record->timelineValue.value() : 0;
+            }
             auto newDeps = m_createDependenciesPolicy.create(m_deviceInfo, screenEvent.getTexture(),
                                                              screenEvent.getTargetCommandBuffer(),
-                                                             screenEvent.getTargetTextureReadySemaphore());
+                                                             calleeReadySemaphore, signalValue);
             auto newHandle = m_calleeDependencyTracker.insert(std::move(newDeps));
 
             registerNewDependencyPass(m_copyPolicy.getCommandBuffer(), screenEvent.getTargetCommandBuffer());

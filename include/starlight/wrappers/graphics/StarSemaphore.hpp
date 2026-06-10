@@ -4,14 +4,9 @@
 
 namespace star
 {
-class StarSemaphore
+struct StarSemaphore
 {
-    vk::Semaphore m_semaphore{VK_NULL_HANDLE};
-    uint64_t previousSignaledValue{0};
-
-  public:
-    StarSemaphore() = default;
-    void prepRender(vk::Device device); 
-    void cleanupRender(vk::Device device); 
+    vk::Semaphore vkSemaphore{VK_NULL_HANDLE};
+    uint64_t signalValue{0};
 };
-}
+} // namespace star

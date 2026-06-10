@@ -18,6 +18,6 @@ struct DefaultCreatePolicy
 
     CalleeRenderDependencies create(DeviceInfo &deviceInfo, StarTextures::Texture targetTexture,
                                     const Handle &commandBufferContainingTarget,
-                                    vk::Semaphore targetTextureReadySemaphore);
+                                    vk::Semaphore targetTextureReadySemaphore, uint64_t signalValue);
 };
 } // namespace star::service::detail::screen_capture
