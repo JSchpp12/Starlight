@@ -240,8 +240,8 @@ class ScreenCapture
                 signalValue = record->timelineValue.has_value() ? record->timelineValue.value() : 0;
             }
             auto newDeps = m_createDependenciesPolicy.create(m_deviceInfo, screenEvent.getTexture(),
-                                                             screenEvent.getTargetCommandBuffer(),
-                                                             calleeReadySemaphore, signalValue);
+                                                             screenEvent.getTargetCommandBuffer(), calleeReadySemaphore,
+                                                             signalValue);
             auto newHandle = m_calleeDependencyTracker.insert(std::move(newDeps));
 
             registerNewDependencyPass(m_copyPolicy.getCommandBuffer(), screenEvent.getTargetCommandBuffer());
@@ -263,19 +263,18 @@ class ScreenCapture
                                              m_deviceInfo.flightTracker->getCurrent().getGlobalFrameCounter(),
                                              syncInfo.signalValue);
 
-        job::tasks::write_image_to_disk::WritePayload payload{
-            .path = screenEvent.getPath(),
-            .semaphore = syncInfo.timelineSemaphoreForMainCopyCommandsDone,
-            .device = m_deviceInfo.device->getVulkanDevice(),
-            .addData = std::make_unique<job::tasks::write_image_to_disk::WritePayload::Data>(
-                job::tasks::write_image_to_disk::BufferImageInfo{
-                    copyPlan.resources.bufferInfo.containerRegistration,
-                    copyPlan.calleeDependencies->targetTexture.getBaseExtent(),
-                    copyPlan.calleeDependencies->targetTexture.getBaseFormat(),
-                    &copyPlan.resources.bufferInfo.container->getBufferPool()},
-                std::move(signalValue))};
-        m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(std::move(payload)));
+        using WritePayload = job::tasks::write_image_to_disk::PoolOwnedWriteImagePayload;
+        WritePayload payload{.data = std::make_unique<WritePayload::Data>(WritePayload::Data{
+                                 .path = screenEvent.getPath(),
+                                 .imageExtent = copyPlan.calleeDependencies->targetTexture.getBaseExtent(),
+                                 .imageFormat = copyPlan.calleeDependencies->targetTexture.getBaseFormat(),
+                                 .device = m_deviceInfo.device->getVulkanDevice(),
+                                 .waitInfo = std::make_optional<star::StarSemaphore>(
+                                     syncInfo.timelineSemaphoreForMainCopyCommandsDone, signalValue),
+                                 .registrationHandle = copyPlan.resources.bufferInfo.containerRegistration,
+                                 .owningObjectPool = &copyPlan.resources.bufferInfo.container->getBufferPool()})};
 
+        m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(std::move(payload)));
         keepAlive = true;
     }
 

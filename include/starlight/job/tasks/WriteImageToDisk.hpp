@@ -2,7 +2,10 @@
 
 #include "data_structure/dynamic/ThreadSharedObjectPool.hpp"
 #include "job/tasks/Task.hpp"
-#include "wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
+#include "job/tasks/actions/WritePngImageAction.hpp"
+#include "job/tasks/actions/WriteTiffImageAction.hpp"
+#include "starlight/wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
+#include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
 #include "StarBuffers/Buffer.hpp"
 
@@ -15,41 +18,65 @@ namespace star::job::tasks::write_image_to_disk
 
 inline static constexpr std::string_view WriteImageTypeName = "star::job::tasks::write_image_to_disk";
 
-struct BufferImageInfo
+struct PoolOwnedWriteImagePayload
 {
-    Handle registrationHandle;
-    vk::Extent3D imageExtent;
-    vk::Format imageFormat;
-    data_structure::dynamic::ThreadSharedObjectPool<star::StarBuffers::Buffer,
-                                                    wrappers::graphics::policies::GenericBufferCreateAllocatePolicy,
-                                                    50> *owningObjectPool = nullptr;
+    using PoolType = data_structure::dynamic::ThreadSharedObjectPool<star::StarBuffers::Buffer,
+                                                                     wrappers::graphics::policies::GenericBufferCreateAllocatePolicy,
+                                                                     50>;
+
+    struct Data
+    {
+        std::string path;
+        vk::Extent3D imageExtent;
+        vk::Format imageFormat;
+        vk::Device device{VK_NULL_HANDLE};
+        std::optional<star::StarSemaphore> waitInfo;
+        Handle registrationHandle;
+        PoolType *owningObjectPool = nullptr;
+    };
+
+    std::unique_ptr<Data> data;
+
+    void operator()();
 };
 
-struct WritePayload
+struct DirectWriteImagePayload
 {
     struct Data
     {
-        BufferImageInfo bufferImageInfo; 
-        uint64_t signalValue; 
+        std::string path;
+        vk::Extent3D imageExtent;
+        vk::Format imageFormat;
+        vk::Device device{VK_NULL_HANDLE};
+        std::optional<star::StarSemaphore> waitInfo;
     };
 
-    std::string path;
-    vk::Semaphore semaphore{VK_NULL_HANDLE};
-    vk::Device device{VK_NULL_HANDLE};
-    std::unique_ptr<Data> addData{nullptr};
+    std::unique_ptr<Data> data;
+    StarBuffers::Buffer *buffer = nullptr;
+
+    void operator()();
 };
 
-using WriteImageTask = star::job::tasks::Task<sizeof(WritePayload), alignof(WritePayload)>;
+using WriteImageTask = star::job::tasks::Task<128, alignof(std::max_align_t)>;
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p);
 
-void Execute(void *p);
+template <typename T> void Execute(void *p)
+{
+    auto *payload = static_cast<T *>(p);
+    payload->operator()();
+}
 
-WriteImageTask Create(WritePayload payload);
+template <typename T> WriteImageTask Create(T payload)
+{
+    return WriteImageTask::Builder<T>()
+        .setPayload(std::move(payload))
+        .setCreateCompleteTaskFunction(&CreateComplete)
+        .setExecute(&Execute<T>)
+        .build();
+}
 
 void WaitUntilSemaphoreIsReady(vk::Device &device, const vk::Semaphore &semaphore,
-                               const uint64_t &signalValueToWaitFor);
-
-bool WriteImageToDisk(StarBuffers::Buffer &buffer, BufferImageInfo &info, std::string &path);
+                                const uint64_t &signalValueToWaitFor);
 
 } // namespace star::job::tasks::write_image_to_disk

@@ -45,6 +45,7 @@ find_package(Boost REQUIRED COMPONENTS container thread filesystem log log_setup
 find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(absl CONFIG REQUIRED)
+find_package(TIFF REQUIRED)
 
 # add all necessary dependencies
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
@@ -118,7 +119,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/wrappers/graphics/StarTextures/Texture.cpp"
     "src/starlight/wrappers/graphics/StarTextures/Resources.cpp"
     "src/starlight/wrappers/graphics/StarTextures/AllocatedResources.cpp"
-    "src/starlight/wrappers/graphics/policies/GenericImageCreateAllocatePolicy.cpp"
     "src/starlight/wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.cpp"
     "src/starlight/wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.cpp"
     "src/starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.cpp"
@@ -242,6 +242,9 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/job/tasks/Task.cpp"
     "src/starlight/job/tasks/TaskFactory.cpp"
     "src/starlight/job/tasks/WriteImageToDisk.cpp"
+    "src/starlight/job/tasks/actions/WriteImageActions.cpp"
+    "src/starlight/job/tasks/actions/WritePngImageAction.cpp"
+    "src/starlight/job/tasks/actions/WriteTiffImageAction.cpp"
     "src/starlight/job/tasks/CompileShader.cpp"
     "src/starlight/job/tasks/BuildPipeline.cpp"
     "src/starlight/job/tasks/IOTask.cpp"
@@ -464,6 +467,9 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/job/tasks/Task.hpp"
     "include/starlight/job/tasks/TaskFactory.hpp"
     "include/starlight/job/tasks/WriteImageToDisk.hpp"
+    "include/starlight/job/tasks/actions/WriteImageActions.hpp"
+    "include/starlight/job/tasks/actions/WritePngImageAction.hpp"
+    "include/starlight/job/tasks/actions/WriteTiffImageAction.hpp"
     "include/starlight/job/tasks/CompileShader.hpp"
     "include/starlight/job/tasks/BuildPipeline.hpp"
     "include/starlight/job/tasks/IOTask.hpp"
@@ -560,6 +566,7 @@ target_link_libraries(${STARLIGHT_NAME}
         Boost::filesystem
         KTX::ktx
         absl::hash
+        TIFF::TIFF
 )
 
 set(${STARLIGHT_NAME}_TARGET_INCLUDE_DIRS ${${STARLIGHT_NAME}_INCLUDE_DIRS} PARENT_SCOPE)
