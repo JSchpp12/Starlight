@@ -23,6 +23,11 @@ struct RawUint8Source
     const uint8_t *data;
 };
 
-using ImageDataSource = std::variant<VulkanBufferSource, RawFloatSource, RawUint8Source>;
+struct RawUint16Source
+{
+    const uint16_t *data;
+};
+
+using ImageDataSource = std::variant<VulkanBufferSource, RawFloatSource, RawUint8Source, RawUint16Source>;
 
 } // namespace star::job::tasks::actions
