@@ -28,18 +28,35 @@ void WritePngImageAction::operator()()
     const uint32_t width = imageExtent.width;
     const uint32_t height = imageExtent.height;
 
-    void *mapped = nullptr;
-    buffer.map(&mapped);
-    if (!mapped)
-    {
-        STAR_THROW("Failed to map buffer for PNG image write");
-    }
-    const auto result = buffer.invalidate();
-
     if (!IsPngFormat(imageFormat))
     {
-        buffer.unmap();
         STAR_THROW("Unsupported image format for PNG writing.");
+    }
+
+    const void *data = nullptr;
+    bool needsUnmap = false;
+    const StarBuffers::Buffer *bufferToUnmap = nullptr;
+
+    if (auto *bufSrc = std::get_if<VulkanBufferSource>(&dataSource))
+    {
+        void *mapped = nullptr;
+        bufSrc->buffer.map(&mapped);
+        if (!mapped)
+        {
+            STAR_THROW("Failed to map buffer for PNG image write");
+        }
+        bufSrc->buffer.invalidate();
+        data = mapped;
+        needsUnmap = true;
+        bufferToUnmap = &bufSrc->buffer;
+    }
+    else if (auto *rawSrc = std::get_if<RawUint8Source>(&dataSource))
+    {
+        data = rawSrc->data;
+    }
+    else
+    {
+        STAR_THROW("PNG image writing requires VulkanBufferSource or RawUint8Source data source");
     }
 
     int comp = 4;
@@ -49,9 +66,12 @@ void WritePngImageAction::operator()()
     star::common::casts::SafeCast(height, h);
     const int rowStride = w * comp;
 
-    int ok = stbi_write_png(path.c_str(), w, h, comp, mapped, rowStride);
+    int ok = stbi_write_png(path.c_str(), w, h, comp, data, rowStride);
 
-    buffer.unmap();
+    if (needsUnmap)
+    {
+        bufferToUnmap->unmap();
+    }
 
     if (ok == 0)
     {

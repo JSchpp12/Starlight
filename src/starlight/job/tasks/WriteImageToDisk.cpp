@@ -43,11 +43,18 @@ void PoolOwnedWriteImagePayload::operator()()
     auto &buffer = data->owningObjectPool->get(data->registrationHandle);
     if (actions::IsPngFormat(data->imageFormat))
     {
-        actions::WritePngImageAction{data->imageExtent, data->imageFormat, data->path, buffer}();
+        actions::WritePngImageAction{data->imageExtent, data->imageFormat, data->path,
+                                     actions::VulkanBufferSource{buffer}}();
+    }
+    else if (actions::IsPngMaskFormat(data->imageFormat))
+    {
+        actions::WritePngMaskAction{data->imageExtent, data->imageFormat, data->path,
+                                    actions::VulkanBufferSource{buffer}}();
     }
     else if (actions::IsTiffFormat(data->imageFormat))
     {
-        actions::WriteTiffImageAction{data->imageExtent, data->imageFormat, data->path, buffer}();
+        actions::WriteTiffImageAction{data->imageExtent, data->imageFormat, data->path,
+                                      actions::VulkanBufferSource{buffer}}();
     }
     else
     {
@@ -77,11 +84,18 @@ void DirectWriteImagePayload::operator()()
 
     if (actions::IsPngFormat(data->imageFormat))
     {
-        actions::WritePngImageAction{data->imageExtent, data->imageFormat, data->path, *buffer}();
+        actions::WritePngImageAction{data->imageExtent, data->imageFormat, data->path,
+                                     actions::VulkanBufferSource{*buffer}}();
+    }
+    else if (actions::IsPngMaskFormat(data->imageFormat))
+    {
+        actions::WritePngMaskAction{data->imageExtent, data->imageFormat, data->path,
+                                    actions::VulkanBufferSource{*buffer}}();
     }
     else if (actions::IsTiffFormat(data->imageFormat))
     {
-        actions::WriteTiffImageAction{data->imageExtent, data->imageFormat, data->path, *buffer}();
+        actions::WriteTiffImageAction{data->imageExtent, data->imageFormat, data->path,
+                                      actions::VulkanBufferSource{*buffer}}();
     }
     else
     {

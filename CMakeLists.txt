@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.0.13
+    VERSION 1.0.14
 )
 
 include(CheckIncludeFile)
@@ -245,8 +245,9 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/job/tasks/TaskFactory.cpp"
     "src/starlight/job/tasks/WriteImageToDisk.cpp"
     "src/starlight/job/tasks/actions/WriteImageActions.cpp"
-    "src/starlight/job/tasks/actions/WritePngImageAction.cpp"
-    "src/starlight/job/tasks/actions/WriteTiffImageAction.cpp"
+     "src/starlight/job/tasks/actions/WritePngImageAction.cpp"
+     "src/starlight/job/tasks/actions/WritePngMaskAction.cpp"
+     "src/starlight/job/tasks/actions/WriteTiffImageAction.cpp"
     "src/starlight/job/tasks/CompileShader.cpp"
     "src/starlight/job/tasks/BuildPipeline.cpp"
     "src/starlight/job/tasks/IOTask.cpp"
@@ -471,9 +472,11 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/job/tasks/Task.hpp"
     "include/starlight/job/tasks/TaskFactory.hpp"
     "include/starlight/job/tasks/WriteImageToDisk.hpp"
+    "include/starlight/job/tasks/actions/ImageDataTypes.hpp"
     "include/starlight/job/tasks/actions/WriteImageActions.hpp"
-    "include/starlight/job/tasks/actions/WritePngImageAction.hpp"
-    "include/starlight/job/tasks/actions/WriteTiffImageAction.hpp"
+     "include/starlight/job/tasks/actions/WritePngImageAction.hpp"
+     "include/starlight/job/tasks/actions/WritePngMaskAction.hpp"
+     "include/starlight/job/tasks/actions/WriteTiffImageAction.hpp"
     "include/starlight/job/tasks/CompileShader.hpp"
     "include/starlight/job/tasks/BuildPipeline.hpp"
     "include/starlight/job/tasks/IOTask.hpp"

@@ -29,20 +29,39 @@ void WriteTiffImageAction::operator()()
     const uint32_t width = imageExtent.width;
     const uint32_t height = imageExtent.height;
 
-    void *mapped = nullptr;
-    buffer.map(&mapped);
-    if (!mapped)
-    {
-        STAR_THROW("Failed to map buffer for TIFF image write");
-    }
-    const auto result = buffer.invalidate();
+    const float *floatData = nullptr;
+    bool needsUnmap = false;
+    const StarBuffers::Buffer *bufferToUnmap = nullptr;
 
-    const float *floatData = static_cast<const float *>(mapped);
+    if (auto *bufSrc = std::get_if<VulkanBufferSource>(&dataSource))
+    {
+        void *mapped = nullptr;
+        bufSrc->buffer.map(&mapped);
+        if (!mapped)
+        {
+            STAR_THROW("Failed to map buffer for TIFF image write");
+        }
+        bufSrc->buffer.invalidate();
+        floatData = static_cast<const float *>(mapped);
+        needsUnmap = true;
+        bufferToUnmap = &bufSrc->buffer;
+    }
+    else if (auto *rawSrc = std::get_if<RawFloatSource>(&dataSource))
+    {
+        floatData = rawSrc->data;
+    }
+    else
+    {
+        STAR_THROW("TIFF writing requires VulkanBufferSource or RawFloatSource data source");
+    }
 
     TIFF *tif = TIFFOpen(path.c_str(), "w");
     if (!tif)
     {
-        buffer.unmap();
+        if (needsUnmap)
+        {
+            bufferToUnmap->unmap();
+        }
         STAR_THROW("Failed to open TIFF file for writing: " + path);
     }
 
@@ -61,13 +80,20 @@ void WriteTiffImageAction::operator()()
                               0) < 0)
         {
             TIFFClose(tif);
-            buffer.unmap();
+            if (needsUnmap)
+            {
+                bufferToUnmap->unmap();
+            }
             STAR_THROW("TIFFWriteScanline failed at row " + std::to_string(row));
         }
     }
 
     TIFFClose(tif);
-    buffer.unmap();
+
+    if (needsUnmap)
+    {
+        bufferToUnmap->unmap();
+    }
 }
 
 } // namespace star::job::tasks::actions

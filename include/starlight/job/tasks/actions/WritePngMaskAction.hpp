@@ -8,7 +8,7 @@
 namespace star::job::tasks::actions
 {
 
-struct WritePngImageAction
+struct WritePngMaskAction
 {
     vk::Extent3D imageExtent;
     vk::Format imageFormat;
@@ -18,6 +18,6 @@ struct WritePngImageAction
     void operator()();
 };
 
-bool IsPngFormat(vk::Format fmt);
+bool IsPngMaskFormat(vk::Format fmt);
 
 } // namespace star::job::tasks::actions

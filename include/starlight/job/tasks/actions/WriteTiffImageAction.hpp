@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StarBuffers/Buffer.hpp"
+#include "job/tasks/actions/ImageDataTypes.hpp"
 
 #include <string>
 #include <vulkan/vulkan.hpp>
@@ -13,7 +13,7 @@ struct WriteTiffImageAction
     vk::Extent3D imageExtent;
     vk::Format imageFormat;
     std::string path;
-    const StarBuffers::Buffer &buffer;
+    ImageDataSource dataSource;
 
     void operator()();
 };
