@@ -10,10 +10,17 @@ namespace star::job::tasks::actions
 
 struct WriteTiffImageAction
 {
+    enum class Compression
+    {
+        none,
+        zstd,
+        lzw
+    };
     vk::Extent3D imageExtent;
     vk::Format imageFormat;
     std::string path;
     ImageDataSource dataSource;
+    Compression compressionOption{Compression::none};
 
     void operator()();
 };

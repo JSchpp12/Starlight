@@ -74,10 +74,28 @@ void WriteTiffImageAction::operator()()
     TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, height);
 
+    switch (compressionOption)
+    {
+    case (Compression::none):
+        TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
+        break;
+    case (Compression::zstd):
+        TIFFSetField(tif, TIFFTAG_PREDICTOR, PREDICTOR_FLOATINGPOINT);
+        TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ZSTD);
+        break;
+    case (Compression::lzw):
+        TIFFSetField(tif, TIFFTAG_PREDICTOR, PREDICTOR_FLOATINGPOINT);
+        TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_LZW);
+    default:
+        STAR_THROW("Invalid compression option encountered when attempting to write tif");
+        break;
+    }
+
     for (uint32_t row = 0; row < height; ++row)
     {
-        if (TIFFWriteScanline(tif, const_cast<void *>(static_cast<const void *>(floatData + row * width)), row,
-                              0) < 0)
+        void *rowPtr = (void *)(&floatData[row * width]);
+
+        if (TIFFWriteScanline(tif, rowPtr, row, 0) < 0)
         {
             TIFFClose(tif);
             if (needsUnmap)
