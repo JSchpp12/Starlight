@@ -15,6 +15,8 @@
 
 namespace star::service
 {
+class TaskSchedulerService;
+
 struct InitParameters
 {
     core::CommandSubmitter cmdSubmitter;
@@ -23,6 +25,7 @@ struct InitParameters
     common::EventBus &eventBus;
     core::CommandBus &commandBus;
     job::TaskManager &taskManager;
+    TaskSchedulerService *taskScheduler = nullptr;
     core::device::manager::GraphicsContainer &graphicsManagers;
     core::device::manager::ManagerCommandBuffer &commandBufferManager;
     ManagerRenderResource &renderResourceManager;

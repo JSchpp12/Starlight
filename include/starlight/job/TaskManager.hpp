@@ -9,7 +9,9 @@
 
 #include <absl/container/flat_hash_map.h>
 
+#include <atomic>
 #include <memory>
+#include <string_view>
 #include <typeindex>
 
 namespace star::job
@@ -60,6 +62,37 @@ class TaskManager
         submitTask<TTask>(std::forward<TTask>(newTask), handle);
     }
 
+    /// <summary>
+    /// Submit a task to the next available worker in the pool for the given task type name, using round-robin
+    /// distribution
+    /// </summary>
+    template <typename TTask>
+    void submitTaskRoundRobin(TTask &&newTask, std::string_view taskName)
+    {
+        const uint16_t type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(taskName);
+
+        auto *pool = getWorkerPool(type);
+        if (pool == nullptr || pool->empty())
+        {
+            throw std::runtime_error("No workers registered for task type: " + std::string(taskName));
+        }
+
+        auto it = m_nextWorkerIndex.find(type);
+        if (it == m_nextWorkerIndex.end())
+        {
+            it = m_nextWorkerIndex.emplace(type, 0).first;
+        }
+
+        const size_t index = it->second;
+        it->second = (index + 1) % pool->size();
+
+        worker::Worker *worker = &pool->at(index);
+
+        TTask *storedTask = new TTask(std::move(newTask));
+        worker->queueTask(static_cast<void *>(storedTask));
+        delete storedTask;
+    }
+
     job::TaskContainer<job::complete_tasks::CompleteTask, 128> *getCompleteMessages() noexcept
     {
         return m_completeTasks.get();
@@ -73,6 +106,8 @@ class TaskManager
     absl::flat_hash_map<uint16_t, std::vector<worker::Worker>> m_workers;
 
     std::unique_ptr<job::TaskContainer<job::complete_tasks::CompleteTask, 128>> m_completeTasks = nullptr;
+
+    absl::flat_hash_map<uint16_t, size_t> m_nextWorkerIndex;
 
     std::vector<worker::Worker> *getWorkerPool(const uint16_t &registeredType) noexcept;
 
