@@ -14,6 +14,7 @@
 #include "starlight/event/GetQueue.hpp"
 #include "starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
 #include "starlight/service/QueueManagerService.hpp"
+#include "starlight/service/TaskSchedulerService.hpp"
 #include "starlight/wrappers/graphics/QueueFamilyIndices.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
@@ -131,11 +132,13 @@ void star::core::device::DeviceContext::finalizeServices(core::WorkerPool &pool,
                                                          common::FrameTracker::Setup frameSetup, StarDevice &device)
 {
     {
-        auto ordered = std::vector<star::service::Service>(m_services.size() + 1);
-        ordered[0] = createQueueOwnershipService(std::move(queueHandles), engineReserved);
+        auto ordered = std::vector<star::service::Service>(m_services.size() + 2);
+        // TaskSchedulerService must be first so it sets params.taskScheduler before other services read it
+        ordered[0] = service::Service{service::TaskSchedulerService()};
+        ordered[1] = createQueueOwnershipService(std::move(queueHandles), engineReserved);
         for (size_t i{0}; i < m_services.size(); i++)
         {
-            ordered[i + 1] = std::move(m_services[i]);
+            ordered[i + 2] = std::move(m_services[i]);
         }
         m_services = std::move(ordered);
     }
@@ -312,6 +315,7 @@ void star::core::device::DeviceContext::setAllServiceParameters()
                                    m_eventBus,
                                    m_commandBus,
                                    m_taskManager,
+                                   nullptr,
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_renderResourceManager,
@@ -333,17 +337,19 @@ void star::core::device::DeviceContext::initServices(core::WorkerPool &pool, std
                                    m_eventBus,
                                    m_commandBus,
                                    m_taskManager,
+                                   nullptr,
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_renderResourceManager,
                                    frameSetup};
 
-    // init the service 0 which should be the queue manager
+    // init services 0 and 1: TaskSchedulerService then QueueOwnershipService
     m_services[0].init(pool, params);
+    m_services[1].init(pool, params);
     m_transferWorker = createTransferWorker(device, std::move(engineReserved));
 
     // init the rest after the transfer queues are created
-    for (size_t i{1}; i < m_services.size(); i++)
+    for (size_t i{2}; i < m_services.size(); i++)
     {
         m_services[i].init(pool, params);
     }
