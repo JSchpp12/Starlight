@@ -172,18 +172,6 @@ class DeviceContext : public star::common::IDeviceContext
         return *m_graphicsManagers.fenceManager;
     }
 
-    job::TransferWorker &getTransferWorker()
-    {
-        assert(m_transferWorker);
-
-        return *m_transferWorker;
-    }
-    const job::TransferWorker &getTransferWorker() const
-    {
-        assert(m_transferWorker);
-        return *m_transferWorker;
-    }
-
     const Handle &getDeviceID()
     {
         return m_deviceID;
@@ -224,7 +212,6 @@ class DeviceContext : public star::common::IDeviceContext
     job::TaskManager m_taskManager;
     manager::GraphicsContainer m_graphicsManagers;
     std::unique_ptr<manager::ManagerCommandBuffer> m_commandBufferManager;
-    std::shared_ptr<job::TransferWorker> m_transferWorker;
     std::unique_ptr<ManagerRenderResource> m_renderResourceManager;
     std::vector<service::Service> m_services;
     vk::Extent2D m_engineResolution;
@@ -234,9 +221,9 @@ class DeviceContext : public star::common::IDeviceContext
 
     std::vector<Handle> gatherTransferQueues(const uint8_t &targetNumberOfQueues) const;
 
-    std::shared_ptr<job::TransferWorker> createTransferWorker(
-        StarDevice &device, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
-        const size_t &targetNumQueuesToUse = 2);
+    void createAndRegisterTransferWorkers(StarDevice &device, core::WorkerPool &pool,
+                                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+                                          const size_t &targetNumQueuesToUse = 2);
 
     void handleCompleteMessages(const uint8_t maxMessageCounter = 0);
 
@@ -244,7 +231,8 @@ class DeviceContext : public star::common::IDeviceContext
 
     void setAllServiceParameters();
 
-    void initWorkers(core::WorkerPool &pool, const uint8_t &numFramesInFlight);
+    void initWorkers(core::WorkerPool &pool, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+                     const uint8_t &numFramesInFlight);
 
     void shutdownServices();
 

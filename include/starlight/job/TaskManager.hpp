@@ -47,12 +47,12 @@ class TaskManager
         worker::Worker *worker = getWorker(registeredTaskType);
         if (worker == nullptr)
         {
-            throw std::runtime_error("Failed to find corresponding worker for the provided task type");
+            std::ostringstream oss; 
+            oss << "Failed to find corresponding worker for the task type provided: " << registeredTaskType.getType(); 
+            STAR_THROW(oss.str()); 
         }
 
-        TTask *storedTask = new TTask(std::move(newTask));
-        worker->queueTask(static_cast<void *>(storedTask));
-        delete storedTask;
+        worker->queueTask(static_cast<void *>(&newTask));
     }
 
     template <typename TTask> void submitTask(TTask &&newTask, std::string_view taskName)
@@ -88,9 +88,7 @@ class TaskManager
 
         worker::Worker *worker = &pool->at(index);
 
-        TTask *storedTask = new TTask(std::move(newTask));
-        worker->queueTask(static_cast<void *>(storedTask));
-        delete storedTask;
+        worker->queueTask(static_cast<void *>(&newTask));
     }
 
     job::TaskContainer<job::complete_tasks::CompleteTask, 128> *getCompleteMessages() noexcept

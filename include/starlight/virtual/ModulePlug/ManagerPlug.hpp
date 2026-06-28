@@ -1,7 +1,6 @@
 #pragma once 
 
 #include <star_common/Handle.hpp>
-#include "StarManager.hpp"
 
 #include <memory>
 

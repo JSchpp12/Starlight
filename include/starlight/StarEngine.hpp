@@ -6,7 +6,6 @@
 #include "StarCommandBuffer.hpp"
 #include "StarRenderGroup.hpp"
 #include "StarScene.hpp"
-#include "TransferWorker.hpp"
 #include "core/SystemContext.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "event/EnginePhaseComplete.hpp"
@@ -157,8 +156,6 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
                 .getEventBus()
                 .emit(event::RenderReadyForFinalization(m_systemManager.getContext(m_defaultDevice).getDevice(),
                                                         allBuffersSubmitted));
-
-            this->m_systemManager.getContext(m_defaultDevice).getTransferWorker().update();
 
             auto &evtBus = m_systemManager.getContext(m_defaultDevice).getEventBus();
             evtBus.emit(star::event::FrameComplete{});

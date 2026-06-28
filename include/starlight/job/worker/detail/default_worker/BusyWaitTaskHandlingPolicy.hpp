@@ -14,15 +14,13 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
 {
   public:
     BusyWaitTaskHandlingPolicy()
-        : m_waitForWorkToFinishBeforeExiting(false), m_shouldRun(std::make_shared<boost::atomic<bool>>()),
-          m_tasks(std::make_shared<job::TaskContainer<TTask, TQueueSize>>())
+        : m_waitForWorkToFinishBeforeExiting(false), m_shouldRun(std::make_shared<boost::atomic<bool>>())
     {
     }
 
     explicit BusyWaitTaskHandlingPolicy(bool waitForWorkToFinishBeforeExiting)
         : m_waitForWorkToFinishBeforeExiting(waitForWorkToFinishBeforeExiting),
-          m_shouldRun(std::make_shared<boost::atomic<bool>>()),
-          m_tasks(std::make_shared<job::TaskContainer<TTask, TQueueSize>>())
+          m_shouldRun(std::make_shared<boost::atomic<bool>>())
     {
     }
     BusyWaitTaskHandlingPolicy(const BusyWaitTaskHandlingPolicy &&) = delete;
@@ -72,7 +70,8 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
     void startThread()
     {
         m_shouldRun->store(true);
-        thread = boost::thread([this]() { threadFunction(); });
+        m_tasks = std::make_shared<job::TaskContainer<TTask, TQueueSize>>();
+        thread = boost::thread([this, tasks = m_tasks]() { threadFunction(); });
     }
 
     virtual void stopThread()
@@ -91,8 +90,6 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
     {
         logStart(m_workerName);
 
-        bool run = m_shouldRun->load();
-
         while (true)
         {
             std::optional<TTask> task = m_tasks->getQueuedTask();
@@ -106,8 +103,10 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
                 {
                     m_completeMessages->queueTask(std::move(message.value()));
                 }
-
-                continue;
+            }
+            else
+            {
+                wait();
             }
 
             if (!m_shouldRun->load())
@@ -117,8 +116,6 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
                     break;
                 }
             }
-
-            wait();
         }
 
         logStop(m_workerName);

@@ -178,14 +178,14 @@ class Task
     void run()
     {
         assert(m_executeFunction && "Execute function is not valid");
-        m_executeFunction(payload());
+        m_executeFunction(getPayload());
     }
 
     std::optional<complete_tasks::CompleteTask> getCompleteMessage()
     {
         if (m_createCompleteFunction)
         {
-            return m_createCompleteFunction(payload());
+            return m_createCompleteFunction(getPayload());
         }
 
         return std::nullopt;
@@ -204,20 +204,21 @@ class Task
         m_createCompleteFunction = nullptr;
     }
 
+    /// Exposes the raw payload storage so worker policies can inspect tasks before executing them.
+    void *getPayload() noexcept
+    {
+        return static_cast<void *>(m_data);
+    }
+    const void *getPayload() const noexcept
+    {
+        return static_cast<const void *>(m_data);
+    }
+
   private:
     alignas(StorageAlign) std::byte m_data[StorageBytes]{};
     ExecuteFunction m_executeFunction = nullptr;
     DestructorFunction m_destroyPayloadFunction = nullptr;
     MovePayloadFunction m_movePayloadFunction = nullptr;
     CreateCompleteTaskFunction m_createCompleteFunction = nullptr;
-
-    void *payload() noexcept
-    {
-        return static_cast<void *>(m_data);
-    }
-    const void *payload() const noexcept
-    {
-        return static_cast<const void *>(m_data);
-    }
 };
 } // namespace star::job::tasks

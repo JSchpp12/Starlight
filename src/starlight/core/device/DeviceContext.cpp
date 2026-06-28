@@ -6,6 +6,8 @@
 #include "job/tasks/TaskFactory.hpp"
 #include "job/worker/DefaultWorker.hpp"
 #include "job/worker/Worker.hpp"
+#include "job/worker/detail/default_worker/BusyWaitTransferTaskHandlingPolicy.hpp"
+#include "job/tasks/TransferTask.hpp"
 #include "managers/ManagerRenderResource.hpp"
 #include "service/InitParameters.hpp"
 #include "starlight/command/frames/GetFrameTracker.hpp"
@@ -21,18 +23,24 @@
 #include <star_common/helper/CastHelpers.hpp>
 
 #include <cassert>
+#include <utility>
 
 star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
     : m_device(std::move(other.m_device)), m_deviceID(std::move(other.m_deviceID)), m_eventBus(),
       m_taskManager(std::move(other.m_taskManager)), m_graphicsManagers(),
       m_commandBufferManager(std::move(other.m_commandBufferManager)),
-      m_transferWorker(std::move(other.m_transferWorker)),
       m_renderResourceManager(std::move(other.m_renderResourceManager)), m_services(std::move(other.m_services))
 {
+    assert(!m_ownsResources && !other.m_ownsResources &&
+           "Moving an initialized DeviceContext is not supported; call init() after construction");
+
     m_graphicsManagers = std::move(other.m_graphicsManagers);
     m_eventBus = std::move(other.m_eventBus);
 
-    if (m_ownsResources)
+    const bool sourceOwnsResources = other.m_ownsResources;
+    m_ownsResources = std::exchange(other.m_ownsResources, false);
+
+    if (sourceOwnsResources)
     {
         setAllServiceParameters();
 
@@ -43,8 +51,6 @@ star::core::device::DeviceContext::DeviceContext(DeviceContext &&other)
             m_commandBufferManager->init(m_graphicsManagers.queueManager);
         }
     }
-
-    other.m_ownsResources = false;
 }
 
 void star::core::device::DeviceContext::submit(star::common::IServiceCommand &command)
@@ -56,11 +62,13 @@ star::core::device::DeviceContext &star::core::device::DeviceContext::operator=(
 {
     if (this != &other)
     {
+        assert(!m_ownsResources && !other.m_ownsResources &&
+               "Move-assigning an initialized DeviceContext is not supported");
+
         m_deviceID = std::move(other.m_deviceID);
         m_device = std::move(other.m_device);
         m_taskManager = std::move(other.m_taskManager);
         m_commandBufferManager = std::move(other.m_commandBufferManager);
-        m_transferWorker = std::move(other.m_transferWorker);
         m_renderResourceManager = std::move(other.m_renderResourceManager);
         m_services = std::move(other.m_services);
         m_graphicsManagers = std::move(other.m_graphicsManagers);
@@ -89,6 +97,8 @@ star::core::device::DeviceContext::~DeviceContext()
 {
     if (m_ownsResources)
     {
+        m_taskManager.cleanup();
+
         m_graphicsManagers.cleanupRender();
         m_commandBufferManager->cleanup(m_device);
         star::ManagerRenderResource::cleanup(m_deviceID, m_device);
@@ -117,7 +127,7 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
 
     star::core::WorkerPool pool = core::WorkerPool(static_cast<uint8_t>(boost::thread::hardware_concurrency() - 1));
     finalizeServices(pool, std::move(availableQueues), engineReservedQueues, setup, m_device);
-    initWorkers(pool, setup.getNumFramesInFlight());
+    initWorkers(pool, engineReservedQueues, setup.getNumFramesInFlight());
 
     m_ownsResources = true;
 }
@@ -151,7 +161,6 @@ void star::core::device::DeviceContext::waitIdle()
     if (m_ownsResources)
     {
         m_taskManager.cleanup();
-        m_transferWorker->stopAll();
     }
 
     m_device.getVulkanDevice().waitIdle();
@@ -198,11 +207,11 @@ std::vector<star::Handle> star::core::device::DeviceContext::gatherTransferQueue
     return targetQueues;
 }
 
-std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::createTransferWorker(
-    StarDevice &device, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+void star::core::device::DeviceContext::createAndRegisterTransferWorkers(
+    StarDevice &device, core::WorkerPool &pool, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
     const size_t &targetNumQueuesToUse)
 {
-    star::core::logging::log(boost::log::trivial::info, "Initializing transfer workers");
+    core::logging::log(boost::log::trivial::info, "Initializing transfer workers");
 
     std::set<uint32_t> selectedFamilyIndices = std::set<uint32_t>();
     std::vector<StarQueue *> transferWorkerQueues = std::vector<StarQueue *>(targetNumQueuesToUse);
@@ -231,7 +240,50 @@ std::shared_ptr<star::job::TransferWorker> star::core::device::DeviceContext::cr
         }
     }
 
-    return std::make_shared<job::TransferWorker>(device, false, transferWorkerQueues);
+    std::set<uint32_t> uniqueQueueFamilyIndicesInUse = std::set<uint32_t>();
+    for (const auto *queue : transferWorkerQueues)
+    {
+        if (queue != nullptr)
+        {
+            uniqueQueueFamilyIndicesInUse.insert(queue->getParentQueueFamilyIndex());
+        }
+    }
+
+    std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
+    for (const auto &index : uniqueQueueFamilyIndicesInUse)
+    {
+        allTransferQueueFamilyIndicesInUse.push_back(index);
+    }
+
+    for (const auto *queue : transferWorkerQueues)
+    {
+        if (queue == nullptr)
+        {
+            continue;
+        }
+
+        if (!pool.allocateWorker())
+        {
+            STAR_THROW("Unable to allocate worker from pool for transfer worker");
+        }
+
+        using Policy = job::worker::default_worker::BusyWaitTransferTaskHandlingPolicy<128>;
+        job::worker::Worker transferWorker{
+            job::worker::DefaultWorker{Policy{true, device, *queue, allTransferQueueFamilyIndicesInUse},
+                                       "TransferWorker"}};
+
+        // The first registered transfer worker (worker 0) is reserved for high-priority tasks.
+        // Standard tasks are distributed across workers 1..N by ManagerRenderResource.
+        m_taskManager.registerWorker(std::move(transferWorker), job::tasks::transfer::TransferTaskName);
+    }
+
+    if (m_taskManager.getNumOfWorkersForType(
+            Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                job::tasks::transfer::TransferTaskName),
+                   .id = 0}) == 0)
+    {
+        STAR_THROW("Failed to register any transfer worker");
+    }
 }
 
 void star::core::device::DeviceContext::handleCompleteMessages(const uint8_t maxMessagesCounter)
@@ -269,9 +321,13 @@ void star::core::device::DeviceContext::shutdownServices()
     }
 }
 
-void star::core::device::DeviceContext::initWorkers(core::WorkerPool &pool, const uint8_t &numFramesInFlight)
+void star::core::device::DeviceContext::initWorkers(
+    core::WorkerPool &pool, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+    const uint8_t &numFramesInFlight)
 {
-    ManagerRenderResource::init(m_deviceID, &m_device, m_transferWorker, numFramesInFlight);
+    createAndRegisterTransferWorkers(m_device, pool, std::move(engineReserved), 2);
+
+    ManagerRenderResource::init(m_deviceID, &m_device, m_taskManager, numFramesInFlight);
 
     if (!pool.allocateWorker())
     {
@@ -346,7 +402,6 @@ void star::core::device::DeviceContext::initServices(core::WorkerPool &pool, std
     // init services 0 and 1: TaskSchedulerService then QueueOwnershipService
     m_services[0].init(pool, params);
     m_services[1].init(pool, params);
-    m_transferWorker = createTransferWorker(device, std::move(engineReserved));
 
     // init the rest after the transfer queues are created
     for (size_t i{2}; i < m_services.size(); i++)

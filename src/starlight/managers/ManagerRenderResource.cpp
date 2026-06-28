@@ -1,20 +1,27 @@
 #include "managers/ManagerRenderResource.hpp"
 
-auto star::ManagerRenderResource::devices =
-    std::unordered_map<star::Handle, star::core::device::StarDevice *, star::HandleHash>();
-auto star::ManagerRenderResource::highPriorityRequestCompleteFlags =
-    std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>();
-auto star::ManagerRenderResource::bufferStorage = std::unordered_map<
-    star::Handle,
-    std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 3500>>,
-    star::HandleHash>();
-auto star::ManagerRenderResource::textureStorage = std::unordered_map<
-    star::Handle,
-    std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 2000>>,
-    star::HandleHash>();
+#include "job/TransferWorker.hpp"
+#include "job/tasks/TransferTask.hpp"
+
+std::unordered_map<star::Handle, star::core::device::StarDevice *, star::HandleHash> star::ManagerRenderResource::devices;
+std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>
+    star::ManagerRenderResource::highPriorityRequestCompleteFlags;
+std::unordered_map<star::Handle,
+                    std::unique_ptr<star::core::ManagedHandleContainer<
+                        star::ManagerRenderResource::FinalizedResourceRequest<star::StarBuffers::Buffer>, 3500>>,
+                    star::HandleHash>
+    star::ManagerRenderResource::bufferStorage;
+std::unordered_map<star::Handle,
+                    std::unique_ptr<star::core::ManagedHandleContainer<
+                        star::ManagerRenderResource::FinalizedResourceRequest<star::StarTextures::Texture>, 2000>>,
+                    star::HandleHash>
+    star::ManagerRenderResource::textureStorage;
+star::job::TaskManager *star::ManagerRenderResource::managerTaskSystem = nullptr;
+size_t star::ManagerRenderResource::s_numStandardTransferWorkers = 0;
+std::atomic<size_t> star::ManagerRenderResource::s_nextStandardWorker{0};
 
 void star::ManagerRenderResource::init(const Handle &deviceID, star::core::device::StarDevice *device,
-                                       std::shared_ptr<star::job::TransferWorker> worker, const int &numFramesInFlight)
+                                        job::TaskManager &taskManager, const int &numFramesInFlight)
 {
     devices.insert(std::make_pair(deviceID, std::move(device)));
     bufferStorage.insert(std::make_pair(
@@ -28,7 +35,26 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
 
-    managerWorker = worker;
+    managerTaskSystem = &taskManager;
+
+    const size_t totalTransferWorkers =
+        taskManager.getNumOfWorkersForType(TransferWorkerHandle(0));
+    s_numStandardTransferWorkers = totalTransferWorkers > 1 ? totalTransferWorkers - 1 : 1;
+    s_nextStandardWorker.store(0, std::memory_order_relaxed);
+}
+
+void star::ManagerRenderResource::submitStandardTransferTask(job::tasks::transfer::TransferPayload payload)
+{
+    assert(managerTaskSystem && "ManagerRenderResource not initialized");
+
+    const uint16_t workerId = s_numStandardTransferWorkers == 1
+        ? uint16_t{0}
+    : static_cast<uint16_t>((s_nextStandardWorker.fetch_add(1, std::memory_order_relaxed)
+                             % s_numStandardTransferWorkers) + 1);
+
+    managerTaskSystem->submitTask(
+        job::tasks::transfer::CreateTransferTask(std::move(payload)),
+        TransferWorkerHandle(workerId));
 }
 
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore)
@@ -42,9 +68,9 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
 }
 
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
-                                                     std::unique_ptr<star::TransferRequest::Buffer> newRequest,
-                                                     vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority)
+                                                      std::unique_ptr<star::TransferRequest::Buffer> newRequest,
+                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
+                                                      const bool &isHighPriority)
 {
     assert(devices.contains(deviceID) && "Device has not been properly initialized");
 
@@ -53,36 +79,63 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
     auto &newFull = bufferStorage.at(deviceID)->get(newBufferHandle);
 
     newFull.cpuWorkDoneByTransferThread.store(false);
-    managerWorker->add(newFull.cpuWorkDoneByTransferThread, newFull.resourceSemaphore, std::move(newRequest),
-                       newFull.resource, isHighPriority);
+
+    auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
+        &newFull.cpuWorkDoneByTransferThread, newFull.resourceSemaphore, std::move(newRequest), newFull.resource,
+        std::nullopt);
 
     if (isHighPriority)
+    {
+        managerTaskSystem->submitTask(
+            job::tasks::transfer::CreateTransferTask(
+                job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::High, std::move(request)}),
+            TransferWorkerHandle(0));
         highPriorityRequestCompleteFlags.at(deviceID).insert(&newFull.cpuWorkDoneByTransferThread);
+    }
+    else
+    {
+        submitStandardTransferTask(
+            job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::Standard, std::move(request)});
+    }
 
     return newBufferHandle;
 }
 
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
-                                                     std::unique_ptr<star::TransferRequest::Texture> newRequest,
-                                                     vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority)
+                                                       std::unique_ptr<star::TransferRequest::Texture> newRequest,
+                                                       vk::Semaphore *consumingQueueCompleteSemaphore,
+                                                       const bool &isHighPriority)
 {
     Handle newHandle = textureStorage.at(deviceID)->insert(
         FinalizedResourceRequest<star::StarTextures::Texture>(std::move(resourceSemaphore)));
     auto &newFull = textureStorage.at(deviceID)->get(newHandle);
 
     newFull.cpuWorkDoneByTransferThread.store(false);
-    managerWorker->add(newFull.cpuWorkDoneByTransferThread, newFull.resourceSemaphore, std::move(newRequest),
-                       newFull.resource, isHighPriority);
+
+    auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
+        &newFull.cpuWorkDoneByTransferThread, newFull.resourceSemaphore, std::move(newRequest), newFull.resource,
+        std::nullopt);
 
     if (isHighPriority)
+    {
+        managerTaskSystem->submitTask(
+            job::tasks::transfer::CreateTransferTask(
+                job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::High, std::move(request)}),
+            TransferWorkerHandle(0));
         highPriorityRequestCompleteFlags.at(deviceID).insert(&newFull.cpuWorkDoneByTransferThread);
+    }
+    else
+    {
+        submitStandardTransferTask(
+            job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::Standard, std::move(request)});
+    }
 
     return newHandle;
 }
 
 void star::ManagerRenderResource::frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex)
 {
+    (void)frameInFlightIndex;
     for (auto &request : highPriorityRequestCompleteFlags.at(deviceID))
     {
         if (!request->load())
@@ -108,12 +161,22 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     }
     container.cpuWorkDoneByTransferThread.store(false);
 
-    managerWorker->add(container.cpuWorkDoneByTransferThread, container.resourceSemaphore, std::move(newRequest),
-                       container.resource, isHighPriority, std::move(waitInfo));
+    auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
+        &container.cpuWorkDoneByTransferThread, container.resourceSemaphore, std::move(newRequest), container.resource,
+        std::move(waitInfo));
 
     if (isHighPriority)
     {
+        managerTaskSystem->submitTask(
+            job::tasks::transfer::CreateTransferTask(
+                job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::High, std::move(request)}),
+            TransferWorkerHandle(0));
         highPriorityRequestCompleteFlags.at(deviceID).insert(&container.cpuWorkDoneByTransferThread);
+    }
+    else
+    {
+        submitStandardTransferTask(
+            job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::Standard, std::move(request)});
     }
 }
 
@@ -152,7 +215,7 @@ void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Han
     else if (handle.getType() ==
              common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName))
     {
-        fence = &bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread;
+        fence = &textureStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread;
     }
     else
     {
@@ -223,5 +286,5 @@ void star::ManagerRenderResource::cleanup(const Handle &deviceID, core::device::
     textureStorage.at(deviceID)->cleanupAll(&device);
     textureStorage.at(deviceID).reset();
 
-    managerWorker.reset();
+    managerTaskSystem = nullptr;
 }
