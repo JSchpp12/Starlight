@@ -3,16 +3,20 @@
 #include "Enums.hpp"
 #include "ManagedHandleContainer.hpp"
 #include "StarBuffers/Buffer.hpp"
-#include "StarManager.hpp"
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "device/StarDevice.hpp"
+#include "job/TaskManager.hpp"
+#include "job/tasks/TransferTask.hpp"
 
 #include <star_common/Handle.hpp>
 
+#include <boost/atomic.hpp>
 #include <vulkan/vulkan.hpp>
 
+#include <atomic>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -22,11 +26,18 @@
 
 namespace star
 {
-class ManagerRenderResource : public StarManager
+class ManagerRenderResource
 {
   private:
   public:
-    template <typename T> struct FinalizedResourceRequest : public StarManager::FinalizedRequest
+    struct FinalizedRequest
+    {
+        boost::atomic<bool> cpuWorkDoneByTransferThread = true;
+
+        FinalizedRequest() {}
+    };
+
+    template <typename T> struct FinalizedResourceRequest : public FinalizedRequest
     {
         vk::Semaphore resourceSemaphore = VK_NULL_HANDLE;
         std::unique_ptr<T> resource = std::unique_ptr<T>();
@@ -66,8 +77,20 @@ class ManagerRenderResource : public StarManager
         }
     };
 
-    static void init(const Handle &deviceID, core::device::StarDevice *device,
-                     std::shared_ptr<job::TransferWorker> worker, const int &totalNumFramesInFlight);
+    static void init(const Handle &deviceID, core::device::StarDevice *device, job::TaskManager &taskManager,
+                     const int &totalNumFramesInFlight);
+
+    static Handle TransferWorkerHandle(uint16_t workerIndex)
+    {
+        return Handle{
+            .type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(job::tasks::transfer::TransferTaskName),
+            .id = workerIndex};
+    }
+
+    /// Worker 0 is reserved for high-priority transfer tasks. Standard tasks are distributed
+    /// across workers 1..N via submitStandardTransferTask. When only one transfer worker exists,
+    /// both high- and standard-priority work are routed to worker 0.
+    static void submitStandardTransferTask(job::tasks::transfer::TransferPayload payload);
 
     static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore);
 
@@ -134,5 +157,11 @@ class ManagerRenderResource : public StarManager
 
     static std::unordered_map<Handle, std::set<boost::atomic<bool> *>, star::HandleHash>
         highPriorityRequestCompleteFlags;
+
+    static job::TaskManager *managerTaskSystem;
+
+    static size_t s_numStandardTransferWorkers;
+    static std::atomic<size_t> s_nextStandardWorker;
 };
+
 } // namespace star

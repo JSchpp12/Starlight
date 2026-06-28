@@ -42,6 +42,13 @@ class Worker
         m_impl->doCleanup();
     }
 
+    /// Queue a task for the worker to process.
+    ///
+    /// Contract: the caller retains ownership of the pointed-to task until this call returns.
+    /// Implementations MUST move the task into their own storage synchronously (e.g. via
+    /// TaskContainer::queueTask(std::move(*static_cast<TTask*>(task)))) and MUST NOT retain
+    /// the void* for asynchronous dereference by the worker thread — the pointer is only
+    /// valid for the duration of this call.
     void queueTask(void *task)
     {
         m_impl->doQueueTask(task);

@@ -10,19 +10,13 @@
 #include "TransferRequest_Texture.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "device/StarDevice.hpp"
-#include "job/TaskContainer.hpp"
-
-#include <star_common/Handle.hpp>
 
 #include <boost/atomic.hpp>
-#include <boost/lockfree/stack.hpp>
-#include <boost/thread/thread.hpp>
-
 #include <vulkan/vulkan.hpp>
 
+#include <queue>
 #include <memory>
 #include <optional>
-#include <queue>
 #include <vector>
 
 namespace star::job
@@ -43,9 +37,9 @@ class TransferManagerThread
 
         InterThreadRequest() = default;
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain, vk::Semaphore gpuWorkDoneSemaphore,
-                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
-                           std::optional<core::graphics::GPUWorkSyncInfo> workSyncInfo)
+                            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
+                            std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
+                            std::optional<core::graphics::GPUWorkSyncInfo> workSyncInfo)
             : workSyncInfo(std::move(workSyncInfo)), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
               gpuWorkDoneSemaphore(std::move(gpuWorkDoneSemaphore)),
               bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBuffer)
@@ -53,9 +47,9 @@ class TransferManagerThread
         }
 
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain, vk::Semaphore gpuWorkDoneSemaphore,
-                           std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
-                           std::unique_ptr<StarTextures::Texture> &resultingTexture,
-                           std::optional<core::graphics::GPUWorkSyncInfo> workSyncInfo)
+                            std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
+                            std::unique_ptr<StarTextures::Texture> &resultingTexture,
+                            std::optional<core::graphics::GPUWorkSyncInfo> workSyncInfo)
             : workSyncInfo(std::move(workSyncInfo)), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
               gpuWorkDoneSemaphore(std::move(gpuWorkDoneSemaphore)),
               textureTransferRequest(std::move(textureTransferRequest)), resultingTexture(&resultingTexture)
@@ -80,7 +74,7 @@ class TransferManagerThread
         std::unique_ptr<StarCommandBuffer> commandBuffer = nullptr;
 
         ProcessRequestInfo(std::shared_ptr<StarCommandPool> commandPool,
-                           std::unique_ptr<StarCommandBuffer> commandBuffer)
+                            std::unique_ptr<StarCommandBuffer> commandBuffer)
             : commandPool(std::move(commandPool)), commandBuffer(std::move(commandBuffer)) {};
 
         void setInProcessDeps(std::unique_ptr<StarBuffers::Buffer> nInProcessTransferSrcBuffer)
@@ -88,7 +82,7 @@ class TransferManagerThread
             this->inProcessTransferSrcBuffer = std::move(nInProcessTransferSrcBuffer);
         }
 
-        void markAsAvailable(vk::Device &device)
+        void markAsAvailable(vk::Device device)
         {
             if (inProcessTransferSrcBuffer)
             {
@@ -108,118 +102,25 @@ class TransferManagerThread
         std::unique_ptr<StarBuffers::Buffer> inProcessTransferSrcBuffer = nullptr;
     };
 
-    struct SubThreadInfo
-    {
-        SubThreadInfo(boost::atomic<bool> *shouldRun, vk::Device device, StarQueue queue, VmaAllocator &allocator,
-                      vk::PhysicalDeviceProperties deviceProperties,
-                      std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> taskContainer,
-                      std::vector<uint32_t> allTransferQueueFamilyIndicesInUse)
-            : shouldRun(shouldRun), device(device), queue(queue), allocator(allocator),
-              deviceProperties(deviceProperties),
-              allTransferQueueFamilyIndicesInUse(allTransferQueueFamilyIndicesInUse), taskContainer(taskContainer)
-        {
-        }
-
-        boost::atomic<bool> *shouldRun = nullptr;
-        vk::Device device;
-        StarQueue queue;
-        VmaAllocator &allocator;
-        vk::PhysicalDeviceProperties deviceProperties = vk::PhysicalDeviceProperties();
-        std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
-        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> taskContainer = nullptr;
-    };
-
-    TransferManagerThread(
-        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> taskContainer,
-        const vk::PhysicalDeviceProperties &deviceProperties, StarQueue myQueue,
-        const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse);
-
-    ~TransferManagerThread();
-
-    // no copy
-    TransferManagerThread(const TransferManagerThread &) = delete;
-    TransferManagerThread &operator=(const TransferManagerThread &) = delete;
-    // no move
-    TransferManagerThread(TransferManagerThread &&) = delete;
-    TransferManagerThread &operator=(TransferManagerThread &&) = delete;
-
-    void startAsync(core::device::StarDevice &device);
-
-    void stopAsync();
-
-    void cleanup();
-
-    static void mainLoop(SubThreadInfo myInfo);
-
-    static void CreateBuffer(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
-                             vk::Semaphore signalWhenDoneSemaphore,
-                             const vk::PhysicalDeviceProperties &deviceProperties,
-                             const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                             ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
-                             std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
-                             boost::atomic<bool> *gpuDoneSignalToMain,
-                             std::optional<core::graphics::GPUWorkSyncInfo> &syncInfo);
-
-    static void CreateTexture(vk::Device &device, VmaAllocator &allocator, StarQueue &queue,
+    static void CreateBuffer(vk::Device device, VmaAllocator allocator, StarQueue &queue,
                               vk::Semaphore signalWhenDoneSemaphore,
                               const vk::PhysicalDeviceProperties &deviceProperties,
                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                              ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
-                              std::unique_ptr<StarTextures::Texture> *resultingTexture,
-                              boost::atomic<bool> *gpuDoneSignalToMain);
+                              ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
+                              std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
+                              boost::atomic<bool> *gpuDoneSignalMain,
+                              std::optional<core::graphics::GPUWorkSyncInfo> &syncInfo);
 
-    static void CheckForCleanups(vk::Device &device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
+    static void CreateTexture(vk::Device device, VmaAllocator allocator, StarQueue &queue,
+                               vk::Semaphore signalWhenDoneSemaphore,
+                               const vk::PhysicalDeviceProperties &deviceProperties,
+                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                               ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
+                               std::unique_ptr<StarTextures::Texture> *resultingTexture,
+                               boost::atomic<bool> *gpuDoneSignalToMain);
 
-    static void EnsureInfoReady(vk::Device &device, ProcessRequestInfo &processInfo);
-
-  protected:
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> m_taskContainer;
-    vk::PhysicalDeviceProperties deviceProperties;
-    StarQueue myQueue;
-    std::vector<uint32_t> allTransferQueueFamilyIndicesInUse = std::vector<uint32_t>();
-
-    boost::atomic<bool> shouldRun = false;
-    boost::thread thread;
-    std::shared_ptr<StarCommandPool> myCommandPool = nullptr;
+    static void CheckForCleanups(vk::Device device,
+                                  std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
 };
 
-class TransferWorker
-{
-  public:
-    /// @brief Creates a transfer worker which does not own the dedicated transfer queue. Device might not support
-    /// dedicated transfer queue. As such, transfers are submitted on the main thread.
-    /// @param device Created star device from which vulkan objects can be made
-    TransferWorker(core::device::StarDevice &device, bool overrideRunAsync, std::vector<StarQueue *> &queuesToUse);
-
-    void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread, vk::Semaphore signalWhenDoneSemaphore,
-             std::unique_ptr<TransferRequest::Buffer> newBufferRequest,
-             std::unique_ptr<StarBuffers::Buffer> &resultingBuffer, bool isHighPriority,
-             std::optional<core::graphics::GPUWorkSyncInfo> waitSyncInfo = std::nullopt);
-
-    void add(boost::atomic<bool> &isBeingWorkedOnByTransferThread, vk::Semaphore signalWhenDoneSemaphore,
-             std::unique_ptr<TransferRequest::Texture> newTextureRequest,
-             std::unique_ptr<StarTextures::Texture> &resultingTexture, bool isHighPriority,
-             std::optional<core::graphics::GPUWorkSyncInfo> waitSyncInfo = std::nullopt);
-
-    void update();
-
-    void stopAll();
-
-    ~TransferWorker();
-
-  private:
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> m_highPriorityTaskContainer =
-        std::make_shared<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>>();
-    std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> m_standardTaskContainer =
-        std::make_shared<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>>();
-
-    std::vector<std::unique_ptr<TransferManagerThread>> threads = std::vector<std::unique_ptr<TransferManagerThread>>();
-
-    void insertRequest(TransferManagerThread::InterThreadRequest newRequest, const bool &isHighPriority);
-
-    static std::vector<std::unique_ptr<TransferManagerThread>> CreateThreads(
-        core::device::StarDevice &device, const std::vector<StarQueue *> &queuesToUse,
-        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> highPriorityQueue,
-        std::shared_ptr<job::TaskContainer<TransferManagerThread::InterThreadRequest, 256>> standardQueue);
-};
 } // namespace star::job
