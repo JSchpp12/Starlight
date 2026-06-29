@@ -134,9 +134,7 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             std::optional<TransferTask> task = m_highPriorityTasks->getQueuedTask();
 
             if (!task.has_value())
-            {
                 task = m_standardTasks->getQueuedTask();
-            }
 
             if (task.has_value())
             {

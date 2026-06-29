@@ -14,7 +14,6 @@
 
 #include <string>
 
-
 namespace star::policy
 {
 void DefaultEngineInitPolicy::init(uint8_t requestedNumFramesInFLight)
@@ -34,9 +33,10 @@ star::core::device::StarDevice star::policy::DefaultEngineInitPolicy::createNewD
                        .setRenderingDeviceFeatures(engineRenderingDeviceFeatures)
                        .setRenderingFeatures(engineRenderingFeatures);
 
-    const int overridenEngineID = star::ConfigFile::getInt(star::Config_Settings::required_device_feature_gpu_index, -1);
+    const int overridenEngineID =
+        star::ConfigFile::getInt(star::Config_Settings::required_device_feature_gpu_index, -1);
     if (overridenEngineID != -1)
-        builder.setOverrideDeviceID(overridenEngineID); 
+        builder.setOverrideDeviceID(overridenEngineID);
 
     return builder.build();
 }
@@ -76,7 +76,7 @@ std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAddition
     if (m_addServiceLoader)
     {
         auto addServices = m_addServiceLoader();
-        for (size_t i{ 0 }; i < addServices.size(); i++)
+        for (size_t i{0}; i < addServices.size(); i++)
         {
             services.emplace_back(std::move(addServices[i]));
         }
@@ -87,13 +87,11 @@ std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAddition
 
 service::Service DefaultEngineInitPolicy::createScreenCaptureService()
 {
-    uint32_t maxWorkers = star::ConfigFile::getUint32(star::Config_Settings::max_image_worker_count, 8);
+    uint32_t maxWorkers = star::ConfigFile::getUint32(star::Config_Settings::max_image_worker_count, 2);
 
-    return service::Service{service::ScreenCapture{
-        service::detail::screen_capture::WorkerControllerPolicy{},
-        service::detail::screen_capture::DefaultCreatePolicy{},
-        service::detail::screen_capture::DefaultCopyPolicy{},
-        maxWorkers}};
+    return service::Service{service::ScreenCapture{service::detail::screen_capture::WorkerControllerPolicy{},
+                                                   service::detail::screen_capture::DefaultCreatePolicy{},
+                                                   service::detail::screen_capture::DefaultCopyPolicy{}, maxWorkers}};
 }
 
 service::Service DefaultEngineInitPolicy::createIOService()
@@ -103,8 +101,8 @@ service::Service DefaultEngineInitPolicy::createIOService()
 
 service::Service DefaultEngineInitPolicy::createSceneLoaderService()
 {
-    return service::Service{service::SceneLoaderService(star::ConfigFile::getString(
-        star::Config_Settings::scene_file, "default_scene"))};
+    return service::Service{
+        service::SceneLoaderService(star::ConfigFile::getString(star::Config_Settings::scene_file, "default_scene"))};
 }
 
 service::Service DefaultEngineInitPolicy::createFrameInFlightControllerService()

@@ -31,6 +31,8 @@ class TaskManager
 
     void registerWorker(worker::Worker newWorker, Handle &registeredTaskTypeHanle) noexcept;
 
+    void removeWorker(const Handle &worker); 
+
     void cleanup() noexcept;
 
     size_t getNumOfWorkersForType(const Handle &registeredTaskType) const noexcept;

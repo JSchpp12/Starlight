@@ -37,8 +37,18 @@ void TaskManager::registerWorker(worker::Worker newWorker, Handle &registeredTas
     assert(index >= 1);
     index--;
 
-    star::common::casts::SafeCast<size_t, uint32_t>(index,
-                                            registeredTaskTypeHandle.id);
+    star::common::casts::SafeCast<size_t, uint32_t>(index, registeredTaskTypeHandle.id);
+}
+
+void TaskManager::removeWorker(const Handle &worker)
+{
+    auto *pool = getWorkerPool(worker.getType());
+
+    size_t workerIndex = 0;
+    star::common::casts::SafeCast<uint16_t, size_t>(worker.getID(), workerIndex);
+    assert(workerIndex < pool->size() && workerIndex > 0);
+
+    pool->erase(pool->begin() + workerIndex); 
 }
 
 void TaskManager::cleanup() noexcept
@@ -73,8 +83,6 @@ bool TaskManager::isThereWorkerForTask(const Handle &taskType) noexcept
 
 worker::Worker *TaskManager::getWorker(const Handle &registeredTaskType) noexcept
 {
-    auto type = registeredTaskType.getType();
-
     auto *pool = getWorkerPool(registeredTaskType.getType());
 
     if (pool == nullptr)
@@ -87,6 +95,7 @@ worker::Worker *TaskManager::getWorker(const Handle &registeredTaskType) noexcep
 
     return &pool->at(workerIndex);
 }
+
 std::vector<worker::Worker> *TaskManager::getWorkerPool(const uint16_t &registeredType) noexcept
 {
     auto it = m_workers.find(registeredType);
@@ -97,6 +106,7 @@ std::vector<worker::Worker> *TaskManager::getWorkerPool(const uint16_t &register
 
     return &it->second;
 }
+
 const std::vector<worker::Worker> *TaskManager::getWorkerPool(const uint16_t &registeredType) const noexcept
 {
     auto it = m_workers.find(registeredType);

@@ -8,18 +8,18 @@
 namespace star::job
 {
 
-void TransferManagerThread::CreateBuffer(
-    vk::Device device, VmaAllocator allocator, StarQueue &queue, vk::Semaphore signalWhenDoneSemaphore,
-    const vk::PhysicalDeviceProperties &deviceProperties,
-    const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse, ProcessRequestInfo &processInfo,
-    TransferRequest::Buffer *newBufferRequest, std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
-    boost::atomic<bool> *gpuDoneSignalMain, std::optional<core::graphics::GPUWorkSyncInfo> &syncInfo)
+void TransferManagerThread::CreateBuffer(vk::Device device, VmaAllocator allocator, StarQueue &queue,
+                                         vk::Semaphore signalWhenDoneSemaphore,
+                                         const vk::PhysicalDeviceProperties &deviceProperties,
+                                         const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                                         ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
+                                         std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
+                                         boost::atomic<bool> *gpuDoneSignalMain,
+                                         std::optional<core::graphics::GPUWorkSyncInfo> &syncInfo)
 {
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
     if (transferSrcBuffer->getBufferSize() == 0)
-    {
         STAR_THROW("Failed to create transfer src buffer");
-    }
 
     {
         auto newResult = newBufferRequest->createFinal(device, allocator, allTransferQueueFamilyIndicesInUse);
@@ -37,7 +37,7 @@ void TransferManagerThread::CreateBuffer(
     newBufferRequest->writeDataToStageBuffer(*transferSrcBuffer);
 
     newBufferRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingBuffer->get(),
-                                                processInfo.commandBuffer->buffer(0));
+                                               processInfo.commandBuffer->buffer(0));
 
     processInfo.commandBuffer->buffer(0).end();
 
@@ -82,13 +82,12 @@ void TransferManagerThread::CreateBuffer(
 }
 
 void TransferManagerThread::CreateTexture(vk::Device device, VmaAllocator allocator, StarQueue &queue,
-                                            vk::Semaphore signalWhenDoneSemaphore,
-                                            const vk::PhysicalDeviceProperties &deviceProperties,
-                                            const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                                            ProcessRequestInfo &processInfo,
-                                            TransferRequest::Texture *newTextureRequest,
-                                            std::unique_ptr<StarTextures::Texture> *resultingTexture,
-                                            boost::atomic<bool> *gpuDoneSignalToMain)
+                                          vk::Semaphore signalWhenDoneSemaphore,
+                                          const vk::PhysicalDeviceProperties &deviceProperties,
+                                          const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                                          ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
+                                          std::unique_ptr<StarTextures::Texture> *resultingTexture,
+                                          boost::atomic<bool> *gpuDoneSignalToMain)
 {
     auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator);
 
@@ -105,7 +104,7 @@ void TransferManagerThread::CreateTexture(vk::Device device, VmaAllocator alloca
     }
 
     newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(),
-                                                 processInfo.commandBuffer->buffer(0));
+                                                processInfo.commandBuffer->buffer(0));
 
     processInfo.commandBuffer->buffer(0).end();
     auto signalSemaphores = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
@@ -123,8 +122,8 @@ void TransferManagerThread::CreateTexture(vk::Device device, VmaAllocator alloca
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
-void TransferManagerThread::CheckForCleanups(
-    vk::Device device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos)
+void TransferManagerThread::CheckForCleanups(vk::Device device,
+                                             std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos)
 {
     std::queue<std::unique_ptr<ProcessRequestInfo>> readyInfos;
     std::queue<std::unique_ptr<ProcessRequestInfo>> notReadyInfos;
