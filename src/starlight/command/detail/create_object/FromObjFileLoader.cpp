@@ -8,9 +8,9 @@ FromObjFileLoader::FromObjFileLoader(std::string objFilePath) : m_objFilePath(st
 {
 }
 
-std::shared_ptr<StarObject> FromObjFileLoader::load()
+std::shared_ptr<StarObject> FromObjFileLoader::load(ShaderResolver &shaderResolver)
 {
-    return std::make_shared<BasicObject>(std::move(m_objFilePath));
+    return std::make_shared<BasicObject>(std::move(m_objFilePath), shaderResolver);
 }
 
 } // namespace star::command::create_object

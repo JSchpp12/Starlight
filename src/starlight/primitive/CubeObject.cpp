@@ -25,31 +25,16 @@ static std::shared_ptr<star::material::InstanceColorMaterial> GetMaterial(const 
         std::make_unique<star::material::DefaultColorProvider>(std::move(colors)));
 }
 
-CubeObject::CubeObject(std::vector<CubeDesc> desc) : StarObject({GetMaterial(desc)}), m_desc(std::move(desc))
+CubeObject::CubeObject(std::vector<CubeDesc> desc, ShaderResolver &shaderResolver)
+    : StarObject({GetMaterial(desc)}), m_desc(std::move(desc))
 {
+    m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
+    m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);
+
     for (size_t i{0}; i < m_desc.size(); i++)
     {
         createInstance();
     }
-}
-
-std::unordered_map<Shader_Stage, StarShader> CubeObject::getShaders()
-{
-    std::unordered_map<Shader_Stage, StarShader> shaders;
-
-    const std::filesystem::path sPath =
-        std::filesystem::path{star::ConfigFile::getSetting(Config_Settings::mediadirectory)} / "shaders" / "debugCube";
-    {
-        const std::filesystem::path vert = sPath / "debugCube.vert";
-        shaders.emplace(Shader_Stage::vertex, StarShader(vert.string(), Shader_Stage::vertex));
-    }
-
-    {
-        const std::filesystem::path frag = sPath / "debugCube.frag";
-        shaders.emplace(Shader_Stage::fragment, StarShader(frag.string(), Shader_Stage::fragment));
-    }
-
-    return shaders;
 }
 
 std::vector<StarMesh> CubeObject::loadMeshes(core::device::DeviceContext &context)

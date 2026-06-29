@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.0.16
+    VERSION 1.0.17
 )
 
 include(CheckIncludeFile)
@@ -74,7 +74,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/command/command_order/GetPassInfo.cpp"
     "src/starlight/service/detail/scene_loader/ObjectReader.cpp"
     "src/starlight/command/detail/create_object/FromObjFileLoader.cpp"
-    "src/starlight/command/detail/create_object/DirectObjCreation.cpp"
     "src/starlight/command/SaveSceneState.cpp"
     "src/starlight/command/FileIO/WriteToFile.cpp"
     "src/starlight/command/FileIO/ReadFromFile.cpp"
@@ -191,6 +190,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/IOService.cpp"
     "src/starlight/service/CommandOrderService.cpp"
     "src/starlight/service/TaskSchedulerService.cpp"
+    "src/starlight/service/ShaderService.cpp"
+    "src/starlight/ShaderResolver.cpp"
     "src/starlight/service/detail/command_order/EdgeDescription.cpp"
     "src/starlight/service/detail/command_order/TriggerDescription.cpp"
     "src/starlight/core/waiter/sync_renderer/Factory.cpp"
@@ -271,6 +272,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/event/ListenForPrepForNextFrame.cpp"
     "src/starlight/core/graphics/GPUWorkSyncInfo.cpp" 
     "src/starlight/command/CreateLight.cpp" 
+    "src/starlight/command/shader/LoadShader.cpp"
     "src/starlight/policy/command/ListenForCreateLight.cpp" 
     "src/starlight/service/detail/scene_loader/LightReader.cpp" 
     "src/starlight/service/detail/scene_loader/ObjectReader.cpp"
@@ -310,7 +312,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/command/CreateObject.hpp"
     "include/starlight/command/detail/create_object/ObjectLoader.hpp"
     "include/starlight/command/detail/create_object/FromObjFileLoader.hpp"
-    "include/starlight/command/detail/create_object/DirectObjCreation.hpp"
+    "include/starlight/command/detail/create_object/DeferredObjCreation.hpp"
     "include/starlight/command/SaveSceneState.hpp"
     "include/starlight/command/FileIO/WriteToFile.hpp"
     "include/starlight/command/FileIO/ReadFromFile.hpp"
@@ -435,6 +437,10 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/service/IOService.hpp"
     "include/starlight/service/CommandOrderService.hpp"
     "include/starlight/service/TaskSchedulerService.hpp"
+    "include/starlight/service/ShaderService.hpp"
+    "include/starlight/ShaderResolver.hpp"
+    "include/starlight/command/shader/LoadShader.hpp"
+    "include/starlight/policy/command/ListenForLoadShader.hpp"
     "include/starlight/service/detail/command_order/EdgeDescription.hpp"
     "include/starlight/service/detail/command_order/TriggerDescription.hpp"
     "include/starlight/core/waiter/sync_renderer/Factory.hpp"

@@ -6,10 +6,10 @@
 
 namespace star::debug
 {
-std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info)
+std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info, ShaderResolver &shaderResolver)
 {
     auto square = std::make_unique<star::primitive::SquareObject>(
-        star::primitive::SquareDesc{.size = info.size, .color = info.color});
+        star::primitive::SquareDesc{.size = info.size, .color = info.color}, shaderResolver);
 
     square->isVisible = info.visible;
     square->drawNormals = info.drawNormals;
@@ -18,8 +18,8 @@ std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info)
     return square;
 }
 
-std::shared_ptr<StarObject> CreateCube(std::vector<primitive::CubeDesc> info)
+std::shared_ptr<StarObject> CreateCube(std::vector<primitive::CubeDesc> info, ShaderResolver &shaderResolver)
 {
-    return std::make_shared<star::primitive::CubeObject>(std::move(info));
+    return std::make_shared<star::primitive::CubeObject>(std::move(info), shaderResolver);
 }
 } // namespace star::debug

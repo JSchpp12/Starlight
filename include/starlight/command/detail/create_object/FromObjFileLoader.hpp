@@ -12,7 +12,7 @@ class FromObjFileLoader : public ObjectLoader
     explicit FromObjFileLoader(std::string objFilePath);
     virtual ~FromObjFileLoader() = default;
 
-    virtual std::shared_ptr<StarObject> load() override; 
+    virtual std::shared_ptr<StarObject> load(ShaderResolver &shaderResolver) override; 
 
     private:
     std::string m_objFilePath; 

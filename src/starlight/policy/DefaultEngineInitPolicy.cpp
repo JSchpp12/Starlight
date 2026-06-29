@@ -7,6 +7,7 @@
 #include "starlight/service/IOService.hpp"
 #include "starlight/service/SceneLoaderService.hpp"
 #include "starlight/service/ScreenCapture.hpp"
+#include "starlight/service/ShaderService.hpp"
 #include "starlight/service/detail/screen_capture/CopyDirectorPolicy.hpp"
 #include "starlight/service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 #include "starlight/service/detail/screen_capture/WorkerControllerPolicies.hpp"
@@ -55,13 +56,14 @@ common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFli
 
 std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalDeviceServices()
 {
-    std::vector<service::Service> services = std::vector<service::Service>(6);
+    std::vector<service::Service> services = std::vector<service::Service>(7);
     services[0] = createFrameInFlightControllerService();
     services[1] = createIOService();
     services[2] = createCommandOrderService();
     services[3] = createScreenCaptureService();
     services[4] = createHeadlessCaptureService();
     services[5] = createSceneLoaderService();
+    services[6] = createShaderService();
 
     {
         auto addServices = addAdditionalServices();
@@ -118,6 +120,11 @@ service::Service DefaultEngineInitPolicy::createHeadlessCaptureService()
 service::Service DefaultEngineInitPolicy::createCommandOrderService()
 {
     return service::Service{service::CommandOrderService()};
+}
+
+service::Service DefaultEngineInitPolicy::createShaderService()
+{
+    return service::Service{service::ShaderService()};
 }
 
 core::RenderingInstance DefaultEngineInitPolicy::createRenderingInstance(std::string appName)

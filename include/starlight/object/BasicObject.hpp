@@ -1,5 +1,6 @@
 #pragma once
 
+#include "starlight/ShaderResolver.hpp"
 #include "starlight/object/StarObject.hpp"
 
 #include <tiny_obj_loader.h>
@@ -18,11 +19,13 @@ namespace star
 class BasicObject : public StarObject
 {
   public:
-    explicit BasicObject(std::string objFilePath);
-    BasicObject(std::string objFilePath, const std::filesystem::path &materialDir);
+    BasicObject(std::string objFilePath, ShaderResolver &shaderResolver);
+    BasicObject(std::string objFilePath, const std::filesystem::path &materialDir, ShaderResolver &shaderResolver);
     virtual ~BasicObject() = default;
 
-    virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() override;
+    static ShaderResolver PrepareResolver(const std::string &objFilePath, core::CommandBus &bus);
+    static ShaderResolver PrepareResolver(const std::string &objFilePath, const std::filesystem::path &materialDir,
+                                           core::CommandBus &bus);
 
   protected:
     std::string m_objFilePath = "";
@@ -33,6 +36,6 @@ class BasicObject : public StarObject
 
     std::vector<StarMesh> loadMeshes(core::device::DeviceContext &context) override;
 
-    void getTypeOfMaterials(bool &isTextureMaterial, bool &isBumpMaterial) const; 
+    void getTypeOfMaterials(bool &isTextureMaterial, bool &isBumpMaterial) const;
 };
 } // namespace star

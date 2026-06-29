@@ -125,68 +125,80 @@ static std::vector<std::shared_ptr<star::StarMaterial>> LoadMaterials(
     return materials;
 }
 
-star::BasicObject::BasicObject(std::string objFilePath)
+star::BasicObject::BasicObject(std::string objFilePath, ShaderResolver &shaderResolver)
     : StarObject(LoadMaterials(objFilePath)), m_objFilePath(std::move(objFilePath))
 {
+    m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
+    m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);
 }
 
-star::BasicObject::BasicObject(std::string objFilePath, const std::filesystem::path &materialDir)
+star::BasicObject::BasicObject(std::string objFilePath, const std::filesystem::path &materialDir,
+                               ShaderResolver &shaderResolver)
     : StarObject(LoadMaterials(objFilePath, materialDir)), m_objFilePath(std::move(objFilePath))
 {
+    m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
+    m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);
 }
 
-std::unordered_map<star::Shader_Stage, star::StarShader> star::BasicObject::getShaders()
+static std::pair<std::string, std::string> selectShaderPaths(const std::vector<std::shared_ptr<star::StarMaterial>> &materials)
 {
-    std::unordered_map<star::Shader_Stage, StarShader> shaders;
+    assert(!materials.empty() && "Mesh materials should always exist");
 
     bool isBumpyMaterial = false;
     bool isTextureMaterial = false;
-    getTypeOfMaterials(isTextureMaterial, isBumpyMaterial);
+
+    if (auto bumpDerived = std::dynamic_pointer_cast<star::BumpMaterial>(materials.front()))
+    {
+        isBumpyMaterial = true;
+    }
+    else if (auto textureDerived = std::dynamic_pointer_cast<star::TextureMaterial>(materials.front()))
+    {
+        isTextureMaterial = true;
+    }
+
+    std::string vertShaderPath;
+    std::string fragShaderPath;
 
     if (isBumpyMaterial)
     {
-        // load vertex shader
-        std::string vertShaderPath =
-            ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.vert";
-        shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex,
-                                                                 StarShader(vertShaderPath, Shader_Stage::vertex)));
-
-        // load fragment shader
-        std::string fragShaderPath =
-            ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.frag";
-        shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment,
-                                                                 StarShader(fragShaderPath, Shader_Stage::fragment)));
+        vertShaderPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.vert";
+        fragShaderPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.frag";
     }
     else if (isTextureMaterial)
     {
-        // load vertex shader
-        std::string vertShaderPath =
-            ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.vert";
-        shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex,
-                                                                 StarShader(vertShaderPath, Shader_Stage::vertex)));
-
-        // load fragment shader
-        std::string fragShaderPath =
-            ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.frag";
-        shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment,
-                                                                 StarShader(fragShaderPath, Shader_Stage::fragment)));
+        vertShaderPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.vert";
+        fragShaderPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.frag";
     }
     else
     {
-        // load vertex shader
-        std::string vertShaderPath =
-            ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.vert";
-        shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::vertex,
-                                                                 StarShader(vertShaderPath, Shader_Stage::vertex)));
-
-        // load fragment shader
-        std::string fragShaderPath =
-            ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.frag";
-        shaders.insert(std::pair<star::Shader_Stage, StarShader>(star::Shader_Stage::fragment,
-                                                                 StarShader(fragShaderPath, Shader_Stage::fragment)));
+        vertShaderPath =
+            star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.vert";
+        fragShaderPath =
+            star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.frag";
     }
 
-    return shaders;
+    return {vertShaderPath, fragShaderPath};
+}
+
+star::ShaderResolver star::BasicObject::PrepareResolver(const std::string &objFilePath, core::CommandBus &bus)
+{
+    auto materials = LoadMaterials(objFilePath);
+    auto [vertPath, fragPath] = selectShaderPaths(materials);
+    return ShaderResolver::Builder{bus}
+        .setShader(Shader_Stage::vertex, vertPath)
+        .setShader(Shader_Stage::fragment, fragPath)
+        .build();
+}
+
+star::ShaderResolver star::BasicObject::PrepareResolver(const std::string &objFilePath,
+                                                         const std::filesystem::path &materialDir, core::CommandBus &bus)
+{
+    auto materials = LoadMaterials(objFilePath, materialDir);
+    auto [vertPath, fragPath] = selectShaderPaths(materials);
+    return ShaderResolver::Builder{bus}
+        .setShader(Shader_Stage::vertex, vertPath)
+        .setShader(Shader_Stage::fragment, fragPath)
+        .build();
 }
 
 std::vector<star::StarMesh> star::BasicObject::loadMeshes(core::device::DeviceContext &context)
@@ -207,10 +219,10 @@ std::vector<star::StarMesh> star::BasicObject::loadMeshes(core::device::DeviceCo
     }
     if (warn != "")
     {
-        std::ostringstream oss; 
-        oss << "An error occurred while loading obj file" << std::endl; 
+        std::ostringstream oss;
+        oss << "An error occurred while loading obj file" << std::endl;
         oss << "TinyObjLoaderMessage: " << warn << std::endl;
-        oss << "Loading will contine..." << std::endl; 
+        oss << "Loading will contine..." << std::endl;
         star::core::logging::warning(oss.str());
     }
 
@@ -241,7 +253,7 @@ std::vector<star::StarMesh> star::BasicObject::loadMeshes(core::device::DeviceCo
         std::vector<uint32_t> fullInd;
         fullInd.reserve(fullInd.size());
         std::vector<Vertex> vertices;
-        vertices.reserve(shape.mesh.indices.size()); 
+        vertices.reserve(shape.mesh.indices.size());
 
         for (size_t faceIndex = 0; faceIndex < shape.mesh.material_ids.size(); faceIndex++)
         {
@@ -270,8 +282,8 @@ std::vector<star::StarMesh> star::BasicObject::loadMeshes(core::device::DeviceCo
                 newVertex.texCoord = {attrib.texcoords[2 * indicies[dIndex].texcoord_index + 0],
                                       1.0f - attrib.texcoords[2 * indicies[dIndex].texcoord_index + 1]};
 
-                vertices.emplace_back(std::move(newVertex)); 
-                fullInd.emplace_back(star::common::casts::size_t_to_unsigned_int(vertices.size()-1));
+                vertices.emplace_back(std::move(newVertex));
+                fullInd.emplace_back(star::common::casts::size_t_to_unsigned_int(vertices.size() - 1));
             }
         }
 

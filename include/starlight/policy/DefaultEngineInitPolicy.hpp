@@ -46,6 +46,8 @@ class DefaultEngineInitPolicy
 
     static service::Service createCommandOrderService();
 
+    static service::Service createShaderService();
+
   protected:
     virtual std::vector<service::Service> addAdditionalServices()
     {

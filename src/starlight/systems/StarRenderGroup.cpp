@@ -81,35 +81,15 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
     // check if any other object can share the same Pipeline
     Group *targetGroup = nullptr;
 
-    // for now only check if they share the same shader
+    // for now only check if they share the same shader handles
     for (auto &group : this->groups)
     {
-        // check the first object in each group just to see if they have the same shaders
-
-        auto objectShaders = group.baseObject.object->getShaders();
-        auto newObjectShaders = newObject->getShaders();
-
-        bool isMatch = true;
-        for (auto &it : objectShaders)
+        if (group.baseObject.object->getVertexShaderHandle() == newObject->getVertexShaderHandle() &&
+            group.baseObject.object->getFragmentShaderHandle() == newObject->getFragmentShaderHandle())
         {
-            auto doesExistInOther = newObjectShaders.find(it.first);
-
-            // check if new object even has shader at that stage
-            if (doesExistInOther == newObjectShaders.end())
-            {
-                isMatch = false;
-                break;
-            }
-
-            // both objects have a shader at the same stage, see if they are the same
-            if (it.second.getPath() != newObjectShaders.at(it.first).getPath())
-            {
-                isMatch = false;
-                break;
-            }
-        }
-        if (isMatch)
             targetGroup = &group;
+            break;
+        }
     }
 
     if (targetGroup == nullptr)

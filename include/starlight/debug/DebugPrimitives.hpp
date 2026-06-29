@@ -1,5 +1,6 @@
 #pragma once
 
+#include "starlight/ShaderResolver.hpp"
 #include "starlight/object/StarObject.hpp"
 #include "starlight/primitive/CubeDesc.hpp"
 
@@ -18,7 +19,7 @@ struct SquareCreateInfo
     bool drawBoundingBox = false;
 };
 
-std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info = {});
-std::shared_ptr<StarObject> CreateCube(std::vector<star::primitive::CubeDesc> info);
+std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info, ShaderResolver &shaderResolver);
+std::shared_ptr<StarObject> CreateCube(std::vector<star::primitive::CubeDesc> info, ShaderResolver &shaderResolver);
 
 } // namespace star::debug

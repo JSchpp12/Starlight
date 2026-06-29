@@ -6,7 +6,6 @@
 #include "StarMaterial.hpp"
 #include "StarMesh.hpp"
 #include "StarPipeline.hpp"
-#include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
 #include "core/device/DeviceContext.hpp"
 #include "core/renderer/RenderingContext.hpp"
@@ -19,7 +18,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace star
@@ -42,6 +40,10 @@ class StarObject
     StarObject() = default;
     explicit StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials)
         : m_meshMaterials(std::move(meshMaterials)) {};
+
+    StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials, Handle vertexShader, Handle fragmentShader)
+        : m_meshMaterials(std::move(meshMaterials)), m_vertexShaderHandle(vertexShader),
+          m_fragmentShaderHandle(fragmentShader) {};
 
     virtual ~StarObject() = default;
 
@@ -99,16 +101,18 @@ class StarObject
     virtual std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> getDescriptorSetLayouts(
         core::device::DeviceContext &device);
 
-    /// <summary>
-    /// Every material must provide a method to return shaders within a map. The keys of the map will contain the stages
-    /// in which the corresponding shader will be used.
-    /// </summary>
-    /// <returns></returns>
-    virtual std::unordered_map<star::Shader_Stage, StarShader> getShaders() = 0;
 #pragma region getters
     const Handle &getPipline() const
     {
         return this->pipeline;
+    }
+    const Handle &getVertexShaderHandle() const
+    {
+        return m_vertexShaderHandle;
+    }
+    const Handle &getFragmentShaderHandle() const
+    {
+        return m_fragmentShaderHandle;
     }
 #pragma endregion
 
@@ -174,6 +178,7 @@ class StarObject
     // Pipeline* sharedPipeline = nullptr;
     std::vector<std::shared_ptr<StarMaterial>> m_meshMaterials = std::vector<std::shared_ptr<StarMaterial>>();
     Handle pipeline, sharedPipeline;
+    Handle m_vertexShaderHandle, m_fragmentShaderHandle;
     core::renderer::RenderingContext renderingContext;
     std::unique_ptr<StarPipeline> normalExtrusionPipeline;
     std::unique_ptr<StarDescriptorSetLayout> setLayout;

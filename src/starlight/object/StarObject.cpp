@@ -151,13 +151,10 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
                                              vk::PipelineLayout pipelineLayout,
                                              core::renderer::RenderingTargetInfo renderInfo)
 {
-    auto graphicsShaders = this->getShaders();
-
     return context.getPipelineManager().submit(core::device::manager::PipelineRequest(
         StarPipeline(
             StarPipeline::GraphicsPipelineConfigSettings(), pipelineLayout,
-            std::vector<Handle>{context.getShaderManager().submit(graphicsShaders.at(Shader_Stage::vertex)),
-                                context.getShaderManager().submit(graphicsShaders.at(Shader_Stage::fragment))}),
+            std::vector<Handle>{m_vertexShaderHandle, m_fragmentShaderHandle}),
         swapChainExtent, renderInfo));
 }
 

@@ -18,11 +18,19 @@ CreateObject::Builder &CreateObject::Builder::setUniqueName(std::string name)
     return *this;
 }
 
+CreateObject::Builder &CreateObject::Builder::setShaderResolver(ShaderResolver resolver)
+{
+    m_resolver = std::move(resolver);
+    m_resolverSet = true;
+    return *this;
+}
+
 CreateObject CreateObject::Builder::build()
 {
     assert(m_loader != nullptr);
     assert(!m_uniqueName.empty());
+    assert(m_resolverSet && "ShaderResolver must be provided via setShaderResolver()");
 
-    return {std::move(m_uniqueName), std::move(m_loader)};
+    return {std::move(m_uniqueName), std::move(m_loader), std::move(m_resolver)};
 }
 } // namespace star::command

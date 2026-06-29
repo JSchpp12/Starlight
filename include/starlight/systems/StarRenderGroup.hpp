@@ -5,7 +5,6 @@
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarGraphicsPipeline.hpp"
-#include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
 #include "VulkanVertex.hpp"
 #include "core/device/DeviceContext.hpp"

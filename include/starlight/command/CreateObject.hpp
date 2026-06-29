@@ -1,5 +1,6 @@
 #pragma once
 
+#include "starlight/ShaderResolver.hpp"
 #include "starlight/command/detail/create_object/ObjectLoader.hpp"
 #include "starlight/object/StarObject.hpp"
 
@@ -21,11 +22,14 @@ struct CreateObject : public common::IServiceCommand
     {
         Builder &setLoader(std::unique_ptr<create_object::ObjectLoader> loader);
         Builder &setUniqueName(std::string name);
+        Builder &setShaderResolver(ShaderResolver resolver);
         CreateObject build();
 
       private:
         std::string m_uniqueName = std::string();
         std::unique_ptr<create_object::ObjectLoader> m_loader = nullptr;
+        ShaderResolver m_resolver{};
+        bool m_resolverSet = false;
     };
 
     static inline constexpr std::string_view GetUniqueTypeName()
@@ -33,8 +37,10 @@ struct CreateObject : public common::IServiceCommand
         return create_object::GetCreateObjectCommandTypeName;
     }
 
-    CreateObject(std::string uniqueName, std::unique_ptr<create_object::ObjectLoader> loader)
-        : m_uniqueName(std::move(uniqueName)), m_loader(std::move(loader))
+    CreateObject(std::string uniqueName, std::unique_ptr<create_object::ObjectLoader> loader,
+                 ShaderResolver shaderResolver)
+        : m_uniqueName(std::move(uniqueName)), m_loader(std::move(loader)),
+          m_shaderResolver(std::move(shaderResolver))
     {
         assert(!m_uniqueName.empty());
         assert(m_loader != nullptr);
@@ -42,7 +48,7 @@ struct CreateObject : public common::IServiceCommand
 
     std::shared_ptr<StarObject> load()
     {
-        return m_loader->load();
+        return m_loader->load(m_shaderResolver);
     }
 
     const std::string &getUniqueName() const
@@ -59,5 +65,6 @@ struct CreateObject : public common::IServiceCommand
     std::string m_uniqueName;
     common::ServiceReply<std::shared_ptr<star::StarObject>> result;
     std::unique_ptr<create_object::ObjectLoader> m_loader = nullptr;
+    ShaderResolver m_shaderResolver;
 };
 } // namespace star::command
