@@ -35,36 +35,41 @@ star::TextureMaterial::TextureMaterial(std::string texturePath) : m_texturePath(
     }
 }
 
+void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
+{
+    if (m_textureHandle.isInitialized())
+        return;
+
+    const auto texSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
+    const auto graphicsIndex =
+        core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
+                                            star::Queue_Type::Tgraphics)
+            ->getParentQueueFamilyIndex();
+    const auto deviceProperties = context.getDevice().getPhysicalDevice().getProperties();
+
+    auto texture = std::unique_ptr<TransferRequest::Texture>();
+    if (TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_texturePath))
+    {
+        texture = std::make_unique<TransferRequest::CompressedTextureFile>(
+            std::move(graphicsIndex), std::move(deviceProperties),
+            std::make_unique<SharedCompressedTexture>(m_texturePath));
+    }
+    else
+    {
+        texture = std::make_unique<TransferRequest::TextureFile>(std::move(graphicsIndex),
+                                                                 std::move(deviceProperties), m_texturePath);
+    }
+
+    assert(texture && "Texture MUST be created");
+
+    m_textureHandle = star::ManagerRenderResource::addRequest(
+        context.getDeviceID(), context.getSemaphoreManager().get(texSemaphore)->semaphore, std::move(texture));
+}
+
 void star::TextureMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                                        star::StarShaderInfo::Builder frameBuilder)
 {
-    if (!m_textureHandle.isInitialized())
-    {
-        const auto texSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
-        const auto graphicsIndex =
-            core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
-                                                star::Queue_Type::Tgraphics)
-                ->getParentQueueFamilyIndex();
-        const auto deviceProperties = context.getDevice().getPhysicalDevice().getProperties();
-
-        auto texture = std::unique_ptr<TransferRequest::Texture>();
-        if (TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_texturePath))
-        {
-            texture = std::make_unique<TransferRequest::CompressedTextureFile>(
-                std::move(graphicsIndex), std::move(deviceProperties),
-                std::make_unique<SharedCompressedTexture>(m_texturePath));
-        }
-        else
-        {
-            texture = std::make_unique<TransferRequest::TextureFile>(std::move(graphicsIndex),
-                                                                     std::move(deviceProperties), m_texturePath);
-        }
-
-        assert(texture && "Texture MUST be created");
-
-        m_textureHandle = star::ManagerRenderResource::addRequest(
-            context.getDeviceID(), context.getSemaphoreManager().get(texSemaphore)->semaphore, std::move(texture));
-    }
+    preloadTexture(context);
 
     StarMaterial::prepRender(context, numFramesInFlight, frameBuilder);
 }

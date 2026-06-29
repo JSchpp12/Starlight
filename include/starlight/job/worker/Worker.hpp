@@ -22,7 +22,7 @@ class Worker
     };
 
     template <typename TWorker>
-    Worker(TWorker &&worker) : m_impl(std::make_unique<WorkerModel<TWorker>>(std::forward<TWorker>(worker)))
+    Worker(TWorker &&worker) : m_pimpl(std::make_unique<WorkerModel<TWorker>>(std::forward<TWorker>(worker)))
     {
     }
     Worker() = delete;
@@ -34,12 +34,12 @@ class Worker
 
     WorkerConcept *getRawConcept()
     {
-        return m_impl.get();
+        return m_pimpl.get();
     }
 
     void cleanup()
     {
-        m_impl->doCleanup();
+        m_pimpl->doCleanup();
     }
 
     /// Queue a task for the worker to process.
@@ -51,12 +51,12 @@ class Worker
     /// valid for the duration of this call.
     void queueTask(void *task)
     {
-        m_impl->doQueueTask(task);
+        m_pimpl->doQueueTask(task);
     }
 
     void setCompleteMessageCommunicationStructure(TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
     {
-        m_impl->doSetCompleteMessageCommunicationStructure(completeMessages);
+        m_pimpl->doSetCompleteMessageCommunicationStructure(completeMessages);
     }
 
   private:
@@ -88,6 +88,6 @@ class Worker
         }
     };
 
-    std::unique_ptr<WorkerConcept> m_impl;
+    std::unique_ptr<WorkerConcept> m_pimpl;
 };
 } // namespace star::job::worker

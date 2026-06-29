@@ -16,6 +16,8 @@ class TextureMaterial : public StarMaterial
 
     virtual ~TextureMaterial() = default;
 
+    void preloadTexture(core::device::DeviceContext &context);
+
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                             star::StarShaderInfo::Builder frameBuilder) override;
 
