@@ -29,6 +29,8 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices = {this->graphicsQueueFamilyIndex};
+    indices.reserve(transferQueueFamilyIndex.size() + 1);
+
     for (const auto &queueFamilyIndex : transferQueueFamilyIndex)
         indices.push_back(queueFamilyIndex);
 
@@ -43,7 +45,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceNormal
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eConcurrent)
-                .setQueueFamilyIndexCount(2)
+                .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
                 .setQueueFamilyIndices(indices)
                 .setSize(star::common::casts::size_t_to_unsigned_int(this->normalMatrixInfo.size() * alignmentSize))
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),

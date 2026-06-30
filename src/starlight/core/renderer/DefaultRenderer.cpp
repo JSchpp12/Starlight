@@ -181,7 +181,7 @@ std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
 {
     std::vector<StarTextures::Texture> newRenderToImages = std::vector<StarTextures::Texture>();
 
-    std::vector<uint32_t> indices = std::vector<uint32_t>();
+    std::vector<uint32_t> indices;
     indices.push_back(core::helper::GetEngineDefaultQueue(
                           device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics)
                           ->getParentQueueFamilyIndex());
@@ -299,7 +299,7 @@ std::vector<star::StarTextures::Texture> star::core::renderer::DefaultRenderer::
 
     const vk::Format depthFormat = getDepthAttachmentFormat(device);
 
-    std::vector<uint32_t> indices = std::vector<uint32_t>();
+    std::vector<uint32_t> indices;
     const auto graphicsQueueFamilyIndex =
         core::helper::GetEngineDefaultQueue(device.getEventBus(), device.getGraphicsManagers().queueManager,
                                             star::Queue_Type::Tgraphics)

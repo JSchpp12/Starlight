@@ -10,6 +10,7 @@
 #include "starlight/job/worker/DefaultWorker.hpp"
 #include "starlight/job/worker/Worker.hpp"
 #include "starlight/job/worker/detail/default_worker/BusyWaitTransferTaskHandlingPolicy.hpp"
+#include "starlight/managers/ManagerRenderResource.hpp"
 
 #include <star_common/EventBus.hpp>
 
@@ -87,6 +88,17 @@ class TransferService
         {
             allTransferQueueFamilyIndicesInUse.push_back(index);
         }
+
+        std::vector<uint32_t> workerQueueFamilyIndices;
+        workerQueueFamilyIndices.reserve(transferWorkerQueues.size());
+        for (const auto *queue : transferWorkerQueues)
+        {
+            if (queue != nullptr)
+                workerQueueFamilyIndices.push_back(queue->getParentQueueFamilyIndex());
+            else
+                workerQueueFamilyIndices.push_back(0);
+        }
+        ManagerRenderResource::setWorkerQueueFamilyIndices(std::move(workerQueueFamilyIndices));
 
         for (size_t i{0}; i < transferWorkerQueues.size(); i++)
         {
