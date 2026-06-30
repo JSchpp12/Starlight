@@ -65,7 +65,17 @@ namespace star {
         resolution_y,
         tmp_directory,
         scene_file,
-        max_image_worker_count
+        max_image_worker_count,
+        transfer_high_priority_queue_size,
+        transfer_standard_priority_queue_size,
+        transfer_standard_priority_worker_count
+    };
+
+    enum class TransferQueueCapacity {
+        Low,
+        Medium,
+        High,
+        Ultra
     };
 
     namespace Type {

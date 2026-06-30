@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.0.17
+    VERSION 1.0.18
 )
 
 include(CheckIncludeFile)
@@ -191,6 +191,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/CommandOrderService.cpp"
     "src/starlight/service/TaskSchedulerService.cpp"
     "src/starlight/service/ShaderService.cpp"
+    "src/starlight/service/TransferService.cpp"
     "src/starlight/ShaderResolver.cpp"
     "src/starlight/service/detail/command_order/EdgeDescription.cpp"
     "src/starlight/service/detail/command_order/TriggerDescription.cpp"
@@ -438,6 +439,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/service/CommandOrderService.hpp"
     "include/starlight/service/TaskSchedulerService.hpp"
     "include/starlight/service/ShaderService.hpp"
+    "include/starlight/service/TransferService.hpp"
+    "include/starlight/service/TransferServiceConfig.hpp"
     "include/starlight/ShaderResolver.hpp"
     "include/starlight/command/shader/LoadShader.hpp"
     "include/starlight/policy/command/ListenForLoadShader.hpp"

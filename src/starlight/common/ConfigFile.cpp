@@ -30,7 +30,13 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
     std::make_pair("resolution_y", star::Config_Settings::resolution_y),
     std::make_pair("tmp_dir", star::Config_Settings::tmp_directory),
     std::make_pair("scene_file", star::Config_Settings::scene_file),
-    std::make_pair("max_image_worker_count", star::Config_Settings::max_image_worker_count)};
+    std::make_pair("max_image_worker_count", star::Config_Settings::max_image_worker_count),
+    std::make_pair("transfer_high_priority_queue_size",
+                   star::Config_Settings::transfer_high_priority_queue_size),
+    std::make_pair("transfer_standard_priority_queue_size",
+                   star::Config_Settings::transfer_standard_priority_queue_size),
+    std::make_pair("transfer_standard_priority_worker_count",
+                   star::Config_Settings::transfer_standard_priority_worker_count)};
 
 void star::ConfigFile::load(const std::filesystem::path &configPath)
 {
@@ -89,7 +95,7 @@ void star::ConfigFile::applyDefaults(std::map<std::string, std::string> values)
                 settings[configKey] = "StarScene.json";
                 break;
             case Config_Settings::max_image_worker_count:
-                settings[configKey] = "8";
+                settings[configKey] = "2";
                 break;
             case Config_Settings::resolution_x:
                 settings[configKey] = "1920";
@@ -105,6 +111,15 @@ void star::ConfigFile::applyDefaults(std::map<std::string, std::string> values)
                 break;
             case Config_Settings::required_device_feature_gpu_index:
                 settings[configKey] = "-1";
+                break;
+            case Config_Settings::transfer_high_priority_queue_size:
+                settings[configKey] = "low";
+                break;
+            case Config_Settings::transfer_standard_priority_queue_size:
+                settings[configKey] = "low";
+                break;
+            case Config_Settings::transfer_standard_priority_worker_count:
+                settings[configKey] = "0";
                 break;
             default:
                 STAR_THROW("Setting not found and has no available default: " + jsonKey);
@@ -159,6 +174,15 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
         break;
     case (Config_Settings::max_image_worker_count):
         name = "max_image_worker_count";
+        break;
+    case (Config_Settings::transfer_high_priority_queue_size):
+        name = "transfer_high_priority_queue_size";
+        break;
+    case (Config_Settings::transfer_standard_priority_queue_size):
+        name = "transfer_standard_priority_queue_size";
+        break;
+    case (Config_Settings::transfer_standard_priority_worker_count):
+        name = "transfer_standard_priority_worker_count";
         break;
     default:
         name = "UNKNOWN";

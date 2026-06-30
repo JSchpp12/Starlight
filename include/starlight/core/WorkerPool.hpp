@@ -23,6 +23,12 @@ class WorkerPool
         return false;
     }
 
+    //simple counter -- trust that worker thread has actually be shutdown
+    void returnWorker()
+    {
+        m_numAvailable++; 
+    }
+
     uint8_t getNumAvailableWorkers() const
     {
         return m_numAvailable;

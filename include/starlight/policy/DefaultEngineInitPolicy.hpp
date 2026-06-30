@@ -17,7 +17,7 @@ class DefaultEngineInitPolicy
 
     DefaultEngineInitPolicy() = default;
     explicit DefaultEngineInitPolicy(LoadAdditionalServices addServiceLoader)
-        : m_addServiceLoader(std::move(addServiceLoader)) {};
+        : m_addServiceLoader(std::move(addServiceLoader)){};
     virtual ~DefaultEngineInitPolicy() = default;
 
     void init(uint8_t requestedNumFramesInFlight);

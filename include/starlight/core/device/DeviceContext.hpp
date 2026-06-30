@@ -38,7 +38,7 @@ class DeviceContext : public star::common::IDeviceContext
         manager::ManagerCommandBuffer &m_manager;
     };
     DeviceContext() = default;
-    explicit DeviceContext(StarDevice device) : m_device(std::move(device)) {};
+    explicit DeviceContext(StarDevice device) : m_device(std::move(device)){};
 
     virtual ~DeviceContext();
     DeviceContext(DeviceContext &&other);
@@ -201,7 +201,7 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return m_commandBus;
     }
-    //void broadcastFramePrepToService();
+    // void broadcastFramePrepToService();
 
   private:
     StarDevice m_device;
@@ -218,12 +218,6 @@ class DeviceContext : public star::common::IDeviceContext
     QueueFamilyIndices m_familyIndices;
 
     std::unordered_set<uint32_t> gatherEngineDedicatedQueueFamilyIndices();
-
-    std::vector<Handle> gatherTransferQueues(const uint8_t &targetNumberOfQueues) const;
-
-    void createAndRegisterTransferWorkers(StarDevice &device, core::WorkerPool &pool,
-                                          absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
-                                          const size_t &targetNumQueuesToUse = 2);
 
     void handleCompleteMessages(const uint8_t maxMessageCounter = 0);
 
@@ -258,6 +252,8 @@ class DeviceContext : public star::common::IDeviceContext
 
     service::Service createQueueOwnershipService(std::vector<Handle> queueHandles,
                                                  absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
+
+    service::Service createTransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
 
     service::Service createSceneLoaderService();
 
