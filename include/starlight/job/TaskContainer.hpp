@@ -33,7 +33,44 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
     TaskContainer &operator=(TaskContainer &&) = delete;
     ~TaskContainer() = default;
 
-    void queueTask(TTask &&newTask)
+    /// Non-blocking attempt to queue a task. Returns false if the container is full
+    /// (no available slot), returns true on success. Never blocks the caller.
+    bool queueTask(TTask &&newTask)
+    {
+        static_assert(std::is_nothrow_move_assignable_v<TTask> && std::is_nothrow_move_constructible_v<TTask>,
+                      "TTask must be noexcept moveable for lock-free placement.");
+
+        auto maybeSpace = tryGetNextAvailableSpace();
+        if (!maybeSpace.has_value())
+            return false;
+
+        const uint32_t newSpace = maybeSpace.value();
+        m_tasks[newSpace] = std::move(newTask);
+
+        m_pending.fetch_add(1, std::memory_order_release);
+
+        bool printedMessage = false;
+        int pushTryCounter = 0;
+        while (!m_queuedTasks.push(newSpace))
+        {
+            if (!printedMessage)
+            {
+                star::core::logging::warning("Failed to push queued task. Entering try loop");
+                printedMessage = true;
+            }
+
+            pushTryCounter++;
+            if (pushTryCounter % 50 == 0)
+            {
+                std::this_thread::yield();
+            }
+        }
+
+        return true;
+    }
+
+    /// Blocking variant. Busy-waits for an available slot if the container is full.
+    void queueTaskBlocking(TTask &&newTask)
     {
         static_assert(std::is_nothrow_move_assignable_v<TTask> && std::is_nothrow_move_constructible_v<TTask>,
                       "TTask must be noexcept moveable for lock-free placement.");
@@ -105,6 +142,16 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
         boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>>();
     std::atomic<uint32_t> m_pending{0};
 
+    /// Non-blocking attempt to grab an available slot. Returns std::nullopt if full.
+    std::optional<uint32_t> tryGetNextAvailableSpace() noexcept
+    {
+        uint32_t nextSpace = 0;
+        if (!m_availableSpaces.pop(nextSpace))
+            return std::nullopt;
+        return nextSpace;
+    }
+
+    /// Blocking variant. Busy-waits (with yield) until a slot is available.
     uint32_t getNextAvailableSpace()
     {
         uint32_t nextSpace = 0;

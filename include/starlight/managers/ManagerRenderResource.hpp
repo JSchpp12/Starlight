@@ -34,7 +34,9 @@ class ManagerRenderResource
     {
         boost::atomic<bool> cpuWorkDoneByTransferThread = true;
 
-        FinalizedRequest() {}
+        FinalizedRequest()
+        {
+        }
     };
 
     template <typename T> struct FinalizedResourceRequest : public FinalizedRequest
@@ -82,14 +84,22 @@ class ManagerRenderResource
 
     static Handle TransferWorkerHandle(uint16_t workerIndex)
     {
-        return Handle{
-            .type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(job::tasks::transfer::TransferTaskName),
-            .id = workerIndex};
+        return Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                          job::tasks::transfer::TransferTaskName),
+                      .id = workerIndex};
     }
 
     /// Worker 0 is reserved for high-priority transfer tasks. Standard tasks are distributed
-    /// across workers 1..N via submitStandardTransferTask. When only one transfer worker exists,
-    /// both high- and standard-priority work are routed to worker 0.
+    /// across workers 1..N via submitStandardTransferTask using round-robin. When only one
+    /// transfer worker exists, both high- and standard-priority work are routed to worker 0.
+    ///
+    /// Overflow behavior: if the round-robin-selected standard worker's queue is full,
+    /// submitStandardTransferTask tries the remaining standard workers (non-blocking). If all
+    /// standard workers are full, it falls back to the dedicated high-priority worker 0, which
+    /// routes Standard-priority payloads into its standard queue. Worker 0's thread loop drains
+    /// its high-priority queue first, then the standard queue, so the dedicated high-priority
+    /// worker only consumes standard work when its high-priority queue is empty. As a last
+    /// resort, if worker 0 is also full, the call blocks on worker 0 to avoid losing the task.
     static void submitStandardTransferTask(job::tasks::transfer::TransferPayload payload);
 
     static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore);
@@ -106,10 +116,12 @@ class ManagerRenderResource
 
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
-    /// @param waitInfo GPU synchronization info which transfer worker will wait on before submitting its commands to the gpu
+    /// @param waitInfo GPU synchronization info which transfer worker will wait on before submitting its commands to
+    /// the gpu
     /// @param handle Handle to resource
     static void updateRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
-                              const Handle &handle, std::optional<core::graphics::GPUWorkSyncInfo> waitInfo = std::nullopt,
+                              const Handle &handle,
+                              std::optional<core::graphics::GPUWorkSyncInfo> waitInfo = std::nullopt,
                               const bool &isHighPriority = false);
 
     static void frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex);

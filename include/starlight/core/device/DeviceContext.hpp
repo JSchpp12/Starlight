@@ -38,7 +38,7 @@ class DeviceContext : public star::common::IDeviceContext
         manager::ManagerCommandBuffer &m_manager;
     };
     DeviceContext() = default;
-    explicit DeviceContext(StarDevice device) : m_device(std::move(device)) {};
+    explicit DeviceContext(StarDevice device) : m_device(std::move(device)){};
 
     virtual ~DeviceContext();
     DeviceContext(DeviceContext &&other);
@@ -201,7 +201,7 @@ class DeviceContext : public star::common::IDeviceContext
     {
         return m_commandBus;
     }
-    //void broadcastFramePrepToService();
+    // void broadcastFramePrepToService();
 
   private:
     StarDevice m_device;
@@ -251,7 +251,7 @@ class DeviceContext : public star::common::IDeviceContext
                           common::FrameTracker::Setup frameSetup, StarDevice &device);
 
     service::Service createQueueOwnershipService(std::vector<Handle> queueHandles,
-                                                  absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
+                                                 absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
 
     service::Service createTransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReserved);
 

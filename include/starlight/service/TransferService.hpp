@@ -26,8 +26,7 @@ class TransferService
     explicit TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues,
                              size_t targetNumQueuesToUse = 1);
     explicit TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues,
-                             TransferServiceConfig config,
-                             size_t targetNumQueuesToUse = 1);
+                             TransferServiceConfig config, size_t targetNumQueuesToUse = 1);
     TransferService(const TransferService &) = delete;
     TransferService &operator=(const TransferService &) = delete;
     TransferService(TransferService &&other);
@@ -43,15 +42,14 @@ class TransferService
     void shutdown();
 
   private:
-    bool useHighCapacityTransfer{false};
+    absl::flat_hash_map<star::Queue_Type, Handle> m_engineReservedQueues;
+    size_t m_targetNumQueuesToUse{1};
+    TransferServiceConfig m_config{};
     core::device::StarDevice *m_device{nullptr};
     core::device::manager::GraphicsContainer *m_graphicsManagers{nullptr};
     common::EventBus *m_eventBus{nullptr};
     job::TaskManager *m_taskManager{nullptr};
     core::WorkerPool *m_workerPool{nullptr};
-    absl::flat_hash_map<star::Queue_Type, Handle> m_engineReservedQueues;
-    size_t m_targetNumQueuesToUse{1};
-    TransferServiceConfig m_config{};
 
     template <typename THighPriorityWorkerPolicy, typename TStandardPriorityWorkerPolicy>
     void createAndRegisterTransferWorkers()
@@ -60,9 +58,9 @@ class TransferService
 
         std::vector<StarQueue *> transferWorkerQueues = std::vector<StarQueue *>(m_targetNumQueuesToUse);
 
-        const uint8_t selectedTransferQueueIndex =
+        const uint8_t selectedTransferQueueIndex = static_cast<uint8_t>(
             m_graphicsManagers->queueManager.get(m_engineReservedQueues.at(star::Queue_Type::Ttransfer))
-                ->queue.getParentQueueFamilyIndex();
+                ->queue.getParentQueueFamilyIndex());
 
         for (size_t i{0}; i < m_targetNumQueuesToUse; i++)
         {
@@ -93,8 +91,7 @@ class TransferService
         if (obtainedQueues < m_targetNumQueuesToUse)
         {
             std::ostringstream queueOss;
-            queueOss << "Requested " << m_targetNumQueuesToUse
-                     << " transfer queues, obtained " << obtainedQueues
+            queueOss << "Requested " << m_targetNumQueuesToUse << " transfer queues, obtained " << obtainedQueues
                      << ". Some standard workers will not be created.";
             core::logging::log(boost::log::trivial::warning, queueOss.str());
         }
@@ -123,8 +120,7 @@ class TransferService
                 if (i > 0)
                 {
                     std::ostringstream skipOss;
-                    skipOss << "Skipping standard transfer worker " << i
-                            << ": no dedicated transfer queue available.";
+                    skipOss << "Skipping standard transfer worker " << i << ": no dedicated transfer queue available.";
                     core::logging::log(boost::log::trivial::warning, skipOss.str());
                 }
                 continue;
@@ -166,11 +162,11 @@ class TransferService
         }
     }
 
-    template <size_t THighSize, size_t TStandardSize>
-    void dispatchCreateWorkers()
+    template <size_t THighSize, size_t TStandardSize> void dispatchCreateWorkers()
     {
-        createAndRegisterTransferWorkers<job::worker::default_worker::BusyWaitTransferTaskHandlingPolicy<THighSize>,
-                                         job::worker::default_worker::BusyWaitTransferTaskHandlingPolicy<TStandardSize>>();
+        createAndRegisterTransferWorkers<
+            job::worker::default_worker::BusyWaitTransferTaskHandlingPolicy<THighSize>,
+            job::worker::default_worker::BusyWaitTransferTaskHandlingPolicy<TStandardSize>>();
     }
 
     void dispatchCreateWorkersFromConfig();

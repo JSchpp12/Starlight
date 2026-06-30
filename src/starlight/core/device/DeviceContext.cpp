@@ -198,25 +198,23 @@ const star::common::FrameTracker &star::core::device::DeviceContext::frameTracke
     return *ftCmd.getReply().get();
 }
 
-void star::core::device::DeviceContext::initWorkers(
-    core::WorkerPool &pool, absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
-    const uint8_t &numFramesInFlight)
+void star::core::device::DeviceContext::initWorkers(core::WorkerPool &pool,
+                                                    absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
+                                                    const uint8_t &numFramesInFlight)
 {
     ManagerRenderResource::init(m_deviceID, &m_device, m_taskManager, numFramesInFlight);
 
     if (!pool.allocateWorker())
-    {
         STAR_THROW("Unable to allocate worker from pool for pipeline");
-    }
+
     // create worker for pipeline building
     job::worker::Worker pipelineWorker{job::worker::DefaultWorker{
         job::worker::default_worker::BusyWaitTaskHandlingPolicy<job::tasks::build_pipeline::BuildPipelineTask, 64>{},
         "Pipeline_Builder"}};
 
     if (!pool.allocateWorker())
-    {
         STAR_THROW("Unable to allocate worker from pool for shader compiler");
-    }
+
     m_taskManager.registerWorker(std::move(pipelineWorker), job::tasks::build_pipeline::BuildPipelineTaskName);
 
     // create worker for shader compilation
@@ -246,9 +244,9 @@ void star::core::device::DeviceContext::processCompleteMessage(job::complete_tas
 {
 
     completeTask.run(job::complete_tasks::EngineContext{.device = &m_device,
-                                                         .taskSystem = &m_taskManager,
-                                                         .eventBus = &m_eventBus,
-                                                         .graphicsManagers = &m_graphicsManagers});
+                                                        .taskSystem = &m_taskManager,
+                                                        .eventBus = &m_eventBus,
+                                                        .graphicsManagers = &m_graphicsManagers});
 }
 
 void star::core::device::DeviceContext::shutdownServices()

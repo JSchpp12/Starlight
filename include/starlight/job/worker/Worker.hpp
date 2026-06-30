@@ -16,7 +16,8 @@ class Worker
     {
         virtual ~WorkerConcept() = default;
         virtual void doCleanup() = 0;
-        virtual void doQueueTask(void *task) = 0;
+        virtual bool doQueueTask(void *task) = 0;
+        virtual void doQueueTaskBlocking(void *task) = 0;
         virtual void doSetCompleteMessageCommunicationStructure(
             TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages) = 0;
     };
@@ -49,9 +50,17 @@ class Worker
     /// TaskContainer::queueTask(std::move(*static_cast<TTask*>(task)))) and MUST NOT retain
     /// the void* for asynchronous dereference by the worker thread — the pointer is only
     /// valid for the duration of this call.
-    void queueTask(void *task)
+    ///
+    /// Returns false if the worker's task container is full (non-blocking); true on success.
+    bool queueTask(void *task)
     {
-        m_pimpl->doQueueTask(task);
+        return m_pimpl->doQueueTask(task);
+    }
+
+    /// Blocking variant of queueTask. Busy-waits until the worker's task container has a free slot.
+    void queueTaskBlocking(void *task)
+    {
+        m_pimpl->doQueueTaskBlocking(task);
     }
 
     void setCompleteMessageCommunicationStructure(TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
@@ -76,9 +85,13 @@ class Worker
         {
             m_worker.cleanup();
         }
-        void doQueueTask(void *task) override
+        bool doQueueTask(void *task) override
         {
-            m_worker.queueTask(task);
+            return m_worker.queueTask(task);
+        }
+        void doQueueTaskBlocking(void *task) override
+        {
+            m_worker.queueTaskBlocking(task);
         }
 
         void doSetCompleteMessageCommunicationStructure(

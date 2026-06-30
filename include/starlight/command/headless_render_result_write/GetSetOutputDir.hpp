@@ -56,11 +56,11 @@ class GetSetOutputDir : public common::IServiceCommandWithReply<std::filesystem:
     {
         return get_set_output_dir::GetUniqueTypeName();
     }
-    const bool isGetter() const noexcept
+    bool isGetter() const noexcept
     {
         return !m_setterProvidedOutputDir.has_value();
     }
-    const bool isSetter() const noexcept
+    bool isSetter() const noexcept
     {
         return m_setterProvidedOutputDir.has_value();
     }
