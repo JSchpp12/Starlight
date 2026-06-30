@@ -18,9 +18,11 @@ TransferService::TransferService(absl::flat_hash_map<star::Queue_Type, Handle> e
 TransferService::TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues,
                                  TransferServiceConfig config,
                                  size_t targetNumQueuesToUse)
-    : m_engineReservedQueues(std::move(engineReservedQueues)), m_targetNumQueuesToUse(targetNumQueuesToUse),
+    : m_engineReservedQueues(std::move(engineReservedQueues)),
+      m_targetNumQueuesToUse(config.standardPriorityWorkerCount + 1),
       m_config(std::move(config))
 {
+    (void)targetNumQueuesToUse;
 }
 
 TransferService::TransferService(TransferService &&other)

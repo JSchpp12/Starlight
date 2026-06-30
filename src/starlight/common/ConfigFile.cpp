@@ -34,7 +34,9 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
     std::make_pair("transfer_high_priority_queue_size",
                    star::Config_Settings::transfer_high_priority_queue_size),
     std::make_pair("transfer_standard_priority_queue_size",
-                   star::Config_Settings::transfer_standard_priority_queue_size)};
+                   star::Config_Settings::transfer_standard_priority_queue_size),
+    std::make_pair("transfer_standard_priority_worker_count",
+                   star::Config_Settings::transfer_standard_priority_worker_count)};
 
 void star::ConfigFile::load(const std::filesystem::path &configPath)
 {
@@ -116,6 +118,9 @@ void star::ConfigFile::applyDefaults(std::map<std::string, std::string> values)
             case Config_Settings::transfer_standard_priority_queue_size:
                 settings[configKey] = "low";
                 break;
+            case Config_Settings::transfer_standard_priority_worker_count:
+                settings[configKey] = "0";
+                break;
             default:
                 STAR_THROW("Setting not found and has no available default: " + jsonKey);
             }
@@ -175,6 +180,9 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
         break;
     case (Config_Settings::transfer_standard_priority_queue_size):
         name = "transfer_standard_priority_queue_size";
+        break;
+    case (Config_Settings::transfer_standard_priority_worker_count):
+        name = "transfer_standard_priority_worker_count";
         break;
     default:
         name = "UNKNOWN";

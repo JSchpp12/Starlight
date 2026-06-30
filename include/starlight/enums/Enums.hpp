@@ -67,7 +67,8 @@ namespace star {
         scene_file,
         max_image_worker_count,
         transfer_high_priority_queue_size,
-        transfer_standard_priority_queue_size
+        transfer_standard_priority_queue_size,
+        transfer_standard_priority_worker_count
     };
 
     enum class TransferQueueCapacity {

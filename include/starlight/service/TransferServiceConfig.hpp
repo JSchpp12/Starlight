@@ -14,6 +14,7 @@ struct TransferServiceConfig
 {
     star::TransferQueueCapacity highPrioritySize{star::TransferQueueCapacity::Low};
     star::TransferQueueCapacity standardPrioritySize{star::TransferQueueCapacity::Low};
+    size_t standardPriorityWorkerCount{0};
 
     static TransferServiceConfig fromConfigFile()
     {
@@ -26,6 +27,8 @@ struct TransferServiceConfig
 
         cfg.highPrioritySize = parseCapacity(highStr);
         cfg.standardPrioritySize = parseCapacity(standardStr);
+        cfg.standardPriorityWorkerCount =
+            star::ConfigFile::getUint32(star::Config_Settings::transfer_standard_priority_worker_count, 0);
 
         return cfg;
     }

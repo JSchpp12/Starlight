@@ -476,6 +476,6 @@ star::service::Service star::core::device::DeviceContext::createTransferService(
     absl::flat_hash_map<star::Queue_Type, Handle> engineReserved)
 {
     auto config = star::service::TransferServiceConfig::fromConfigFile();
-    auto service = service::TransferService(std::move(engineReserved), std::move(config), 2);
+    auto service = service::TransferService(std::move(engineReserved), std::move(config));
     return star::service::Service(std::move(service));
 }

@@ -15,6 +15,8 @@
 
 #include <absl/container/flat_hash_map.h>
 
+#include <sstream>
+
 namespace star::service
 {
 class TransferService
@@ -82,6 +84,21 @@ class TransferService
             }
         }
 
+        size_t obtainedQueues = 0;
+        for (const auto *queue : transferWorkerQueues)
+        {
+            if (queue != nullptr)
+                ++obtainedQueues;
+        }
+        if (obtainedQueues < m_targetNumQueuesToUse)
+        {
+            std::ostringstream queueOss;
+            queueOss << "Requested " << m_targetNumQueuesToUse
+                     << " transfer queues, obtained " << obtainedQueues
+                     << ". Some standard workers will not be created.";
+            core::logging::log(boost::log::trivial::warning, queueOss.str());
+        }
+
         std::set<uint32_t> uniqueQueueFamilyIndicesInUse;
         for (const auto *queue : transferWorkerQueues)
         {
@@ -102,10 +119,25 @@ class TransferService
             const auto *queue = transferWorkerQueues[i];
 
             if (queue == nullptr)
+            {
+                if (i > 0)
+                {
+                    std::ostringstream skipOss;
+                    skipOss << "Skipping standard transfer worker " << i
+                            << ": no dedicated transfer queue available.";
+                    core::logging::log(boost::log::trivial::warning, skipOss.str());
+                }
                 continue;
+            }
 
             if (!m_workerPool->allocateWorker())
-                STAR_THROW("Unable to allocate worker from pool for transfer worker");
+            {
+                std::ostringstream poolOss;
+                poolOss << "Worker pool exhausted after creating " << i
+                        << " transfer worker(s). Remaining standard workers will not be created.";
+                core::logging::log(boost::log::trivial::warning, poolOss.str());
+                break;
+            }
 
             // The first registered transfer worker (worker 0) is reserved for high-priority tasks.
             // Standard tasks are distributed across workers 1..N by ManagerRenderResource.
