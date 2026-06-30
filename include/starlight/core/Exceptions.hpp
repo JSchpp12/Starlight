@@ -6,7 +6,8 @@
 #include <string_view>
 #include <utility>
 
-#if __has_include(<source_location>) && __cplusplus >= 202002L
+#if __has_include(<source_location>) && \
+    ((defined(_MSVC_LANG) ? _MSVC_LANG : __cplusplus) >= 202002L)
 #include <source_location>
 #define STAR_HAVE_SOURCE_LOCATION 1
 #else
