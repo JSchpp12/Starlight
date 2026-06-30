@@ -408,17 +408,17 @@ absl::flat_hash_map<star::Queue_Type, star::Handle> star::core::device::DeviceCo
     if (!selectedQueues.empty())
     {
         // check if the present queue supports graphics
-        // Handle handle = selectedQueues[star::Queue_Type::Tgraphics];
-        if (m_graphicsManagers.queueManager.get(selected)->queue.isCompatibleWith(
-                EnumToQueueFlags(star::Queue_Type::Tgraphics)))
-        {
+        const auto *record = m_graphicsManagers.queueManager.get(selected);
+        if (record->queue.isCompatibleWith(EnumToQueueFlags(star::Queue_Type::Tgraphics)))
+
             selectedQueues.insert(
                 std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tgraphics, Handle(selected)));
-        }
+        // this might be super queue so check for ttransfer too
+            if (record->queue.isCompatibleWith(EnumToQueueFlags(star::Queue_Type::Ttransfer)))
+                selectedQueues.insert(std::make_pair(star::Queue_Type::Ttransfer, Handle(selected)));
+        
         else
-        {
             STAR_THROW("Not able to find queue which supports graphics or presentation");
-        }
     }
     else
     {
@@ -427,22 +427,8 @@ absl::flat_hash_map<star::Queue_Type, star::Handle> star::core::device::DeviceCo
         selectedQueues.insert(
             std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tgraphics, Handle(selected)));
         selectedFamilyInds.insert(m_graphicsManagers.queueManager.get(selected)->queue.getParentQueueFamilyIndex());
-    }
 
-    // try to get dedicated transfer queue
-    auto selectedTransfer = getQueueOfType(allQueueHandles, star::Queue_Type::Ttransfer, &selectedFamilyInds);
-    if (selected.isInitialized())
-    {
-        selectedQueues.insert(
-            std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Ttransfer, Handle(selectedTransfer)));
-        selectedFamilyInds.insert(
-            m_graphicsManagers.queueManager.get(selectedTransfer)->queue.getParentQueueFamilyIndex());
-    }
-    else
-    {
-        // use selected graphics queue
-        selectedQueues.insert(std::make_pair<star::Queue_Type, star::Handle>(
-            star::Queue_Type::Ttransfer, Handle(selectedQueues[star::Queue_Type::Tgraphics])));
+        selectedQueues.insert(std::make_pair(star::Queue_Type::Ttransfer, Handle(selected)));
     }
 
     // try to get dedicated compute queue

@@ -19,10 +19,6 @@ static vk::DeviceSize GetMemorySize(const std::vector<Color> colors)
 std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::createStagingBuffer(
     vk::Device &device, VmaAllocator &allocator) const
 {
-    // uint32_t instanceCount{0};
-    // if (!star::common::casts::SafeCast(m_colors.size(), instanceCount))
-    //     STAR_THROW("The number of colors provided is too large to be stored in a uint32_t");
-
     const vk::DeviceSize bSize = GetMemorySize(m_colors);
 
     return StarBuffers::Buffer::Builder(allocator)
@@ -44,13 +40,11 @@ std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::c
 std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
-    // uint32_t instanceCount{0};
-    // if (!star::common::casts::SafeCast(m_colors.size(), instanceCount))
-    //     STAR_THROW("The number of colors provided is too large to be stored in a uint32_t");
-
     const vk::DeviceSize bSize = GetMemorySize(m_colors);
 
     std::vector<uint32_t> indices{m_graphicsQueueFamilyIndex};
+    indices.reserve(transferQueueFamilyIndex.size() + 1);
+
     for (auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
@@ -62,7 +56,7 @@ std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::c
                 .build(),
             vk::BufferCreateInfo()
                 .setSharingMode(vk::SharingMode::eConcurrent)
-                .setQueueFamilyIndexCount(2)
+                .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
                 .setQueueFamilyIndices(indices)
                 .setSize(bSize)
                 .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
@@ -80,9 +74,7 @@ void star::TransferRequest::InstanceColorInfo::writeDataToStageBuffer(StarBuffer
     std::vector<glm::vec4> colorData;
     colorData.reserve(m_colors.size());
     for (size_t i{0}; i < m_colors.size(); i++)
-    {
         colorData.emplace_back(m_colors[i].getR(), m_colors[i].getG(), m_colors[i].getB(), 1.0f);
-    }
 
     buffer.writeToBuffer(colorData.data(), mapped, GetMemorySize(m_colors));
     buffer.unmap();

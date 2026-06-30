@@ -2,10 +2,11 @@
 
 #include <star_common/helper/CastHelpers.hpp>
 
-std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createStagingBuffer(
+    vk::Device &device, VmaAllocator &allocator) const
 {
-    uint32_t numLights = 0; 
-    star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights); 
+    uint32_t numLights = 0;
+    star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
 
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(
@@ -23,14 +24,16 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
         .buildUnique();
 }
 
-std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createFinal(vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
+std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createFinal(
+    vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices = std::vector<uint32_t>{this->graphicsQueueFamilyIndex};
-	for (const auto &index : transferQueueFamilyIndex)
-		indices.push_back(index);
+    indices.reserve(transferQueueFamilyIndex.size() + 1);
+    for (const auto &index : transferQueueFamilyIndex)
+        indices.push_back(index);
 
-    uint32_t numIndices, numLights; 
-    star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices); 
+    uint32_t numIndices, numLights;
+    star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
     star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
 
     return StarBuffers::Buffer::Builder(allocator)
@@ -73,7 +76,7 @@ void star::TransferRequest::LightList::writeDataToStageBuffer(StarBuffers::Buffe
             glm::radians(currLight.getInnerDiameter())); // represent the diameter of light as the cos of the light
                                                          // (increase shader performance when doing comparison)
         newBufferObject.controls.y = glm::cos(glm::radians(currLight.getOuterDiameter()));
-        newBufferObject.luminance = myLights[i].getLuminance(); 
+        newBufferObject.luminance = myLights[i].getLuminance();
         lightInformation[i] = newBufferObject;
     }
 

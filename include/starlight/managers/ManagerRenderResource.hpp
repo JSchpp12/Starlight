@@ -100,19 +100,19 @@ class ManagerRenderResource
     /// its high-priority queue first, then the standard queue, so the dedicated high-priority
     /// worker only consumes standard work when its high-priority queue is empty. As a last
     /// resort, if worker 0 is also full, the call blocks on worker 0 to avoid losing the task.
-    static void submitStandardTransferTask(job::tasks::transfer::TransferPayload payload);
+    static uint16_t submitStandardTransferTask(job::tasks::transfer::TransferPayload payload);
 
     static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore);
 
     static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                              std::unique_ptr<TransferRequest::Buffer> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
-                             const bool &isHighPriority = false);
+                             const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
 
     static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                              std::unique_ptr<TransferRequest::Texture> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
-                             const bool &isHighPriority = false);
+                             const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
 
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
@@ -122,7 +122,7 @@ class ManagerRenderResource
     static void updateRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
                               const Handle &handle,
                               std::optional<core::graphics::GPUWorkSyncInfo> waitInfo = std::nullopt,
-                              const bool &isHighPriority = false);
+                              const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
 
     static void frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex);
 
@@ -154,6 +154,8 @@ class ManagerRenderResource
         return nullptr;
     }
 
+    static void setWorkerQueueFamilyIndices(std::vector<uint32_t> indices);
+    static uint32_t getPrimaryTransferQueueFamilyIndex();
   protected:
     static std::unordered_map<Handle, core::device::StarDevice *, star::HandleHash> devices;
     static std::unordered_map<
@@ -174,6 +176,8 @@ class ManagerRenderResource
 
     static size_t s_numStandardTransferWorkers;
     static std::atomic<size_t> s_nextStandardWorker;
+
+    static std::vector<uint32_t> s_workerQueueFamilyIndices;
 };
 
 } // namespace star

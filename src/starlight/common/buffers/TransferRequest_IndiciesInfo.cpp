@@ -40,6 +40,8 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices = {this->graphicsQueueFamilyIndex};
+    indices.reserve(transferQueueFamilyIndex.size() + 1); 
+
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 

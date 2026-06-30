@@ -15,14 +15,14 @@
 
 static bool IsTextureFile(const std::string path)
 {
-    const std::filesystem::path fPath(path); 
-    const auto ext = fPath.extension(); 
+    const std::filesystem::path fPath(path);
+    const auto ext = fPath.extension();
     if (ext == ".png" || ext == ".jpg")
     {
-        return true; 
+        return true;
     }
 
-    return false; 
+    return false;
 }
 
 star::TransferRequest::TextureFile::TextureFile(uint32_t graphicsQueueFamilyIndex,
@@ -68,10 +68,9 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile:
     GetTextureInfo(m_imagePath, width, height, channels);
 
     std::vector<uint32_t> indices = std::vector<uint32_t>{this->graphicsQueueFamilyIndex};
+    indices.reserve(transferQueueFamilyIndex.size() + 1);
     for (auto &index : transferQueueFamilyIndex)
-    {
         indices.push_back(index);
-    }
 
     return star::StarTextures::Texture::Builder(device, allocator)
         .setCreateInfo(Allocator::AllocationBuilder()
@@ -89,7 +88,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile:
                            .setSamples(vk::SampleCountFlagBits::e1)
                            .setSharingMode(vk::SharingMode::eConcurrent)
                            .setPQueueFamilyIndices(indices.data())
-                           .setQueueFamilyIndexCount(indices.size()),
+                           .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size())),
                        m_imagePath)
         .setBaseFormat(vk::Format::eR8G8B8A8Srgb)
         .addViewInfo(vk::ImageViewCreateInfo()

@@ -29,7 +29,6 @@ QueueManagerService::QueueManagerService(QueueManagerService &&other)
 
 QueueManagerService &QueueManagerService::operator=(QueueManagerService &&other)
 {
-    // TODO: insert return statement here
     if (this != &other)
     {
         m_records = std::move(other.m_records);
@@ -149,12 +148,11 @@ Handle QueueManagerService::getAvailableQueueOfTypeAvoidIndex(const star::Queue_
     return getAvailableQueueWithCaps(flags, familyIndexToAvoid);
 }
 
-Handle QueueManagerService::getAvailableQueueOfTypeFromIndex(const star::Queue_Type &type,
-                                                             const std::unordered_set<uint8_t> &selectFromFamilyIndex)
+static vk::QueueFlags ConvertFlags(const star::Queue_Type &qt)
 {
     vk::QueueFlags flags;
 
-    switch (type)
+    switch (qt)
     {
     case (star::Queue_Type::Tgraphics):
         flags = vk::QueueFlagBits::eGraphics;
@@ -168,6 +166,14 @@ Handle QueueManagerService::getAvailableQueueOfTypeFromIndex(const star::Queue_T
     default:
         STAR_THROW("Unknown queue type encountered");
     }
+
+    return flags;
+}
+
+Handle QueueManagerService::getAvailableQueueOfTypeFromIndex(const star::Queue_Type &type,
+                                                             const std::unordered_set<uint8_t> &selectFromFamilyIndex)
+{
+    const auto flags = ConvertFlags(type);
 
     Handle selected;
     for (auto &record : m_records.getRecords())
@@ -187,12 +193,10 @@ Handle QueueManagerService::getAvailableQueueOfTypeFromIndex(const star::Queue_T
 
 Handle QueueManagerService::getDefaultEngineQueue(const star::Queue_Type &caps)
 {
-    if (!m_engineReservedQueues.contains(caps))
-    {
-        STAR_THROW("No engine reserved queue of the provided type assigned at service creation");
-    }
+    if (m_engineReservedQueues.contains(caps))
+        return m_engineReservedQueues[caps];
 
-    return m_engineReservedQueues[caps];
+    return Handle();
 }
 
 Handle QueueManagerService::searchForQueue(const star::Queue_Type &type,
@@ -213,6 +217,19 @@ Handle QueueManagerService::searchForQueue(const star::Queue_Type &type,
         return getAvailableQueueOfTypeFromIndex(type, *familyIndexData);
     }
 
-    return Handle();
+    // search for any queue and pick the first one
+    const auto flags = ConvertFlags(type);
+    Handle selected;
+    for (auto &record : m_records.getRecords())
+    {
+        const auto &queue = m_queueManager->get(record.first)->queue;
+
+        if (queue.isCompatibleWith(flags) && record.second.isAvailable)
+        {
+            selected = record.first;
+            break;
+        }
+    }
+    return selected;
 }
 } // namespace star::service

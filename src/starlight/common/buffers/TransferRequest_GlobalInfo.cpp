@@ -22,26 +22,21 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::cr
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::createFinal(
     vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
-    uint32_t indices[3];
-    uint8_t count{0};
+    std::vector<uint32_t> indices;
+    indices.reserve(transferQueueFamilyIndex.size() + this->m_queueFamilyIndices.size());
 
-    assert(m_queueFamilyIndices.size() < 3 && "Current array implementation only supports 3 unique total families");
+    for (const auto i : m_queueFamilyIndices)
+        indices.push_back(i);
 
-    for (size_t i{0}; i < m_queueFamilyIndices.size(); i++)
-    {
-        indices[i] = m_queueFamilyIndices[i];
-        count++;
-    }
-
-    indices[count] = transferQueueFamilyIndex.front();
-    count++;
+    for (auto &i : transferQueueFamilyIndex)
+        indices.push_back(i);
 
     const auto bCreate = vk::BufferCreateInfo()
                              .setSharingMode(vk::SharingMode::eConcurrent)
                              .setSize(sizeof(GlobalUniformBufferObject))
                              .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer)
-                             .setQueueFamilyIndexCount(count)
-                             .setPQueueFamilyIndices(indices);
+                             .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
+                             .setPQueueFamilyIndices(indices.data());
     return StarBuffers::Buffer::Builder(allocator)
         .setAllocationCreateInfo(Allocator::AllocationBuilder()
                                      .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)

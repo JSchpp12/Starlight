@@ -20,6 +20,18 @@ std::unordered_map<star::Handle,
 star::job::TaskManager *star::ManagerRenderResource::managerTaskSystem = nullptr;
 size_t star::ManagerRenderResource::s_numStandardTransferWorkers = 0;
 std::atomic<size_t> star::ManagerRenderResource::s_nextStandardWorker{0};
+std::vector<uint32_t> star::ManagerRenderResource::s_workerQueueFamilyIndices;
+
+void star::ManagerRenderResource::setWorkerQueueFamilyIndices(std::vector<uint32_t> indices)
+{
+    s_workerQueueFamilyIndices = std::move(indices);
+}
+
+uint32_t star::ManagerRenderResource::getPrimaryTransferQueueFamilyIndex()
+{
+    assert(!s_workerQueueFamilyIndices.empty() && "Transfer worker family indices not published yet");
+    return s_workerQueueFamilyIndices[0];
+}
 
 void star::ManagerRenderResource::init(const Handle &deviceID, star::core::device::StarDevice *device,
                                        job::TaskManager &taskManager, const int &numFramesInFlight)
@@ -43,7 +55,7 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
     s_nextStandardWorker.store(0, std::memory_order_relaxed);
 }
 
-void star::ManagerRenderResource::submitStandardTransferTask(job::tasks::transfer::TransferPayload payload)
+uint16_t star::ManagerRenderResource::submitStandardTransferTask(job::tasks::transfer::TransferPayload payload)
 {
     assert(managerTaskSystem && "ManagerRenderResource not initialized");
 
@@ -60,7 +72,7 @@ void star::ManagerRenderResource::submitStandardTransferTask(job::tasks::transfe
     // Try the round-robin-selected worker first (non-blocking). submitTask only moves the
     // task on success, so on a false return the task is still valid for retry.
     if (managerTaskSystem->submitTask(std::move(task), TransferWorkerHandle(initialWorkerId)))
-        return;
+        return initialWorkerId;
 
     // Selected standard worker is full. Try the remaining standard workers before falling back
     // to the dedicated high-priority worker (worker 0).
@@ -73,7 +85,7 @@ void star::ManagerRenderResource::submitStandardTransferTask(job::tasks::transfe
                 continue;
 
             if (managerTaskSystem->submitTask(std::move(task), TransferWorkerHandle(candidateId)))
-                return;
+                return candidateId;
         }
     }
 
@@ -81,10 +93,11 @@ void star::ManagerRenderResource::submitStandardTransferTask(job::tasks::transfe
     // Worker 0 already routes Standard-priority payloads into its standard queue, which its
     // thread loop drains only after the high-priority queue is empty.
     if (managerTaskSystem->submitTask(std::move(task), TransferWorkerHandle(uint16_t{0})))
-        return;
+        return uint16_t{0};
 
     // Last resort: every worker is full. Block on worker 0 to avoid losing the task.
     managerTaskSystem->submitTaskBlocking(std::move(task), TransferWorkerHandle(uint16_t{0}));
+    return uint16_t{0};
 }
 
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore)
@@ -100,7 +113,8 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Buffer> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority)
+                                                     const bool &isHighPriority,
+                                                     uint32_t *outTransferQueueFamilyIndex)
 {
     assert(devices.contains(deviceID) && "Device has not been properly initialized");
 
@@ -120,11 +134,15 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
                                           job::tasks::transfer::TransferPriority::High, std::move(request)}),
                                       TransferWorkerHandle(0));
         highPriorityRequestCompleteFlags.at(deviceID).insert(&newFull.cpuWorkDoneByTransferThread);
+        if (outTransferQueueFamilyIndex != nullptr && !s_workerQueueFamilyIndices.empty())
+            *outTransferQueueFamilyIndex = s_workerQueueFamilyIndices[0];
     }
     else
     {
-        submitStandardTransferTask(job::tasks::transfer::TransferPayload{
+        const uint16_t workerId = submitStandardTransferTask(job::tasks::transfer::TransferPayload{
             job::tasks::transfer::TransferPriority::Standard, std::move(request)});
+        if (outTransferQueueFamilyIndex != nullptr && !s_workerQueueFamilyIndices.empty())
+            *outTransferQueueFamilyIndex = s_workerQueueFamilyIndices[workerId];
     }
 
     return newBufferHandle;
@@ -133,7 +151,8 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Texture> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority)
+                                                     const bool &isHighPriority,
+                                                     uint32_t *outTransferQueueFamilyIndex)
 {
     Handle newHandle = textureStorage.at(deviceID)->insert(
         FinalizedResourceRequest<star::StarTextures::Texture>(std::move(resourceSemaphore)));
@@ -151,11 +170,15 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
                                           job::tasks::transfer::TransferPriority::High, std::move(request)}),
                                       TransferWorkerHandle(0));
         highPriorityRequestCompleteFlags.at(deviceID).insert(&newFull.cpuWorkDoneByTransferThread);
+        if (outTransferQueueFamilyIndex != nullptr && !s_workerQueueFamilyIndices.empty())
+            *outTransferQueueFamilyIndex = s_workerQueueFamilyIndices[0];
     }
     else
     {
-        submitStandardTransferTask(job::tasks::transfer::TransferPayload{
+        const uint16_t workerId = submitStandardTransferTask(job::tasks::transfer::TransferPayload{
             job::tasks::transfer::TransferPriority::Standard, std::move(request)});
+        if (outTransferQueueFamilyIndex != nullptr && !s_workerQueueFamilyIndices.empty())
+            *outTransferQueueFamilyIndex = s_workerQueueFamilyIndices[workerId];
     }
 
     return newHandle;
@@ -179,7 +202,8 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                                 std::unique_ptr<TransferRequest::Buffer> newRequest,
                                                 const star::Handle &handle,
                                                 std::optional<core::graphics::GPUWorkSyncInfo> waitInfo,
-                                                const bool &isHighPriority)
+                                                const bool &isHighPriority,
+                                                uint32_t *outTransferQueueFamilyIndex)
 {
     auto &container = bufferStorage.at(deviceID)->get(handle);
 
@@ -199,11 +223,15 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                           job::tasks::transfer::TransferPriority::High, std::move(request)}),
                                       TransferWorkerHandle(0));
         highPriorityRequestCompleteFlags.at(deviceID).insert(&container.cpuWorkDoneByTransferThread);
+        if (outTransferQueueFamilyIndex != nullptr && !s_workerQueueFamilyIndices.empty())
+            *outTransferQueueFamilyIndex = s_workerQueueFamilyIndices[0];
     }
     else
     {
-        submitStandardTransferTask(job::tasks::transfer::TransferPayload{
+        const uint16_t workerId = submitStandardTransferTask(job::tasks::transfer::TransferPayload{
             job::tasks::transfer::TransferPriority::Standard, std::move(request)});
+        if (outTransferQueueFamilyIndex != nullptr && !s_workerQueueFamilyIndices.empty())
+            *outTransferQueueFamilyIndex = s_workerQueueFamilyIndices[workerId];
     }
 }
 
@@ -314,4 +342,5 @@ void star::ManagerRenderResource::cleanup(const Handle &deviceID, core::device::
     textureStorage.at(deviceID).reset();
 
     managerTaskSystem = nullptr;
+    s_workerQueueFamilyIndices.clear();
 }

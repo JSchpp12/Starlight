@@ -60,9 +60,9 @@ void star::core::device::manager::ManagerCommandBuffer::init(core::device::manag
     m_preparedQueues.insert(std::pair<star::Queue_Type, StarQueue *>(
         star::Queue_Type::Tgraphics, getInUseInfoForType(star::Queue_Type::Tgraphics)->queue));
     m_preparedQueues.insert(std::pair<star::Queue_Type, StarQueue *>(
-        star::Queue_Type::Tcompute, getInUseInfoForType(star::Queue_Type::Tcompute)->queue));
+        star::Queue_Type::Ttransfer, getInUseInfoForType(star::Queue_Type::Tgraphics)->queue));
     m_preparedQueues.insert(std::pair<star::Queue_Type, StarQueue *>(
-        star::Queue_Type::Ttransfer, getInUseInfoForType(star::Queue_Type::Ttransfer)->queue));
+        star::Queue_Type::Tcompute, getInUseInfoForType(star::Queue_Type::Tcompute)->queue));
 
     auto *info = getInUseInfoForType(star::Queue_Type::Tpresent);
     if (info != nullptr)

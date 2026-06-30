@@ -10,6 +10,7 @@
 #include "starlight/job/worker/DefaultWorker.hpp"
 #include "starlight/job/worker/Worker.hpp"
 #include "starlight/job/worker/detail/default_worker/BusyWaitTransferTaskHandlingPolicy.hpp"
+#include "starlight/managers/ManagerRenderResource.hpp"
 
 #include <star_common/EventBus.hpp>
 
@@ -29,8 +30,8 @@ class TransferService
                              TransferServiceConfig config, size_t targetNumQueuesToUse = 1);
     TransferService(const TransferService &) = delete;
     TransferService &operator=(const TransferService &) = delete;
-    TransferService(TransferService &&other);
-    TransferService &operator=(TransferService &&other);
+    TransferService(TransferService &&other) noexcept;
+    TransferService &operator=(TransferService &&other) noexcept;
     ~TransferService() = default;
 
     void init();
@@ -43,6 +44,7 @@ class TransferService
 
   private:
     absl::flat_hash_map<star::Queue_Type, Handle> m_engineReservedQueues;
+    std::vector<Handle> m_selectedQueues;
     size_t m_targetNumQueuesToUse{1};
     TransferServiceConfig m_config{};
     core::device::StarDevice *m_device{nullptr};
@@ -51,48 +53,26 @@ class TransferService
     job::TaskManager *m_taskManager{nullptr};
     core::WorkerPool *m_workerPool{nullptr};
 
+    void selectQueueFamiliesToUse();
+
     template <typename THighPriorityWorkerPolicy, typename TStandardPriorityWorkerPolicy>
     void createAndRegisterTransferWorkers()
     {
         core::logging::log(boost::log::trivial::info, "Initializing transfer workers");
 
-        std::vector<StarQueue *> transferWorkerQueues = std::vector<StarQueue *>(m_targetNumQueuesToUse);
+        std::vector<StarQueue *> transferWorkerQueues;
+        transferWorkerQueues.reserve(m_selectedQueues.size());
 
-        const uint8_t selectedTransferQueueIndex = static_cast<uint8_t>(
-            m_graphicsManagers->queueManager.get(m_engineReservedQueues.at(star::Queue_Type::Ttransfer))
-                ->queue.getParentQueueFamilyIndex());
-
-        for (size_t i{0}; i < m_targetNumQueuesToUse; i++)
+        for (const auto &q : m_selectedQueues)
         {
-            Handle queue;
-
-            m_eventBus->emit(event::GetQueue::Builder()
-                                 .setQueueData(queue)
-                                 .setQueueType(star::Queue_Type::Ttransfer)
-                                 .setSelectFromFamilyIndex({selectedTransferQueueIndex})
-                                 .build());
-
-            if (queue.isInitialized())
-            {
-                transferWorkerQueues[i] = &m_graphicsManagers->queueManager.get(queue)->queue;
-            }
-            else
-            {
-                break;
-            }
+            transferWorkerQueues.push_back(&m_graphicsManagers->queueManager.get(q)->queue);
         }
 
-        size_t obtainedQueues = 0;
-        for (const auto *queue : transferWorkerQueues)
-        {
-            if (queue != nullptr)
-                ++obtainedQueues;
-        }
-        if (obtainedQueues < m_targetNumQueuesToUse)
+        if (m_selectedQueues.size() < m_targetNumQueuesToUse)
         {
             std::ostringstream queueOss;
-            queueOss << "Requested " << m_targetNumQueuesToUse << " transfer queues, obtained " << obtainedQueues
-                     << ". Some standard workers will not be created.";
+            queueOss << "Requested " << m_targetNumQueuesToUse << " transfer queues, obtained "
+                     << m_selectedQueues.size() << ". Some standard workers will not be created.";
             core::logging::log(boost::log::trivial::warning, queueOss.str());
         }
 
@@ -100,9 +80,7 @@ class TransferService
         for (const auto *queue : transferWorkerQueues)
         {
             if (queue != nullptr)
-            {
                 uniqueQueueFamilyIndicesInUse.insert(queue->getParentQueueFamilyIndex());
-            }
         }
 
         std::vector<uint32_t> allTransferQueueFamilyIndicesInUse;
@@ -110,6 +88,17 @@ class TransferService
         {
             allTransferQueueFamilyIndicesInUse.push_back(index);
         }
+
+        std::vector<uint32_t> workerQueueFamilyIndices;
+        workerQueueFamilyIndices.reserve(transferWorkerQueues.size());
+        for (const auto *queue : transferWorkerQueues)
+        {
+            if (queue != nullptr)
+                workerQueueFamilyIndices.push_back(queue->getParentQueueFamilyIndex());
+            else
+                workerQueueFamilyIndices.push_back(0);
+        }
+        ManagerRenderResource::setWorkerQueueFamilyIndices(std::move(workerQueueFamilyIndices));
 
         for (size_t i{0}; i < transferWorkerQueues.size(); i++)
         {
@@ -157,9 +146,7 @@ class TransferService
                 Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
                            job::tasks::transfer::TransferTaskName),
                        .id = 0}) == 0)
-        {
             STAR_THROW("Failed to register any transfer worker");
-        }
     }
 
     template <size_t THighSize, size_t TStandardSize> void dispatchCreateWorkers()
