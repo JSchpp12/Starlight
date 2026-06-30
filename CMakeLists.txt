@@ -618,11 +618,12 @@ target_include_directories(${STARLIGHT_NAME}
 
 if (MSVC)
     target_compile_options(${STARLIGHT_NAME} PRIVATE
-        /Zi 
+        /Zi
         /MP
         /EHsc
+        /Zc:__cplusplus
     )
-    target_link_options(${STARLIGHT_NAME} PRIVATE 
+    target_link_options(${STARLIGHT_NAME} PRIVATE
         /DEBUG
     )
 endif()

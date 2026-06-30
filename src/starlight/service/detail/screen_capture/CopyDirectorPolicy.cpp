@@ -152,9 +152,9 @@ StarQueue &DefaultCopyPolicy::getQueueToUse() const
         *m_deviceInfo->eventBus, *m_deviceInfo->queueManager, star::Queue_Type::Ttransfer);
 
     if (defaultTransferQueue == nullptr)
-    {
-        STAR_THROW("Failed to obtain default transfer queue to use");
-    }
+        STAR_THROW("CopyDirector for capture manager failed to obtain default transfer queue to use. Either all of "
+                   "them are unavailable, or this device is unsupported. Ensure that the other services are not "
+                   "requesting all of the dedicated queues.");
 
     return *defaultTransferQueue;
 }

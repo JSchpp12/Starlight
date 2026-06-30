@@ -16,18 +16,12 @@ inline static star::StarQueue *GetEngineDefaultQueue(common::EventBus &eventBus,
                                                      const star::Queue_Type type)
 {
     Handle defaultQueue;
-
-    {
-        auto event =
-            event::GetQueue::Builder().setQueueData(defaultQueue).setQueueType(type).getEngineDedicatedQueue().build();
-        eventBus.emit(std::move(event));
-    }
+    eventBus.emit(
+        event::GetQueue::Builder().setQueueData(defaultQueue).setQueueType(type).getEngineDedicatedQueue().build());
 
     if (!defaultQueue.isInitialized())
-    {
         return nullptr;
-    }
-
+    
     return &queueManager.get(defaultQueue)->queue;
 }
 } // namespace star::core::helper

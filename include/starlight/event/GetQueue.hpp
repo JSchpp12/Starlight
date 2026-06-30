@@ -7,8 +7,8 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include <unordered_set>
 #include <string_view>
+#include <unordered_set>
 
 namespace star::event
 {
@@ -40,7 +40,7 @@ class GetQueue : public common::IEvent
         GetQueue build();
 
       private:
-        star::Queue_Type m_type;
+        star::Queue_Type m_type{star::Queue_Type::Tgraphics};
         bool m_selectEngineQueue = false;
         Handle *m_queueData = nullptr;
         const std::unordered_set<uint8_t> *m_selectFromFamilyIndex = nullptr;
