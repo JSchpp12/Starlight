@@ -47,12 +47,12 @@ class ManagerRenderResource
         FinalizedResourceRequest() = default;
         FinalizedResourceRequest(const FinalizedResourceRequest &) = delete;
         FinalizedResourceRequest operator=(const FinalizedResourceRequest &) = delete;
-        FinalizedResourceRequest(FinalizedResourceRequest &&other)
+        FinalizedResourceRequest(FinalizedResourceRequest &&other) noexcept
             : resourceSemaphore(std::move(other.resourceSemaphore)),
               resource(other.resource ? std::move(other.resource) : nullptr)
         {
         }
-        FinalizedResourceRequest &operator=(FinalizedResourceRequest &&other)
+        FinalizedResourceRequest &operator=(FinalizedResourceRequest &&other) noexcept
         {
             if (this != &other)
             {
@@ -156,6 +156,7 @@ class ManagerRenderResource
 
     static void setWorkerQueueFamilyIndices(std::vector<uint32_t> indices);
     static uint32_t getPrimaryTransferQueueFamilyIndex();
+
   protected:
     static std::unordered_map<Handle, core::device::StarDevice *, star::HandleHash> devices;
     static std::unordered_map<

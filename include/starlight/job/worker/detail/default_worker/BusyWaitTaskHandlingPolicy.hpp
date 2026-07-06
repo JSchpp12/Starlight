@@ -43,26 +43,25 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
         startThread();
     }
 
-    virtual bool queueTask(void *task)
+    virtual void queueTask(void *task)
     {
         if (!thread.joinable())
-        {
             STAR_THROW("Attempted to queue task for worker which has stopped or is not running");
-        }
-
-        TTask *typedTask = static_cast<TTask *>(task);
-        return m_tasks->queueTask(std::move(*typedTask));
-    }
-
-    void queueTaskBlocking(void *task)
-    {
-        if (!thread.joinable())
-        {
-            STAR_THROW("Attempted to queue task for worker which has stopped or is not running");
-        }
 
         TTask *typedTask = static_cast<TTask *>(task);
         m_tasks->queueTaskBlocking(std::move(*typedTask));
+    }
+
+    virtual bool isTaskQueueFull(const void *task) const noexcept
+    {
+        if (!thread.joinable())
+        {
+            star::core::logging::warning(
+                "Attempted to get queue information for worker which has stopped or is not running");
+            return true;
+        }
+
+        return m_tasks->isFull();
     }
 
     void cleanup()

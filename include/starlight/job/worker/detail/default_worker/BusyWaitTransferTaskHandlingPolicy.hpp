@@ -51,46 +51,36 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
         startThread();
     }
 
-    /// Non-blocking attempt to queue a task. Returns false if the targeted container is full.
-    bool queueTask(void *task)
+    void queueTask(void *task)
     {
         if (!thread.joinable())
-        {
             STAR_THROW("Attempted to queue task for transfer worker which has stopped or is not running");
-        }
 
         TransferTask *typedTask = static_cast<TransferTask *>(task);
         TransferPayload &payload = *static_cast<TransferPayload *>(typedTask->getPayload());
 
         if (payload.priority == job::tasks::transfer::TransferPriority::High)
-        {
-            return m_highPriorityTasks->queueTask(std::move(*typedTask));
-        }
+            m_highPriorityTasks->queueTask(std::move(*typedTask));
         else
-        {
-            return m_standardTasks->queueTask(std::move(*typedTask));
-        }
+            m_standardTasks->queueTask(std::move(*typedTask));
     }
 
-    /// Blocking variant. Busy-waits until the targeted container has a free slot.
-    void queueTaskBlocking(void *task)
+    bool isTaskQueueFull(const void *task) const noexcept
     {
         if (!thread.joinable())
         {
-            STAR_THROW("Attempted to queue task for transfer worker which has stopped or is not running");
+            star::core::logging::warning(
+                "Attempted to get queue information for worker which has stopped or is not running");
+            return true;
         }
 
-        TransferTask *typedTask = static_cast<TransferTask *>(task);
-        TransferPayload &payload = *static_cast<TransferPayload *>(typedTask->getPayload());
+        const TransferTask *typedTask = static_cast<const TransferTask *>(task);
+        const TransferPayload &payload = *static_cast<const TransferPayload *>(typedTask->getPayload());
 
         if (payload.priority == job::tasks::transfer::TransferPriority::High)
-        {
-            m_highPriorityTasks->queueTaskBlocking(std::move(*typedTask));
-        }
+            return m_highPriorityTasks->isFull();
         else
-        {
-            m_standardTasks->queueTaskBlocking(std::move(*typedTask));
-        }
+            return m_standardTasks->isFull();
     }
 
     void cleanup()

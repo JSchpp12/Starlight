@@ -71,8 +71,14 @@ uint16_t star::ManagerRenderResource::submitStandardTransferTask(job::tasks::tra
 
     // Try the round-robin-selected worker first (non-blocking). submitTask only moves the
     // task on success, so on a false return the task is still valid for retry.
-    if (managerTaskSystem->submitTask(std::move(task), TransferWorkerHandle(initialWorkerId)))
+    Handle tryWorkerHandle;
+
+    tryWorkerHandle = TransferWorkerHandle(initialWorkerId);
+    if (!managerTaskSystem->getIsWorkerQueueFull(task, tryWorkerHandle))
+    {
+        managerTaskSystem->submitTask(std::move(task), tryWorkerHandle);
         return initialWorkerId;
+    }
 
     // Selected standard worker is full. Try the remaining standard workers before falling back
     // to the dedicated high-priority worker (worker 0).
@@ -84,19 +90,19 @@ uint16_t star::ManagerRenderResource::submitStandardTransferTask(job::tasks::tra
             if (candidateId == initialWorkerId)
                 continue;
 
-            if (managerTaskSystem->submitTask(std::move(task), TransferWorkerHandle(candidateId)))
+            tryWorkerHandle = TransferWorkerHandle(candidateId);
+            if (!managerTaskSystem->getIsWorkerQueueFull(task, tryWorkerHandle))
+            {
+                managerTaskSystem->submitTask(std::move(task), tryWorkerHandle);
                 return candidateId;
+            }
         }
     }
 
-    // All standard workers full. Fall back to the dedicated high-priority worker 0 (non-blocking).
+    // All standard workers full. Fall back to the dedicated high-priority worker 0.
     // Worker 0 already routes Standard-priority payloads into its standard queue, which its
     // thread loop drains only after the high-priority queue is empty.
-    if (managerTaskSystem->submitTask(std::move(task), TransferWorkerHandle(uint16_t{0})))
-        return uint16_t{0};
-
-    // Last resort: every worker is full. Block on worker 0 to avoid losing the task.
-    managerTaskSystem->submitTaskBlocking(std::move(task), TransferWorkerHandle(uint16_t{0}));
+    managerTaskSystem->submitTask(std::move(task), TransferWorkerHandle(uint16_t{0}));
     return uint16_t{0};
 }
 
@@ -113,8 +119,7 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Buffer> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority,
-                                                     uint32_t *outTransferQueueFamilyIndex)
+                                                     const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
 {
     assert(devices.contains(deviceID) && "Device has not been properly initialized");
 
@@ -151,8 +156,7 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
                                                      std::unique_ptr<star::TransferRequest::Texture> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority,
-                                                     uint32_t *outTransferQueueFamilyIndex)
+                                                     const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
 {
     Handle newHandle = textureStorage.at(deviceID)->insert(
         FinalizedResourceRequest<star::StarTextures::Texture>(std::move(resourceSemaphore)));
@@ -202,8 +206,7 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                                 std::unique_ptr<TransferRequest::Buffer> newRequest,
                                                 const star::Handle &handle,
                                                 std::optional<core::graphics::GPUWorkSyncInfo> waitInfo,
-                                                const bool &isHighPriority,
-                                                uint32_t *outTransferQueueFamilyIndex)
+                                                const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
 {
     auto &container = bufferStorage.at(deviceID)->get(handle);
 

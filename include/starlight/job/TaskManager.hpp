@@ -38,14 +38,14 @@ class TaskManager
     size_t getNumOfWorkersForType(const Handle &registeredTaskType) const noexcept;
 
     /// <summary>
-    /// Submit a task to one of the workers for the provided handle type. Non-blocking: returns
+    /// Submit a task to one of the workers for the provided handle type. Blocking
     /// false if the targeted worker's queue is full, true on success.
     /// </summary>
     /// <typeparam name="TTask"></typeparam>
     /// <param name="newTask"></param>
     /// <param name="registeredTaskType">Contains the type which will be used to select worker pool. ID will be used to
     /// select specific worker from that pool</param>
-    template <typename TTask> bool submitTask(TTask &&newTask, const Handle &registeredTaskType)
+    template <typename TTask> void submitTask(TTask &&newTask, const Handle &registeredTaskType)
     {
         worker::Worker *worker = getWorker(registeredTaskType);
         if (worker == nullptr)
@@ -55,16 +55,13 @@ class TaskManager
             STAR_THROW(oss.str());
         }
 
-        return worker->queueTask(static_cast<void *>(&newTask));
+        worker->queueTask(static_cast<void *>(&newTask));
     }
 
-    /// <summary>
-    /// Submit a task to one of the workers for the provided handle type. Blocking: busy-waits
-    /// until the targeted worker's queue has a free slot. Use only as a last resort.
-    /// </summary>
-    template <typename TTask> void submitTaskBlocking(TTask &&newTask, const Handle &registeredTaskType)
+    template <typename TTask>
+    bool getIsWorkerQueueFull(const TTask& task, const Handle& registeredTaskType)
     {
-        worker::Worker *worker = getWorker(registeredTaskType);
+        const worker::Worker *worker = getWorker(registeredTaskType);
         if (worker == nullptr)
         {
             std::ostringstream oss;
@@ -72,7 +69,7 @@ class TaskManager
             STAR_THROW(oss.str());
         }
 
-        worker->queueTaskBlocking(static_cast<void *>(&newTask));
+        return worker->isTaskQueueFull(static_cast<const void *>(&task));
     }
 
     template <typename TTask> void submitTask(TTask &&newTask, std::string_view taskName)
@@ -119,6 +116,7 @@ class TaskManager
     bool isThereWorkerForTask(const Handle &taskType) noexcept;
 
     worker::Worker *getWorker(const Handle &registeredTaskType) noexcept;
+    const worker::Worker *getWorker(const Handle &registerdTaskType) const noexcept;
 
   private:
     absl::flat_hash_map<uint16_t, std::vector<worker::Worker>> m_workers;
