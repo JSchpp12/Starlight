@@ -26,7 +26,7 @@ TransferService::TransferService(absl::flat_hash_map<star::Queue_Type, Handle> e
 }
 
 TransferService::TransferService(TransferService &&other) noexcept
-    : m_workerQueueFamilyIndices(std::move(other.m_workerQueueFamilyIndices)),
+    : m_workerSemaphores(), m_workerQueueFamilyIndices(std::move(other.m_workerQueueFamilyIndices)),
       m_numStandardTransferWorkers(std::move(other.m_numStandardTransferWorkers)),
       m_nextStandardWorker(std::move(other.m_nextStandardWorker)),
       m_engineReservedQueues(std::move(other.m_engineReservedQueues)),
@@ -35,6 +35,8 @@ TransferService::TransferService(TransferService &&other) noexcept
       m_graphicsManagers(other.m_graphicsManagers), m_eventBus(other.m_eventBus), m_cmdBus(std::move(other.m_cmdBus)),
       m_taskManager(other.m_taskManager), m_workerPool(other.m_workerPool)
 {
+    std::move(std::begin(other.m_workerSemaphores), std::end(other.m_workerSemaphores), std::begin(m_workerSemaphores));
+
     if (m_cmdBus != nullptr)
     {
         other.cleanupListeners(*m_cmdBus);
@@ -46,6 +48,9 @@ TransferService &TransferService::operator=(TransferService &&other) noexcept
 {
     if (this != &other)
     {
+        std::move(std::begin(other.m_workerSemaphores), std::end(other.m_workerSemaphores),
+                  std::begin(m_workerSemaphores));
+
         m_workerQueueFamilyIndices = std::move(other.m_workerQueueFamilyIndices);
         m_numStandardTransferWorkers = std::move(other.m_numStandardTransferWorkers);
         m_nextStandardWorker = std::move(other.m_nextStandardWorker);
@@ -96,6 +101,7 @@ void TransferService::init()
 
     selectQueueFamiliesToUse();
     dispatchCreateWorkersFromConfig();
+    initSemaphores();
     initListeners(*m_cmdBus);
 }
 
@@ -107,11 +113,24 @@ void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTa
     auto *payload = static_cast<TransferPayload *>(cmd.task.getPayload());
     const bool high = (payload->priority == TransferPriority::High);
 
+    auto applySync = [&](uint16_t id) -> star::core::graphics::SemaphoreInfo {
+        StarSemaphore *s =
+            (id == 0) ? (high ? &m_workerSemaphores[1] : &m_workerSemaphores[0]) : &m_workerSemaphores[id + 1];
+        ++s->signalValue;
+        payload->request->workSyncInfo.workSignalWhenDone = {.signalValue = s->signalValue,
+                                                             .semaphore = s->vkSemaphore};
+        return star::core::graphics::SemaphoreInfo{.signalValue = s->signalValue, .semaphore = s->vkSemaphore};
+    };
+
     // High priority -> dedicated worker 0.
     if (high)
     {
+        auto sync = applySync(0);
+
         m_taskManager->submitTask(std::move(cmd.task), transferWorkerHandle(0));
-        cmd.getReply().set({.queueFamilyIndex = m_workerQueueFamilyIndices[0], .workerId = uint16_t{0}});
+        cmd.getReply().set({.semaphore = {.vkSemaphore = sync.semaphore, .signalValue = sync.signalValue},
+                            .queueFamilyIndex = m_workerQueueFamilyIndices[0],
+                            .workerId = uint16_t{0}});
         return;
     }
 
@@ -119,15 +138,17 @@ void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTa
     const uint16_t initialWorkerId =
         m_numStandardTransferWorkers == 1
             ? uint16_t{0}
-            : static_cast<uint16_t>(
-                  (m_nextStandardWorker++ % m_numStandardTransferWorkers) + 1);
+            : static_cast<uint16_t>((m_nextStandardWorker++ % m_numStandardTransferWorkers) + 1);
 
     auto tryWorker = [&](uint16_t id) -> bool {
         const Handle h = transferWorkerHandle(id);
         if (!m_taskManager->getIsWorkerQueueFull(cmd.task, h))
         {
+            auto sync = applySync(id);
+            // get semaphore sync info
             m_taskManager->submitTask(std::move(cmd.task), h);
             cmd.getReply().set({
+                .semaphore = StarSemaphore{sync.semaphore, sync.signalValue},
                 .queueFamilyIndex = m_workerQueueFamilyIndices[id],
                 .workerId = id,
             });
@@ -152,8 +173,10 @@ void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTa
     }
 
     // All standard workers full -> fall back to worker 0 (blocks there; its loop drains HP first).
+    auto sync = applySync(0);
     m_taskManager->submitTask(std::move(cmd.task), transferWorkerHandle(uint16_t{0}));
     cmd.getReply().set({
+        .semaphore = StarSemaphore{.vkSemaphore = sync.semaphore, .signalValue = sync.signalValue},
         .queueFamilyIndex = m_workerQueueFamilyIndices[0],
         .workerId = uint16_t{0},
     });
@@ -236,6 +259,18 @@ Handle TransferService::transferWorkerHandle(uint16_t workerIndex) const noexcep
     return Handle{
         .type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(job::tasks::transfer::TransferTaskName),
         .id = workerIndex};
+}
+
+void TransferService::initSemaphores() noexcept
+{
+    for (size_t i{0}; i < m_workerSemaphores.size(); i++)
+    {
+        const auto nS =
+            m_graphicsManagers->semaphoreManager->submit(star::core::device::manager::SemaphoreRequest(uint64_t{0}));
+        const auto *r = m_graphicsManagers->semaphoreManager->get(nS);
+        m_workerSemaphores[i] =
+            star::StarSemaphore{.vkSemaphore = r->semaphore, .signalValue = r->timelineValue.value()};
+    }
 }
 
 void TransferService::shutdown()

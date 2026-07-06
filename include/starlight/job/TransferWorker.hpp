@@ -14,9 +14,9 @@
 #include <boost/atomic.hpp>
 #include <vulkan/vulkan.hpp>
 
-#include <queue>
 #include <memory>
 #include <optional>
+#include <queue>
 #include <vector>
 
 namespace star::job
@@ -27,31 +27,44 @@ class TransferManagerThread
   public:
     struct InterThreadRequest
     {
-        std::optional<core::graphics::GPUWorkSyncInfo> workSyncInfo;
+        core::graphics::GPUWorkSyncInfo workSyncInfo;
         boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
-        vk::Semaphore gpuWorkDoneSemaphore;
         std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest = nullptr;
         std::unique_ptr<TransferRequest::Texture> textureTransferRequest = nullptr;
         std::optional<std::unique_ptr<StarBuffers::Buffer> *> resultingBuffer = std::nullopt;
         std::optional<std::unique_ptr<StarTextures::Texture> *> resultingTexture = std::nullopt;
 
         InterThreadRequest() = default;
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain, vk::Semaphore gpuWorkDoneSemaphore,
-                            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                            std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
-                            std::optional<core::graphics::GPUWorkSyncInfo> workSyncInfo)
-            : workSyncInfo(std::move(workSyncInfo)), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              gpuWorkDoneSemaphore(std::move(gpuWorkDoneSemaphore)),
+
+        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
+                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
+                           std::unique_ptr<StarBuffers::Buffer> &resultingBuffer)
+            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
               bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBuffer)
         {
         }
 
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain, vk::Semaphore gpuWorkDoneSemaphore,
-                            std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
-                            std::unique_ptr<StarTextures::Texture> &resultingTexture,
-                            std::optional<core::graphics::GPUWorkSyncInfo> workSyncInfo)
+        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
+                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
+                           std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
+                           core::graphics::GPUWorkSyncInfo workSyncInfo)
             : workSyncInfo(std::move(workSyncInfo)), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              gpuWorkDoneSemaphore(std::move(gpuWorkDoneSemaphore)),
+              bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBuffer)
+        {
+        }
+
+        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
+                           std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
+                           std::unique_ptr<StarTextures::Texture> &resultingTexture,
+                           core::graphics::GPUWorkSyncInfo workSyncInfo)
+            : workSyncInfo(std::move(workSyncInfo)), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
+              textureTransferRequest(std::move(textureTransferRequest)), resultingTexture(&resultingTexture)
+        {
+        }
+        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
+                           std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
+                           std::unique_ptr<StarTextures::Texture> &resultingTexture)
+            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
               textureTransferRequest(std::move(textureTransferRequest)), resultingTexture(&resultingTexture)
         {
         }
@@ -59,7 +72,6 @@ class TransferManagerThread
         void reset()
         {
             gpuDoneNotificationToMain = nullptr;
-            gpuWorkDoneSemaphore = VK_NULL_HANDLE;
             bufferTransferRequest = nullptr;
             textureTransferRequest = nullptr;
             resultingBuffer = std::nullopt;
@@ -74,7 +86,7 @@ class TransferManagerThread
         std::unique_ptr<StarCommandBuffer> commandBuffer = nullptr;
 
         ProcessRequestInfo(std::shared_ptr<StarCommandPool> commandPool,
-                            std::unique_ptr<StarCommandBuffer> commandBuffer)
+                           std::unique_ptr<StarCommandBuffer> commandBuffer)
             : commandPool(std::move(commandPool)), commandBuffer(std::move(commandBuffer)) {};
 
         void setInProcessDeps(std::unique_ptr<StarBuffers::Buffer> nInProcessTransferSrcBuffer)
@@ -103,24 +115,20 @@ class TransferManagerThread
     };
 
     static void CreateBuffer(vk::Device device, VmaAllocator allocator, StarQueue &queue,
-                              vk::Semaphore signalWhenDoneSemaphore,
-                              const vk::PhysicalDeviceProperties &deviceProperties,
-                              const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                              ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
-                              std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
-                              boost::atomic<bool> *gpuDoneSignalMain,
-                              std::optional<core::graphics::GPUWorkSyncInfo> &syncInfo);
+                             const vk::PhysicalDeviceProperties &deviceProperties,
+                             const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                             ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
+                             std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
+                             boost::atomic<bool> *gpuDoneSignalMain, core::graphics::GPUWorkSyncInfo &syncInfo);
 
     static void CreateTexture(vk::Device device, VmaAllocator allocator, StarQueue &queue,
-                               vk::Semaphore signalWhenDoneSemaphore,
-                               const vk::PhysicalDeviceProperties &deviceProperties,
-                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                               ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
-                               std::unique_ptr<StarTextures::Texture> *resultingTexture,
-                               boost::atomic<bool> *gpuDoneSignalToMain);
+                              const vk::PhysicalDeviceProperties &deviceProperties,
+                              const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
+                              ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
+                              std::unique_ptr<StarTextures::Texture> *resultingTexture,
+                              boost::atomic<bool> *gpuDoneSignalToMain, core::graphics::GPUWorkSyncInfo &syncInfo);
 
-    static void CheckForCleanups(vk::Device device,
-                                  std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
+    static void CheckForCleanups(vk::Device device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
 };
 
 } // namespace star::job

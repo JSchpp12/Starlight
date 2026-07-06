@@ -52,11 +52,11 @@ struct SemaphoreRecord
 };
 
 constexpr std::string_view GetSemaphoreEventTypeName = "semaphore_event_callback";
-class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 4500>
+class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 1000>
 {
   public:
     Semaphore()
-        : ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 4500>(common::special_types::SemaphoreTypeName,
+        : ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 1000>(common::special_types::SemaphoreTypeName,
                                                                        GetSemaphoreEventTypeName)
     {
     }

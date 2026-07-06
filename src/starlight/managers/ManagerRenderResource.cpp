@@ -38,32 +38,29 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
     s_cmdBus = &cmdBus;
 }
 
-star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore)
+star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID)
 {
-    Handle newBufferHandle = bufferStorage.at(deviceID)->insert(
-        FinalizedResourceRequest<star::StarBuffers::Buffer>(std::move(resourceSemaphore)));
+    Handle newBufferHandle = bufferStorage.at(deviceID)->insert(FinalizedResourceRequest<star::StarBuffers::Buffer>());
 
     bufferStorage.at(deviceID)->get(newBufferHandle).cpuWorkDoneByTransferThread.store(true);
 
     return newBufferHandle;
 }
 
-star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
+star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
                                                      std::unique_ptr<star::TransferRequest::Buffer> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
                                                      const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
 {
     assert(devices.contains(deviceID) && "Device has not been properly initialized");
 
-    Handle newBufferHandle = bufferStorage.at(deviceID)->insert(
-        FinalizedResourceRequest<star::StarBuffers::Buffer>(std::move(resourceSemaphore)));
+    Handle newBufferHandle = bufferStorage.at(deviceID)->insert(FinalizedResourceRequest<star::StarBuffers::Buffer>());
     auto &newFull = bufferStorage.at(deviceID)->get(newBufferHandle);
 
     newFull.cpuWorkDoneByTransferThread.store(false);
 
     auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &newFull.cpuWorkDoneByTransferThread, newFull.resourceSemaphore, std::move(newRequest), newFull.resource,
-        std::nullopt);
+        &newFull.cpuWorkDoneByTransferThread, std::move(newRequest), newFull.resource);
 
     command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
         job::tasks::transfer::TransferPayload{isHighPriority ? job::tasks::transfer::TransferPriority::High
@@ -79,25 +76,24 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
     if (outTransferQueueFamilyIndex != nullptr)
         *outTransferQueueFamilyIndex = result.queueFamilyIndex;
 
+    newFull.gpuWorkDoneSignaledInfo = result.semaphore;
     return newBufferHandle;
 }
 
-star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
+star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
                                                      std::unique_ptr<star::TransferRequest::Texture> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
                                                      const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
 {
     assert(s_cmdBus != nullptr);
 
-    Handle newHandle = textureStorage.at(deviceID)->insert(
-        FinalizedResourceRequest<star::StarTextures::Texture>(std::move(resourceSemaphore)));
+    Handle newHandle = textureStorage.at(deviceID)->insert(FinalizedResourceRequest<star::StarTextures::Texture>());
     auto &newFull = textureStorage.at(deviceID)->get(newHandle);
 
     newFull.cpuWorkDoneByTransferThread.store(false);
 
     auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &newFull.cpuWorkDoneByTransferThread, newFull.resourceSemaphore, std::move(newRequest), newFull.resource,
-        std::nullopt);
+        &newFull.cpuWorkDoneByTransferThread, std::move(newRequest), newFull.resource);
 
     command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
         job::tasks::transfer::TransferPayload{isHighPriority ? job::tasks::transfer::TransferPriority::High
@@ -113,6 +109,7 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID, vk:
     if (outTransferQueueFamilyIndex != nullptr)
         *outTransferQueueFamilyIndex = result.queueFamilyIndex;
 
+    newFull.gpuWorkDoneSignaledInfo = result.semaphore;
     return newHandle;
 }
 
@@ -133,7 +130,7 @@ void star::ManagerRenderResource::frameUpdate(const Handle &deviceID, const uint
 void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                                 std::unique_ptr<TransferRequest::Buffer> newRequest,
                                                 const star::Handle &handle,
-                                                std::optional<core::graphics::GPUWorkSyncInfo> waitInfo,
+                                                std::optional<core::graphics::SemaphoreInfo> waitInfo,
                                                 const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
 {
     auto &container = bufferStorage.at(deviceID)->get(handle);
@@ -145,8 +142,9 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     container.cpuWorkDoneByTransferThread.store(false);
 
     auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &container.cpuWorkDoneByTransferThread, container.resourceSemaphore, std::move(newRequest), container.resource,
-        std::move(waitInfo));
+        &container.cpuWorkDoneByTransferThread, std::move(newRequest), container.resource,
+        waitInfo.has_value() ? star::core::graphics::GPUWorkSyncInfo{.workWaitOn = waitInfo.value()}
+                             : star::core::graphics::GPUWorkSyncInfo{});
     command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
         job::tasks::transfer::TransferPayload{isHighPriority ? job::tasks::transfer::TransferPriority::High
                                                              : job::tasks::transfer::TransferPriority::Standard,
@@ -154,6 +152,7 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
 
     s_cmdBus->submit(cmd);
     const auto result = cmd.getReply().get(); // synchronous: already populated
+    container.gpuWorkDoneSignaledInfo = result.semaphore;
 
     if (isHighPriority)
     {

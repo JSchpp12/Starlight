@@ -93,7 +93,7 @@ class StarObject
 
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                              const Handle &targetCommandBuffer,
-                             const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo);
+                             const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
     /// @brief Create descriptor set layouts for this object.
     /// @param device
@@ -197,7 +197,7 @@ class StarObject
 
     virtual void updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                                      const Handle &targetCommandBuffer,
-                                     const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo);
+                                     const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
   private:
     static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
@@ -230,7 +230,7 @@ class StarObject
 
     void updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                             const Handle &targetCommandBuffer,
-                            const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo);
+                            const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
     bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex);
 

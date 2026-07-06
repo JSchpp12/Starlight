@@ -10,6 +10,7 @@
 #include "job/TaskManager.hpp"
 #include "job/tasks/TransferTask.hpp"
 #include "starlight/core/CommandBus.hpp"
+#include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
 #include <star_common/Handle.hpp>
 
@@ -42,33 +43,26 @@ class ManagerRenderResource
 
     template <typename T> struct FinalizedResourceRequest : public FinalizedRequest
     {
-        vk::Semaphore resourceSemaphore = VK_NULL_HANDLE;
         std::unique_ptr<T> resource = std::unique_ptr<T>();
+        star::StarSemaphore gpuWorkDoneSignaledInfo; 
 
         FinalizedResourceRequest() = default;
         FinalizedResourceRequest(const FinalizedResourceRequest &) = delete;
         FinalizedResourceRequest operator=(const FinalizedResourceRequest &) = delete;
         FinalizedResourceRequest(FinalizedResourceRequest &&other) noexcept
-            : resourceSemaphore(std::move(other.resourceSemaphore)),
-              resource(other.resource ? std::move(other.resource) : nullptr)
+            : resource(other.resource ? std::move(other.resource) : nullptr)
         {
         }
         FinalizedResourceRequest &operator=(FinalizedResourceRequest &&other) noexcept
         {
             if (this != &other)
             {
-                resourceSemaphore = std::move(other.resourceSemaphore);
                 if (other.resource)
                 {
                     resource = std::move(other.resource);
                 }
             }
             return *this;
-        }
-
-        explicit FinalizedResourceRequest(vk::Semaphore resourceSemaphore)
-            : resourceSemaphore(std::move(resourceSemaphore))
-        {
         }
 
         void cleanupRender(vk::Device &device)
@@ -80,15 +74,13 @@ class ManagerRenderResource
 
     static void init(const Handle &deviceID, core::device::StarDevice *device, star::core::CommandBus &cmdBus);
 
-    static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore);
+    static Handle addRequest(const Handle &deviceID);
 
-    static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
-                             std::unique_ptr<TransferRequest::Buffer> newRequest,
+    static Handle addRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
                              const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
 
-    static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore,
-                             std::unique_ptr<TransferRequest::Texture> newRequest,
+    static Handle addRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Texture> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
                              const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
 
@@ -99,7 +91,7 @@ class ManagerRenderResource
     /// @param handle Handle to resource
     static void updateRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
                               const Handle &handle,
-                              std::optional<core::graphics::GPUWorkSyncInfo> waitInfo = std::nullopt,
+                              std::optional<core::graphics::SemaphoreInfo> waitInfo = std::nullopt,
                               const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
 
     static void frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex);

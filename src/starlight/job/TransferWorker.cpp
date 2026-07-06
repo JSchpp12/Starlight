@@ -9,13 +9,12 @@ namespace star::job
 {
 
 void TransferManagerThread::CreateBuffer(vk::Device device, VmaAllocator allocator, StarQueue &queue,
-                                         vk::Semaphore signalWhenDoneSemaphore,
                                          const vk::PhysicalDeviceProperties &deviceProperties,
                                          const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                          ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
                                          std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
                                          boost::atomic<bool> *gpuDoneSignalMain,
-                                         std::optional<core::graphics::GPUWorkSyncInfo> &syncInfo)
+                                         core::graphics::GPUWorkSyncInfo &syncInfo)
 {
     auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
     if (transferSrcBuffer->getBufferSize() == 0)
@@ -41,53 +40,55 @@ void TransferManagerThread::CreateBuffer(vk::Device device, VmaAllocator allocat
 
     processInfo.commandBuffer->buffer(0).end();
 
-    const auto signalInfo = vk::SemaphoreSubmitInfo()
-                                .setSemaphore(signalWhenDoneSemaphore)
-                                .setValue(0)
-                                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
-
-    uint8_t waitInfoCount{0};
-    vk::SemaphoreSubmitInfo waitInfo;
-    if (syncInfo.has_value())
     {
-        const auto &v = syncInfo.value();
-        waitInfo.setSemaphore(v.workWaitOn.semaphore)
-            .setValue(v.workWaitOn.signalValue)
-            .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
-        waitInfoCount++;
-    }
+        const auto signalInfo = vk::SemaphoreSubmitInfo()
+                                    .setSemaphore(syncInfo.workSignalWhenDone.semaphore)
+                                    .setValue(syncInfo.workSignalWhenDone.signalValue)
+                                    .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
-    const auto cbInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(processInfo.commandBuffer->buffer(0));
+        uint8_t waitInfoCount{0};
+        vk::SemaphoreSubmitInfo waitInfo;
+        if (syncInfo.workWaitOn.has_value())
+        {
+            const auto &v = syncInfo.workWaitOn.value();
+            waitInfo.setSemaphore(v.semaphore)
+                .setValue(v.signalValue)
+                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
+            waitInfoCount++;
+        }
 
-    const auto submitInfo = vk::SubmitInfo2()
-                                .setPWaitSemaphoreInfos(&waitInfo)
-                                .setWaitSemaphoreInfoCount(waitInfoCount)
-                                .setPCommandBufferInfos(&cbInfo)
-                                .setCommandBufferInfoCount(1)
-                                .setPSignalSemaphoreInfos(&signalInfo)
-                                .setSignalSemaphoreInfoCount(1);
+        const auto cbInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(processInfo.commandBuffer->buffer(0));
 
-    try
-    {
-        queue.getVulkanQueue().submit2(submitInfo, processInfo.commandBuffer->getFence(0));
-    }
-    catch (const vk::Error &e)
-    {
-        std::ostringstream oss;
-        oss << "Vulkan error encountered while submitting queue. Terminating. " << e.what();
-        STAR_THROW(oss.str());
+        const auto submitInfo = vk::SubmitInfo2()
+                                    .setPWaitSemaphoreInfos(&waitInfo)
+                                    .setWaitSemaphoreInfoCount(waitInfoCount)
+                                    .setPCommandBufferInfos(&cbInfo)
+                                    .setCommandBufferInfoCount(1)
+                                    .setPSignalSemaphoreInfos(&signalInfo)
+                                    .setSignalSemaphoreInfoCount(1);
+
+        try
+        {
+            queue.getVulkanQueue().submit2(submitInfo, processInfo.commandBuffer->getFence(0));
+        }
+        catch (const vk::Error &e)
+        {
+            std::ostringstream oss;
+            oss << "Vulkan error encountered while submitting queue. Terminating. " << e.what();
+            STAR_THROW(oss.str());
+        }
     }
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
 void TransferManagerThread::CreateTexture(vk::Device device, VmaAllocator allocator, StarQueue &queue,
-                                          vk::Semaphore signalWhenDoneSemaphore,
                                           const vk::PhysicalDeviceProperties &deviceProperties,
                                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                           ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
                                           std::unique_ptr<StarTextures::Texture> *resultingTexture,
-                                          boost::atomic<bool> *gpuDoneSignalToMain)
+                                          boost::atomic<bool> *gpuDoneSignalToMain,
+                                          core::graphics::GPUWorkSyncInfo &syncInfo)
 {
     auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator);
 
@@ -107,16 +108,45 @@ void TransferManagerThread::CreateTexture(vk::Device device, VmaAllocator alloca
                                                 processInfo.commandBuffer->buffer(0));
 
     processInfo.commandBuffer->buffer(0).end();
-    auto signalSemaphores = std::vector<vk::Semaphore>{signalWhenDoneSemaphore};
-    try
+
     {
-        processInfo.commandBuffer->submit(0, queue.getVulkanQueue(), nullptr, nullptr, nullptr, &signalSemaphores);
-    }
-    catch (const vk::Error &e)
-    {
-        std::ostringstream oss;
-        oss << "Vulkan error encountered while submitting queue. Terminating. " << e.what();
-        STAR_THROW(oss.str());
+        const auto signalInfo = vk::SemaphoreSubmitInfo()
+                                    .setSemaphore(syncInfo.workSignalWhenDone.semaphore)
+                                    .setValue(syncInfo.workSignalWhenDone.signalValue)
+                                    .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
+
+        uint8_t waitInfoCount{0};
+        vk::SemaphoreSubmitInfo waitInfo;
+        if (syncInfo.workWaitOn.has_value())
+        {
+            const auto &v = syncInfo.workWaitOn.value();
+            waitInfo.setSemaphore(v.semaphore)
+                .setValue(v.signalValue)
+                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
+            waitInfoCount++;
+        }
+
+        const auto cbInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(processInfo.commandBuffer->buffer(0));
+
+        const auto submitInfo = vk::SubmitInfo2()
+                                    .setPWaitSemaphoreInfos(&waitInfo)
+                                    .setWaitSemaphoreInfoCount(waitInfoCount)
+                                    .setPCommandBufferInfos(&cbInfo)
+                                    .setCommandBufferInfoCount(1)
+                                    .setPSignalSemaphoreInfos(&signalInfo)
+                                    .setSignalSemaphoreInfoCount(1);
+
+        try
+        {
+            queue.getVulkanQueue().submit2(submitInfo, processInfo.commandBuffer->getFence(0));
+        }
+        catch (const vk::Error &e)
+        {
+            std::ostringstream oss;
+            oss << "Vulkan error encountered while submitting queue. Terminating. " << e.what();
+            STAR_THROW(oss.str());
+        }
+
     }
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));

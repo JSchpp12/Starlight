@@ -16,13 +16,8 @@ std::unique_ptr<StarShaderInfo> InstanceColorMaterial::buildShaderInfo(core::dev
 {
     assert(m_colorProvider);
 
-    Handle semaphore;
-    context.getEventBus().emit(core::device::system::event::ManagerRequest<core::device::manager::SemaphoreRequest>(
-        common::HandleTypeRegistry::instance().getType(core::device::manager::GetSemaphoreEventTypeName).value(),
-        core::device::manager::SemaphoreRequest(), semaphore));
-    auto fullSemaphore = context.getSemaphoreManager().get(semaphore)->semaphore;
     auto colors = context.getManagerRenderResource().addRequest(
-        context.getDeviceID(), fullSemaphore,
+        context.getDeviceID(),
         std::make_unique<TransferRequest::InstanceColorInfo>(
             m_colorProvider->getColors(),
             core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
@@ -33,7 +28,7 @@ std::unique_ptr<StarShaderInfo> InstanceColorMaterial::buildShaderInfo(core::dev
     {
         builder.startOnFrameIndex(i);
         builder.startSet();
-        builder.add(star::StarShaderInfo::BufferInfo{colors}, &fullSemaphore);
+        builder.add(star::StarShaderInfo::BufferInfo{colors});
     }
 
     return builder.build();

@@ -36,17 +36,7 @@ template <typename TTransferType, typename TDataType> class Controller
 
             for (uint8_t i = 0; i < numFramesInFlight; i++)
             {
-                Handle semaphore;
-                context.getEventBus().emit(
-                    core::device::system::event::ManagerRequest<core::device::manager::SemaphoreRequest>(
-                        common::HandleTypeRegistry::instance()
-                            .getType(core::device::manager::GetSemaphoreEventTypeName)
-                            .value(),
-                        core::device::manager::SemaphoreRequest(), semaphore));
-
-                auto fullSemaphore = context.getSemaphoreManager().get(semaphore)->semaphore;
-                m_resourceHandles[i] =
-                    context.getManagerRenderResource().addRequest(context.getDeviceID(), fullSemaphore);
+                m_resourceHandles[i] = context.getManagerRenderResource().addRequest(context.getDeviceID());
             }
         }
     }
@@ -59,41 +49,35 @@ template <typename TTransferType, typename TDataType> class Controller
     }
 
     /// Call any frame updates. Returns true if the controller submitted an update
-    bool submitUpdateIfNeeded(
-        core::device::DeviceContext &context, const uint8_t &frameInFlightIndex, vk::Semaphore &submissionSemaphore,
-        std::optional<star::core::graphics::GPUWorkSyncInfo> transferGPUWorkWaitOnSyncInfo = std::nullopt)
+    std::pair<bool, const star::StarSemaphore *> submitUpdateIfNeeded(
+        core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+        std::optional<star::core::graphics::SemaphoreInfo> transferGPUWorkWaitOnSyncInfo = std::nullopt)
     {
         const size_t fi = static_cast<size_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
 
         assert(fi < m_resourceHandles.size() && m_resourceHandles[fi].isInitialized() &&
                "Resources must be properly prepared before use");
         if (!doesFrameInFlightDataNeedUpdated(fi))
-        {
-            return false;
-        }
+            return std::make_pair(false, nullptr);
 
         if (hasAlreadyBeenUpdatedThisFrame(context.frameTracker().getCurrent().getGlobalFrameCounter()))
-        {
-            return true;
-        }
-
-        submissionSemaphore = getSemaphore(context, fi);
+            return std::make_pair(true, &getSemaphore(context, fi));
 
         m_lastFrameUpdate = context.frameTracker().getCurrent().getGlobalFrameCounter();
         context.getManagerRenderResource().updateRequest(
             context.getDeviceID(), createTransferRequest(context, frameInFlightIndex),
             m_resourceHandles[frameInFlightIndex], std::move(transferGPUWorkWaitOnSyncInfo), true);
-        return true;
+        return std::make_pair(true, &getSemaphore(context, fi));
     }
 
-    vk::Semaphore getSemaphore(star::core::device::DeviceContext &context, size_t frameInFlightIndex) const
+    const star::StarSemaphore &getSemaphore(star::core::device::DeviceContext &context, size_t frameInFlightIndex) const
     {
         const auto *record = context.getManagerRenderResource().get<TDataType>(context.getDeviceID(),
                                                                                m_resourceHandles[frameInFlightIndex]);
 
         assert(record != nullptr && "Failed to get record from managerRenderResource during request for semaphore");
 
-        return record->resourceSemaphore;
+        return record->gpuWorkDoneSignaledInfo;
     }
 
   protected:

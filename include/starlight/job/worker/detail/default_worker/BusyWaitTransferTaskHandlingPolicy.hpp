@@ -212,7 +212,7 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             request.bufferTransferRequest->prep();
 
             job::TransferManagerThread::CreateBuffer(
-                device, allocator, m_queue, request.gpuWorkDoneSemaphore, m_device.getPhysicalDevice().getProperties(),
+                device, allocator, m_queue, m_device.getPhysicalDevice().getProperties(),
                 m_allTransferQueueFamilyIndicesInUse, *workingInfo, request.bufferTransferRequest.get(),
                 request.resultingBuffer.value(), request.gpuDoneNotificationToMain, request.workSyncInfo);
         }
@@ -226,9 +226,9 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             core::logging::log(boost::log::trivial::info, "Creating Texture");
 
             job::TransferManagerThread::CreateTexture(
-                device, allocator, m_queue, request.gpuWorkDoneSemaphore, m_device.getPhysicalDevice().getProperties(),
+                device, allocator, m_queue, m_device.getPhysicalDevice().getProperties(),
                 m_allTransferQueueFamilyIndicesInUse, *workingInfo, request.textureTransferRequest.get(),
-                request.resultingTexture.value(), request.gpuDoneNotificationToMain);
+                request.resultingTexture.value(), request.gpuDoneNotificationToMain, request.workSyncInfo);
         }
 
         m_processRequestInfos.push(std::move(workingInfo));

@@ -58,9 +58,8 @@ void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &c
 
 void StarRenderGroup::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                                   const Handle &targetCommandBuffer,
-                                  const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo)
+                                  const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
-
     for (auto &group : groups)
     {
         group.baseObject.object->frameUpdate(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
