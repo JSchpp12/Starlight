@@ -9,6 +9,7 @@
 #include "device/StarDevice.hpp"
 #include "job/TaskManager.hpp"
 #include "job/tasks/TransferTask.hpp"
+#include "starlight/core/CommandBus.hpp"
 
 #include <star_common/Handle.hpp>
 
@@ -73,34 +74,11 @@ class ManagerRenderResource
         void cleanupRender(vk::Device &device)
         {
             if (resource)
-            {
                 resource->cleanupRender(device);
-            }
         }
     };
 
-    static void init(const Handle &deviceID, core::device::StarDevice *device, job::TaskManager &taskManager,
-                     const int &totalNumFramesInFlight);
-
-    static Handle TransferWorkerHandle(uint16_t workerIndex)
-    {
-        return Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                          job::tasks::transfer::TransferTaskName),
-                      .id = workerIndex};
-    }
-
-    /// Worker 0 is reserved for high-priority transfer tasks. Standard tasks are distributed
-    /// across workers 1..N via submitStandardTransferTask using round-robin. When only one
-    /// transfer worker exists, both high- and standard-priority work are routed to worker 0.
-    ///
-    /// Overflow behavior: if the round-robin-selected standard worker's queue is full,
-    /// submitStandardTransferTask tries the remaining standard workers (non-blocking). If all
-    /// standard workers are full, it falls back to the dedicated high-priority worker 0, which
-    /// routes Standard-priority payloads into its standard queue. Worker 0's thread loop drains
-    /// its high-priority queue first, then the standard queue, so the dedicated high-priority
-    /// worker only consumes standard work when its high-priority queue is empty. As a last
-    /// resort, if worker 0 is also full, the call blocks on worker 0 to avoid losing the task.
-    static uint16_t submitStandardTransferTask(job::tasks::transfer::TransferPayload payload);
+    static void init(const Handle &deviceID, core::device::StarDevice *device, star::core::CommandBus &cmdBus);
 
     static Handle addRequest(const Handle &deviceID, vk::Semaphore resourceSemaphore);
 
@@ -154,9 +132,6 @@ class ManagerRenderResource
         return nullptr;
     }
 
-    static void setWorkerQueueFamilyIndices(std::vector<uint32_t> indices);
-    static uint32_t getPrimaryTransferQueueFamilyIndex();
-
   protected:
     static std::unordered_map<Handle, core::device::StarDevice *, star::HandleHash> devices;
     static std::unordered_map<
@@ -173,12 +148,7 @@ class ManagerRenderResource
     static std::unordered_map<Handle, std::set<boost::atomic<bool> *>, star::HandleHash>
         highPriorityRequestCompleteFlags;
 
-    static job::TaskManager *managerTaskSystem;
-
-    static size_t s_numStandardTransferWorkers;
-    static std::atomic<size_t> s_nextStandardWorker;
-
-    static std::vector<uint32_t> s_workerQueueFamilyIndices;
+    static star::core::CommandBus *s_cmdBus;
 };
 
 } // namespace star

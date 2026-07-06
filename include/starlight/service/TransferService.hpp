@@ -2,6 +2,7 @@
 
 #include "InitParameters.hpp"
 #include "TransferServiceConfig.hpp"
+#include "starlight/command/transfer/SubmitTransferTask.hpp"
 #include "starlight/core/WorkerPool.hpp"
 #include "starlight/core/device/StarDevice.hpp"
 #include "starlight/core/device/managers/GraphicsContainer.hpp"
@@ -11,6 +12,7 @@
 #include "starlight/job/worker/Worker.hpp"
 #include "starlight/job/worker/detail/default_worker/BusyWaitTransferTaskHandlingPolicy.hpp"
 #include "starlight/managers/ManagerRenderResource.hpp"
+#include "starlight/policy/command/ListenFor.hpp"
 
 #include <star_common/EventBus.hpp>
 
@@ -20,6 +22,11 @@
 
 namespace star::service
 {
+template <typename T>
+using ListenForSubmitTransferTask =
+    star::policy::command::ListenFor<T, star::command::transfer::SubmitTransferTask,
+                                     star::command::transfer::submit_transfer::GetUniqueTypeName, &T::onSubmitTransfer>;
+
 class TransferService
 {
   public:
@@ -42,14 +49,21 @@ class TransferService
 
     void shutdown();
 
+    void onSubmitTransfer(star::command::transfer::SubmitTransferTask &cmd);
+
   private:
+    std::vector<uint32_t> m_workerQueueFamilyIndices;
+    size_t m_numStandardTransferWorkers = 0;
+    size_t m_nextStandardWorker{0};
     absl::flat_hash_map<star::Queue_Type, Handle> m_engineReservedQueues;
     std::vector<Handle> m_selectedQueues;
     size_t m_targetNumQueuesToUse{1};
     TransferServiceConfig m_config{};
+    ListenForSubmitTransferTask<TransferService> m_listenerTransferTask;
     core::device::StarDevice *m_device{nullptr};
     core::device::manager::GraphicsContainer *m_graphicsManagers{nullptr};
     common::EventBus *m_eventBus{nullptr};
+    star::core::CommandBus *m_cmdBus{nullptr};
     job::TaskManager *m_taskManager{nullptr};
     core::WorkerPool *m_workerPool{nullptr};
 
@@ -98,7 +112,7 @@ class TransferService
             else
                 workerQueueFamilyIndices.push_back(0);
         }
-        ManagerRenderResource::setWorkerQueueFamilyIndices(std::move(workerQueueFamilyIndices));
+        m_workerQueueFamilyIndices = std::move(workerQueueFamilyIndices);
 
         for (size_t i{0}; i < transferWorkerQueues.size(); i++)
         {
@@ -147,6 +161,10 @@ class TransferService
                            job::tasks::transfer::TransferTaskName),
                        .id = 0}) == 0)
             STAR_THROW("Failed to register any transfer worker");
+
+        const size_t total = m_taskManager->getNumOfWorkersForType(transferWorkerHandle(0));
+        m_numStandardTransferWorkers = total > 1 ? total - 1 : 1;
+        m_nextStandardWorker = 0;
     }
 
     template <size_t THighSize, size_t TStandardSize> void dispatchCreateWorkers()
@@ -157,5 +175,11 @@ class TransferService
     }
 
     void dispatchCreateWorkersFromConfig();
+
+    void cleanupListeners(star::core::CommandBus &cmdBus);
+
+    void initListeners(star::core::CommandBus &cmdBus);
+
+    Handle transferWorkerHandle(uint16_t workerIndex) const noexcept;
 };
 } // namespace star::service

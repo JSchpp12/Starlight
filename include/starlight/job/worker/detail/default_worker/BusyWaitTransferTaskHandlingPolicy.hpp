@@ -60,9 +60,9 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
         TransferPayload &payload = *static_cast<TransferPayload *>(typedTask->getPayload());
 
         if (payload.priority == job::tasks::transfer::TransferPriority::High)
-            m_highPriorityTasks->queueTask(std::move(*typedTask));
+            m_highPriorityTasks->queueTaskBlocking(std::move(*typedTask));
         else
-            m_standardTasks->queueTask(std::move(*typedTask));
+            m_standardTasks->queueTaskBlocking(std::move(*typedTask));
     }
 
     bool isTaskQueueFull(const void *task) const noexcept
