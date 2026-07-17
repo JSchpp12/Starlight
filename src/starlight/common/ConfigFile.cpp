@@ -24,15 +24,13 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
     std::pair<std::string, star::Config_Settings>("frames_in_flight", star::Config_Settings::frames_in_flight),
     std::make_pair("required_device_feature_shader_float64",
                    star::Config_Settings::required_device_feature_shader_float64),
-    std::make_pair("required_device_feature_gpu_index",
-                   star::Config_Settings::required_device_feature_gpu_index),
+    std::make_pair("required_device_feature_gpu_index", star::Config_Settings::required_device_feature_gpu_index),
     std::make_pair("resolution_x", star::Config_Settings::resolution_x),
     std::make_pair("resolution_y", star::Config_Settings::resolution_y),
     std::make_pair("tmp_dir", star::Config_Settings::tmp_directory),
     std::make_pair("scene_file", star::Config_Settings::scene_file),
     std::make_pair("max_image_worker_count", star::Config_Settings::max_image_worker_count),
-    std::make_pair("transfer_high_priority_queue_size",
-                   star::Config_Settings::transfer_high_priority_queue_size),
+    std::make_pair("transfer_high_priority_queue_size", star::Config_Settings::transfer_high_priority_queue_size),
     std::make_pair("transfer_standard_priority_queue_size",
                    star::Config_Settings::transfer_standard_priority_queue_size),
     std::make_pair("transfer_standard_priority_worker_count",
@@ -196,31 +194,31 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
 
 namespace
 {
-    uint32_t parseUint32(std::string_view value)
+uint32_t parseUint32(std::string_view value)
+{
+    auto v = std::string(value);
+    int parsed = std::stoi(v);
+    if (parsed < 0)
     {
-        auto v = std::string(value);
-        int parsed = std::stoi(v);
-        if (parsed < 0)
-        {
-            return 0;
-        }
-        uint32_t result;
-        if (!star::common::casts::SafeCast(parsed, result))
-        {
-            return 0;
-        }
-        return result;
+        return 0;
     }
+    uint32_t result;
+    if (!star::common::casts::SafeCast(parsed, result))
+    {
+        return 0;
+    }
+    return result;
+}
 
-    int parseInt(std::string_view value)
-    {
-        return std::stoi(std::string(value));
-    }
+int parseInt(std::string_view value)
+{
+    return std::stoi(std::string(value));
+}
 
-    double parseDouble(std::string_view value)
-    {
-        return std::stod(std::string(value));
-    }
+double parseDouble(std::string_view value)
+{
+    return std::stod(std::string(value));
+}
 } // namespace
 
 uint32_t star::ConfigFile::getUint32(Config_Settings setting, uint32_t defaultVal)

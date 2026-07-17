@@ -116,13 +116,12 @@ static std::tuple<vk::Semaphore, uint64_t> GetCurrentSyncInfo(const star::Handle
     return std::make_tuple(r.signaledSemaphore, r.currentSignalValue);
 }
 
-static star::core::graphics::GPUWorkSyncInfo GetTransferRequestSyncToPreviousDraw(const star::Handle &registration,
-                                                                             const star::core::CommandBus &cmdBus)
+static star::core::graphics::SemaphoreInfo GetTransferRequestSyncToPreviousDraw(const star::Handle &registration,
+                                                                                const star::core::CommandBus &cmdBus)
 {
     auto [semaphore, currentSignalValue] = GetCurrentSyncInfo(registration, cmdBus);
 
-    return star::core::graphics::GPUWorkSyncInfo{
-        .workWaitOn = star::core::graphics::SemaphoreInfo{.signalValue = currentSignalValue, .semaphore = semaphore}};
+    return star::core::graphics::SemaphoreInfo{.signalValue = currentSignalValue, .semaphore = semaphore};
 }
 
 void RendererBase::updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)

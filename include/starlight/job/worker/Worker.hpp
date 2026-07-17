@@ -15,9 +15,9 @@ class Worker
     struct WorkerConcept
     {
         virtual ~WorkerConcept() = default;
+        virtual bool doIsTaskQueueFull(const void *task) const noexcept = 0;
         virtual void doCleanup() = 0;
-        virtual bool doQueueTask(void *task) = 0;
-        virtual void doQueueTaskBlocking(void *task) = 0;
+        virtual void doQueueTask(void *task) = 0;
         virtual void doSetCompleteMessageCommunicationStructure(
             TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages) = 0;
     };
@@ -43,29 +43,19 @@ class Worker
         m_pimpl->doCleanup();
     }
 
-    /// Queue a task for the worker to process.
-    ///
-    /// Contract: the caller retains ownership of the pointed-to task until this call returns.
-    /// Implementations MUST move the task into their own storage synchronously (e.g. via
-    /// TaskContainer::queueTask(std::move(*static_cast<TTask*>(task)))) and MUST NOT retain
-    /// the void* for asynchronous dereference by the worker thread — the pointer is only
-    /// valid for the duration of this call.
-    ///
-    /// Returns false if the worker's task container is full (non-blocking); true on success.
-    bool queueTask(void *task)
+    void queueTask(void *task)
     {
-        return m_pimpl->doQueueTask(task);
-    }
-
-    /// Blocking variant of queueTask. Busy-waits until the worker's task container has a free slot.
-    void queueTaskBlocking(void *task)
-    {
-        m_pimpl->doQueueTaskBlocking(task);
+        m_pimpl->doQueueTask(task);
     }
 
     void setCompleteMessageCommunicationStructure(TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
     {
         m_pimpl->doSetCompleteMessageCommunicationStructure(completeMessages);
+    }
+
+    bool isTaskQueueFull(const void *task) const noexcept
+    {
+        return m_pimpl->doIsTaskQueueFull(task);
     }
 
   private:
@@ -85,13 +75,13 @@ class Worker
         {
             m_worker.cleanup();
         }
-        bool doQueueTask(void *task) override
+        void doQueueTask(void *task) override
         {
-            return m_worker.queueTask(task);
+            m_worker.queueTask(task);
         }
-        void doQueueTaskBlocking(void *task) override
+        bool doIsTaskQueueFull(const void *task) const noexcept override
         {
-            m_worker.queueTaskBlocking(task);
+            return m_worker.isTaskQueueFull(task);
         }
 
         void doSetCompleteMessageCommunicationStructure(

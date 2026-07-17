@@ -40,7 +40,6 @@ void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
     if (m_textureHandle.isInitialized())
         return;
 
-    const auto texSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest(false));
     const auto graphicsIndex =
         core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
                                             star::Queue_Type::Tgraphics)
@@ -63,7 +62,7 @@ void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
     assert(texture && "Texture MUST be created");
 
     m_textureHandle = star::ManagerRenderResource::addRequest(
-        context.getDeviceID(), context.getSemaphoreManager().get(texSemaphore)->semaphore, std::move(texture));
+        context.getDeviceID(), std::move(texture));
 }
 
 void star::TextureMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,

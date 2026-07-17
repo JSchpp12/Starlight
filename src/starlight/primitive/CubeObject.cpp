@@ -46,15 +46,10 @@ std::vector<StarMesh> CubeObject::loadMeshes(core::device::DeviceContext &contex
             ->getParentQueueFamilyIndex();
     MeshData meshData = BuildCubeMesh(m_desc, this->m_meshMaterials.front());
 
-    auto semaphore = context.getSemaphoreManager().submit(star::core::device::manager::SemaphoreRequest(false));
-    auto indSemaphore = context.getSemaphoreManager().submit(star::core::device::manager::SemaphoreRequest(false));
-
     auto vertBuffer = context.getManagerRenderResource().addRequest(
-        context.getDeviceID(), context.getSemaphoreManager().get(semaphore)->semaphore,
-        std::make_unique<star::TransferRequest::VertInfo>(graphicsIndex, meshData.vertices));
+        context.getDeviceID(), std::make_unique<star::TransferRequest::VertInfo>(graphicsIndex, meshData.vertices));
     auto indBuffer = context.getManagerRenderResource().addRequest(
-        context.getDeviceID(), context.getSemaphoreManager().get(indSemaphore)->semaphore,
-        std::make_unique<TransferRequest::IndicesInfo>(graphicsIndex, meshData.indices));
+        context.getDeviceID(), std::make_unique<TransferRequest::IndicesInfo>(graphicsIndex, meshData.indices));
 
     return {StarMesh(vertBuffer, indBuffer, meshData.vertices, meshData.indices, m_meshMaterials.front(), false)};
 }

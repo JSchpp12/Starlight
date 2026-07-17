@@ -152,9 +152,8 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
                                              core::renderer::RenderingTargetInfo renderInfo)
 {
     return context.getPipelineManager().submit(core::device::manager::PipelineRequest(
-        StarPipeline(
-            StarPipeline::GraphicsPipelineConfigSettings(), pipelineLayout,
-            std::vector<Handle>{m_vertexShaderHandle, m_fragmentShaderHandle}),
+        StarPipeline(StarPipeline::GraphicsPipelineConfigSettings(), pipelineLayout,
+                     std::vector<Handle>{m_vertexShaderHandle, m_fragmentShaderHandle}),
         swapChainExtent, renderInfo));
 }
 
@@ -210,19 +209,11 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context)
 
         calculateBoundingBox(bbVerts, bbInds);
 
-        {
-            auto bbSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
-            this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(
-                m_deviceID, context.getSemaphoreManager().get(bbSemaphore)->semaphore,
-                std::make_unique<TransferRequest::VertInfo>(graphicsFamilyIndex, std::move(bbVerts)));
-        }
-        {
-            auto bbIndSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
+        this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(
+            m_deviceID, std::make_unique<TransferRequest::VertInfo>(graphicsFamilyIndex, std::move(bbVerts)));
 
-            this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
-                m_deviceID, context.getSemaphoreManager().get(bbIndSemaphore)->semaphore,
-                std::make_unique<TransferRequest::IndicesInfo>(graphicsFamilyIndex, std::move(bbInds)));
-        }
+        this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
+            m_deviceID, std::make_unique<TransferRequest::IndicesInfo>(graphicsFamilyIndex, std::move(bbInds)));
     }
 
     prepareMeshes(context);
@@ -238,9 +229,7 @@ void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuf
                                                    const uint64_t &frameIndex)
 {
     if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
-    {
         return;
-    }
 
     recordDependentDataPipelineBarriers(commandBuffer, swapChainIndexNum, frameIndex);
 }
@@ -249,9 +238,7 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
                                                 const uint8_t &swapChainIndexNum, const uint64_t &frameIndex)
 {
     if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
-    {
         return;
-    }
 
     assert(renderingContext.pipeline != nullptr && "Pipeline needs to be included in creating the rendering context");
 
@@ -277,12 +264,10 @@ star::StarEntity &star::StarObject::createInstance()
 
 void star::StarObject::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                                    const Handle &targetCommandBuffer,
-                                   const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo)
+                                   const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
     if (!isReady && isRenderReady(context))
-    {
         isReady = true;
-    }
 
     if (isReady)
     {
@@ -336,14 +321,8 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
         frameBuilder.startOnFrameIndex(i);
         frameBuilder.startSet();
-        frameBuilder.add(StarShaderInfo::BufferInfo{instanceModelHandle},
-                         &context.getManagerRenderResource()
-                              .get<StarBuffers::Buffer>(context.getDeviceID(), instanceModelHandle)
-                              ->resourceSemaphore);
-        frameBuilder.add(StarShaderInfo::BufferInfo{instanceNormalHandle},
-                         &context.getManagerRenderResource()
-                              .get<StarBuffers::Buffer>(context.getDeviceID(), instanceNormalHandle)
-                              ->resourceSemaphore);
+        frameBuilder.add(StarShaderInfo::BufferInfo{instanceModelHandle});
+        frameBuilder.add(StarShaderInfo::BufferInfo{instanceNormalHandle});
     }
 
     for (auto &material : m_meshMaterials)
@@ -475,39 +454,46 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
 
 void star::StarObject::updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                                            const Handle &targetCommandBuffer,
-                                           const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo)
+                                           const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
     updateInstanceData(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
 }
 
 void star::StarObject::updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                                           const Handle &targetCommandBuffer,
-                                          const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo)
+                                          const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
     bool updateInstanceModel = false, updateInstanceNormal = false;
 
     CommandBufferContainer::CompleteRequest &request =
         context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
 
-    vk::Semaphore doneSemaphore;
-    if (m_instanceInfo.getControllerModel().submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore,
-                                                                 transferReuqestSyncInfo))
     {
-        updateInstanceModel = true;
+        const auto [submitted, semaphore] = m_instanceInfo.getControllerModel().submitUpdateIfNeeded(
+            context, frameInFlightIndex, transferReuqestSyncInfo);
+        if (submitted)
+        {
+            updateInstanceModel = true;
 
-        request.oneTimeWaitSemaphoreInfo.insert(
-            m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex), std::move(doneSemaphore),
-            vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
+            request.oneTimeWaitSemaphoreInfo.insert(
+                m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex), semaphore->vkSemaphore,
+                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader,
+                semaphore->signalValue);
+        }
     }
 
-    if (m_instanceInfo.getControllerNormal().submitUpdateIfNeeded(context, frameInFlightIndex, doneSemaphore,
-                                                                  transferReuqestSyncInfo))
     {
-        updateInstanceNormal = true;
+        const auto [submitted, semaphore] = m_instanceInfo.getControllerNormal().submitUpdateIfNeeded(
+            context, frameInFlightIndex, transferReuqestSyncInfo);
+        if (submitted)
+        {
+            updateInstanceNormal = true;
 
-        request.oneTimeWaitSemaphoreInfo.insert(
-            m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex), std::move(doneSemaphore),
-            vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
+            request.oneTimeWaitSemaphoreInfo.insert(
+                m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex), semaphore->vkSemaphore,
+                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader,
+                semaphore->signalValue);
+        }
     }
 
     if (updateInstanceNormal)

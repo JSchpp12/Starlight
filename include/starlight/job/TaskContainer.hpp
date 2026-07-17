@@ -134,6 +134,11 @@ template <TTaskLike TTask, size_t TMaxSize> class TaskContainer
         return m_pending.load(std::memory_order_acquire) == 0;
     }
 
+    bool isFull() const noexcept
+    {
+        return m_pending.load(std::memory_order_relaxed) == TMaxSize;
+    }
+
   private:
     std::vector<TTask> m_tasks;
     boost::lockfree::queue<uint32_t, boost::lockfree::capacity<TMaxSize>> m_availableSpaces =

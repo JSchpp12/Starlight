@@ -13,7 +13,7 @@
 
 namespace star::job::tasks::transfer
 {
-inline static constexpr std::string_view TransferTaskName = "star::job::tasks::transfer";
+inline static constexpr std::string_view TransferTaskName = "stTP";
 
 enum class TransferPriority
 {

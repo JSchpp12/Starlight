@@ -202,7 +202,7 @@ void star::core::device::DeviceContext::initWorkers(core::WorkerPool &pool,
                                                     absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
                                                     const uint8_t &numFramesInFlight)
 {
-    ManagerRenderResource::init(m_deviceID, &m_device, m_taskManager, numFramesInFlight);
+    ManagerRenderResource::init(m_deviceID, &m_device, m_commandBus);
 
     if (!pool.allocateWorker())
         STAR_THROW("Unable to allocate worker from pool for pipeline");
@@ -414,9 +414,9 @@ absl::flat_hash_map<star::Queue_Type, star::Handle> star::core::device::DeviceCo
             selectedQueues.insert(
                 std::make_pair<star::Queue_Type, star::Handle>(star::Queue_Type::Tgraphics, Handle(selected)));
         // this might be super queue so check for ttransfer too
-            if (record->queue.isCompatibleWith(EnumToQueueFlags(star::Queue_Type::Ttransfer)))
-                selectedQueues.insert(std::make_pair(star::Queue_Type::Ttransfer, Handle(selected)));
-        
+        if (record->queue.isCompatibleWith(EnumToQueueFlags(star::Queue_Type::Ttransfer)))
+            selectedQueues.insert(std::make_pair(star::Queue_Type::Ttransfer, Handle(selected)));
+
         else
             STAR_THROW("Not able to find queue which supports graphics or presentation");
     }

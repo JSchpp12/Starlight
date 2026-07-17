@@ -21,7 +21,7 @@ struct GraphicsContainer
         : queueManager(std::move(other.queueManager)), descriptorPoolManager(std::move(other.descriptorPoolManager)),
           semaphoreManager(std::move(other.semaphoreManager)), shaderManager(std::move(other.shaderManager)),
           pipelineManager(std::move(other.pipelineManager)), fenceManager(std::move(other.fenceManager)),
-          imageManager(std::move(other.imageManager)){};
+          imageManager(std::move(other.imageManager)) {};
     GraphicsContainer &operator=(GraphicsContainer &&other) noexcept
     {
         if (this != &other)
