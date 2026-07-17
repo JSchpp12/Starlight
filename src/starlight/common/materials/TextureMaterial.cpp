@@ -40,7 +40,7 @@ void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
     if (m_textureHandle.isInitialized())
         return;
 
-    auto graphicsIndex =
+    const auto graphicsIndex =
         core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
                                             star::Queue_Type::Tgraphics)
             ->getParentQueueFamilyIndex();

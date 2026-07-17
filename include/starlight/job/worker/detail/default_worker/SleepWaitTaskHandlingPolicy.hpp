@@ -54,16 +54,15 @@ class SleepWaitTaskHandlingPolicy : public BusyWaitTaskHandlingPolicy<TTask, TQu
         }
     }
 
-    virtual bool queueTask(void *task) override
+    virtual void queueTask(void *task) override
     {
         bool result{false};
         {
             boost::lock_guard<boost::mutex> lock(*m_taskMutex);
-            result = Parent::queueTask(task);
+            Parent::queueTask(task);
         }
 
         wakeupThread();
-        return result;
     }
 
   protected:

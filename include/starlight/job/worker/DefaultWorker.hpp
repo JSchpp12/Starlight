@@ -16,8 +16,8 @@ concept ThreadFunctionPolicyLike =
     requires(std::string workerName, TThreadPolicy threadPolicy,
              TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages, void *rawTask) {
         { threadPolicy.init(workerName, completeMessages) } -> std::same_as<void>;
-        { threadPolicy.queueTask(rawTask) } -> std::same_as<bool>;
-        { threadPolicy.queueTaskBlocking(rawTask) } -> std::same_as<void>;
+        { threadPolicy.isTaskQueueFull(rawTask) } -> std::same_as<bool>;
+        { threadPolicy.queueTask(rawTask) } -> std::same_as<void>;
         { threadPolicy.cleanup() } -> std::same_as<void>;
     };
 
@@ -39,14 +39,14 @@ template <ThreadFunctionPolicyLike TThreadPolicy> class DefaultWorker
         m_threadPolicy.cleanup();
     }
 
-    bool queueTask(void *task)
+    void queueTask(void *task)
     {
-        return m_threadPolicy.queueTask(task);
+        m_threadPolicy.queueTask(task);
     }
 
-    void queueTaskBlocking(void *task)
+    bool isTaskQueueFull(const void *task) const noexcept
     {
-        m_threadPolicy.queueTaskBlocking(task);
+        return m_threadPolicy.isTaskQueueFull(task);
     }
 
     void setCompleteMessageCommunicationStructure(TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)

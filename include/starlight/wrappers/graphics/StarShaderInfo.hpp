@@ -68,17 +68,11 @@ class StarShaderInfo
     };
     struct ShaderInfo
     {
-        ShaderInfo(const BufferInfo &bufferInfo, vk::Semaphore *resourceSemaphore = nullptr)
-            : bufferInfo(bufferInfo),
-              m_resourceSemaphore(resourceSemaphore != nullptr ? vk::Semaphore(*resourceSemaphore) : VK_NULL_HANDLE),
-              m_willCheckForIfReady(resourceSemaphore != nullptr ? false : true)
+        ShaderInfo(const BufferInfo &bufferInfo) : bufferInfo(bufferInfo)
         {
         }
 
-        ShaderInfo(const TextureInfo &textureInfo, vk::Semaphore *resourceSemaphore = nullptr)
-            : textureInfo(textureInfo),
-              m_resourceSemaphore(resourceSemaphore != nullptr ? vk::Semaphore(*resourceSemaphore) : VK_NULL_HANDLE),
-              m_willCheckForIfReady(resourceSemaphore != nullptr ? false : true)
+        ShaderInfo(const TextureInfo &textureInfo) : textureInfo(textureInfo)
         {
         }
 
@@ -86,15 +80,6 @@ class StarShaderInfo
 
         std::optional<BufferInfo> bufferInfo = std::nullopt;
         std::optional<TextureInfo> textureInfo = std::nullopt;
-        vk::Semaphore m_resourceSemaphore;
-
-        bool getWillCheckForIfReady() const
-        {
-            return m_willCheckForIfReady;
-        }
-
-      private:
-        bool m_willCheckForIfReady;
     };
 
     struct ShaderInfoSet
@@ -153,15 +138,15 @@ class StarShaderInfo
 
         Builder &startSet();
 
-        Builder &add(BufferInfo buffer, vk::Semaphore *resourceSemaphore = nullptr)
+        Builder &add(BufferInfo buffer)
         {
-            this->activeSet->back()->add(ShaderInfo(std::move(buffer), resourceSemaphore));
+            this->activeSet->back()->add(ShaderInfo(std::move(buffer)));
             return *this;
         };
 
-        Builder &add(TextureInfo texture, vk::Semaphore *resourceSemaphore = nullptr)
+        Builder &add(TextureInfo texture)
         {
-            this->activeSet->back()->add(ShaderInfo(std::move(texture), resourceSemaphore));
+            this->activeSet->back()->add(ShaderInfo(std::move(texture)));
             return *this;
         }
 

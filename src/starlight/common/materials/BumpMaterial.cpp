@@ -1,9 +1,9 @@
 #include "BumpMaterial.hpp"
 
-#include <starlight/common/textures/TransferRequest_CompressedTextureFile.hpp>
-#include <starlight/common/textures/TransferRequest_TextureFile.hpp>
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "event/GetQueue.hpp"
+#include <starlight/common/textures/TransferRequest_CompressedTextureFile.hpp>
+#include <starlight/common/textures/TransferRequest_TextureFile.hpp>
 
 void star::BumpMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &constBuilder) const
 {
@@ -14,12 +14,10 @@ void star::BumpMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout
 void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
                                     star::StarShaderInfo::Builder frameBuilder)
 {
-    auto bumpSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
-
     if (star::TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_bumpMapFilePath))
     {
         m_bumpMap = ManagerRenderResource::addRequest(
-            context.getDeviceID(), context.getSemaphoreManager().get(bumpSemaphore)->semaphore,
+            context.getDeviceID(),
             std::make_unique<TransferRequest::CompressedTextureFile>(
                 star::core::helper::GetEngineDefaultQueue(
                     context.getEventBus(), context.getGraphicsManagers().queueManager, Queue_Type::Tgraphics)
@@ -33,7 +31,7 @@ void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const 
     else
     {
         m_bumpMap = ManagerRenderResource::addRequest(
-            context.getDeviceID(), context.getSemaphoreManager().get(bumpSemaphore)->semaphore,
+            context.getDeviceID(),
             std::make_unique<TransferRequest::TextureFile>(
                 star::core::helper::GetEngineDefaultQueue(
                     context.getEventBus(), context.getGraphicsManagers().queueManager, Queue_Type::Tgraphics)

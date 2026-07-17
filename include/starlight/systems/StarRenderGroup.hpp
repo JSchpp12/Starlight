@@ -44,7 +44,7 @@ class StarRenderGroup
 
     void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                      const Handle &targetCommandBuffer,
-                     const star::core::graphics::GPUWorkSyncInfo &transferReuqestSyncInfo);
+                     const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
     virtual void recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &swapChainImageIndex,
                                           const uint64_t &frameIndex);

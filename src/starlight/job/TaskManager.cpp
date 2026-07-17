@@ -48,7 +48,7 @@ void TaskManager::removeWorker(const Handle &worker)
     star::common::casts::SafeCast<uint16_t, size_t>(worker.getID(), workerIndex);
     assert(workerIndex < pool->size() && workerIndex > 0);
 
-    pool->erase(pool->begin() + workerIndex); 
+    pool->erase(pool->begin() + workerIndex);
 }
 
 void TaskManager::cleanup() noexcept
@@ -92,6 +92,21 @@ worker::Worker *TaskManager::getWorker(const Handle &registeredTaskType) noexcep
 
     size_t workerIndex = 0;
     star::common::casts::SafeCast<uint16_t, size_t>(registeredTaskType.getID(), workerIndex);
+
+    return &pool->at(workerIndex);
+}
+
+const worker::Worker *TaskManager::getWorker(const Handle &taskType) const noexcept
+{
+    auto *pool = getWorkerPool(taskType.getType());
+
+    if (pool == nullptr)
+    {
+        return nullptr;
+    }
+
+    size_t workerIndex = 0;
+    star::common::casts::SafeCast<uint16_t, size_t>(taskType.getID(), workerIndex);
 
     return &pool->at(workerIndex);
 }

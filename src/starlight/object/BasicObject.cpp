@@ -289,16 +289,12 @@ std::vector<star::StarMesh> star::BasicObject::loadMeshes(core::device::DeviceCo
 
         if (shape.mesh.material_ids.at(shapeCounter) != -1)
         {
-            const auto meshVertSemaphore =
-                context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
             const Handle meshVertBuffer = ManagerRenderResource::addRequest(
-                context.getDeviceID(), context.getSemaphoreManager().get(meshVertSemaphore)->semaphore,
+                context.getDeviceID(),
                 std::make_unique<TransferRequest::VertInfo>(graphicsQueueFamilyIndex, vertices));
 
-            const auto indSemaphore = context.getSemaphoreManager().submit(core::device::manager::SemaphoreRequest());
-
             const Handle meshIndBuffer = ManagerRenderResource::addRequest(
-                context.getDeviceID(), context.getSemaphoreManager().get(indSemaphore)->semaphore,
+                context.getDeviceID(),
                 std::make_unique<TransferRequest::IndicesInfo>(graphicsQueueFamilyIndex, fullInd));
 
             // apply material from files to mesh -- will ignore passed values
