@@ -24,7 +24,11 @@ void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const 
                 star::core::helper::GetEngineDefaultQueue(
                     context.getEventBus(), context.getGraphicsManagers().queueManager, Queue_Type::Tgraphics)
                     ->getParentQueueFamilyIndex(),
-                context.getDevice().getPhysicalDevice().getProperties(), std::make_unique<SharedCompressedTexture>(m_bumpMapFilePath)));
+                context.getDevice().getPhysicalDevice().getProperties(),
+                std::make_unique<SharedCompressedTexture>(SharedCompressedTexture::Builder()
+                                                              .setPath(m_bumpMapFilePath)
+                                                              .setNoAttemptGPUCompression()
+                                                              .build())));
     }
     else
     {
