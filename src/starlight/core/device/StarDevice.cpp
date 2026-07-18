@@ -285,6 +285,14 @@ StarDevice StarDevice::Builder::build()
         STAR_THROW("Failed to pick a proper physical device");
     }
 
+    //check for optional feature support
+    {
+        const vk::PhysicalDeviceFeatures feats = physicalDevice.getFeatures(); 
+        requiredPhysicalDeviceFeatures.textureCompressionBC = feats.textureCompressionBC;
+        requiredPhysicalDeviceFeatures.textureCompressionASTC_LDR = feats.textureCompressionASTC_LDR;
+        requiredPhysicalDeviceFeatures.textureCompressionETC2 = feats.textureCompressionETC2;
+    }
+
     device = CreateLogicalDevice(physicalDevice, m_instance, requiredPhysicalDeviceFeatures, m_extensions,
                                  m_deviceFeatures, m_surface);
     if (device == VK_NULL_HANDLE)
