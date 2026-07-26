@@ -48,8 +48,9 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
     HeadlessRenderer(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects,
                      std::shared_ptr<std::vector<Light>> lights, std::shared_ptr<StarCamera> camera,
                      vk::PipelineStageFlags waitPoint)
-        : star::core::renderer::DefaultRenderer(context, lights, camera, objects), m_waitPoint(waitPoint)
+        : star::core::renderer::DefaultRenderer(context, lights, camera, objects)
     {
+        m_config.waitStage = waitPoint;
     }
     HeadlessRenderer(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects,
                      std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
@@ -65,9 +66,9 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
                      std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData,
                      vk::PipelineStageFlags waitPoint)
         : star::core::renderer::DefaultRenderer(context, std::move(objects), std::move(lightData),
-                                                std::move(lightListData), std::move(cameraData)),
-          m_waitPoint(waitPoint)
+                                                std::move(lightListData), std::move(cameraData))
     {
+        m_config.waitStage = waitPoint;
     }
     HeadlessRenderer(const HeadlessRenderer &) = delete;
     HeadlessRenderer &operator=(const HeadlessRenderer &) = delete;
@@ -87,7 +88,6 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
     }
 
   private:
-    vk::PipelineStageFlags m_waitPoint{vk::PipelineStageFlagBits::eFragmentShader};
     std::vector<std::variant<pre_pass::DoNothing, pre_pass::GetImageFromNeighbor>> m_prepScheme;
     std::vector<std::variant<post_pass::DoNothing, post_pass::PrepImageForNeighbor>> m_postScheme;
     std::vector<Handle> m_timelineSemaphores;

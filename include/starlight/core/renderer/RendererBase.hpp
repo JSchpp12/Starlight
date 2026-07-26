@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/renderer/RenderPhaseConfig.hpp"
 #include "systems/StarRenderGroup.hpp"
 
 #include <star_common/IDeviceContext.hpp>
@@ -51,6 +52,7 @@ class RendererBase
     }
 
   protected:
+    RenderPhaseConfig m_config;
     std::vector<std::shared_ptr<StarObject>> m_objects;
     std::vector<Handle> m_renderToImages;
     std::vector<Handle> m_renderToDepthImages;

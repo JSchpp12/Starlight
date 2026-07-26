@@ -142,20 +142,6 @@ class DefaultRenderer : public RendererBase
     vk::ImageView createImageView(core::device::DeviceContext &device, vk::Image image, vk::Format format,
                                   vk::ImageAspectFlags aspectFlags);
 
-    // virtual StarShaderInfo::Builder manualCreateDescriptors(core::device::DeviceContext &device,
-    //                                                         const uint8_t &numFramesInFlight);
-
-    /// <summary>
-    /// Create Vulkan Image object with properties provided in function arguments.
-    /// </summary>
-    /// <param name="width">Width of the image being created</param>
-    /// <param name="height">Height of the image being created</param>
-    /// <param name="format"></param>
-    /// <param name="tiling"></param>
-    /// <param name="usage"></param>
-    /// <param name="properties"></param>
-    /// <param name="image"></param>
-    /// <param name="imageMemory"></param>
     virtual void createImage(core::device::DeviceContext &device, uint32_t width, uint32_t height, vk::Format format,
                              vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties,
                              vk::Image &image, VmaAllocation &imageMemory);
@@ -180,13 +166,7 @@ class DefaultRenderer : public RendererBase
                                      const uint64_t &frameIndex);
 
     virtual star::StarShaderInfo::Builder manualCreateDescriptors(star::core::device::DeviceContext &context);
-    /**
-     * @brief Target functionfrom recordCommandBuffer() but without the start and end
-     *
-     * @param buffer
-     * @param flightTracker
-     * @param frameIndex
-     */
+
     virtual void recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                 const uint64_t &frameIndex);
 

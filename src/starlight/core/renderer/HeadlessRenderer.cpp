@@ -72,12 +72,12 @@ core::device::manager::ManagerCommandBuffer::Request HeadlessRenderer::getComman
     return core::device::manager::ManagerCommandBuffer::Request{
         .recordBufferCallback = std::bind(&HeadlessRenderer::recordCommandBuffer, this, std::placeholders::_1,
                                           std::placeholders::_2, std::placeholders::_3),
-        .order = Command_Buffer_Order::main_render_pass,
-        .orderIndex = Command_Buffer_Order_Index::first,
-        .type = Queue_Type::Tgraphics,
-        .waitStage = m_waitPoint,
-        .willBeSubmittedEachFrame = true,
-        .recordOnce = false,
+        .order = m_config.order,
+        .orderIndex = m_config.orderIndex,
+        .type = m_config.queueType,
+        .waitStage = m_config.waitStage,
+        .willBeSubmittedEachFrame = m_config.willBeSubmittedEachFrame,
+        .recordOnce = m_config.recordOnce,
         .overrideBufferSubmissionCallback = std::bind(
             &HeadlessRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
             std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7)};
