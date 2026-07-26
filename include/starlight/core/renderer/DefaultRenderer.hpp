@@ -9,6 +9,7 @@
 #include "StarDescriptorBuilders.hpp"
 #include "StarShaderInfo.hpp"
 #include "StarTextures/Texture.hpp"
+#include "core/renderer/FrameData.hpp"
 #include "core/renderer/RendererBase.hpp"
 #include "starlight/event/DescriptorPoolReady.hpp"
 #include "starlight/object/StarObject.hpp"
@@ -83,10 +84,13 @@ class DefaultRenderer : public RendererBase
                     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
                     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
                     std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData)
-        : RendererBase(context, std::move(objects)), m_infoManagerLightData(std::move(lightData)),
-          ownsRenderResourceControllers(false), m_infoManagerLightList(std::move(lightListData)),
-          m_infoManagerCamera(std::move(cameraData))
+        : RendererBase(context, std::move(objects)), m_frameData(std::make_shared<FrameData>()),
+          ownsRenderResourceControllers(false)
     {
+        m_frameData->add(std::move(cameraData)).add(std::move(lightData)).add(std::move(lightListData));
+        m_infoManagerCamera = m_frameData->controllerAt(0);
+        m_infoManagerLightData = m_frameData->controllerAt(1);
+        m_infoManagerLightList = m_frameData->controllerAt(2);
     }
 
     DefaultRenderer(const DefaultRenderer &) = delete;
@@ -121,14 +125,13 @@ class DefaultRenderer : public RendererBase
 
   protected:
     core::renderer::RenderingContext m_renderingContext;
+    std::shared_ptr<FrameData> m_frameData;
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
     std::shared_ptr<StarDescriptorSetLayout> globalSetLayout;
     vk::Format m_colorFormat, m_depthFormat;
     bool ownsRenderResourceControllers = false;
     bool isReady = false;
-
-    void initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights);
 
     void initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights,
                      std::shared_ptr<StarCamera> camera);

@@ -22,13 +22,7 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
     RendererBase::prepRender(device);
 
     auto &c = static_cast<core::device::DeviceContext &>(device);
-    m_infoManagerLightData->prepRender(c, c.frameTracker().getSetup().getNumFramesInFlight());
-    m_infoManagerLightList->prepRender(c, c.frameTracker().getSetup().getNumFramesInFlight());
-
-    if (m_infoManagerCamera)
-    {
-        m_infoManagerCamera->prepRender(c, c.frameTracker().getSetup().getNumFramesInFlight());
-    }
+    m_frameData->prepRender(c, c.frameTracker().getSetup().getNumFramesInFlight());
 
     m_renderingContext.targetResolution = c.getEngineResolution();
 
@@ -151,20 +145,23 @@ void DefaultRenderer::frameUpdate(common::IDeviceContext &context)
     updateDependentData(c);
 }
 
-void DefaultRenderer::initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights)
-{
-    m_infoManagerLightData = std::make_shared<ManagerController::RenderResource::LightInfo>(
-        context.frameTracker().getSetup().getNumFramesInFlight(), lights);
-    m_infoManagerLightList = std::make_shared<ManagerController::RenderResource::LightList>(
-        context.frameTracker().getSetup().getNumFramesInFlight(), lights);
-}
-
 void DefaultRenderer::initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights,
                                   std::shared_ptr<StarCamera> camera)
 {
-    initBuffers(context, std::move(lights));
+    auto cameraController = std::make_shared<ManagerController::RenderResource::GlobalInfo>(camera);
+    auto lightInfoController = std::make_shared<ManagerController::RenderResource::LightInfo>(
+        context.frameTracker().getSetup().getNumFramesInFlight(), lights);
+    auto lightListController = std::make_shared<ManagerController::RenderResource::LightList>(
+        context.frameTracker().getSetup().getNumFramesInFlight(), lights);
 
-    m_infoManagerCamera = std::make_unique<ManagerController::RenderResource::GlobalInfo>(camera);
+    m_frameData = std::make_shared<FrameData>();
+    m_frameData->add(std::move(cameraController))
+        .add(std::move(lightInfoController))
+        .add(std::move(lightListController));
+
+    m_infoManagerCamera = m_frameData->controllerAt(0);
+    m_infoManagerLightData = m_frameData->controllerAt(1);
+    m_infoManagerLightList = m_frameData->controllerAt(2);
 }
 
 std::vector<star::StarTextures::Texture> DefaultRenderer::createRenderToImages(
@@ -467,49 +464,15 @@ vk::Format DefaultRenderer::getDepthAttachmentFormat(star::core::device::DeviceC
 
 void DefaultRenderer::updateDependentData(star::core::device::DeviceContext &context)
 {
-    const size_t fi = static_cast<size_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
+    if (!ownsRenderResourceControllers)
+        return;
 
+    auto result = m_frameData->frameUpdate(context);
     auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer);
-
-    if (ownsRenderResourceControllers)
+    for (const auto &w : result.waits)
     {
-        if (m_infoManagerCamera)
-        {
-            const auto [submitted, semaphore] = m_infoManagerCamera->submitUpdateIfNeeded(context, fi);
-            if (submitted)
-            {
-                record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerCamera->getHandle(fi), semaphore->vkSemaphore,
-                                                       vk::PipelineStageFlagBits::eVertexShader |
-                                                           vk::PipelineStageFlagBits::eFragmentShader,
-                                                       semaphore->signalValue);
-
-                m_renderingContext.addBufferToRenderingContext(context, m_infoManagerCamera->getHandle(fi));
-            }
-        }
-
-        {
-            const auto [submitted, semaphore] = m_infoManagerLightData->submitUpdateIfNeeded(context, fi);
-            if (submitted)
-            {
-                record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightData->getHandle(fi), semaphore->vkSemaphore,
-                                                       vk::PipelineStageFlagBits::eFragmentShader,
-                                                       semaphore->signalValue);
-
-                m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightData->getHandle(fi));
-            }
-        }
-
-        {
-            const auto [submitted, semaphore] = m_infoManagerLightList->submitUpdateIfNeeded(context, fi);
-            if (submitted)
-            {
-                record.oneTimeWaitSemaphoreInfo.insert(m_infoManagerLightList->getHandle(fi), semaphore->vkSemaphore,
-                                                       vk::PipelineStageFlagBits::eFragmentShader,
-                                                       semaphore->signalValue);
-
-                m_renderingContext.addBufferToRenderingContext(context, m_infoManagerLightList->getHandle(fi));
-            }
-        }
+        record.oneTimeWaitSemaphoreInfo.insert(w.handle, w.semaphore, w.waitStage, w.signalValue);
+        m_renderingContext.addBufferToRenderingContext(context, w.handle);
     }
 }
 

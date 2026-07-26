@@ -15,6 +15,14 @@ class Buffer : public star::ManagerController::Controller<TransferRequest::Buffe
     Buffer() = default;
     virtual ~Buffer() = default;
 
+    /// Pipeline stage(s) the GPU must wait at before reading this buffer's
+    /// latest contents after a per-frame transfer. Default covers the common
+    /// vertex+fragment UBO case; light resources override to fragment-only.
+    virtual vk::PipelineStageFlags waitStage() const
+    {
+        return vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader;
+    }
+
   protected:
     virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(
         core::device::DeviceContext &device, const uint8_t &frameInFlightIndex) override = 0;
