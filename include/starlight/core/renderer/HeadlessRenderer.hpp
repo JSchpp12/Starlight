@@ -53,20 +53,13 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
         m_config.waitStage = waitPoint;
     }
     HeadlessRenderer(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects,
-                     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
-                     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
-                     std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData)
-        : star::core::renderer::DefaultRenderer(context, std::move(objects), std::move(lightData),
-                                                std::move(lightListData), std::move(cameraData))
+                     std::shared_ptr<FrameData> frameData)
+        : star::core::renderer::DefaultRenderer(context, std::move(objects), std::move(frameData))
     {
     }
     HeadlessRenderer(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects,
-                     std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
-                     std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
-                     std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData,
-                     vk::PipelineStageFlags waitPoint)
-        : star::core::renderer::DefaultRenderer(context, std::move(objects), std::move(lightData),
-                                                std::move(lightListData), std::move(cameraData))
+                     std::shared_ptr<FrameData> frameData, vk::PipelineStageFlags waitPoint)
+        : star::core::renderer::DefaultRenderer(context, std::move(objects), std::move(frameData))
     {
         m_config.waitStage = waitPoint;
     }

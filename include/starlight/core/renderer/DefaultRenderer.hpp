@@ -81,13 +81,10 @@ class DefaultRenderer : public RendererBase
     }
 
     DefaultRenderer(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects,
-                    std::shared_ptr<ManagerController::RenderResource::Buffer> lightData,
-                    std::shared_ptr<ManagerController::RenderResource::Buffer> lightListData,
-                    std::shared_ptr<ManagerController::RenderResource::Buffer> cameraData)
-        : RendererBase(context, std::move(objects)), m_frameData(std::make_shared<FrameData>()),
+                    std::shared_ptr<FrameData> frameData)
+        : RendererBase(context, std::move(objects)), m_frameData(std::move(frameData)),
           ownsRenderResourceControllers(false)
     {
-        m_frameData->add(std::move(cameraData)).add(std::move(lightData)).add(std::move(lightListData));
         m_infoManagerCamera = m_frameData->controllerAt(0);
         m_infoManagerLightData = m_frameData->controllerAt(1);
         m_infoManagerLightList = m_frameData->controllerAt(2);
@@ -108,19 +105,9 @@ class DefaultRenderer : public RendererBase
         return RenderingTargetInfo({m_colorFormat}, m_depthFormat);
     }
 
-    std::shared_ptr<ManagerController::RenderResource::Buffer> getCameraInfoBuffers()
+    std::shared_ptr<FrameData> getFrameData()
     {
-        return m_infoManagerCamera;
-    }
-
-    std::shared_ptr<ManagerController::RenderResource::Buffer> getLightInfoBuffers()
-    {
-        return m_infoManagerLightData;
-    }
-
-    std::shared_ptr<ManagerController::RenderResource::Buffer> getLightListBuffers()
-    {
-        return m_infoManagerLightList;
+        return m_frameData;
     }
 
   protected:
