@@ -10,6 +10,7 @@
 #include "StarShaderInfo.hpp"
 #include "StarTextures/Texture.hpp"
 #include "core/renderer/FrameData.hpp"
+#include "core/renderer/RenderTargets.hpp"
 #include "core/renderer/RendererBase.hpp"
 #include "starlight/event/DescriptorPoolReady.hpp"
 #include "starlight/object/StarObject.hpp"
@@ -112,6 +113,8 @@ class DefaultRenderer : public RendererBase
 
   protected:
     core::renderer::RenderingContext m_renderingContext;
+    RenderTargets::Provider m_renderTargetProvider = &RenderTargets::forOffscreen;
+    RenderTargets m_renderTargets;
     std::shared_ptr<FrameData> m_frameData;
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;

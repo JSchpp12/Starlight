@@ -26,40 +26,25 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
 
     m_renderingContext.targetResolution = c.getEngineResolution();
 
+    if (m_renderTargetProvider)
     {
-        auto images = createRenderToImages(c, c.frameTracker().getSetup().getNumFramesInFlight());
-        m_colorFormat = images.front().getBaseFormat();
-        m_renderToImages.resize(images.size());
-
-        for (size_t i = 0; i < images.size(); i++)
-        {
-            void *r = nullptr;
-            device.getEventBus().emit(core::device::system::event::ManagerRequest{
-                star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                    core::device::manager::GetImageEventTypeName),
-                core::device::manager::ImageRequest{std::move(images[i])}, m_renderToImages[i], &r});
-
-            assert(r != nullptr);
-            auto *result = static_cast<core::device::manager::ImageRecord *>(r);
-            m_renderingContext.recordDependentImage.manualInsert(m_renderToImages[i], &result->texture);
-        }
+        m_renderTargets = m_renderTargetProvider(c, m_renderingContext);
+        m_renderToImages = m_renderTargets.colorHandles();
+        m_renderToDepthImages = m_renderTargets.depthHandles();
+        m_colorFormat = m_renderTargets.colorFormat();
+        m_depthFormat = m_renderTargets.depthFormat();
     }
+    else
     {
-        auto images = createRenderToDepthImages(c, c.frameTracker().getSetup().getNumFramesInFlight());
-        m_depthFormat = images.front().getBaseFormat();
-        m_renderToDepthImages.resize(images.size());
+        auto colorImages = createRenderToImages(c, c.frameTracker().getSetup().getNumFramesInFlight());
+        m_colorFormat = colorImages.front().getBaseFormat();
+        m_renderToImages = RenderTargets::registerTextures(c, m_renderingContext, std::move(colorImages));
 
-        for (size_t i = 0; i < images.size(); i++)
-        {
-            void *r = nullptr;
-            device.getEventBus().emit(core::device::system::event::ManagerRequest{
-                star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                    core::device::manager::GetImageEventTypeName),
-                core::device::manager::ImageRequest{std::move(images[i])}, m_renderToDepthImages[i], &r});
+        auto depthImages = createRenderToDepthImages(c, c.frameTracker().getSetup().getNumFramesInFlight());
+        m_depthFormat = depthImages.front().getBaseFormat();
+        m_renderToDepthImages = RenderTargets::registerTextures(c, m_renderingContext, std::move(depthImages));
 
-            auto *result = static_cast<core::device::manager::ImageRecord *>(r);
-            m_renderingContext.recordDependentImage.manualInsert(m_renderToDepthImages[i], &result->texture);
-        }
+        m_renderTargets = RenderTargets(m_renderToImages, m_colorFormat, m_renderToDepthImages, m_depthFormat);
     }
 
     for (auto &group : m_renderGroups)
@@ -71,7 +56,7 @@ void DefaultRenderer::prepRender(common::IDeviceContext &device)
     star::core::waiter::one_shot::GenericEvent<WaitForDescriptorPoolReady, star::event::DescriptorPoolReady>::Builder(
         c.getEventBus())
         .setPayload(WaitForDescriptorPoolReady{
-            RenderingTargetInfo({this->getColorAttachmentFormat(c)}, this->getDepthAttachmentFormat(c)),
+            RenderingTargetInfo({m_colorFormat}, m_depthFormat),
             std::bind(&DefaultRenderer::manualCreateDescriptors, this, std::placeholders::_1), c, m_renderGroups})
         .build();
 }
@@ -137,10 +122,7 @@ void DefaultRenderer::frameUpdate(common::IDeviceContext &context)
 
     auto &c = static_cast<core::device::DeviceContext &>(context);
     size_t i = static_cast<size_t>(c.frameTracker().getCurrent().getFrameInFlightIndex());
-    m_renderingContext.recordDependentImage.manualInsert(m_renderToImages[i],
-                                                         &c.getImageManager().get(m_renderToImages[i])->texture);
-    m_renderingContext.recordDependentImage.manualInsert(m_renderToDepthImages[i],
-                                                         &c.getImageManager().get(m_renderToDepthImages[i])->texture);
+    m_renderTargets.frameUpdate(c, m_renderingContext);
 
     updateDependentData(c);
 }
