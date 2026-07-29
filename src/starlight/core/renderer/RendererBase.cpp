@@ -133,4 +133,19 @@ void RendererBase::updateRenderingGroups(core::device::DeviceContext &context, c
         group.frameUpdate(context, frameInFlightIndex, m_commandBuffer, transferSyncInfoToUse);
     }
 }
+
+core::device::manager::ManagerCommandBuffer::Request RendererBase::getCommandBufferRequest()
+{
+    return core::device::manager::ManagerCommandBuffer::Request{
+        .recordBufferCallback = std::bind(&RendererBase::recordCommandBuffer, this, std::placeholders::_1,
+                                          std::placeholders::_2, std::placeholders::_3),
+        .order = m_config.order,
+        .orderIndex = m_config.orderIndex,
+        .type = m_config.queueType,
+        .waitStage = m_config.waitStage,
+        .willBeSubmittedEachFrame = m_config.willBeSubmittedEachFrame,
+        .recordOnce = m_config.recordOnce,
+        .overrideBufferSubmissionCallback = getSubmissionOverride(),
+    };
+}
 } // namespace star::core::renderer

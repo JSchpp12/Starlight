@@ -19,6 +19,9 @@ namespace star::core::device::manager
 class ManagerCommandBuffer
 {
   public:
+    using BufferSubmissionOverride = std::function<vk::Semaphore(
+        StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *, std::vector<vk::Semaphore> &,
+        std::vector<vk::PipelineStageFlags> &, std::vector<std::optional<uint64_t>> &, star::StarQueue &)>;
     struct Request
     {
         // when
@@ -33,10 +36,7 @@ class ManagerCommandBuffer
         bool willBeSubmittedEachFrame = false;
         bool recordOnce = false;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback = std::nullopt;
-        std::optional<std::function<vk::Semaphore(
-            StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *, std::vector<vk::Semaphore>&,
-            std::vector<vk::PipelineStageFlags>&, std::vector<std::optional<uint64_t>>&, star::StarQueue &)>>
-            overrideBufferSubmissionCallback = std::nullopt;
+        std::optional<BufferSubmissionOverride> overrideBufferSubmissionCallback = std::nullopt;
     };
     struct InUseQueueInfo
     {
@@ -44,7 +44,8 @@ class ManagerCommandBuffer
         StarQueue *queue = nullptr;
     };
 
-    ManagerCommandBuffer(StarDevice &device, core::device::manager::Queue &queueManager, const uint8_t &numFramesInFlight,
+    ManagerCommandBuffer(StarDevice &device, core::device::manager::Queue &queueManager,
+                         const uint8_t &numFramesInFlight,
                          const absl::flat_hash_map<star::Queue_Type, Handle> &queuesToUse);
 
     void init(core::device::manager::Queue &queueManager);
@@ -64,11 +65,12 @@ class ManagerCommandBuffer
     /// @return semaphore signaling completion of submission
     vk::Semaphore update(StarDevice &device, const common::FrameTracker &frameTracker);
 
-    const InUseQueueInfo *getInUseInfoForType(const star::Queue_Type &type); 
+    const InUseQueueInfo *getInUseInfoForType(const star::Queue_Type &type);
+
   private:
     static std::stack<Handle> dynamicBuffersToSubmit;
     absl::flat_hash_map<star::Queue_Type, Handle> m_typeToQueueInfo;
-    absl::flat_hash_map<Handle, InUseQueueInfo, star::HandleHash> m_inUseQueueInfo; 
+    absl::flat_hash_map<Handle, InUseQueueInfo, star::HandleHash> m_inUseQueueInfo;
     CommandBufferContainer buffers;
     uint8_t numFramesInFlight = 0;
     std::unique_ptr<star::Handle> mainGraphicsBufferHandle = std::unique_ptr<star::Handle>();
@@ -79,6 +81,6 @@ class ManagerCommandBuffer
 
     void handleDynamicBufferRequests();
 
-    InUseQueueInfo *selectQueueForType(const star::Queue_Type &type); 
+    InUseQueueInfo *selectQueueForType(const star::Queue_Type &type);
 };
 } // namespace star::core::device::manager

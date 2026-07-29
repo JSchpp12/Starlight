@@ -1,5 +1,7 @@
 #pragma once
 
+#include "starlight/core/device/DeviceContext.hpp"
+
 namespace star::core::renderer
 {
 struct OnDescriptorPoolReadyWaiter
@@ -7,7 +9,7 @@ struct OnDescriptorPoolReadyWaiter
     std::vector<StarRenderGroup> *renderGroups{nullptr};
     star::core::device::DeviceContext *context{nullptr};
 
-    int operator()()
+    int operator()(star::core::device::DeviceContext &c)
     {
         auto rendererDescriptors = manualCreateDescriptors(c, c.getFrameTracker().getSetup().getNumFramesInFlight());
 
@@ -72,4 +74,4 @@ struct OnDescriptorPoolReadyWaiter
             .build();
     }
 };
-}
+} // namespace star::core::renderer

@@ -88,11 +88,10 @@ class HeadlessRenderer : public star::core::renderer::DefaultRenderer
     const star::core::device::manager::Image *m_imgMgr{nullptr};
     const star::core::CommandBus *m_cmdBus{nullptr};
 
-    // void applyPrePipelineBarriers(vk::CommandBuffer commandBuffer, const star::common::FrameTracker &ft) const;
-
     void waitForSemaphore(const common::FrameTracker &Ft) const;
 
-    core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override;
+    std::optional<core::device::manager::ManagerCommandBuffer::BufferSubmissionOverride> getSubmissionOverride()
+        override;
 
     virtual void recordCommandBuffer(star::StarCommandBuffer &commandBuffer, const common::FrameTracker &ft,
                                      const uint64_t &frameIndex) override;

@@ -144,8 +144,6 @@ class DefaultRenderer : public RendererBase
     virtual vk::Format getDepthAttachmentFormat(star::core::device::DeviceContext &context) const;
 
     virtual void updateDependentData(star::core::device::DeviceContext &context);
-
-    virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() override = 0;
 #pragma region helpers
     vk::Viewport prepareRenderingViewport(const vk::Extent2D &resolution);
 

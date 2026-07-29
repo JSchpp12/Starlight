@@ -5,7 +5,9 @@
 
 #include <star_common/IDeviceContext.hpp>
 
+#include <functional>
 #include <memory>
+#include <optional>
 namespace star::core::renderer
 {
 class RendererBase
@@ -20,10 +22,12 @@ class RendererBase
     virtual void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft);
     virtual void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                       const uint64_t &frameIndex);
+    virtual void recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &ft,
+                                     const uint64_t &frameIndex) = 0;
     virtual void cleanupRender(common::IDeviceContext &context);
     virtual void prepRender(common::IDeviceContext &context);
     virtual void frameUpdate(common::IDeviceContext &context);
-    virtual core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest() = 0;
+    core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest();
 
     const Handle &getCommandBuffer() const
     {
@@ -52,6 +56,14 @@ class RendererBase
     }
 
   protected:
+    /// Optional per-phase submission override. Return a callable to take over
+    /// the queue submit (edge-based DAG submission); return nullopt to use the
+    /// manager's default order-based submission. Default is nullopt.
+    virtual std::optional<core::device::manager::ManagerCommandBuffer::BufferSubmissionOverride> getSubmissionOverride()
+    {
+        return std::nullopt;
+    }
+
     RenderPhaseConfig m_config;
     std::vector<std::shared_ptr<StarObject>> m_objects;
     std::vector<Handle> m_renderToImages;

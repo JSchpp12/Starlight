@@ -60,27 +60,19 @@ void HeadlessRenderer::frameUpdate(common::IDeviceContext &c)
 
     size_t ii = static_cast<size_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
 
-    context.getCmdBus().submit(
-        star::command_order::TriggerPass()
-            .setTimelineSemaphore(m_timelineSemaphores[ii])
-            .setSignalValue(context.frameTracker().getCurrent().getNumTimesFrameProcessed() + 1)
-            .setPass(m_commandBuffer));
+    context.getCmdBus().submit(star::command_order::TriggerPass()
+                                   .setTimelineSemaphore(m_timelineSemaphores[ii])
+                                   .setSignalValue(context.frameTracker().getCurrent().getNumTimesFrameProcessed() + 1)
+                                   .setPass(m_commandBuffer));
 }
 
-core::device::manager::ManagerCommandBuffer::Request HeadlessRenderer::getCommandBufferRequest()
+std::optional<core::device::manager::ManagerCommandBuffer::BufferSubmissionOverride> HeadlessRenderer::
+    getSubmissionOverride()
 {
-    return core::device::manager::ManagerCommandBuffer::Request{
-        .recordBufferCallback = std::bind(&HeadlessRenderer::recordCommandBuffer, this, std::placeholders::_1,
-                                          std::placeholders::_2, std::placeholders::_3),
-        .order = m_config.order,
-        .orderIndex = m_config.orderIndex,
-        .type = m_config.queueType,
-        .waitStage = m_config.waitStage,
-        .willBeSubmittedEachFrame = m_config.willBeSubmittedEachFrame,
-        .recordOnce = m_config.recordOnce,
-        .overrideBufferSubmissionCallback = std::bind(
-            &HeadlessRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
-            std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7)};
+    core::device::manager::ManagerCommandBuffer::BufferSubmissionOverride overrideFn = std::bind(
+        &HeadlessRenderer::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+        std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7);
+    return overrideFn;
 }
 
 void HeadlessRenderer::waitForSemaphore(const common::FrameTracker &ft) const
