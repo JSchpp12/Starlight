@@ -167,12 +167,6 @@ class DefaultRenderer : public RendererBase
     std::vector<vk::BufferMemoryBarrier2> getMemoryBarriersForThisFrame(const uint8_t &frameInFlightIndex,
                                                                         const uint64_t &frameIndex);
 
-    RenderingTargetInfo getRenderingTargetInfo(core::device::DeviceContext &context) const
-    {
-        return RenderingTargetInfo(std::vector<vk::Format>{this->getColorAttachmentFormat(context)},
-                                   this->getDepthAttachmentFormat(context));
-    }
-
     virtual std::shared_ptr<star::StarDescriptorSetLayout> createGlobalDescriptorSetLayout(
         device::DeviceContext &context, const uint8_t &numFramesInFlight);
 

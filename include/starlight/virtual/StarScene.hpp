@@ -6,7 +6,10 @@
 #include <star_common/FrameTracker.hpp>
 #include <star_common/Renderer.hpp>
 
+#include "core/renderer/IRenderPhaseProvider.hpp"
+
 #include <functional>
+#include <queue>
 #include <vector>
 
 namespace star
@@ -22,6 +25,7 @@ class StarScene
     StarScene(IsReadyFunction isReady, std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer);
     StarScene(IsReadyFunction isReady, std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer,
               std::vector<common::Renderer> renderers);
+    ~StarScene() = default;
 
     /// Function called every frame
     void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
@@ -29,6 +33,9 @@ class StarScene
     void prepRender(core::device::DeviceContext &context, const common::FrameTracker::Setup &renderImageSetup);
 
     void cleanupRender(core::device::DeviceContext &context);
+
+    /// Queue a render phase provider to be built at prepRender time.
+    void addProvider(std::unique_ptr<core::renderer::IRenderPhaseProvider> provider);
 
     bool isReady(core::device::DeviceContext &context);
 
@@ -51,6 +58,9 @@ class StarScene
     std::shared_ptr<StarCamera> m_camera;
     common::Renderer m_primaryRenderer;
     std::vector<common::Renderer> m_renderers;
+
+    std::queue<std::unique_ptr<core::renderer::IRenderPhaseProvider>> m_providers;
+    std::vector<std::unique_ptr<core::renderer::RenderPhase>> m_phases;
 };
 
 namespace star_scene
