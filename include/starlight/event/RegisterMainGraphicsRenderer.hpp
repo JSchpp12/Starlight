@@ -1,6 +1,6 @@
 #pragma once
 
-#include "starlight/core/renderer/RendererBase.hpp"
+#include "starlight/core/renderer/RenderPhase.hpp"
 
 #include <star_common/IEvent.hpp>
 #include <string_view>
@@ -22,14 +22,14 @@ class RegisterMainGraphicsRenderer : public common::IEvent
         return register_main_graphics_renderer::GetUniqueTypeName();
     }
 
-    explicit RegisterMainGraphicsRenderer(core::renderer::RendererBase *renderer);
+    explicit RegisterMainGraphicsRenderer(core::renderer::RenderPhase *renderer);
 
-    const core::renderer::RendererBase *getRenderer() const
+    const core::renderer::RenderPhase *getRenderer() const
     {
         return m_renderer;
     }
 
   private:
-    core::renderer::RendererBase *m_renderer = nullptr;
+    core::renderer::RenderPhase *m_renderer = nullptr;
 };
 } // namespace star::event

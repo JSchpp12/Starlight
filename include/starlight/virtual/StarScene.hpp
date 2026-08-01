@@ -4,12 +4,18 @@
 #include "starlight/object/StarObject.hpp"
 
 #include <star_common/FrameTracker.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
 #include <star_common/Renderer.hpp>
+#include <star_common/special_types/SpecialHandleTypes.hpp>
 
+#include "core/LinearHandleContainer.hpp"
 #include "core/renderer/IRenderPhaseProvider.hpp"
+#include "core/renderer/RenderPhase.hpp"
 
 #include <functional>
+#include <memory>
 #include <queue>
+#include <utility>
 #include <vector>
 
 namespace star
@@ -17,14 +23,14 @@ namespace star
 /// <summary>
 /// Container for all objects in a scene.
 /// </summary>
-class StarScene
+class StarScene : public core::renderer::RenderPhaseRegistry
 {
   public:
     using IsReadyFunction = std::function<bool(core::device::DeviceContext &)>;
 
-    StarScene(IsReadyFunction isReady, std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer);
-    StarScene(IsReadyFunction isReady, std::shared_ptr<StarCamera> camera, common::Renderer primaryRenderer,
-              std::vector<common::Renderer> renderers);
+    static constexpr size_t MaxRenderPhases = 8;
+
+    StarScene(IsReadyFunction isReady, std::shared_ptr<StarCamera> camera);
     ~StarScene() = default;
 
     /// Function called every frame
@@ -34,8 +40,10 @@ class StarScene
 
     void cleanupRender(core::device::DeviceContext &context);
 
-    /// Queue a render phase provider to be built at prepRender time.
-    void addProvider(std::unique_ptr<core::renderer::IRenderPhaseProvider> provider);
+    /// Queue a render phase provider to be built at prepRender time. The returned
+    /// handle is the slot the phase will occupy once built; thread it into any
+    /// sibling provider that needs to reach this phase's data.
+    Handle addProvider(std::unique_ptr<core::renderer::IRenderPhaseProvider> provider);
 
     bool isReady(core::device::DeviceContext &context);
 
@@ -53,14 +61,22 @@ class StarScene
         return m_primaryRenderer;
     }
 
+    /// RenderPhaseRegistry: look up a built phase by its handle.
+    core::renderer::RenderPhase *getPhase(const Handle &handle) override
+    {
+        return m_phases.get(handle).get();
+    }
+
   protected:
     IsReadyFunction m_isReady;
     std::shared_ptr<StarCamera> m_camera;
     common::Renderer m_primaryRenderer;
     std::vector<common::Renderer> m_renderers;
 
-    std::queue<std::unique_ptr<core::renderer::IRenderPhaseProvider>> m_providers;
-    std::vector<std::unique_ptr<core::renderer::RenderPhase>> m_phases;
+    std::queue<std::pair<std::unique_ptr<core::renderer::IRenderPhaseProvider>, Handle>> m_providers;
+    core::LinearHandleContainer<std::unique_ptr<core::renderer::RenderPhase>, MaxRenderPhases> m_phases{
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::RenderPhaseTypeName)};
+    std::vector<Handle> m_phaseHandles;
 };
 
 namespace star_scene
