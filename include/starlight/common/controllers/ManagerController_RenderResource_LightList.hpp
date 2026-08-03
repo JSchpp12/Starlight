@@ -15,6 +15,8 @@ class LightList : public ManagerController::RenderResource::Buffer
 
     virtual ~LightList() = default;
 
+    vk::PipelineStageFlags waitStage() const override { return vk::PipelineStageFlagBits::eFragmentShader; }
+
   protected:
     bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const override;
 

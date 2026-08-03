@@ -133,6 +133,9 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                                 std::optional<core::graphics::SemaphoreInfo> waitInfo,
                                                 const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
 {
+    assert(!waitInfo.has_value() || (waitInfo.has_value() && waitInfo.value().semaphore != VK_NULL_HANDLE) &&
+                                        "Provided semaphore for waitInfo is not valid.");
+
     auto &container = bufferStorage.at(deviceID)->get(handle);
 
     if (!container.cpuWorkDoneByTransferThread.load())

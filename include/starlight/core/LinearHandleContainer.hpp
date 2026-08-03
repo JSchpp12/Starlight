@@ -29,6 +29,14 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
         return m_records;
     }
 
+    /// Reserve a slot without storing data yet; the returned Handle is stable
+    /// and the slot can be filled later via get(handle) = data.
+    Handle reserve()
+    {
+        const uint32_t acqSpace = getNextSpace();
+        return Handle{.type = this->getHandleType(), .id = acqSpace};
+    }
+
   protected:
     std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
     std::array<TData, TMaxDataCount> m_records = std::array<TData, TMaxDataCount>();

@@ -16,6 +16,8 @@ class LightInfo : public ManagerController::RenderResource::Buffer
     }
     virtual ~LightInfo() = default;
 
+    vk::PipelineStageFlags waitStage() const override { return vk::PipelineStageFlagBits::eFragmentShader; }
+
   protected:
     const std::shared_ptr<std::vector<Light>> lights;
     std::vector<uint32_t> lastWriteNumLights;

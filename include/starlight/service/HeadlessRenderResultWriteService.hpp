@@ -2,7 +2,7 @@
 
 #include "starlight/command/headless_render_result_write/GetFileNameForFrame.hpp"
 #include "starlight/command/headless_render_result_write/GetSetOutputDir.hpp"
-#include "starlight/core/renderer/RendererBase.hpp"
+#include "starlight/core/renderer/RenderPhase.hpp"
 #include "starlight/policy/ListenForRegisterMainGraphicsRendererPolicy.hpp"
 #include "starlight/policy/ListenForRenderReadyForFinalization.hpp"
 #include "starlight/policy/ListenForStartOfNextFramePolicy.hpp"
@@ -76,7 +76,7 @@ class HeadlessRenderResultWriteService
     const common::FrameTracker *m_frameTracker = nullptr;
     core::device::manager::ManagerCommandBuffer *m_managerCommandBuffer = nullptr;
     core::device::manager::GraphicsContainer *m_managerGraphicsContainer = nullptr;
-    const core::renderer::RendererBase *m_mainGraphicsRenderer = nullptr;
+    const core::renderer::RenderPhase *m_mainGraphicsRenderer = nullptr;
 
     void initListeners(common::EventBus &eventBus);
 
