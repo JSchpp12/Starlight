@@ -36,7 +36,6 @@ namespace star {
         /// vertex data originating from a binding descritpion. For this program, there are 2: position and color. 
         /// </summary>
         /// <returns>Array containing attribute descriptions</returns>
-
         static std::array<vk::VertexInputAttributeDescription, 10> getAttributeDescriptions() {
             std::array<vk::VertexInputAttributeDescription, 10> attributeDescriptions{};
 

@@ -13,15 +13,15 @@ namespace star::core::device::manager
 struct PipelineRequest
 {
     PipelineRequest() = default;
-    PipelineRequest(StarPipeline pipeline) : pipeline(std::move(pipeline))
+    PipelineRequest(PipelineProvider provider) : provider(std::move(provider))
     {
     }
-    PipelineRequest(StarPipeline pipeline, vk::Extent2D resolution, renderer::RenderingTargetInfo renderingInfo)
-        : pipeline(std::move(pipeline)), resolution(std::move(resolution)), renderingInfo(std::move(renderingInfo))
+    PipelineRequest(PipelineProvider provider, vk::Extent2D resolution, renderer::RenderingTargetInfo renderingInfo)
+        : provider(std::move(provider)), resolution(std::move(resolution)), renderingInfo(std::move(renderingInfo))
     {
     }
 
-    StarPipeline pipeline = StarPipeline();
+    PipelineProvider provider = PipelineProvider();
     vk::Extent2D resolution = vk::Extent2D();
     star::core::renderer::RenderingTargetInfo renderingInfo = star::core::renderer::RenderingTargetInfo();
 };
@@ -29,19 +29,23 @@ struct PipelineRequest
 struct PipelineRecord
 {
     PipelineRecord() = default;
-    PipelineRecord(PipelineRequest pipeline) : request(std::move(pipeline)){};
+    PipelineRecord(PipelineRequest request) : request(std::move(request)) {};
 
     bool isReady() const
     {
-        return request.pipeline.isRenderReady();
+        return builtPipeline.isRenderReady();
     }
 
     void cleanupRender(core::device::StarDevice &device)
     {
-        request.pipeline.cleanupRender(device);
+        builtPipeline.destroy(device.getVulkanDevice());
     }
 
+    /// Recipe retained for shader-compiled matching + (optionally) cache keying.
     PipelineRequest request = PipelineRequest();
+    /// The built pipeline handle. Default-constructed (vk::Pipeline == VK_NULL_HANDLE)
+    /// until the build task completes.
+    StarPipeline builtPipeline;
     uint8_t numCompiled = 0;
 };
 
@@ -62,7 +66,7 @@ class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineReque
     Pipeline(Pipeline &&) = delete;
     Pipeline &operator=(Pipeline &&) = delete;
 
-    void init(device::StarDevice *device, common::EventBus &bus, job::TaskManager &taskSystem) override;
+    void init(device::StarDevice *device, common::EventBus &eventBus, job::TaskManager &taskSystem) override;
 
     virtual void cleanupRender() override;
 

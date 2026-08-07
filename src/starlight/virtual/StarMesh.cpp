@@ -49,6 +49,15 @@ StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vecto
     CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
 }
 
+StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, uint32_t vertexCount, uint32_t indexCount,
+                   std::shared_ptr<StarMaterial> material, const glm::vec3 &boundBoxMinCoord,
+                   const glm::vec3 &boundBoxMaxCoord, bool hasAdjacenciesPacked)
+    : material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), triangular(indexCount % 3 == 0),
+      aaboundingBoxBounds{boundBoxMinCoord, boundBoxMaxCoord}, numVerts(vertexCount), numInds(indexCount),
+      vertBuffer(vertBuffer), indBuffer(indBuffer)
+{
+}
+
 void star::StarMesh::prepRender(star::core::device::DeviceContext &context)
 {
     m_deviceID = context.getDeviceID();

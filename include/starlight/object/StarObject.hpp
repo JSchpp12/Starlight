@@ -53,8 +53,13 @@ class StarObject
 
     virtual void cleanupRender(core::device::DeviceContext &device);
 
-    virtual Handle buildPipeline(core::device::DeviceContext &device, vk::Extent2D swapChainExtent,
-                                 vk::PipelineLayout pipelineLayout, core::renderer::RenderingTargetInfo renderInfo);
+    virtual Handle buildPipeline(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+                                 vk::PipelineLayout pipelineLayout, const core::renderer::RenderingTargetInfo &renderInfo);
+
+    /// Produce the pipeline build recipe for this object. Override to customize
+    /// vertex input (attributes), topology, blend, etc. Default uses the object's
+    /// vertex/fragment shader handles and the global VulkanVertex layout.
+    virtual PipelineProvider getPipelineProvider(vk::PipelineLayout pipelineLayout);
 
     virtual void prepRender(star::core::device::DeviceContext &context);
 
