@@ -47,7 +47,7 @@ std::vector<StarMesh> CubeObject::loadMeshes(core::device::DeviceContext &contex
     MeshData meshData = BuildCubeMesh(m_desc, this->m_meshMaterials.front());
 
     auto vertBuffer = context.getManagerRenderResource().addRequest(
-        context.getDeviceID(), std::make_unique<star::TransferRequest::VertInfo>(graphicsIndex, meshData.vertices));
+        context.getDeviceID(), std::make_unique<star::TransferRequest::VertInfo<>>(graphicsIndex, meshData.vertices));
     auto indBuffer = context.getManagerRenderResource().addRequest(
         context.getDeviceID(), std::make_unique<TransferRequest::IndicesInfo>(graphicsIndex, meshData.indices));
 

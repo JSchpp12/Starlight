@@ -213,7 +213,7 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context)
         calculateBoundingBox(bbVerts, bbInds);
 
         this->boundingBoxVertBuffer = ManagerRenderResource::addRequest(
-            m_deviceID, std::make_unique<TransferRequest::VertInfo>(graphicsFamilyIndex, std::move(bbVerts)));
+            m_deviceID, std::make_unique<TransferRequest::VertInfo<>>(graphicsFamilyIndex, std::move(bbVerts)));
 
         this->boundingBoxIndexBuffer = ManagerRenderResource::addRequest(
             m_deviceID, std::make_unique<TransferRequest::IndicesInfo>(graphicsFamilyIndex, std::move(bbInds)));

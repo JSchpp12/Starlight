@@ -26,20 +26,12 @@ enum class PipelineType
     Compute
 };
 
-/// Per-vertex input description an object can supply to override the engine's
-/// default (global VulkanVertex) layout. Both vectors may be left empty to
-/// fall back to VulkanVertex.
 struct VertexInputState
 {
     std::vector<vk::VertexInputBindingDescription> bindings;
     std::vector<vk::VertexInputAttributeDescription> attributes;
 };
 
-/// Knobs an object can override on top of the engine's default graphics
-/// pipeline state. Anything left empty/default falls back to the engine
-/// defaults. This is what makes vertex attributes (and other state)
-/// configurable -- previously BuildGraphicsPipeline ignored the caller's
-/// config entirely and hard-coded VulkanVertex.
 struct GraphicsOverrides
 {
     VertexInputState vertexInput;
@@ -51,12 +43,6 @@ struct GraphicsOverrides
     std::vector<vk::DynamicState> dynamicStates;
 };
 
-/// Build recipe for a StarPipeline. Mirrors IRenderPhaseProvider: it holds the
-/// description (shaders, pipeline layout, per-type overrides) and produces a
-/// built StarPipeline via build(). The provider is what the pipeline manager
-/// stores pre-build and what shader-compiled events are matched against; the
-/// resulting StarPipeline is a minimal handle that retains nothing but the
-/// vk::Pipeline and its bind point.
 class PipelineProvider
 {
   public:
@@ -119,9 +105,8 @@ class PipelineProvider
 
     static vk::ShaderModule createShaderModule(vk::Device &device, const std::vector<uint32_t> &sourceCode);
 
-    static void processShaders(vk::Device &device, const RenderResourceDependencies &deps,
-                               vk::ShaderModule &vertModule, vk::ShaderModule &fragModule,
-                               vk::ShaderModule &geoModule);
+    static void processShaders(vk::Device &device, const RenderResourceDependencies &deps, vk::ShaderModule &vertModule,
+                               vk::ShaderModule &fragModule, vk::ShaderModule &geoModule);
 };
 
 /// Minimal built pipeline handle. Owns the vk::Pipeline and knows its bind

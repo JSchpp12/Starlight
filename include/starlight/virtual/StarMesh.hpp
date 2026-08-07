@@ -24,6 +24,14 @@ class StarMesh
              std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, const glm::vec3 &boundBoxMinCoord,
              const glm::vec3 &boundBoxMaxCoord, bool packAdjacencies = false);
 
+    /// Construct with a precomputed bounding box and explicit vertex/index counts,
+    /// without needing the host vertex data. Use when vertices are uploaded as a
+    /// compact, non-Vertex host type (e.g. a terrain-specific vertex format) and the
+    /// bounding box has already been computed by the caller.
+    StarMesh(const Handle &vertBuffer, const Handle &indBuffer, uint32_t vertexCount, uint32_t indexCount,
+             std::shared_ptr<StarMaterial> material, const glm::vec3 &boundBoxMinCoord,
+             const glm::vec3 &boundBoxMaxCoord, bool hasAdjacenciesPacked = false);
+
     virtual ~StarMesh() = default;
 
     virtual void prepRender(core::device::DeviceContext &device);

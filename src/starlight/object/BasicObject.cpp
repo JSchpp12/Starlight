@@ -291,7 +291,7 @@ std::vector<star::StarMesh> star::BasicObject::loadMeshes(core::device::DeviceCo
         {
             const Handle meshVertBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(),
-                std::make_unique<TransferRequest::VertInfo>(graphicsQueueFamilyIndex, vertices));
+                std::make_unique<TransferRequest::VertInfo<>>(graphicsQueueFamilyIndex, vertices));
 
             const Handle meshIndBuffer = ManagerRenderResource::addRequest(
                 context.getDeviceID(),
