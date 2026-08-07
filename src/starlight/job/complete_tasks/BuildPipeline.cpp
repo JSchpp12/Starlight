@@ -23,14 +23,14 @@ void star::job::complete_tasks::ExecuteBuildPipelineComplete(void *device, void 
 
     std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;
 
-    gm->pipelineManager->get(handle)->request.pipeline = std::move(*p->pipeline);
+    gm->pipelineManager->get(handle)->builtPipeline = std::move(p->pipeline);
 
     auto *evtBus = static_cast<star::common::EventBus *>(eventBus); 
     SignalPipelineReady(*evtBus, std::move(handle)); 
 }
 
 star::job::complete_tasks::CompleteTask star::job::complete_tasks::CreateBuildPipelineComplete(
-    uint32_t handleID, std::unique_ptr<StarPipeline> pipeline)
+    uint32_t handleID, StarPipeline pipeline)
 {
     return CompleteTask::Builder<PipelineBuildCompletePayload>()
         .setPayload(PipelineBuildCompletePayload{.handleID = std::move(handleID), .pipeline = std::move(pipeline)})

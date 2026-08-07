@@ -147,14 +147,17 @@ void star::StarObject::cleanupRender(core::device::DeviceContext &context)
     }
 }
 
-star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
+star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
                                              vk::PipelineLayout pipelineLayout,
-                                             core::renderer::RenderingTargetInfo renderInfo)
+                                             const core::renderer::RenderingTargetInfo &renderInfo)
 {
-    return context.getPipelineManager().submit(core::device::manager::PipelineRequest(
-        StarPipeline(StarPipeline::GraphicsPipelineConfigSettings(), pipelineLayout,
-                     std::vector<Handle>{m_vertexShaderHandle, m_fragmentShaderHandle}),
-        swapChainExtent, renderInfo));
+    return context.getPipelineManager().submit(
+        core::device::manager::PipelineRequest(getPipelineProvider(pipelineLayout), swapChainExtent, renderInfo));
+}
+
+star::PipelineProvider star::StarObject::getPipelineProvider(vk::PipelineLayout pipelineLayout)
+{
+    return PipelineProvider({m_vertexShaderHandle, m_fragmentShaderHandle}, pipelineLayout);
 }
 
 star::StarEntity &star::StarObject::getInstance(const size_t &index)
@@ -222,7 +225,7 @@ void star::StarObject::prepStarObject(core::device::DeviceContext &context)
 star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     star::core::device::DeviceContext &context)
 {
-    return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->request.pipeline};
+    return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
 void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &swapChainIndexNum,

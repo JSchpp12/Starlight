@@ -17,8 +17,8 @@ void Pipeline::init(device::StarDevice *device, common::EventBus &eventBus, job:
 void Pipeline::cleanupRender()
 {
     this->TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>::cleanupRender();
-    
-    std::vector<const Handle *> unsubscribers; 
+
+    std::vector<const Handle *> unsubscribers;
     for (const auto &subscriberInfo : m_subscriberShaderBuildInfo)
     {
         if (subscriberInfo.second.isInitialized())
@@ -36,8 +36,8 @@ void Pipeline::cleanupRender()
 void Pipeline::submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                           common::EventBus &eventBus, PipelineRecord *storedRecord)
 {
-    (void)storedRecord; 
-    
+    (void)storedRecord;
+
     uint16_t key = static_cast<uint16_t>(m_subscriberShaderBuildInfo.size());
     m_subscriberShaderBuildInfo.insert(std::make_pair(key, Handle()));
 
@@ -55,12 +55,12 @@ void Pipeline::submitTask(device::StarDevice &device, const Handle &handle, job:
                                   auto *record = this->get(handle);
                                   bool shouldKeepAlive = true;
 
-                                  for (const auto &shader : record->request.pipeline.getShaders())
+                                  for (const auto &shader : record->request.provider.getShaders())
                                   {
                                       if (shader.isSameElementAs(event.shaderHandle))
                                       {
                                           record->numCompiled++;
-                                          if (record->numCompiled == record->request.pipeline.getShaders().size())
+                                          if (record->numCompiled == record->request.provider.getShaders().size())
                                           {
                                               shouldKeepAlive = false;
                                           }

@@ -42,7 +42,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
     {
         auto &record = gm->pipelineManager->getRecords().getData()[i];
         if (!record.isReady() && record.numCompiled != 0 &&
-            record.numCompiled == record.request.pipeline.getShaders().size())
+            record.numCompiled == record.request.provider.getShaders().size())
         {
             uint32_t recordHandle = 0;
             if (!star::common::casts::SafeCast<size_t, uint32_t>(i, recordHandle))
@@ -55,7 +55,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
                                    .id = recordHandle};
 
             std::vector<std::pair<StarShader, std::shared_ptr<std::vector<uint32_t>>>> compiledShaders;
-            for (auto &shader : record.request.pipeline.getShaders())
+            for (auto &shader : record.request.provider.getShaders())
             {
                 compiledShaders.push_back(std::make_pair<StarShader, std::shared_ptr<std::vector<uint32_t>>>(
                     StarShader(gm->shaderManager->get(shader)->request.shader),
@@ -67,7 +67,7 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
                                                                 .swapChainExtent = record.request.resolution};
 
             ts->submitTask(tasks::build_pipeline::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
-                                                                      std::move(record.request.pipeline)),
+                                                                      std::move(record.request.provider)),
                            tasks::build_pipeline::BuildPipelineTaskName);
         }
     }

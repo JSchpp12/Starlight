@@ -12,7 +12,7 @@ void CachedPipelinePayload::operator()(const star::common::IEvent &e, bool &keep
         assert(pipelineManager != nullptr && "Pointer to valid manager must be provided on creation");
         assert(pipelineToSet != nullptr && "Parent pipeline pointer must be valid");
 
-        *pipelineToSet = pipelineManager->get(targetPipelineRegistration)->request.pipeline.getVulkanPipeline();
+        *pipelineToSet = pipelineManager->get(targetPipelineRegistration)->builtPipeline.getVulkanPipeline();
 
         keepAlive = false;
     }
