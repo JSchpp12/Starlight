@@ -31,7 +31,7 @@ class CopyResourcesContainer
     };
 
     CopyResourcesContainer(wrappers::graphics::policies::GenericBufferCreateAllocatePolicy createPolicy)
-        : m_blitTexturePool(common::ScreenCaptureServiceCalleeTypeName),
+        : m_blitTexturePool(common::ScreenCaptureServiceCalleeTypeName, 10),
           m_hostVisibleBufferPool(std::move(createPolicy))
     {
     }
@@ -43,7 +43,7 @@ class CopyResourcesContainer
         return m_hostVisibleBufferPool;
     }
 
-    core::ManagedHandleContainer<ImageChunk, 10> &getBlitTexturePool()
+    core::ManagedHandleContainer<ImageChunk> &getBlitTexturePool()
     {
         return m_blitTexturePool;
     }
@@ -54,7 +54,7 @@ class CopyResourcesContainer
     }
 
   private:
-    core::ManagedHandleContainer<ImageChunk, 10> m_blitTexturePool;
+    core::ManagedHandleContainer<ImageChunk> m_blitTexturePool;
 
     data_structure::dynamic::ThreadSharedObjectPool<
         star::StarBuffers::Buffer, wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 50>

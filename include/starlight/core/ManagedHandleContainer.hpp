@@ -19,17 +19,17 @@ concept TDataHasVKCleanup = requires(T record, vk::Device &device) {
 template <typename T>
 concept TDataHasProperCleanup = TDataHasCleanupRender<T> || TDataHasCleanup<T> || TDataHasVKCleanup<T>;
 
-template <typename TData, size_t TMaxDataCount>
+template <typename TData>
     requires TDataHasProperCleanup<TData>
-class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount>
+class ManagedHandleContainer : public LinearHandleContainer<TData>
 {
   public:
-    ManagedHandleContainer(std::string_view handleTypeName)
-        : LinearHandleContainer<TData, TMaxDataCount>(handleTypeName)
+    ManagedHandleContainer(std::string_view handleTypeName, size_t startCapacity = 0, size_t expandingAmt = 0)
+        : LinearHandleContainer<TData>(handleTypeName, startCapacity, expandingAmt)
     {
     }
-    ManagedHandleContainer(uint16_t registeredHandleType)
-        : LinearHandleContainer<TData, TMaxDataCount>(std::move(registeredHandleType))
+    ManagedHandleContainer(uint16_t registeredHandleType, size_t startCapacity = 0, size_t expandingAmt = 0)
+        : LinearHandleContainer<TData>(std::move(registeredHandleType), startCapacity, expandingAmt)
     {
     }
     virtual ~ManagedHandleContainer() = default;
@@ -39,6 +39,10 @@ class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount
         for (uint32_t i = 0; i < this->m_records.size(); i++)
         {
             auto handle = Handle{.type = this->getHandleType(), .id = i};
+            if (!this->isFilled(handle))
+            {
+                continue;
+            }
             cleanup(handle, device);
         }
     }
@@ -46,14 +50,21 @@ class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount
   protected:
     void removeRecord(const Handle &handle, device::StarDevice *device = nullptr) override
     {
-        this->remove(handle, device);
-
         cleanup(handle, device);
+
+        LinearHandleContainer<TData>::removeRecord(handle, device);
     }
     void cleanup(const Handle &handle, device::StarDevice *device = nullptr)
     {
-        assert(handle.getID() < this->m_records.size() &&
-               "Handle references location outside of available storage in cleanup");
+        if (handle.getID() >= this->m_records.size())
+        {
+            STAR_THROWF("Handle references location outside of available storage in cleanup: id=", handle.getID());
+        }
+
+        if (!this->isFilled(handle))
+        {
+            STAR_THROWF("Handle references a slot that has not been filled in cleanup: id=", handle.getID());
+        }
 
         if constexpr (TDataHasCleanupRender<TData>)
         {

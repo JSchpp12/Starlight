@@ -24,14 +24,14 @@ class SystemContext
         return m_contexts.get(handle);
     }
 
-    LinearHandleContainer<device::DeviceContext, 1> &getAllDevices()
+    LinearHandleContainer<device::DeviceContext> &getAllDevices()
     {
         return m_contexts;
     }
 
   private:
     RenderingInstance *m_instance = nullptr;
-    LinearHandleContainer<device::DeviceContext, 1> m_contexts =
-        LinearHandleContainer<device::DeviceContext, 1>(common::special_types::DeviceTypeName);
+    LinearHandleContainer<device::DeviceContext> m_contexts =
+        LinearHandleContainer<device::DeviceContext>(common::special_types::DeviceTypeName, 1);
 };
 } // namespace star::core

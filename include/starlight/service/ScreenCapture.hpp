@@ -68,7 +68,7 @@ class ScreenCapture
                   TCopyPolicy copyPolicy, uint32_t workerCount)
         : m_getSync(*this), m_workerPolicy(std::move(workerPolicy)),
           m_createDependenciesPolicy(std::move(createDependenciesPolicy)), m_copyPolicy(std::move(copyPolicy)),
-          m_calleeDependencyTracker(star::service::detail::screen_capture::common::ScreenCaptureServiceCalleeTypeName),
+          m_calleeDependencyTracker(star::service::detail::screen_capture::common::ScreenCaptureServiceCalleeTypeName, 5),
           m_numWorkers(workerCount)
     {
     }
@@ -189,7 +189,7 @@ class ScreenCapture
     TCreateDependenciesPolicy m_createDependenciesPolicy;
     TCopyPolicy m_copyPolicy;
 
-    core::LinearHandleContainer<detail::screen_capture::CalleeRenderDependencies, 5> m_calleeDependencyTracker;
+    core::LinearHandleContainer<detail::screen_capture::CalleeRenderDependencies> m_calleeDependencyTracker;
     Handle m_subscriberHandle;
     detail::screen_capture::CopyRouter m_actionRouter;
     detail::screen_capture::DeviceInfo m_deviceInfo;

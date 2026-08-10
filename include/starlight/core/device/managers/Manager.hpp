@@ -20,7 +20,8 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
 {
   public:
     explicit Manager(std::string_view resourceHandleName)
-        : ManagerBase<TRecord, TResourceRequest>(resourceHandleName), m_records(resourceHandleName) {};
+        : ManagerBase<TRecord, TResourceRequest>(resourceHandleName),
+          m_records(resourceHandleName, TMaxRecordCount, 25) {};
 
     virtual ~Manager() = default;
     Manager(const Manager &) = delete;
@@ -80,12 +81,11 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
     void deleteRequest(device::StarDevice &device, const Handle &requestHandle)
     {
         assert(requestHandle.getType() == this->getHandleType());
-        m_records.cleanup(requestHandle, &device);
-        m_records.removeRecord(requestHandle);
+        m_records.removeRecord(requestHandle, &device);
     }
 
   protected:
-    star::core::ManagedHandleContainer<TRecord, TMaxRecordCount> m_records;
+    star::core::ManagedHandleContainer<TRecord> m_records;
 
     Handle insert(TResourceRequest request)
     {

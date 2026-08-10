@@ -64,7 +64,7 @@ class StarScene : public core::renderer::RenderPhaseRegistry
     /// RenderPhaseRegistry: look up a built phase by its handle.
     core::renderer::RenderPhase *getPhase(const Handle &handle) override
     {
-        return m_phases.get(handle).get();
+        return m_phases.isFilled(handle) ? m_phases.get(handle).get() : nullptr;
     }
 
   protected:
@@ -74,8 +74,9 @@ class StarScene : public core::renderer::RenderPhaseRegistry
     std::vector<common::Renderer> m_renderers;
 
     std::queue<std::pair<std::unique_ptr<core::renderer::IRenderPhaseProvider>, Handle>> m_providers;
-    core::LinearHandleContainer<std::unique_ptr<core::renderer::RenderPhase>, MaxRenderPhases> m_phases{
-        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::RenderPhaseTypeName)};
+    core::LinearHandleContainer<std::unique_ptr<core::renderer::RenderPhase>> m_phases{
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::RenderPhaseTypeName),
+        MaxRenderPhases};
     std::vector<Handle> m_phaseHandles;
 };
 

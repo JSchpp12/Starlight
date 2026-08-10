@@ -5,41 +5,78 @@
 #include "core/Exceptions.hpp"
 #include "device/StarDevice.hpp"
 
-#include <array>
 #include <stack>
 #include <star_common/Handle.hpp>
 #include <star_common/helper/CastHelpers.hpp>
+#include <vector>
 
 namespace star::core
 {
 
-template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : public HandleContainer<TData>
+template <typename TData> class LinearHandleContainer : public HandleContainer<TData>
 {
   public:
-    LinearHandleContainer(std::string_view handleTypeName) : HandleContainer<TData>(handleTypeName)
+    LinearHandleContainer(std::string_view handleTypeName, size_t startCapacity = 0, size_t expandingAmt = 0)
+        : HandleContainer<TData>(handleTypeName)
     {
+        m_records.reserve(startCapacity);
+        m_filled.reserve(startCapacity);
+        m_expandingAmt = expandingAmt;
     }
-    LinearHandleContainer(uint16_t registeredHandleType) : HandleContainer<TData>(std::move(registeredHandleType))
+    LinearHandleContainer(uint16_t registeredHandleType, size_t startCapacity = 0, size_t expandingAmt = 0)
+        : HandleContainer<TData>(std::move(registeredHandleType))
     {
+        m_records.reserve(startCapacity);
+        m_filled.reserve(startCapacity);
+        m_expandingAmt = expandingAmt;
     }
     virtual ~LinearHandleContainer() = default;
 
-    std::array<TData, TMaxDataCount> &getData()
+    std::vector<TData> &getData()
     {
         return m_records;
     }
 
-    /// Reserve a slot without storing data yet; the returned Handle is stable
-    /// and the slot can be filled later via get(handle) = data.
+    /// Reserve a slot without storing data yet; the returned Handle is stable.
+    /// The slot remains not-filled until commit() is invoked. Accessing a
+    /// reserved-but-uncommitted slot via get()/getRecord() throws.
     Handle reserve()
     {
         const uint32_t acqSpace = getNextSpace();
+        m_filled[static_cast<size_t>(acqSpace)] = false;
         return Handle{.type = this->getHandleType(), .id = acqSpace};
     }
 
+    /// Whether the slot referenced by `handle` is currently filled (i.e. has
+    /// been populated via insert()/commit() and not since removed).
+    bool isFilled(const Handle &handle) const
+    {
+        if (handle.getID() >= m_records.size())
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
+        return m_filled[static_cast<size_t>(handle.getID())];
+    }
+
+    /// Fill a previously reserved slot with `data` and mark it as filled.
+    void commit(const Handle &handle, TData data) noexcept
+    {
+        if (handle.getID() >= m_records.size())
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
+        const size_t index = static_cast<size_t>(handle.getID());
+        m_records[index] = std::move(data);
+        m_filled[index] = true;
+    }
+
   protected:
+    inline static const std::string ERROR_NON_COMMIT_MSG =
+        "Handle references a slot that has not been filled. Make sure to use commit(): id=";
+    inline static const std::string ERROR_OUT_OF_RANGE_MSG =
+        "Handle references location outside of available storage: id=";
     std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
-    std::array<TData, TMaxDataCount> m_records = std::array<TData, TMaxDataCount>();
+    std::vector<TData> m_records;
+    std::vector<bool> m_filled;
+    size_t m_expandingAmt = 0;
     uint32_t m_nextSpace = 0;
 
     Handle storeRecord(TData newData) override
@@ -48,7 +85,8 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
 
         const Handle newHandle = Handle{.type = this->getHandleType(), .id = acqSpace};
 
-        m_records[static_cast<const size_t &>(acqSpace)] = std::move(newData);
+        m_records[static_cast<const size_t>(acqSpace)] = std::move(newData);
+        m_filled[static_cast<const size_t>(acqSpace)] = true;
 
         return newHandle;
     }
@@ -62,28 +100,45 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
             return id;
         }
 
-        if (m_nextSpace >= m_records.size())
+        const uint32_t newId = m_nextSpace++;
+        if (newId >= m_records.size())
         {
-            STAR_THROW("Storage is full");
+            if (m_expandingAmt > 0)
+            {
+                const size_t newSize = ((static_cast<size_t>(newId) / m_expandingAmt) + 1) * m_expandingAmt;
+                m_records.resize(newSize);
+                m_filled.resize(newSize);
+            }
+            else
+            {
+                m_records.resize(static_cast<size_t>(newId) + 1);
+                m_filled.resize(static_cast<size_t>(newId) + 1);
+            }
         }
-
-        return m_nextSpace++;
+        return newId;
     }
 
     TData &getRecord(const Handle &handle) override
     {
-        assert(handle.getID() < m_records.size() && "Handle references location outside of available storage");
-        size_t index = 0;
-        star::common::casts::SafeCast<uint32_t, size_t>(handle.getID(), index);
+        if (handle.getID() >= m_records.size())
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
+        const size_t index = static_cast<size_t>(handle.getID());
+
+        if (!m_filled[index])
+            STAR_THROWF(ERROR_NON_COMMIT_MSG, handle.getID());
 
         return m_records[index];
     }
 
     const TData &getRecord(const Handle &handle) const override
     {
-        assert(handle.getID() < m_records.size() && "Handle references location outside of available storage");
-        size_t index = 0;
-        star::common::casts::SafeCast<uint32_t, size_t>(handle.getID(), index);
+        if (handle.getID() >= m_records.size())
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
+        const size_t index = static_cast<size_t>(handle.getID());
+        if (!m_filled[index])
+            STAR_THROWF(ERROR_NON_COMMIT_MSG, handle.getID());
 
         return m_records[index];
     }
@@ -92,7 +147,10 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
     {
         (void)device;
 
-        assert(handle.getID() < m_records.size() && "Requested index is beyond max storage space in remove()");
+        if (handle.getID() >= m_records.size())
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
+        m_filled[static_cast<size_t>(handle.getID())] = false;
         m_skippedSpaces.push(handle.getID());
     }
 };
