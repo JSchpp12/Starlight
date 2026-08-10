@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.0.21
+    VERSION 1.1.0
 )
 
 include(CheckIncludeFile)
