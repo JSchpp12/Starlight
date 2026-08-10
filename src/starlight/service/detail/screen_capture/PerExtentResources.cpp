@@ -99,7 +99,25 @@ CopyResource PerExtentResources::giveMeResource(const vk::Extent2D &targetExtent
                 .first->second.get();
     }
 
-    auto &calleeTextures = container->getBlitTexturePool().get(calleeRegistration);
+    auto &blitPool = container->getBlitTexturePool();
+
+    // The blit-texture pool is keyed by the callee's registration handle, which
+    // is issued by a separate container (ScreenCapture::m_calleeDependencyTracker).
+    // Its id is therefore not necessarily this (per-extent) pool's next sequential
+    // id, and the pool may not yet have a slot for it. Grow the pool so a slot for
+    // calleeRegistration exists, then commit an empty ImageChunk on first use so
+    // the get() below finds a filled record. This mirrors StarScene's
+    // reserve()-then-commit() pattern, but keyed to an externally-issued handle.
+    while (blitPool.getData().size() <= calleeRegistration.getID())
+    {
+        blitPool.reserve();
+    }
+    if (!blitPool.isFilled(calleeRegistration))
+    {
+        blitPool.commit(calleeRegistration, CopyResourcesContainer::ImageChunk{});
+    }
+
+    auto &calleeTextures = blitPool.get(calleeRegistration);
     if (calleeTextures.textures.size() == 0)
     {
         calleeTextures.textures = CreateImages(m_deviceInfo, vk::Format::eR8G8B8A8Unorm, targetExtent);
