@@ -52,25 +52,27 @@ template <typename TData> class LinearHandleContainer : public HandleContainer<T
     bool isFilled(const Handle &handle) const
     {
         if (handle.getID() >= m_records.size())
-        {
-            STAR_THROWF("isFilled: Handle references location outside of available storage: id=", handle.getID());
-        }
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
         return m_filled[static_cast<size_t>(handle.getID())];
     }
 
     /// Fill a previously reserved slot with `data` and mark it as filled.
-    void commit(const Handle &handle, TData data)
+    void commit(const Handle &handle, TData data) noexcept
     {
         if (handle.getID() >= m_records.size())
-        {
-            STAR_THROWF("commit: Handle references location outside of available storage: id=", handle.getID());
-        }
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
         const size_t index = static_cast<size_t>(handle.getID());
         m_records[index] = std::move(data);
         m_filled[index] = true;
     }
 
   protected:
+    inline static const std::string ERROR_NON_COMMIT_MSG =
+        "Handle references a slot that has not been filled. Make sure to use commit(): id=";
+    inline static const std::string ERROR_OUT_OF_RANGE_MSG =
+        "Handle references location outside of available storage: id=";
     std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
     std::vector<TData> m_records;
     std::vector<bool> m_filled;
@@ -83,8 +85,8 @@ template <typename TData> class LinearHandleContainer : public HandleContainer<T
 
         const Handle newHandle = Handle{.type = this->getHandleType(), .id = acqSpace};
 
-        m_records[static_cast<const size_t &>(acqSpace)] = std::move(newData);
-        m_filled[static_cast<const size_t &>(acqSpace)] = true;
+        m_records[static_cast<const size_t>(acqSpace)] = std::move(newData);
+        m_filled[static_cast<const size_t>(acqSpace)] = true;
 
         return newHandle;
     }
@@ -119,16 +121,12 @@ template <typename TData> class LinearHandleContainer : public HandleContainer<T
     TData &getRecord(const Handle &handle) override
     {
         if (handle.getID() >= m_records.size())
-        {
-            STAR_THROWF("Handle references location outside of available storage: id=", handle.getID());
-        }
-        size_t index = 0;
-        star::common::casts::SafeCast<uint32_t, size_t>(handle.getID(), index);
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
+        const size_t index = static_cast<size_t>(handle.getID());
 
         if (!m_filled[index])
-        {
-            STAR_THROWF("Handle references a slot that has not been filled: id=", handle.getID());
-        }
+            STAR_THROWF(ERROR_NON_COMMIT_MSG, handle.getID());
 
         return m_records[index];
     }
@@ -136,16 +134,11 @@ template <typename TData> class LinearHandleContainer : public HandleContainer<T
     const TData &getRecord(const Handle &handle) const override
     {
         if (handle.getID() >= m_records.size())
-        {
-            STAR_THROWF("Handle references location outside of available storage: id=", handle.getID());
-        }
-        size_t index = 0;
-        star::common::casts::SafeCast<uint32_t, size_t>(handle.getID(), index);
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
 
+        const size_t index = static_cast<size_t>(handle.getID());
         if (!m_filled[index])
-        {
-            STAR_THROWF("Handle references a slot that has not been filled: id=", handle.getID());
-        }
+            STAR_THROWF(ERROR_NON_COMMIT_MSG, handle.getID());
 
         return m_records[index];
     }
@@ -155,9 +148,8 @@ template <typename TData> class LinearHandleContainer : public HandleContainer<T
         (void)device;
 
         if (handle.getID() >= m_records.size())
-        {
-            STAR_THROWF("Requested index is beyond storage space in remove(): id=", handle.getID());
-        }
+            STAR_THROWF(ERROR_OUT_OF_RANGE_MSG, handle.getID());
+
         m_filled[static_cast<size_t>(handle.getID())] = false;
         m_skippedSpaces.push(handle.getID());
     }

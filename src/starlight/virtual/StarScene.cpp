@@ -37,9 +37,8 @@ void star::StarScene::cleanupRender(core::device::DeviceContext &context)
 
     for (auto &handle : m_phaseHandles)
     {
-        auto &phase = m_phases.get(handle);
-        if (phase)
-            phase->cleanupRender(context);
+        if (m_phases.isFilled(handle))
+            m_phases.get(handle)->cleanupRender(context);
     }
 }
 
@@ -56,9 +55,8 @@ void star::StarScene::frameUpdate(core::device::DeviceContext &context, const ui
 
     for (auto &handle : m_phaseHandles)
     {
-        auto &phase = m_phases.get(handle);
-        if (phase)
-            phase->frameUpdate(context);
+        if (m_phases.isFilled(handle))
+            m_phases.get(handle)->frameUpdate(context);
     }
 }
 
@@ -76,6 +74,6 @@ void star::StarScene::prepRender(core::device::DeviceContext &context,
     {
         auto [provider, handle] = std::move(m_providers.front());
         m_providers.pop();
-        m_phases.get(handle) = provider->build(context, *this);
+        m_phases.commit(handle, provider->build(context, *this));
     }
 }
