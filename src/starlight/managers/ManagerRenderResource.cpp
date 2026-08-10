@@ -10,12 +10,12 @@ std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHa
     star::ManagerRenderResource::highPriorityRequestCompleteFlags;
 std::unordered_map<star::Handle,
                    std::unique_ptr<star::core::ManagedHandleContainer<
-                       star::ManagerRenderResource::FinalizedResourceRequest<star::StarBuffers::Buffer>, 20000>>,
+                       star::ManagerRenderResource::FinalizedResourceRequest<star::StarBuffers::Buffer>>>,
                    star::HandleHash>
     star::ManagerRenderResource::bufferStorage;
 std::unordered_map<star::Handle,
                    std::unique_ptr<star::core::ManagedHandleContainer<
-                       star::ManagerRenderResource::FinalizedResourceRequest<star::StarTextures::Texture>, 20000>>,
+                       star::ManagerRenderResource::FinalizedResourceRequest<star::StarTextures::Texture>>>,
                    star::HandleHash>
     star::ManagerRenderResource::textureStorage;
 star::core::CommandBus *star::ManagerRenderResource::s_cmdBus = nullptr;
@@ -26,12 +26,12 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
     devices.insert(std::make_pair(deviceID, std::move(device)));
     bufferStorage.insert(std::make_pair(
         deviceID,
-        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>, 20000>>(
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))));
+        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>>>(
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName), 20000)));
     textureStorage.insert(std::make_pair(
         deviceID,
-        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>, 20000>>(
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName))));
+        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>>>(
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName), 20000)));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
 

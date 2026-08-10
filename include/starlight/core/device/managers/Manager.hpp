@@ -20,7 +20,7 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
 {
   public:
     explicit Manager(std::string_view resourceHandleName)
-        : ManagerBase<TRecord, TResourceRequest>(resourceHandleName), m_records(resourceHandleName) {};
+        : ManagerBase<TRecord, TResourceRequest>(resourceHandleName), m_records(resourceHandleName, TMaxRecordCount) {};
 
     virtual ~Manager() = default;
     Manager(const Manager &) = delete;
@@ -85,7 +85,7 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
     }
 
   protected:
-    star::core::ManagedHandleContainer<TRecord, TMaxRecordCount> m_records;
+    star::core::ManagedHandleContainer<TRecord> m_records;
 
     Handle insert(TResourceRequest request)
     {

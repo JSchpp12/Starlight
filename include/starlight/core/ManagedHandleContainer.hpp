@@ -19,17 +19,17 @@ concept TDataHasVKCleanup = requires(T record, vk::Device &device) {
 template <typename T>
 concept TDataHasProperCleanup = TDataHasCleanupRender<T> || TDataHasCleanup<T> || TDataHasVKCleanup<T>;
 
-template <typename TData, size_t TMaxDataCount>
+template <typename TData>
     requires TDataHasProperCleanup<TData>
-class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount>
+class ManagedHandleContainer : public LinearHandleContainer<TData>
 {
   public:
-    ManagedHandleContainer(std::string_view handleTypeName)
-        : LinearHandleContainer<TData, TMaxDataCount>(handleTypeName)
+    ManagedHandleContainer(std::string_view handleTypeName, size_t startCapacity = 0, size_t expandingAmt = 0)
+        : LinearHandleContainer<TData>(handleTypeName, startCapacity, expandingAmt)
     {
     }
-    ManagedHandleContainer(uint16_t registeredHandleType)
-        : LinearHandleContainer<TData, TMaxDataCount>(std::move(registeredHandleType))
+    ManagedHandleContainer(uint16_t registeredHandleType, size_t startCapacity = 0, size_t expandingAmt = 0)
+        : LinearHandleContainer<TData>(std::move(registeredHandleType), startCapacity, expandingAmt)
     {
     }
     virtual ~ManagedHandleContainer() = default;
@@ -52,8 +52,10 @@ class ManagedHandleContainer : public LinearHandleContainer<TData, TMaxDataCount
     }
     void cleanup(const Handle &handle, device::StarDevice *device = nullptr)
     {
-        assert(handle.getID() < this->m_records.size() &&
-               "Handle references location outside of available storage in cleanup");
+        if (handle.getID() >= this->m_records.size())
+        {
+            STAR_THROWF("Handle references location outside of available storage in cleanup: id=", handle.getID());
+        }
 
         if constexpr (TDataHasCleanupRender<TData>)
         {

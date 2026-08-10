@@ -74,8 +74,9 @@ class StarScene : public core::renderer::RenderPhaseRegistry
     std::vector<common::Renderer> m_renderers;
 
     std::queue<std::pair<std::unique_ptr<core::renderer::IRenderPhaseProvider>, Handle>> m_providers;
-    core::LinearHandleContainer<std::unique_ptr<core::renderer::RenderPhase>, MaxRenderPhases> m_phases{
-        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::RenderPhaseTypeName)};
+    core::LinearHandleContainer<std::unique_ptr<core::renderer::RenderPhase>> m_phases{
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::RenderPhaseTypeName),
+        MaxRenderPhases};
     std::vector<Handle> m_phaseHandles;
 };
 

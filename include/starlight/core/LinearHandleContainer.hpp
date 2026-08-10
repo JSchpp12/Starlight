@@ -5,26 +5,32 @@
 #include "core/Exceptions.hpp"
 #include "device/StarDevice.hpp"
 
-#include <array>
 #include <stack>
 #include <star_common/Handle.hpp>
 #include <star_common/helper/CastHelpers.hpp>
+#include <vector>
 
 namespace star::core
 {
 
-template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : public HandleContainer<TData>
+template <typename TData> class LinearHandleContainer : public HandleContainer<TData>
 {
   public:
-    LinearHandleContainer(std::string_view handleTypeName) : HandleContainer<TData>(handleTypeName)
+    LinearHandleContainer(std::string_view handleTypeName, size_t startCapacity = 0, size_t expandingAmt = 0)
+        : HandleContainer<TData>(handleTypeName)
     {
+        m_records.reserve(startCapacity);
+        m_expandingAmt = expandingAmt;
     }
-    LinearHandleContainer(uint16_t registeredHandleType) : HandleContainer<TData>(std::move(registeredHandleType))
+    LinearHandleContainer(uint16_t registeredHandleType, size_t startCapacity = 0, size_t expandingAmt = 0)
+        : HandleContainer<TData>(std::move(registeredHandleType))
     {
+        m_records.reserve(startCapacity);
+        m_expandingAmt = expandingAmt;
     }
     virtual ~LinearHandleContainer() = default;
 
-    std::array<TData, TMaxDataCount> &getData()
+    std::vector<TData> &getData()
     {
         return m_records;
     }
@@ -39,7 +45,8 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
 
   protected:
     std::stack<uint32_t> m_skippedSpaces = std::stack<uint32_t>();
-    std::array<TData, TMaxDataCount> m_records = std::array<TData, TMaxDataCount>();
+    std::vector<TData> m_records;
+    size_t m_expandingAmt = 0;
     uint32_t m_nextSpace = 0;
 
     Handle storeRecord(TData newData) override
@@ -62,17 +69,28 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
             return id;
         }
 
-        if (m_nextSpace >= m_records.size())
+        const uint32_t newId = m_nextSpace++;
+        if (newId >= m_records.size())
         {
-            STAR_THROW("Storage is full");
+            if (m_expandingAmt > 0)
+            {
+                const size_t newSize = ((static_cast<size_t>(newId) / m_expandingAmt) + 1) * m_expandingAmt;
+                m_records.resize(newSize);
+            }
+            else
+            {
+                m_records.resize(static_cast<size_t>(newId) + 1);
+            }
         }
-
-        return m_nextSpace++;
+        return newId;
     }
 
     TData &getRecord(const Handle &handle) override
     {
-        assert(handle.getID() < m_records.size() && "Handle references location outside of available storage");
+        if (handle.getID() >= m_records.size())
+        {
+            STAR_THROWF("Handle references location outside of available storage: id=", handle.getID());
+        }
         size_t index = 0;
         star::common::casts::SafeCast<uint32_t, size_t>(handle.getID(), index);
 
@@ -81,7 +99,10 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
 
     const TData &getRecord(const Handle &handle) const override
     {
-        assert(handle.getID() < m_records.size() && "Handle references location outside of available storage");
+        if (handle.getID() >= m_records.size())
+        {
+            STAR_THROWF("Handle references location outside of available storage: id=", handle.getID());
+        }
         size_t index = 0;
         star::common::casts::SafeCast<uint32_t, size_t>(handle.getID(), index);
 
@@ -92,7 +113,10 @@ template <typename TData, size_t TMaxDataCount> class LinearHandleContainer : pu
     {
         (void)device;
 
-        assert(handle.getID() < m_records.size() && "Requested index is beyond max storage space in remove()");
+        if (handle.getID() >= m_records.size())
+        {
+            STAR_THROWF("Requested index is beyond storage space in remove(): id=", handle.getID());
+        }
         m_skippedSpaces.push(handle.getID());
     }
 };
