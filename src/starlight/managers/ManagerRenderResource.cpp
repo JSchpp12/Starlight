@@ -27,11 +27,13 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
     bufferStorage.insert(std::make_pair(
         deviceID,
         std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>>>(
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName), 20000)));
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName), 20000,
+            50)));
     textureStorage.insert(std::make_pair(
         deviceID,
         std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>>>(
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName), 20000)));
+            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName),
+            20000, 50)));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
 

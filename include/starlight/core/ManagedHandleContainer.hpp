@@ -39,6 +39,10 @@ class ManagedHandleContainer : public LinearHandleContainer<TData>
         for (uint32_t i = 0; i < this->m_records.size(); i++)
         {
             auto handle = Handle{.type = this->getHandleType(), .id = i};
+            if (!this->isFilled(handle))
+            {
+                continue;
+            }
             cleanup(handle, device);
         }
     }
@@ -46,15 +50,20 @@ class ManagedHandleContainer : public LinearHandleContainer<TData>
   protected:
     void removeRecord(const Handle &handle, device::StarDevice *device = nullptr) override
     {
-        this->remove(handle, device);
-
         cleanup(handle, device);
+
+        LinearHandleContainer<TData>::removeRecord(handle, device);
     }
     void cleanup(const Handle &handle, device::StarDevice *device = nullptr)
     {
         if (handle.getID() >= this->m_records.size())
         {
             STAR_THROWF("Handle references location outside of available storage in cleanup: id=", handle.getID());
+        }
+
+        if (!this->isFilled(handle))
+        {
+            STAR_THROWF("Handle references a slot that has not been filled in cleanup: id=", handle.getID());
         }
 
         if constexpr (TDataHasCleanupRender<TData>)
