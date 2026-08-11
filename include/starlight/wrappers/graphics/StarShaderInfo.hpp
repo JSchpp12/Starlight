@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
@@ -160,6 +160,23 @@ class StarShaderInfo
         {
             return this->layouts;
         };
+
+        StarDescriptorPool &getPool()
+        {
+            return m_pool;
+        }
+        core::device::StarDevice &getDevice()
+        {
+            return device;
+        }
+        star::Handle getDeviceID() const
+        {
+            return m_deviceID;
+        }
+        uint8_t getNumFramesInFlight() const
+        {
+            return static_cast<uint8_t>(sets.size());
+        }
 
       private:
         star::Handle m_deviceID;

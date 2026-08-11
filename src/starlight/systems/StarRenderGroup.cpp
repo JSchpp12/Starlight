@@ -1,22 +1,23 @@
-#include "StarRenderGroup.hpp"
+﻿#include "StarRenderGroup.hpp"
 
 namespace star
 {
 StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, std::shared_ptr<StarObject> baseObject)
-    : device(&device)
+    : m_device(&device)
 {
     auto objInfo = RenderObjectInfo(baseObject);
-    this->groups.push_back(Group(objInfo));
+    this->m_groups.push_back(Group(objInfo));
 
     auto layoutBuilder = StarDescriptorSetLayout::Builder();
-    this->largestDescriptorSet = this->groups.front().baseObject.object->getDescriptorSetLayouts(device);
+    m_largestDescriptorSet = this->m_groups.front().baseObject.object->getDescriptorSetLayouts(device);
 }
 
 void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
 {
     // cleanup objects
-    for (auto &group : this->groups)
-    { // cleanup base object last since it owns the pipeline
+    for (auto &group : this->m_groups)
+    { 
+        // cleanup base object last since it owns the pipeline
         group.baseObject.object->cleanupRender(context);
 
         for (auto &obj : group.objects)
@@ -27,6 +28,13 @@ void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
 
     context.getDevice().getVulkanDevice().destroyPipelineLayout(m_pipelineLayout);
     m_pipelineLayout = VK_NULL_HANDLE;
+
+    for (auto &set : m_largestDescriptorSet)
+    {
+        if (set)
+            set->cleanupRender(context.getDevice());
+    }
+    m_largestDescriptorSet.clear();
 }
 
 void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &context,
@@ -34,9 +42,15 @@ void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &c
                                             star::core::renderer::RenderingTargetInfo &rendererInfo)
 {
     // create shared pipeline layout
+    uint32_t globalSetCount = 0;
     {
         auto fullSetLayout = rendererBuilder.getCurrentSetLayouts();
-        for (auto &set : this->largestDescriptorSet)
+
+        // The renderer builder carries only the global set layout(s) at this point;
+        // everything that follows belongs to the objects. Record how many sets sit
+        // in front of the per-object sets so objects know their set indices.
+        globalSetCount = static_cast<uint32_t>(fullSetLayout.size());
+        for (auto &set : m_largestDescriptorSet)
         {
             fullSetLayout.emplace_back(set);
             rendererBuilder.addSetLayout(set);
@@ -45,13 +59,15 @@ void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &c
         m_pipelineLayout = createPipelineLayout(context, fullSetLayout);
     }
 
-    for (auto &group : this->groups)
+    for (auto &group : this->m_groups)
     {
-        group.baseObject.object->onDescriptorPoolReady(context, rendererBuilder, m_pipelineLayout, rendererInfo);
+        group.baseObject.object->onDescriptorPoolReady(context, rendererBuilder, m_pipelineLayout, rendererInfo,
+                                                       globalSetCount);
 
         for (auto &object : group.objects)
         {
-            object.object->onDescriptorPoolReady(context, rendererBuilder, group.baseObject.object->getPipline());
+            object.object->onDescriptorPoolReady(context, rendererBuilder, group.baseObject.object->getPipline(),
+                                                 globalSetCount);
         }
     }
 }
@@ -60,7 +76,7 @@ void StarRenderGroup::frameUpdate(core::device::DeviceContext &context, const ui
                                   const Handle &targetCommandBuffer,
                                   const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
-    for (auto &group : groups)
+    for (auto &group : m_groups)
     {
         group.baseObject.object->frameUpdate(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
         for (auto &obj : group.objects)
@@ -81,7 +97,7 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
     Group *targetGroup = nullptr;
 
     // for now only check if they share the same shader handles
-    for (auto &group : this->groups)
+    for (auto &group : this->m_groups)
     {
         if (group.baseObject.object->getVertexShaderHandle() == newObject->getVertexShaderHandle() &&
             group.baseObject.object->getFragmentShaderHandle() == newObject->getFragmentShaderHandle())
@@ -95,7 +111,7 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
     {
         // requires new pipeline -- and group
         auto objInfo = RenderObjectInfo{newObject};
-        this->groups.push_back(Group(objInfo));
+        this->m_groups.push_back(Group(objInfo));
     }
     else
     {
@@ -103,15 +119,16 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
         targetGroup->objects.push_back(objInfo);
     }
 
+    assert(m_device != nullptr && "Device was never provided");
     // check if this new object has a larger descriptor set layout than the current one
-    auto newLayouts = newObject->getDescriptorSetLayouts(*device);
+    auto newLayouts = newObject->getDescriptorSetLayouts(*m_device);
 
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> combinedSet =
         std::vector<std::shared_ptr<StarDescriptorSetLayout>>();
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> *largerSet =
-        newLayouts.size() > this->largestDescriptorSet.size() ? &newLayouts : &this->largestDescriptorSet;
+        newLayouts.size() > m_largestDescriptorSet.size() ? &newLayouts : &m_largestDescriptorSet;
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> *smallerSet =
-        newLayouts.size() > this->largestDescriptorSet.size() ? &this->largestDescriptorSet : &newLayouts;
+        newLayouts.size() > m_largestDescriptorSet.size() ? &m_largestDescriptorSet : &newLayouts;
 
     // already assuming these are already compatible
     for (size_t i = 0; i < largerSet->size(); i++)
@@ -133,13 +150,13 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
             combinedSet.push_back(std::move(largerSet->at(i)));
         }
     }
-    this->largestDescriptorSet = combinedSet;
+    m_largestDescriptorSet = combinedSet;
 }
 
 void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &frameInFlightIndex,
                                                const uint64_t &frameIndex)
 {
-    for (auto &group : this->groups)
+    for (auto &group : this->m_groups)
     {
         group.baseObject.object->recordRenderPassCommands(mainDrawBuffer, m_pipelineLayout, frameInFlightIndex,
                                                           frameIndex);
@@ -154,7 +171,7 @@ void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer
 void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &frameInFlightIndex,
                                                   const uint64_t &frameIndex)
 {
-    for (auto &group : this->groups)
+    for (auto &group : this->m_groups)
     {
         group.baseObject.object->recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex, frameIndex);
         for (auto &obj : group.objects)
@@ -166,7 +183,7 @@ void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuf
 
 void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
 {
-    for (auto &group : this->groups)
+    for (auto &group : this->m_groups)
     {
         group.baseObject.object->recordPostRenderPassCommands(commandBuffer, frameInFlightIndex);
         for (auto &obj : group.objects)
@@ -178,16 +195,18 @@ void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer &commandBuf
 
 bool StarRenderGroup::isObjectCompatible(StarObject &object)
 {
-    // check if descriptor layouts are compatible
-    auto compLayouts = object.getDescriptorSetLayouts(*device);
+    assert(m_device != nullptr && "Device was never provided");
 
-    std::vector<std::shared_ptr<StarDescriptorSetLayout>> *largerSet = &this->largestDescriptorSet;
+    // check if descriptor layouts are compatible
+    auto compLayouts = object.getDescriptorSetLayouts(*m_device);
+
+    std::vector<std::shared_ptr<StarDescriptorSetLayout>> *largerSet = &m_largestDescriptorSet;
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> *smallerSet = &compLayouts;
 
-    if (this->largestDescriptorSet.size() < compLayouts.size())
+    if (m_largestDescriptorSet.size() < compLayouts.size())
     {
         largerSet = &compLayouts;
-        smallerSet = &this->largestDescriptorSet;
+        smallerSet = &m_largestDescriptorSet;
     }
 
     for (size_t i = 0; i < smallerSet->size(); i++)
@@ -202,14 +221,14 @@ bool StarRenderGroup::isObjectCompatible(StarObject &object)
 void StarRenderGroup::prepareObjects(star::core::device::DeviceContext &context)
 {
     // get descriptor sets from objects and place into render structs
-    for (auto &group : this->groups)
+    for (auto &group : m_groups)
     {
         // prepare base object
-        group.baseObject.object->prepRender(*device);
+        group.baseObject.object->prepRender(context);
 
         for (auto &renderObject : group.objects)
         {
-            renderObject.object->prepRender(*device);
+            renderObject.object->prepRender(context);
         }
     }
 }
@@ -236,9 +255,7 @@ vk::PipelineLayout StarRenderGroup::createPipelineLayout(
     auto result = context.getDevice().getVulkanDevice().createPipelineLayout(pipelineLayoutInfo);
 
     if (!result)
-    {
-        throw std::runtime_error("failed to create pipeline layout");
-    }
+        STAR_THROW("failed to create pipeline layout");
 
     return result;
 }

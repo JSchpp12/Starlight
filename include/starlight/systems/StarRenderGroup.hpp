@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Enums.hpp"
 #include "Light.hpp"
@@ -42,6 +42,11 @@ class StarRenderGroup
     void onDescriptorPoolReady(star::core::device::DeviceContext &context, StarShaderInfo::Builder initEngineBuilder,
                                star::core::renderer::RenderingTargetInfo &rendererInfo);
 
+    vk::PipelineLayout getPipelineLayout() const
+    {
+        return m_pipelineLayout;
+    }
+
     void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                      const Handle &targetCommandBuffer,
                      const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
@@ -69,9 +74,9 @@ class StarRenderGroup
         RenderObjectInfo baseObject;
         std::vector<RenderObjectInfo> objects;
     };
-    std::vector<std::shared_ptr<StarDescriptorSetLayout>> largestDescriptorSet;
-    std::vector<Group> groups;
-    core::device::DeviceContext *device{nullptr};
+    std::vector<std::shared_ptr<StarDescriptorSetLayout>> m_largestDescriptorSet;
+    std::vector<Group> m_groups;
+    core::device::DeviceContext *m_device{nullptr};
     vk::PipelineLayout m_pipelineLayout{VK_NULL_HANDLE};
 
     void prepareObjects(star::core::device::DeviceContext &context);

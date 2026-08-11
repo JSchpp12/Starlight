@@ -1,4 +1,4 @@
-#include "StarMesh.hpp"
+﻿#include "StarMesh.hpp"
 
 namespace star
 {
@@ -81,12 +81,13 @@ bool star::StarMesh::isKnownToBeReady(const uint8_t &frameInFlightIndex)
 }
 
 void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                              const uint8_t &frameInFlightIndex, const uint32_t &instanceCount)
+                                              const uint8_t &frameInFlightIndex, const uint32_t &instanceCount,
+                                              uint32_t descriptorSetStartIndex)
 {
 
-    this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex);
+    this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex, descriptorSetStartIndex);
 
-    vk::DeviceSize offset{0};
+    const vk::DeviceSize offset{0};
     auto &vBuff = ManagerRenderResource::getBuffer(m_deviceID, this->vertBuffer);
     auto &iBuff = ManagerRenderResource::getBuffer(m_deviceID, this->indBuffer);
     commandBuffer.bindVertexBuffers(0, vBuff.getVulkanBuffer(), offset);
