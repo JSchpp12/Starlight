@@ -568,9 +568,12 @@ set(${STARLIGHT_NAME}_INCLUDE_DIRS
 )
 
 # Shared, generated precompiled header (Vulkan + common libs).
-# Other targets can reuse it via:
-#     target_precompile_headers(<target> REUSE_FROM starlight)
+# Other targets add their own PCH from the same generated source via:
+#     if(COMMAND star_add_pch)
+#         star_add_pch(<target>)
+#     endif()
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/StarVulkanPch.cmake")
+star_add_pch(${STARLIGHT_NAME})
 
 target_link_libraries(${STARLIGHT_NAME}
     PUBLIC
