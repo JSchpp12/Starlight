@@ -1,12 +1,13 @@
-#pragma once
+﻿#pragma once
 
-#include <star_common/helper/CastHelpers.hpp>
-#include "core/device/DeviceContext.hpp"
-#include <star_common/Handle.hpp>
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
+#include "core/device/DeviceContext.hpp"
+#include <star_common/Handle.hpp>
+#include <star_common/helper/CastHelpers.hpp>
+
 
 #include <vulkan/vulkan.hpp>
 
@@ -37,7 +38,8 @@ class StarMesh
     virtual void prepRender(core::device::DeviceContext &device);
 
     virtual void recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                          const uint8_t &frameInFlightIndex, const uint32_t &instanceCount);
+                                          const uint8_t &frameInFlightIndex, const uint32_t &instanceCount,
+                                          uint32_t descriptorSetStartIndex = 0);
 
     bool isKnownToBeReady(const uint8_t &frameInFlightIndex);
 

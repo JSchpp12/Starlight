@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "StarCommandBuffer.hpp"
 #include "StarEntity.hpp"
@@ -54,7 +54,8 @@ class StarObject
     virtual void cleanupRender(core::device::DeviceContext &device);
 
     virtual Handle buildPipeline(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
-                                 vk::PipelineLayout pipelineLayout, const core::renderer::RenderingTargetInfo &renderInfo);
+                                 vk::PipelineLayout pipelineLayout,
+                                 const core::renderer::RenderingTargetInfo &renderInfo);
 
     /// Produce the pipeline build recipe for this object. Override to customize
     /// vertex input (attributes), topology, blend, etc. Default uses the object's
@@ -65,10 +66,12 @@ class StarObject
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context, StarShaderInfo::Builder fullEngineBuilder,
                                        vk::PipelineLayout pipelineLayout,
-                                       const core::renderer::RenderingTargetInfo &renderingInfo);
+                                       const core::renderer::RenderingTargetInfo &renderingInfo,
+                                       uint32_t globalSetCount);
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context,
-                                       star::StarShaderInfo::Builder fullEngineBuilder, const Handle &sharedPipeline);
+                                       star::StarShaderInfo::Builder fullEngineBuilder, const Handle &sharedPipeline,
+                                       uint32_t globalSetCount);
 
     virtual core::renderer::RenderingContext buildRenderingContext(star::core::device::DeviceContext &context);
 
@@ -188,6 +191,13 @@ class StarObject
     std::unique_ptr<StarPipeline> normalExtrusionPipeline;
     std::unique_ptr<StarDescriptorSetLayout> setLayout;
     InstanceInfo m_instanceInfo;
+
+    /// Descriptor sets owned by this object rather than duplicated into every
+    /// material. The instance-UBO set is built once and bound once per object
+    /// per frame; materials only own/bind their own per-mesh set(s).
+    std::unique_ptr<StarShaderInfo> m_instanceShaderInfo;
+    uint32_t m_globalSetCount = 0;
+    uint32_t m_materialSetStartIndex = 0;
 
     std::vector<StarMesh> meshes;
     bool isReady = false;

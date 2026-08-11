@@ -1,4 +1,4 @@
-#include "starlight/object/StarObject.hpp"
+﻿#include "starlight/object/StarObject.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
@@ -145,6 +145,12 @@ void star::StarObject::cleanupRender(core::device::DeviceContext &context)
     {
         material->cleanupRender(context);
     }
+
+    if (m_instanceShaderInfo)
+    {
+        m_instanceShaderInfo->cleanupRender(context.getDevice());
+        m_instanceShaderInfo.reset();
+    }
 }
 
 star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
@@ -178,8 +184,11 @@ void star::StarObject::prepRender(star::core::device::DeviceContext &context)
 void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
                                              StarShaderInfo::Builder fullEngineBuilder,
                                              vk::PipelineLayout pipelineLayout,
-                                             const core::renderer::RenderingTargetInfo &renderingInfo)
+                                             const core::renderer::RenderingTargetInfo &renderingInfo,
+                                             uint32_t globalSetCount)
 {
+    m_globalSetCount = globalSetCount;
+
     this->pipeline = buildPipeline(context, context.getEngineResolution(), pipelineLayout, renderingInfo);
 
     prepMaterials(context, fullEngineBuilder);
@@ -187,8 +196,10 @@ void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &
 
 void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
                                              star::StarShaderInfo::Builder fullEngineBuilder,
-                                             const Handle &sharedPipeline)
+                                             const Handle &sharedPipeline, uint32_t globalSetCount)
 {
+    m_globalSetCount = globalSetCount;
+
     this->sharedPipeline = sharedPipeline;
 
     prepMaterials(context, fullEngineBuilder);
@@ -247,11 +258,25 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
 
     renderingContext.pipeline->bind(commandBuffer);
 
+    // Bind the per-object instance-UBO set once for all of this object's meshes.
+    // The render phase binds the global set (camera/lights) once per frame before
+    // iterating render groups; each mesh only rebinds its own material set.
+    if (m_instanceShaderInfo)
+    {
+        auto instanceSets = m_instanceShaderInfo->getDescriptors(swapChainIndexNum);
+        if (!instanceSets.empty())
+        {
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, m_globalSetCount,
+                                             instanceSets.size(), instanceSets.data(), 0, nullptr);
+        }
+    }
+
     for (auto &rmesh : this->meshes)
     {
         uint32_t instanceCount;
         star::common::casts::SafeCast<size_t, uint32_t>(m_instanceInfo.getSize(), instanceCount);
-        rmesh.recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount);
+        rmesh.recordRenderPassCommands(commandBuffer, pipelineLayout, swapChainIndexNum, instanceCount,
+                                       m_materialSetStartIndex);
     }
 
     if (this->drawNormals)
@@ -317,21 +342,60 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 {
     assert(m_meshMaterials.size() > 0 && "Mesh materials should exist");
 
-    for (uint8_t i = 0; i < context.frameTracker().getSetup().getNumFramesInFlight(); i++)
-    {
-        const auto &instanceModelHandle = m_instanceInfo.getControllerModel().getHandle(i);
-        const auto &instanceNormalHandle = m_instanceInfo.getControllerNormal().getHandle(i);
+    const uint8_t numFramesInFlight = context.frameTracker().getSetup().getNumFramesInFlight();
 
-        frameBuilder.startOnFrameIndex(i);
-        frameBuilder.startSet();
-        frameBuilder.add(StarShaderInfo::BufferInfo{instanceModelHandle});
-        frameBuilder.add(StarShaderInfo::BufferInfo{instanceNormalHandle});
+    // Build the per-object instance-UBO set once. Previously this set was pushed
+    // into the shared builder and duplicated into every material's StarShaderInfo;
+    // it is identical across all meshes and only needs to be allocated, written,
+    // and bound once per object. It occupies set index m_globalSetCount (right
+    // after the render-phase global set).
+    {
+        std::shared_ptr<StarDescriptorSetLayout> instanceLayout =
+            StarDescriptorSetLayout::Builder()
+                .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+                .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+                .build();
+        instanceLayout->prepRender(context.getDevice());
+
+        auto instanceBuilder = StarShaderInfo::Builder(frameBuilder.getDeviceID(), frameBuilder.getDevice(),
+                                                       frameBuilder.getPool(), numFramesInFlight)
+                                   .addSetLayout(instanceLayout);
+        for (uint8_t i = 0; i < numFramesInFlight; i++)
+        {
+            const auto &instanceModelHandle = m_instanceInfo.getControllerModel().getHandle(i);
+            const auto &instanceNormalHandle = m_instanceInfo.getControllerNormal().getHandle(i);
+
+            instanceBuilder.startOnFrameIndex(i);
+            instanceBuilder.startSet();
+            instanceBuilder.add(StarShaderInfo::BufferInfo{instanceModelHandle});
+            instanceBuilder.add(StarShaderInfo::BufferInfo{instanceNormalHandle});
+        }
+        m_instanceShaderInfo = instanceBuilder.build();
     }
 
+    // Build the per-mesh (material) set layout once. All materials in an object
+    // share a compatible layout because objects in a render group share a shader.
+    auto staticSetBuilder = StarDescriptorSetLayout::Builder();
+    m_meshMaterials.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
+    std::shared_ptr<StarDescriptorSetLayout> materialSetLayout = staticSetBuilder.build();
+    const bool hasMaterialSet = materialSetLayout->getBindings().size() > 0;
+    if (hasMaterialSet)
+        materialSetLayout->prepRender(context.getDevice());
+
+    // The material set follows the global set and the instance set.
+    m_materialSetStartIndex = m_globalSetCount + 1;
+
+    // Give each material its own builder containing only the material set layout
+    // (if any), so the material's StarShaderInfo owns only its per-mesh set(s)
+    // instead of a copy of the global + instance sets.
     for (auto &material : m_meshMaterials)
     {
-        // descriptors
-        material->prepRender(context, context.frameTracker().getSetup().getNumFramesInFlight(), frameBuilder);
+        auto materialBuilder = StarShaderInfo::Builder(frameBuilder.getDeviceID(), frameBuilder.getDevice(),
+                                                       frameBuilder.getPool(), numFramesInFlight);
+        if (hasMaterialSet)
+            materialBuilder.addSetLayout(materialSetLayout);
+
+        material->prepRender(context, numFramesInFlight, materialBuilder);
     }
 }
 
@@ -441,6 +505,13 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
            "Meshes have not yet been prepared. Need to have been created in the constructors");
 
     if (!context.getPipelineManager().get(this->pipeline)->isReady())
+    {
+        return false;
+    }
+    // The per-object instance set is no longer checked through each mesh's
+    // material (which now only owns its per-mesh set), so check it here.
+    if (m_instanceShaderInfo &&
+        !m_instanceShaderInfo->isReady(context.frameTracker().getCurrent().getFrameInFlightIndex()))
     {
         return false;
     }

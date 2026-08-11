@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "StarCommandBuffer.hpp"
 #include "StarShader.hpp"
@@ -43,7 +43,8 @@ class StarMaterial
 
     virtual void cleanupRender(core::device::DeviceContext &context);
 
-    virtual void bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex);
+    virtual void bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex,
+                      uint32_t firstSetIndex = 0);
 
     bool isKnownToBeReady(const uint8_t &swapChainImageIndex);
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Light.hpp"
 #include "LightBufferObject.hpp"
@@ -88,6 +88,7 @@ class DefaultRenderPhase : public RenderPhase
     virtual void frameUpdate(common::IDeviceContext &context) override;
     virtual void recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &frameInFlightIndex,
                                      const uint64_t &frameIndex) override;
+    virtual void cleanupRender(common::IDeviceContext &context) override;
 
   protected:
     friend class DefaultRenderPhaseProvider;
@@ -95,6 +96,10 @@ class DefaultRenderPhase : public RenderPhase
     std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
         m_infoManagerCamera;
     std::shared_ptr<StarDescriptorSetLayout> globalSetLayout;
+    /// Global descriptor set (camera/lights) owned by the phase and bound once per
+    /// frame. Previously this set was duplicated into every material and rebound
+    /// for every mesh.
+    std::unique_ptr<StarShaderInfo> m_globalShaderInfo;
     bool ownsRenderResourceControllers = false;
     bool isReady = false;
 
@@ -110,6 +115,11 @@ class DefaultRenderPhase : public RenderPhase
 
     virtual void recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                 const uint64_t &frameIndex);
+
+    /// Override to bind the global descriptor set once per render group per frame
+    /// (instead of once per mesh) before delegating to the base group iteration.
+    virtual void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+                                      const uint64_t &frameIndex) override;
 
     void recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                          const uint64_t &frameIndex);

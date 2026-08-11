@@ -1,4 +1,4 @@
-#include "renderer/DefaultRenderPhase.hpp"
+﻿#include "renderer/DefaultRenderPhase.hpp"
 
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
@@ -32,25 +32,36 @@ star::StarShaderInfo::Builder DefaultRenderPhase::manualCreateDescriptors(star::
     assert(defaultPool != nullptr &&
            "Pool has not been created yet. Descriptor pools are created after engine prep phase is complete");
 
-    this->globalSetLayout =
-        createGlobalDescriptorSetLayout(context, context.frameTracker().getSetup().getNumFramesInFlight());
-    auto globalBuilder = StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool,
-                                                 context.frameTracker().getSetup().getNumFramesInFlight())
-                             .addSetLayout(this->globalSetLayout);
-    for (int i = 0; i < context.frameTracker().getSetup().getNumFramesInFlight(); i++)
-    {
-        const auto &lightInfoHandle = m_infoManagerLightData->getHandle(i);
-        const auto &lightListHandle = m_infoManagerLightList->getHandle(i);
-        const auto &cameraHandle = m_infoManagerCamera->getHandle(i);
+    const uint8_t numFramesInFlight = context.frameTracker().getSetup().getNumFramesInFlight();
+    this->globalSetLayout = createGlobalDescriptorSetLayout(context, numFramesInFlight);
 
-        globalBuilder.startOnFrameIndex(i)
-            .startSet()
-            .add(star::StarShaderInfo::BufferInfo{cameraHandle})
-            .add(star::StarShaderInfo::BufferInfo{lightInfoHandle})
-            .add(star::StarShaderInfo::BufferInfo{lightListHandle});
+    // Build the global StarShaderInfo once and own it on the phase. It is bound a
+    // single time per frame in recordRenderingCalls instead of being duplicated
+    // into every material and rebound for every mesh.
+    {
+        auto globalBuilder =
+            StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool, numFramesInFlight)
+                .addSetLayout(this->globalSetLayout);
+        for (int i = 0; i < numFramesInFlight; i++)
+        {
+            const auto &lightInfoHandle = m_infoManagerLightData->getHandle(i);
+            const auto &lightListHandle = m_infoManagerLightList->getHandle(i);
+            const auto &cameraHandle = m_infoManagerCamera->getHandle(i);
+
+            globalBuilder.startOnFrameIndex(i)
+                .startSet()
+                .add(star::StarShaderInfo::BufferInfo{cameraHandle})
+                .add(star::StarShaderInfo::BufferInfo{lightInfoHandle})
+                .add(star::StarShaderInfo::BufferInfo{lightListHandle});
+        }
+        m_globalShaderInfo = globalBuilder.build();
     }
 
-    return globalBuilder;
+    // Return a builder carrying only the global set layout. Render groups use it to
+    // assemble the pipeline layout; per-object and per-mesh sets are now built by
+    // the objects and materials themselves.
+    return StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool, numFramesInFlight)
+        .addSetLayout(this->globalSetLayout);
 }
 
 std::shared_ptr<star::StarDescriptorSetLayout> DefaultRenderPhase::createGlobalDescriptorSetLayout(
@@ -71,6 +82,21 @@ void DefaultRenderPhase::frameUpdate(common::IDeviceContext &context)
 
     updateDependentData(c);
     RenderPhase::frameUpdate(context);
+}
+
+void DefaultRenderPhase::cleanupRender(common::IDeviceContext &context)
+{
+    // Clean the render groups first: this destroys every pipeline layout, which
+    // references the global set layout. Only after the pipeline layouts are gone
+    // is it safe to release the global set layout owned by m_globalShaderInfo.
+    RenderPhase::cleanupRender(context);
+
+    auto &c = static_cast<core::device::DeviceContext &>(context);
+    if (m_globalShaderInfo)
+    {
+        m_globalShaderInfo->cleanupRender(c.getDevice());
+        m_globalShaderInfo.reset();
+    }
 }
 
 void DefaultRenderPhase::updateDependentData(star::core::device::DeviceContext &context)
@@ -95,6 +121,30 @@ void DefaultRenderPhase::recordCommandBuffer(StarCommandBuffer &commandBuffer, c
     recordCommands(commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()), frameTracker, frameIndex);
 
     commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
+}
+
+void DefaultRenderPhase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+                                              const uint64_t &frameIndex)
+{
+    for (auto &group : m_renderGroups)
+    {
+        // Bind the global descriptor set (camera/lights) once for this render
+        // group's pipeline layout before any object records its per-mesh draws.
+        // Previously every mesh rebound the global set (and the per-object
+        // instance set) via the material; now only the material set is rebound
+        // per mesh.
+        if (m_globalShaderInfo)
+        {
+            auto globalSets = m_globalShaderInfo->getDescriptors(frameInFlightIndex);
+            if (!globalSets.empty())
+            {
+                commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, group.getPipelineLayout(), 0,
+                                                 globalSets.size(), globalSets.data(), 0, nullptr);
+            }
+        }
+
+        group.recordRenderPassCommands(commandBuffer, frameInFlightIndex, frameIndex);
+    }
 }
 
 void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,

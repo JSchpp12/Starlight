@@ -1,4 +1,4 @@
-#include "StarShaderInfo.hpp"
+﻿#include "StarShaderInfo.hpp"
 
 vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet(const Handle &deviceID)
 {
@@ -174,15 +174,18 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(uint8_t fram
         {
             for (size_t i{0}; i < set->shaderInfos.size(); i++)
             {
-                if (set->shaderInfos[0].bufferInfo.has_value() &&
-                    set->shaderInfos[0].bufferInfo.value().handle.has_value())
+                if (set->shaderInfos[i].bufferInfo.has_value() &&
+                    set->shaderInfos[i].bufferInfo.value().handle.has_value())
                 {
-                    // check if buffer has changed
-                    auto &info = set->shaderInfos[0].bufferInfo.value();
-                    auto &handle = set->shaderInfos[0].bufferInfo.value().handle.value();
+                    auto &info = set->shaderInfos[i].bufferInfo.value();
+                    auto &handle = set->shaderInfos[i].bufferInfo.value().handle.value();
 
                     const auto &buffer = ManagerRenderResource::getBuffer(m_deviceID, handle).getVulkanBuffer();
-                    if (info.currentBuffer != VK_NULL_HANDLE || info.currentBuffer != buffer)
+                    if (info.currentBuffer == VK_NULL_HANDLE)
+                    {
+                        info.currentBuffer = buffer;
+                    }
+                    else if (info.currentBuffer != buffer)
                     {
                         info.currentBuffer = buffer;
                         set->buildIndex(m_deviceID, i);
@@ -194,7 +197,11 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(uint8_t fram
                     auto &info = set->shaderInfos[i].textureInfo.value();
 
                     const auto &texture = ManagerRenderResource::getTexture(m_deviceID, info.handle).getVulkanImage();
-                    if (!info.currentImage.has_value() || info.currentImage.value() != texture)
+                    if (!info.currentImage.has_value())
+                    {
+                        info.currentImage = texture;
+                    }
+                    else if (info.currentImage.value() != texture)
                     {
                         info.currentImage = texture;
                         set->buildIndex(m_deviceID, i);
