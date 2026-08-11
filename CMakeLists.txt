@@ -4,12 +4,12 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.1.2
+    VERSION 1.2.0
 )
 
 include(CheckIncludeFile)
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (APPLE)
@@ -567,11 +567,10 @@ set(${STARLIGHT_NAME}_INCLUDE_DIRS
     "include/starlight/core/"
 )
 
-target_precompile_headers(${STARLIGHT_NAME}
-    PUBLIC
-    "include/starlight/core/logging/LoggingFactory.hpp"
-    "include/starlight/core/device/StarDevice.hpp"
-)
+# Shared, generated precompiled header (Vulkan + common libs).
+# Other targets can reuse it via:
+#     target_precompile_headers(<target> REUSE_FROM starlight)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/StarVulkanPch.cmake")
 
 target_link_libraries(${STARLIGHT_NAME}
     PUBLIC
@@ -628,13 +627,10 @@ target_include_directories(${STARLIGHT_NAME}
 
 if (MSVC)
     target_compile_options(${STARLIGHT_NAME} PRIVATE
-        /Zi
+        /bigobj
         /MP
         /EHsc
         /Zc:__cplusplus
-    )
-    target_link_options(${STARLIGHT_NAME} PRIVATE
-        /DEBUG
     )
 endif()
 
