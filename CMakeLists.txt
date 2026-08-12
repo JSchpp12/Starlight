@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.2.0
+    VERSION 1.2.1
 )
 
 include(CheckIncludeFile)
@@ -94,6 +94,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/renderer/RenderingTargetInfo.cpp"
     "src/starlight/core/renderer/RenderingContext.cpp"
     "src/starlight/core/renderer/CaptureCapableRenderer.cpp"
+    "src/starlight/core/renderer/EdgeSubmission.cpp"
     "src/starlight/object/StarObject.cpp"
     "src/starlight/virtual/ModulePlug/ManagerPlug.cpp"
     "src/starlight/virtual/StarMesh.cpp"
@@ -340,6 +341,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/renderer/RenderingTargetInfo.hpp"
     "include/starlight/core/renderer/RenderingContext.hpp"
     "include/starlight/core/renderer/CaptureCapableRenderer.hpp"
+    "include/starlight/core/renderer/EdgeSubmission.hpp"
     "include/starlight/common/ThreadSharedResource.hpp"
     "include/starlight/common/Compiler.hpp"
     "include/starlight/common/materials/BumpMaterial.hpp"

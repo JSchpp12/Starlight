@@ -1,7 +1,8 @@
-﻿#include "starlight/core/renderer/HeadlessRenderPhase.hpp"
+#include "starlight/core/renderer/HeadlessRenderPhase.hpp"
 
 #include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/command/command_order/TriggerPass.hpp"
+#include "starlight/core/renderer/EdgeSubmission.hpp"
 
 namespace star::core::renderer
 {
@@ -84,71 +85,8 @@ vk::Semaphore HeadlessRenderPhase::submitBuffer(StarCommandBuffer &buffer, const
                                                 std::vector<std::optional<uint64_t>> previousSignaledValues,
                                                 StarQueue &queue)
 {
-    const size_t ii = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
-    assert(m_cmdBus != nullptr);
-
-    vk::SemaphoreSubmitInfo waitInfo[10];
-    uint8_t waitInfoCount{0};
-
-    vk::Semaphore mySemaphore{VK_NULL_HANDLE};
-    uint64_t mySemaphoreSignalValue{0};
-    {
-        auto cmd = star::command_order::GetPassInfo{m_commandBuffer};
-        m_cmdBus->submit(cmd);
-        mySemaphore = cmd.getReply().get().signaledSemaphore;
-        mySemaphoreSignalValue = cmd.getReply().get().toSignalValue;
-
-        assert(cmd.getReply().get().edges != nullptr &&
-               "No neighbor command buffers were registered. At least one is expected");
-        assert(cmd.getReply().get().edges->size() + dataWaitPoints.size() < 10 &&
-               "Static size container for wait semaphore info only expects a max of 10");
-        for (const auto &edge : *cmd.getReply().get().edges)
-        {
-            if (edge.consumer == m_commandBuffer)
-            {
-                auto nCmd = star::command_order::GetPassInfo{edge.producer};
-                m_cmdBus->submit(nCmd);
-
-                waitInfo[waitInfoCount]
-                    .setSemaphore(nCmd.getReply().get().signaledSemaphore)
-                    .setValue(nCmd.getReply().get().toSignalValue)
-                    .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
-
-                waitInfoCount++;
-            }
-        }
-    }
-
-    assert(dataSemaphores.size() == dataWaitPoints.size());
-    for (size_t i{0}; i < dataWaitPoints.size(); i++)
-    {
-        waitInfo[waitInfoCount + i]
-            .setSemaphore(dataSemaphores[i])
-            .setValue(previousSignaledValues[i].has_value() ? previousSignaledValues[i].value() : 0)
-            .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
-    }
-    waitInfoCount += static_cast<uint8_t>(dataWaitPoints.size());
-
-    vk::Semaphore binarySemaphore{buffer.getCompleteSemaphores()[ii]};
-    const vk::SemaphoreSubmitInfo signalInfo[2]{
-        vk::SemaphoreSubmitInfo()
-            .setSemaphore(mySemaphore)
-            .setValue(mySemaphoreSignalValue)
-            .setStageMask(vk::PipelineStageFlagBits2::eAllCommands),
-        vk::SemaphoreSubmitInfo().setSemaphore(binarySemaphore).setStageMask(vk::PipelineStageFlagBits2::eAllCommands)};
-    const uint8_t signalInfoCount{2};
-
-    const auto submitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(
-        buffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()));
-
-    queue.getVulkanQueue().submit2(vk::SubmitInfo2()
-                                       .setPWaitSemaphoreInfos(waitInfo)
-                                       .setWaitSemaphoreInfoCount(waitInfoCount)
-                                       .setPCommandBufferInfos(&submitInfo)
-                                       .setCommandBufferInfoCount(1)
-                                       .setPSignalSemaphoreInfos(signalInfo)
-                                       .setSignalSemaphoreInfoCount(signalInfoCount));
-
-    return binarySemaphore;
+    return submitEdgeAwarePass(*m_cmdBus, m_commandBuffer, buffer, frameTracker, previousCommandBufferSemaphores,
+                               dataSemaphores, dataWaitPoints, previousSignaledValues, queue,
+                               /*signalBinaryCompletion=*/true);
 }
 } // namespace star::core::renderer

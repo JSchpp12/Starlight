@@ -38,7 +38,8 @@ class DefaultRenderPhaseProvider : public IRenderPhaseProvider
         return m_frameData;
     }
 
-    virtual std::unique_ptr<RenderPhase> build(core::device::DeviceContext &context, RenderPhaseRegistry &phases) override;
+    virtual std::unique_ptr<RenderPhase> build(core::device::DeviceContext &context,
+                                               RenderPhaseRegistry &phases) override;
 
   protected:
     RenderPhaseConfig m_config;
