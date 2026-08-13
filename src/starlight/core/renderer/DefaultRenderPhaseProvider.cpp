@@ -141,10 +141,6 @@ void DefaultRenderPhaseProvider::buildCore(DefaultRenderPhase *phase, core::devi
     phase->m_renderingContext.targetResolution = c.getEngineResolution();
 
     phase->m_renderTargets = createRenderTargets(c, phase->m_renderingContext);
-    phase->m_renderToImages = phase->m_renderTargets.colorHandles();
-    phase->m_renderToDepthImages = phase->m_renderTargets.depthHandles();
-    phase->m_colorFormat = phase->m_renderTargets.colorFormat();
-    phase->m_depthFormat = phase->m_renderTargets.depthFormat();
 
     for (auto &group : phase->m_renderGroups)
     {
@@ -155,7 +151,7 @@ void DefaultRenderPhaseProvider::buildCore(DefaultRenderPhase *phase, core::devi
     star::core::waiter::one_shot::GenericEvent<DefaultRenderPhase::WaitForDescriptorPoolReady,
                                                star::event::DescriptorPoolReady>::Builder(c.getEventBus())
         .setPayload(DefaultRenderPhase::WaitForDescriptorPoolReady{
-            RenderingTargetInfo({phase->m_colorFormat}, phase->m_depthFormat),
+            phase->getRenderTargetInfo(),
             std::bind(&DefaultRenderPhase::manualCreateDescriptors, phase, std::placeholders::_1), c,
             phase->m_renderGroups})
         .build();

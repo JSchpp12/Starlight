@@ -48,18 +48,6 @@ class RenderPhase
     {
         return m_commandBuffer;
     }
-    const std::vector<Handle> &getRenderToColorImages() const
-    {
-        return m_renderToImages;
-    }
-    std::vector<Handle> &getRenderToDepthImages()
-    {
-        return m_renderToDepthImages;
-    }
-    const std::vector<Handle> &getRenderToDepthImages() const
-    {
-        return m_renderToDepthImages;
-    }
     std::vector<std::shared_ptr<StarObject>> &getObjects()
     {
         return m_objects;
@@ -79,7 +67,11 @@ class RenderPhase
 
     virtual RenderingTargetInfo getRenderTargetInfo() const
     {
-        return RenderingTargetInfo({m_colorFormat}, m_depthFormat);
+        RenderingTargetInfo info;
+        if (m_renderTargets.hasColor())
+            info.colorAttachmentFormats = {*m_renderTargets.colorFormat()};
+        info.depthAttachmentFormat = m_renderTargets.depthFormat();
+        return info;
     }
 
   protected:
@@ -92,15 +84,12 @@ class RenderPhase
 
     void updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 
-    RenderTargets m_renderTargets;
-    RenderingContext m_renderingContext;
-    std::shared_ptr<FrameData> m_frameData;
-    std::vector<std::shared_ptr<StarObject>> m_objects;
-    std::vector<Handle> m_renderToImages;
-    std::vector<Handle> m_renderToDepthImages;
     std::vector<StarRenderGroup> m_renderGroups;
     Handle m_commandBuffer;
-    vk::Format m_colorFormat{vk::Format::eUndefined};
-    vk::Format m_depthFormat{vk::Format::eUndefined};
+    std::shared_ptr<FrameData> m_frameData;
+    std::vector<std::shared_ptr<StarObject>> m_objects;
+    RenderingContext m_renderingContext;
+
+    RenderTargets m_renderTargets;
 };
 } // namespace star::core::renderer

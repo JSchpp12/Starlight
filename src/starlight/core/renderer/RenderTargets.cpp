@@ -45,10 +45,16 @@ void RenderTargets::frameUpdate(core::device::DeviceContext &context, RenderingC
 {
     const uint8_t fi = static_cast<uint8_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
 
-    renderingContext.recordDependentImage.manualInsert(m_colorHandles[fi],
-                                                       &context.getImageManager().get(m_colorHandles[fi])->texture);
-    renderingContext.recordDependentImage.manualInsert(m_depthHandles[fi],
-                                                       &context.getImageManager().get(m_depthHandles[fi])->texture);
+    if (!m_colorHandles.empty())
+    {
+        renderingContext.recordDependentImage.manualInsert(m_colorHandles[fi],
+                                                           &context.getImageManager().get(m_colorHandles[fi])->texture);
+    }
+    if (!m_depthHandles.empty())
+    {
+        renderingContext.recordDependentImage.manualInsert(m_depthHandles[fi],
+                                                           &context.getImageManager().get(m_depthHandles[fi])->texture);
+    }
 }
 
 static void collectGraphicsPresentTransferIndices(core::device::DeviceContext &device, std::vector<uint32_t> &indices)

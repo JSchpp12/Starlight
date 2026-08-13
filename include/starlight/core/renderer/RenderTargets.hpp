@@ -7,6 +7,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace star::core::device
@@ -23,6 +24,14 @@ class RenderTargets
     static RenderTargets forPresentation(core::device::DeviceContext &context, RenderingContext &renderingContext);
     static RenderTargets forOffscreen(core::device::DeviceContext &context, RenderingContext &renderingContext);
 
+    bool hasColor() const
+    {
+        return !m_colorHandles.empty();
+    }
+    bool hasDepth() const
+    {
+        return !m_depthHandles.empty();
+    }
     const std::vector<Handle> &colorHandles() const
     {
         return m_colorHandles;
@@ -31,11 +40,11 @@ class RenderTargets
     {
         return m_depthHandles;
     }
-    vk::Format colorFormat() const
+    std::optional<vk::Format> colorFormat() const
     {
         return m_colorFormat;
     }
-    vk::Format depthFormat() const
+    std::optional<vk::Format> depthFormat() const
     {
         return m_depthFormat;
     }
@@ -43,8 +52,8 @@ class RenderTargets
     /// Re-insert the current frame's textures into the rendering context.
     void frameUpdate(core::device::DeviceContext &context, RenderingContext &renderingContext);
 
-    RenderTargets(std::vector<Handle> colorHandles, vk::Format colorFormat, std::vector<Handle> depthHandles,
-                  vk::Format depthFormat)
+    RenderTargets(std::vector<Handle> colorHandles, std::optional<vk::Format> colorFormat,
+                  std::vector<Handle> depthHandles, std::optional<vk::Format> depthFormat)
         : m_colorHandles(std::move(colorHandles)), m_colorFormat(colorFormat), m_depthHandles(std::move(depthHandles)),
           m_depthFormat(depthFormat)
     {
@@ -59,6 +68,6 @@ class RenderTargets
 
   private:
     std::vector<Handle> m_colorHandles, m_depthHandles;
-    vk::Format m_colorFormat{vk::Format::eUndefined}, m_depthFormat{vk::Format::eUndefined};
+    std::optional<vk::Format> m_colorFormat, m_depthFormat;
 };
 } // namespace star::core::renderer

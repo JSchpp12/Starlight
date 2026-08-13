@@ -13,6 +13,9 @@
 #include <vma/vk_mem_alloc.h>
 
 #include <algorithm>
+#include <optional>
+#include <vector>
+
 namespace star::core::renderer
 {
 star::StarShaderInfo::Builder DefaultRenderPhase::manualCreateDescriptors(star::core::device::DeviceContext &context)
@@ -158,16 +161,20 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
     recordCommandBufferDependencies(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
 
     {
-        vk::RenderingAttachmentInfo colorAttachmentInfo = prepareDynamicRenderingInfoColorAttachment(frameTracker);
-        vk::RenderingAttachmentInfo depthAttachmentInfo = prepareDynamicRenderingInfoDepthAttachment(frameTracker);
+        std::vector<vk::RenderingAttachmentInfo> colorAttachments;
+        std::optional<vk::RenderingAttachmentInfo> depthAttachment;
+        if (m_renderTargets.hasColor())
+            colorAttachments.push_back(prepareDynamicRenderingInfoColorAttachment(frameTracker));
+        if (m_renderTargets.hasDepth())
+            depthAttachment = prepareDynamicRenderingInfoDepthAttachment(frameTracker);
 
         auto renderArea = vk::Rect2D{vk::Offset2D{}, m_renderingContext.targetResolution};
         vk::RenderingInfoKHR renderInfo{};
         renderInfo.renderArea = renderArea;
         renderInfo.layerCount = 1;
-        renderInfo.pDepthAttachment = &depthAttachmentInfo;
-        renderInfo.pColorAttachments = &colorAttachmentInfo;
-        renderInfo.colorAttachmentCount = 1;
+        renderInfo.pDepthAttachment = depthAttachment ? &*depthAttachment : nullptr;
+        renderInfo.pColorAttachments = colorAttachments.empty() ? nullptr : colorAttachments.data();
+        renderInfo.colorAttachmentCount = colorAttachments.size();
         commandBuffer.beginRendering(renderInfo);
     }
 
@@ -252,7 +259,7 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderPhase::prepareDyn
 {
     size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
 
-    const auto *r = m_renderingContext.recordDependentImage.get(m_renderToImages[index]);
+    const auto *r = m_renderingContext.recordDependentImage.get(m_renderTargets.colorHandles()[index]);
 
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
     colorAttachmentInfo.imageView = r->getImageView();
@@ -271,7 +278,7 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderPhase::prepareDyn
 
     vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};
     depthAttachmentInfo.imageView =
-        m_renderingContext.recordDependentImage.get(m_renderToDepthImages[index])->getImageView();
+        m_renderingContext.recordDependentImage.get(m_renderTargets.depthHandles()[index])->getImageView();
     depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;

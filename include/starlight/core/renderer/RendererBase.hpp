@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/renderer/RenderPhaseConfig.hpp"
+#include "core/renderer/RenderTargets.hpp"
 #include "systems/StarRenderGroup.hpp"
 
 #include <star_common/IDeviceContext.hpp>
@@ -33,18 +34,9 @@ class RendererBase
     {
         return m_commandBuffer;
     }
-    const std::vector<Handle> &getRenderToColorImages() const
+    const RenderTargets &getRenderTargets() const
     {
-        return m_renderToImages;
-    }
-
-    std::vector<Handle> &getRenderToDepthImages()
-    {
-        return m_renderToDepthImages;
-    }
-    const std::vector<Handle> &getRenderToDepthImages() const
-    {
-        return m_renderToDepthImages;
+        return m_renderTargets;
     }
     std::vector<std::shared_ptr<StarObject>> &getObjects()
     {
@@ -66,8 +58,7 @@ class RendererBase
 
     RenderPhaseConfig m_config;
     std::vector<std::shared_ptr<StarObject>> m_objects;
-    std::vector<Handle> m_renderToImages;
-    std::vector<Handle> m_renderToDepthImages;
+    RenderTargets m_renderTargets;
     std::vector<StarRenderGroup> m_renderGroups;
     Handle m_commandBuffer;
 
