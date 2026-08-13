@@ -50,7 +50,7 @@ class StarMaterial
 
     /// Add the descriptor types to be used in this material to the provided layout builder. The layout builder should
     /// already contain parent descriptor information.
-    virtual void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &frameBuilder) const = 0;
+    virtual void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &frameBuilder) const {};
 
     virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
         const int &numFramesInFlight) const;
@@ -64,6 +64,6 @@ class StarMaterial
     /// @brief Create descriptor sets which will be used when this material is bound. Make sure that all global sets are
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &device,
                                                             const uint8_t &numFramesInFlight,
-                                                            StarShaderInfo::Builder builder) = 0;
+                                                            StarShaderInfo::Builder builder);
 };
 } // namespace star

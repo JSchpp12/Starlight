@@ -43,3 +43,10 @@ std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarMaterial::g
 
     return semaphoreInfo;
 }
+
+std::unique_ptr<star::StarShaderInfo> star::StarMaterial::buildShaderInfo(core::device::DeviceContext &device,
+                                                                          const uint8_t &numFramesInFlight,
+                                                                          StarShaderInfo::Builder builder)
+{
+    return builder.build();
+}
