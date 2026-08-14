@@ -275,22 +275,13 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
     return RenderTargets(std::move(colorHandles), colorFormat, std::move(depthHandles), depthFormat);
 }
 
-// ------------------------------------------------------------------------------------------------
-// forOffscreen: offscreen/compute-read path. Color is exclusive (compute transitions it), no
-// creation-time layout transition; depth is exclusive + sampled (sampler attached), no transition.
-// Verbatim of the former OffscreenRenderer creation.
-// ------------------------------------------------------------------------------------------------
-RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, RenderingContext &renderingContext)
+std::vector<StarTextures::Texture> RenderTargets::createDefaultColorAttachments(core::device::DeviceContext &context,
+                                                                                const size_t numToCreate, int width,
+                                                                                int height)
 {
-    const uint8_t numFramesInFlight = static_cast<uint8_t>(context.frameTracker().getSetup().getNumFramesInFlight());
-
-    int width, height;
-    engineResolution(context, width, height);
-    const auto &props = context.getDevice().getPhysicalDevice().getProperties();
-
     vk::Format colorFormat = vk::Format::eUndefined;
     std::vector<StarTextures::Texture> colorTextures;
-    colorTextures.reserve(numFramesInFlight);
+    colorTextures.reserve(numToCreate);
     {
         colorFormat =
             selectFormat(context, {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Unorm},
@@ -327,15 +318,24 @@ RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, 
                                                           .setBaseMipLevel(0)
                                                           .setLevelCount(1)));
 
-        for (uint8_t i = 0; i < numFramesInFlight; i++)
+        for (uint8_t i = 0; i < numToCreate; i++)
         {
             colorTextures.emplace_back(builder.build());
         }
     }
 
+    return colorTextures;
+}
+
+std::vector<StarTextures::Texture> RenderTargets::createDefaultDepthAttachments(core::device::DeviceContext &context,
+                                                                                const size_t numToCreate, int width,
+                                                                                int height)
+{
+    const auto &props = context.getDevice().getPhysicalDevice().getProperties();
+
     vk::Format depthFormat = vk::Format::eUndefined;
     std::vector<StarTextures::Texture> depthTextures;
-    depthTextures.reserve(numFramesInFlight);
+    depthTextures.reserve(numToCreate);
     {
         depthFormat =
             selectFormat(context, {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
@@ -387,12 +387,33 @@ RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, 
                                     .setMinLod(0.0f)
                                     .setMaxLod(0.0f));
 
-        for (uint8_t i = 0; i < numFramesInFlight; i++)
+        for (uint8_t i = 0; i < numToCreate; i++)
         {
-            depthTextures.emplace_back(builder.build());
+            depthTextures.push_back(builder.build());
         }
     }
 
+    return depthTextures;
+}
+
+RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, RenderingContext &renderingContext)
+{
+    const uint8_t numFramesInFlight = static_cast<uint8_t>(context.frameTracker().getSetup().getNumFramesInFlight());
+
+    int width, height;
+    engineResolution(context, width, height);
+    const auto &props = context.getDevice().getPhysicalDevice().getProperties();
+
+    auto colorTextures = createDefaultColorAttachments(context, numFramesInFlight, width, height);
+    if (colorTextures.size() == 0)
+        STAR_THROW("Failed to create default color attachments");
+
+    const auto colorFormat = colorTextures.front().getBaseFormat();
+    auto depthTextures = createDefaultDepthAttachments(context, numFramesInFlight, width, height);
+    if (depthTextures.size() == 0)
+        STAR_THROW("Failed to create default depth attachments");
+
+    auto depthFormat = depthTextures.front().getBaseFormat();
     auto colorHandles = registerTextures(context, renderingContext, std::move(colorTextures));
     auto depthHandles = registerTextures(context, renderingContext, std::move(depthTextures));
     return RenderTargets(std::move(colorHandles), colorFormat, std::move(depthHandles), depthFormat);

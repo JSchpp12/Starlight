@@ -153,7 +153,7 @@ void DefaultRenderPhaseProvider::buildCore(DefaultRenderPhase *phase, core::devi
         .setPayload(DefaultRenderPhase::WaitForDescriptorPoolReady{
             phase->getRenderTargetInfo(),
             std::bind(&DefaultRenderPhase::manualCreateDescriptors, phase, std::placeholders::_1), c,
-            phase->m_renderGroups})
+            phase->m_renderGroups, phase->m_commandBuffer})
         .build();
 }
 

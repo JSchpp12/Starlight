@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "StarCommandBuffer.hpp"
 #include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
 #include "core/device/DeviceContext.hpp"
+#include <star_common/Handle.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -39,7 +40,7 @@ class StarMaterial
     /// </summary>
     /// <param name="device"></param>
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                            star::StarShaderInfo::Builder frameBuilder);
+                            star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer);
 
     virtual void cleanupRender(core::device::DeviceContext &context);
 

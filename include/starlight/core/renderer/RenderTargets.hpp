@@ -20,9 +20,24 @@ namespace star::core::renderer
 class RenderTargets
 {
   public:
-    RenderTargets() = default;
+    static std::vector<StarTextures::Texture> createDefaultColorAttachments(core::device::DeviceContext &context,
+                                                                            const size_t numToCreate, int width,
+                                                                            int height);
+    static std::vector<StarTextures::Texture> createDefaultDepthAttachments(core::device::DeviceContext &context,
+                                                                            const size_t numToCreate, int width,
+                                                                            int height);
     static RenderTargets forPresentation(core::device::DeviceContext &context, RenderingContext &renderingContext);
     static RenderTargets forOffscreen(core::device::DeviceContext &context, RenderingContext &renderingContext);
+    static std::vector<star::Handle> registerTextures(core::device::DeviceContext &context,
+                                                      RenderingContext &renderingContext,
+                                                      std::vector<StarTextures::Texture> textures);
+    RenderTargets() = default;
+    RenderTargets(std::vector<Handle> colorHandles, std::optional<vk::Format> colorFormat,
+                  std::vector<Handle> depthHandles, std::optional<vk::Format> depthFormat)
+        : m_colorHandles(std::move(colorHandles)), m_colorFormat(colorFormat), m_depthHandles(std::move(depthHandles)),
+          m_depthFormat(depthFormat)
+    {
+    }
 
     bool hasColor() const
     {
@@ -51,20 +66,6 @@ class RenderTargets
 
     /// Re-insert the current frame's textures into the rendering context.
     void frameUpdate(core::device::DeviceContext &context, RenderingContext &renderingContext);
-
-    RenderTargets(std::vector<Handle> colorHandles, std::optional<vk::Format> colorFormat,
-                  std::vector<Handle> depthHandles, std::optional<vk::Format> depthFormat)
-        : m_colorHandles(std::move(colorHandles)), m_colorFormat(colorFormat), m_depthHandles(std::move(depthHandles)),
-          m_depthFormat(depthFormat)
-    {
-    }
-
-    /// Register a batch of built textures with the image manager and insert each
-    /// handle->texture* into the rendering context. Returns the assigned handles
-    /// (the image manager owns the textures).
-    static std::vector<Handle> registerTextures(core::device::DeviceContext &context,
-                                                RenderingContext &renderingContext,
-                                                std::vector<StarTextures::Texture> textures);
 
   private:
     std::vector<Handle> m_colorHandles, m_depthHandles;

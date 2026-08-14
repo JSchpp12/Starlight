@@ -1,8 +1,12 @@
-﻿#include "StarMaterial.hpp"
+#include "StarMaterial.hpp"
 
 void star::StarMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                                    star::StarShaderInfo::Builder frameBuilder)
+                                    star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
+    // Only texture-bearing materials register transfer waits against the provided
+    // command buffer; the base has nothing to wait on.
+    (void)commandBuffer;
+
     if (!shaderInfo)
     {
         shaderInfo = buildShaderInfo(context, numFramesInFlight, std::move(frameBuilder));

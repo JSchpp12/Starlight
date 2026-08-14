@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Enums.hpp"
 #include "Light.hpp"
@@ -40,7 +40,7 @@ class StarRenderGroup
     virtual void addObject(std::shared_ptr<StarObject> newRenderObject);
 
     void onDescriptorPoolReady(star::core::device::DeviceContext &context, StarShaderInfo::Builder initEngineBuilder,
-                               star::core::renderer::RenderingTargetInfo &rendererInfo);
+                               star::core::renderer::RenderingTargetInfo &rendererInfo, star::Handle commandBuffer);
 
     vk::PipelineLayout getPipelineLayout() const
     {

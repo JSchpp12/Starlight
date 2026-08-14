@@ -6,10 +6,6 @@
 namespace star
 {
 
-// ---------------------------------------------------------------------------
-// StarPipeline
-// ---------------------------------------------------------------------------
-
 void StarPipeline::bind(vk::CommandBuffer &commandBuffer) const
 {
     assert(m_pipeline && "Pipeline has not yet been created");
@@ -27,10 +23,6 @@ void StarPipeline::destroy(vk::Device device)
         m_pipeline = VK_NULL_HANDLE;
     }
 }
-
-// ---------------------------------------------------------------------------
-// PipelineProvider
-// ---------------------------------------------------------------------------
 
 vk::ShaderModule PipelineProvider::createShaderModule(vk::Device &device, const std::vector<uint32_t> &sourceCode)
 {
@@ -138,7 +130,9 @@ vk::Pipeline PipelineProvider::buildGraphics(vk::Device device, const RenderReso
     renderingCreateInfo.pNext = VK_NULL_HANDLE;
     renderingCreateInfo.sType = vk::StructureType::ePipelineRenderingCreateInfoKHR;
     renderingCreateInfo.colorAttachmentCount = deps.renderingTargetInfo.colorAttachmentFormats.size();
-    renderingCreateInfo.pColorAttachmentFormats = deps.renderingTargetInfo.colorAttachmentFormats.data();
+    renderingCreateInfo.pColorAttachmentFormats = deps.renderingTargetInfo.colorAttachmentFormats.size() != 0
+                                                      ? deps.renderingTargetInfo.colorAttachmentFormats.data()
+                                                      : nullptr;
     if (deps.renderingTargetInfo.depthAttachmentFormat.has_value())
         renderingCreateInfo.depthAttachmentFormat = deps.renderingTargetInfo.depthAttachmentFormat.value();
     if (deps.renderingTargetInfo.stencilAttachmentFormat.has_value())

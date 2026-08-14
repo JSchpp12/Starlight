@@ -1,4 +1,4 @@
-﻿#include "starlight/object/StarObject.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
@@ -185,24 +185,29 @@ void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &
                                              StarShaderInfo::Builder fullEngineBuilder,
                                              vk::PipelineLayout pipelineLayout,
                                              const core::renderer::RenderingTargetInfo &renderingInfo,
-                                             uint32_t globalSetCount)
+                                             uint32_t globalSetCount, star::Handle commandBuffer)
 {
     m_globalSetCount = globalSetCount;
 
     this->pipeline = buildPipeline(context, context.getEngineResolution(), pipelineLayout, renderingInfo);
 
-    prepMaterials(context, fullEngineBuilder);
+    prepMaterials(context, fullEngineBuilder, commandBuffer);
+
+    registerMeshTransferWaits(context, commandBuffer);
 }
 
 void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
                                              star::StarShaderInfo::Builder fullEngineBuilder,
-                                             const Handle &sharedPipeline, uint32_t globalSetCount)
+                                             const Handle &sharedPipeline, uint32_t globalSetCount,
+                                             star::Handle commandBuffer)
 {
     m_globalSetCount = globalSetCount;
 
     this->sharedPipeline = sharedPipeline;
 
-    prepMaterials(context, fullEngineBuilder);
+    prepMaterials(context, fullEngineBuilder, commandBuffer);
+
+    registerMeshTransferWaits(context, commandBuffer);
 }
 
 void star::StarObject::prepStarObject(core::device::DeviceContext &context)
@@ -338,7 +343,7 @@ void star::StarObject::prepareMeshes(star::core::device::DeviceContext &device)
 }
 
 void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
-                                     star::StarShaderInfo::Builder &frameBuilder)
+                                     star::StarShaderInfo::Builder &frameBuilder, star::Handle commandBuffer)
 {
     assert(m_meshMaterials.size() > 0 && "Mesh materials should exist");
 
@@ -395,8 +400,14 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
         if (hasMaterialSet)
             materialBuilder.addSetLayout(materialSetLayout);
 
-        material->prepRender(context, numFramesInFlight, materialBuilder);
+        material->prepRender(context, numFramesInFlight, materialBuilder, commandBuffer);
     }
+}
+
+void star::StarObject::registerMeshTransferWaits(star::core::device::DeviceContext &context, star::Handle commandBuffer)
+{
+    for (auto &mesh : this->meshes)
+        mesh.registerTransferWaits(context, commandBuffer);
 }
 
 void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &context)

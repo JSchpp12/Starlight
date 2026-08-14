@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "StarCommandBuffer.hpp"
 #include "StarEntity.hpp"
@@ -67,11 +67,11 @@ class StarObject
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context, StarShaderInfo::Builder fullEngineBuilder,
                                        vk::PipelineLayout pipelineLayout,
                                        const core::renderer::RenderingTargetInfo &renderingInfo,
-                                       uint32_t globalSetCount);
+                                       uint32_t globalSetCount, star::Handle commandBuffer);
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context,
                                        star::StarShaderInfo::Builder fullEngineBuilder, const Handle &sharedPipeline,
-                                       uint32_t globalSetCount);
+                                       uint32_t globalSetCount, star::Handle commandBuffer);
 
     virtual core::renderer::RenderingContext buildRenderingContext(star::core::device::DeviceContext &context);
 
@@ -233,7 +233,10 @@ class StarObject
 
     void prepStarObject(core::device::DeviceContext &context);
 
-    void prepMaterials(star::core::device::DeviceContext &context, StarShaderInfo::Builder &frameBuilder);
+    void prepMaterials(star::core::device::DeviceContext &context, StarShaderInfo::Builder &frameBuilder,
+                       star::Handle commandBuffer);
+
+    void registerMeshTransferWaits(star::core::device::DeviceContext &context, star::Handle commandBuffer);
 
     void recordDrawCommandNormals(vk::CommandBuffer &commandBuffer);
 

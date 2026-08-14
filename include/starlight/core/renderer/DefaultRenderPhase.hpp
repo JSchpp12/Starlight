@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Light.hpp"
 #include "LightBufferObject.hpp"
@@ -35,15 +35,16 @@ class DefaultRenderPhase : public RenderPhase
         WaitForDescriptorPoolReady(
             RenderingTargetInfo renderingInfo,
             std::function<star::StarShaderInfo::Builder(star::core::device::DeviceContext &context)> createDescriptors,
-            star::core::device::DeviceContext &context, std::vector<StarRenderGroup> &renderGroups)
+            star::core::device::DeviceContext &context, std::vector<StarRenderGroup> &renderGroups,
+            Handle commandBuffer)
             : m_renderingTargetInfo(std::move(renderingInfo)), m_createDescriptors(std::move(createDescriptors)),
-              m_context(context), m_renderGroups(renderGroups)
+              m_context(context), m_renderGroups(renderGroups), m_commandBuffer(commandBuffer)
         {
         }
         WaitForDescriptorPoolReady(WaitForDescriptorPoolReady &&other) noexcept
             : m_renderingTargetInfo(std::move(other.m_renderingTargetInfo)),
               m_createDescriptors(std::move(other.m_createDescriptors)), m_context(other.m_context),
-              m_renderGroups(other.m_renderGroups)
+              m_renderGroups(other.m_renderGroups), m_commandBuffer(other.m_commandBuffer)
         {
         }
         WaitForDescriptorPoolReady &operator=(WaitForDescriptorPoolReady &&other) noexcept
@@ -54,6 +55,7 @@ class DefaultRenderPhase : public RenderPhase
                 m_createDescriptors = std::move(other.m_createDescriptors);
                 m_context = std::move(other.m_context);
                 m_renderGroups = std::move(other.m_renderGroups);
+                m_commandBuffer = other.m_commandBuffer;
             }
             return *this;
         }
@@ -64,7 +66,7 @@ class DefaultRenderPhase : public RenderPhase
             auto rendererSet = m_createDescriptors(m_context);
             for (auto &group : m_renderGroups)
             {
-                group.onDescriptorPoolReady(m_context, rendererSet, m_renderingTargetInfo);
+                group.onDescriptorPoolReady(m_context, rendererSet, m_renderingTargetInfo, m_commandBuffer);
             }
 
             return 0;
@@ -75,6 +77,7 @@ class DefaultRenderPhase : public RenderPhase
         std::function<star::StarShaderInfo::Builder(star::core::device::DeviceContext &context)> m_createDescriptors;
         star::core::device::DeviceContext &m_context;
         std::vector<StarRenderGroup> &m_renderGroups;
+        Handle m_commandBuffer;
     };
 
     DefaultRenderPhase() = default;

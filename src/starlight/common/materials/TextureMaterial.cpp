@@ -69,11 +69,33 @@ void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
 }
 
 void star::TextureMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                                       star::StarShaderInfo::Builder frameBuilder)
+                                       star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
     preloadTexture(context);
 
-    StarMaterial::prepRender(context, numFramesInFlight, frameBuilder);
+    if (m_textureHandle.isInitialized())
+        registerTextureTransferWait(context, commandBuffer, m_textureHandle);
+
+    StarMaterial::prepRender(context, numFramesInFlight, frameBuilder, commandBuffer);
+}
+
+void star::TextureMaterial::registerTextureTransferWait(core::device::DeviceContext &context,
+                                                        star::Handle commandBuffer, star::Handle textureHandle)
+{
+    assert(textureHandle.isInitialized() && "Texture handle must be initialized before registering its transfer wait");
+
+    const auto *record =
+        context.getManagerRenderResource().get<StarTextures::Texture>(context.getDeviceID(), textureHandle);
+    assert(record != nullptr && "Failed to locate texture record while registering transfer wait");
+
+    const auto &transferSemaphore = record->gpuWorkDoneSignaledInfo;
+
+    context.getManagerCommandBuffer()
+        .m_manager.get(commandBuffer)
+        .oneTimeWaitSemaphoreInfo.insert(textureHandle, transferSemaphore.vkSemaphore,
+                                         vk::PipelineStageFlagBits::eFragmentShader |
+                                             vk::PipelineStageFlagBits::eVertexShader,
+                                         transferSemaphore.signalValue);
 }
 
 std::unique_ptr<star::StarShaderInfo> star::TextureMaterial::buildShaderInfo(core::device::DeviceContext &context,

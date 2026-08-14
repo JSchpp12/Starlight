@@ -161,10 +161,10 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
     recordCommandBufferDependencies(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
 
     {
-        std::vector<vk::RenderingAttachmentInfo> colorAttachments;
+        vk::RenderingAttachmentInfo colorAttachments;
         std::optional<vk::RenderingAttachmentInfo> depthAttachment;
         if (m_renderTargets.hasColor())
-            colorAttachments.push_back(prepareDynamicRenderingInfoColorAttachment(frameTracker));
+            colorAttachments = prepareDynamicRenderingInfoColorAttachment(frameTracker);
         if (m_renderTargets.hasDepth())
             depthAttachment = prepareDynamicRenderingInfoDepthAttachment(frameTracker);
 
@@ -173,8 +173,8 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
         renderInfo.renderArea = renderArea;
         renderInfo.layerCount = 1;
         renderInfo.pDepthAttachment = depthAttachment ? &*depthAttachment : nullptr;
-        renderInfo.pColorAttachments = colorAttachments.empty() ? nullptr : colorAttachments.data();
-        renderInfo.colorAttachmentCount = colorAttachments.size();
+        renderInfo.pColorAttachments = &colorAttachments;
+        renderInfo.colorAttachmentCount = m_renderTargets.hasColor() ? 1 : 0;
         commandBuffer.beginRendering(renderInfo);
     }
 
