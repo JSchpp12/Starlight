@@ -9,6 +9,8 @@
 
 #include <star_common/EventBus.hpp>
 #include <star_common/Handle.hpp>
+#include <starlight/core/helper/command_buffer/CommandBufferHelpers.hpp>
+#include <starlight/core/helper/queue/QueueHelpers.hpp>
 
 #include <cassert>
 #include <functional>
@@ -157,9 +159,79 @@ void DefaultRenderPhaseProvider::buildCore(DefaultRenderPhase *phase, core::devi
         .build();
 }
 
+static const star::core::device::manager::ImageRecord *GetImg(const star::Handle &handle,
+                                                              core::device::DeviceContext &context)
+{
+    const auto *vRec = context.getImageManager().get(handle);
+    if (vRec == nullptr)
+        STAR_THROW("Failed to retreive color texture from manager. The factory method should have registered all "
+                   "textures with the manager");
+
+    return vRec;
+}
+
 RenderTargets DefaultRenderPhaseProvider::createRenderTargets(core::device::DeviceContext &context,
                                                               RenderingContext &ctx)
 {
-    return RenderTargets::forOffscreen(context, ctx);
+    auto targets = RenderTargets::forOffscreen(context, ctx);
+
+    auto *graphicsQueueToUse = core::helper::GetEngineDefaultQueue(
+        context.getEventBus(), context.getGraphicsManagers().queueManager, star::Queue_Type::Tpresent);
+    assert(graphicsQueueToUse != nullptr);
+
+    std::vector<vk::ImageMemoryBarrier2> imgBarriers(targets.colorHandles().size() + targets.depthHandles().size());
+    size_t imgIndex = 0;
+    for (size_t i = 0; i < targets.colorHandles().size(); i++)
+    {
+        const auto *vRec = GetImg(targets.colorHandles()[i], context);
+        imgBarriers[imgIndex++] = vk::ImageMemoryBarrier2()
+                                      .setOldLayout(vk::ImageLayout::eUndefined)
+                                      .setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                                      .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                                      .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                                      .setImage(vRec->texture.getVulkanImage())
+                                      .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+                                      .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
+                                      .setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite |
+                                                        vk::AccessFlagBits2::eColorAttachmentRead)
+                                      .setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+                                      .setSubresourceRange(vk::ImageSubresourceRange()
+                                                               .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                                               .setBaseMipLevel(0)
+                                                               .setLevelCount(vk::RemainingMipLevels)
+                                                               .setBaseArrayLayer(0)
+                                                               .setLayerCount(vk::RemainingArrayLayers));
+    }
+
+    for (size_t i = 0; i < targets.depthHandles().size(); i++)
+    {
+        const auto *vRec = GetImg(targets.depthHandles()[i], context);
+        imgBarriers[imgIndex++] = vk::ImageMemoryBarrier2()
+                                      .setOldLayout(vk::ImageLayout::eUndefined)
+                                      .setNewLayout(vk::ImageLayout::eDepthAttachmentOptimal)
+                                      .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                                      .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                                      .setImage(vRec->texture.getVulkanImage())
+                                      .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+                                      .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
+                                      .setDstAccessMask(vk::AccessFlagBits2::eDepthStencilAttachmentRead |
+                                                        vk::AccessFlagBits2::eDepthStencilAttachmentWrite)
+                                      .setDstStageMask(vk::PipelineStageFlagBits2::eEarlyFragmentTests)
+                                      .setSubresourceRange(vk::ImageSubresourceRange()
+                                                               .setAspectMask(vk::ImageAspectFlagBits::eDepth)
+                                                               .setBaseMipLevel(0)
+                                                               .setLevelCount(vk::RemainingMipLevels)
+                                                               .setBaseArrayLayer(0)
+                                                               .setLayerCount(vk::RemainingArrayLayers));
+    }
+
+    auto oneTimeSetup = star::core::helper::BeginSingleTimeCommands(context.getDevice(), context.getEventBus(),
+                                                                    context.getManagerCommandBuffer().m_manager,
+                                                                    star::Queue_Type::Tgraphics);
+
+    oneTimeSetup.buffer().pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarriers(imgBarriers));
+
+    core::helper::EndSingleTimeCommands(*graphicsQueueToUse, std::move(oneTimeSetup));
+    return targets;
 }
 } // namespace star::core::renderer
