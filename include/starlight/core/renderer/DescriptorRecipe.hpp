@@ -9,6 +9,7 @@
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -52,6 +53,9 @@ class DescriptorRecipe
         Builder &setRenderGroups(Handle groupShaderInfo, std::vector<StarRenderGroup> *groups, RenderingTargetInfo info,
                                  Handle commandBuffer);
 
+        /// Optional: generic post-build callback fired after all StarShaderInfo are built
+        Builder &setOnShaderInfoReady(std::function<void(core::device::DeviceContext &)> onReady);
+
         void build();
 
       private:
@@ -64,6 +68,7 @@ class DescriptorRecipe
         Handle m_groupShaderInfo{};
         RenderingTargetInfo m_renderingTargetInfo;
         Handle m_commandBuffer{};
+        std::function<void(core::device::DeviceContext &)> m_onReady;
     };
 
     DescriptorRecipe() = default;
@@ -75,7 +80,8 @@ class DescriptorRecipe
     DescriptorRecipe(core::device::DeviceContext *context,
                      std::vector<std::pair<Handle, std::unique_ptr<StarShaderInfo> *>> shaderInfoOuts,
                      std::vector<Binding> bindings, std::vector<StarRenderGroup> *renderGroups, Handle groupShaderInfo,
-                     RenderingTargetInfo renderingTargetInfo, Handle commandBuffer);
+                     RenderingTargetInfo renderingTargetInfo, Handle commandBuffer,
+                     std::function<void(core::device::DeviceContext &)> onReady);
 
     core::device::DeviceContext *m_context{nullptr};
     std::vector<std::pair<Handle, std::unique_ptr<StarShaderInfo> *>> m_shaderInfoOuts;
@@ -84,5 +90,6 @@ class DescriptorRecipe
     Handle m_groupShaderInfo{};
     RenderingTargetInfo m_renderingTargetInfo;
     Handle m_commandBuffer{};
+    std::function<void(core::device::DeviceContext &)> m_onReady;
 };
 } // namespace star::core::renderer

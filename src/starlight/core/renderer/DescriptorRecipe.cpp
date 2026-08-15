@@ -53,10 +53,11 @@ DescriptorRecipe::DescriptorRecipe(core::device::DeviceContext *context,
                                    std::vector<std::pair<Handle, std::unique_ptr<StarShaderInfo> *>> shaderInfoOuts,
                                    std::vector<Binding> bindings, std::vector<StarRenderGroup> *renderGroups,
                                    Handle groupShaderInfo, RenderingTargetInfo renderingTargetInfo,
-                                   Handle commandBuffer)
+                                   Handle commandBuffer, std::function<void(core::device::DeviceContext &)> onReady)
     : m_context(context), m_shaderInfoOuts(std::move(shaderInfoOuts)), m_bindings(std::move(bindings)),
       m_renderGroups(renderGroups), m_groupShaderInfo(groupShaderInfo),
-      m_renderingTargetInfo(std::move(renderingTargetInfo)), m_commandBuffer(commandBuffer)
+      m_renderingTargetInfo(std::move(renderingTargetInfo)), m_commandBuffer(commandBuffer),
+      m_onReady(std::move(onReady))
 {
 }
 
@@ -175,6 +176,10 @@ int DescriptorRecipe::operator()()
             group.onDescriptorPoolReady(*m_context, groupBuilder, m_renderingTargetInfo, m_commandBuffer);
     }
 
+    // Generic post-build hook: runs after every StarShaderInfo is built
+    if (m_onReady)
+        m_onReady(*m_context);
+
     return 0;
 }
 
@@ -211,6 +216,13 @@ DescriptorRecipe::Builder &DescriptorRecipe::Builder::setRenderGroups(Handle gro
     return *this;
 }
 
+DescriptorRecipe::Builder &DescriptorRecipe::Builder::setOnShaderInfoReady(
+    std::function<void(core::device::DeviceContext &)> onReady)
+{
+    m_onReady = std::move(onReady);
+    return *this;
+}
+
 void DescriptorRecipe::Builder::build()
 {
     assert(m_context && !m_shaderInfoOuts.empty() && !m_bindings.empty());
@@ -218,7 +230,7 @@ void DescriptorRecipe::Builder::build()
         assert(m_commandBuffer.isInitialized() && "render-group notification requires a command buffer");
 
     DescriptorRecipe recipe(m_context, std::move(m_shaderInfoOuts), std::move(m_bindings), m_renderGroups,
-                            m_groupShaderInfo, m_renderingTargetInfo, m_commandBuffer);
+                            m_groupShaderInfo, m_renderingTargetInfo, m_commandBuffer, std::move(m_onReady));
     star::core::waiter::one_shot::CreateDescriptorsOnEventPolicy<DescriptorRecipe>::Builder(m_bus)
         .setEventType(m_eventType)
         .setPolicy(std::move(recipe))
