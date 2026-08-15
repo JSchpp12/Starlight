@@ -45,8 +45,6 @@ class DefaultRenderPhaseProvider : public IRenderPhaseProvider
     RenderPhaseConfig m_config;
     std::vector<std::shared_ptr<StarObject>> m_objects;
     std::shared_ptr<FrameData> m_frameData;
-    std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
-        m_infoManagerCamera;
     bool ownsRenderResourceControllers = false;
 
     void initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights,

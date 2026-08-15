@@ -1,7 +1,9 @@
 #pragma once 
 
 #ifndef NDEBUG
+#ifndef VMA_DEBUG_INITIALIZE_ALLOCATIONS
 #define VMA_DEBUG_INITIALIZE_ALLOCATIONS 1
+#endif
 #endif
 
 #include <vk_mem_alloc.h>

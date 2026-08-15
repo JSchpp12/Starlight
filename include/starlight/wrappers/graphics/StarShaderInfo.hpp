@@ -1,15 +1,14 @@
-﻿#pragma once
+#pragma once
 
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarTextures/Texture.hpp"
 #include "core/device/DeviceContext.hpp"
 
-#include <star_common/Handle.hpp>
-#include <star_common/HandleTypeRegistry.hpp>
-
 #include <memory>
 #include <optional>
+#include <star_common/Handle.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
 #include <vector>
 
 namespace star
@@ -57,6 +56,18 @@ class StarShaderInfo
         TextureInfo(const StarTextures::Texture *texture, vk::ImageLayout expectedLayout,
                     vk::Format requestedImageViewFormat)
             : texture(texture), expectedLayout(expectedLayout), requestedImageViewFormat(requestedImageViewFormat)
+        {
+        }
+        TextureInfo(Handle handle, vk::ImageLayout expectedLayout, std::optional<vk::Format> requestedImageViewFormat)
+            : handle(std::move(handle)), expectedLayout(expectedLayout),
+              requestedImageViewFormat(std::move(requestedImageViewFormat))
+        {
+        }
+
+        TextureInfo(const StarTextures::Texture *texture, vk::ImageLayout expectedLayout,
+                    std::optional<vk::Format> requestedImageViewFormat)
+            : texture(texture), expectedLayout(expectedLayout),
+              requestedImageViewFormat(std::move(requestedImageViewFormat))
         {
         }
 

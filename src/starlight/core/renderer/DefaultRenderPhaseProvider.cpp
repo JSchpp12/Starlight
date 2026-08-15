@@ -1,14 +1,17 @@
-#include "renderer/DefaultRenderPhaseProvider.hpp"
+﻿#include "renderer/DefaultRenderPhaseProvider.hpp"
 
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
 #include "ManagerController_RenderResource_LightList.hpp"
+#include "core/renderer/DescriptorRecipe.hpp"
 #include "starlight/command/command_order/DeclarePass.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
-#include "starlight/core/waiter/one_shot/GenericEvent.hpp"
+#include "starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.hpp"
+#include "starlight/event/DescriptorPoolReady.hpp"
 
 #include <star_common/EventBus.hpp>
 #include <star_common/Handle.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
 #include <starlight/core/helper/command_buffer/CommandBufferHelpers.hpp>
 #include <starlight/core/helper/queue/QueueHelpers.hpp>
 
@@ -42,9 +45,6 @@ DefaultRenderPhaseProvider::DefaultRenderPhaseProvider(core::device::DeviceConte
     : m_frameData(std::move(frameData)), ownsRenderResourceControllers(false)
 {
     m_objects = std::move(objects);
-    m_infoManagerCamera = m_frameData->controllerAt(0);
-    m_infoManagerLightData = m_frameData->controllerAt(1);
-    m_infoManagerLightList = m_frameData->controllerAt(2);
 }
 
 void DefaultRenderPhaseProvider::initBuffers(core::device::DeviceContext &context,
@@ -58,13 +58,9 @@ void DefaultRenderPhaseProvider::initBuffers(core::device::DeviceContext &contex
         context.frameTracker().getSetup().getNumFramesInFlight(), lights);
 
     m_frameData = std::make_shared<FrameData>();
-    m_frameData->add(std::move(cameraController))
-        .add(std::move(lightInfoController))
-        .add(std::move(lightListController));
-
-    m_infoManagerCamera = m_frameData->controllerAt(0);
-    m_infoManagerLightData = m_frameData->controllerAt(1);
-    m_infoManagerLightList = m_frameData->controllerAt(2);
+    m_frameData->add(std::move(cameraController), roleHandle(frame_roles::Camera))
+        .add(std::move(lightInfoController), roleHandle(frame_roles::LightInfo))
+        .add(std::move(lightListController), roleHandle(frame_roles::LightList));
 }
 
 std::vector<star::StarRenderGroup> DefaultRenderPhaseProvider::CreateRenderingGroups(
@@ -127,9 +123,9 @@ void DefaultRenderPhaseProvider::buildCore(DefaultRenderPhase *phase, core::devi
     // transfer construction state (created in this provider's ctor) to the phase
     phase->m_objects = std::move(m_objects);
     phase->m_frameData = m_frameData;
-    phase->m_infoManagerLightData = m_infoManagerLightData;
-    phase->m_infoManagerLightList = m_infoManagerLightList;
-    phase->m_infoManagerCamera = m_infoManagerCamera;
+    phase->m_cameraRole = roleHandle(frame_roles::Camera);
+    phase->m_lightInfoRole = roleHandle(frame_roles::LightInfo);
+    phase->m_lightListRole = roleHandle(frame_roles::LightList);
     phase->ownsRenderResourceControllers = ownsRenderResourceControllers;
 
     phase->m_renderGroups = CreateRenderingGroups(c, phase->m_objects);
@@ -149,13 +145,21 @@ void DefaultRenderPhaseProvider::buildCore(DefaultRenderPhase *phase, core::devi
         group.prepRender(c);
     }
 
-    // needs to wait until after prepRenderPhase ==> when descriptor pool will be created
-    star::core::waiter::one_shot::GenericEvent<DefaultRenderPhase::WaitForDescriptorPoolReady,
-                                               star::event::DescriptorPoolReady>::Builder(c.getEventBus())
-        .setPayload(DefaultRenderPhase::WaitForDescriptorPoolReady{
-            phase->getRenderTargetInfo(),
-            std::bind(&DefaultRenderPhase::manualCreateDescriptors, phase, std::placeholders::_1), c,
-            phase->m_renderGroups, phase->m_commandBuffer})
+    // Build the global descriptor set once the descriptor pool is ready. The
+    // recipe is a value object stuffed into a one-shot waiter; it builds the
+    // global StarShaderInfo from FrameData's role-keyed resources, hands the
+    // layout to the render groups, and is then destroyed. The built StarShaderInfo
+    // persists on the phase.
+    const auto global = shaderInfoHandle("Global");
+    DescriptorRecipe::Builder(c.getEventBus(), c, star::event::DescriptorPoolReady::GetUniqueTypeName())
+        .setShaderInfoOut(global, &phase->m_globalShaderInfo)
+        .addBinding(global, 0, phase->m_frameData, phase->m_cameraRole, 0, vk::DescriptorType::eUniformBuffer,
+                    vk::ShaderStageFlagBits::eAll)
+        .addBinding(global, 0, phase->m_frameData, phase->m_lightInfoRole, 1, vk::DescriptorType::eUniformBuffer,
+                    vk::ShaderStageFlagBits::eAll)
+        .addBinding(global, 0, phase->m_frameData, phase->m_lightListRole, 2, vk::DescriptorType::eStorageBuffer,
+                    vk::ShaderStageFlagBits::eAll)
+        .setRenderGroups(global, &phase->m_renderGroups, phase->getRenderTargetInfo(), phase->m_commandBuffer)
         .build();
 }
 

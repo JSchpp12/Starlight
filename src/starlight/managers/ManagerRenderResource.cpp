@@ -82,6 +82,7 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
     return newBufferHandle;
 }
 
+
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
                                                      std::unique_ptr<star::TransferRequest::Texture> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,

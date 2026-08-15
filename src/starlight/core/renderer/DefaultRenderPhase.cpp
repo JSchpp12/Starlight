@@ -1,4 +1,4 @@
-﻿#include "renderer/DefaultRenderPhase.hpp"
+#include "renderer/DefaultRenderPhase.hpp"
 
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
@@ -18,65 +18,6 @@
 
 namespace star::core::renderer
 {
-star::StarShaderInfo::Builder DefaultRenderPhase::manualCreateDescriptors(star::core::device::DeviceContext &context)
-{
-    assert(m_infoManagerCamera &&
-           "Camera info does not always need to exist. But it should. Hitting this means a change is needed");
-
-    StarDescriptorPool *defaultPool{nullptr};
-    {
-        const Handle dHandle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                 core::device::manager::GetDescriptorPoolTypeName),
-                             .id = 0};
-
-        defaultPool = context.getDescriptorPoolManager().get(dHandle)->pool.get();
-    }
-
-    assert(defaultPool != nullptr &&
-           "Pool has not been created yet. Descriptor pools are created after engine prep phase is complete");
-
-    const uint8_t numFramesInFlight = context.frameTracker().getSetup().getNumFramesInFlight();
-    this->globalSetLayout = createGlobalDescriptorSetLayout(context, numFramesInFlight);
-
-    // Build the global StarShaderInfo once and own it on the phase. It is bound a
-    // single time per frame in recordRenderingCalls instead of being duplicated
-    // into every material and rebound for every mesh.
-    {
-        auto globalBuilder =
-            StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool, numFramesInFlight)
-                .addSetLayout(this->globalSetLayout);
-        for (int i = 0; i < numFramesInFlight; i++)
-        {
-            const auto &lightInfoHandle = m_infoManagerLightData->getHandle(i);
-            const auto &lightListHandle = m_infoManagerLightList->getHandle(i);
-            const auto &cameraHandle = m_infoManagerCamera->getHandle(i);
-
-            globalBuilder.startOnFrameIndex(i)
-                .startSet()
-                .add(star::StarShaderInfo::BufferInfo{cameraHandle})
-                .add(star::StarShaderInfo::BufferInfo{lightInfoHandle})
-                .add(star::StarShaderInfo::BufferInfo{lightListHandle});
-        }
-        m_globalShaderInfo = globalBuilder.build();
-    }
-
-    // Return a builder carrying only the global set layout. Render groups use it to
-    // assemble the pipeline layout; per-object and per-mesh sets are now built by
-    // the objects and materials themselves.
-    return StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool, numFramesInFlight)
-        .addSetLayout(this->globalSetLayout);
-}
-
-std::shared_ptr<star::StarDescriptorSetLayout> DefaultRenderPhase::createGlobalDescriptorSetLayout(
-    device::DeviceContext &context, const uint8_t &numFramesInFlight)
-{
-    return StarDescriptorSetLayout::Builder()
-        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-        .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-        .addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
-        .build();
-}
-
 void DefaultRenderPhase::frameUpdate(common::IDeviceContext &context)
 {
     auto &c = static_cast<core::device::DeviceContext &>(context);
@@ -89,9 +30,8 @@ void DefaultRenderPhase::frameUpdate(common::IDeviceContext &context)
 
 void DefaultRenderPhase::cleanupRender(common::IDeviceContext &context)
 {
-    // Clean the render groups first: this destroys every pipeline layout, which
-    // references the global set layout. Only after the pipeline layouts are gone
-    // is it safe to release the global set layout owned by m_globalShaderInfo.
+    // Clean the render groups first: this destroys every pipeline layout, which references the global set layout. Only
+    // after the pipeline layouts are gone is it safe to release the global set layout owned by m_globalShaderInfo.
     RenderPhase::cleanupRender(context);
 
     auto &c = static_cast<core::device::DeviceContext &>(context);
@@ -131,11 +71,9 @@ void DefaultRenderPhase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, 
 {
     for (auto &group : m_renderGroups)
     {
-        // Bind the global descriptor set (camera/lights) once for this render
-        // group's pipeline layout before any object records its per-mesh draws.
-        // Previously every mesh rebound the global set (and the per-object
-        // instance set) via the material; now only the material set is rebound
-        // per mesh.
+        // Bind the global descriptor set (camera/lights) once for this render group's pipeline layout before any object
+        // records its per-mesh draws. Previously every mesh rebound the global set (and the per-object instance set)
+        // via the material; now only the material set is rebound per mesh.
         if (m_globalShaderInfo)
         {
             auto globalSets = m_globalShaderInfo->getDescriptors(frameInFlightIndex);
@@ -202,10 +140,13 @@ std::vector<vk::BufferMemoryBarrier2> DefaultRenderPhase::getMemoryBarriersForTh
 
     if (ownsRenderResourceControllers)
     {
-        if (m_infoManagerCamera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+        const auto camera = m_frameData->controller(m_cameraRole);
+        const auto lightInfo = m_frameData->controller(m_lightInfoRole);
+        const auto lightList = m_frameData->controller(m_lightListRole);
+
+        if (camera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
         {
-            auto buffer =
-                m_renderingContext.bufferTransferRecords.get(m_infoManagerCamera->getHandle(frameInFlightIndex));
+            auto buffer = m_renderingContext.bufferTransferRecords.get(camera->getHandle(frameInFlightIndex));
 
             barriers.emplace_back(
                 vk::BufferMemoryBarrier2()
@@ -220,7 +161,7 @@ std::vector<vk::BufferMemoryBarrier2> DefaultRenderPhase::getMemoryBarriersForTh
                     .setSize(vk::WholeSize));
         }
 
-        if (m_infoManagerLightData->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+        if (lightInfo->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
         {
             barriers.emplace_back(
                 vk::BufferMemoryBarrier2()
@@ -231,23 +172,22 @@ std::vector<vk::BufferMemoryBarrier2> DefaultRenderPhase::getMemoryBarriersForTh
                     .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
                     .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
                     .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setBuffer(m_renderingContext.bufferTransferRecords.get(
-                        m_infoManagerLightData->getHandle(frameInFlightIndex)))
+                    .setBuffer(m_renderingContext.bufferTransferRecords.get(lightInfo->getHandle(frameInFlightIndex)))
                     .setSize(vk::WholeSize));
         }
 
-        if (m_infoManagerLightList->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+        if (lightList->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
         {
-            barriers.emplace_back(vk::BufferMemoryBarrier2()
-                                      .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                                      .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                                      .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
-                                                       vk::PipelineStageFlagBits2::eVertexShader)
-                                      .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                                      .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                                      .setBuffer(m_renderingContext.bufferTransferRecords.get(
-                                          m_infoManagerLightList->getHandle(frameInFlightIndex)))
-                                      .setSize(vk::WholeSize));
+            barriers.emplace_back(
+                vk::BufferMemoryBarrier2()
+                    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                    .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                    .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
+                                     vk::PipelineStageFlagBits2::eVertexShader)
+                    .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                    .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                    .setBuffer(m_renderingContext.bufferTransferRecords.get(lightList->getHandle(frameInFlightIndex)))
+                    .setSize(vk::WholeSize));
         }
     }
 

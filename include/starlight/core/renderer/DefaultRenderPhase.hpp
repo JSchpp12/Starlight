@@ -3,7 +3,6 @@
 #include "Light.hpp"
 #include "LightBufferObject.hpp"
 #include "ManagerController_RenderResource_Buffer.hpp"
-#include "MapManager.hpp"
 #include "StarCamera.hpp"
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
@@ -29,60 +28,8 @@ class DefaultRenderPhaseProvider;
 class DefaultRenderPhase : public RenderPhase
 {
   public:
-    class WaitForDescriptorPoolReady
-    {
-      public:
-        WaitForDescriptorPoolReady(
-            RenderingTargetInfo renderingInfo,
-            std::function<star::StarShaderInfo::Builder(star::core::device::DeviceContext &context)> createDescriptors,
-            star::core::device::DeviceContext &context, std::vector<StarRenderGroup> &renderGroups,
-            Handle commandBuffer)
-            : m_renderingTargetInfo(std::move(renderingInfo)), m_createDescriptors(std::move(createDescriptors)),
-              m_context(context), m_renderGroups(renderGroups), m_commandBuffer(commandBuffer)
-        {
-        }
-        WaitForDescriptorPoolReady(WaitForDescriptorPoolReady &&other) noexcept
-            : m_renderingTargetInfo(std::move(other.m_renderingTargetInfo)),
-              m_createDescriptors(std::move(other.m_createDescriptors)), m_context(other.m_context),
-              m_renderGroups(other.m_renderGroups), m_commandBuffer(other.m_commandBuffer)
-        {
-        }
-        WaitForDescriptorPoolReady &operator=(WaitForDescriptorPoolReady &&other) noexcept
-        {
-            if (this != &other)
-            {
-                m_renderingTargetInfo = std::move(other.m_renderingTargetInfo);
-                m_createDescriptors = std::move(other.m_createDescriptors);
-                m_context = std::move(other.m_context);
-                m_renderGroups = std::move(other.m_renderGroups);
-                m_commandBuffer = other.m_commandBuffer;
-            }
-            return *this;
-        }
-        int operator()(const star::event::DescriptorPoolReady &event, bool &keepAlive)
-        {
-            assert(m_createDescriptors);
-
-            auto rendererSet = m_createDescriptors(m_context);
-            for (auto &group : m_renderGroups)
-            {
-                group.onDescriptorPoolReady(m_context, rendererSet, m_renderingTargetInfo, m_commandBuffer);
-            }
-
-            return 0;
-        }
-
-      private:
-        RenderingTargetInfo m_renderingTargetInfo;
-        std::function<star::StarShaderInfo::Builder(star::core::device::DeviceContext &context)> m_createDescriptors;
-        star::core::device::DeviceContext &m_context;
-        std::vector<StarRenderGroup> &m_renderGroups;
-        Handle m_commandBuffer;
-    };
-
     DefaultRenderPhase() = default;
     virtual ~DefaultRenderPhase() = default;
-
     DefaultRenderPhase(const DefaultRenderPhase &) = delete;
     DefaultRenderPhase &operator=(const DefaultRenderPhase &) = delete;
     DefaultRenderPhase(DefaultRenderPhase &&) = delete;
@@ -96,9 +43,11 @@ class DefaultRenderPhase : public RenderPhase
   protected:
     friend class DefaultRenderPhaseProvider;
 
-    std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
-        m_infoManagerCamera;
-    std::shared_ptr<StarDescriptorSetLayout> globalSetLayout;
+    /// Role handles for the global shared resources (camera/lightInfo/lightList)
+    /// resolved from FrameData. Lightweight value keys -- not controllers.
+    Handle m_cameraRole;
+    Handle m_lightInfoRole;
+    Handle m_lightListRole;
     /// Global descriptor set (camera/lights) owned by the phase and bound once per
     /// frame. Previously this set was duplicated into every material and rebound
     /// for every mesh.
@@ -129,10 +78,5 @@ class DefaultRenderPhase : public RenderPhase
 
     std::vector<vk::BufferMemoryBarrier2> getMemoryBarriersForThisFrame(const uint8_t &frameInFlightIndex,
                                                                         const uint64_t &frameIndex);
-
-    virtual star::StarShaderInfo::Builder manualCreateDescriptors(star::core::device::DeviceContext &context);
-
-    virtual std::shared_ptr<star::StarDescriptorSetLayout> createGlobalDescriptorSetLayout(
-        device::DeviceContext &context, const uint8_t &numFramesInFlight);
 };
 } // namespace star::core::renderer
