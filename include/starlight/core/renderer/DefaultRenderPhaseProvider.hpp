@@ -27,7 +27,6 @@ class DefaultRenderPhaseProvider : public IRenderPhaseProvider
     DefaultRenderPhaseProvider(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects,
                                std::shared_ptr<FrameData> frameData);
     virtual ~DefaultRenderPhaseProvider() = default;
-
     DefaultRenderPhaseProvider(const DefaultRenderPhaseProvider &) = delete;
     DefaultRenderPhaseProvider &operator=(const DefaultRenderPhaseProvider &) = delete;
     DefaultRenderPhaseProvider(DefaultRenderPhaseProvider &&) = default;
@@ -45,10 +44,7 @@ class DefaultRenderPhaseProvider : public IRenderPhaseProvider
     RenderPhaseConfig m_config;
     std::vector<std::shared_ptr<StarObject>> m_objects;
     std::shared_ptr<FrameData> m_frameData;
-    bool ownsRenderResourceControllers = false;
-
-    void initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights,
-                     std::shared_ptr<StarCamera> camera);
+    bool m_createdFrameData = false;
 
     core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest(DefaultRenderPhase *phase);
 

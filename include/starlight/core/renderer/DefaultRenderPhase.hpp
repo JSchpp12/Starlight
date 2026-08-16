@@ -40,19 +40,32 @@ class DefaultRenderPhase : public RenderPhase
                                      const uint64_t &frameIndex) override;
     virtual void cleanupRender(common::IDeviceContext &context) override;
 
+    /// This phase owns and drives the named roles (they must be DrivenBuffer
+    /// slots in m_frameData): it submits their per-frame CPU->GPU transfer and
+    /// emits the transfer->shader read-back barrier each frame.
+    DefaultRenderPhase &setDataRolesOwned(Handle cameraRole, Handle lightInfoRole, Handle lightListRole);
+    /// This phase only reads the named roles (driven by another phase): no
+    /// frameUpdate, no barriers.
+    DefaultRenderPhase &setDataRolesBorrowed(Handle cameraRole, Handle lightInfoRole, Handle lightListRole);
+
   protected:
+    struct DataRoles
+    {
+        Handle camera;
+        Handle lightInfo;
+        Handle lightList;
+    };
+    using OwningBarrierFunction = void (*)(uint8_t, const uint64_t &, const FrameData *, const DataRoles *,
+                                           const RenderingContext *, vk::BufferMemoryBarrier2 *, size_t *) noexcept;
     friend class DefaultRenderPhaseProvider;
 
-    /// Role handles for the global shared resources (camera/lightInfo/lightList)
-    /// resolved from FrameData. Lightweight value keys -- not controllers.
-    Handle m_cameraRole;
-    Handle m_lightInfoRole;
-    Handle m_lightListRole;
+    std::array<vk::BufferMemoryBarrier2, 3> m_runtimeBarriers;
     /// Global descriptor set (camera/lights) owned by the phase and bound once per
     /// frame. Previously this set was duplicated into every material and rebound
     /// for every mesh.
     std::unique_ptr<StarShaderInfo> m_globalShaderInfo;
-    bool ownsRenderResourceControllers = false;
+    DataRoles m_dataRoles{};
+    OwningBarrierFunction m_barrFunction{nullptr};
     bool isReady = false;
 
     virtual void updateDependentData(star::core::device::DeviceContext &context);
@@ -76,7 +89,9 @@ class DefaultRenderPhase : public RenderPhase
     void recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                          const uint64_t &frameIndex);
 
-    std::vector<vk::BufferMemoryBarrier2> getMemoryBarriersForThisFrame(const uint8_t &frameInFlightIndex,
-                                                                        const uint64_t &frameIndex);
+  private:
+    static void AddOwnsAllResourcesBarrier(uint8_t flightIndex, const uint64_t &frameIndex, const FrameData *fd,
+                                           const DataRoles *roles, const RenderingContext *rc,
+                                           vk::BufferMemoryBarrier2 *data, size_t *dCount) noexcept;
 };
 } // namespace star::core::renderer

@@ -29,27 +29,9 @@ static void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star:
     cmdBus.submit(star::command_order::DeclarePass{std::move(commandBuffer), queue->getParentQueueFamilyIndex()});
 }
 
-DefaultRenderPhaseProvider::DefaultRenderPhaseProvider(core::device::DeviceContext &context,
-                                                       std::shared_ptr<std::vector<Light>> lights,
-                                                       std::shared_ptr<StarCamera> camera,
-                                                       std::vector<std::shared_ptr<StarObject>> objects)
-    : ownsRenderResourceControllers(true)
-{
-    m_objects = std::move(objects);
-    initBuffers(context, std::move(lights), camera);
-}
-
-DefaultRenderPhaseProvider::DefaultRenderPhaseProvider(core::device::DeviceContext &context,
-                                                       std::vector<std::shared_ptr<StarObject>> objects,
-                                                       std::shared_ptr<FrameData> frameData)
-    : m_frameData(std::move(frameData)), ownsRenderResourceControllers(false)
-{
-    m_objects = std::move(objects);
-}
-
-void DefaultRenderPhaseProvider::initBuffers(core::device::DeviceContext &context,
-                                             std::shared_ptr<std::vector<Light>> lights,
-                                             std::shared_ptr<StarCamera> camera)
+static std::shared_ptr<FrameData> CreateDefaultFrameData(core::device::DeviceContext &context,
+                                                         std::shared_ptr<std::vector<Light>> lights,
+                                                         std::shared_ptr<StarCamera> camera)
 {
     auto cameraController = std::make_shared<ManagerController::RenderResource::GlobalInfo>(camera);
     auto lightInfoController = std::make_shared<ManagerController::RenderResource::LightInfo>(
@@ -57,10 +39,28 @@ void DefaultRenderPhaseProvider::initBuffers(core::device::DeviceContext &contex
     auto lightListController = std::make_shared<ManagerController::RenderResource::LightList>(
         context.frameTracker().getSetup().getNumFramesInFlight(), lights);
 
-    m_frameData = std::make_shared<FrameData>();
-    m_frameData->add(std::move(cameraController), roleHandle(frame_roles::Camera))
+    auto fd = std::make_shared<FrameData>();
+    fd->add(std::move(cameraController), roleHandle(frame_roles::Camera))
         .add(std::move(lightInfoController), roleHandle(frame_roles::LightInfo))
         .add(std::move(lightListController), roleHandle(frame_roles::LightList));
+
+    return fd;
+}
+
+DefaultRenderPhaseProvider::DefaultRenderPhaseProvider(core::device::DeviceContext &context,
+                                                       std::shared_ptr<std::vector<Light>> lights,
+                                                       std::shared_ptr<StarCamera> camera,
+                                                       std::vector<std::shared_ptr<StarObject>> objects)
+    : m_objects(std::move(objects)), m_frameData(CreateDefaultFrameData(context, lights, camera)),
+      m_createdFrameData(true)
+{
+}
+
+DefaultRenderPhaseProvider::DefaultRenderPhaseProvider(core::device::DeviceContext &context,
+                                                       std::vector<std::shared_ptr<StarObject>> objects,
+                                                       std::shared_ptr<FrameData> frameData)
+    : m_objects(std::move(objects)), m_frameData(std::move(frameData)), m_createdFrameData(false)
+{
 }
 
 std::vector<star::StarRenderGroup> DefaultRenderPhaseProvider::CreateRenderingGroups(
@@ -123,10 +123,12 @@ void DefaultRenderPhaseProvider::buildCore(DefaultRenderPhase *phase, core::devi
     // transfer construction state (created in this provider's ctor) to the phase
     phase->m_objects = std::move(m_objects);
     phase->m_frameData = m_frameData;
-    phase->m_cameraRole = roleHandle(frame_roles::Camera);
-    phase->m_lightInfoRole = roleHandle(frame_roles::LightInfo);
-    phase->m_lightListRole = roleHandle(frame_roles::LightList);
-    phase->ownsRenderResourceControllers = ownsRenderResourceControllers;
+    if (m_createdFrameData)
+        phase->setDataRolesOwned(roleHandle(frame_roles::Camera), roleHandle(frame_roles::LightInfo),
+                                 roleHandle(frame_roles::LightList));
+    else
+        phase->setDataRolesBorrowed(roleHandle(frame_roles::Camera), roleHandle(frame_roles::LightInfo),
+                                    roleHandle(frame_roles::LightList));
 
     phase->m_renderGroups = CreateRenderingGroups(c, phase->m_objects);
     phase->m_commandBuffer = c.getManagerCommandBuffer().submit(getCommandBufferRequest(phase),
@@ -153,12 +155,12 @@ void DefaultRenderPhaseProvider::buildCore(DefaultRenderPhase *phase, core::devi
     const auto global = shaderInfoHandle("Global");
     DescriptorRecipe::Builder(c.getEventBus(), c, star::event::DescriptorPoolReady::GetUniqueTypeName())
         .setShaderInfoOut(global, &phase->m_globalShaderInfo)
-        .addBinding(global, 0, phase->m_frameData, phase->m_cameraRole, 0, vk::DescriptorType::eUniformBuffer,
-                    vk::ShaderStageFlagBits::eAll)
-        .addBinding(global, 0, phase->m_frameData, phase->m_lightInfoRole, 1, vk::DescriptorType::eUniformBuffer,
-                    vk::ShaderStageFlagBits::eAll)
-        .addBinding(global, 0, phase->m_frameData, phase->m_lightListRole, 2, vk::DescriptorType::eStorageBuffer,
-                    vk::ShaderStageFlagBits::eAll)
+        .addBinding(global, 0, phase->m_frameData, roleHandle(frame_roles::Camera), 0,
+                    vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+        .addBinding(global, 0, phase->m_frameData, roleHandle(frame_roles::LightInfo), 1,
+                    vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
+        .addBinding(global, 0, phase->m_frameData, roleHandle(frame_roles::LightList), 2,
+                    vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
         .setRenderGroups(global, &phase->m_renderGroups, phase->getRenderTargetInfo(), phase->m_commandBuffer)
         .build();
 }

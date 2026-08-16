@@ -119,40 +119,42 @@ int DescriptorRecipe::operator()()
                           [](const Binding *a, const Binding *b) { return a->binding < b->binding; });
                 for (const auto *b : sorted)
                 {
-                    const auto &res = b->source->resource(b->role);
-                    if (std::holds_alternative<FrameData::DrivenBuffer>(res))
+                    const auto *res = b->source->resource(b->role);
+                    assert(res != nullptr && "Unable to get resource of role from frame data");
+
+                    if (std::holds_alternative<FrameData::DrivenBuffer>(*res))
                     {
-                        const auto &d = std::get<FrameData::DrivenBuffer>(res);
+                        const auto &d = std::get<FrameData::DrivenBuffer>(*res);
                         builder.add(StarShaderInfo::BufferInfo{d.controller->getHandle(i)});
                     }
-                    else if (std::holds_alternative<FrameData::BorrowedBuffer>(res))
+                    else if (std::holds_alternative<FrameData::BorrowedBuffer>(*res))
                     {
-                        const auto &bb = std::get<FrameData::BorrowedBuffer>(res);
+                        const auto &bb = std::get<FrameData::BorrowedBuffer>(*res);
                         builder.add(StarShaderInfo::BufferInfo{bb.controller->getHandle(i)});
                     }
-                    else if (std::holds_alternative<FrameData::FixedBufferHandle>(res))
+                    else if (std::holds_alternative<FrameData::FixedBufferHandle>(*res))
                     {
-                        const auto &h = std::get<FrameData::FixedBufferHandle>(res);
+                        const auto &h = std::get<FrameData::FixedBufferHandle>(*res);
                         builder.add(StarShaderInfo::BufferInfo{h.handle});
                     }
-                    else if (std::holds_alternative<FrameData::OwnedBuffer>(res))
+                    else if (std::holds_alternative<FrameData::OwnedBuffer>(*res))
                     {
-                        const auto &b = std::get<FrameData::OwnedBuffer>(res);
+                        const auto &b = std::get<FrameData::OwnedBuffer>(*res);
                         builder.add(StarShaderInfo::BufferInfo{b.buffers[i].get()});
                     }
-                    else if (std::holds_alternative<FrameData::TextureHandle>(res))
+                    else if (std::holds_alternative<FrameData::TextureHandle>(*res))
                     {
-                        const auto &t = std::get<FrameData::TextureHandle>(res);
+                        const auto &t = std::get<FrameData::TextureHandle>(*res);
                         builder.add(StarShaderInfo::TextureInfo{t.textureHandle, t.layout, t.format});
                     }
-                    else if (std::holds_alternative<FrameData::BorrowedTexture>(res))
+                    else if (std::holds_alternative<FrameData::BorrowedTexture>(*res))
                     {
-                        const auto &t = std::get<FrameData::BorrowedTexture>(res);
+                        const auto &t = std::get<FrameData::BorrowedTexture>(*res);
                         builder.add(StarShaderInfo::TextureInfo{t.textures[i], t.layout, t.format});
                     }
-                    else if (std::holds_alternative<FrameData::OwnedTexture>(res))
+                    else if (std::holds_alternative<FrameData::OwnedTexture>(*res))
                     {
-                        const auto &t = std::get<FrameData::OwnedTexture>(res);
+                        const auto &t = std::get<FrameData::OwnedTexture>(*res);
                         builder.add(StarShaderInfo::TextureInfo{t.textures[i].get(), t.layout, t.format});
                     }
                 }

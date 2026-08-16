@@ -44,7 +44,7 @@ void DefaultRenderPhase::cleanupRender(common::IDeviceContext &context)
 
 void DefaultRenderPhase::updateDependentData(star::core::device::DeviceContext &context)
 {
-    if (!ownsRenderResourceControllers)
+    if (m_barrFunction == nullptr)
         return;
 
     auto result = m_frameData->frameUpdate(context);
@@ -126,72 +126,93 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
 void DefaultRenderPhase::recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer,
                                                          const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
 {
-    auto memoryBarriers = getMemoryBarriersForThisFrame(frameInFlightIndex, frameIndex);
+    if (m_barrFunction == nullptr)
+        return;
 
-    commandBuffer.pipelineBarrier2(vk::DependencyInfo()
-                                       .setBufferMemoryBarrierCount(memoryBarriers.size())
-                                       .setPBufferMemoryBarriers(memoryBarriers.data()));
+    size_t barrCount{0};
+    m_barrFunction(frameInFlightIndex, frameIndex, m_frameData.get(), &m_dataRoles, &m_renderingContext,
+                   m_runtimeBarriers.data(), &barrCount);
+
+    commandBuffer.pipelineBarrier2(
+        vk::DependencyInfo().setBufferMemoryBarrierCount(barrCount).setPBufferMemoryBarriers(m_runtimeBarriers.data()));
 }
 
-std::vector<vk::BufferMemoryBarrier2> DefaultRenderPhase::getMemoryBarriersForThisFrame(
-    const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
+void DefaultRenderPhase::AddOwnsAllResourcesBarrier(uint8_t frameInFlightIndex, const uint64_t &frameIndex,
+                                                    const FrameData *fd, const DataRoles *roles,
+                                                    const RenderingContext *rc, vk::BufferMemoryBarrier2 *data,
+                                                    size_t *dCount) noexcept
 {
-    auto barriers = std::vector<vk::BufferMemoryBarrier2>();
+    const auto *camera = fd->controller(roles->camera);
+    const auto *lightInfo = fd->controller(roles->lightInfo);
+    const auto *lightList = fd->controller(roles->lightList);
 
-    if (ownsRenderResourceControllers)
+    if (camera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
     {
-        const auto camera = m_frameData->controller(m_cameraRole);
-        const auto lightInfo = m_frameData->controller(m_lightInfoRole);
-        const auto lightList = m_frameData->controller(m_lightListRole);
+        auto buffer = rc->bufferTransferRecords.get(camera->getHandle(frameInFlightIndex));
 
-        if (camera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
-        {
-            auto buffer = m_renderingContext.bufferTransferRecords.get(camera->getHandle(frameInFlightIndex));
-
-            barriers.emplace_back(
-                vk::BufferMemoryBarrier2()
-                    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                    .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                    .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
-                                     vk::PipelineStageFlagBits2::eVertexShader)
-                    .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
-                    .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setBuffer(buffer)
-                    .setSize(vk::WholeSize));
-        }
-
-        if (lightInfo->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
-        {
-            barriers.emplace_back(
-                vk::BufferMemoryBarrier2()
-                    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                    .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                    .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
-                                     vk::PipelineStageFlagBits2::eVertexShader)
-                    .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
-                    .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setBuffer(m_renderingContext.bufferTransferRecords.get(lightInfo->getHandle(frameInFlightIndex)))
-                    .setSize(vk::WholeSize));
-        }
-
-        if (lightList->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
-        {
-            barriers.emplace_back(
-                vk::BufferMemoryBarrier2()
-                    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                    .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                    .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
-                                     vk::PipelineStageFlagBits2::eVertexShader)
-                    .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setBuffer(m_renderingContext.bufferTransferRecords.get(lightList->getHandle(frameInFlightIndex)))
-                    .setSize(vk::WholeSize));
-        }
+        *(data++) = vk::BufferMemoryBarrier2()
+                        .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                        .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                        .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
+                                         vk::PipelineStageFlagBits2::eVertexShader)
+                        .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
+                        .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setBuffer(buffer)
+                        .setSize(vk::WholeSize);
+        (*dCount)++;
     }
 
-    return barriers;
+    if (lightInfo->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    {
+        *(data++) = vk::BufferMemoryBarrier2()
+                        .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                        .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                        .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
+                                         vk::PipelineStageFlagBits2::eVertexShader)
+                        .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
+                        .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setBuffer(rc->bufferTransferRecords.get(lightInfo->getHandle(frameInFlightIndex)))
+                        .setSize(vk::WholeSize);
+        (*dCount)++;
+    }
+
+    if (lightList->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    {
+        *(data++) = vk::BufferMemoryBarrier2()
+                        .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                        .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                        .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
+                                         vk::PipelineStageFlagBits2::eVertexShader)
+                        .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setBuffer(rc->bufferTransferRecords.get(lightList->getHandle(frameInFlightIndex)))
+                        .setSize(vk::WholeSize);
+        (*dCount)++;
+    }
+}
+
+DefaultRenderPhase &DefaultRenderPhase::setDataRolesOwned(Handle cameraRole, Handle lightInfoRole, Handle lightListRole)
+{
+    m_dataRoles = DataRoles{.camera = cameraRole, .lightInfo = lightInfoRole, .lightList = lightListRole};
+
+    assert(m_frameData && "Frame data needs to be assigned first");
+    assert(m_frameData->isResourceDriven(m_dataRoles.camera) && "owned camera role must be a driven buffer");
+    assert(m_frameData->isResourceDriven(m_dataRoles.lightInfo) && "owned lightInfo role must be a driven buffer");
+    assert(m_frameData->isResourceDriven(m_dataRoles.lightList) && "owned lightList role must be a driven buffer");
+    m_barrFunction = &AddOwnsAllResourcesBarrier;
+
+    return *this;
+}
+
+DefaultRenderPhase &DefaultRenderPhase::setDataRolesBorrowed(Handle cameraRole, Handle lightInfoRole,
+                                                             Handle lightListRole)
+{
+    m_dataRoles = DataRoles{.camera = cameraRole, .lightInfo = lightInfoRole, .lightList = lightListRole};
+    m_barrFunction = nullptr;
+
+    return *this;
 }
 
 vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderPhase::prepareDynamicRenderingInfoColorAttachment(

@@ -122,21 +122,34 @@ FrameData::FrameUpdateResult FrameData::frameUpdate(core::device::DeviceContext 
     return FrameUpdateResult{std::span<const PendingWait>{m_pending}};
 }
 
-const FrameData::Resource &FrameData::resource(Handle role) const
+bool FrameData::isResourceDriven(Handle role) const noexcept
 {
-    const auto it = m_roleIndex.find(role);
-    assert(it != m_roleIndex.end() && "resource: role not registered with this FrameData");
-    return m_resources.at(it->second).second;
+    const auto *r = resource(role);
+    if (r != nullptr && std::holds_alternative<DrivenBuffer>(*r))
+    {
+        return true;
+    }
+
+    return false;
 }
 
-ManagerController::RenderResource::Buffer *FrameData::controller(Handle role) const
+const FrameData::Resource *FrameData::resource(Handle role) const noexcept
 {
-    const auto &res = resource(role);
-    if (const auto *driven = std::get_if<DrivenBuffer>(&res))
+    const auto it = m_roleIndex.find(role);
+
+    if (it != m_roleIndex.end())
+        return &m_resources.at(it->second).second;
+    return nullptr;
+}
+
+ManagerController::RenderResource::Buffer *FrameData::controller(Handle role) const noexcept
+{
+    const auto *res = resource(role);
+    if (const auto *driven = std::get_if<DrivenBuffer>(res))
         return driven->controller.get();
-    if (const auto *borrowed = std::get_if<BorrowedBuffer>(&res))
+    if (const auto *borrowed = std::get_if<BorrowedBuffer>(res))
         return borrowed->controller;
-    assert(false && "controller: role is not a buffer slot");
+
     return nullptr;
 }
 } // namespace star::core::renderer

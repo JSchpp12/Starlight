@@ -124,10 +124,11 @@ class FrameData
     /// the owner must wire. Binding-only resources are not touched.
     FrameUpdateResult frameUpdate(core::device::DeviceContext &context,
                                   std::optional<core::graphics::SemaphoreInfo> priorSync = std::nullopt);
-    const Resource &resource(Handle role) const;
+    const Resource *resource(Handle role) const noexcept;
+    bool isResourceDriven(Handle role) const noexcept;
     /// The buffer controller registered under `role` (driven or borrowed). Asserts
     /// the slot holds a buffer.
-    ManagerController::RenderResource::Buffer *controller(Handle role) const;
+    ManagerController::RenderResource::Buffer *controller(Handle role) const noexcept;
 
   private:
     std::vector<std::pair<Handle, Resource>> m_resources;
