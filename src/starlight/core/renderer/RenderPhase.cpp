@@ -1,4 +1,5 @@
 #include "core/renderer/RenderPhase.hpp"
+#include "core/device/DeviceContext.hpp"
 
 #include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/core/graphics/GPUWorkSyncInfo.hpp"
@@ -76,6 +77,20 @@ void RenderPhase::updateRenderingGroups(core::device::DeviceContext &context, co
     for (auto &group : m_renderGroups)
     {
         group.frameUpdate(context, frameInFlightIndex, m_commandBuffer, transferSyncInfoToUse);
+    }
+}
+
+void RenderPhase::updateDependentData(core::device::DeviceContext &context)
+{
+    if (!m_drivesFrameData)
+        return;
+
+    auto result = m_frameData->frameUpdate(context);
+    auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer);
+    for (const auto &w : result.waits)
+    {
+        record.oneTimeWaitSemaphoreInfo.insert(w.handle, w.semaphore, w.waitStage, w.signalValue);
+        m_renderingContext.addBufferToRenderingContext(context, w.handle);
     }
 }
 } // namespace star::core::renderer

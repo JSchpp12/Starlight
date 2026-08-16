@@ -57,10 +57,14 @@ std::unique_ptr<RenderPhase> HeadlessRenderPhaseProvider::build(core::device::De
 {
     auto phase = std::make_unique<HeadlessRenderPhase>();
 
-    // shared base prep (transfer state, groups, command buffer, targets, descriptor waiter)
-    buildCore(phase.get(), context);
+    DefaultRenderPhase::Builder(context)
+        .setObjects(std::move(m_objects))
+        .setFrameData(m_frameData)
+        .setDataRoles(roleHandle(frame_roles::Camera), roleHandle(frame_roles::LightInfo),
+                      roleHandle(frame_roles::LightList), m_createdFrameData)
+        .setConfig(m_config)
+        .buildInto(*phase);
 
-    // headless tail-setup (run after buildCore, the shared base prep)
     prepareHeadlessPhase(phase.get(), context);
 
     return phase;

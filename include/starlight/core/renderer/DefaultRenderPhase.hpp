@@ -10,15 +10,18 @@
 #include "StarTextures/Texture.hpp"
 #include "core/renderer/FrameData.hpp"
 #include "core/renderer/RenderPhase.hpp"
+#include "core/renderer/RenderPhaseConfig.hpp"
 #include "core/renderer/RenderTargets.hpp"
 #include "core/renderer/RenderingContext.hpp"
 #include "starlight/event/DescriptorPoolReady.hpp"
 #include "starlight/object/StarObject.hpp"
 
+
 #include <star_common/FrameTracker.hpp>
 
 #include <functional>
 #include <memory>
+#include <vector>
 #include <vulkan/vulkan.hpp>
 
 namespace star::core::renderer
@@ -48,6 +51,28 @@ class DefaultRenderPhase : public RenderPhase
     /// frameUpdate, no barriers.
     DefaultRenderPhase &setDataRolesBorrowed(Handle cameraRole, Handle lightInfoRole, Handle lightListRole);
 
+    class Builder
+    {
+      public:
+        Builder(core::device::DeviceContext &context);
+        Builder &setObjects(std::vector<std::shared_ptr<StarObject>> objects);
+        Builder &setFrameData(std::shared_ptr<FrameData> frameData);
+        Builder &setDataRoles(Handle cameraRole, Handle lightInfoRole, Handle lightListRole, bool owned);
+        Builder &setConfig(RenderPhaseConfig config);
+        std::unique_ptr<DefaultRenderPhase> buildUnique();
+        void buildInto(DefaultRenderPhase &target);
+
+      private:
+        core::device::DeviceContext &m_context;
+        std::vector<std::shared_ptr<StarObject>> m_objects;
+        std::shared_ptr<FrameData> m_frameData;
+        Handle m_cameraRole;
+        Handle m_lightInfoRole;
+        Handle m_lightListRole;
+        bool m_dataRolesOwned = false;
+        RenderPhaseConfig m_config{};
+    };
+
   protected:
     struct DataRoles
     {
@@ -57,7 +82,7 @@ class DefaultRenderPhase : public RenderPhase
     };
     using OwningBarrierFunction = void (*)(uint8_t, const uint64_t &, const FrameData *, const DataRoles *,
                                            const RenderingContext *, vk::BufferMemoryBarrier2 *, size_t *) noexcept;
-    friend class DefaultRenderPhaseProvider;
+    friend class Builder;
 
     std::array<vk::BufferMemoryBarrier2, 3> m_runtimeBarriers;
     /// Global descriptor set (camera/lights) owned by the phase and bound once per
@@ -67,8 +92,6 @@ class DefaultRenderPhase : public RenderPhase
     DataRoles m_dataRoles{};
     OwningBarrierFunction m_barrFunction{nullptr};
     bool isReady = false;
-
-    virtual void updateDependentData(star::core::device::DeviceContext &context);
 
     vk::Viewport prepareRenderingViewport(const vk::Extent2D &resolution);
 

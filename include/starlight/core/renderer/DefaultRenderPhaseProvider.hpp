@@ -45,13 +45,5 @@ class DefaultRenderPhaseProvider : public IRenderPhaseProvider
     std::vector<std::shared_ptr<StarObject>> m_objects;
     std::shared_ptr<FrameData> m_frameData;
     bool m_createdFrameData = false;
-
-    core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest(DefaultRenderPhase *phase);
-
-    static std::vector<StarRenderGroup> CreateRenderingGroups(core::device::DeviceContext &context,
-                                                              std::vector<std::shared_ptr<StarObject>> objects);
-
-    void buildCore(DefaultRenderPhase *phase, core::device::DeviceContext &device);
-    virtual RenderTargets createRenderTargets(core::device::DeviceContext &context, RenderingContext &renderingContext);
 };
 } // namespace star::core::renderer

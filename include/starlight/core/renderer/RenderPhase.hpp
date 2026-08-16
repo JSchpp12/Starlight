@@ -83,10 +83,15 @@ class RenderPhase
     }
 
     void updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
+    virtual void updateDependentData(core::device::DeviceContext &context);
 
     std::vector<StarRenderGroup> m_renderGroups;
     Handle m_commandBuffer;
     std::shared_ptr<FrameData> m_frameData;
+    /// True when this phase owns and drives its FrameData controllers each
+    /// frame; false when the FrameData is borrowed and driven by another phase.
+    /// Set by subclasses; gates updateDependentData.
+    bool m_drivesFrameData = false;
     std::vector<std::shared_ptr<StarObject>> m_objects;
     RenderingContext m_renderingContext;
 
