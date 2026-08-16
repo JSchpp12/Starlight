@@ -19,8 +19,8 @@ class InstanceNormalInfo : public ManagerController::RenderResource::Buffer
 
   protected:
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
-                                                                   const uint8_t &frameInFlightIndex) override;
-    bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameinFlightIndex) const override;
+                                                                   uint8_t frameInFlightIndex) override;
+    bool doesFrameInFlightDataNeedUpdated(uint8_t frameinFlightIndex) const override;
 
   private:
     std::vector<StarEntity> *m_instances{nullptr};

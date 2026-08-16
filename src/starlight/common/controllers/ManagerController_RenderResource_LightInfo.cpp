@@ -4,7 +4,7 @@
 #include "core/helper/queue/QueueHelpers.hpp"
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::LightInfo::
-    createTransferRequest(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
+    createTransferRequest(star::core::device::DeviceContext &context, uint8_t frameInFlightIndex)
 {
     uint32_t numLights;
     star::common::casts::SafeCast<size_t, uint32_t>(this->lights->size(), numLights);
@@ -18,7 +18,7 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::LightInfo::doesFrameInFlightDataNeedUpdated(
-    const uint8_t &currentFrameInFlightIndex) const
+    uint8_t currentFrameInFlightIndex) const
 {
     assert(currentFrameInFlightIndex < lastWriteNumLights.size() && "Not enough resources were created for this");
 

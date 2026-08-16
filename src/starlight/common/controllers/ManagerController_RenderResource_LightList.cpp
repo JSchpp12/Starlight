@@ -6,7 +6,7 @@
 #include <star_common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::LightList::
-    createTransferRequest(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
+    createTransferRequest(core::device::DeviceContext &context, uint8_t frameInFlightIndex)
 {
     storeLightCount(frameInFlightIndex);
 
@@ -17,9 +17,8 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::LightList::doesFrameInFlightDataNeedUpdated(
-    const uint8_t &frameInFlightIndex) const
+    uint8_t frameInFlightIndex) const
 {
-
     return true;
     assert(frameInFlightIndex < m_lastWriteNumLights.size());
 

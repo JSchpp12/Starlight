@@ -20,7 +20,7 @@ void star::ManagerController::RenderResource::InstanceNormalInfo::prepRender(cor
 }
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceNormalInfo::
-    createTransferRequest(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
+    createTransferRequest(star::core::device::DeviceContext &context, uint8_t frameInFlightIndex)
 {
     assert(m_instances && "Instances must be provided before use");
 
@@ -35,7 +35,7 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::InstanceNormalInfo::doesFrameInFlightDataNeedUpdated(
-    const uint8_t &frameInFlightIndex) const
+    uint8_t frameInFlightIndex) const
 {
     return m_needsUpdatedThisFrame[frameInFlightIndex];
 }

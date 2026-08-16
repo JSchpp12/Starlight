@@ -29,7 +29,7 @@ void star::ManagerController::RenderResource::InstanceModelInfo::setToUpdate()
 }
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::InstanceModelInfo::
-    createTransferRequest(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
+    createTransferRequest(star::core::device::DeviceContext &context, uint8_t frameInFlightIndex)
 {
     m_needsUpdatedThisFrame[frameInFlightIndex] = false;
 
@@ -42,7 +42,7 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::InstanceModelInfo::doesFrameInFlightDataNeedUpdated(
-    const uint8_t &frameInFlightIndex) const
+    uint8_t frameInFlightIndex) const
 {
     assert(frameInFlightIndex < m_needsUpdatedThisFrame.size());
 

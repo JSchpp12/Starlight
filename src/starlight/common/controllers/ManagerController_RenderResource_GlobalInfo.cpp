@@ -14,7 +14,7 @@ void star::ManagerController::RenderResource::GlobalInfo::prepRender(core::devic
 }
 
 std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderResource::GlobalInfo::
-    createTransferRequest(star::core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)
+    createTransferRequest(star::core::device::DeviceContext &context, uint8_t frameInFlightIndex)
 {
     std::vector<uint32_t> allIndices;
     auto graphics = core::helper::GetEngineDefaultQueue(
@@ -34,7 +34,7 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::GlobalInfo::doesFrameInFlightDataNeedUpdated(
-    const uint8_t &frameInFlightIndex) const
+    uint8_t frameInFlightIndex) const
 {
     (void)frameInFlightIndex;
 

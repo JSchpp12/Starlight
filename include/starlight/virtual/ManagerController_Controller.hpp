@@ -50,7 +50,7 @@ template <typename TTransferType, typename TDataType> class Controller
 
     /// Call any frame updates. Returns true if the controller submitted an update
     std::pair<bool, const star::StarSemaphore *> submitUpdateIfNeeded(
-        core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
+        core::device::DeviceContext &context, uint8_t frameInFlightIndex,
         std::optional<star::core::graphics::SemaphoreInfo> transferGPUWorkWaitOnSyncInfo = std::nullopt)
     {
         const size_t fi = static_cast<size_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
@@ -86,13 +86,13 @@ template <typename TTransferType, typename TDataType> class Controller
     std::vector<Handle> m_resourceHandles = std::vector<Handle>();
 
     virtual std::unique_ptr<TTransferType> createTransferRequest(core::device::DeviceContext &context,
-                                                                 const uint8_t &frameInFlightIndex) = 0;
+                                                                 uint8_t frameInFlightIndex) = 0;
 
     bool hasAlreadyBeenUpdatedThisFrame(const uint64_t &currentFrameCount) const
     {
         return m_lastFrameUpdate == currentFrameCount;
     }
 
-    virtual bool doesFrameInFlightDataNeedUpdated(const uint8_t &frameInFlightIndex) const = 0;
+    virtual bool doesFrameInFlightDataNeedUpdated(uint8_t frameInFlightIndex) const = 0;
 };
 } // namespace star::ManagerController
