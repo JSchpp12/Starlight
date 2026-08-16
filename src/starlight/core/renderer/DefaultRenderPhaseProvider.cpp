@@ -1,4 +1,4 @@
-﻿#include "renderer/DefaultRenderPhaseProvider.hpp"
+#include "renderer/DefaultRenderPhaseProvider.hpp"
 
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
@@ -53,8 +53,7 @@ std::unique_ptr<RenderPhase> DefaultRenderPhaseProvider::build(core::device::Dev
     return DefaultRenderPhase::Builder(device)
         .setObjects(std::move(m_objects))
         .setFrameData(m_frameData)
-        .setDataRoles(roleHandle(frame_roles::Camera), roleHandle(frame_roles::LightInfo),
-                      roleHandle(frame_roles::LightList), m_createdFrameData)
+        .setOwnsFrameData(m_createdFrameData)
         .setConfig(m_config)
         .buildUnique();
 }

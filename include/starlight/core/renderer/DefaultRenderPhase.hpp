@@ -16,7 +16,6 @@
 #include "starlight/event/DescriptorPoolReady.hpp"
 #include "starlight/object/StarObject.hpp"
 
-
 #include <star_common/FrameTracker.hpp>
 
 #include <functional>
@@ -46,10 +45,11 @@ class DefaultRenderPhase : public RenderPhase
     /// This phase owns and drives the named roles (they must be DrivenBuffer
     /// slots in m_frameData): it submits their per-frame CPU->GPU transfer and
     /// emits the transfer->shader read-back barrier each frame.
-    DefaultRenderPhase &setDataRolesOwned(Handle cameraRole, Handle lightInfoRole, Handle lightListRole);
-    /// This phase only reads the named roles (driven by another phase): no
-    /// frameUpdate, no barriers.
-    DefaultRenderPhase &setDataRolesBorrowed(Handle cameraRole, Handle lightInfoRole, Handle lightListRole);
+    /// Set the camera/lightInfo/lightList roles (always frame_roles::Camera /
+    /// LightInfo / LightList) and whether this phase owns/drives them. Owned =>
+    /// drives the FrameData and emits transfer->shader barriers; borrowed => no
+    /// driving, no barriers.
+    DefaultRenderPhase &setDataRoles(bool owned);
 
     class Builder
     {
@@ -57,31 +57,24 @@ class DefaultRenderPhase : public RenderPhase
         Builder(core::device::DeviceContext &context);
         Builder &setObjects(std::vector<std::shared_ptr<StarObject>> objects);
         Builder &setFrameData(std::shared_ptr<FrameData> frameData);
-        Builder &setDataRoles(Handle cameraRole, Handle lightInfoRole, Handle lightListRole, bool owned);
+        Builder &setOwnsFrameData(bool owned);
         Builder &setConfig(RenderPhaseConfig config);
+        Builder &setRenderTargetsFactory(std::function<RenderTargets(RenderingContext &)> factory);
         std::unique_ptr<DefaultRenderPhase> buildUnique();
         void buildInto(DefaultRenderPhase &target);
 
       private:
-        core::device::DeviceContext &m_context;
+        std::function<RenderTargets(RenderingContext &)> m_renderTargetsFactory;
+        RenderPhaseConfig m_config{};
         std::vector<std::shared_ptr<StarObject>> m_objects;
         std::shared_ptr<FrameData> m_frameData;
-        Handle m_cameraRole;
-        Handle m_lightInfoRole;
-        Handle m_lightListRole;
-        bool m_dataRolesOwned = false;
-        RenderPhaseConfig m_config{};
+        core::device::DeviceContext &m_context;
+        bool m_ownsFrameData = false;
     };
 
   protected:
-    struct DataRoles
-    {
-        Handle camera;
-        Handle lightInfo;
-        Handle lightList;
-    };
-    using OwningBarrierFunction = void (*)(uint8_t, const uint64_t &, const FrameData *, const DataRoles *,
-                                           const RenderingContext *, vk::BufferMemoryBarrier2 *, size_t *) noexcept;
+    using OwningBarrierFunction = void (*)(uint8_t, const uint64_t &, const FrameData *, const RenderingContext *,
+                                           vk::BufferMemoryBarrier2 *, size_t *) noexcept;
     friend class Builder;
 
     std::array<vk::BufferMemoryBarrier2, 3> m_runtimeBarriers;
@@ -89,7 +82,6 @@ class DefaultRenderPhase : public RenderPhase
     /// frame. Previously this set was duplicated into every material and rebound
     /// for every mesh.
     std::unique_ptr<StarShaderInfo> m_globalShaderInfo;
-    DataRoles m_dataRoles{};
     OwningBarrierFunction m_barrFunction{nullptr};
     bool isReady = false;
 
@@ -114,7 +106,7 @@ class DefaultRenderPhase : public RenderPhase
 
   private:
     static void AddOwnsAllResourcesBarrier(uint8_t flightIndex, const uint64_t &frameIndex, const FrameData *fd,
-                                           const DataRoles *roles, const RenderingContext *rc,
-                                           vk::BufferMemoryBarrier2 *data, size_t *dCount) noexcept;
+                                           const RenderingContext *rc, vk::BufferMemoryBarrier2 *data,
+                                           size_t *dCount) noexcept;
 };
 } // namespace star::core::renderer

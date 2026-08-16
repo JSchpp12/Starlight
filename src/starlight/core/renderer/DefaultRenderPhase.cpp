@@ -11,6 +11,7 @@
 #include "core/renderer/DescriptorRecipe.hpp"
 #include "starlight/command/command_order/DeclarePass.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/core/renderer/FrameData.hpp"
 #include "starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.hpp"
 #include "starlight/core/waiter/one_shot/GenericEvent.hpp"
 #include "starlight/event/DescriptorPoolReady.hpp"
@@ -28,10 +29,8 @@
 
 namespace star::core::renderer
 {
-namespace
-{
-void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star::common::EventBus &evtBus,
-                              star::core::device::manager::Queue &qm, Handle commandBuffer)
+static void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star::common::EventBus &evtBus,
+                                     star::core::device::manager::Queue &qm, Handle commandBuffer)
 {
     auto *queue = star::core::helper::GetEngineDefaultQueue(evtBus, qm, star::Queue_Type::Tgraphics);
     assert(queue != nullptr && "Failed to acquire default engine queue");
@@ -39,8 +38,8 @@ void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star::common
     cmdBus.submit(star::command_order::DeclarePass{std::move(commandBuffer), queue->getParentQueueFamilyIndex()});
 }
 
-std::vector<star::StarRenderGroup> CreateRenderingGroups(core::device::DeviceContext &context,
-                                                         std::vector<std::shared_ptr<star::StarObject>> objects)
+static std::vector<star::StarRenderGroup> CreateRenderingGroups(core::device::DeviceContext &context,
+                                                                std::vector<std::shared_ptr<star::StarObject>> objects)
 {
     auto renderingGroups = std::vector<star::StarRenderGroup>();
 
@@ -70,7 +69,8 @@ std::vector<star::StarRenderGroup> CreateRenderingGroups(core::device::DeviceCon
     return renderingGroups;
 }
 
-const star::core::device::manager::ImageRecord *GetImg(const star::Handle &handle, core::device::DeviceContext &context)
+static const star::core::device::manager::ImageRecord *GetImg(const star::Handle &handle,
+                                                              core::device::DeviceContext &context)
 {
     const auto *vRec = context.getImageManager().get(handle);
     if (vRec == nullptr)
@@ -80,7 +80,7 @@ const star::core::device::manager::ImageRecord *GetImg(const star::Handle &handl
     return vRec;
 }
 
-RenderTargets createRenderTargets(core::device::DeviceContext &context, RenderingContext &ctx)
+static RenderTargets createRenderTargets(core::device::DeviceContext &context, RenderingContext &ctx)
 {
     auto targets = RenderTargets::forOffscreen(context, ctx);
 
@@ -143,7 +143,6 @@ RenderTargets createRenderTargets(core::device::DeviceContext &context, Renderin
     core::helper::EndSingleTimeCommands(*graphicsQueueToUse, std::move(oneTimeSetup));
     return targets;
 }
-} // namespace
 
 DefaultRenderPhase::Builder::Builder(core::device::DeviceContext &context) : m_context(context)
 {
@@ -161,19 +160,22 @@ DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setFrameData(std::shar
     return *this;
 }
 
-DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setDataRoles(Handle cameraRole, Handle lightInfoRole,
-                                                                       Handle lightListRole, bool owned)
+DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setOwnsFrameData(bool owned)
 {
-    m_cameraRole = cameraRole;
-    m_lightInfoRole = lightInfoRole;
-    m_lightListRole = lightListRole;
-    m_dataRolesOwned = owned;
+    m_ownsFrameData = owned;
     return *this;
 }
 
 DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setConfig(RenderPhaseConfig config)
 {
     m_config = config;
+    return *this;
+}
+
+DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setRenderTargetsFactory(
+    std::function<RenderTargets(RenderingContext &)> factory)
+{
+    m_renderTargetsFactory = std::move(factory);
     return *this;
 }
 
@@ -188,10 +190,7 @@ void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
 {
     target.m_objects = std::move(m_objects);
     target.m_frameData = m_frameData;
-    if (m_dataRolesOwned)
-        target.setDataRolesOwned(m_cameraRole, m_lightInfoRole, m_lightListRole);
-    else
-        target.setDataRolesBorrowed(m_cameraRole, m_lightInfoRole, m_lightListRole);
+    target.setDataRoles(m_ownsFrameData);
 
     target.m_renderGroups = CreateRenderingGroups(m_context, target.m_objects);
 
@@ -214,7 +213,10 @@ void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
     target.m_frameData->prepRender(m_context, m_context.frameTracker().getSetup().getNumFramesInFlight());
 
     target.m_renderingContext.targetResolution = m_context.getEngineResolution();
-    target.m_renderTargets = createRenderTargets(m_context, target.m_renderingContext);
+    if (m_renderTargetsFactory)
+        target.m_renderTargets = m_renderTargetsFactory(target.m_renderingContext);
+    else
+        target.m_renderTargets = createRenderTargets(m_context, target.m_renderingContext);
 
     for (auto &group : target.m_renderGroups)
         group.prepRender(m_context);
@@ -330,21 +332,20 @@ void DefaultRenderPhase::recordCommandBufferDependencies(vk::CommandBuffer &comm
         return;
 
     size_t barrCount{0};
-    m_barrFunction(frameInFlightIndex, frameIndex, m_frameData.get(), &m_dataRoles, &m_renderingContext,
-                   m_runtimeBarriers.data(), &barrCount);
+    m_barrFunction(frameInFlightIndex, frameIndex, m_frameData.get(), &m_renderingContext, m_runtimeBarriers.data(),
+                   &barrCount);
 
     commandBuffer.pipelineBarrier2(
         vk::DependencyInfo().setBufferMemoryBarrierCount(barrCount).setPBufferMemoryBarriers(m_runtimeBarriers.data()));
 }
 
 void DefaultRenderPhase::AddOwnsAllResourcesBarrier(uint8_t frameInFlightIndex, const uint64_t &frameIndex,
-                                                    const FrameData *fd, const DataRoles *roles,
-                                                    const RenderingContext *rc, vk::BufferMemoryBarrier2 *data,
-                                                    size_t *dCount) noexcept
+                                                    const FrameData *fd, const RenderingContext *rc,
+                                                    vk::BufferMemoryBarrier2 *data, size_t *dCount) noexcept
 {
-    const auto *camera = fd->controller(roles->camera);
-    const auto *lightInfo = fd->controller(roles->lightInfo);
-    const auto *lightList = fd->controller(roles->lightList);
+    const auto *camera = fd->controller(roleHandle(frame_roles::Camera));
+    const auto *lightInfo = fd->controller(roleHandle(frame_roles::LightInfo));
+    const auto *lightList = fd->controller(roleHandle(frame_roles::LightList));
 
     if (camera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
     {
@@ -393,26 +394,26 @@ void DefaultRenderPhase::AddOwnsAllResourcesBarrier(uint8_t frameInFlightIndex, 
     }
 }
 
-DefaultRenderPhase &DefaultRenderPhase::setDataRolesOwned(Handle cameraRole, Handle lightInfoRole, Handle lightListRole)
+DefaultRenderPhase &DefaultRenderPhase::setDataRoles(bool owned)
 {
-    m_dataRoles = DataRoles{.camera = cameraRole, .lightInfo = lightInfoRole, .lightList = lightListRole};
+    if (owned)
+    {
+        assert(m_frameData && "Frame data needs to be assigned first");
+        assert(m_frameData->isResourceDriven(roleHandle(frame_roles::Camera)) &&
+               "owned camera role must be a driven buffer");
+        assert(m_frameData->isResourceDriven(roleHandle(frame_roles::LightInfo)) &&
+               "owned lightInfo role must be a driven buffer");
+        assert(m_frameData->isResourceDriven(roleHandle(frame_roles::LightList)) &&
+               "owned lightList role must be a driven buffer");
 
-    assert(m_frameData && "Frame data needs to be assigned first");
-    assert(m_frameData->isResourceDriven(m_dataRoles.camera) && "owned camera role must be a driven buffer");
-    assert(m_frameData->isResourceDriven(m_dataRoles.lightInfo) && "owned lightInfo role must be a driven buffer");
-    assert(m_frameData->isResourceDriven(m_dataRoles.lightList) && "owned lightList role must be a driven buffer");
-    m_drivesFrameData = true;
-    m_barrFunction = &AddOwnsAllResourcesBarrier;
-
-    return *this;
-}
-
-DefaultRenderPhase &DefaultRenderPhase::setDataRolesBorrowed(Handle cameraRole, Handle lightInfoRole,
-                                                             Handle lightListRole)
-{
-    m_dataRoles = DataRoles{.camera = cameraRole, .lightInfo = lightInfoRole, .lightList = lightListRole};
-    m_drivesFrameData = false;
-    m_barrFunction = nullptr;
+        m_drivesFrameData = true;
+        m_barrFunction = &AddOwnsAllResourcesBarrier;
+    }
+    else
+    {
+        m_drivesFrameData = false;
+        m_barrFunction = nullptr;
+    }
 
     return *this;
 }

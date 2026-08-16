@@ -60,8 +60,7 @@ std::unique_ptr<RenderPhase> HeadlessRenderPhaseProvider::build(core::device::De
     DefaultRenderPhase::Builder(context)
         .setObjects(std::move(m_objects))
         .setFrameData(m_frameData)
-        .setDataRoles(roleHandle(frame_roles::Camera), roleHandle(frame_roles::LightInfo),
-                      roleHandle(frame_roles::LightList), m_createdFrameData)
+        .setOwnsFrameData(m_createdFrameData)
         .setConfig(m_config)
         .buildInto(*phase);
 
