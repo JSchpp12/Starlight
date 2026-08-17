@@ -22,8 +22,12 @@ glm::mat4 star::StarCamera::getViewMatrix() const
                        glm::vec3(this->getUpVector()));
 }
 
-glm::mat4 star::StarCamera::getProjectionMatrix() const
+glm::mat4 star::StarCamera::getProjectionMatrix(ProjectionType projType) const
 {
+    if (projType == ProjectionType::orthographic)
+    {
+        STAR_THROW("Orthographic projections are not yet supported");
+    }
     auto projection =
         glm::perspective(getVerticalFieldOfView(true), (float)this->resolution.x / (float)this->resolution.y,
                          this->nearClippingPlaneDistance, this->farClippingPlaneDistance);

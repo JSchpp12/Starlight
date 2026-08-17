@@ -13,12 +13,10 @@ class StarEntity
     explicit StarEntity(const glm::vec3 &position);
     StarEntity(const glm::vec3 &position, const glm::vec3 &scale);
     virtual ~StarEntity() = default;
-
-    glm::vec3 getScale() const;
-
-    StarEntity &setScale(const glm::vec3 &scale);
-
-    virtual StarEntity &setPosition(glm::vec3 newPosition);
+    StarEntity(const StarEntity &) = default;
+    StarEntity &operator=(const StarEntity &) = default;
+    StarEntity(StarEntity &&) = default;
+    StarEntity &operator=(StarEntity &&) = default;
 
     /// <summary>
     /// Apply translation to object's current position vector and update accordingly
@@ -43,7 +41,10 @@ class StarEntity
 
     void rotateGlobal(Type::Axis axis, const float &amt, bool inDegrees = true);
 
-    void setForwardVector(const glm::vec3 &newForward);
+    glm::vec3 getScale() const;
+    StarEntity &setScale(const glm::vec3 &scale);
+    virtual StarEntity &setPosition(glm::vec3 newPosition);
+    StarEntity &setForwardVector(const glm::vec3 &newForward);
 
     const glm::vec4 &getForwardVector() const
     {
