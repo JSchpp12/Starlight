@@ -35,7 +35,9 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::InstanceNormalInfo::doesFrameInFlightDataNeedUpdated(
-    uint8_t frameInFlightIndex) const
+    const common::FrameTracker &frameTracker) const
 {
+    const size_t frameInFlightIndex = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
+
     return m_needsUpdatedThisFrame[frameInFlightIndex];
 }

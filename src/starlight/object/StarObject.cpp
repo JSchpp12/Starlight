@@ -244,13 +244,15 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
-void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &swapChainIndexNum,
-                                                   const uint64_t &frameIndex)
+void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer,
+                                                   const common::FrameTracker &frameTracker, const uint64_t &frameIndex)
 {
-    if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
+    const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
+
+    if (!isKnownToBeReadyForRecordRender(frameInFlightIndex))
         return;
 
-    recordDependentDataPipelineBarriers(commandBuffer, swapChainIndexNum, frameIndex);
+    recordDependentDataPipelineBarriers(commandBuffer, frameTracker, frameIndex);
 }
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
@@ -613,12 +615,14 @@ bool star::StarObject::isKnownToBeReadyForRecordRender(const uint8_t &frameInFli
 }
 
 void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer,
-                                                           const uint8_t &frameInFlightIndex,
+                                                           const common::FrameTracker &frameTracker,
                                                            const uint64_t &frameIndex)
 {
+    const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
+
     auto barriers = std::vector<vk::BufferMemoryBarrier2>();
 
-    if (m_instanceInfo.getControllerModel().willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.getControllerModel().willBeUpdatedThisFrame(frameIndex, frameTracker))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()
@@ -634,7 +638,7 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                 .setSize(vk::WholeSize));
     }
 
-    if (m_instanceInfo.getControllerNormal().willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.getControllerNormal().willBeUpdatedThisFrame(frameIndex, frameTracker))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()

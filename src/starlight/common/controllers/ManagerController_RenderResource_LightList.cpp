@@ -17,9 +17,11 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::LightList::doesFrameInFlightDataNeedUpdated(
-    uint8_t frameInFlightIndex) const
+    const common::FrameTracker &frameTracker) const
 {
     return true;
+    const size_t frameInFlightIndex = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
+
     assert(frameInFlightIndex < m_lastWriteNumLights.size());
 
     return m_lastWriteNumLights[frameInFlightIndex] != m_lights->size();

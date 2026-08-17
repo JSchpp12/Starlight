@@ -142,7 +142,18 @@ const FrameData::Resource *FrameData::resource(Handle role) const noexcept
     return nullptr;
 }
 
-ManagerController::RenderResource::Buffer *FrameData::controller(Handle role) const noexcept
+const ManagerController::RenderResource::Buffer *FrameData::getController(Handle role) const noexcept
+{
+    const auto *res = resource(role);
+    if (const auto *driven = std::get_if<DrivenBuffer>(res))
+        return driven->controller.get();
+    if (const auto *borrowed = std::get_if<BorrowedBuffer>(res))
+        return borrowed->controller;
+
+    return nullptr;
+}
+
+ManagerController::RenderResource::Buffer *FrameData::getController(Handle role) noexcept
 {
     const auto *res = resource(role);
     if (const auto *driven = std::get_if<DrivenBuffer>(res))

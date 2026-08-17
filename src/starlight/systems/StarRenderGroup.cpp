@@ -169,15 +169,15 @@ void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer
     }
 }
 
-void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &frameInFlightIndex,
-                                                  const uint64_t &frameIndex)
+void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer,
+                                                  const common::FrameTracker &frameTracker, const uint64_t &frameIndex)
 {
     for (auto &group : this->m_groups)
     {
-        group.baseObject.object->recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex, frameIndex);
+        group.baseObject.object->recordPreRenderPassCommands(mainDrawBuffer, frameTracker, frameIndex);
         for (auto &obj : group.objects)
         {
-            obj.object->recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex, frameIndex);
+            obj.object->recordPreRenderPassCommands(mainDrawBuffer, frameTracker, frameIndex);
         }
     }
 }

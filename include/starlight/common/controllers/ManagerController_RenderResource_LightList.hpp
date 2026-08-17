@@ -15,10 +15,13 @@ class LightList : public ManagerController::RenderResource::Buffer
 
     virtual ~LightList() = default;
 
-    vk::PipelineStageFlags waitStage() const override { return vk::PipelineStageFlagBits::eFragmentShader; }
+    vk::PipelineStageFlags waitStage() const override
+    {
+        return vk::PipelineStageFlagBits::eFragmentShader;
+    }
 
   protected:
-    bool doesFrameInFlightDataNeedUpdated(uint8_t frameInFlightIndex) const override;
+    bool doesFrameInFlightDataNeedUpdated(const common::FrameTracker &frameTracker) const override;
 
   private:
     const std::shared_ptr<std::vector<Light>> m_lights;

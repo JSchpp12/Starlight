@@ -9,16 +9,20 @@ class GlobalInfo : public star::ManagerController::RenderResource::Buffer
 {
   public:
     GlobalInfo(std::shared_ptr<StarCamera> camera);
+    virtual ~GlobalInfo() = default;
 
     void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
 
-    virtual ~GlobalInfo() = default;
+    const StarCamera *getCamera() const noexcept
+    {
+        return camera.get();
+    }
 
   protected:
     std::shared_ptr<StarCamera> camera = nullptr;
 
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
                                                                    uint8_t frameInFlightIndex) override;
-    bool doesFrameInFlightDataNeedUpdated(uint8_t frameInFlightIndex) const override;
+    bool doesFrameInFlightDataNeedUpdated(const common::FrameTracker &frameTracker) const override;
 };
 } // namespace star::ManagerController::RenderResource

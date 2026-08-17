@@ -21,7 +21,7 @@ class InstanceModelInfo : public Buffer
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
                                                                    uint8_t frameInFlightIndex) override;
 
-    bool doesFrameInFlightDataNeedUpdated(uint8_t frameInFlightIndex) const override;
+    bool doesFrameInFlightDataNeedUpdated(const common::FrameTracker &frameTracker) const override;
 
   private:
     std::vector<StarEntity> *m_instances{nullptr};

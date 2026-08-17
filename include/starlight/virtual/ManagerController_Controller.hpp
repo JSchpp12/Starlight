@@ -5,6 +5,7 @@
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 
+#include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 
 #include <vulkan/vulkan.hpp>
@@ -22,10 +23,9 @@ template <typename TTransferType, typename TDataType> class Controller
     Controller() = default;
     virtual ~Controller() = default;
 
-    bool willBeUpdatedThisFrame(const uint64_t &currentFrameCount, const uint8_t &currentFrameInFlightIndex) const
+    bool willBeUpdatedThisFrame(const uint64_t &currentFrameCount, const common::FrameTracker &frameTracker) const
     {
-        return hasAlreadyBeenUpdatedThisFrame(currentFrameCount) ||
-               doesFrameInFlightDataNeedUpdated(currentFrameInFlightIndex);
+        return hasAlreadyBeenUpdatedThisFrame(currentFrameCount) || doesFrameInFlightDataNeedUpdated(frameTracker);
     }
 
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
@@ -57,7 +57,7 @@ template <typename TTransferType, typename TDataType> class Controller
 
         assert(fi < m_resourceHandles.size() && m_resourceHandles[fi].isInitialized() &&
                "Resources must be properly prepared before use");
-        if (!doesFrameInFlightDataNeedUpdated(fi))
+        if (!doesFrameInFlightDataNeedUpdated(context.frameTracker()))
             return std::make_pair(false, nullptr);
 
         if (hasAlreadyBeenUpdatedThisFrame(context.frameTracker().getCurrent().getGlobalFrameCounter()))
@@ -93,6 +93,6 @@ template <typename TTransferType, typename TDataType> class Controller
         return m_lastFrameUpdate == currentFrameCount;
     }
 
-    virtual bool doesFrameInFlightDataNeedUpdated(uint8_t frameInFlightIndex) const = 0;
+    virtual bool doesFrameInFlightDataNeedUpdated(const common::FrameTracker &frameTracker) const = 0;
 };
 } // namespace star::ManagerController

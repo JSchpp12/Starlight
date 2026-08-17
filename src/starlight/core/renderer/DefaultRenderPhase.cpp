@@ -298,7 +298,7 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
 
     recordPreRenderPassCommands(commandBuffer, frameTracker);
 
-    recordCommandBufferDependencies(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
+    recordCommandBufferDependencies(commandBuffer, frameTracker, frameIndex);
 
     {
         vk::RenderingAttachmentInfo colorAttachments;
@@ -326,28 +326,32 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
 }
 
 void DefaultRenderPhase::recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer,
-                                                         const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
+                                                         const common::FrameTracker &frameTracker,
+                                                         const uint64_t &frameIndex)
 {
     if (m_barrFunction == nullptr)
         return;
 
     size_t barrCount{0};
-    m_barrFunction(frameInFlightIndex, frameIndex, m_frameData.get(), &m_renderingContext, m_runtimeBarriers.data(),
+    m_barrFunction(frameTracker, frameIndex, m_frameData.get(), &m_renderingContext, m_runtimeBarriers.data(),
                    &barrCount);
 
     commandBuffer.pipelineBarrier2(
         vk::DependencyInfo().setBufferMemoryBarrierCount(barrCount).setPBufferMemoryBarriers(m_runtimeBarriers.data()));
 }
 
-void DefaultRenderPhase::AddOwnsAllResourcesBarrier(uint8_t frameInFlightIndex, const uint64_t &frameIndex,
-                                                    const FrameData *fd, const RenderingContext *rc,
-                                                    vk::BufferMemoryBarrier2 *data, size_t *dCount) noexcept
+void DefaultRenderPhase::AddOwnsAllResourcesBarrier(const common::FrameTracker &frameTracker,
+                                                    const uint64_t &frameIndex, const FrameData *fd,
+                                                    const RenderingContext *rc, vk::BufferMemoryBarrier2 *data,
+                                                    size_t *dCount) noexcept
 {
-    const auto *camera = fd->controller(roleHandle(frame_roles::Camera));
-    const auto *lightInfo = fd->controller(roleHandle(frame_roles::LightInfo));
-    const auto *lightList = fd->controller(roleHandle(frame_roles::LightList));
+    const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
 
-    if (camera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    const auto *camera = fd->getController(roleHandle(frame_roles::Camera));
+    const auto *lightInfo = fd->getController(roleHandle(frame_roles::LightInfo));
+    const auto *lightList = fd->getController(roleHandle(frame_roles::LightList));
+
+    if (camera->willBeUpdatedThisFrame(frameIndex, frameTracker))
     {
         auto buffer = rc->bufferTransferRecords.get(camera->getHandle(frameInFlightIndex));
 
@@ -364,7 +368,7 @@ void DefaultRenderPhase::AddOwnsAllResourcesBarrier(uint8_t frameInFlightIndex, 
         (*dCount)++;
     }
 
-    if (lightInfo->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (lightInfo->willBeUpdatedThisFrame(frameIndex, frameTracker))
     {
         *(data++) = vk::BufferMemoryBarrier2()
                         .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
@@ -379,7 +383,7 @@ void DefaultRenderPhase::AddOwnsAllResourcesBarrier(uint8_t frameInFlightIndex, 
         (*dCount)++;
     }
 
-    if (lightList->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (lightList->willBeUpdatedThisFrame(frameIndex, frameTracker))
     {
         *(data++) = vk::BufferMemoryBarrier2()
                         .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)

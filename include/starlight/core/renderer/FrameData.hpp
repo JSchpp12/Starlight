@@ -128,7 +128,8 @@ class FrameData
     bool isResourceDriven(Handle role) const noexcept;
     /// The buffer controller registered under `role` (driven or borrowed). Asserts
     /// the slot holds a buffer.
-    ManagerController::RenderResource::Buffer *controller(Handle role) const noexcept;
+    const ManagerController::RenderResource::Buffer *getController(Handle role) const noexcept;
+    ManagerController::RenderResource::Buffer *getController(Handle role) noexcept;
 
   private:
     std::vector<std::pair<Handle, Resource>> m_resources;

@@ -24,7 +24,7 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
                        context.getEventBus(), context.getGraphicsManagers().queueManager, star::Queue_Type::Tcompute)
                        ->getParentQueueFamilyIndex();
 
-    allIndices.emplace_back(graphics); 
+    allIndices.emplace_back(graphics);
     if (compute != graphics)
     {
         allIndices.emplace_back(compute);
@@ -34,9 +34,9 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::GlobalInfo::doesFrameInFlightDataNeedUpdated(
-    uint8_t frameInFlightIndex) const
+    const common::FrameTracker &frameTracker) const
 {
-    (void)frameInFlightIndex;
+    (void)frameTracker;
 
     return true;
 }

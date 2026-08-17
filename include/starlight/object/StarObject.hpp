@@ -77,7 +77,7 @@ class StarObject
 
     /// Function to contain any commands to be submitted before the start of the rendering pass this object is contained
     /// in begins
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                              const uint64_t &frameIndex);
 
     /// Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
@@ -252,7 +252,7 @@ class StarObject
 
     bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex);
 
-    void recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+    void recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                              const uint64_t &frameIndex);
 };
 } // namespace star

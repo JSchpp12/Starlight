@@ -73,8 +73,8 @@ class DefaultRenderPhase : public RenderPhase
     };
 
   protected:
-    using OwningBarrierFunction = void (*)(uint8_t, const uint64_t &, const FrameData *, const RenderingContext *,
-                                           vk::BufferMemoryBarrier2 *, size_t *) noexcept;
+    using OwningBarrierFunction = void (*)(const common::FrameTracker &, const uint64_t &, const FrameData *,
+                                           const RenderingContext *, vk::BufferMemoryBarrier2 *, size_t *) noexcept;
     friend class Builder;
 
     std::array<vk::BufferMemoryBarrier2, 3> m_runtimeBarriers;
@@ -101,12 +101,12 @@ class DefaultRenderPhase : public RenderPhase
     virtual void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
                                       const uint64_t &frameIndex) override;
 
-    void recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+    void recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                          const uint64_t &frameIndex);
 
   private:
-    static void AddOwnsAllResourcesBarrier(uint8_t flightIndex, const uint64_t &frameIndex, const FrameData *fd,
-                                           const RenderingContext *rc, vk::BufferMemoryBarrier2 *data,
-                                           size_t *dCount) noexcept;
+    static void AddOwnsAllResourcesBarrier(const common::FrameTracker &frameTracker, const uint64_t &frameIndex,
+                                           const FrameData *fd, const RenderingContext *rc,
+                                           vk::BufferMemoryBarrier2 *data, size_t *dCount) noexcept;
 };
 } // namespace star::core::renderer

@@ -5,8 +5,7 @@
 
 #include <cassert>
 
-star::ManagerController::RenderResource::InstanceModelInfo::InstanceModelInfo(
-    std::vector<StarEntity> *instances)
+star::ManagerController::RenderResource::InstanceModelInfo::InstanceModelInfo(std::vector<StarEntity> *instances)
     : m_instances(std::move(instances))
 {
     assert(m_instances && "Instances must be provided before use");
@@ -42,8 +41,10 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::InstanceModelInfo::doesFrameInFlightDataNeedUpdated(
-    uint8_t frameInFlightIndex) const
+    const common::FrameTracker &frameTracker) const
 {
+    const size_t frameInFlightIndex = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
+
     assert(frameInFlightIndex < m_needsUpdatedThisFrame.size());
 
     return m_needsUpdatedThisFrame[frameInFlightIndex];

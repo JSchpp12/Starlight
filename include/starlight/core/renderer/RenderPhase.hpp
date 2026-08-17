@@ -56,6 +56,10 @@ class RenderPhase
     {
         return m_objects;
     }
+    const FrameData *getFrameData() const
+    {
+        return m_frameData.get();
+    }
     std::shared_ptr<FrameData> getFrameData()
     {
         return m_frameData;

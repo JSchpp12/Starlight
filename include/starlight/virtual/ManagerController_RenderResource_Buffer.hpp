@@ -24,8 +24,8 @@ class Buffer : public star::ManagerController::Controller<TransferRequest::Buffe
     }
 
   protected:
-    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(
-        core::device::DeviceContext &device, uint8_t frameInFlightIndex) override = 0;
-    virtual bool doesFrameInFlightDataNeedUpdated(uint8_t frameInFlightIndex) const override = 0;
+    virtual std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &device,
+                                                                           uint8_t frameInFlightIndex) override = 0;
+    virtual bool doesFrameInFlightDataNeedUpdated(const common::FrameTracker &frameTracker) const override = 0;
 };
 } // namespace star::ManagerController::RenderResource

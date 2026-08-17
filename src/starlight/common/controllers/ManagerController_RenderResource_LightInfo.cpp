@@ -18,11 +18,13 @@ std::unique_ptr<star::TransferRequest::Buffer> star::ManagerController::RenderRe
 }
 
 bool star::ManagerController::RenderResource::LightInfo::doesFrameInFlightDataNeedUpdated(
-    uint8_t currentFrameInFlightIndex) const
+    const common::FrameTracker &frameTracker) const
 {
-    assert(currentFrameInFlightIndex < lastWriteNumLights.size() && "Not enough resources were created for this");
+    const size_t frameInFlightIndex = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
 
-    if (lastWriteNumLights[currentFrameInFlightIndex] != lights->size())
+    assert(frameInFlightIndex < lastWriteNumLights.size() && "Not enough resources were created for this");
+
+    if (lastWriteNumLights[frameInFlightIndex] != lights->size())
     {
         return true;
     }
