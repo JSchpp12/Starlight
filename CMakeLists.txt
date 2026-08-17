@@ -638,6 +638,9 @@ if (MSVC)
     )
 endif()
 
+# Vulkan uses NDC depth in [0,1]. Force GLM's projection helpers (ortho/perspective) to use this range
+target_compile_definitions(${STARLIGHT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
+
 find_program(CPPCHECK_EXECUTABLE cppcheck)
 if (CPPCHECK_EXECUTABLE)
 	set(CPPCHECK_FILES "")
