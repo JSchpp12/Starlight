@@ -1,4 +1,4 @@
-
+﻿
 cmake_minimum_required (VERSION 3.26)
 
 SET(STARLIGHT_NAME "starlight")
@@ -96,6 +96,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/renderer/RenderingContext.cpp"
     "src/starlight/core/renderer/CaptureCapableRenderer.cpp"
     "src/starlight/core/renderer/EdgeSubmission.cpp"
+    "src/starlight/core/renderer/RenderPhaseHelpers.cpp"
     "src/starlight/object/StarObject.cpp"
     "src/starlight/virtual/ModulePlug/ManagerPlug.cpp"
     "src/starlight/virtual/StarMesh.cpp"
@@ -306,6 +307,7 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/StarEngine.hpp"
     "include/starlight/core/CommandSubmitter.hpp"
+    "include/starlight/core/TypeErasedCallable.hpp"
     "include/starlight/core/WorkerPool.hpp"
     "include/starlight/core/helper/queue/QueueHelpers.hpp"
     "include/starlight/core/helper/command_buffer/CommandBufferHelpers.hpp"
@@ -342,6 +344,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/renderer/RenderingContext.hpp"
     "include/starlight/core/renderer/CaptureCapableRenderer.hpp"
     "include/starlight/core/renderer/EdgeSubmission.hpp"
+    "include/starlight/core/renderer/RenderPhaseHelpers.hpp"
     "include/starlight/common/ThreadSharedResource.hpp"
     "include/starlight/common/Compiler.hpp"
     "include/starlight/common/materials/BumpMaterial.hpp"

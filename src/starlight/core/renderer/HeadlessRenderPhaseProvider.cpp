@@ -1,38 +1,10 @@
 #include "renderer/HeadlessRenderPhaseProvider.hpp"
 
 #include "starlight/core/renderer/HeadlessRenderPhase.hpp"
-
-#include <starlight/core/Exceptions.hpp>
-#include <starlight/core/device/managers/Semaphore.hpp>
-#include <starlight/core/device/system/event/ManagerRequest.hpp>
-
-#include <star_common/HandleTypeRegistry.hpp>
+#include "starlight/core/renderer/RenderPhaseHelpers.hpp"
 
 namespace star::core::renderer
 {
-static std::vector<star::Handle> CreateSemaphores(star::common::EventBus &evtBus,
-                                                  const star::common::FrameTracker &ft) noexcept
-{
-    const size_t num = static_cast<size_t>(ft.getSetup().getNumFramesInFlight());
-
-    auto handles = std::vector<star::Handle>(num);
-    for (size_t i{0}; i < handles.size(); i++)
-    {
-        void *r = nullptr;
-        evtBus.emit(star::core::device::system::event::ManagerRequest(
-            star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                star::core::device::manager::GetSemaphoreEventTypeName),
-            star::core::device::manager::SemaphoreRequest{true}, handles[i], &r));
-
-        if (r == nullptr)
-        {
-            STAR_THROW("Unable to create new semaphore");
-        }
-    }
-
-    return handles;
-}
-
 HeadlessRenderPhaseProvider::HeadlessRenderPhaseProvider(core::device::DeviceContext &context,
                                                          std::shared_ptr<std::vector<Light>> lights,
                                                          std::shared_ptr<StarCamera> camera,
@@ -55,7 +27,7 @@ HeadlessRenderPhaseProvider::HeadlessRenderPhaseProvider(core::device::DeviceCon
 std::unique_ptr<RenderPhase> HeadlessRenderPhaseProvider::build(core::device::DeviceContext &context,
                                                                 RenderPhaseRegistry & /*phases*/)
 {
-    auto phase = std::make_unique<HeadlessRenderPhase>();
+    auto phase = std::make_unique<HeadlessRenderPhase>(context.getCmdBus(), context.getDevice().getVulkanDevice());
 
     DefaultRenderPhase::Builder(context)
         .setObjects(std::move(m_objects))
@@ -71,8 +43,6 @@ std::unique_ptr<RenderPhase> HeadlessRenderPhaseProvider::build(core::device::De
 
 void HeadlessRenderPhaseProvider::prepareHeadlessPhase(HeadlessRenderPhase *phase, core::device::DeviceContext &context)
 {
-    phase->m_cmdBus = &context.getCmdBus();
-    phase->m_device = context.getDevice().getVulkanDevice();
     phase->m_imgMgr = &context.getGraphicsManagers().imageManager;
 
     phase->m_prepScheme.resize(context.frameTracker().getSetup().getNumFramesInFlight(), pre_pass::DoNothing{});

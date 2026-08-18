@@ -1,4 +1,4 @@
-#include "renderer/DefaultRenderPhase.hpp"
+﻿#include "renderer/DefaultRenderPhase.hpp"
 
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
@@ -12,6 +12,7 @@
 #include "starlight/command/command_order/DeclarePass.hpp"
 #include "starlight/core/Exceptions.hpp"
 #include "starlight/core/renderer/FrameData.hpp"
+#include "starlight/core/renderer/RenderPhaseHelpers.hpp"
 #include "starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.hpp"
 #include "starlight/core/waiter/one_shot/GenericEvent.hpp"
 #include "starlight/event/DescriptorPoolReady.hpp"
@@ -29,45 +30,6 @@
 
 namespace star::core::renderer
 {
-static void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star::common::EventBus &evtBus,
-                                     star::core::device::manager::Queue &qm, Handle commandBuffer)
-{
-    auto *queue = star::core::helper::GetEngineDefaultQueue(evtBus, qm, star::Queue_Type::Tgraphics);
-    assert(queue != nullptr && "Failed to acquire default engine queue");
-
-    cmdBus.submit(star::command_order::DeclarePass{std::move(commandBuffer), queue->getParentQueueFamilyIndex()});
-}
-
-static std::vector<star::StarRenderGroup> CreateRenderingGroups(core::device::DeviceContext &context,
-                                                                std::vector<std::shared_ptr<star::StarObject>> objects)
-{
-    auto renderingGroups = std::vector<star::StarRenderGroup>();
-
-    for (size_t i = 0; i < objects.size(); i++)
-    {
-        star::StarRenderGroup *match = nullptr;
-
-        for (size_t j = 0; j < renderingGroups.size(); j++)
-        {
-            if (renderingGroups[j].isObjectCompatible(*objects[i]))
-            {
-                match = &renderingGroups[j];
-                break;
-            }
-        }
-
-        if (match != nullptr)
-        {
-            match->addObject(objects[i]);
-        }
-        else
-        {
-            renderingGroups.emplace_back(context, objects[i]);
-        }
-    }
-
-    return renderingGroups;
-}
 
 static const star::core::device::manager::ImageRecord *GetImg(const star::Handle &handle,
                                                               core::device::DeviceContext &context)
@@ -190,7 +152,7 @@ void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
 {
     target.m_objects = std::move(m_objects);
     target.m_frameData = m_frameData;
-    target.setDataRoles(m_ownsFrameData);
+    target.setDataRoleOwnership(m_ownsFrameData);
 
     target.m_renderGroups = CreateRenderingGroups(m_context, target.m_objects);
 
@@ -398,7 +360,7 @@ void DefaultRenderPhase::AddOwnsAllResourcesBarrier(const common::FrameTracker &
     }
 }
 
-DefaultRenderPhase &DefaultRenderPhase::setDataRoles(bool owned)
+DefaultRenderPhase &DefaultRenderPhase::setDataRoleOwnership(bool owned)
 {
     if (owned)
     {

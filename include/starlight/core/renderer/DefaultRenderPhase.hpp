@@ -30,27 +30,6 @@ class DefaultRenderPhaseProvider;
 class DefaultRenderPhase : public RenderPhase
 {
   public:
-    DefaultRenderPhase() = default;
-    virtual ~DefaultRenderPhase() = default;
-    DefaultRenderPhase(const DefaultRenderPhase &) = delete;
-    DefaultRenderPhase &operator=(const DefaultRenderPhase &) = delete;
-    DefaultRenderPhase(DefaultRenderPhase &&) = delete;
-    DefaultRenderPhase &operator=(DefaultRenderPhase &&) = delete;
-
-    virtual void frameUpdate(common::IDeviceContext &context) override;
-    virtual void recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &frameInFlightIndex,
-                                     const uint64_t &frameIndex) override;
-    virtual void cleanupRender(common::IDeviceContext &context) override;
-
-    /// This phase owns and drives the named roles (they must be DrivenBuffer
-    /// slots in m_frameData): it submits their per-frame CPU->GPU transfer and
-    /// emits the transfer->shader read-back barrier each frame.
-    /// Set the camera/lightInfo/lightList roles (always frame_roles::Camera /
-    /// LightInfo / LightList) and whether this phase owns/drives them. Owned =>
-    /// drives the FrameData and emits transfer->shader barriers; borrowed => no
-    /// driving, no barriers.
-    DefaultRenderPhase &setDataRoles(bool owned);
-
     class Builder
     {
       public:
@@ -71,6 +50,24 @@ class DefaultRenderPhase : public RenderPhase
         core::device::DeviceContext &m_context;
         bool m_ownsFrameData = false;
     };
+
+    DefaultRenderPhase() = default;
+    virtual ~DefaultRenderPhase() = default;
+    DefaultRenderPhase(const DefaultRenderPhase &) = delete;
+    DefaultRenderPhase &operator=(const DefaultRenderPhase &) = delete;
+    DefaultRenderPhase(DefaultRenderPhase &&) = delete;
+    DefaultRenderPhase &operator=(DefaultRenderPhase &&) = delete;
+
+    virtual void frameUpdate(common::IDeviceContext &context) override;
+    virtual void recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &frameInFlightIndex,
+                                     const uint64_t &frameIndex) override;
+    virtual void cleanupRender(common::IDeviceContext &context) override;
+
+    /// @brief This phase owns and drives the named roles (they must be DrivenBuffer slots in m_frameData): it submits
+    /// their per-frame CPU->GPU transfer and emits the transfer->shader read-back barrier each frame.
+    /// @param owned
+    /// @return
+    DefaultRenderPhase &setDataRoleOwnership(bool owned);
 
   protected:
     using OwningBarrierFunction = void (*)(const common::FrameTracker &, const uint64_t &, const FrameData *,
