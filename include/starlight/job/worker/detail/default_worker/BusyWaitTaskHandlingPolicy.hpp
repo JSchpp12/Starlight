@@ -79,9 +79,17 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
 
     void startThread()
     {
-        m_shouldRun->store(true);
-        m_tasks = std::make_shared<job::TaskContainer<TTask, TQueueSize>>();
-        thread = boost::thread([this, tasks = m_tasks]() { threadFunction(); });
+        try
+        {
+            m_shouldRun->store(true);
+            m_tasks = std::make_shared<job::TaskContainer<TTask, TQueueSize>>();
+            thread = boost::thread([this, tasks = m_tasks]() { threadFunction(); });
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Thread exception: " << e.what() << std::endl;
+            return;
+        }
     }
 
     virtual void stopThread()
