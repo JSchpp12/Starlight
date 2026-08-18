@@ -36,13 +36,6 @@ template <typename T, typename TEvent> class GenericEvent : public std::enable_s
         std::optional<T> m_payload{std::nullopt};
     };
 
-    /// <summary>
-    /// Captures shared_from_this() into the event bus callback.
-    /// The event bus is the sole owner after this call.
-    /// When the callback sets keepAlive = false, the lambda is
-    /// destroyed, the shared_ptr drops, and this object is deleted.
-    /// </summary>
-    /// <param name="eBus">Reference to the event bus object</param>
     void registerListener(star::common::EventBus &eBus)
     {
         auto self = this->shared_from_this();

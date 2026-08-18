@@ -133,6 +133,9 @@ class CommandOrderService
 
     void removeElementFromNotTriggeredPasses(const Handle &handle);
 
+    /// Return true if adding the directed edge producer -> consumer would close a loop which would result in a hang
+    bool wouldCreateCycle(const Handle &producer, const Handle &consumer) const;
+
     void addEdgeRecord(const Handle &producer, const Handle &consumer);
 };
 } // namespace star::service
