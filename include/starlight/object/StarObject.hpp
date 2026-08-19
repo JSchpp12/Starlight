@@ -99,6 +99,11 @@ class StarObject
     StarEntity &getInstance(const size_t &index = 0);
     const StarEntity &getInstance(const size_t &index = 0) const;
 
+    const ManagerController::RenderResource::InstanceModelInfo &getInstanceModelController()
+    {
+        return m_instanceInfo.getControllerModel();
+    }
+
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                              const Handle &targetCommandBuffer,
                              const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);

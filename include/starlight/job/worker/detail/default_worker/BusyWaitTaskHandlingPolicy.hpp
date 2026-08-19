@@ -90,6 +90,13 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
             std::cerr << "Thread exception: " << e.what() << std::endl;
             return;
         }
+        catch (...)
+        {
+            const std::string msg = "An unknown and unhandled exception was encountered. Thread will now exit.";
+            star::core::logging::fatal(msg);
+            std::cerr << msg << std::endl;
+            return;
+        }
     }
 
     virtual void stopThread()
