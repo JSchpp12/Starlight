@@ -1,38 +1,81 @@
-#pragma once
+﻿#pragma once
 
+#include "starlight/core/device/DeviceContext.hpp"
 #include "starlight/core/device/managers/ManagerCommandBuffer.hpp"
-#include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/wrappers/graphics/StarCommandBuffer.hpp"
 
-#include <star_common/HandleTypeRegistry.hpp>
 #include <star_common/special_types/SpecialHandleTypes.hpp>
 
+#include <cassert>
+#include <utility>
 #include <vulkan/vulkan.hpp>
 
-namespace star::core::helper
+namespace star::core::helper::command_buffer
 {
-static inline StarCommandBuffer BeginSingleTimeCommands(
-    core::device::StarDevice &device, common::EventBus &eventBus,
-    core::device::manager::ManagerCommandBuffer &commandBufferManger, const star::Queue_Type &type)
+
+/// @brief Record a one-time command buffer on the queue associated with `type`, submit it, and block until the device
+/// has finished executing it.
+/// @tparam RecordFn
+/// @param device
+/// @param commandBufferManager
+/// @param type
+/// @param record
+template <typename RecordFn>
+void SingleTimeCommands(core::device::StarDevice &device,
+                        core::device::manager::ManagerCommandBuffer &commandBufferManager, const star::Queue_Type type,
+                        RecordFn &&record)
 {
-    auto &pool = commandBufferManger.getInUseInfoForType(type)->pool;
-    StarCommandBuffer buffer{device.getVulkanDevice(), 1, &pool, type, true, false};
+    const auto *info = commandBufferManager.getInUseInfoForType(type);
+    assert(info != nullptr && info->queue != nullptr &&
+           "No command pool/queue has been prepared for the requested queue type");
 
-    vk::CommandBufferBeginInfo beginInfo =
-        vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+    StarCommandBuffer buffer{device.getVulkanDevice(), 1, &info->pool, type, /*initFences=*/true,
+                             /*initSemaphores=*/false};
+    buffer.begin(0, vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-    buffer.begin(0, beginInfo);
+    auto finish = [&]() {
+        buffer.submit(0, info->queue->getVulkanQueue());
+        buffer.wait();
+    };
 
-    return buffer;
+    try
+    {
+        std::forward<RecordFn>(record)(buffer.buffer(0));
+        buffer.buffer(0).end();
+        finish();
+    }
+    catch (...)
+    {
+        // Leave the recording state cleanly even if end() itself is unhappy, then drain whatever was recorded before
+        // the failure
+        try
+        {
+            buffer.buffer(0).end();
+        }
+        catch (...)
+        {
+        }
+        try
+        {
+            finish();
+        }
+        catch (...)
+        {
+        }
+        throw;
+    }
 }
 
-static inline void EndSingleTimeCommands(star::StarQueue &targetQueue, StarCommandBuffer commandBuffer)
+/// @brief Convenience overload that pulls the device and command buffer manager off a DeviceContext. Prefer this at
+/// call sites that already hold a DeviceContext&.
+/// @tparam RecordFn
+/// @param context
+/// @param type
+/// @param record
+template <typename RecordFn>
+void SingleTimeCommands(core::device::DeviceContext &context, const star::Queue_Type type, RecordFn &&record)
 {
-    commandBuffer.buffer().end();
-
-    commandBuffer.submit(0, targetQueue.getVulkanQueue());
-
-    commandBuffer.wait();
+    SingleTimeCommands(context.getDevice(), context.getManagerCommandBuffer().m_manager, type,
+                       std::forward<RecordFn>(record));
 }
-
-} // namespace star::core::helper
+} // namespace star::core::helper::command_buffer

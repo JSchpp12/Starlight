@@ -87,6 +87,13 @@ FrameData &FrameData::add(OwnedTexture textures, Handle role)
     return *this;
 }
 
+FrameData &FrameData::add(FixedTextureHandle texture, Handle role)
+{
+    m_roleIndex[role] = m_resources.size();
+    m_resources.emplace_back(role, Resource{std::move(texture)});
+    return *this;
+}
+
 void FrameData::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight)
 {
     for (auto &entry : m_resources)

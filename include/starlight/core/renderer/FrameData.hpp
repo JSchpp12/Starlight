@@ -81,7 +81,14 @@ class FrameData
     /// uploaded). Resolved to a texture by StarShaderInfo at bind time. Binding-only.
     struct TextureHandle
     {
-        Handle textureHandle;
+        std::vector<Handle> handles;
+        vk::ImageLayout layout;
+        std::optional<vk::Format> format;
+    };
+
+    struct FixedTextureHandle
+    {
+        Handle handle;
         vk::ImageLayout layout;
         std::optional<vk::Format> format;
     };
@@ -105,7 +112,7 @@ class FrameData
     };
 
     using Resource = std::variant<DrivenBuffer, BorrowedBuffer, TextureHandle, FixedBufferHandle, OwnedBuffer,
-                                  BorrowedTexture, OwnedTexture>;
+                                  BorrowedTexture, OwnedTexture, FixedTextureHandle>;
 
     FrameData &add(std::shared_ptr<ManagerController::RenderResource::Buffer> controller);
     FrameData &add(std::shared_ptr<ManagerController::RenderResource::Buffer> controller, Handle role);
@@ -115,6 +122,7 @@ class FrameData
     FrameData &add(OwnedBuffer buffers, Handle role);
     FrameData &add(BorrowedTexture textures, Handle role);
     FrameData &add(OwnedTexture textures, Handle role);
+    FrameData &add(FixedTextureHandle texture, Handle role);
 
     /// Prep each driven buffer controller (allocates its per-frame-in-flight
     /// handles). Binding-only resources are not touched.

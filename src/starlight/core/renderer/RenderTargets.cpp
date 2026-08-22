@@ -1,4 +1,4 @@
-#include "core/renderer/RenderTargets.hpp"
+﻿#include "core/renderer/RenderTargets.hpp"
 
 #include "Allocator.hpp"
 #include "ManagerRenderResource.hpp"
@@ -162,18 +162,13 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
                                                           .setBaseMipLevel(0)
                                                           .setLevelCount(1)));
 
-        auto *singleTimeTargetQueue = core::helper::GetEngineDefaultQueue(
-            context.getEventBus(), context.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics);
-        assert(singleTimeTargetQueue != nullptr);
-
+        std::vector<vk::ImageMemoryBarrier> colorBarriers;
+        colorBarriers.reserve(numFrames);
         for (uint8_t i = 0; i < numFrames; i++)
         {
             colorTextures.emplace_back(builder.build());
             colorTextures.back().setImageLayout(vk::ImageLayout::eColorAttachmentOptimal);
 
-            auto oneTimeSetup = core::helper::BeginSingleTimeCommands(context.getDevice(), context.getEventBus(),
-                                                                      context.getManagerCommandBuffer().m_manager,
-                                                                      star::Queue_Type::Tgraphics);
             vk::ImageMemoryBarrier barrier{};
             barrier.sType = vk::StructureType::eImageMemoryBarrier;
             barrier.oldLayout = vk::ImageLayout::eUndefined;
@@ -188,11 +183,15 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
             barrier.subresourceRange.levelCount = 1;
             barrier.subresourceRange.baseArrayLayer = 0;
             barrier.subresourceRange.layerCount = 1;
-            oneTimeSetup.buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                  vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, nullptr,
-                                                  barrier);
-            core::helper::EndSingleTimeCommands(*singleTimeTargetQueue, std::move(oneTimeSetup));
+            colorBarriers.push_back(barrier);
         }
+
+        core::helper::command_buffer::SingleTimeCommands(context, star::Queue_Type::Tgraphics,
+                                         [&](vk::CommandBuffer cmd) {
+                                             cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                                                                 vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                                 {}, {}, nullptr, colorBarriers);
+                                         });
     }
 
     vk::Format depthFormat = vk::Format::eUndefined;
@@ -239,16 +238,12 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
                                                           .setBaseMipLevel(0)
                                                           .setLevelCount(1)));
 
-        auto *oneTimeTargetQueue = core::helper::GetEngineDefaultQueue(
-            context.getEventBus(), context.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics);
-        assert(oneTimeTargetQueue != nullptr);
-
+        std::vector<vk::ImageMemoryBarrier> depthBarriers;
+        depthBarriers.reserve(numFrames);
         for (uint8_t i = 0; i < numFrames; i++)
         {
             depthTextures.emplace_back(builder.build());
-            auto oneTimeSetup = core::helper::BeginSingleTimeCommands(context.getDevice(), context.getEventBus(),
-                                                                      context.getManagerCommandBuffer().m_manager,
-                                                                      star::Queue_Type::Tgraphics);
+
             vk::ImageMemoryBarrier barrier{};
             barrier.sType = vk::StructureType::eImageMemoryBarrier;
             barrier.oldLayout = vk::ImageLayout::eUndefined;
@@ -263,11 +258,15 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
             barrier.subresourceRange.levelCount = 1;
             barrier.subresourceRange.baseArrayLayer = 0;
             barrier.subresourceRange.layerCount = 1;
-            oneTimeSetup.buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                  vk::PipelineStageFlagBits::eLateFragmentTests, {}, {}, nullptr,
-                                                  barrier);
-            core::helper::EndSingleTimeCommands(*oneTimeTargetQueue, std::move(oneTimeSetup));
+            depthBarriers.push_back(barrier);
         }
+
+        core::helper::command_buffer::SingleTimeCommands(context, star::Queue_Type::Tgraphics,
+                                         [&](vk::CommandBuffer cmd) {
+                                             cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                                                                 vk::PipelineStageFlagBits::eLateFragmentTests, {},
+                                                                 {}, nullptr, depthBarriers);
+                                         });
     }
 
     auto colorHandles = registerTextures(context, renderingContext, std::move(colorTextures));

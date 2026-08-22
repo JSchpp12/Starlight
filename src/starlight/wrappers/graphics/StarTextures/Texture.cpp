@@ -326,6 +326,8 @@ uint32_t star::StarTextures::Texture::ExtractMipmapLevels(const std::vector<vk::
 {
     if (imageViewInfo.size() > 0)
     {
+        assert(imageViewInfo[0].subresourceRange.levelCount != vk::RemainingMipLevels &&
+               "When using texture builder, the number of mipmap levels needs to be provided to the image view");
         return imageViewInfo[0].subresourceRange.levelCount;
     }
     return 1;
@@ -446,9 +448,12 @@ void star::StarTextures::Texture::LogImageCreateFailure(const vk::Result &result
     std::ostringstream oss;
     oss << "Failed to create image with Vulkan error: ";
 
-    if (result == vk::Result::eErrorFeatureNotPresent){
-        oss << "eErrorFeatureNotPresent"; 
-    }else{
+    if (result == vk::Result::eErrorFeatureNotPresent)
+    {
+        oss << "eErrorFeatureNotPresent";
+    }
+    else
+    {
         oss << "Undefined error";
     }
 

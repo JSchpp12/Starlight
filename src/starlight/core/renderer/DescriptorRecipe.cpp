@@ -145,7 +145,12 @@ int DescriptorRecipe::operator()()
                     else if (std::holds_alternative<FrameData::TextureHandle>(*res))
                     {
                         const auto &t = std::get<FrameData::TextureHandle>(*res);
-                        builder.add(StarShaderInfo::TextureInfo{t.textureHandle, t.layout, t.format});
+                        builder.add(StarShaderInfo::TextureInfo{t.handles[i], t.layout, t.format});
+                    }
+                    else if (std::holds_alternative<FrameData::FixedTextureHandle>(*res))
+                    {
+                        const auto &t = std::get<FrameData::FixedTextureHandle>(*res);
+                        builder.add(StarShaderInfo::TextureInfo{t.handle, t.layout, t.format});
                     }
                     else if (std::holds_alternative<FrameData::BorrowedTexture>(*res))
                     {

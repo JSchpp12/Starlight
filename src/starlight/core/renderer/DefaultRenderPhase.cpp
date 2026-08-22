@@ -7,7 +7,6 @@
 #include "core/device/DeviceContext.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/helper/command_buffer/CommandBufferHelpers.hpp"
-#include "core/helper/queue/QueueHelpers.hpp"
 #include "core/renderer/DescriptorRecipe.hpp"
 #include "starlight/command/command_order/DeclarePass.hpp"
 #include "starlight/core/Exceptions.hpp"
@@ -45,10 +44,6 @@ static const star::core::device::manager::ImageRecord *GetImg(const star::Handle
 static RenderTargets createRenderTargets(core::device::DeviceContext &context, RenderingContext &ctx)
 {
     auto targets = RenderTargets::forOffscreen(context, ctx);
-
-    auto *graphicsQueueToUse = core::helper::GetEngineDefaultQueue(
-        context.getEventBus(), context.getGraphicsManagers().queueManager, star::Queue_Type::Tpresent);
-    assert(graphicsQueueToUse != nullptr);
 
     std::vector<vk::ImageMemoryBarrier2> imgBarriers(targets.colorHandles().size() + targets.depthHandles().size());
     size_t imgIndex = 0;
@@ -96,13 +91,11 @@ static RenderTargets createRenderTargets(core::device::DeviceContext &context, R
                                                                .setLayerCount(vk::RemainingArrayLayers));
     }
 
-    auto oneTimeSetup = star::core::helper::BeginSingleTimeCommands(context.getDevice(), context.getEventBus(),
-                                                                    context.getManagerCommandBuffer().m_manager,
-                                                                    star::Queue_Type::Tgraphics);
-
-    oneTimeSetup.buffer().pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarriers(imgBarriers));
-
-    core::helper::EndSingleTimeCommands(*graphicsQueueToUse, std::move(oneTimeSetup));
+    core::helper::command_buffer::SingleTimeCommands(context, star::Queue_Type::Tgraphics,
+                                     [&](vk::CommandBuffer cmd) {
+                                         cmd.pipelineBarrier2(
+                                             vk::DependencyInfo().setImageMemoryBarriers(imgBarriers));
+                                     });
     return targets;
 }
 
