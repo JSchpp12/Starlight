@@ -26,9 +26,9 @@ class Texture
     class Builder
     {
       public:
-        Builder(vk::Device &device, const vk::Image &vulkanImage);
+        Builder(core::device::StarDevice &device, const vk::Image &vulkanImage);
 
-        Builder(vk::Device &device, VmaAllocator &allocator);
+        Builder(core::device::StarDevice &device);
 
         Builder &setCreateInfo(const VmaAllocationCreateInfo &nAllocInfo, const vk::ImageCreateInfo &nCreateInfo,
                                const std::string &nAllocationName);
@@ -50,17 +50,14 @@ class Texture
       private:
         struct Creators
         {
-            Creators(VmaAllocator &allocator) : allocator(allocator)
-            {
-            }
+            Creators() = default;
 
-            VmaAllocator &allocator;
             vk::ImageCreateInfo createInfo = vk::ImageCreateInfo();
             VmaAllocationCreateInfo allocationCreateInfo = VmaAllocationCreateInfo();
             std::string allocationName = "Default Texture Name";
         };
 
-        vk::Device &device;
+        core::device::StarDevice &device;
         std::optional<vk::Format> format = std::nullopt;
         std::optional<Creators> createNewAllocationInfo = std::nullopt;
         std::optional<vk::Image> vulkanImage = std::nullopt;

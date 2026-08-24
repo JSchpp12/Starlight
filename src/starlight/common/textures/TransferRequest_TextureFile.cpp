@@ -38,14 +38,14 @@ star::TransferRequest::TextureFile::TextureFile(uint32_t graphicsQueueFamilyInde
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::createStagingBuffer(
-    vk::Device &device, VmaAllocator &allocator) const
+    core::device::StarDevice &device) const
 {
     int width, height, channels = 0;
     GetTextureInfo(m_imagePath, width, height, channels);
 
     const vk::DeviceSize size = width * height * channels * 4;
 
-    return StarBuffers::Buffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
@@ -62,7 +62,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::c
 }
 
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile::createFinal(
-    vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
+    core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     int width, height, channels = 0;
     GetTextureInfo(m_imagePath, width, height, channels);
@@ -72,7 +72,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile:
     for (auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    return star::StarTextures::Texture::Builder(device, allocator)
+    return star::StarTextures::Texture::Builder(device)
         .setCreateInfo(Allocator::AllocationBuilder()
                            .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
                            .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)

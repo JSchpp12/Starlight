@@ -1,4 +1,4 @@
-﻿#include "core/renderer/RenderTargets.hpp"
+#include "core/renderer/RenderTargets.hpp"
 
 #include "Allocator.hpp"
 #include "ManagerRenderResource.hpp"
@@ -130,8 +130,7 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
         colorFormat = selectFormat(context, {vk::Format::eR8G8B8A8Srgb}, vk::FormatFeatureFlagBits::eColorAttachment);
 
         auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                                 context.getDevice().getAllocator().get())
+            star::StarTextures::Texture::Builder(context.getDevice())
                 .setCreateInfo(
                     Allocator::AllocationBuilder()
                         .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -186,12 +185,11 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
             colorBarriers.push_back(barrier);
         }
 
-        core::helper::command_buffer::SingleTimeCommands(context, star::Queue_Type::Tgraphics,
-                                         [&](vk::CommandBuffer cmd) {
-                                             cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                                 vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                                                                 {}, {}, nullptr, colorBarriers);
-                                         });
+        core::helper::command_buffer::SingleTimeCommands(
+            context, star::Queue_Type::Tgraphics, [&](vk::CommandBuffer cmd) {
+                cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                                    vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, nullptr, colorBarriers);
+            });
     }
 
     vk::Format depthFormat = vk::Format::eUndefined;
@@ -206,8 +204,7 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
                          vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 
         auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                                 context.getDevice().getAllocator().get())
+            star::StarTextures::Texture::Builder(context.getDevice())
                 .setCreateInfo(Allocator::AllocationBuilder()
                                    .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
                                    .setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
@@ -261,12 +258,11 @@ RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &contex
             depthBarriers.push_back(barrier);
         }
 
-        core::helper::command_buffer::SingleTimeCommands(context, star::Queue_Type::Tgraphics,
-                                         [&](vk::CommandBuffer cmd) {
-                                             cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                                 vk::PipelineStageFlagBits::eLateFragmentTests, {},
-                                                                 {}, nullptr, depthBarriers);
-                                         });
+        core::helper::command_buffer::SingleTimeCommands(
+            context, star::Queue_Type::Tgraphics, [&](vk::CommandBuffer cmd) {
+                cmd.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                                    vk::PipelineStageFlagBits::eLateFragmentTests, {}, {}, nullptr, depthBarriers);
+            });
     }
 
     auto colorHandles = registerTextures(context, renderingContext, std::move(colorTextures));
@@ -288,8 +284,7 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultColorAttachments(
                              vk::FormatFeatureFlagBits::eStorageImage);
 
         auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                                 context.getDevice().getAllocator().get())
+            star::StarTextures::Texture::Builder(context.getDevice())
                 .setCreateInfo(Allocator::AllocationBuilder()
                                    .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
                                    .setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
@@ -341,8 +336,7 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultDepthAttachments(
                          vk::FormatFeatureFlagBits::eDepthStencilAttachment | vk::FormatFeatureFlagBits::eSampledImage);
 
         auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                                 context.getDevice().getAllocator().get())
+            star::StarTextures::Texture::Builder(context.getDevice())
                 .setCreateInfo(
                     Allocator::AllocationBuilder()
                         .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)

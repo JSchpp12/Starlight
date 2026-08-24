@@ -106,12 +106,12 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
         }
     }
 
-    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const override
+    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(core::device::StarDevice &device) const override
     {
-        assert(m_height != 0 && m_width != 0 && "Height and width must be defined"); 
-        const size_t size = getSizeOfData(); 
+        assert(m_height != 0 && m_width != 0 && "Height and width must be defined");
+        const size_t size = getSizeOfData();
 
-        return StarBuffers::Buffer::Builder(allocator)
+        return StarBuffers::Buffer::Builder(device.getAllocator().get())
             .setAllocationCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
@@ -128,10 +128,9 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
     }
 
     std::unique_ptr<star::StarTextures::Texture> createFinal(
-        vk::Device &device, VmaAllocator &allocator,
-        const std::vector<uint32_t> &transferQueueFamilyIndex) const override
+        core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const override
     {
-        assert(m_height != 0 && m_width != 0 && "Height and width must be defined"); 
+        assert(m_height != 0 && m_width != 0 && "Height and width must be defined");
 
         constexpr vk::Format baseFormat = SelectFormat();
 
@@ -144,7 +143,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
         uint32_t indexCount = 0;
         star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), indexCount);
 
-        return star::StarTextures::Texture::Builder(device, allocator)
+        return star::StarTextures::Texture::Builder(device)
             .setCreateInfo(Allocator::AllocationBuilder()
                                .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
                                .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
@@ -178,7 +177,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
     virtual void copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer, star::StarTextures::Texture &dst,
                                           vk::CommandBuffer &commandBuffer) const override
     {
-        assert(m_height != 0 && m_width != 0 && "Height and width must be defined"); 
+        assert(m_height != 0 && m_width != 0 && "Height and width must be defined");
 
         star::StarTextures::Texture::TransitionImageLayout(
             dst, commandBuffer, dst.getBaseFormat(), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
@@ -205,8 +204,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
     {
         assert(m_rawData && "Data needs to be loaded before trying to write to buffers");
 
-
-        const size_t size = getSizeOfData(); 
+        const size_t size = getSizeOfData();
 
         void *mapped = nullptr;
         stagingBuffer.map(&mapped);
@@ -217,9 +215,10 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
   protected:
     virtual std::unique_ptr<std::vector<TData>> loadTexture(const uint32_t &width, const uint32_t &height) const = 0;
 
-    size_t getSizeOfData() const {
-        assert(m_rawData && "Data must be loaded before size can be computed"); 
-        return m_rawData->size() * sizeof(TData); 
+    size_t getSizeOfData() const
+    {
+        assert(m_rawData && "Data must be loaded before size can be computed");
+        return m_rawData->size() * sizeof(TData);
     }
 
   private:

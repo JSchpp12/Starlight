@@ -8,7 +8,7 @@
 namespace star::job
 {
 
-void TransferManagerThread::CreateBuffer(vk::Device device, VmaAllocator allocator, StarQueue &queue,
+void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQueue &queue,
                                          const vk::PhysicalDeviceProperties &deviceProperties,
                                          const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                          ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
@@ -16,12 +16,12 @@ void TransferManagerThread::CreateBuffer(vk::Device device, VmaAllocator allocat
                                          boost::atomic<bool> *gpuDoneSignalMain,
                                          core::graphics::GPUWorkSyncInfo &syncInfo)
 {
-    auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device, allocator);
+    auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device);
     if (transferSrcBuffer->getBufferSize() == 0)
         STAR_THROW("Failed to create transfer src buffer");
 
     {
-        auto newResult = newBufferRequest->createFinal(device, allocator, allTransferQueueFamilyIndicesInUse);
+        auto newResult = newBufferRequest->createFinal(device, allTransferQueueFamilyIndicesInUse);
         if (newResult->getBufferSize() == 0)
         {
             STAR_THROW("Failed to create final buffer");
@@ -82,7 +82,7 @@ void TransferManagerThread::CreateBuffer(vk::Device device, VmaAllocator allocat
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
-void TransferManagerThread::CreateTexture(vk::Device device, VmaAllocator allocator, StarQueue &queue,
+void TransferManagerThread::CreateTexture(core::device::StarDevice &device, StarQueue &queue,
                                           const vk::PhysicalDeviceProperties &deviceProperties,
                                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                           ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
@@ -90,11 +90,11 @@ void TransferManagerThread::CreateTexture(vk::Device device, VmaAllocator alloca
                                           boost::atomic<bool> *gpuDoneSignalToMain,
                                           core::graphics::GPUWorkSyncInfo &syncInfo)
 {
-    auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device, allocator);
+    auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device);
 
     bool newImageCreated = true;
 
-    auto finalTexture = newTextureRequest->createFinal(device, allocator, allTransferQueueFamilyIndicesInUse);
+    auto finalTexture = newTextureRequest->createFinal(device, allTransferQueueFamilyIndicesInUse);
     resultingTexture->swap(finalTexture);
 
     newTextureRequest->writeDataToStageBuffer(*transferSrcBuffer);
@@ -146,7 +146,6 @@ void TransferManagerThread::CreateTexture(vk::Device device, VmaAllocator alloca
             oss << "Vulkan error encountered while submitting queue. Terminating. " << e.what();
             STAR_THROW(oss.str());
         }
-
     }
 
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));

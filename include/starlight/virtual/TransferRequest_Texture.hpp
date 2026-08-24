@@ -3,7 +3,6 @@
 #include "StarTextures/Texture.hpp"
 #include "TransferRequest_Memory.hpp"
 
-
 #include <vulkan/vulkan.hpp>
 
 namespace star::TransferRequest
@@ -14,14 +13,13 @@ class Texture : private Memory<star::StarTextures::Texture>
     Texture() = default;
     virtual ~Texture() = default;
 
-    virtual void prep() override{};
+    virtual void prep() override {};
 
     virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(
-        vk::Device &device, VmaAllocator &allocator) const override = 0;
+        core::device::StarDevice &device) const override = 0;
 
     virtual std::unique_ptr<star::StarTextures::Texture> createFinal(
-        vk::Device &device, VmaAllocator &allocator,
-        const std::vector<uint32_t> &transferQueueFamilyIndex) const override = 0;
+        core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const override = 0;
 
     virtual void copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer, star::StarTextures::Texture &dst,
                                           vk::CommandBuffer &commandBuffer) const override = 0;

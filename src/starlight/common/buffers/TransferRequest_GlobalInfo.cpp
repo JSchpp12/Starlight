@@ -1,9 +1,9 @@
 #include "TransferRequest_GlobalInfo.hpp"
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::createStagingBuffer(
-    vk::Device &device, VmaAllocator &allocator) const
+    core::device::StarDevice &device) const
 {
-    return StarBuffers::Buffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
@@ -20,7 +20,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::cr
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::createFinal(
-    vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
+    core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices;
     indices.reserve(transferQueueFamilyIndex.size() + this->m_queueFamilyIndices.size());
@@ -37,7 +37,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::cr
                              .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer)
                              .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
                              .setPQueueFamilyIndices(indices.data());
-    return StarBuffers::Buffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setAllocationCreateInfo(Allocator::AllocationBuilder()
                                      .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
                                      .setUsage(VMA_MEMORY_USAGE_AUTO)

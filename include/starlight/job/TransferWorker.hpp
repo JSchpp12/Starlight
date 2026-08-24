@@ -114,14 +114,14 @@ class TransferManagerThread
         std::unique_ptr<StarBuffers::Buffer> inProcessTransferSrcBuffer = nullptr;
     };
 
-    static void CreateBuffer(vk::Device device, VmaAllocator allocator, StarQueue &queue,
+    static void CreateBuffer(core::device::StarDevice &device, StarQueue &queue,
                              const vk::PhysicalDeviceProperties &deviceProperties,
                              const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                              ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
                              std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
                              boost::atomic<bool> *gpuDoneSignalMain, core::graphics::GPUWorkSyncInfo &syncInfo);
 
-    static void CreateTexture(vk::Device device, VmaAllocator allocator, StarQueue &queue,
+    static void CreateTexture(core::device::StarDevice &device, StarQueue &queue,
                               const vk::PhysicalDeviceProperties &deviceProperties,
                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                               ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,

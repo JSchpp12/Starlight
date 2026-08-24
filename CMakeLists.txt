@@ -576,8 +576,8 @@ set(${STARLIGHT_NAME}_INCLUDE_DIRS
 #     if(COMMAND star_add_pch)
 #         star_add_pch(<target>)
 #     endif()
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/StarVulkanPch.cmake")
-star_add_pch(${STARLIGHT_NAME})
+# include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/StarVulkanPch.cmake")
+# star_add_pch(${STARLIGHT_NAME})
 
 target_link_libraries(${STARLIGHT_NAME}
     PUBLIC

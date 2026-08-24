@@ -9,12 +9,12 @@
 #include <assert.h>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(
-    vk::Device &device, VmaAllocator &allocator) const
+    core::device::StarDevice &device) const
 {
     ktxTexture2 *texture = nullptr;
     this->compressedTexture->giveMeTranscodedImage(texture);
 
-    return star::StarBuffers::Buffer::Builder(allocator)
+    return star::StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setInstanceCount(1)
         .setInstanceSize(texture->dataSize)
         .setAllocationCreateInfo(
@@ -30,7 +30,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedText
 }
 
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTextureFile::createFinal(
-    vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
+    core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     {
         const std::string msg = "Beginning compressed texture transcode" + compressedTexture->getPathToFile();
@@ -63,7 +63,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         STAR_THROW(msg);
     }
 
-    return StarTextures::Texture::Builder(device, allocator)
+    return StarTextures::Texture::Builder(device)
         .setCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)

@@ -12,12 +12,10 @@ class TextureFile : public Texture
     TextureFile(uint32_t graphicsQueueFamilyIndex, vk::PhysicalDeviceProperties deviceProperties,
                 std::string imagePath);
 
-    virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device,
-                                                                     VmaAllocator &allocator) const override;
+    virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(core::device::StarDevice &device) const override;
 
     virtual std::unique_ptr<star::StarTextures::Texture> createFinal(
-        vk::Device &device, VmaAllocator &allocator,
-        const std::vector<uint32_t> &transferQueueFamilyIndex) const override;
+        core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const override;
 
     virtual void copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer, StarTextures::Texture &dst,
                                           vk::CommandBuffer &commandBuffer) const override;

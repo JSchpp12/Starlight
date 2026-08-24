@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <sstream>
 #include <stdexcept>
 
 void star::StarTextures::Texture::TransitionImageLayout(Texture &image, vk::CommandBuffer &commandBuffer,
@@ -333,13 +334,13 @@ uint32_t star::StarTextures::Texture::ExtractMipmapLevels(const std::vector<vk::
     return 1;
 }
 
-star::StarTextures::Texture::Builder::Builder(vk::Device &device, const vk::Image &vulkanImage)
+star::StarTextures::Texture::Builder::Builder(core::device::StarDevice &device, const vk::Image &vulkanImage)
     : device(device), vulkanImage(vulkanImage)
 {
 }
 
-star::StarTextures::Texture::Builder::Builder(vk::Device &device, VmaAllocator &allocator)
-    : device(device), createNewAllocationInfo{std::make_optional<Creators>(allocator)}
+star::StarTextures::Texture::Builder::Builder(core::device::StarDevice &device)
+    : device(device), createNewAllocationInfo{std::make_optional<Creators>()}
 {
 }
 
@@ -399,10 +400,26 @@ star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
 
     if (this->createNewAllocationInfo.has_value())
     {
+        // Build the effective create info with the baseFormat that CreateAllocation will actually use
+        vk::ImageCreateInfo effectiveInfo =
+            vk::ImageCreateInfo(this->createNewAllocationInfo.value().createInfo).setFormat(this->format.value());
+
+        if (!this->device.verifyImageCreate(effectiveInfo))
+        {
+            std::ostringstream oss;
+            oss << "Hardware does not support creating image with format " << vk::to_string(this->format.value())
+                << ", usage " << vk::to_string(effectiveInfo.usage) << ", tiling "
+                << vk::to_string(effectiveInfo.tiling);
+            throw std::runtime_error(oss.str());
+        }
+
+        auto &vkDevice = this->device.getVulkanDevice();
+        auto &allocator = this->device.getAllocator().get();
+
         if (this->samplerInfo.has_value())
         {
-            return {this->device,
-                    this->createNewAllocationInfo.value().allocator,
+            return {vkDevice,
+                    allocator,
                     this->createNewAllocationInfo.value().createInfo,
                     this->createNewAllocationInfo.value().allocationName,
                     this->createNewAllocationInfo.value().allocationCreateInfo,
@@ -412,8 +429,8 @@ star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
         }
         else
         {
-            return {this->device,
-                    this->createNewAllocationInfo.value().allocator,
+            return {vkDevice,
+                    allocator,
                     this->createNewAllocationInfo.value().createInfo,
                     this->createNewAllocationInfo.value().allocationName,
                     this->createNewAllocationInfo.value().allocationCreateInfo,
@@ -424,16 +441,25 @@ star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
     else if (this->vulkanImage.has_value())
     {
         assert(overrideSize.has_value() && "Size MUST be calculated/provided for externally created/managed texture");
+        auto &vkDevice = this->device.getVulkanDevice();
         if (this->samplerInfo.has_value())
         {
-            return {this->device,         this->vulkanImage.value(), this->viewInfos,
-                    this->format.value(), this->samplerInfo.value(), overrideResolution.value(),
+            return {vkDevice,
+                    this->vulkanImage.value(),
+                    this->viewInfos,
+                    this->format.value(),
+                    this->samplerInfo.value(),
+                    overrideResolution.value(),
                     overrideSize.value()};
         }
         else
         {
-            return {this->device,         this->vulkanImage.value(),  this->viewInfos,
-                    this->format.value(), overrideResolution.value(), overrideSize.value()};
+            return {vkDevice,
+                    this->vulkanImage.value(),
+                    this->viewInfos,
+                    this->format.value(),
+                    overrideResolution.value(),
+                    overrideSize.value()};
         }
     }
     else
@@ -442,7 +468,6 @@ star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
         throw std::runtime_error("Invalid builder config");
     }
 }
-
 void star::StarTextures::Texture::LogImageCreateFailure(const vk::Result &result)
 {
     std::ostringstream oss;
