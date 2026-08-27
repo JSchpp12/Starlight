@@ -1,4 +1,4 @@
-﻿#include "renderer/DefaultRenderPhase.hpp"
+#include "renderer/DefaultRenderPhase.hpp"
 
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
@@ -91,11 +91,9 @@ static RenderTargets createRenderTargets(core::device::DeviceContext &context, R
                                                                .setLayerCount(vk::RemainingArrayLayers));
     }
 
-    core::helper::command_buffer::SingleTimeCommands(context, star::Queue_Type::Tgraphics,
-                                     [&](vk::CommandBuffer cmd) {
-                                         cmd.pipelineBarrier2(
-                                             vk::DependencyInfo().setImageMemoryBarriers(imgBarriers));
-                                     });
+    core::helper::command_buffer::SingleTimeCommands(context, star::Queue_Type::Tgraphics, [&](vk::CommandBuffer cmd) {
+        cmd.pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarriers(imgBarriers));
+    });
     return targets;
 }
 
@@ -179,12 +177,12 @@ void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
     const auto global = shaderInfoHandle("Global");
     DescriptorRecipe::Builder(m_context.getEventBus(), m_context, star::event::DescriptorPoolReady::GetUniqueTypeName())
         .setShaderInfoOut(global, &target.m_globalShaderInfo)
-        .addBinding(global, 0, target.m_frameData, roleHandle(frame_roles::Camera), 0,
-                    vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-        .addBinding(global, 0, target.m_frameData, roleHandle(frame_roles::LightInfo), 1,
-                    vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-        .addBinding(global, 0, target.m_frameData, roleHandle(frame_roles::LightList), 2,
-                    vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
+        .addBinding(target.m_frameData, 0, 0, roleHandle(frame_roles::Camera), vk::DescriptorType::eUniformBuffer,
+                    vk::ShaderStageFlagBits::eAll)
+        .addBinding(target.m_frameData, 0, 1, roleHandle(frame_roles::LightInfo), vk::DescriptorType::eUniformBuffer,
+                    vk::ShaderStageFlagBits::eAll)
+        .addBinding(target.m_frameData, 0, 2, roleHandle(frame_roles::LightList), vk::DescriptorType::eStorageBuffer,
+                    vk::ShaderStageFlagBits::eAll)
         .setRenderGroups(global, &target.m_renderGroups, target.getRenderTargetInfo(), target.m_commandBuffer)
         .build();
 }

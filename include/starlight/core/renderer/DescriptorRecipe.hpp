@@ -44,9 +44,13 @@ class DescriptorRecipe
       public:
         Builder(common::EventBus &bus, core::device::DeviceContext &context, std::string_view eventName);
 
+        /// @brief Register a StarShaderInfo sink and make it the current target for subsequent addBinding() calls.
+        /// Calling again with the same handle just re-establishes it as current.
         Builder &setShaderInfoOut(Handle shaderInfo, std::unique_ptr<StarShaderInfo> *out);
-        Builder &addBinding(Handle shaderInfo, uint32_t set, std::shared_ptr<FrameData> source, Handle role,
-                            uint32_t binding, vk::DescriptorType type, vk::ShaderStageFlags stage);
+
+        /// @brief Add a binding to the current shader info (set by the last setShaderInfoOut())
+        Builder &addBinding(std::shared_ptr<FrameData> source, uint32_t set, uint32_t binding, Handle role,
+                            vk::DescriptorType type, vk::ShaderStageFlags stage);
 
         /// Optional: notify render groups with the built layout so they can
         /// assemble their pipeline layout.
@@ -64,6 +68,7 @@ class DescriptorRecipe
         core::device::DeviceContext *m_context{nullptr};
         std::vector<std::pair<Handle, std::unique_ptr<StarShaderInfo> *>> m_shaderInfoOuts;
         std::vector<Binding> m_bindings;
+        Handle m_currentShaderInfo{}; // implied shaderInfo for addBinding()
         std::vector<StarRenderGroup> *m_renderGroups{nullptr};
         Handle m_groupShaderInfo{};
         RenderingTargetInfo m_renderingTargetInfo;

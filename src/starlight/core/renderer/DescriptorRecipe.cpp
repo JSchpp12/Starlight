@@ -199,16 +199,28 @@ DescriptorRecipe::Builder::Builder(common::EventBus &bus, core::device::DeviceCo
 DescriptorRecipe::Builder &DescriptorRecipe::Builder::setShaderInfoOut(Handle shaderInfo,
                                                                        std::unique_ptr<StarShaderInfo> *out)
 {
-    m_shaderInfoOuts.emplace_back(shaderInfo, out);
+    const auto it = std::find_if(m_shaderInfoOuts.begin(), m_shaderInfoOuts.end(),
+                                 [&](const auto &entry) { return entry.first == shaderInfo; });
+    if (it == m_shaderInfoOuts.end())
+    {
+        m_shaderInfoOuts.emplace_back(shaderInfo, out);
+    }
+    else
+    {
+        assert(it->second == out && "setShaderInfoOut() called again with a different sink for the same shaderInfo");
+    }
+
+    m_currentShaderInfo = shaderInfo;
     return *this;
 }
 
-DescriptorRecipe::Builder &DescriptorRecipe::Builder::addBinding(Handle shaderInfo, uint32_t set,
-                                                                 std::shared_ptr<FrameData> source, Handle role,
-                                                                 uint32_t binding, vk::DescriptorType type,
+DescriptorRecipe::Builder &DescriptorRecipe::Builder::addBinding(std::shared_ptr<FrameData> source, uint32_t set,
+                                                                 uint32_t binding, Handle role, vk::DescriptorType type,
                                                                  vk::ShaderStageFlags stage)
 {
-    m_bindings.push_back(Binding{shaderInfo, set, std::move(source), role, binding, type, stage});
+    assert(m_currentShaderInfo.isInitialized() &&
+           "addBinding() requires a prior setShaderInfoOut() to establish the current shader info");
+    m_bindings.push_back(Binding{m_currentShaderInfo, set, std::move(source), role, binding, type, stage});
     return *this;
 }
 
