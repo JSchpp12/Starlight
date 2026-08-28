@@ -4,7 +4,8 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include <optional>
+#include <array>
+#include <cstdint>
 
 namespace star::core::graphics
 {
@@ -17,7 +18,10 @@ struct SemaphoreInfo
 
 struct GPUWorkSyncInfo
 {
-    std::optional<SemaphoreInfo> workWaitOn{std::nullopt};
-    SemaphoreInfo workSignalWhenDone; 
+    // A resource update needs at most two dependencies: the prior transfer write and the graphics/compute submission
+    // still consuming the resource.
+    std::array<SemaphoreInfo, 2> workWaitOn{};
+    uint8_t workWaitOnCount{0};
+    SemaphoreInfo workSignalWhenDone;
 };
 } // namespace star::core::graphics

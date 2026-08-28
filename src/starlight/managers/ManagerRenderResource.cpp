@@ -4,6 +4,8 @@
 #include "job/tasks/TransferTask.hpp"
 #include "starlight/command/transfer/SubmitTransferTask.hpp"
 
+#include <algorithm>
+
 std::unordered_map<star::Handle, star::core::device::StarDevice *, star::HandleHash>
     star::ManagerRenderResource::devices;
 std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>
@@ -82,7 +84,6 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
     return newBufferHandle;
 }
 
-
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
                                                      std::unique_ptr<star::TransferRequest::Texture> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
@@ -147,10 +148,34 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     }
     container.cpuWorkDoneByTransferThread.store(false);
 
+    star::core::graphics::GPUWorkSyncInfo syncInfo;
+    const auto addWait = [&syncInfo](const star::core::graphics::SemaphoreInfo &info) {
+        if (info.semaphore == VK_NULL_HANDLE)
+            return;
+
+        const auto existing =
+            std::find_if(syncInfo.workWaitOn.begin(), syncInfo.workWaitOn.begin() + syncInfo.workWaitOnCount,
+                         [&info](const auto &wait) { return wait.semaphore == info.semaphore; });
+        if (existing == syncInfo.workWaitOn.begin() + syncInfo.workWaitOnCount)
+        {
+            assert(syncInfo.workWaitOnCount < syncInfo.workWaitOn.size() && "Too many transfer wait dependencies");
+            syncInfo.workWaitOn[syncInfo.workWaitOnCount++] = info;
+        }
+        else if (existing->signalValue < info.signalValue)
+        {
+            *existing = info;
+        }
+    };
+
+    // Reused buffers must serialize their writes even when no consumer wait was supplied.  Retain a caller-provided
+    // wait as well: it protects a graphics or compute submission which may still be reading this buffer.
+    addWait({.signalValue = container.gpuWorkDoneSignaledInfo.signalValue,
+             .semaphore = container.gpuWorkDoneSignaledInfo.vkSemaphore});
+    if (waitInfo.has_value())
+        addWait(waitInfo.value());
+
     auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &container.cpuWorkDoneByTransferThread, std::move(newRequest), container.resource,
-        waitInfo.has_value() ? star::core::graphics::GPUWorkSyncInfo{.workWaitOn = waitInfo.value()}
-                             : star::core::graphics::GPUWorkSyncInfo{});
+        &container.cpuWorkDoneByTransferThread, std::move(newRequest), container.resource, std::move(syncInfo));
     command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
         job::tasks::transfer::TransferPayload{isHighPriority ? job::tasks::transfer::TransferPriority::High
                                                              : job::tasks::transfer::TransferPriority::Standard,

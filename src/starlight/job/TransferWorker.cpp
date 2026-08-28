@@ -46,22 +46,18 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
                                     .setValue(syncInfo.workSignalWhenDone.signalValue)
                                     .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
-        uint8_t waitInfoCount{0};
-        vk::SemaphoreSubmitInfo waitInfo;
-        if (syncInfo.workWaitOn.has_value())
+        std::array<vk::SemaphoreSubmitInfo, 2> waitInfos{};
+        for (uint8_t i = 0; i < syncInfo.workWaitOnCount; ++i)
         {
-            const auto &v = syncInfo.workWaitOn.value();
-            waitInfo.setSemaphore(v.semaphore)
-                .setValue(v.signalValue)
-                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
-            waitInfoCount++;
+            const auto &wait = syncInfo.workWaitOn[i];
+            waitInfos[i].setSemaphore(wait.semaphore).setValue(wait.signalValue).setStageMask(wait.where);
         }
 
         const auto cbInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(processInfo.commandBuffer->buffer(0));
 
         const auto submitInfo = vk::SubmitInfo2()
-                                    .setPWaitSemaphoreInfos(&waitInfo)
-                                    .setWaitSemaphoreInfoCount(waitInfoCount)
+                                    .setPWaitSemaphoreInfos(waitInfos.data())
+                                    .setWaitSemaphoreInfoCount(syncInfo.workWaitOnCount)
                                     .setPCommandBufferInfos(&cbInfo)
                                     .setCommandBufferInfoCount(1)
                                     .setPSignalSemaphoreInfos(&signalInfo)
@@ -115,22 +111,18 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
                                     .setValue(syncInfo.workSignalWhenDone.signalValue)
                                     .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
-        uint8_t waitInfoCount{0};
-        vk::SemaphoreSubmitInfo waitInfo;
-        if (syncInfo.workWaitOn.has_value())
+        std::array<vk::SemaphoreSubmitInfo, 2> waitInfos{};
+        for (uint8_t i = 0; i < syncInfo.workWaitOnCount; ++i)
         {
-            const auto &v = syncInfo.workWaitOn.value();
-            waitInfo.setSemaphore(v.semaphore)
-                .setValue(v.signalValue)
-                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
-            waitInfoCount++;
+            const auto &wait = syncInfo.workWaitOn[i];
+            waitInfos[i].setSemaphore(wait.semaphore).setValue(wait.signalValue).setStageMask(wait.where);
         }
 
         const auto cbInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(processInfo.commandBuffer->buffer(0));
 
         const auto submitInfo = vk::SubmitInfo2()
-                                    .setPWaitSemaphoreInfos(&waitInfo)
-                                    .setWaitSemaphoreInfoCount(waitInfoCount)
+                                    .setPWaitSemaphoreInfos(waitInfos.data())
+                                    .setWaitSemaphoreInfoCount(syncInfo.workWaitOnCount)
                                     .setPCommandBufferInfos(&cbInfo)
                                     .setCommandBufferInfoCount(1)
                                     .setPSignalSemaphoreInfos(&signalInfo)
