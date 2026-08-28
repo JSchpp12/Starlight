@@ -6,6 +6,7 @@
 #include "core/device/DeviceContext.hpp"
 #include <star_common/Handle.hpp>
 
+#include <array>
 #include <vulkan/vulkan.hpp>
 
 #include <glm/glm.hpp>

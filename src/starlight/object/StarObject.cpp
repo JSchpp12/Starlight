@@ -270,11 +270,13 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
     // iterating render groups; each mesh only rebinds its own material set.
     if (m_instanceShaderInfo)
     {
-        auto instanceSets = m_instanceShaderInfo->getDescriptors(swapChainIndexNum);
-        if (!instanceSets.empty())
+        assert(m_instanceShaderInfo->getNumDescriptorSets(swapChainIndexNum) <= m_instanceDescriptors.size());
+        size_t numWritten = 0;
+        m_instanceShaderInfo->getDescriptors(swapChainIndexNum, m_instanceDescriptors.data(), numWritten);
+        if (numWritten != 0)
         {
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, m_globalSetCount,
-                                             instanceSets.size(), instanceSets.data(), 0, nullptr);
+                                             numWritten, m_instanceDescriptors.data(), 0, nullptr);
         }
     }
 

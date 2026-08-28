@@ -216,6 +216,8 @@ class StarShaderInfo
 
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
+    size_t getNumDescriptorSets(uint8_t frameInFlight) const noexcept;
+
     void getDescriptors(uint8_t frameInFlight, vk::DescriptorSet *data, size_t &numWritten) noexcept;
 
     void cleanupRender(core::device::StarDevice &device);

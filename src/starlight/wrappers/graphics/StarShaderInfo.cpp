@@ -169,6 +169,13 @@ void star::StarShaderInfo::cleanupRender(core::device::StarDevice &device)
     }
 }
 
+size_t star::StarShaderInfo::getNumDescriptorSets(uint8_t frameInFlight) const noexcept
+{
+    assert(static_cast<size_t>(frameInFlight) < shaderInfoSets.size() &&
+           "Requested frameInFlight is beyond size of createdSets");
+    return shaderInfoSets[static_cast<size_t>(frameInFlight)].size();
+}
+
 void star::StarShaderInfo::getDescriptors(uint8_t frameInFlight, vk::DescriptorSet *data, size_t &numWritten) noexcept
 {
     assert(data != nullptr && "Data address to be written needs to be provided");

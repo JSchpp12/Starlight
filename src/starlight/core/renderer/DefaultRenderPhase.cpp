@@ -231,11 +231,13 @@ void DefaultRenderPhase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, 
         // via the material; now only the material set is rebound per mesh.
         if (m_globalShaderInfo)
         {
-            auto globalSets = m_globalShaderInfo->getDescriptors(frameInFlightIndex);
-            if (!globalSets.empty())
+            assert(m_globalShaderInfo->getNumDescriptorSets(frameInFlightIndex) <= m_descriptors.size());
+            size_t numWritten = 0;
+            m_globalShaderInfo->getDescriptors(frameInFlightIndex, m_descriptors.data(), numWritten);
+            if (numWritten != 0)
             {
                 commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, group.getPipelineLayout(), 0,
-                                                 globalSets.size(), globalSets.data(), 0, nullptr);
+                                                 numWritten, m_descriptors.data(), 0, nullptr);
             }
         }
 

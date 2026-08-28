@@ -13,6 +13,7 @@
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 
+#include <array>
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
@@ -201,6 +202,7 @@ class StarObject
     /// material. The instance-UBO set is built once and bound once per object
     /// per frame; materials only own/bind their own per-mesh set(s).
     std::unique_ptr<StarShaderInfo> m_instanceShaderInfo;
+    std::array<vk::DescriptorSet, 1> m_instanceDescriptors;
     uint32_t m_globalSetCount = 0;
     uint32_t m_materialSetStartIndex = 0;
 

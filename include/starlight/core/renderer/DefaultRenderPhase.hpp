@@ -18,6 +18,7 @@
 
 #include <star_common/FrameTracker.hpp>
 
+#include <array>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -79,6 +80,7 @@ class DefaultRenderPhase : public RenderPhase
     /// frame. Previously this set was duplicated into every material and rebound
     /// for every mesh.
     std::unique_ptr<StarShaderInfo> m_globalShaderInfo;
+    std::array<vk::DescriptorSet, 1> m_descriptors;
     OwningBarrierFunction m_barrFunction{nullptr};
     bool isReady = false;
 
