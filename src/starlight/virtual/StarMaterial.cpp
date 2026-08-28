@@ -21,8 +21,11 @@ void star::StarMaterial::cleanupRender(core::device::DeviceContext &context)
 void star::StarMaterial::bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout,
                               int swapChainImageIndex, uint32_t firstSetIndex)
 {
-    auto descriptors = this->shaderInfo->getDescriptors(swapChainImageIndex);
-    if (!descriptors.empty())
+    std::vector<vk::DescriptorSet> descriptors{4};
+    size_t numWritten{0};
+
+    this->shaderInfo->getDescriptors(swapChainImageIndex, descriptors.data(), numWritten);
+    if (numWritten != 0)
     {
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, firstSetIndex,
                                          descriptors.size(), descriptors.data(), 0, nullptr);

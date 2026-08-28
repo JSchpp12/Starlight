@@ -50,11 +50,11 @@ Handle shaderInfoHandle(std::string_view name)
 }
 
 DescriptorRecipe::DescriptorRecipe(core::device::DeviceContext *context,
-                                   std::vector<std::pair<Handle, std::unique_ptr<StarShaderInfo> *>> shaderInfoOuts,
+                                   std::vector<ShaderInfoTarget> shaderInfoTargets,
                                    std::vector<Binding> bindings, std::vector<StarRenderGroup> *renderGroups,
                                    Handle groupShaderInfo, RenderingTargetInfo renderingTargetInfo,
                                    Handle commandBuffer, std::function<void(core::device::DeviceContext &)> onReady)
-    : m_context(context), m_shaderInfoOuts(std::move(shaderInfoOuts)), m_bindings(std::move(bindings)),
+    : m_context(context), m_shaderInfoTargets(std::move(shaderInfoTargets)), m_bindings(std::move(bindings)),
       m_renderGroups(renderGroups), m_groupShaderInfo(groupShaderInfo),
       m_renderingTargetInfo(std::move(renderingTargetInfo)), m_commandBuffer(commandBuffer),
       m_onReady(std::move(onReady))
@@ -63,7 +63,7 @@ DescriptorRecipe::DescriptorRecipe(core::device::DeviceContext *context,
 
 int DescriptorRecipe::operator()()
 {
-    assert(m_context && !m_bindings.empty() && !m_shaderInfoOuts.empty());
+    assert(m_context && !m_bindings.empty() && !m_shaderInfoTargets.empty());
 
     const uint8_t numFramesInFlight = m_context->frameTracker().getSetup().getNumFramesInFlight();
 
@@ -76,18 +76,49 @@ int DescriptorRecipe::operator()()
     }
     assert(defaultPool != nullptr);
 
-    // Group bindings by shaderInfo, then by set. The layout is data: built from
-    // the binding table. Each StarShaderInfo owns its layouts
+    // Resolve each target's baseSet so pipeline-global set numbers (as given to
+    // addBinding()) can be demapped to each target's local set index.
+    std::map<Handle, uint32_t, HandleLess> baseSetByHandle;
+    for (const auto &target : m_shaderInfoTargets)
+        baseSetByHandle[target.handle] = target.baseSet;
+
+    // Group bindings by target, then by LOCAL set. The layout is data: built
+    // from the binding table. Each StarShaderInfo owns its layouts.
     std::map<Handle, std::map<uint32_t, std::vector<const Binding *>>, HandleLess> byShaderInfo;
     for (const auto &b : m_bindings)
-        byShaderInfo[b.shaderInfo][b.set].push_back(&b);
-
-    // Build one StarShaderInfo per registered sink, in registration order.
-    std::vector<std::shared_ptr<StarDescriptorSetLayout>> groupLayouts;
-    for (auto &[shaderInfo, out] : m_shaderInfoOuts)
     {
+        const auto baseIt = baseSetByHandle.find(b.shaderInfo);
+        assert(baseIt != baseSetByHandle.end() && "addBinding() targeted an unregistered shader info");
+        assert(b.set >= baseIt->second && "addBinding() set number is below the target's declared baseSet");
+        const uint32_t localSet = b.set - baseIt->second;
+        byShaderInfo[b.shaderInfo][localSet].push_back(&b);
+    }
+
+    // Reject gaps: a target's local sets must be contiguous from 0. Without this
+    // a forgotten set would be silently remapped to a lower index (the old
+    // sorted-rank behavior), hiding the mistake.
+    for (const auto &[handle, bySet] : byShaderInfo)
+    {
+        uint32_t expected = 0;
+        for (const auto &[localSet, bindings] : bySet)
+        {
+            assert(localSet == expected &&
+                   "non-contiguous set numbers within a shader-info target -- sets must be "
+                   "declared for every index from baseSet upward with no gaps");
+            (void)bindings;
+            expected++;
+        }
+        (void)handle;
+    }
+
+    // Build one StarShaderInfo per registered target, in registration order.
+    std::vector<std::shared_ptr<StarDescriptorSetLayout>> groupLayouts;
+    for (const auto &target : m_shaderInfoTargets)
+    {
+        const Handle shaderInfo = target.handle;
+        auto *out = target.out;
         const auto it = byShaderInfo.find(shaderInfo);
-        assert(it != byShaderInfo.end() && "shaderInfo registered but has no bindings");
+        assert(it != byShaderInfo.end() && "shaderInfo target registered but has no bindings");
         const auto &bySet = it->second;
 
         auto builder =
@@ -170,6 +201,7 @@ int DescriptorRecipe::operator()()
             groupLayouts = builder.getCurrentSetLayouts();
 
         *out = builder.build();
+        (*out)->setBaseSet(target.baseSet);
     }
 
     if (m_renderGroups)
@@ -197,17 +229,21 @@ DescriptorRecipe::Builder::Builder(common::EventBus &bus, core::device::DeviceCo
 }
 
 DescriptorRecipe::Builder &DescriptorRecipe::Builder::setShaderInfoOut(Handle shaderInfo,
-                                                                       std::unique_ptr<StarShaderInfo> *out)
+                                                                       std::unique_ptr<StarShaderInfo> *out,
+                                                                       uint32_t baseSet)
 {
-    const auto it = std::find_if(m_shaderInfoOuts.begin(), m_shaderInfoOuts.end(),
-                                 [&](const auto &entry) { return entry.first == shaderInfo; });
-    if (it == m_shaderInfoOuts.end())
+    const auto it = std::find_if(m_shaderInfoTargets.begin(), m_shaderInfoTargets.end(),
+                                 [&](const auto &entry) { return entry.handle == shaderInfo; });
+    if (it == m_shaderInfoTargets.end())
     {
-        m_shaderInfoOuts.emplace_back(shaderInfo, out);
+        m_shaderInfoTargets.push_back(ShaderInfoTarget{shaderInfo, out, baseSet});
     }
     else
     {
-        assert(it->second == out && "setShaderInfoOut() called again with a different sink for the same shaderInfo");
+        assert(it->out == out &&
+               "setShaderInfoOut() called again with a different output for the same shaderInfo");
+        assert(it->baseSet == baseSet &&
+               "setShaderInfoOut() called again with a different baseSet for the same shaderInfo");
     }
 
     m_currentShaderInfo = shaderInfo;
@@ -244,11 +280,11 @@ DescriptorRecipe::Builder &DescriptorRecipe::Builder::setOnShaderInfoReady(
 
 void DescriptorRecipe::Builder::build()
 {
-    assert(m_context && !m_shaderInfoOuts.empty() && !m_bindings.empty());
+    assert(m_context && !m_shaderInfoTargets.empty() && !m_bindings.empty());
     if (m_renderGroups)
         assert(m_commandBuffer.isInitialized() && "render-group notification requires a command buffer");
 
-    DescriptorRecipe recipe(m_context, std::move(m_shaderInfoOuts), std::move(m_bindings), m_renderGroups,
+    DescriptorRecipe recipe(m_context, std::move(m_shaderInfoTargets), std::move(m_bindings), m_renderGroups,
                             m_groupShaderInfo, m_renderingTargetInfo, m_commandBuffer, std::move(m_onReady));
     star::core::waiter::one_shot::CreateDescriptorsOnEventPolicy<DescriptorRecipe>::Builder(m_bus)
         .setEventType(m_eventType)

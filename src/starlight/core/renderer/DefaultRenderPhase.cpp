@@ -176,7 +176,7 @@ void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
 
     const auto global = shaderInfoHandle("Global");
     DescriptorRecipe::Builder(m_context.getEventBus(), m_context, star::event::DescriptorPoolReady::GetUniqueTypeName())
-        .setShaderInfoOut(global, &target.m_globalShaderInfo)
+        .setShaderInfoOut(global, &target.m_globalShaderInfo, /*baseSet=*/0)
         .addBinding(target.m_frameData, 0, 0, roleHandle(frame_roles::Camera), vk::DescriptorType::eUniformBuffer,
                     vk::ShaderStageFlagBits::eAll)
         .addBinding(target.m_frameData, 0, 1, roleHandle(frame_roles::LightInfo), vk::DescriptorType::eUniformBuffer,

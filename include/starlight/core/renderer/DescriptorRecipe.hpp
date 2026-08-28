@@ -28,10 +28,22 @@ Handle shaderInfoHandle(std::string_view name);
 class DescriptorRecipe
 {
   public:
+    /// @brief A registered StarShaderInfo output target. Each target owns a contiguous range of pipeline descriptor
+    /// sets starting at `baseSet`; `addBinding()` uses pipeline-global set numbers that the recipe demaps to the
+    /// target's local set index (globalSet - baseSet). This makes the `set` argument match `layout(set = N, ...)` in
+    /// GLSL verbatim and keeps the pipeline-set assignment in one place instead of being split across the recipe and
+    /// the pipeline-layout assembler.
+    struct ShaderInfoTarget
+    {
+        Handle handle;
+        std::unique_ptr<StarShaderInfo> *out;
+        uint32_t baseSet;
+    };
+
     struct Binding
     {
-        Handle shaderInfo; // which StarShaderInfo this binding builds into
-        uint32_t set;      // which set within that StarShaderInfo
+        Handle shaderInfo; // which StarShaderInfo target this binding builds into
+        uint32_t set;      // pipeline-global set number (matches `set = N` in GLSL)
         std::shared_ptr<FrameData> source;
         Handle role;      // role within source
         uint32_t binding; // binding index within the set
@@ -44,11 +56,11 @@ class DescriptorRecipe
       public:
         Builder(common::EventBus &bus, core::device::DeviceContext &context, std::string_view eventName);
 
-        /// @brief Register a StarShaderInfo sink and make it the current target for subsequent addBinding() calls.
-        /// Calling again with the same handle just re-establishes it as current.
-        Builder &setShaderInfoOut(Handle shaderInfo, std::unique_ptr<StarShaderInfo> *out);
+        /// @brief Register a StarShaderInfo output target and declare the first pipeline descriptor-set number it owns.
+        Builder &setShaderInfoOut(Handle shaderInfo, std::unique_ptr<StarShaderInfo> *out, uint32_t baseSet);
 
-        /// @brief Add a binding to the current shader info (set by the last setShaderInfoOut())
+        /// @brief Add a binding to the current target (set by the last setShaderInfoOut()). `set` is the
+        /// pipeline-global set number -- it matches `layout(set = N, ...)` in the shader.
         Builder &addBinding(std::shared_ptr<FrameData> source, uint32_t set, uint32_t binding, Handle role,
                             vk::DescriptorType type, vk::ShaderStageFlags stage);
 
@@ -66,9 +78,9 @@ class DescriptorRecipe
         common::EventBus &m_bus;
         uint16_t m_eventType;
         core::device::DeviceContext *m_context{nullptr};
-        std::vector<std::pair<Handle, std::unique_ptr<StarShaderInfo> *>> m_shaderInfoOuts;
+        std::vector<ShaderInfoTarget> m_shaderInfoTargets;
         std::vector<Binding> m_bindings;
-        Handle m_currentShaderInfo{}; // implied shaderInfo for addBinding()
+        Handle m_currentShaderInfo{}; // implied target for addBinding()
         std::vector<StarRenderGroup> *m_renderGroups{nullptr};
         Handle m_groupShaderInfo{};
         RenderingTargetInfo m_renderingTargetInfo;
@@ -82,14 +94,13 @@ class DescriptorRecipe
   private:
     friend class Builder;
 
-    DescriptorRecipe(core::device::DeviceContext *context,
-                     std::vector<std::pair<Handle, std::unique_ptr<StarShaderInfo> *>> shaderInfoOuts,
+    DescriptorRecipe(core::device::DeviceContext *context, std::vector<ShaderInfoTarget> shaderInfoTargets,
                      std::vector<Binding> bindings, std::vector<StarRenderGroup> *renderGroups, Handle groupShaderInfo,
                      RenderingTargetInfo renderingTargetInfo, Handle commandBuffer,
                      std::function<void(core::device::DeviceContext &)> onReady);
 
     core::device::DeviceContext *m_context{nullptr};
-    std::vector<std::pair<Handle, std::unique_ptr<StarShaderInfo> *>> m_shaderInfoOuts;
+    std::vector<ShaderInfoTarget> m_shaderInfoTargets;
     std::vector<Binding> m_bindings;
     std::vector<StarRenderGroup> *m_renderGroups{nullptr};
     Handle m_groupShaderInfo{};

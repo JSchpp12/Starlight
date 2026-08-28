@@ -1,4 +1,4 @@
-﻿#include "StarShaderInfo.hpp"
+#include "StarShaderInfo.hpp"
 
 vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet(const Handle &deviceID)
 {
@@ -153,6 +153,14 @@ std::vector<vk::DescriptorSetLayout> star::StarShaderInfo::getDescriptorSetLayou
     return fLayouts;
 }
 
+bool star::StarShaderInfo::isSetLayoutCompatible(size_t setIndex, const StarShaderInfo &other,
+                                                 size_t otherSetIndex) const
+{
+    assert(setIndex < layouts.size() && "setIndex out of range for this StarShaderInfo");
+    assert(otherSetIndex < other.layouts.size() && "otherSetIndex out of range for other StarShaderInfo");
+    return layouts[setIndex]->isCompatibleWith(*other.layouts[otherSetIndex]);
+}
+
 void star::StarShaderInfo::cleanupRender(core::device::StarDevice &device)
 {
     for (auto &set : this->layouts)
@@ -161,8 +169,9 @@ void star::StarShaderInfo::cleanupRender(core::device::StarDevice &device)
     }
 }
 
-std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(uint8_t frameInFlight)
+void star::StarShaderInfo::getDescriptors(uint8_t frameInFlight, vk::DescriptorSet *data, size_t &numWritten) noexcept
 {
+    assert(data != nullptr && "Data address to be written needs to be provided");
     assert(static_cast<size_t>(frameInFlight) < shaderInfoSets.size() &&
            "Requested frameInFlight is beyond sizwe of createdSets");
 
@@ -211,13 +220,11 @@ std::vector<vk::DescriptorSet> star::StarShaderInfo::getDescriptors(uint8_t fram
         }
     }
 
-    auto allSets = std::vector<vk::DescriptorSet>();
     for (size_t i{0}; i < this->shaderInfoSets[frameInFlight].size(); i++)
     {
-        allSets.push_back(this->shaderInfoSets[frameInFlight][i]->getDescriptorSet(m_deviceID));
+        *data++ = this->shaderInfoSets[frameInFlight][i]->getDescriptorSet(m_deviceID);
+        numWritten++;
     }
-
-    return allSets;
 }
 
 void star::StarShaderInfo::setNewResource(size_t setIndex, size_t bindingIndex, BufferInfo buffer,

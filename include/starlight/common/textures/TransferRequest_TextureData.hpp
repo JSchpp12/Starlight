@@ -157,6 +157,7 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
                                .setTiling(vk::ImageTiling::eOptimal)
                                .setInitialLayout(vk::ImageLayout::eUndefined)
                                .setSamples(vk::SampleCountFlagBits::e1)
+                               .setSharingMode(vk::SharingMode::eConcurrent)
                                .setPQueueFamilyIndices(indices.data())
                                .setQueueFamilyIndexCount(indexCount)
                                .setFormat(baseFormat),
