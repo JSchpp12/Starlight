@@ -510,6 +510,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/LinearHandleContainer.hpp"
     "include/starlight/core/ManagedHandleContainer.hpp"
     "include/starlight/core/device/StarDevice.hpp"
+    "include/starlight/core/device/IStartupDeviceRequirementsProvider.hpp"
     "include/starlight/core/device/DeviceContext.hpp"
     "include/starlight/core/SystemContext.hpp"
     "include/starlight/core/RenderingInstance.hpp"

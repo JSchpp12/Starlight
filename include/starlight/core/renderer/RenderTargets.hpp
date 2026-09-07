@@ -26,7 +26,6 @@ class RenderTargets
     static std::vector<StarTextures::Texture> createDefaultDepthAttachments(core::device::DeviceContext &context,
                                                                             const size_t numToCreate, int width,
                                                                             int height);
-    static RenderTargets forPresentation(core::device::DeviceContext &context, RenderingContext &renderingContext);
     static RenderTargets forOffscreen(core::device::DeviceContext &context, RenderingContext &renderingContext);
     static std::vector<star::Handle> registerTextures(core::device::DeviceContext &context,
                                                       RenderingContext &renderingContext,

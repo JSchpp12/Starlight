@@ -26,12 +26,13 @@ void DefaultEngineInitPolicy::cleanup(core::RenderingInstance &instance)
 }
 
 star::core::device::StarDevice star::policy::DefaultEngineInitPolicy::createNewDevice(
-    core::RenderingInstance &renderingInstance, std::set<star::Rendering_Features> &engineRenderingFeatures,
-    std::set<Rendering_Device_Features> &engineRenderingDeviceFeatures)
+    core::RenderingInstance &renderingInstance, std::set<Rendering_Device_Features> &engineRenderingDeviceFeatures)
 {
+    const auto startupDeviceRequirements = consumeStartupDeviceRequirements();
+
     auto builder = core::device::StarDevice::Builder(renderingInstance)
                        .setRenderingDeviceFeatures(engineRenderingDeviceFeatures)
-                       .setRenderingFeatures(engineRenderingFeatures);
+                       .addRequiredDeviceRequirements(startupDeviceRequirements);
 
     const int overridenEngineID =
         star::ConfigFile::getInt(star::Config_Settings::required_device_feature_gpu_index, -1);

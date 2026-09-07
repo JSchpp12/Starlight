@@ -202,7 +202,6 @@ void DefaultRenderPhase::cleanupRender(common::IDeviceContext &context)
     // Clean the render groups first: this destroys every pipeline layout, which references the global set layout. Only
     // after the pipeline layouts are gone is it safe to release the global set layout owned by m_globalShaderInfo.
     RenderPhase::cleanupRender(context);
-
     auto &c = static_cast<core::device::DeviceContext &>(context);
     if (m_globalShaderInfo)
     {

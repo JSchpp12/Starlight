@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Allocator.hpp"
+#include "IStartupDeviceRequirementsProvider.hpp"
 #include "Enums.hpp"
 #include "RenderingInstance.hpp"
 #include "SwapChainSupportDetails.hpp"
@@ -8,10 +9,8 @@
 
 #include <star_common/IRenderDevice.hpp>
 
-#include <iostream>
-#include <memory>
 #include <optional>
-#include <unordered_set>
+#include <set>
 #include <vector>
 
 #include <vulkan/vulkan.hpp>
@@ -31,14 +30,16 @@ class StarDevice : public star::common::IRenderDevice
 
         std::optional<OverridenDeviceSelected> m_overrideDevice{std::nullopt};
         core::RenderingInstance &m_instance;
-        std::set<star::Rendering_Features> m_deviceRenderingFeatures;
+        DeviceRequirements m_additionalDeviceRequirements;
         std::set<Rendering_Device_Features> m_deviceFeatures;
         std::vector<const char *> m_extensions;
         std::optional<vk::SurfaceKHR> m_surface{std::nullopt};
 
-        vk::PhysicalDevice pickPhysicalDevice(vk::PhysicalDeviceFeatures deviceFeatures) const;
+        vk::PhysicalDevice pickPhysicalDevice(
+            const std::vector<const char *> &requiredDeviceExtensions,
+            const std::vector<PhysicalDeviceFeatureRequest> &requiredFeatureRequests) const;
 
-        std::vector<const char *> GetRequiredDeviceExtensions() const noexcept
+        std::vector<const char *> GetRequiredDeviceExtensions() const
         {
             return {VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
                     VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
@@ -47,12 +48,12 @@ class StarDevice : public star::common::IRenderDevice
                     VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
                     VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
                     VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
-        };
+        }
 
       public:
         explicit Builder(core::RenderingInstance &instance) : m_instance(instance) {};
         Builder &setOverrideDeviceID(int deviceID);
-        Builder &setRenderingFeatures(std::set<star::Rendering_Features> features);
+        Builder &addRequiredDeviceRequirements(const DeviceRequirements &requirements);
         Builder &setRenderingDeviceFeatures(std::set<Rendering_Device_Features> features);
         Builder &setAdditionalExtensions(const std::vector<const char *> &extensions);
         Builder &setOptionalSurface(vk::SurfaceKHR surface);

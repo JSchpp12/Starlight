@@ -6,6 +6,13 @@
 
 #include <star_common/helper/CastHelpers.hpp>
 
+#include <set>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 namespace star::core::device
 {
 inline static void LogPhysicalDeviceInfo(const vk::PhysicalDevice &physicalDevice)
@@ -15,8 +22,70 @@ inline static void LogPhysicalDeviceInfo(const vk::PhysicalDevice &physicalDevic
     star::core::logging::log(core::logging::LogLevel::info, log);
 }
 
+static std::vector<PhysicalDeviceFeatureRequest> GetEngineRequiredPhysicalDeviceFeatureRequests()
+{
+    return {
+        {&vk::PhysicalDeviceFeatures::geometryShader, "geometryShader"},
+        {&vk::PhysicalDeviceFeatures::samplerAnisotropy, "samplerAnisotropy"},
+        {&vk::PhysicalDeviceFeatures::fillModeNonSolid, "fillModeNonSolid"},
+        {&vk::PhysicalDeviceFeatures::logicOp, "logicOp"},
+    };
+}
+
+static std::vector<std::string_view> GetMissingRequiredPhysicalDeviceFeatures(
+    const std::vector<PhysicalDeviceFeatureRequest> &requiredFeatureRequests,
+    const vk::PhysicalDeviceFeatures &supportedFeatures)
+{
+    std::vector<std::string_view> missingFeatures;
+
+    for (const auto &request : requiredFeatureRequests)
+    {
+        if (supportedFeatures.*request.feature == VK_FALSE)
+        {
+            missingFeatures.push_back(request.name);
+        }
+    }
+
+    return missingFeatures;
+}
+
+static vk::PhysicalDeviceFeatures CreateEnabledPhysicalDeviceFeatures(
+    const std::vector<PhysicalDeviceFeatureRequest> &requiredFeatureRequests)
+{
+    vk::PhysicalDeviceFeatures features{};
+
+    for (const auto &request : requiredFeatureRequests)
+    {
+        features.*request.feature = VK_TRUE;
+    }
+
+    return features;
+}
+
+static std::vector<const char *> GetUniqueRequiredDeviceExtensions(std::vector<const char *> extensions)
+{
+    std::set<std::string_view> uniqueExtensionNames;
+    std::vector<const char *> uniqueExtensions;
+    uniqueExtensions.reserve(extensions.size());
+
+    for (const char *extension : extensions)
+    {
+        if (extension == nullptr)
+        {
+            STAR_THROW("Required device extension name cannot be null");
+        }
+
+        if (uniqueExtensionNames.insert(std::string_view{extension}).second)
+        {
+            uniqueExtensions.push_back(extension);
+        }
+    }
+
+    return uniqueExtensions;
+}
+
 static vk::Device CreateLogicalDevice(vk::PhysicalDevice physicalDevice, core::RenderingInstance &instance,
-                                      const vk::PhysicalDeviceFeatures &requiredDeviceFeatures,
+                                      const vk::PhysicalDeviceFeatures &enabledDeviceFeatures,
                                       const std::vector<const char *> &requiredDeviceExtensions,
                                       const std::set<Rendering_Device_Features> &deviceFeatures,
                                       std::optional<vk::SurfaceKHR> renderingSurface)
@@ -65,7 +134,7 @@ static vk::Device CreateLogicalDevice(vk::PhysicalDevice physicalDevice, core::R
                                                     .setPQueueCreateInfos(queueCreateInfos.data())
                                                     .setEnabledExtensionCount(numDeviceExtensions)
                                                     .setPEnabledExtensionNames(requiredDeviceExtensions)
-                                                    .setPEnabledFeatures(&requiredDeviceFeatures)
+                                                    .setPEnabledFeatures(&enabledDeviceFeatures)
                                                     .setEnabledLayerCount(numValidationLayers)
                                                     .setPEnabledLayerNames(validationLayerNames)
                                                     .setPNext(syncFeatures);
@@ -126,8 +195,8 @@ static bool CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
 }
 
 static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
-                             const vk::PhysicalDeviceFeatures &requiredDeviceFeatures, const vk::PhysicalDevice &device,
-                             const vk::SurfaceKHR *optionalRenderingSurface)
+                             const std::vector<PhysicalDeviceFeatureRequest> &requiredFeatureRequests,
+                             const vk::PhysicalDevice &device, const vk::SurfaceKHR *optionalRenderingSurface)
 {
     bool swapChainAdequate = false;
     QueueFamilyIndices indicies = StarDevice::FindQueueFamilies(device, optionalRenderingSurface);
@@ -140,13 +209,22 @@ static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExte
         swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
-    vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
-    bool supportsRequiredRenderingFeatures = true;
+    const vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
+    const auto missingRequiredFeatures =
+        GetMissingRequiredPhysicalDeviceFeatures(requiredFeatureRequests, supportedFeatures);
+    if (!missingRequiredFeatures.empty())
+    {
+        std::ostringstream oss;
+        oss << "Rejected physical device \"" << device.getProperties().deviceName
+            << "\": missing required physical device features:";
+        for (const auto &missingFeature : missingRequiredFeatures)
+        {
+            oss << " " << missingFeature;
+        }
+        star::core::logging::log(core::logging::LogLevel::warning, oss.str());
+    }
 
-    if (requiredDeviceFeatures.samplerAnisotropy && !supportedFeatures.samplerAnisotropy)
-        supportsRequiredRenderingFeatures = false;
-    if (requiredDeviceFeatures.geometryShader && !supportedFeatures.geometryShader)
-        supportsRequiredRenderingFeatures = false;
+    const bool supportsRequiredRenderingFeatures = missingRequiredFeatures.empty();
 
     const bool properQueueFamilySupport = indicies.isSuitable(optionalRenderingSurface ? true : false);
     if (properQueueFamilySupport && extensionsSupported && supportsRequiredRenderingFeatures &&
@@ -157,7 +235,9 @@ static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExte
     return false;
 }
 
-vk::PhysicalDevice StarDevice::Builder::pickPhysicalDevice(vk::PhysicalDeviceFeatures deviceFeatures) const
+vk::PhysicalDevice StarDevice::Builder::pickPhysicalDevice(
+    const std::vector<const char *> &requiredDeviceExtensions,
+    const std::vector<PhysicalDeviceFeatureRequest> &requiredFeatureRequests) const
 {
     const bool needsPresentationSupport = m_surface ? true : false;
     std::vector<vk::PhysicalDevice> devices = m_instance.getVulkanInstance().enumeratePhysicalDevices();
@@ -168,25 +248,27 @@ vk::PhysicalDevice StarDevice::Builder::pickPhysicalDevice(vk::PhysicalDeviceFea
     // check devices and see if they are suitable for use
     if (m_overrideDevice.has_value() && m_overrideDevice.value().deviceID != -1)
     {
-        if (m_overrideDevice.value().deviceID > devices.size())
+        const int overrideDeviceID = m_overrideDevice.value().deviceID;
+        if (devices.empty() || overrideDeviceID < 0 || static_cast<size_t>(overrideDeviceID) >= devices.size())
         {
             std::ostringstream oss;
-            oss << "Attempted to manually select device by index which is larger than available devices. Selected "
-                   "index: "
-                << m_overrideDevice.value().deviceID;
+            oss << "Attempted to manually select a device with an invalid index. Selected index: " << overrideDeviceID
+                << ". Available devices: " << devices.size();
             throw std::invalid_argument(oss.str());
         }
-        if (IsDeviceSuitable(m_extensions, deviceFeatures, devices[m_overrideDevice.value().deviceID],
+
+        const auto &overrideDevice = devices[static_cast<size_t>(overrideDeviceID)];
+        if (IsDeviceSuitable(requiredDeviceExtensions, requiredFeatureRequests, overrideDevice,
                              m_surface.has_value() ? &m_surface.value() : nullptr))
         {
-            suitableDevices.push_back(devices[m_overrideDevice.value().deviceID]);
+            suitableDevices.push_back(overrideDevice);
         }
     }
     else
     {
         for (const auto &nDevice : devices)
         {
-            if (IsDeviceSuitable(m_extensions, deviceFeatures, nDevice,
+            if (IsDeviceSuitable(requiredDeviceExtensions, requiredFeatureRequests, nDevice,
                                  m_surface.has_value() ? &m_surface.value() : nullptr))
             {
                 if (nDevice)
@@ -212,10 +294,10 @@ vk::PhysicalDevice StarDevice::Builder::pickPhysicalDevice(vk::PhysicalDeviceFea
         }
     }
 
-    // check for a fully supported device
+    // check for a fully supported device that also satisfies all required features and extensions
     if (!picked)
     {
-        for (const auto &nDevice : devices)
+        for (const auto &nDevice : suitableDevices)
         {
             auto indicies = FindQueueFamilies(nDevice, m_surface.has_value() ? &m_surface.value() : nullptr);
             if (indicies.isFullySupported(needsPresentationSupport))
@@ -235,9 +317,14 @@ StarDevice::Builder &StarDevice::Builder::setOverrideDeviceID(int deviceID)
     return *this;
 }
 
-StarDevice::Builder &StarDevice::Builder::setRenderingFeatures(std::set<star::Rendering_Features> renderingFeatures)
+StarDevice::Builder &StarDevice::Builder::addRequiredDeviceRequirements(const DeviceRequirements &requirements)
 {
-    m_deviceRenderingFeatures = std::move(renderingFeatures);
+    m_additionalDeviceRequirements.requiredDeviceExtensions.insert(
+        m_additionalDeviceRequirements.requiredDeviceExtensions.end(), requirements.requiredDeviceExtensions.begin(),
+        requirements.requiredDeviceExtensions.end());
+    m_additionalDeviceRequirements.physicalDeviceFeatureRequests.insert(
+        m_additionalDeviceRequirements.physicalDeviceFeatureRequests.end(),
+        requirements.physicalDeviceFeatureRequests.begin(), requirements.physicalDeviceFeatureRequests.end());
     return *this;
 }
 
@@ -264,36 +351,37 @@ StarDevice StarDevice::Builder::build()
     vk::PhysicalDevice physicalDevice{VK_NULL_HANDLE};
     vk::Device device{VK_NULL_HANDLE};
 
-    vk::PhysicalDeviceFeatures requiredPhysicalDeviceFeatures{};
-    requiredPhysicalDeviceFeatures.geometryShader = VK_TRUE;
-    requiredPhysicalDeviceFeatures.samplerAnisotropy = VK_TRUE;
-    requiredPhysicalDeviceFeatures.fillModeNonSolid = VK_TRUE;
-    requiredPhysicalDeviceFeatures.logicOp = VK_TRUE;
-    if (m_deviceRenderingFeatures.find(star::Rendering_Features::shader_float64) != m_deviceRenderingFeatures.end())
-        requiredPhysicalDeviceFeatures.shaderFloat64 = VK_TRUE;
+    auto requiredFeatureRequests = GetEngineRequiredPhysicalDeviceFeatureRequests();
+    requiredFeatureRequests.insert(requiredFeatureRequests.end(),
+                                   m_additionalDeviceRequirements.physicalDeviceFeatureRequests.begin(),
+                                   m_additionalDeviceRequirements.physicalDeviceFeatureRequests.end());
 
-    auto physicalDeviceExtensions = GetRequiredDeviceExtensions();
-    for (size_t i{0}; i < m_extensions.size(); i++)
-    {
-        physicalDeviceExtensions.emplace_back(m_extensions[i]);
-    }
+    auto requiredDeviceExtensions = GetRequiredDeviceExtensions();
+    requiredDeviceExtensions.insert(requiredDeviceExtensions.end(),
+                                    m_additionalDeviceRequirements.requiredDeviceExtensions.begin(),
+                                    m_additionalDeviceRequirements.requiredDeviceExtensions.end());
+    requiredDeviceExtensions.insert(requiredDeviceExtensions.end(), m_extensions.begin(), m_extensions.end());
+    requiredDeviceExtensions = GetUniqueRequiredDeviceExtensions(std::move(requiredDeviceExtensions));
 
-    physicalDevice = pickPhysicalDevice(requiredPhysicalDeviceFeatures);
-    LogPhysicalDeviceInfo(physicalDevice);
+    physicalDevice = pickPhysicalDevice(requiredDeviceExtensions, requiredFeatureRequests);
     if (physicalDevice == VK_NULL_HANDLE)
     {
-        STAR_THROW("Failed to pick a proper physical device");
+        STAR_THROW("Failed to select a physical device satisfying the required device features and extensions");
     }
+    LogPhysicalDeviceInfo(physicalDevice);
 
-    //check for optional feature support
+    vk::PhysicalDeviceFeatures enabledPhysicalDeviceFeatures =
+        CreateEnabledPhysicalDeviceFeatures(requiredFeatureRequests);
+
+    // Enable the optional texture-compression features that the selected device supports.
     {
-        const vk::PhysicalDeviceFeatures feats = physicalDevice.getFeatures(); 
-        requiredPhysicalDeviceFeatures.textureCompressionBC = feats.textureCompressionBC;
-        requiredPhysicalDeviceFeatures.textureCompressionASTC_LDR = feats.textureCompressionASTC_LDR;
-        requiredPhysicalDeviceFeatures.textureCompressionETC2 = feats.textureCompressionETC2;
+        const vk::PhysicalDeviceFeatures supportedFeatures = physicalDevice.getFeatures();
+        enabledPhysicalDeviceFeatures.textureCompressionBC = supportedFeatures.textureCompressionBC;
+        enabledPhysicalDeviceFeatures.textureCompressionASTC_LDR = supportedFeatures.textureCompressionASTC_LDR;
+        enabledPhysicalDeviceFeatures.textureCompressionETC2 = supportedFeatures.textureCompressionETC2;
     }
 
-    device = CreateLogicalDevice(physicalDevice, m_instance, requiredPhysicalDeviceFeatures, m_extensions,
+    device = CreateLogicalDevice(physicalDevice, m_instance, enabledPhysicalDeviceFeatures, requiredDeviceExtensions,
                                  m_deviceFeatures, m_surface);
     if (device == VK_NULL_HANDLE)
         STAR_THROW("Failed to create logical vulkan device");

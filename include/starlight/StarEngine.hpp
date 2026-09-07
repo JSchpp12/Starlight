@@ -28,10 +28,9 @@ namespace star
 template <typename T>
 concept InitLike =
     requires(T init, std::string appName, core::RenderingInstance &instance, core::device::StarDevice &device,
-             const uint8_t &numFramesInFlight, std::set<star::Rendering_Features> &features,
-             std::set<Rendering_Device_Features> &deviceFeatures) {
+             const uint8_t &numFramesInFlight, std::set<Rendering_Device_Features> &deviceFeatures) {
         { init.createRenderingInstance(appName) } -> std::same_as<core::RenderingInstance>;
-        { init.createNewDevice(instance, features, deviceFeatures) } -> std::same_as<core::device::StarDevice>;
+        { init.createNewDevice(instance, deviceFeatures) } -> std::same_as<core::device::StarDevice>;
         { init.init(numFramesInFlight) } -> std::same_as<void>;
         { init.cleanup(instance) } -> std::same_as<void>;
         { init.getFrameInFlightTrackingSetup(device) } -> std::same_as<common::FrameTracker::Setup>;
@@ -65,19 +64,8 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         core::logging::log(boost::log::trivial::info, "Logger initialized");
         star::log::logSystemOverview();
 
-        std::set<star::Rendering_Features> features;
-        {
-            bool setting = false;
-            std::istringstream(ConfigFile::getSetting(star::Config_Settings::required_device_feature_shader_float64)) >>
-                std::boolalpha >> setting;
-
-            if (setting)
-            {
-                features.insert(star::Rendering_Features::shader_float64);
-            }
-        }
-
-        std::set<Rendering_Device_Features> renderingFeatures{Rendering_Device_Features::timeline_semaphores};
+        std::set<Rendering_Device_Features> engineRenderingDeviceFeatures{
+            Rendering_Device_Features::timeline_semaphores};
 
         {
             uint8_t framesInFlight;
@@ -96,7 +84,7 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
         }
 
         m_defaultDevice = m_systemManager.registerDevice(core::device::DeviceContext{
-            m_initPolicy.createNewDevice(m_renderingInstance, features, renderingFeatures)});
+            m_initPolicy.createNewDevice(m_renderingInstance, engineRenderingDeviceFeatures)});
 
         {
             std::vector<service::Service> additionalServices = m_initPolicy.getAdditionalDeviceServices();
