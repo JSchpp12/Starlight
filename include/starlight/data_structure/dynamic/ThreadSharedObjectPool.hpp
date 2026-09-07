@@ -22,7 +22,7 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
   public:
     explicit ThreadSharedObjectPool(TCreatePolicy createPolicy)
         : m_objects(TCapacity), m_created(TCapacity, false), m_createPolicy(std::move(createPolicy)),
-          m_available(TCapacity)
+          m_available()
     {
         for (uint32_t i = 0; i < TCapacity; ++i)
         {
