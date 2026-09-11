@@ -339,19 +339,14 @@ star::StarTextures::Texture::Builder::Builder(core::device::StarDevice &device, 
 {
 }
 
-star::StarTextures::Texture::Builder::Builder(core::device::StarDevice &device)
-    : device(device), createNewAllocationInfo{std::make_optional<Creators>()}
+star::StarTextures::Texture::Builder::Builder(core::device::StarDevice &device) : device(device)
 {
 }
 
 star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setCreateInfo(
-    const VmaAllocationCreateInfo &nAllocInfo, const vk::ImageCreateInfo &nCreateInfo, const std::string &nAllocName)
+    VmaAllocationCreateInfo nAllocInfo, vk::ImageCreateInfo nCreateInfo, std::string nAllocName)
 {
-    assert(this->createNewAllocationInfo.has_value() && "Must be a builder for a new allocation");
-
-    this->createNewAllocationInfo.value().createInfo = nCreateInfo;
-    this->createNewAllocationInfo.value().allocationCreateInfo = nAllocInfo;
-    this->createNewAllocationInfo.value().allocationName = nAllocName;
+    this->createNewAllocationInfo = std::make_optional<Creators>(Creators(nCreateInfo, nAllocInfo, nAllocName));
     return *this;
 }
 

@@ -18,8 +18,8 @@
 
 #include <absl/container/flat_hash_map.h>
 
-#include <sstream>
 #include <array>
+#include <sstream>
 #include <vector>
 
 namespace star::service
@@ -33,12 +33,10 @@ class TransferService
 {
   public:
     static constexpr size_t MAX_QUEUES = 5;
-
-    TransferService() = default;
-    explicit TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues,
-                             size_t targetNumQueuesToUse = 1);
-    explicit TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues,
-                             TransferServiceConfig config, size_t targetNumQueuesToUse = 1);
+    TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues,
+                    size_t targetNumQueuesToUse = 1);
+    TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues, TransferServiceConfig config,
+                    size_t targetNumQueuesToUse = 1);
     TransferService(const TransferService &) = delete;
     TransferService &operator=(const TransferService &) = delete;
     TransferService(TransferService &&other) noexcept;
@@ -56,7 +54,7 @@ class TransferService
     void onSubmitTransfer(star::command::transfer::SubmitTransferTask &cmd);
 
   private:
-    std::array<StarSemaphore, MAX_QUEUES+1> m_workerSemaphores;
+    std::array<StarSemaphore, MAX_QUEUES + 1> m_workerSemaphores;
     std::vector<uint32_t> m_workerQueueFamilyIndices;
     size_t m_numStandardTransferWorkers = 0;
     size_t m_nextStandardWorker{0};
@@ -160,7 +158,7 @@ class TransferService
                 m_taskManager->registerWorker(std::move(transferWorker), job::tasks::transfer::TransferTaskName);
             }
 
-            if (i == MAX_QUEUES-1)
+            if (i == MAX_QUEUES - 1)
                 break;
         }
 
