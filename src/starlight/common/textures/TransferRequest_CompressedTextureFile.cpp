@@ -34,7 +34,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
 {
     {
         const std::string msg = "Beginning compressed texture transcode" + compressedTexture->getPathToFile();
-        core::logging::log(boost::log::trivial::info, msg);
+        core::logging::debug(boost::log::trivial::info, msg);
     }
 
     ktxTexture2 *texture = nullptr;
@@ -45,7 +45,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    core::logging::log(boost::log::trivial::info, "Done");
+    core::logging::debug(boost::log::trivial::info, "Done");
 
     if (texture->baseHeight == 0)
     {
@@ -152,7 +152,7 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
         ktx_size_t offset;
         if (ktxTexture_GetImageOffset((ktxTexture *)texture, i, 0, 0, &offset) != ktx_error_code_e::KTX_SUCCESS)
         {
-            throw std::runtime_error("Failed to get image offset into compressed texture");
+            STAR_THROW("Failed to get image offset into compressed texture");
         }
 
         const uint32_t width{texture->baseWidth >> i};
