@@ -218,4 +218,55 @@ MeshData BuildCubeMesh(const std::vector<CubeDesc> &desc, std::shared_ptr<star::
 
     return mesh;
 }
+
+MeshData BuildCubeWireMesh()
+{
+    constexpr float half = 0.5f;
+
+    MeshData mesh;
+    mesh.vertices = {
+        {.pos = {-half, -half, -half}}, // 0
+        {.pos = {half, -half, -half}},  // 1
+        {.pos = {half, half, -half}},   // 2
+        {.pos = {-half, half, -half}},  // 3
+        {.pos = {-half, -half, half}},  // 4
+        {.pos = {half, -half, half}},   // 5
+        {.pos = {half, half, half}},    // 6
+        {.pos = {-half, half, half}},   // 7
+    };
+
+    mesh.indices = {
+        // bottom ring (z = -half)
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        0,
+
+        // top ring (z = +half)
+        4,
+        5,
+        5,
+        6,
+        6,
+        7,
+        7,
+        4,
+
+        // vertical edges
+        0,
+        4,
+        1,
+        5,
+        2,
+        6,
+        3,
+        7,
+    };
+
+    return mesh;
+}
 } // namespace star::primitive

@@ -3,6 +3,7 @@
 #include "starlight/ShaderResolver.hpp"
 #include "starlight/object/StarObject.hpp"
 #include "starlight/primitive/CubeDesc.hpp"
+#include "starlight/primitive/CubeObject.hpp"
 
 #include <glm/glm.hpp>
 #include <memory>
@@ -20,6 +21,7 @@ struct SquareCreateInfo
 };
 
 std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info, ShaderResolver &shaderResolver);
-std::shared_ptr<StarObject> CreateCube(std::vector<star::primitive::CubeDesc> info, ShaderResolver &shaderResolver);
+std::shared_ptr<StarObject> CreateCube(std::vector<star::primitive::CubeDesc> info, ShaderResolver &shaderResolver,
+                                       star::primitive::CubeObject::RenderMode renderMode);
 
 } // namespace star::debug

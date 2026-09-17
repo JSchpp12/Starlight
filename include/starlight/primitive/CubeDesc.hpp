@@ -6,10 +6,9 @@
 
 namespace star::primitive
 {
-
 struct CubeDesc
 {
-    glm::vec3 size = glm::vec3(1.0f);
+    glm::vec3 size{1.0, 1.0, 1.0};
     star::Color color;
 };
 
