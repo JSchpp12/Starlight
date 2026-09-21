@@ -140,6 +140,8 @@ static vk::Device CreateLogicalDevice(vk::PhysicalDevice physicalDevice, core::R
                                                     .setPNext(syncFeatures);
 
         // call to create the logical device
+        // The global Vulkan-Hpp dispatcher is initialized at instance scope so it remains valid for multiple logical
+        // devices. Reinitializing it with a single vk::Device would make simultaneous multi-device use unsafe.
         device = physicalDevice.createDevice(createInfo);
     }
 

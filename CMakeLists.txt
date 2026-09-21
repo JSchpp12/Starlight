@@ -265,6 +265,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/device/DeviceContext.cpp"
     "src/starlight/core/SystemContext.cpp"
     "src/starlight/core/RenderingInstance.cpp"
+    "src/starlight/core/VulkanDispatch.cpp"
     "src/starlight/core/SwapChainSupportDetails.cpp"
     "src/starlight/core/graphics/shader/BasicIncluder.cpp"
     "src/starlight/policy/DefaultEngineInitPolicy.cpp"
@@ -514,6 +515,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/device/DeviceContext.hpp"
     "include/starlight/core/SystemContext.hpp"
     "include/starlight/core/RenderingInstance.hpp"
+    "include/starlight/core/VulkanDispatch.hpp"
     "include/starlight/core/SwapChainSupportDetails.hpp"
     "include/starlight/policy/DefaultEngineInitPolicy.hpp"
     "include/starlight/policy/EngineExitAfterNumberOfFrames.hpp"
@@ -595,6 +597,7 @@ target_link_libraries(${STARLIGHT_NAME}
         Boost::thread
         Boost::container
         Boost::filesystem
+        ${CMAKE_DL_LIBS}
         KTX::ktx
         absl::hash
         TIFF::TIFF
@@ -644,6 +647,7 @@ endif()
 
 # Vulkan uses NDC depth in [0,1]. Force GLM's projection helpers (ortho/perspective) to use this range
 target_compile_definitions(${STARLIGHT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
+target_compile_definitions(${STARLIGHT_NAME} PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 
 find_program(CPPCHECK_EXECUTABLE cppcheck)
 if (CPPCHECK_EXECUTABLE)
