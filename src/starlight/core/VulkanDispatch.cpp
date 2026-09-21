@@ -41,6 +41,9 @@ void InitializeVulkanDispatchLoader()
 
 void InitializeVulkanInstanceDispatchLoader(vk::Instance instance)
 {
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+    static std::once_flag initializeDispatcherOnce; 
+    std::call_once(initializeDispatcherOnce, [instance](){
+        VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+    });
 }
 } // namespace star::core
