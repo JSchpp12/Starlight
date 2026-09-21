@@ -215,16 +215,18 @@ void star::StarTextures::Texture::CreateAllocation(vk::Device &device, const vk:
         throw std::runtime_error(message);
     }
 
+#ifndef NDEBUG
     {
         vk::DebugUtilsObjectNameInfoEXT nameInfo = vk::DebugUtilsObjectNameInfoEXT()
                                                        .setObjectHandle((uint64_t)(VkImage)(textureImage))
                                                        .setPObjectName(allocationName.c_str());
 
         device.setDebugUtilsObjectNameEXT(nameInfo);
-    }
 
-    const std::string fullAllocationName = std::string(allocationName) + "_ALLOCATION";
-    vmaSetAllocationName(allocator, allocation, fullAllocationName.c_str());
+        const std::string fullAllocationName = std::string(allocationName) + "_ALLOCATION";
+        vmaSetAllocationName(allocator, allocation, fullAllocationName.c_str());
+    }
+#endif
 }
 
 std::unordered_map<vk::Format, vk::ImageView> star::StarTextures::Texture::CreateImageViews(
