@@ -11,13 +11,14 @@
 
 #include <chrono>
 #include <filesystem>
+#include <mutex>
 
 namespace star::core::logging
 {
 namespace logging = boost::log;
 namespace keywords = boost::log::keywords;
 
-void init(const std::string logName)
+static void InitializeLogging(const std::string &)
 {
     const auto baseDir = star::common::paths::GetRuntimePath().parent_path() / star::common::strings::GetStartTime();
     auto backend = boost::make_shared<LoggerFileBackend>(baseDir);
@@ -30,6 +31,12 @@ void init(const std::string logName)
     consoleSink->set_filter(logging::trivial::severity != logging::trivial::debug);
 
     boost::log::add_common_attributes();
+}
+
+void init(const std::string logName)
+{
+    static std::once_flag initializationFlag;
+    std::call_once(initializationFlag, [&logName] { InitializeLogging(logName); });
 }
 
 boost::log::sources::severity_logger<boost::log::trivial::severity_level> &getLoggerForThread()
