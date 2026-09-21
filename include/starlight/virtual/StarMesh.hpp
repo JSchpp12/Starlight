@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "StarCommandBuffer.hpp"
 #include "StarDescriptorBuilders.hpp"
@@ -7,7 +7,6 @@
 #include "core/device/DeviceContext.hpp"
 #include <star_common/Handle.hpp>
 #include <star_common/helper/CastHelpers.hpp>
-
 
 #include <vulkan/vulkan.hpp>
 
@@ -42,6 +41,8 @@ class StarMesh
                                           uint32_t descriptorSetStartIndex = 0);
 
     bool isKnownToBeReady(const uint8_t &frameInFlightIndex);
+
+    void registerTransferWaits(core::device::DeviceContext &context, Handle commandBuffer);
 
     StarMaterial &getMaterial()
     {

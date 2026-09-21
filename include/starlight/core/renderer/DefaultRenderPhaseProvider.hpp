@@ -27,7 +27,6 @@ class DefaultRenderPhaseProvider : public IRenderPhaseProvider
     DefaultRenderPhaseProvider(core::device::DeviceContext &context, std::vector<std::shared_ptr<StarObject>> objects,
                                std::shared_ptr<FrameData> frameData);
     virtual ~DefaultRenderPhaseProvider() = default;
-
     DefaultRenderPhaseProvider(const DefaultRenderPhaseProvider &) = delete;
     DefaultRenderPhaseProvider &operator=(const DefaultRenderPhaseProvider &) = delete;
     DefaultRenderPhaseProvider(DefaultRenderPhaseProvider &&) = default;
@@ -45,19 +44,6 @@ class DefaultRenderPhaseProvider : public IRenderPhaseProvider
     RenderPhaseConfig m_config;
     std::vector<std::shared_ptr<StarObject>> m_objects;
     std::shared_ptr<FrameData> m_frameData;
-    std::shared_ptr<ManagerController::RenderResource::Buffer> m_infoManagerLightData, m_infoManagerLightList,
-        m_infoManagerCamera;
-    bool ownsRenderResourceControllers = false;
-
-    void initBuffers(core::device::DeviceContext &context, std::shared_ptr<std::vector<Light>> lights,
-                     std::shared_ptr<StarCamera> camera);
-
-    core::device::manager::ManagerCommandBuffer::Request getCommandBufferRequest(DefaultRenderPhase *phase);
-
-    static std::vector<StarRenderGroup> CreateRenderingGroups(core::device::DeviceContext &context,
-                                                              std::vector<std::shared_ptr<StarObject>> objects);
-
-    void buildCore(DefaultRenderPhase *phase, core::device::DeviceContext &device);
-    virtual RenderTargets createRenderTargets(core::device::DeviceContext &context, RenderingContext &renderingContext);
+    bool m_createdFrameData = false;
 };
 } // namespace star::core::renderer

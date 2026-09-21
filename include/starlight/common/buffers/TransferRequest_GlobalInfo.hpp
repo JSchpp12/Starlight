@@ -17,18 +17,16 @@ class GlobalInfo : public Buffer
 
     virtual ~GlobalInfo() = default;
 
-    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device,
-                                                             VmaAllocator &allocator) const override;
+    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(core::device::StarDevice &device) const override;
 
     std::unique_ptr<StarBuffers::Buffer> createFinal(
-        vk::Device &device, VmaAllocator &allocator,
-        const std::vector<uint32_t> &transferQueueFamilyIndex) const override;
+        core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const override;
 
     void writeDataToStageBuffer(StarBuffers::Buffer &buffer) const override;
 
   private:
     const StarCamera camera;
-    std::vector<uint32_t> m_queueFamilyIndices; 
+    std::vector<uint32_t> m_queueFamilyIndices;
 
     struct GlobalUniformBufferObject
     {

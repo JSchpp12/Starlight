@@ -1,4 +1,4 @@
-﻿#include "starlight/object/StarObject.hpp"
+#include "starlight/object/StarObject.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
@@ -185,24 +185,29 @@ void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &
                                              StarShaderInfo::Builder fullEngineBuilder,
                                              vk::PipelineLayout pipelineLayout,
                                              const core::renderer::RenderingTargetInfo &renderingInfo,
-                                             uint32_t globalSetCount)
+                                             uint32_t globalSetCount, star::Handle commandBuffer)
 {
     m_globalSetCount = globalSetCount;
 
     this->pipeline = buildPipeline(context, context.getEngineResolution(), pipelineLayout, renderingInfo);
 
-    prepMaterials(context, fullEngineBuilder);
+    prepMaterials(context, fullEngineBuilder, commandBuffer);
+
+    registerMeshTransferWaits(context, commandBuffer);
 }
 
 void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
                                              star::StarShaderInfo::Builder fullEngineBuilder,
-                                             const Handle &sharedPipeline, uint32_t globalSetCount)
+                                             const Handle &sharedPipeline, uint32_t globalSetCount,
+                                             star::Handle commandBuffer)
 {
     m_globalSetCount = globalSetCount;
 
     this->sharedPipeline = sharedPipeline;
 
-    prepMaterials(context, fullEngineBuilder);
+    prepMaterials(context, fullEngineBuilder, commandBuffer);
+
+    registerMeshTransferWaits(context, commandBuffer);
 }
 
 void star::StarObject::prepStarObject(core::device::DeviceContext &context)
@@ -239,13 +244,15 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
-void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &swapChainIndexNum,
-                                                   const uint64_t &frameIndex)
+void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer,
+                                                   const common::FrameTracker &frameTracker, const uint64_t &frameIndex)
 {
-    if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
+    const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
+
+    if (!isKnownToBeReadyForRecordRender(frameInFlightIndex))
         return;
 
-    recordDependentDataPipelineBarriers(commandBuffer, swapChainIndexNum, frameIndex);
+    recordDependentDataPipelineBarriers(commandBuffer, frameTracker, frameIndex);
 }
 
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
@@ -263,11 +270,13 @@ void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer
     // iterating render groups; each mesh only rebinds its own material set.
     if (m_instanceShaderInfo)
     {
-        auto instanceSets = m_instanceShaderInfo->getDescriptors(swapChainIndexNum);
-        if (!instanceSets.empty())
+        assert(m_instanceShaderInfo->getNumDescriptorSets(swapChainIndexNum) <= m_instanceDescriptors.size());
+        size_t numWritten = 0;
+        m_instanceShaderInfo->getDescriptors(swapChainIndexNum, m_instanceDescriptors.data(), numWritten);
+        if (numWritten != 0)
         {
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, m_globalSetCount,
-                                             instanceSets.size(), instanceSets.data(), 0, nullptr);
+                                             numWritten, m_instanceDescriptors.data(), 0, nullptr);
         }
     }
 
@@ -338,7 +347,7 @@ void star::StarObject::prepareMeshes(star::core::device::DeviceContext &device)
 }
 
 void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
-                                     star::StarShaderInfo::Builder &frameBuilder)
+                                     star::StarShaderInfo::Builder &frameBuilder, star::Handle commandBuffer)
 {
     assert(m_meshMaterials.size() > 0 && "Mesh materials should exist");
 
@@ -395,8 +404,14 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
         if (hasMaterialSet)
             materialBuilder.addSetLayout(materialSetLayout);
 
-        material->prepRender(context, numFramesInFlight, materialBuilder);
+        material->prepRender(context, numFramesInFlight, materialBuilder, commandBuffer);
     }
+}
+
+void star::StarObject::registerMeshTransferWaits(star::core::device::DeviceContext &context, star::Handle commandBuffer)
+{
+    for (auto &mesh : this->meshes)
+        mesh.registerTransferWaits(context, commandBuffer);
 }
 
 void star::StarObject::createInstanceBuffers(star::core::device::DeviceContext &context)
@@ -602,12 +617,14 @@ bool star::StarObject::isKnownToBeReadyForRecordRender(const uint8_t &frameInFli
 }
 
 void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer,
-                                                           const uint8_t &frameInFlightIndex,
+                                                           const common::FrameTracker &frameTracker,
                                                            const uint64_t &frameIndex)
 {
+    const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
+
     auto barriers = std::vector<vk::BufferMemoryBarrier2>();
 
-    if (m_instanceInfo.getControllerModel().willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.getControllerModel().willBeUpdatedThisFrame(frameIndex, frameTracker))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()
@@ -623,7 +640,7 @@ void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &co
                 .setSize(vk::WholeSize));
     }
 
-    if (m_instanceInfo.getControllerNormal().willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
+    if (m_instanceInfo.getControllerNormal().willBeUpdatedThisFrame(frameIndex, frameTracker))
     {
         barriers.emplace_back(
             vk::BufferMemoryBarrier2()

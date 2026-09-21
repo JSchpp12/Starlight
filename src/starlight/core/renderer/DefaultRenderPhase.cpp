@@ -1,76 +1,189 @@
-﻿#include "renderer/DefaultRenderPhase.hpp"
+#include "renderer/DefaultRenderPhase.hpp"
 
 #include "ManagerController_RenderResource_GlobalInfo.hpp"
 #include "ManagerController_RenderResource_LightInfo.hpp"
 #include "ManagerController_RenderResource_LightList.hpp"
 #include "ManagerRenderResource.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 #include "core/helper/command_buffer/CommandBufferHelpers.hpp"
-#include "core/helper/queue/QueueHelpers.hpp"
+#include "core/renderer/DescriptorRecipe.hpp"
+#include "starlight/command/command_order/DeclarePass.hpp"
+#include "starlight/core/Exceptions.hpp"
+#include "starlight/core/renderer/FrameData.hpp"
+#include "starlight/core/renderer/RenderPhaseHelpers.hpp"
+#include "starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.hpp"
 #include "starlight/core/waiter/one_shot/GenericEvent.hpp"
+#include "starlight/event/DescriptorPoolReady.hpp"
 
+#include <star_common/EventBus.hpp>
+#include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 #include <vma/vk_mem_alloc.h>
 
 #include <algorithm>
+#include <cassert>
+#include <functional>
+#include <optional>
+#include <vector>
+
 namespace star::core::renderer
 {
-star::StarShaderInfo::Builder DefaultRenderPhase::manualCreateDescriptors(star::core::device::DeviceContext &context)
+
+static const star::core::device::manager::ImageRecord *GetImg(const star::Handle &handle,
+                                                              core::device::DeviceContext &context)
 {
-    assert(m_infoManagerCamera &&
-           "Camera info does not always need to exist. But it should. Hitting this means a change is needed");
+    const auto *vRec = context.getImageManager().get(handle);
+    if (vRec == nullptr)
+        STAR_THROW("Failed to retreive color texture from manager. The factory method should have registered all "
+                   "textures with the manager");
 
-    StarDescriptorPool *defaultPool{nullptr};
-    {
-        const Handle dHandle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                 core::device::manager::GetDescriptorPoolTypeName),
-                             .id = 0};
-
-        defaultPool = context.getDescriptorPoolManager().get(dHandle)->pool.get();
-    }
-
-    assert(defaultPool != nullptr &&
-           "Pool has not been created yet. Descriptor pools are created after engine prep phase is complete");
-
-    const uint8_t numFramesInFlight = context.frameTracker().getSetup().getNumFramesInFlight();
-    this->globalSetLayout = createGlobalDescriptorSetLayout(context, numFramesInFlight);
-
-    // Build the global StarShaderInfo once and own it on the phase. It is bound a
-    // single time per frame in recordRenderingCalls instead of being duplicated
-    // into every material and rebound for every mesh.
-    {
-        auto globalBuilder =
-            StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool, numFramesInFlight)
-                .addSetLayout(this->globalSetLayout);
-        for (int i = 0; i < numFramesInFlight; i++)
-        {
-            const auto &lightInfoHandle = m_infoManagerLightData->getHandle(i);
-            const auto &lightListHandle = m_infoManagerLightList->getHandle(i);
-            const auto &cameraHandle = m_infoManagerCamera->getHandle(i);
-
-            globalBuilder.startOnFrameIndex(i)
-                .startSet()
-                .add(star::StarShaderInfo::BufferInfo{cameraHandle})
-                .add(star::StarShaderInfo::BufferInfo{lightInfoHandle})
-                .add(star::StarShaderInfo::BufferInfo{lightListHandle});
-        }
-        m_globalShaderInfo = globalBuilder.build();
-    }
-
-    // Return a builder carrying only the global set layout. Render groups use it to
-    // assemble the pipeline layout; per-object and per-mesh sets are now built by
-    // the objects and materials themselves.
-    return StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool, numFramesInFlight)
-        .addSetLayout(this->globalSetLayout);
+    return vRec;
 }
 
-std::shared_ptr<star::StarDescriptorSetLayout> DefaultRenderPhase::createGlobalDescriptorSetLayout(
-    device::DeviceContext &context, const uint8_t &numFramesInFlight)
+static RenderTargets createRenderTargets(core::device::DeviceContext &context, RenderingContext &ctx)
 {
-    return StarDescriptorSetLayout::Builder()
-        .addBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-        .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eAll)
-        .addBinding(2, vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eAll)
+    auto targets = RenderTargets::forOffscreen(context, ctx);
+
+    std::vector<vk::ImageMemoryBarrier2> imgBarriers(targets.colorHandles().size() + targets.depthHandles().size());
+    size_t imgIndex = 0;
+    for (size_t i = 0; i < targets.colorHandles().size(); i++)
+    {
+        const auto *vRec = GetImg(targets.colorHandles()[i], context);
+        imgBarriers[imgIndex++] = vk::ImageMemoryBarrier2()
+                                      .setOldLayout(vk::ImageLayout::eUndefined)
+                                      .setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+                                      .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                                      .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                                      .setImage(vRec->texture.getVulkanImage())
+                                      .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+                                      .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
+                                      .setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite |
+                                                        vk::AccessFlagBits2::eColorAttachmentRead)
+                                      .setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
+                                      .setSubresourceRange(vk::ImageSubresourceRange()
+                                                               .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                                               .setBaseMipLevel(0)
+                                                               .setLevelCount(vk::RemainingMipLevels)
+                                                               .setBaseArrayLayer(0)
+                                                               .setLayerCount(vk::RemainingArrayLayers));
+    }
+
+    for (size_t i = 0; i < targets.depthHandles().size(); i++)
+    {
+        const auto *vRec = GetImg(targets.depthHandles()[i], context);
+        imgBarriers[imgIndex++] = vk::ImageMemoryBarrier2()
+                                      .setOldLayout(vk::ImageLayout::eUndefined)
+                                      .setNewLayout(vk::ImageLayout::eDepthAttachmentOptimal)
+                                      .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                                      .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                                      .setImage(vRec->texture.getVulkanImage())
+                                      .setSrcAccessMask(vk::AccessFlagBits2::eNone)
+                                      .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
+                                      .setDstAccessMask(vk::AccessFlagBits2::eDepthStencilAttachmentRead |
+                                                        vk::AccessFlagBits2::eDepthStencilAttachmentWrite)
+                                      .setDstStageMask(vk::PipelineStageFlagBits2::eEarlyFragmentTests)
+                                      .setSubresourceRange(vk::ImageSubresourceRange()
+                                                               .setAspectMask(vk::ImageAspectFlagBits::eDepth)
+                                                               .setBaseMipLevel(0)
+                                                               .setLevelCount(vk::RemainingMipLevels)
+                                                               .setBaseArrayLayer(0)
+                                                               .setLayerCount(vk::RemainingArrayLayers));
+    }
+
+    core::helper::command_buffer::SingleTimeCommands(context, star::Queue_Type::Tgraphics, [&](vk::CommandBuffer cmd) {
+        cmd.pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarriers(imgBarriers));
+    });
+    return targets;
+}
+
+DefaultRenderPhase::Builder::Builder(core::device::DeviceContext &context) : m_context(context)
+{
+}
+
+DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setObjects(std::vector<std::shared_ptr<StarObject>> objects)
+{
+    m_objects = std::move(objects);
+    return *this;
+}
+
+DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setFrameData(std::shared_ptr<FrameData> frameData)
+{
+    m_frameData = std::move(frameData);
+    return *this;
+}
+
+DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setOwnsFrameData(bool owned)
+{
+    m_ownsFrameData = owned;
+    return *this;
+}
+
+DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setConfig(RenderPhaseConfig config)
+{
+    m_config = config;
+    return *this;
+}
+
+DefaultRenderPhase::Builder &DefaultRenderPhase::Builder::setRenderTargetsFactory(
+    std::function<RenderTargets(RenderingContext &)> factory)
+{
+    m_renderTargetsFactory = std::move(factory);
+    return *this;
+}
+
+std::unique_ptr<DefaultRenderPhase> DefaultRenderPhase::Builder::buildUnique()
+{
+    auto phase = std::make_unique<DefaultRenderPhase>();
+    buildInto(*phase);
+    return phase;
+}
+
+void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
+{
+    target.m_objects = std::move(m_objects);
+    target.m_frameData = m_frameData;
+    target.setDataRoleOwnership(m_ownsFrameData);
+
+    target.m_renderGroups = CreateRenderingGroups(m_context, target.m_objects);
+
+    auto request = core::device::manager::ManagerCommandBuffer::Request{
+        .recordBufferCallback = std::bind(&DefaultRenderPhase::recordCommandBuffer, &target, std::placeholders::_1,
+                                          std::placeholders::_2, std::placeholders::_3),
+        .order = m_config.order,
+        .orderIndex = m_config.orderIndex,
+        .type = m_config.queueType,
+        .waitStage = m_config.waitStage,
+        .willBeSubmittedEachFrame = m_config.willBeSubmittedEachFrame,
+        .recordOnce = m_config.recordOnce,
+        .overrideBufferSubmissionCallback = target.getSubmissionOverride(),
+    };
+    target.m_commandBuffer = m_context.getManagerCommandBuffer().submit(
+        std::move(request), m_context.frameTracker().getCurrent().getGlobalFrameCounter());
+    RegisterWithCommandOrder(m_context.getCmdBus(), m_context.getEventBus(),
+                             m_context.getGraphicsManagers().queueManager, target.m_commandBuffer);
+
+    target.m_frameData->prepRender(m_context, m_context.frameTracker().getSetup().getNumFramesInFlight());
+
+    target.m_renderingContext.targetResolution = m_context.getEngineResolution();
+    if (m_renderTargetsFactory)
+        target.m_renderTargets = m_renderTargetsFactory(target.m_renderingContext);
+    else
+        target.m_renderTargets = createRenderTargets(m_context, target.m_renderingContext);
+
+    for (auto &group : target.m_renderGroups)
+        group.prepRender(m_context);
+
+    const auto global = shaderInfoHandle("Global");
+    DescriptorRecipe::Builder(m_context.getEventBus(), m_context, star::event::DescriptorPoolReady::GetUniqueTypeName())
+        .setShaderInfoOut(global, &target.m_globalShaderInfo, /*baseSet=*/0)
+        .addBinding(target.m_frameData, 0, 0, roleHandle(frame_roles::Camera), vk::DescriptorType::eUniformBuffer,
+                    vk::ShaderStageFlagBits::eAll)
+        .addBinding(target.m_frameData, 0, 1, roleHandle(frame_roles::LightInfo), vk::DescriptorType::eUniformBuffer,
+                    vk::ShaderStageFlagBits::eAll)
+        .addBinding(target.m_frameData, 0, 2, roleHandle(frame_roles::LightList), vk::DescriptorType::eStorageBuffer,
+                    vk::ShaderStageFlagBits::eAll)
+        .setRenderGroups(global, &target.m_renderGroups, target.getRenderTargetInfo(), target.m_commandBuffer)
         .build();
 }
 
@@ -86,30 +199,14 @@ void DefaultRenderPhase::frameUpdate(common::IDeviceContext &context)
 
 void DefaultRenderPhase::cleanupRender(common::IDeviceContext &context)
 {
-    // Clean the render groups first: this destroys every pipeline layout, which
-    // references the global set layout. Only after the pipeline layouts are gone
-    // is it safe to release the global set layout owned by m_globalShaderInfo.
+    // Clean the render groups first: this destroys every pipeline layout, which references the global set layout. Only
+    // after the pipeline layouts are gone is it safe to release the global set layout owned by m_globalShaderInfo.
     RenderPhase::cleanupRender(context);
-
     auto &c = static_cast<core::device::DeviceContext &>(context);
     if (m_globalShaderInfo)
     {
         m_globalShaderInfo->cleanupRender(c.getDevice());
         m_globalShaderInfo.reset();
-    }
-}
-
-void DefaultRenderPhase::updateDependentData(star::core::device::DeviceContext &context)
-{
-    if (!ownsRenderResourceControllers)
-        return;
-
-    auto result = m_frameData->frameUpdate(context);
-    auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer);
-    for (const auto &w : result.waits)
-    {
-        record.oneTimeWaitSemaphoreInfo.insert(w.handle, w.semaphore, w.waitStage, w.signalValue);
-        m_renderingContext.addBufferToRenderingContext(context, w.handle);
     }
 }
 
@@ -128,18 +225,18 @@ void DefaultRenderPhase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, 
 {
     for (auto &group : m_renderGroups)
     {
-        // Bind the global descriptor set (camera/lights) once for this render
-        // group's pipeline layout before any object records its per-mesh draws.
-        // Previously every mesh rebound the global set (and the per-object
-        // instance set) via the material; now only the material set is rebound
-        // per mesh.
+        // Bind the global descriptor set (camera/lights) once for this render group's pipeline layout before any object
+        // records its per-mesh draws. Previously every mesh rebound the global set (and the per-object instance set)
+        // via the material; now only the material set is rebound per mesh.
         if (m_globalShaderInfo)
         {
-            auto globalSets = m_globalShaderInfo->getDescriptors(frameInFlightIndex);
-            if (!globalSets.empty())
+            assert(m_globalShaderInfo->getNumDescriptorSets(frameInFlightIndex) <= m_descriptors.size());
+            size_t numWritten = 0;
+            m_globalShaderInfo->getDescriptors(frameInFlightIndex, m_descriptors.data(), numWritten);
+            if (numWritten != 0)
             {
                 commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, group.getPipelineLayout(), 0,
-                                                 globalSets.size(), globalSets.data(), 0, nullptr);
+                                                 numWritten, m_descriptors.data(), 0, nullptr);
             }
         }
 
@@ -155,19 +252,23 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
 
     recordPreRenderPassCommands(commandBuffer, frameTracker);
 
-    recordCommandBufferDependencies(commandBuffer, frameTracker.getCurrent().getFrameInFlightIndex(), frameIndex);
+    recordCommandBufferDependencies(commandBuffer, frameTracker, frameIndex);
 
     {
-        vk::RenderingAttachmentInfo colorAttachmentInfo = prepareDynamicRenderingInfoColorAttachment(frameTracker);
-        vk::RenderingAttachmentInfo depthAttachmentInfo = prepareDynamicRenderingInfoDepthAttachment(frameTracker);
+        vk::RenderingAttachmentInfo colorAttachments;
+        std::optional<vk::RenderingAttachmentInfo> depthAttachment;
+        if (m_renderTargets.hasColor())
+            colorAttachments = prepareDynamicRenderingInfoColorAttachment(frameTracker);
+        if (m_renderTargets.hasDepth())
+            depthAttachment = prepareDynamicRenderingInfoDepthAttachment(frameTracker);
 
         auto renderArea = vk::Rect2D{vk::Offset2D{}, m_renderingContext.targetResolution};
         vk::RenderingInfoKHR renderInfo{};
         renderInfo.renderArea = renderArea;
         renderInfo.layerCount = 1;
-        renderInfo.pDepthAttachment = &depthAttachmentInfo;
-        renderInfo.pColorAttachments = &colorAttachmentInfo;
-        renderInfo.colorAttachmentCount = 1;
+        renderInfo.pDepthAttachment = depthAttachment ? &*depthAttachment : nullptr;
+        renderInfo.pColorAttachments = &colorAttachments;
+        renderInfo.colorAttachmentCount = m_renderTargets.hasColor() ? 1 : 0;
         commandBuffer.beginRendering(renderInfo);
     }
 
@@ -179,72 +280,100 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
 }
 
 void DefaultRenderPhase::recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer,
-                                                         const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
+                                                         const common::FrameTracker &frameTracker,
+                                                         const uint64_t &frameIndex)
 {
-    auto memoryBarriers = getMemoryBarriersForThisFrame(frameInFlightIndex, frameIndex);
+    if (m_barrFunction == nullptr)
+        return;
 
-    commandBuffer.pipelineBarrier2(vk::DependencyInfo()
-                                       .setBufferMemoryBarrierCount(memoryBarriers.size())
-                                       .setPBufferMemoryBarriers(memoryBarriers.data()));
+    size_t barrCount{0};
+    m_barrFunction(frameTracker, frameIndex, m_frameData.get(), &m_renderingContext, m_runtimeBarriers.data(),
+                   &barrCount);
+
+    commandBuffer.pipelineBarrier2(
+        vk::DependencyInfo().setBufferMemoryBarrierCount(barrCount).setPBufferMemoryBarriers(m_runtimeBarriers.data()));
 }
 
-std::vector<vk::BufferMemoryBarrier2> DefaultRenderPhase::getMemoryBarriersForThisFrame(
-    const uint8_t &frameInFlightIndex, const uint64_t &frameIndex)
+void DefaultRenderPhase::AddOwnsAllResourcesBarrier(const common::FrameTracker &frameTracker,
+                                                    const uint64_t &frameIndex, const FrameData *fd,
+                                                    const RenderingContext *rc, vk::BufferMemoryBarrier2 *data,
+                                                    size_t *dCount) noexcept
 {
-    auto barriers = std::vector<vk::BufferMemoryBarrier2>();
+    const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
 
-    if (ownsRenderResourceControllers)
+    const auto *camera = fd->getController(roleHandle(frame_roles::Camera));
+    const auto *lightInfo = fd->getController(roleHandle(frame_roles::LightInfo));
+    const auto *lightList = fd->getController(roleHandle(frame_roles::LightList));
+
+    if (camera->willBeUpdatedThisFrame(frameIndex, frameTracker))
     {
-        if (m_infoManagerCamera->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
-        {
-            auto buffer =
-                m_renderingContext.bufferTransferRecords.get(m_infoManagerCamera->getHandle(frameInFlightIndex));
+        auto buffer = rc->bufferTransferRecords.get(camera->getHandle(frameInFlightIndex));
 
-            barriers.emplace_back(
-                vk::BufferMemoryBarrier2()
-                    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                    .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                    .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
-                                     vk::PipelineStageFlagBits2::eVertexShader)
-                    .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
-                    .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setBuffer(buffer)
-                    .setSize(vk::WholeSize));
-        }
-
-        if (m_infoManagerLightData->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
-        {
-            barriers.emplace_back(
-                vk::BufferMemoryBarrier2()
-                    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                    .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                    .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
-                                     vk::PipelineStageFlagBits2::eVertexShader)
-                    .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
-                    .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                    .setBuffer(m_renderingContext.bufferTransferRecords.get(
-                        m_infoManagerLightData->getHandle(frameInFlightIndex)))
-                    .setSize(vk::WholeSize));
-        }
-
-        if (m_infoManagerLightList->willBeUpdatedThisFrame(frameIndex, frameInFlightIndex))
-        {
-            barriers.emplace_back(vk::BufferMemoryBarrier2()
-                                      .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                                      .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                                      .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
-                                                       vk::PipelineStageFlagBits2::eVertexShader)
-                                      .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                                      .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                                      .setBuffer(m_renderingContext.bufferTransferRecords.get(
-                                          m_infoManagerLightList->getHandle(frameInFlightIndex)))
-                                      .setSize(vk::WholeSize));
-        }
+        *(data++) = vk::BufferMemoryBarrier2()
+                        .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                        .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                        .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
+                                         vk::PipelineStageFlagBits2::eVertexShader)
+                        .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
+                        .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setBuffer(buffer)
+                        .setSize(vk::WholeSize);
+        (*dCount)++;
     }
 
-    return barriers;
+    if (lightInfo->willBeUpdatedThisFrame(frameIndex, frameTracker))
+    {
+        *(data++) = vk::BufferMemoryBarrier2()
+                        .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                        .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                        .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
+                                         vk::PipelineStageFlagBits2::eVertexShader)
+                        .setDstAccessMask(vk::AccessFlagBits2::eUniformRead | vk::AccessFlagBits2::eShaderRead)
+                        .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setBuffer(rc->bufferTransferRecords.get(lightInfo->getHandle(frameInFlightIndex)))
+                        .setSize(vk::WholeSize);
+        (*dCount)++;
+    }
+
+    if (lightList->willBeUpdatedThisFrame(frameIndex, frameTracker))
+    {
+        *(data++) = vk::BufferMemoryBarrier2()
+                        .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                        .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                        .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader |
+                                         vk::PipelineStageFlagBits2::eVertexShader)
+                        .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
+                        .setBuffer(rc->bufferTransferRecords.get(lightList->getHandle(frameInFlightIndex)))
+                        .setSize(vk::WholeSize);
+        (*dCount)++;
+    }
+}
+
+DefaultRenderPhase &DefaultRenderPhase::setDataRoleOwnership(bool owned)
+{
+    if (owned)
+    {
+        assert(m_frameData && "Frame data needs to be assigned first");
+        assert(m_frameData->isResourceDriven(roleHandle(frame_roles::Camera)) &&
+               "owned camera role must be a driven buffer");
+        assert(m_frameData->isResourceDriven(roleHandle(frame_roles::LightInfo)) &&
+               "owned lightInfo role must be a driven buffer");
+        assert(m_frameData->isResourceDriven(roleHandle(frame_roles::LightList)) &&
+               "owned lightList role must be a driven buffer");
+
+        m_drivesFrameData = true;
+        m_barrFunction = &AddOwnsAllResourcesBarrier;
+    }
+    else
+    {
+        m_drivesFrameData = false;
+        m_barrFunction = nullptr;
+    }
+
+    return *this;
 }
 
 vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderPhase::prepareDynamicRenderingInfoColorAttachment(
@@ -252,7 +381,7 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderPhase::prepareDyn
 {
     size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
 
-    const auto *r = m_renderingContext.recordDependentImage.get(m_renderToImages[index]);
+    const auto *r = m_renderingContext.recordDependentImage.get(m_renderTargets.colorHandles()[index]);
 
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
     colorAttachmentInfo.imageView = r->getImageView();
@@ -271,7 +400,7 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderPhase::prepareDyn
 
     vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};
     depthAttachmentInfo.imageView =
-        m_renderingContext.recordDependentImage.get(m_renderToDepthImages[index])->getImageView();
+        m_renderingContext.recordDependentImage.get(m_renderTargets.depthHandles()[index])->getImageView();
     depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;

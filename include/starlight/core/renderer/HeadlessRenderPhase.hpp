@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include <starlight/core/renderer/DefaultRenderPhase.hpp>
+#include <starlight/core/CommandBus.hpp>
 
 #include <variant>
 
@@ -41,9 +42,8 @@ struct PrepImageForNeighbor
 class HeadlessRenderPhase : public DefaultRenderPhase
 {
   public:
-    HeadlessRenderPhase() = default;
+    HeadlessRenderPhase(const star::core::CommandBus &cmdBus, vk::Device device);
     virtual ~HeadlessRenderPhase() = default;
-
     HeadlessRenderPhase(const HeadlessRenderPhase &) = delete;
     HeadlessRenderPhase &operator=(const HeadlessRenderPhase &) = delete;
     HeadlessRenderPhase(HeadlessRenderPhase &&) = delete;
@@ -73,13 +73,5 @@ class HeadlessRenderPhase : public DefaultRenderPhase
     vk::Device m_device{VK_NULL_HANDLE};
     const star::core::device::manager::Image *m_imgMgr{nullptr};
     const star::core::CommandBus *m_cmdBus{nullptr};
-
-    void waitForSemaphore(const common::FrameTracker &ft) const;
-
-    vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const common::FrameTracker &frameTracker,
-                               std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
-                               std::vector<vk::Semaphore> dataSemaphores,
-                               std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                               std::vector<std::optional<uint64_t>> previousSignaledValues, StarQueue &queue);
 };
 } // namespace star::core::renderer

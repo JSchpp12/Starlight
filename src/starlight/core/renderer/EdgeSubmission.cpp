@@ -37,8 +37,7 @@ vk::Semaphore submitEdgeAwarePass(const star::core::CommandBus &cmdBus, star::Ha
             {
                 if (edge.producer == commandBuffer)
                 {
-                    // We are the producer: back-pressure -- wait for the consumer
-                    // to have finished with the previous frame's output.
+                    // We are the producer: wait for the consumer to have finished with the previous frame's output.
                     auto n = star::command_order::GetPassInfo{edge.consumer};
                     cmdBus.submit(n);
                     const auto &nr = n.getReply().get();
@@ -49,8 +48,7 @@ vk::Semaphore submitEdgeAwarePass(const star::core::CommandBus &cmdBus, star::Ha
                 }
                 else if (edge.consumer == commandBuffer)
                 {
-                    // We are the consumer: data-readiness -- wait for the producer
-                    // to have written this frame's output.
+                    // We are the consumer: wait for the producer to have written this frame's output.
                     auto n = star::command_order::GetPassInfo{edge.producer};
                     cmdBus.submit(n);
                     const auto &nr = n.getReply().get();

@@ -9,12 +9,12 @@
 #include <assert.h>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(
-    vk::Device &device, VmaAllocator &allocator) const
+    core::device::StarDevice &device) const
 {
     ktxTexture2 *texture = nullptr;
     this->compressedTexture->giveMeTranscodedImage(texture);
 
-    return star::StarBuffers::Buffer::Builder(allocator)
+    return star::StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setInstanceCount(1)
         .setInstanceSize(texture->dataSize)
         .setAllocationCreateInfo(
@@ -30,11 +30,11 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedText
 }
 
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTextureFile::createFinal(
-    vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
+    core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     {
         const std::string msg = "Beginning compressed texture transcode" + compressedTexture->getPathToFile();
-        core::logging::log(boost::log::trivial::info, msg);
+        core::logging::debug(boost::log::trivial::info, msg);
     }
 
     ktxTexture2 *texture = nullptr;
@@ -45,7 +45,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    core::logging::log(boost::log::trivial::info, "Done");
+    core::logging::debug(boost::log::trivial::info, "Done");
 
     if (texture->baseHeight == 0)
     {
@@ -63,7 +63,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         STAR_THROW(msg);
     }
 
-    return StarTextures::Texture::Builder(device, allocator)
+    return StarTextures::Texture::Builder(device)
         .setCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -152,7 +152,7 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
         ktx_size_t offset;
         if (ktxTexture_GetImageOffset((ktxTexture *)texture, i, 0, 0, &offset) != ktx_error_code_e::KTX_SUCCESS)
         {
-            throw std::runtime_error("Failed to get image offset into compressed texture");
+            STAR_THROW("Failed to get image offset into compressed texture");
         }
 
         const uint32_t width{texture->baseWidth >> i};

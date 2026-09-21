@@ -12,7 +12,7 @@ void star::BumpMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout
 }
 
 void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                                    star::StarShaderInfo::Builder frameBuilder)
+                                    star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
     if (star::TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_bumpMapFilePath))
     {
@@ -39,7 +39,10 @@ void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const 
                 context.getDevice().getPhysicalDevice().getProperties(), m_bumpMapFilePath));
     }
 
-    TextureMaterial::prepRender(context, numFramesInFlight, frameBuilder);
+    if (m_bumpMap.isInitialized())
+        registerTextureTransferWait(context, commandBuffer, m_bumpMap);
+
+    TextureMaterial::prepRender(context, numFramesInFlight, frameBuilder, commandBuffer);
 }
 
 std::unique_ptr<star::StarShaderInfo> star::BumpMaterial::buildShaderInfo(core::device::DeviceContext &context,

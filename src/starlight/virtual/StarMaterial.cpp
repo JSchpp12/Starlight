@@ -1,8 +1,12 @@
-﻿#include "StarMaterial.hpp"
+#include "StarMaterial.hpp"
 
 void star::StarMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                                    star::StarShaderInfo::Builder frameBuilder)
+                                    star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
+    // Only texture-bearing materials register transfer waits against the provided
+    // command buffer; the base has nothing to wait on.
+    (void)commandBuffer;
+
     if (!shaderInfo)
     {
         shaderInfo = buildShaderInfo(context, numFramesInFlight, std::move(frameBuilder));
@@ -17,11 +21,15 @@ void star::StarMaterial::cleanupRender(core::device::DeviceContext &context)
 void star::StarMaterial::bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout,
                               int swapChainImageIndex, uint32_t firstSetIndex)
 {
-    auto descriptors = this->shaderInfo->getDescriptors(swapChainImageIndex);
-    if (!descriptors.empty())
+    std::array<vk::DescriptorSet, 1> descriptors{};
+    assert(this->shaderInfo->getNumDescriptorSets(swapChainImageIndex) <= descriptors.size());
+    size_t numWritten{0};
+
+    this->shaderInfo->getDescriptors(swapChainImageIndex, descriptors.data(), numWritten);
+    if (numWritten != 0)
     {
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, firstSetIndex,
-                                         descriptors.size(), descriptors.data(), 0, nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, firstSetIndex, numWritten,
+                                         descriptors.data(), 0, nullptr);
     }
 }
 

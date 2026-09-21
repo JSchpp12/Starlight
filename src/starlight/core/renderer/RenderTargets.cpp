@@ -5,8 +5,6 @@
 #include "StarTextures/Texture.hpp"
 #include "core/device/DeviceContext.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
-#include "core/helper/command_buffer/CommandBufferHelpers.hpp"
-#include "core/helper/queue/QueueHelpers.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 #include <star_common/helper/CastHelpers.hpp>
@@ -45,42 +43,16 @@ void RenderTargets::frameUpdate(core::device::DeviceContext &context, RenderingC
 {
     const uint8_t fi = static_cast<uint8_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
 
-    renderingContext.recordDependentImage.manualInsert(m_colorHandles[fi],
-                                                       &context.getImageManager().get(m_colorHandles[fi])->texture);
-    renderingContext.recordDependentImage.manualInsert(m_depthHandles[fi],
-                                                       &context.getImageManager().get(m_depthHandles[fi])->texture);
-}
-
-static void collectGraphicsPresentTransferIndices(core::device::DeviceContext &device, std::vector<uint32_t> &indices)
-{
-    indices.push_back(core::helper::GetEngineDefaultQueue(
-                          device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics)
-                          ->getParentQueueFamilyIndex());
+    if (!m_colorHandles.empty())
     {
-        auto *q = core::helper::GetEngineDefaultQueue(device.getEventBus(), device.getGraphicsManagers().queueManager,
-                                                      star::Queue_Type::Tpresent);
-        if (q != nullptr && q->getParentQueueFamilyIndex() != indices.back())
-            indices.push_back(q->getParentQueueFamilyIndex());
+        renderingContext.recordDependentImage.manualInsert(m_colorHandles[fi],
+                                                           &context.getImageManager().get(m_colorHandles[fi])->texture);
     }
+    if (!m_depthHandles.empty())
     {
-        auto *q = core::helper::GetEngineDefaultQueue(device.getEventBus(), device.getGraphicsManagers().queueManager,
-                                                      star::Queue_Type::Ttransfer);
-        if (q != nullptr && q->getParentQueueFamilyIndex() != indices.back())
-            indices.push_back(q->getParentQueueFamilyIndex());
+        renderingContext.recordDependentImage.manualInsert(m_depthHandles[fi],
+                                                           &context.getImageManager().get(m_depthHandles[fi])->texture);
     }
-}
-
-static void collectGraphicsPresentIndices(core::device::DeviceContext &device, std::vector<uint32_t> &indices)
-{
-    const auto graphicsQueueFamilyIndex =
-        core::helper::GetEngineDefaultQueue(device.getEventBus(), device.getGraphicsManagers().queueManager,
-                                            star::Queue_Type::Tgraphics)
-            ->getParentQueueFamilyIndex();
-    indices.push_back(graphicsQueueFamilyIndex);
-    auto *presentQueueFamily = core::helper::GetEngineDefaultQueue(
-        device.getEventBus(), device.getGraphicsManagers().queueManager, star::Queue_Type::Tpresent);
-    if (presentQueueFamily != nullptr && presentQueueFamily->getParentQueueFamilyIndex() != graphicsQueueFamilyIndex)
-        indices.push_back(presentQueueFamily->getParentQueueFamilyIndex());
 }
 
 static void engineResolution(core::device::DeviceContext &device, int &width, int &height)
@@ -99,192 +71,13 @@ static vk::Format selectFormat(core::device::DeviceContext &device, const std::v
     return selected;
 }
 
-// ------------------------------------------------------------------------------------------------
-// forPresentation: presented/windowed path. Color shared across graphics+present+transfer and
-// transitioned to ColorAttachmentOptimal at creation; depth shared across graphics+present and
-// transitioned to DepthStencilAttachmentOptimal. Verbatim of the former DefaultRenderer creation.
-// ------------------------------------------------------------------------------------------------
-RenderTargets RenderTargets::forPresentation(core::device::DeviceContext &context, RenderingContext &renderingContext)
+std::vector<StarTextures::Texture> RenderTargets::createDefaultColorAttachments(core::device::DeviceContext &context,
+                                                                                const size_t numToCreate, int width,
+                                                                                int height)
 {
-    const uint8_t numFrames =
-        static_cast<uint8_t>(context.frameTracker().getSetup().getNumUniqueTargetFramesForFinalization());
-
-    int width, height;
-    engineResolution(context, width, height);
-
     vk::Format colorFormat = vk::Format::eUndefined;
     std::vector<StarTextures::Texture> colorTextures;
-    colorTextures.reserve(numFrames);
-
-    {
-        std::vector<uint32_t> indices;
-        collectGraphicsPresentTransferIndices(context, indices);
-        uint32_t numIndices;
-        star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
-        colorFormat = selectFormat(context, {vk::Format::eR8G8B8A8Srgb}, vk::FormatFeatureFlagBits::eColorAttachment);
-
-        auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                                 context.getDevice().getAllocator().get())
-                .setCreateInfo(
-                    Allocator::AllocationBuilder()
-                        .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                        .setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-                        .build(),
-                    vk::ImageCreateInfo()
-                        .setExtent(vk::Extent3D().setWidth(width).setHeight(height).setDepth(1))
-                        .setPQueueFamilyIndices(indices.data())
-                        .setArrayLayers(1)
-                        .setQueueFamilyIndexCount(numIndices)
-                        .setSharingMode(indices.size() == 1 ? vk::SharingMode::eExclusive
-                                                            : vk::SharingMode::eConcurrent)
-                        .setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc)
-                        .setImageType(vk::ImageType::e2D)
-                        .setMipLevels(1)
-                        .setTiling(vk::ImageTiling::eOptimal)
-                        .setInitialLayout(vk::ImageLayout::eUndefined)
-                        .setSamples(vk::SampleCountFlagBits::e1),
-                    "RendererColorImage")
-                .setBaseFormat(colorFormat)
-                .addViewInfo(vk::ImageViewCreateInfo()
-                                 .setViewType(vk::ImageViewType::e2D)
-                                 .setFormat(colorFormat)
-                                 .setSubresourceRange(vk::ImageSubresourceRange()
-                                                          .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                                          .setBaseArrayLayer(0)
-                                                          .setLayerCount(1)
-                                                          .setBaseMipLevel(0)
-                                                          .setLevelCount(1)));
-
-        auto *singleTimeTargetQueue = core::helper::GetEngineDefaultQueue(
-            context.getEventBus(), context.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics);
-        assert(singleTimeTargetQueue != nullptr);
-
-        for (uint8_t i = 0; i < numFrames; i++)
-        {
-            colorTextures.emplace_back(builder.build());
-            colorTextures.back().setImageLayout(vk::ImageLayout::eColorAttachmentOptimal);
-
-            auto oneTimeSetup = core::helper::BeginSingleTimeCommands(context.getDevice(), context.getEventBus(),
-                                                                      context.getManagerCommandBuffer().m_manager,
-                                                                      star::Queue_Type::Tgraphics);
-            vk::ImageMemoryBarrier barrier{};
-            barrier.sType = vk::StructureType::eImageMemoryBarrier;
-            barrier.oldLayout = vk::ImageLayout::eUndefined;
-            barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
-            barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-            barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-            barrier.image = colorTextures.back().getVulkanImage();
-            barrier.srcAccessMask = vk::AccessFlagBits::eNone;
-            barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-            barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-            barrier.subresourceRange.baseMipLevel = 0;
-            barrier.subresourceRange.levelCount = 1;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
-            oneTimeSetup.buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                  vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, {}, nullptr,
-                                                  barrier);
-            core::helper::EndSingleTimeCommands(*singleTimeTargetQueue, std::move(oneTimeSetup));
-        }
-    }
-
-    vk::Format depthFormat = vk::Format::eUndefined;
-    std::vector<StarTextures::Texture> depthTextures;
-    depthTextures.reserve(numFrames);
-
-    {
-        std::vector<uint32_t> indices;
-        collectGraphicsPresentIndices(context, indices);
-        depthFormat =
-            selectFormat(context, {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
-                         vk::FormatFeatureFlagBits::eDepthStencilAttachment);
-
-        auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                                 context.getDevice().getAllocator().get())
-                .setCreateInfo(Allocator::AllocationBuilder()
-                                   .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                                   .setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-                                   .build(),
-                               vk::ImageCreateInfo()
-                                   .setExtent(vk::Extent3D().setWidth(width).setHeight(height).setDepth(1))
-                                   .setArrayLayers(1)
-                                   .setQueueFamilyIndexCount(indices.size())
-                                   .setPQueueFamilyIndices(indices.data())
-                                   .setSharingMode(indices.size() == 1 ? vk::SharingMode::eExclusive
-                                                                       : vk::SharingMode::eConcurrent)
-                                   .setQueueFamilyIndexCount(1)
-                                   .setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment)
-                                   .setImageType(vk::ImageType::e2D)
-                                   .setMipLevels(1)
-                                   .setTiling(vk::ImageTiling::eOptimal)
-                                   .setInitialLayout(vk::ImageLayout::eUndefined)
-                                   .setSamples(vk::SampleCountFlagBits::e1),
-                               "RendererDepthImage")
-                .setBaseFormat(depthFormat)
-                .addViewInfo(vk::ImageViewCreateInfo()
-                                 .setViewType(vk::ImageViewType::e2D)
-                                 .setFormat(depthFormat)
-                                 .setSubresourceRange(vk::ImageSubresourceRange()
-                                                          .setAspectMask(vk::ImageAspectFlagBits::eDepth)
-                                                          .setBaseArrayLayer(0)
-                                                          .setLayerCount(1)
-                                                          .setBaseMipLevel(0)
-                                                          .setLevelCount(1)));
-
-        auto *oneTimeTargetQueue = core::helper::GetEngineDefaultQueue(
-            context.getEventBus(), context.getGraphicsManagers().queueManager, star::Queue_Type::Tgraphics);
-        assert(oneTimeTargetQueue != nullptr);
-
-        for (uint8_t i = 0; i < numFrames; i++)
-        {
-            depthTextures.emplace_back(builder.build());
-            auto oneTimeSetup = core::helper::BeginSingleTimeCommands(context.getDevice(), context.getEventBus(),
-                                                                      context.getManagerCommandBuffer().m_manager,
-                                                                      star::Queue_Type::Tgraphics);
-            vk::ImageMemoryBarrier barrier{};
-            barrier.sType = vk::StructureType::eImageMemoryBarrier;
-            barrier.oldLayout = vk::ImageLayout::eUndefined;
-            barrier.newLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-            barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
-            barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
-            barrier.image = depthTextures.back().getVulkanImage();
-            barrier.srcAccessMask = vk::AccessFlagBits::eNone;
-            barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-            barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
-            barrier.subresourceRange.baseMipLevel = 0;
-            barrier.subresourceRange.levelCount = 1;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount = 1;
-            oneTimeSetup.buffer().pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                  vk::PipelineStageFlagBits::eLateFragmentTests, {}, {}, nullptr,
-                                                  barrier);
-            core::helper::EndSingleTimeCommands(*oneTimeTargetQueue, std::move(oneTimeSetup));
-        }
-    }
-
-    auto colorHandles = registerTextures(context, renderingContext, std::move(colorTextures));
-    auto depthHandles = registerTextures(context, renderingContext, std::move(depthTextures));
-    return RenderTargets(std::move(colorHandles), colorFormat, std::move(depthHandles), depthFormat);
-}
-
-// ------------------------------------------------------------------------------------------------
-// forOffscreen: offscreen/compute-read path. Color is exclusive (compute transitions it), no
-// creation-time layout transition; depth is exclusive + sampled (sampler attached), no transition.
-// Verbatim of the former OffscreenRenderer creation.
-// ------------------------------------------------------------------------------------------------
-RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, RenderingContext &renderingContext)
-{
-    const uint8_t numFramesInFlight = static_cast<uint8_t>(context.frameTracker().getSetup().getNumFramesInFlight());
-
-    int width, height;
-    engineResolution(context, width, height);
-    const auto &props = context.getDevice().getPhysicalDevice().getProperties();
-
-    vk::Format colorFormat = vk::Format::eUndefined;
-    std::vector<StarTextures::Texture> colorTextures;
-    colorTextures.reserve(numFramesInFlight);
+    colorTextures.reserve(numToCreate);
     {
         colorFormat =
             selectFormat(context, {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Unorm},
@@ -292,8 +85,7 @@ RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, 
                              vk::FormatFeatureFlagBits::eStorageImage);
 
         auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                                 context.getDevice().getAllocator().get())
+            star::StarTextures::Texture::Builder(context.getDevice())
                 .setCreateInfo(Allocator::AllocationBuilder()
                                    .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
                                    .setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
@@ -321,23 +113,31 @@ RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, 
                                                           .setBaseMipLevel(0)
                                                           .setLevelCount(1)));
 
-        for (uint8_t i = 0; i < numFramesInFlight; i++)
+        for (uint8_t i = 0; i < numToCreate; i++)
         {
             colorTextures.emplace_back(builder.build());
         }
     }
 
+    return colorTextures;
+}
+
+std::vector<StarTextures::Texture> RenderTargets::createDefaultDepthAttachments(core::device::DeviceContext &context,
+                                                                                const size_t numToCreate, int width,
+                                                                                int height)
+{
+    const auto &props = context.getDevice().getPhysicalDevice().getProperties();
+
     vk::Format depthFormat = vk::Format::eUndefined;
     std::vector<StarTextures::Texture> depthTextures;
-    depthTextures.reserve(numFramesInFlight);
+    depthTextures.reserve(numToCreate);
     {
         depthFormat =
             selectFormat(context, {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
                          vk::FormatFeatureFlagBits::eDepthStencilAttachment | vk::FormatFeatureFlagBits::eSampledImage);
 
         auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice().getVulkanDevice(),
-                                                 context.getDevice().getAllocator().get())
+            star::StarTextures::Texture::Builder(context.getDevice())
                 .setCreateInfo(
                     Allocator::AllocationBuilder()
                         .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -381,12 +181,33 @@ RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, 
                                     .setMinLod(0.0f)
                                     .setMaxLod(0.0f));
 
-        for (uint8_t i = 0; i < numFramesInFlight; i++)
+        for (uint8_t i = 0; i < numToCreate; i++)
         {
-            depthTextures.emplace_back(builder.build());
+            depthTextures.push_back(builder.build());
         }
     }
 
+    return depthTextures;
+}
+
+RenderTargets RenderTargets::forOffscreen(core::device::DeviceContext &context, RenderingContext &renderingContext)
+{
+    const uint8_t numFramesInFlight = static_cast<uint8_t>(context.frameTracker().getSetup().getNumFramesInFlight());
+
+    int width, height;
+    engineResolution(context, width, height);
+    const auto &props = context.getDevice().getPhysicalDevice().getProperties();
+
+    auto colorTextures = createDefaultColorAttachments(context, numFramesInFlight, width, height);
+    if (colorTextures.size() == 0)
+        STAR_THROW("Failed to create default color attachments");
+
+    const auto colorFormat = colorTextures.front().getBaseFormat();
+    auto depthTextures = createDefaultDepthAttachments(context, numFramesInFlight, width, height);
+    if (depthTextures.size() == 0)
+        STAR_THROW("Failed to create default depth attachments");
+
+    auto depthFormat = depthTextures.front().getBaseFormat();
     auto colorHandles = registerTextures(context, renderingContext, std::move(colorTextures));
     auto depthHandles = registerTextures(context, renderingContext, std::move(depthTextures));
     return RenderTargets(std::move(colorHandles), colorFormat, std::move(depthHandles), depthFormat);

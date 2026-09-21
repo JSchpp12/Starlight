@@ -89,7 +89,7 @@ void star::SharedCompressedTexture::GetSupportedCompressedTextureFormats(
     // ericsson texture compression
     if (features.textureCompressionETC2)
     {
-        star::core::logging::info(
+        star::core::logging::warning(
             "This system supports ericsson texture compression! This has not yet been supported by starlight.");
     }
 

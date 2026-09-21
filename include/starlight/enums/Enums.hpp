@@ -21,11 +21,6 @@ enum Command_Buffer_Order_Index
     fifth = 5
 };
 
-enum Rendering_Features
-{
-    shader_float64
-};
-
 enum class Rendering_Device_Features
 {
     timeline_semaphores
@@ -69,7 +64,6 @@ enum Config_Settings
     texture_filtering,
     texture_anisotropy,
     frames_in_flight,
-    required_device_feature_shader_float64,
     required_device_feature_gpu_index,
     resolution_x,
     resolution_y,

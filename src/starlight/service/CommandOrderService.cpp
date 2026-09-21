@@ -1,6 +1,11 @@
 #include "starlight/service/CommandOrderService.hpp"
 
 #include <starlight/command/frames/GetFrameTracker.hpp>
+#include <starlight/core/Exceptions.hpp>
+
+#include <absl/container/flat_hash_set.h>
+
+#include <vector>
 
 namespace star::service
 {
@@ -86,7 +91,15 @@ void CommandOrderService::shutdown()
 
 void CommandOrderService::onDeclareDependency(star::command_order::DeclareDependency &cmd)
 {
-    assert(m_passes.contains(cmd.getSrc()) && m_passes.contains(cmd.getDep()));
+    assert(cmd.getSrc().getType() == star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                         star::common::special_types::CommandBufferTypeName) &&
+           "Provided source handle is not the correct type. Only command buffers can have dependencies tracked");
+    assert(cmd.getDep().getType() == star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                         star::common::special_types::CommandBufferTypeName) &&
+           "Provided dependency handle is not the correct type. Only command buffers can have dependencies tracked");
+
+    assert(m_passes.contains(cmd.getSrc()) && "The producer needs to be registered before this fires");
+    assert(m_passes.contains(cmd.getDep()) && "The consumer needs to be registered before this fires");
 
     addEdgeRecord(cmd.getSrc(), cmd.getDep());
 }
@@ -252,8 +265,60 @@ void CommandOrderService::removeElementFromNotTriggeredPasses(const Handle &hand
     m_notTriggeredPasses.erase(m_notTriggeredPasses.begin() + static_cast<std::ptrdiff_t>(index));
 }
 
+bool CommandOrderService::wouldCreateCycle(const Handle &producer, const Handle &consumer) const
+{
+    // The dependency graph is directed: an edge {producer, consumer} means the
+    // consumer waits on the producer, i.e. producer -> consumer. Adding a new
+    // edge producer -> consumer only creates a cycle when the producer is
+    // already (transitively) reachable from the consumer along the existing
+    // directed edges. A self-edge is trivially a cycle as well.
+    if (producer == consumer)
+        return true;
+
+    absl::flat_hash_set<Handle, star::HandleHash> visited;
+    std::vector<Handle> stack;
+    stack.push_back(consumer);
+
+    while (!stack.empty())
+    {
+        const Handle current = stack.back();
+        stack.pop_back();
+
+        if (current == producer)
+            return true;
+
+        if (!visited.insert(current).second)
+            continue;
+
+        const auto it = m_edges.find(current);
+        if (it == m_edges.end())
+            continue;
+
+        for (const auto &edge : it->second)
+        {
+            // Follow the edge only in its directed sense (producer -> consumer).
+            // current is the source node only when it is the producer of this
+            // edge; the consumer side is the wait direction and is not followed.
+            if (edge.producer == current && !visited.contains(edge.consumer))
+                stack.push_back(edge.consumer);
+        }
+    }
+
+    return false;
+}
+
 void CommandOrderService::addEdgeRecord(const Handle &producer, const Handle &consumer)
 {
+    if (wouldCreateCycle(producer, consumer))
+    {
+        STAR_THROWF("Refusing to record dependency edge that would create a circular dependency between command "
+                    "buffers (producer type=",
+                    producer.getType(), " id=", producer.getID(), " -> consumer type=", consumer.getType(),
+                    " id=", consumer.getID(),
+                    "). The consumer already transitively depends on the producer, so adding this edge would deadlock "
+                    "both passes on their timeline semaphores.");
+    }
+
     command_order::EdgeDescription edge{.producer = producer, .consumer = consumer};
     if (m_edges.contains(producer))
     {

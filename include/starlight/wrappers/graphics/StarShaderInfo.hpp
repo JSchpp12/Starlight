@@ -1,15 +1,14 @@
-﻿#pragma once
+#pragma once
 
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarTextures/Texture.hpp"
 #include "core/device/DeviceContext.hpp"
 
-#include <star_common/Handle.hpp>
-#include <star_common/HandleTypeRegistry.hpp>
-
 #include <memory>
 #include <optional>
+#include <star_common/Handle.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
 #include <vector>
 
 namespace star
@@ -57,6 +56,18 @@ class StarShaderInfo
         TextureInfo(const StarTextures::Texture *texture, vk::ImageLayout expectedLayout,
                     vk::Format requestedImageViewFormat)
             : texture(texture), expectedLayout(expectedLayout), requestedImageViewFormat(requestedImageViewFormat)
+        {
+        }
+        TextureInfo(Handle handle, vk::ImageLayout expectedLayout, std::optional<vk::Format> requestedImageViewFormat)
+            : handle(std::move(handle)), expectedLayout(expectedLayout),
+              requestedImageViewFormat(std::move(requestedImageViewFormat))
+        {
+        }
+
+        TextureInfo(const StarTextures::Texture *texture, vk::ImageLayout expectedLayout,
+                    std::optional<vk::Format> requestedImageViewFormat)
+            : texture(texture), expectedLayout(expectedLayout),
+              requestedImageViewFormat(std::move(requestedImageViewFormat))
         {
         }
 
@@ -205,7 +216,9 @@ class StarShaderInfo
 
     std::vector<vk::DescriptorSetLayout> getDescriptorSetLayouts();
 
-    std::vector<vk::DescriptorSet> getDescriptors(uint8_t frameInFlight);
+    size_t getNumDescriptorSets(uint8_t frameInFlight) const noexcept;
+
+    void getDescriptors(uint8_t frameInFlight, vk::DescriptorSet *data, size_t &numWritten) noexcept;
 
     void cleanupRender(core::device::StarDevice &device);
 
@@ -214,8 +227,31 @@ class StarShaderInfo
         return shaderInfoSets;
     }
 
+    /// @brief Check whether set setIndex of this StarShaderInfo is layout-compatible
+    /// with set otherSetIndex of other. Two sets are compatible when they have
+    /// the same number of bindings and each binding index has the same descriptor
+    /// type (see StarDescriptorSetLayout::isCompatibleWith).
+    /// @param setIndex
+    /// @param other
+    /// @param otherSetIndex
+    /// @return
+    bool isSetLayoutCompatible(size_t setIndex, const StarShaderInfo &other, size_t otherSetIndex) const;
+
+    /// @brief The first pipeline descriptor-set number this StarShaderInfo's sets occupy when bound into a pipeline
+    /// layout.
+    /// @return
+    uint32_t getBaseSet() const
+    {
+        return m_baseSet;
+    }
+    void setBaseSet(uint32_t baseSet)
+    {
+        m_baseSet = baseSet;
+    }
+
   private:
     star::Handle m_deviceID;
+    uint32_t m_baseSet{0};
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> layouts;
     std::vector<std::vector<std::shared_ptr<ShaderInfoSet>>> shaderInfoSets;
 };

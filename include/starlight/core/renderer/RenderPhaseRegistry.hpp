@@ -11,6 +11,7 @@ class RenderPhaseRegistry
   public:
     virtual ~RenderPhaseRegistry() = default;
 
-    virtual RenderPhase *getPhase(const Handle &handle) = 0;
+    virtual RenderPhase *getPhase(const Handle &handle) noexcept = 0;
+    virtual const RenderPhase *getPhase(const Handle &handle) const noexcept = 0;
 };
 } // namespace star::core::renderer

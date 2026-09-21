@@ -1,4 +1,4 @@
-
+﻿
 cmake_minimum_required (VERSION 3.26)
 
 SET(STARLIGHT_NAME "starlight")
@@ -84,6 +84,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/logging/LoggingFactory.cpp"
     "src/starlight/core/logging/LoggerFileBackend.cpp"
     "src/starlight/core/renderer/FrameData.cpp"
+    "src/starlight/core/renderer/DescriptorRecipe.cpp"
     "src/starlight/core/renderer/RenderTargets.cpp"
     "src/starlight/core/renderer/RendererBase.cpp"
     "src/starlight/core/renderer/RenderPhase.cpp"
@@ -95,6 +96,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/renderer/RenderingContext.cpp"
     "src/starlight/core/renderer/CaptureCapableRenderer.cpp"
     "src/starlight/core/renderer/EdgeSubmission.cpp"
+    "src/starlight/core/renderer/RenderPhaseHelpers.cpp"
     "src/starlight/object/StarObject.cpp"
     "src/starlight/virtual/ModulePlug/ManagerPlug.cpp"
     "src/starlight/virtual/StarMesh.cpp"
@@ -130,7 +132,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/wrappers/graphics/StarBuffers/Buffer.cpp"
     "src/starlight/wrappers/graphics/StarBuffers/Resources.cpp"
     "src/starlight/wrappers/graphics/QueueFamilyIndices.cpp"
-    "src/starlight/managers/MapManager.cpp" 
     "src/starlight/managers/ManagerRenderResource.cpp"
     "src/starlight/core/HandleContainer.cpp"
     "src/starlight/core/LinearHandleContainer.cpp"
@@ -264,6 +265,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/device/DeviceContext.cpp"
     "src/starlight/core/SystemContext.cpp"
     "src/starlight/core/RenderingInstance.cpp"
+    "src/starlight/core/VulkanDispatch.cpp"
     "src/starlight/core/SwapChainSupportDetails.cpp"
     "src/starlight/core/graphics/shader/BasicIncluder.cpp"
     "src/starlight/policy/DefaultEngineInitPolicy.cpp"
@@ -306,6 +308,7 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/StarEngine.hpp"
     "include/starlight/core/CommandSubmitter.hpp"
+    "include/starlight/core/TypeErasedCallable.hpp"
     "include/starlight/core/WorkerPool.hpp"
     "include/starlight/core/helper/queue/QueueHelpers.hpp"
     "include/starlight/core/helper/command_buffer/CommandBufferHelpers.hpp"
@@ -342,6 +345,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/renderer/RenderingContext.hpp"
     "include/starlight/core/renderer/CaptureCapableRenderer.hpp"
     "include/starlight/core/renderer/EdgeSubmission.hpp"
+    "include/starlight/core/renderer/RenderPhaseHelpers.hpp"
     "include/starlight/common/ThreadSharedResource.hpp"
     "include/starlight/common/Compiler.hpp"
     "include/starlight/common/materials/BumpMaterial.hpp"
@@ -387,7 +391,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/wrappers/graphics/StarCommandPool.hpp"
     "include/starlight/wrappers/Allocator.hpp"
     "include/starlight/wrappers/graphics/QueueFamilyIndices.hpp"
-    "include/starlight/managers/MapManager.hpp"
     "include/starlight/core/device/managers/ManagerBase.hpp"
     "include/starlight/core/device/managers/ManagerCommandBuffer.hpp"
     "include/starlight/core/device/managers/Shader.hpp"
@@ -508,9 +511,11 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/LinearHandleContainer.hpp"
     "include/starlight/core/ManagedHandleContainer.hpp"
     "include/starlight/core/device/StarDevice.hpp"
+    "include/starlight/core/device/IStartupDeviceRequirementsProvider.hpp"
     "include/starlight/core/device/DeviceContext.hpp"
     "include/starlight/core/SystemContext.hpp"
     "include/starlight/core/RenderingInstance.hpp"
+    "include/starlight/core/VulkanDispatch.hpp"
     "include/starlight/core/SwapChainSupportDetails.hpp"
     "include/starlight/policy/DefaultEngineInitPolicy.hpp"
     "include/starlight/policy/EngineExitAfterNumberOfFrames.hpp"
@@ -574,8 +579,8 @@ set(${STARLIGHT_NAME}_INCLUDE_DIRS
 #     if(COMMAND star_add_pch)
 #         star_add_pch(<target>)
 #     endif()
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/StarVulkanPch.cmake")
-star_add_pch(${STARLIGHT_NAME})
+# include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/StarVulkanPch.cmake")
+# star_add_pch(${STARLIGHT_NAME})
 
 target_link_libraries(${STARLIGHT_NAME}
     PUBLIC
@@ -592,6 +597,7 @@ target_link_libraries(${STARLIGHT_NAME}
         Boost::thread
         Boost::container
         Boost::filesystem
+        ${CMAKE_DL_LIBS}
         KTX::ktx
         absl::hash
         TIFF::TIFF
@@ -638,6 +644,10 @@ if (MSVC)
         /Zc:__cplusplus
     )
 endif()
+
+# Vulkan uses NDC depth in [0,1]. Force GLM's projection helpers (ortho/perspective) to use this range
+target_compile_definitions(${STARLIGHT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
+target_compile_definitions(${STARLIGHT_NAME} PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 
 find_program(CPPCHECK_EXECUTABLE cppcheck)
 if (CPPCHECK_EXECUTABLE)

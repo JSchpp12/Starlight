@@ -130,7 +130,6 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
         logStart(m_workerName);
 
         auto device = m_device.getVulkanDevice();
-        auto allocator = m_device.getAllocator().get();
 
         m_commandPool = std::make_shared<StarCommandPool>(device, m_queue.getParentQueueFamilyIndex(), true);
 
@@ -153,7 +152,7 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
                 TransferPayload &payload = *static_cast<TransferPayload *>(task.value().getPayload());
 
                 assert(payload.request && "Transfer task payload must contain a request envelope");
-                processRequest(*payload.request, device, allocator);
+                processRequest(*payload.request, m_device);
 
                 auto message = task.value().getCompleteMessage();
                 if (message.has_value())
@@ -195,14 +194,15 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
         logStop(m_workerName);
     }
 
-    void processRequest(job::TransferManagerThread::InterThreadRequest &request, vk::Device device,
-                        VmaAllocator allocator)
+    void processRequest(job::TransferManagerThread::InterThreadRequest &request, core::device::StarDevice &device)
     {
         std::unique_ptr<job::TransferManagerThread::ProcessRequestInfo> workingInfo =
             std::move(m_processRequestInfos.front());
         m_processRequestInfos.pop();
 
-        EnsureInfoReady(device, *workingInfo);
+        auto vkDevice = device.getVulkanDevice();
+
+        EnsureInfoReady(vkDevice, *workingInfo);
 
         if (request.bufferTransferRequest)
         {
@@ -212,9 +212,9 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             request.bufferTransferRequest->prep();
 
             job::TransferManagerThread::CreateBuffer(
-                device, allocator, m_queue, m_device.getPhysicalDevice().getProperties(),
-                m_allTransferQueueFamilyIndicesInUse, *workingInfo, request.bufferTransferRequest.get(),
-                request.resultingBuffer.value(), request.gpuDoneNotificationToMain, request.workSyncInfo);
+                device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
+                *workingInfo, request.bufferTransferRequest.get(), request.resultingBuffer.value(),
+                request.gpuDoneNotificationToMain, request.workSyncInfo);
         }
         else if (request.textureTransferRequest)
         {
@@ -226,9 +226,9 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             core::logging::log(boost::log::trivial::info, "Creating Texture");
 
             job::TransferManagerThread::CreateTexture(
-                device, allocator, m_queue, m_device.getPhysicalDevice().getProperties(),
-                m_allTransferQueueFamilyIndicesInUse, *workingInfo, request.textureTransferRequest.get(),
-                request.resultingTexture.value(), request.gpuDoneNotificationToMain, request.workSyncInfo);
+                device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
+                *workingInfo, request.textureTransferRequest.get(), request.resultingTexture.value(),
+                request.gpuDoneNotificationToMain, request.workSyncInfo);
         }
 
         m_processRequestInfos.push(std::move(workingInfo));

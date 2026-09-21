@@ -25,7 +25,7 @@ class BumpMaterial : public TextureMaterial
     virtual ~BumpMaterial() = default;
 
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                            star::StarShaderInfo::Builder frameBuilder) override;
+                            star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer) override;
 
     virtual void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &constBuilder) const override;
 

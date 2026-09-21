@@ -23,8 +23,7 @@ void RendererBase::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer,
 {
     for (auto &group : m_renderGroups)
     {
-        group.recordPreRenderPassCommands(commandBuffer, ft.getCurrent().getFrameInFlightIndex(),
-                                          ft.getCurrent().getGlobalFrameCounter());
+        group.recordPreRenderPassCommands(commandBuffer, ft, ft.getCurrent().getGlobalFrameCounter());
     }
 }
 

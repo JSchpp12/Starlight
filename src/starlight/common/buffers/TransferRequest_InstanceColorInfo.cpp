@@ -17,11 +17,11 @@ static vk::DeviceSize GetMemorySize(const std::vector<Color> colors)
 }
 
 std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::createStagingBuffer(
-    vk::Device &device, VmaAllocator &allocator) const
+    core::device::StarDevice &device) const
 {
     const vk::DeviceSize bSize = GetMemorySize(m_colors);
 
-    return StarBuffers::Buffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
@@ -38,7 +38,7 @@ std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::c
 }
 
 std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::createFinal(
-    vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
+    core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     const vk::DeviceSize bSize = GetMemorySize(m_colors);
 
@@ -48,7 +48,7 @@ std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::c
     for (auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    return StarBuffers::Buffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)

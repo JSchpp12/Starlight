@@ -1,4 +1,4 @@
-﻿#include "StarRenderGroup.hpp"
+#include "StarRenderGroup.hpp"
 
 namespace star
 {
@@ -16,7 +16,7 @@ void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
 {
     // cleanup objects
     for (auto &group : this->m_groups)
-    { 
+    {
         // cleanup base object last since it owns the pipeline
         group.baseObject.object->cleanupRender(context);
 
@@ -39,7 +39,8 @@ void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
 
 void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &context,
                                             StarShaderInfo::Builder rendererBuilder,
-                                            star::core::renderer::RenderingTargetInfo &rendererInfo)
+                                            star::core::renderer::RenderingTargetInfo &rendererInfo,
+                                            star::Handle commandBuffer)
 {
     // create shared pipeline layout
     uint32_t globalSetCount = 0;
@@ -62,12 +63,12 @@ void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &c
     for (auto &group : this->m_groups)
     {
         group.baseObject.object->onDescriptorPoolReady(context, rendererBuilder, m_pipelineLayout, rendererInfo,
-                                                       globalSetCount);
+                                                       globalSetCount, commandBuffer);
 
         for (auto &object : group.objects)
         {
             object.object->onDescriptorPoolReady(context, rendererBuilder, group.baseObject.object->getPipline(),
-                                                 globalSetCount);
+                                                 globalSetCount, commandBuffer);
         }
     }
 }
@@ -168,15 +169,15 @@ void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer
     }
 }
 
-void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &frameInFlightIndex,
-                                                  const uint64_t &frameIndex)
+void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer,
+                                                  const common::FrameTracker &frameTracker, const uint64_t &frameIndex)
 {
     for (auto &group : this->m_groups)
     {
-        group.baseObject.object->recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex, frameIndex);
+        group.baseObject.object->recordPreRenderPassCommands(mainDrawBuffer, frameTracker, frameIndex);
         for (auto &obj : group.objects)
         {
-            obj.object->recordPreRenderPassCommands(mainDrawBuffer, frameInFlightIndex, frameIndex);
+            obj.object->recordPreRenderPassCommands(mainDrawBuffer, frameTracker, frameIndex);
         }
     }
 }

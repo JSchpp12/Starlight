@@ -16,15 +16,18 @@ class LightInfo : public ManagerController::RenderResource::Buffer
     }
     virtual ~LightInfo() = default;
 
-    vk::PipelineStageFlags waitStage() const override { return vk::PipelineStageFlagBits::eFragmentShader; }
+    vk::PipelineStageFlags waitStage() const override
+    {
+        return vk::PipelineStageFlagBits::eFragmentShader;
+    }
 
   protected:
     const std::shared_ptr<std::vector<Light>> lights;
     std::vector<uint32_t> lastWriteNumLights;
 
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
-                                                                   const uint8_t &frameInFlightIndex) override;
+                                                                   uint8_t frameInFlightIndex) override;
 
-    bool doesFrameInFlightDataNeedUpdated(const uint8_t &currentFrameInFlightIndex) const override;
+    bool doesFrameInFlightDataNeedUpdated(const common::FrameTracker &frameTracker) const override;
 };
 } // namespace star::ManagerController::RenderResource

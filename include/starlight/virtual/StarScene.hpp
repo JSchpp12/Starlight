@@ -62,7 +62,11 @@ class StarScene : public core::renderer::RenderPhaseRegistry
     }
 
     /// RenderPhaseRegistry: look up a built phase by its handle.
-    core::renderer::RenderPhase *getPhase(const Handle &handle) override
+    core::renderer::RenderPhase *getPhase(const Handle &handle) noexcept override
+    {
+        return m_phases.isFilled(handle) ? m_phases.get(handle).get() : nullptr;
+    }
+    const core::renderer::RenderPhase *getPhase(const Handle &handle) const noexcept override
     {
         return m_phases.isFilled(handle) ? m_phases.get(handle).get() : nullptr;
     }

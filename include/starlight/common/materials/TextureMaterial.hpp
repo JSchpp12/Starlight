@@ -19,7 +19,7 @@ class TextureMaterial : public StarMaterial
     void preloadTexture(core::device::DeviceContext &context);
 
     virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
-                            star::StarShaderInfo::Builder frameBuilder) override;
+                            star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer) override;
 
     virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
         const int &numFramesInFlight) const override;
@@ -29,6 +29,11 @@ class TextureMaterial : public StarMaterial
   protected:
     std::string m_texturePath = "";
     Handle m_textureHandle = Handle();
+
+    /// Register the texture's GPU transfer-completion semaphore as a one-time
+    /// wait on the provided render command buffer.
+    static void registerTextureTransferWait(core::device::DeviceContext &context, star::Handle commandBuffer,
+                                            star::Handle textureHandle);
 
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context,
                                                             const uint8_t &numFramesInFlight,

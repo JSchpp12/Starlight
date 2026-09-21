@@ -1,4 +1,4 @@
-﻿#include "StarMesh.hpp"
+#include "StarMesh.hpp"
 
 namespace star
 {
@@ -93,5 +93,30 @@ void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, 
     commandBuffer.bindVertexBuffers(0, vBuff.getVulkanBuffer(), offset);
     commandBuffer.bindIndexBuffer(iBuff.getVulkanBuffer(), offset, vk::IndexType::eUint32);
     commandBuffer.drawIndexed(this->numInds, instanceCount, 0, 0, 0);
+}
+
+void star::StarMesh::registerTransferWaits(core::device::DeviceContext &context, Handle commandBuffer)
+{
+    const Handle deviceID = context.getDeviceID();
+
+    if (vertBuffer.isInitialized())
+    {
+        const auto &sem =
+            context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, vertBuffer)->gpuWorkDoneSignaledInfo;
+        context.getManagerCommandBuffer()
+            .m_manager.get(commandBuffer)
+            .oneTimeWaitSemaphoreInfo.insert(vertBuffer, sem.vkSemaphore, vk::PipelineStageFlagBits::eVertexInput,
+                                             sem.signalValue);
+    }
+
+    if (indBuffer.isInitialized())
+    {
+        const auto &sem =
+            context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, indBuffer)->gpuWorkDoneSignaledInfo;
+        context.getManagerCommandBuffer()
+            .m_manager.get(commandBuffer)
+            .oneTimeWaitSemaphoreInfo.insert(indBuffer, sem.vkSemaphore, vk::PipelineStageFlagBits::eVertexInput,
+                                             sem.signalValue);
+    }
 }
 } // namespace star

@@ -14,8 +14,7 @@ namespace star::TransferRequest
 /// compact, application-specific vertex formats (e.g. a terrain vertex with
 /// only pos/normal/texCoord) can be uploaded without the full engine Vertex.
 /// Defaults to the engine's Vertex so existing call sites behave unchanged.
-template <typename T = Vertex>
-class VertInfo : public Buffer
+template <typename T = Vertex> class VertInfo : public Buffer
 {
   public:
     VertInfo(const uint32_t &graphicsQueueIndex, std::vector<T> vertices)
@@ -23,8 +22,8 @@ class VertInfo : public Buffer
     {
     }
 
-    std::unique_ptr<StarBuffers::Buffer> createFinal(vk::Device &device, VmaAllocator &allocator,
-                                                     const std::vector<uint32_t> &transferQueueFamilyIndex) const override
+    std::unique_ptr<StarBuffers::Buffer> createFinal(
+        core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const override
     {
         std::vector<uint32_t> indices = {this->graphicsQueueIndex};
         for (const auto &index : transferQueueFamilyIndex)
@@ -37,7 +36,7 @@ class VertInfo : public Buffer
             throw std::runtime_error("Failed to parse numerical values for vert info buffer creation");
         }
 
-        return StarBuffers::Buffer::Builder(allocator)
+        return StarBuffers::Buffer::Builder(device.getAllocator().get())
             .setAllocationCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -55,7 +54,7 @@ class VertInfo : public Buffer
             .buildUnique();
     }
 
-    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(vk::Device &device, VmaAllocator &allocator) const override
+    std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(core::device::StarDevice &device) const override
     {
         uint32_t numVerts = 0;
         if (!star::common::casts::SafeCast<size_t, uint32_t>(this->vertices.size(), numVerts))
@@ -63,7 +62,7 @@ class VertInfo : public Buffer
             throw std::runtime_error("Failed to cast numerical info for vert info creation");
         }
 
-        return StarBuffers::Buffer::Builder(allocator)
+        return StarBuffers::Buffer::Builder(device.getAllocator().get())
             .setAllocationCreateInfo(
                 Allocator::AllocationBuilder()
                     .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)

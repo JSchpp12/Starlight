@@ -23,15 +23,29 @@ class Texture
 
     static vk::Filter SelectTextureFiltering(const vk::PhysicalDeviceProperties &deviceProperties);
 
+    struct Creators
+    {
+        Creators() = default;
+        Creators(vk::ImageCreateInfo createInfo, VmaAllocationCreateInfo allocationCreateInfo,
+                 std::string allocationName)
+            : createInfo(std::move(createInfo)), allocationCreateInfo(std::move(allocationCreateInfo)),
+              allocationName(std::move(allocationName))
+        {
+        }
+        vk::ImageCreateInfo createInfo = vk::ImageCreateInfo();
+        VmaAllocationCreateInfo allocationCreateInfo = VmaAllocationCreateInfo();
+        std::string allocationName = "Default Texture Name";
+    };
+
     class Builder
     {
       public:
-        Builder(vk::Device &device, const vk::Image &vulkanImage);
+        Builder(core::device::StarDevice &device, const vk::Image &vulkanImage);
 
-        Builder(vk::Device &device, VmaAllocator &allocator);
+        Builder(core::device::StarDevice &device);
 
-        Builder &setCreateInfo(const VmaAllocationCreateInfo &nAllocInfo, const vk::ImageCreateInfo &nCreateInfo,
-                               const std::string &nAllocationName);
+        Builder &setCreateInfo(VmaAllocationCreateInfo nAllocInfo, vk::ImageCreateInfo nCreateInfo,
+                               std::string nAllocationName);
 
         Builder &addViewInfo(const vk::ImageViewCreateInfo &nCreateInfo);
 
@@ -48,19 +62,7 @@ class Texture
         Texture build();
 
       private:
-        struct Creators
-        {
-            Creators(VmaAllocator &allocator) : allocator(allocator)
-            {
-            }
-
-            VmaAllocator &allocator;
-            vk::ImageCreateInfo createInfo = vk::ImageCreateInfo();
-            VmaAllocationCreateInfo allocationCreateInfo = VmaAllocationCreateInfo();
-            std::string allocationName = "Default Texture Name";
-        };
-
-        vk::Device &device;
+        core::device::StarDevice &device;
         std::optional<vk::Format> format = std::nullopt;
         std::optional<Creators> createNewAllocationInfo = std::nullopt;
         std::optional<vk::Image> vulkanImage = std::nullopt;
@@ -145,7 +147,6 @@ class Texture
 
   protected:
     std::shared_ptr<Resources> memoryResources = std::shared_ptr<Resources>();
-
     vk::Format baseFormat;
     uint32_t mipmapLevels = 0;
     vk::Extent3D baseExtent = {0, 0, 0};

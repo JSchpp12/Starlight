@@ -1,17 +1,21 @@
 #include "RenderingInstance.hpp"
+#include "VulkanDispatch.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
 
-#include <unordered_set>
 #include "starlight/core/Exceptions.hpp"
+#include <unordered_set>
+
 
 star::core::RenderingInstance::RenderingInstance(const std::string &applicationName,
                                                  std::vector<const char *> &extensions)
 {
+    InitializeVulkanDispatchLoader();
+
     if (m_enableValidationLayers && !DoesSystemSupportValidationLayers(m_validationLayers))
     {
         STAR_THROW("Validation layers were requested but are not available on the system. Ensure PATH "
-                                 "and vulkan dependencies are properly set");
+                   "and vulkan dependencies are properly set");
     }
 
     if (!DoesSystemSupportDisplayExtensions(extensions))
@@ -54,7 +58,7 @@ vk::Instance star::core::RenderingInstance::createInstance(const std::string &ap
                        .setEngineVersion(vk::makeApiVersion(0, 1, 0, 0))
                        .setApiVersion(vk::ApiVersion13);
 
-    return vk::createInstance(
+    vk::Instance instance = vk::createInstance(
         vk::InstanceCreateInfo()
             .setEnabledExtensionCount(extensionCount)
             .setPpEnabledExtensionNames(extensions.data())
@@ -62,6 +66,10 @@ vk::Instance star::core::RenderingInstance::createInstance(const std::string &ap
             .setPpEnabledLayerNames(m_validationLayers.data())
             .setPApplicationInfo(&appInfo)
             .setFlags(m_isMac ? vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR : vk::InstanceCreateFlags()));
+
+    InitializeVulkanInstanceDispatchLoader(instance);
+
+    return instance;
 }
 
 bool star::core::RenderingInstance::DoesSystemSupportValidationLayers(const std::vector<const char *> &validationLayers)

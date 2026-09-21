@@ -25,8 +25,8 @@ static std::shared_ptr<star::material::InstanceColorMaterial> GetMaterial(const 
         std::make_unique<star::material::DefaultColorProvider>(std::move(colors)));
 }
 
-CubeObject::CubeObject(std::vector<CubeDesc> desc, ShaderResolver &shaderResolver)
-    : StarObject({GetMaterial(desc)}), m_desc(std::move(desc))
+CubeObject::CubeObject(std::vector<CubeDesc> desc, ShaderResolver &shaderResolver, RenderMode renderMode)
+    : StarObject({GetMaterial(desc)}), m_desc(std::move(desc)), m_renderMode(renderMode)
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
     m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);
@@ -44,14 +44,27 @@ std::vector<StarMesh> CubeObject::loadMeshes(core::device::DeviceContext &contex
                                                   star::Queue_Type::Tgraphics)
 
             ->getParentQueueFamilyIndex();
-    MeshData meshData = BuildCubeMesh(m_desc, this->m_meshMaterials.front());
+
+    MeshData meshData =
+        m_renderMode == RenderMode::lines ? BuildCubeWireMesh() : BuildCubeMesh(m_desc, this->m_meshMaterials.front());
 
     auto vertBuffer = context.getManagerRenderResource().addRequest(
         context.getDeviceID(), std::make_unique<star::TransferRequest::VertInfo<>>(graphicsIndex, meshData.vertices));
     auto indBuffer = context.getManagerRenderResource().addRequest(
-        context.getDeviceID(), std::make_unique<TransferRequest::IndicesInfo>(graphicsIndex, meshData.indices));
+        context.getDeviceID(), std::make_unique<star::TransferRequest::IndicesInfo>(graphicsIndex, meshData.indices));
 
     return {StarMesh(vertBuffer, indBuffer, meshData.vertices, meshData.indices, m_meshMaterials.front(), false)};
+}
+
+PipelineProvider CubeObject::getPipelineProvider(vk::PipelineLayout pipelineLayout)
+{
+    if (m_renderMode == RenderMode::lines)
+    {
+        return PipelineProvider({m_vertexShaderHandle, m_fragmentShaderHandle}, pipelineLayout,
+                                GraphicsOverrides{.topology = vk::PrimitiveTopology::eLineList});
+    }
+
+    return StarObject::getPipelineProvider(pipelineLayout);
 }
 
 } // namespace star::primitive

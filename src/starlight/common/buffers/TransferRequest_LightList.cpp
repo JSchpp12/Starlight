@@ -3,12 +3,12 @@
 #include <star_common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createStagingBuffer(
-    vk::Device &device, VmaAllocator &allocator) const
+    core::device::StarDevice &device) const
 {
     uint32_t numLights = 0;
     star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
 
-    return StarBuffers::Buffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
@@ -25,7 +25,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createFinal(
-    vk::Device &device, VmaAllocator &allocator, const std::vector<uint32_t> &transferQueueFamilyIndex) const
+    core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
     std::vector<uint32_t> indices = std::vector<uint32_t>{this->graphicsQueueFamilyIndex};
     indices.reserve(transferQueueFamilyIndex.size() + 1);
@@ -36,7 +36,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
     star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
     star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
 
-    return StarBuffers::Buffer::Builder(allocator)
+    return StarBuffers::Buffer::Builder(device.getAllocator().get())
         .setAllocationCreateInfo(
             Allocator::AllocationBuilder()
                 .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)

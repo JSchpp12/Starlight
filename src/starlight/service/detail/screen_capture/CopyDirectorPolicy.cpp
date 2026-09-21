@@ -210,8 +210,7 @@ void DefaultCopyPolicy::initSemaphores(const uint8_t &numFramesInFlight)
 
 StarTextures::Texture DefaultCopyPolicy::createBlitTargetTexture(const vk::Extent2D &extent) const
 {
-    return StarTextures::Texture::Builder(m_deviceInfo->device->getVulkanDevice(),
-                                          m_deviceInfo->device->getAllocator().get())
+    return StarTextures::Texture::Builder(*m_deviceInfo->device)
         .build();
 }
 

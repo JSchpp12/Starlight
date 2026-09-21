@@ -1,11 +1,15 @@
 #include "starlight/core/renderer/HeadlessRenderPhase.hpp"
 
-#include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/command/command_order/TriggerPass.hpp"
-#include "starlight/core/renderer/EdgeSubmission.hpp"
+#include "starlight/core/renderer/RenderPhaseHelpers.hpp"
 
 namespace star::core::renderer
 {
+HeadlessRenderPhase::HeadlessRenderPhase(const star::core::CommandBus &cmdBus, vk::Device device)
+    : m_device(device), m_cmdBus(&cmdBus)
+{
+}
+
 namespace pre_pass
 {
 vk::ImageMemoryBarrier2 GetImageFromNeighbor::getBarrier() const noexcept
@@ -40,53 +44,14 @@ void HeadlessRenderPhase::frameUpdate(common::IDeviceContext &c)
 std::optional<core::device::manager::ManagerCommandBuffer::BufferSubmissionOverride> HeadlessRenderPhase::
     getSubmissionOverride()
 {
-    core::device::manager::ManagerCommandBuffer::BufferSubmissionOverride overrideFn = std::bind(
-        &HeadlessRenderPhase::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
-        std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7);
-    return overrideFn;
-}
-
-void HeadlessRenderPhase::waitForSemaphore(const common::FrameTracker &ft) const
-{
-    uint64_t signalValue{0};
-    vk::Semaphore semaphore{VK_NULL_HANDLE};
-    {
-        star::command_order::GetPassInfo get{m_commandBuffer};
-        m_cmdBus->submit(get);
-        signalValue = get.getReply().get().currentSignalValue;
-        semaphore = get.getReply().get().signaledSemaphore;
-    }
-
-    const uint64_t frameCount = ft.getCurrent().getNumTimesFrameProcessed();
-    if (frameCount == signalValue)
-    {
-        auto result =
-            m_device.waitSemaphores(vk::SemaphoreWaitInfo().setValues(frameCount).setSemaphores(semaphore), UINT64_MAX);
-
-        if (result != vk::Result::eSuccess)
-        {
-            STAR_THROW("Failed to wait for timeline semaphores");
-        }
-    }
+    return makeEdgeAwareSubmissionOverride(m_cmdBus, &m_commandBuffer, /*signalBinaryCompletion=*/true);
 }
 
 void HeadlessRenderPhase::recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &ft,
                                               const uint64_t &frameIndex)
 {
-    waitForSemaphore(ft);
+    waitForTimelineSemaphore(*m_cmdBus, m_device, m_commandBuffer, ft);
 
     this->DefaultRenderPhase::recordCommandBuffer(commandBuffer, ft, frameIndex);
-}
-
-vk::Semaphore HeadlessRenderPhase::submitBuffer(StarCommandBuffer &buffer, const common::FrameTracker &frameTracker,
-                                                std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
-                                                std::vector<vk::Semaphore> dataSemaphores,
-                                                std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                                                std::vector<std::optional<uint64_t>> previousSignaledValues,
-                                                StarQueue &queue)
-{
-    return submitEdgeAwarePass(*m_cmdBus, m_commandBuffer, buffer, frameTracker, previousCommandBufferSemaphores,
-                               dataSemaphores, dataWaitPoints, previousSignaledValues, queue,
-                               /*signalBinaryCompletion=*/true);
 }
 } // namespace star::core::renderer

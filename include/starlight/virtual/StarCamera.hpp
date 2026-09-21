@@ -14,6 +14,12 @@ namespace star
 class StarCamera : public StarEntity
 {
   public:
+    enum class ProjectionType
+    {
+        orthographic,
+        perspective
+    };
+
     StarCamera() = default;
     StarCamera(const uint32_t &width, const uint32_t &height);
     StarCamera(const uint32_t &width, const uint32_t &height, const float &horizontalFieldOfView,
@@ -22,8 +28,7 @@ class StarCamera : public StarEntity
 
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex) {};
     glm::mat4 getViewMatrix() const;
-
-    glm::mat4 getProjectionMatrix() const;
+    glm::mat4 getProjectionMatrix(ProjectionType projType = ProjectionType::perspective) const;
 
     glm::ivec2 &getResolution()
     {
@@ -33,7 +38,6 @@ class StarCamera : public StarEntity
     {
         return this->resolution;
     }
-
     float getHorizontalFieldOfView(const bool &inRadians = false) const;
     float getVerticalFieldOfView(const bool &inRadians = false) const;
     float getNearClippingDistance() const
@@ -47,7 +51,6 @@ class StarCamera : public StarEntity
 
   protected:
     glm::ivec2 resolution{0, 0};
-
     float horizontalFieldOfView = 90.0f, nearClippingPlaneDistance = 0.1f, farClippingPlaneDistance = 10000.0f;
 };
 } // namespace star

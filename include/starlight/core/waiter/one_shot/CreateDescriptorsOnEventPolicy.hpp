@@ -3,11 +3,10 @@
 #include "core/device/StarDevice.hpp"
 #include "core/device/managers/DescriptorPool.hpp"
 
-#include <star_common/EventBus.hpp>
-#include <star_common/HandleTypeRegistry.hpp>
-
 #include <concepts>
 #include <memory>
+#include <star_common/EventBus.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
 
 namespace star::core::waiter::one_shot
 {
@@ -24,7 +23,7 @@ class CreateDescriptorsOnEventPolicy
     class Builder
     {
       public:
-        Builder(common::EventBus &bus) : m_bus(bus)
+        explicit Builder(common::EventBus &bus) : m_bus(bus)
         {
         }
         Builder &setEventType(const uint16_t &type)

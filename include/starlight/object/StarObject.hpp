@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "StarCommandBuffer.hpp"
 #include "StarEntity.hpp"
@@ -13,6 +13,7 @@
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 
+#include <array>
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
@@ -67,17 +68,17 @@ class StarObject
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context, StarShaderInfo::Builder fullEngineBuilder,
                                        vk::PipelineLayout pipelineLayout,
                                        const core::renderer::RenderingTargetInfo &renderingInfo,
-                                       uint32_t globalSetCount);
+                                       uint32_t globalSetCount, star::Handle commandBuffer);
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context,
                                        star::StarShaderInfo::Builder fullEngineBuilder, const Handle &sharedPipeline,
-                                       uint32_t globalSetCount);
+                                       uint32_t globalSetCount, star::Handle commandBuffer);
 
     virtual core::renderer::RenderingContext buildRenderingContext(star::core::device::DeviceContext &context);
 
     /// Function to contain any commands to be submitted before the start of the rendering pass this object is contained
     /// in begins
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                              const uint64_t &frameIndex);
 
     /// Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
@@ -98,6 +99,11 @@ class StarObject
 
     StarEntity &getInstance(const size_t &index = 0);
     const StarEntity &getInstance(const size_t &index = 0) const;
+
+    const ManagerController::RenderResource::InstanceModelInfo &getInstanceModelController()
+    {
+        return m_instanceInfo.getControllerModel();
+    }
 
     virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
                              const Handle &targetCommandBuffer,
@@ -196,6 +202,7 @@ class StarObject
     /// material. The instance-UBO set is built once and bound once per object
     /// per frame; materials only own/bind their own per-mesh set(s).
     std::unique_ptr<StarShaderInfo> m_instanceShaderInfo;
+    std::array<vk::DescriptorSet, 1> m_instanceDescriptors;
     uint32_t m_globalSetCount = 0;
     uint32_t m_materialSetStartIndex = 0;
 
@@ -233,7 +240,10 @@ class StarObject
 
     void prepStarObject(core::device::DeviceContext &context);
 
-    void prepMaterials(star::core::device::DeviceContext &context, StarShaderInfo::Builder &frameBuilder);
+    void prepMaterials(star::core::device::DeviceContext &context, StarShaderInfo::Builder &frameBuilder,
+                       star::Handle commandBuffer);
+
+    void registerMeshTransferWaits(star::core::device::DeviceContext &context, star::Handle commandBuffer);
 
     void recordDrawCommandNormals(vk::CommandBuffer &commandBuffer);
 
@@ -249,7 +259,7 @@ class StarObject
 
     bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex);
 
-    void recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
+    void recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
                                              const uint64_t &frameIndex);
 };
 } // namespace star

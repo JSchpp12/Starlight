@@ -12,19 +12,17 @@
 #include "starlight/core/CommandBus.hpp"
 #include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
-#include <star_common/Handle.hpp>
-
-#include <boost/atomic.hpp>
-#include <vulkan/vulkan.hpp>
-
 #include <atomic>
+#include <boost/atomic.hpp>
 #include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
 #include <stack>
+#include <star_common/Handle.hpp>
 #include <vector>
+#include <vulkan/vulkan.hpp>
 
 namespace star
 {
@@ -44,7 +42,7 @@ class ManagerRenderResource
     template <typename T> struct FinalizedResourceRequest : public FinalizedRequest
     {
         std::unique_ptr<T> resource = std::unique_ptr<T>();
-        star::StarSemaphore gpuWorkDoneSignaledInfo; 
+        star::StarSemaphore gpuWorkDoneSignaledInfo;
 
         FinalizedResourceRequest() = default;
         FinalizedResourceRequest(const FinalizedResourceRequest &) = delete;
@@ -127,13 +125,11 @@ class ManagerRenderResource
   protected:
     static std::unordered_map<Handle, core::device::StarDevice *, star::HandleHash> devices;
     static std::unordered_map<
-        Handle,
-        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>>>,
+        Handle, std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>>>,
         star::HandleHash>
         textureStorage;
     static std::unordered_map<
-        Handle,
-        std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>>>,
+        Handle, std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>>>,
         star::HandleHash>
         bufferStorage;
 
