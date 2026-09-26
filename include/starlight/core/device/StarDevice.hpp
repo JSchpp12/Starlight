@@ -45,7 +45,6 @@ class StarDevice : public star::common::IRenderDevice
                     VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
                     VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
                     VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-                    VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
                     VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
                     VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
         }
