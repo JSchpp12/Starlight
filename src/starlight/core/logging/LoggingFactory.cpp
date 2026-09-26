@@ -23,13 +23,13 @@ static void InitializeLogging(const std::string &)
     const auto baseDir = star::common::paths::GetRuntimePath().parent_path() / star::common::strings::GetStartTime();
     auto backend = boost::make_shared<LoggerFileBackend>(baseDir);
     auto sink = boost::make_shared<sinks::synchronous_sink<LoggerFileBackend>>(backend);
-    sink->set_filter(logging::trivial::severity == logging::trivial::debug);
     logging::core::get()->add_sink(sink);
 
     auto consoleSink =
         logging::add_console_log(std::cout, keywords::format = "[%TimeStamp%] [%ThreadID%] [%Severity%]: %Message%");
+#ifdef NDEBUG
     consoleSink->set_filter(logging::trivial::severity != logging::trivial::debug);
-
+#endif
     boost::log::add_common_attributes();
 }
 

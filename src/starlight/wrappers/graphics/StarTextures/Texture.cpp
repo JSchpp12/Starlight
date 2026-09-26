@@ -218,6 +218,7 @@ void star::StarTextures::Texture::CreateAllocation(vk::Device &device, const vk:
 #ifndef NDEBUG
     {
         vk::DebugUtilsObjectNameInfoEXT nameInfo = vk::DebugUtilsObjectNameInfoEXT()
+                                                       .setObjectType(vk::ObjectType::eImage)
                                                        .setObjectHandle((uint64_t)(VkImage)(textureImage))
                                                        .setPObjectName(allocationName.c_str());
 

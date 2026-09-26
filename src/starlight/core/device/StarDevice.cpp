@@ -164,8 +164,8 @@ static bool DoesDeviceSupportPresentation(vk::PhysicalDevice physicalDevice, con
     return false;
 }
 
-static bool CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
-                                        const std::vector<const char *> &requiredDeviceExtensions)
+static std::vector<std::string> GetMissingRequiredDeviceExtensions(
+    const vk::PhysicalDevice &device, const std::vector<const char *> &requiredDeviceExtensions)
 {
     uint32_t extensionCount;
     {
@@ -185,56 +185,144 @@ static bool CheckDeviceExtensionSupport(const vk::PhysicalDevice &device,
         }
     }
 
-    std::set<std::string> requiredExtensions(requiredDeviceExtensions.begin(), requiredDeviceExtensions.end());
-
-    // iterate through extensions looking for those that are required
+    std::set<std::string> availableNames;
     for (const auto &extension : availableExtensions)
     {
-        requiredExtensions.erase(extension.extensionName);
+        availableNames.insert(extension.extensionName);
     }
 
-    return requiredExtensions.empty();
+    std::vector<std::string> missingNames;
+    missingNames.reserve(requiredDeviceExtensions.size());
+    for (const char *requiredExtension : requiredDeviceExtensions)
+    {
+        if (requiredExtension == nullptr)
+        {
+            STAR_THROW("Required device extension name cannot be null");
+        }
+
+        if (availableNames.find(requiredExtension) == availableNames.end())
+        {
+            missingNames.emplace_back(requiredExtension);
+        }
+    }
+
+    return missingNames;
+}
+
+template <typename NameRange> static void AppendNameList(std::ostringstream &oss, const NameRange &names)
+{
+    if (names.empty())
+    {
+        oss << "  none\n";
+        return;
+    }
+
+    for (const auto &name : names)
+    {
+        oss << "  " << name << '\n';
+    }
+}
+
+static void LogPhysicalDeviceSelectionResult(const vk::PhysicalDevice &device,
+                                             const std::vector<const char *> &requiredDeviceExtensions,
+                                             const std::vector<PhysicalDeviceFeatureRequest> &requiredFeatureRequests,
+                                             const std::vector<std::string> &missingDeviceExtensions,
+                                             const std::vector<std::string_view> &missingDeviceFeatures,
+                                             bool hasPresentationSurface, bool presentationSupported,
+                                             bool swapChainAdequate, size_t graphicsFamilies, size_t computeFamilies,
+                                             size_t transferFamilies, bool suitable)
+{
+    const auto properties = device.getProperties();
+
+    std::ostringstream oss;
+    oss << "Considered physical device \"" << properties.deviceName
+        << "\": " << star::log::deviceTypeToStr(properties.deviceType) << ", Vulkan "
+        << star::log::formatApiVersion(properties.apiVersion) << '\n';
+
+    oss << "Required device extensions (" << requiredDeviceExtensions.size() << "):\n";
+    AppendNameList(oss, requiredDeviceExtensions);
+
+    oss << "Missing required device extensions (" << missingDeviceExtensions.size() << "):\n";
+    AppendNameList(oss, missingDeviceExtensions);
+
+    oss << "Required physical device features (" << requiredFeatureRequests.size() << "):\n";
+    if (requiredFeatureRequests.empty())
+    {
+        oss << "  none\n";
+    }
+    else
+    {
+        for (const auto &request : requiredFeatureRequests)
+        {
+            oss << "  " << request.name << '\n';
+        }
+    }
+
+    oss << "Missing required physical device features (" << missingDeviceFeatures.size() << "):\n";
+    AppendNameList(oss, missingDeviceFeatures);
+
+    oss << "Queue families: graphics=" << graphicsFamilies << ", compute=" << computeFamilies
+        << ", transfer=" << transferFamilies << '\n'
+        << "Presentation support: "
+        << (hasPresentationSurface ? (presentationSupported ? "yes" : "no") : "not required") << '\n'
+        << "Swapchain adequate: " << (hasPresentationSurface ? (swapChainAdequate ? "yes" : "no") : "not required")
+        << '\n'
+        << "Result: " << (suitable ? "accepted" : "rejected") << '\n';
+
+    star::core::logging::log(suitable ? core::logging::LogLevel::info : core::logging::LogLevel::warning, oss.str());
 }
 
 static bool IsDeviceSuitable(const std::vector<const char *> &requiredDeviceExtensions,
                              const std::vector<PhysicalDeviceFeatureRequest> &requiredFeatureRequests,
                              const vk::PhysicalDevice &device, const vk::SurfaceKHR *optionalRenderingSurface)
 {
+    const bool hasPresentationSurface = optionalRenderingSurface != nullptr;
+
+    QueueFamilyIndices indices = StarDevice::FindQueueFamilies(device, optionalRenderingSurface);
+    const std::vector<std::string> missingDeviceExtensions =
+        GetMissingRequiredDeviceExtensions(device, requiredDeviceExtensions);
+    const bool extensionsSupported = missingDeviceExtensions.empty();
+
+    bool presentationSupported = false;
     bool swapChainAdequate = false;
-    QueueFamilyIndices indicies = StarDevice::FindQueueFamilies(device, optionalRenderingSurface);
-    bool extensionsSupported = CheckDeviceExtensionSupport(device, requiredDeviceExtensions);
-    if (extensionsSupported && optionalRenderingSurface != nullptr &&
-        DoesDeviceSupportPresentation(device, *optionalRenderingSurface))
+    if (extensionsSupported && hasPresentationSurface)
     {
-        core::SwapChainSupportDetails swapChainSupport =
-            StarDevice::QuerySwapchainSupport(device, *optionalRenderingSurface);
-        swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        presentationSupported = DoesDeviceSupportPresentation(device, *optionalRenderingSurface);
+        if (presentationSupported)
+        {
+            const auto swapChainSupport = StarDevice::QuerySwapchainSupport(device, *optionalRenderingSurface);
+            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        }
     }
 
     const vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
-    const auto missingRequiredFeatures =
+    const std::vector<std::string_view> missingDeviceFeatures =
         GetMissingRequiredPhysicalDeviceFeatures(requiredFeatureRequests, supportedFeatures);
-    if (!missingRequiredFeatures.empty())
+    const bool supportsRequiredFeatures = missingDeviceFeatures.empty();
+
+    const auto queueFamilies = device.getQueueFamilyProperties();
+    size_t graphicsFamilies = 0;
+    size_t computeFamilies = 0;
+    size_t transferFamilies = 0;
+    for (const auto &queueFamily : queueFamilies)
     {
-        std::ostringstream oss;
-        oss << "Rejected physical device \"" << device.getProperties().deviceName
-            << "\": missing required physical device features:";
-        for (const auto &missingFeature : missingRequiredFeatures)
-        {
-            oss << " " << missingFeature;
-        }
-        star::core::logging::log(core::logging::LogLevel::warning, oss.str());
+        if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
+            ++graphicsFamilies;
+        if (queueFamily.queueFlags & vk::QueueFlagBits::eCompute)
+            ++computeFamilies;
+        if (queueFamily.queueFlags & vk::QueueFlagBits::eTransfer)
+            ++transferFamilies;
     }
 
-    const bool supportsRequiredRenderingFeatures = missingRequiredFeatures.empty();
+    const bool properQueueFamilySupport = indices.isSuitable(hasPresentationSurface);
+    const bool suitable = properQueueFamilySupport && extensionsSupported && supportsRequiredFeatures &&
+                          (!hasPresentationSurface || (presentationSupported && swapChainAdequate));
 
-    const bool properQueueFamilySupport = indicies.isSuitable(optionalRenderingSurface ? true : false);
-    if (properQueueFamilySupport && extensionsSupported && supportsRequiredRenderingFeatures &&
-        (!optionalRenderingSurface || (optionalRenderingSurface && swapChainAdequate)))
-    {
-        return true;
-    }
-    return false;
+    LogPhysicalDeviceSelectionResult(device, requiredDeviceExtensions, requiredFeatureRequests, missingDeviceExtensions,
+                                     missingDeviceFeatures, hasPresentationSurface, presentationSupported,
+                                     swapChainAdequate, graphicsFamilies, computeFamilies, transferFamilies, suitable);
+
+    return suitable;
 }
 
 vk::PhysicalDevice StarDevice::Builder::pickPhysicalDevice(

@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.2.1
+    VERSION 1.2.2
 )
 
 include(CheckIncludeFile)
@@ -21,6 +21,12 @@ else()
 endif()
 
 find_package(starlight_common REQUIRED)
+
+# Vendored projects enable -Werror by default. Keep those flags out of
+# third-party builds; STAR_ENABLE_WARNINGS is scoped to first-party targets.
+set(SHADERC_ENABLE_WERROR_COMPILE OFF CACHE BOOL "" FORCE)
+set(SPIRV_WERROR OFF CACHE BOOL "" FORCE)
+set(BUILD_WERROR OFF CACHE BOOL "" FORCE)
 
 set(VULKAN_VERSION "1.4.313.0")
 find_package(Vulkan ${VULKAN_VERSION} REQUIRED)
