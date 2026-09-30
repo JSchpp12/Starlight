@@ -11,56 +11,6 @@
 namespace star::service::detail::screen_capture
 {
 
-static void RecordImageBarrierPostBlitPreTransfer(vk::CommandBuffer cmd, vk::Image targetImage)
-{
-    const auto range = vk::ImageSubresourceRange()
-                           .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                           .setBaseMipLevel(0)
-                           .setLevelCount(1)
-                           .setBaseArrayLayer(0)
-                           .setLayerCount(1);
-
-    const auto barrier = vk::ImageMemoryBarrier2()
-                             .setOldLayout(vk::ImageLayout::eTransferDstOptimal)
-                             .setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-                             .setSubresourceRange(range)
-                             .setImage(targetImage)
-                             .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
-                             .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                             .setSrcStageMask(vk::PipelineStageFlagBits2::eBlit)
-                             .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                             .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                             .setDstAccessMask(vk::AccessFlagBits2::eTransferRead);
-
-    cmd.pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarrierCount(1).setPImageMemoryBarriers(&barrier));
-}
-
-static void RecordBlitImage(vk::CommandBuffer cmd, vk::Image srcImage, vk::Image dstImage,
-                            const vk::Extent3D &imageExtent, const vk::Filter &filter)
-{
-    const auto region = vk::ImageBlit2()
-                            .setSrcOffsets({vk::Offset3D{0, 0, 0}})
-                            .setSrcSubresource(vk::ImageSubresourceLayers()
-                                                   .setBaseArrayLayer(0)
-                                                   .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                                   .setLayerCount(1)
-                                                   .setMipLevel(0))
-                            .setDstOffsets({vk::Offset3D{0, 0, 0}})
-                            .setDstSubresource(vk::ImageSubresourceLayers()
-                                                   .setBaseArrayLayer(0)
-                                                   .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                                   .setLayerCount(1)
-                                                   .setMipLevel(0));
-
-    cmd.blitImage2(vk::BlitImageInfo2()
-                       .setSrcImage(srcImage)
-                       .setSrcImageLayout(vk::ImageLayout::eTransferSrcOptimal)
-                       .setDstImage(dstImage)
-                       .setDstImageLayout(vk::ImageLayout::eTransferDstOptimal)
-                       .setFilter(filter)
-                       .setRegions(region));
-}
-
 void DefaultCopyPolicy::init(DeviceInfo &deviceInfo)
 {
     m_deviceInfo = &deviceInfo;
@@ -98,15 +48,9 @@ GPUSynchronizationInfo DefaultCopyPolicy::triggerSubmission(CopyPlan &copyPlan)
 
 void DefaultCopyPolicy::prepareInProgressResources(CopyPlan &copyPlan) noexcept
 {
-    m_inUseResources->path = copyPlan.path;
     m_inUseResources->targetTexture = copyPlan.calleeDependencies->targetTexture;
     m_inUseResources->buffer = copyPlan.resources.bufferInfo.hostVisibleBuffer.getVulkanBuffer();
-    m_inUseResources->blitFilter = copyPlan.blitFilter;
 
-    if (copyPlan.resources.blitTargetTexture.has_value())
-    {
-        m_inUseResources->targetBlitImage = copyPlan.resources.blitTargetTexture.value();
-    }
     if (copyPlan.calleeDependencies->targetTextureReadySemaphore.has_value())
     {
         m_inUseResources->targetTextureReadySemaphore =
@@ -171,9 +115,6 @@ void DefaultCopyPolicy::registerWithCommandBufferManager()
 
     m_copyCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
     DeclarePassWithManager(*m_deviceInfo->cmdBus, m_copyCmds.getCommandBuffer(), queue);
-
-    m_blitCmds.init(*m_deviceInfo->device, *m_deviceInfo->commandManager);
-    DeclarePassWithManager(*m_deviceInfo->cmdBus, m_blitCmds.getCommandBuffer(), queue);
 }
 
 void DefaultCopyPolicy::SemaphoreInfo::init(const uint8_t &numFramesInFlight)
@@ -206,12 +147,6 @@ void DefaultCopyPolicy::initSemaphores(const uint8_t &numFramesInFlight)
 {
     m_binaryInfo.init(numFramesInFlight);
     m_timelineInfo.init(numFramesInFlight);
-}
-
-StarTextures::Texture DefaultCopyPolicy::createBlitTargetTexture(const vk::Extent2D &extent) const
-{
-    return StarTextures::Texture::Builder(*m_deviceInfo->device)
-        .build();
 }
 
 } // namespace star::service::detail::screen_capture

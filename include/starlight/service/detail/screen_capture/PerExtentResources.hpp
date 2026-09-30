@@ -2,9 +2,7 @@
 
 #include "CopyResourcesContainer.hpp"
 #include "DeviceInfo.hpp"
-#include "MappedHandleContainer.hpp"
 #include "StarBuffers/Buffer.hpp"
-#include "StarTextures/Texture.hpp"
 
 #include <absl/container/flat_hash_map.h>
 #include <vulkan/vulkan.hpp>
@@ -30,7 +28,6 @@ struct CopyResource
     };
 
     ThreadSharedBufferInfo bufferInfo;
-    std::optional<vk::Image> blitTargetTexture = std::nullopt;
 };
 
 /// Container relating extent to a container of resources which can be used for copy operations
@@ -47,7 +44,7 @@ class PerExtentResources
         m_deviceInfo = deviceInfo;
     }
 
-    CopyResource giveMeResource(const vk::Extent2D &targetExtent, const Handle &calleeRegistration, const uint8_t &frameInFlightIndex);
+    CopyResource giveMeResource(const vk::Extent2D &targetExtent);
 
     void cleanupRender();
 
