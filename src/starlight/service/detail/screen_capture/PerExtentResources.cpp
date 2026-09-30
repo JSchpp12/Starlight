@@ -1,7 +1,7 @@
 #include "service/detail/screen_capture/PerExtentResources.hpp"
 
+#include "StarTextures/Texture.hpp"
 #include "wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
-#include "wrappers/graphics/policies/GenericImageCreateAllocatePolicy.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -9,42 +9,6 @@
 
 namespace star::service::detail::screen_capture
 {
-
-static wrappers::graphics::policies::GenericImageCreateAllocatePolicy CreateImagePolicy(
-    DeviceInfo *deviceInfo, const vk::Format &targetImageFormat, const vk::Extent2D &extent)
-{
-    const vk::Extent3D imageExtent = vk::Extent3D().setHeight(extent.height).setWidth(extent.width).setDepth(1);
-
-    return wrappers::graphics::policies::GenericImageCreateAllocatePolicy{
-        .extent = imageExtent,
-        .format = targetImageFormat,
-        .allocationName = "PerImageExtentResource_TargetBlit",
-        .allocationCreateInfo = Allocator::AllocationBuilder()
-                                    .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                                    .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
-                                    .build(),
-        .allocator = deviceInfo->device->getAllocator().get(),
-        .device = deviceInfo->device->getVulkanDevice()};
-}
-
-static std::vector<star::StarTextures::Texture> CreateImages(DeviceInfo *deviceInfo,
-                                                             const vk::Format &targetImageFormat,
-                                                             const vk::Extent2D &extent)
-{
-    assert(deviceInfo != nullptr && deviceInfo->flightTracker != nullptr);
-    assert(deviceInfo->queueManager != nullptr);
-
-    auto policy = CreateImagePolicy(deviceInfo, targetImageFormat, extent);
-    const size_t numTargetImages =
-        static_cast<size_t>(deviceInfo->flightTracker->getSetup().getNumUniqueTargetFramesForFinalization());
-    std::vector<StarTextures::Texture> result = std::vector<StarTextures::Texture>(numTargetImages);
-    for (size_t i{0}; i < numTargetImages; i++)
-    {
-        result[i] = policy.create();
-    }
-
-    return result;
-}
 
 static wrappers::graphics::policies::GenericBufferCreateAllocatePolicy CreateBufferPolicy(
     DeviceInfo *deviceInfo, const vk::Format &targetImageFormat, const vk::Extent2D &extent)
@@ -80,8 +44,7 @@ bool Extent2DEqual::operator()(const vk::Extent2D &a, const vk::Extent2D &b) con
     return a.width == b.width && a.height == b.height;
 }
 
-CopyResource PerExtentResources::giveMeResource(const vk::Extent2D &targetExtent, const Handle &calleeRegistration,
-                                                const uint8_t &frameInFlightIndex)
+CopyResource PerExtentResources::giveMeResource(const vk::Extent2D &targetExtent)
 {
     assert(m_deviceInfo != nullptr);
     CopyResourcesContainer *container = nullptr;
@@ -99,47 +62,16 @@ CopyResource PerExtentResources::giveMeResource(const vk::Extent2D &targetExtent
                 .first->second.get();
     }
 
-    auto &blitPool = container->getBlitTexturePool();
-
-    // The blit-texture pool is keyed by the callee's registration handle, which
-    // is issued by a separate container (ScreenCapture::m_calleeDependencyTracker).
-    // Its id is therefore not necessarily this (per-extent) pool's next sequential
-    // id, and the pool may not yet have a slot for it. Grow the pool so a slot for
-    // calleeRegistration exists, then commit an empty ImageChunk on first use so
-    // the get() below finds a filled record. This mirrors StarScene's
-    // reserve()-then-commit() pattern, but keyed to an externally-issued handle.
-    while (blitPool.getData().size() <= calleeRegistration.getID())
-    {
-        blitPool.reserve();
-    }
-    if (!blitPool.isFilled(calleeRegistration))
-    {
-        blitPool.commit(calleeRegistration, CopyResourcesContainer::ImageChunk{});
-    }
-
-    auto &calleeTextures = blitPool.get(calleeRegistration);
-    if (calleeTextures.textures.size() == 0)
-    {
-        calleeTextures.textures = CreateImages(m_deviceInfo, vk::Format::eR8G8B8A8Unorm, targetExtent);
-    }
-
     Handle acquiredResource = container->getBufferPool().acquireBlocking();
 
-    return CopyResource{
-        .bufferInfo =
-            CopyResource::ThreadSharedBufferInfo{.containerRegistration = acquiredResource,
-                                                 .hostVisibleBuffer = container->getBufferPool().get(acquiredResource),
-                                                 .container = container},
-        .blitTargetTexture = calleeTextures.textures[frameInFlightIndex].getVulkanImage()};
+    return CopyResource{.bufferInfo = CopyResource::ThreadSharedBufferInfo{
+                            .containerRegistration = acquiredResource,
+                            .hostVisibleBuffer = container->getBufferPool().get(acquiredResource),
+                            .container = container}};
 }
 
 void PerExtentResources::cleanupRender()
 {
-    assert(m_deviceInfo != nullptr);
-    for (auto &container : m_resources)
-    {
-        container.second->cleanupRender(*m_deviceInfo->device);
-    }
 }
 
 } // namespace star::service::detail::screen_capture

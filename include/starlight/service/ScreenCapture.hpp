@@ -3,8 +3,9 @@
 #include "ManagedHandleContainer.hpp"
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
 #include "detail/screen_capture/Common.hpp"
-#include "detail/screen_capture/CopyRouter.hpp"
+#include "detail/screen_capture/CopyPlan.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
+#include "detail/screen_capture/PerExtentResources.hpp"
 #include "detail/screen_capture/GPUSynchronizationInfo.hpp"
 #include "event/TriggerScreenshot.hpp"
 #include "job/tasks/TaskFactory.hpp"
@@ -68,7 +69,8 @@ class ScreenCapture
                   TCopyPolicy copyPolicy, uint32_t workerCount)
         : m_getSync(*this), m_workerPolicy(std::move(workerPolicy)),
           m_createDependenciesPolicy(std::move(createDependenciesPolicy)), m_copyPolicy(std::move(copyPolicy)),
-          m_calleeDependencyTracker(star::service::detail::screen_capture::common::ScreenCaptureServiceCalleeTypeName, 5),
+          m_calleeDependencyTracker(star::service::detail::screen_capture::common::ScreenCaptureServiceCalleeTypeName,
+                                    5),
           m_numWorkers(workerCount)
     {
     }
@@ -79,8 +81,9 @@ class ScreenCapture
           m_createDependenciesPolicy(std::move(other.m_createDependenciesPolicy)),
           m_copyPolicy(std::move(other.m_copyPolicy)),
           m_calleeDependencyTracker(std::move(other.m_calleeDependencyTracker)),
-          m_subscriberHandle(std::move(other.m_subscriberHandle)), m_actionRouter(std::move(other.m_actionRouter)),
-          m_deviceInfo(std::move(other.m_deviceInfo)), m_numWorkers(other.m_numWorkers)
+          m_subscriberHandle(std::move(other.m_subscriberHandle)),
+          m_resourceContainer(std::move(other.m_resourceContainer)), m_deviceInfo(std::move(other.m_deviceInfo)),
+          m_numWorkers(other.m_numWorkers)
     {
         if (m_deviceInfo.cmdBus != nullptr)
         {
@@ -141,7 +144,7 @@ class ScreenCapture
         assert(m_deviceInfo.commandManager != nullptr);
 
         m_getSync.init(*m_deviceInfo.cmdBus);
-        m_actionRouter.init(&m_deviceInfo);
+        m_resourceContainer.init(&m_deviceInfo);
 
         m_copyPolicy.init(m_deviceInfo);
         auto cmdBuff = m_copyPolicy.getCommandBuffer();
@@ -191,7 +194,7 @@ class ScreenCapture
 
     core::LinearHandleContainer<detail::screen_capture::CalleeRenderDependencies> m_calleeDependencyTracker;
     Handle m_subscriberHandle;
-    detail::screen_capture::CopyRouter m_actionRouter;
+    detail::screen_capture::PerExtentResources m_resourceContainer;
     detail::screen_capture::DeviceInfo m_deviceInfo;
     uint32_t m_numWorkers;
 
@@ -249,9 +252,13 @@ class ScreenCapture
             screenEvent.getCalleeRegistration() = newHandle;
         }
 
-        auto copyPlan = m_actionRouter.decide(m_calleeDependencyTracker.get(screenEvent.getCalleeRegistration()),
-                                              screenEvent.getCalleeRegistration(),
-                                              m_deviceInfo.flightTracker->getCurrent().getFinalTargetImageIndex());
+        auto &calleeDependencies = m_calleeDependencyTracker.get(screenEvent.getCalleeRegistration());
+        const vk::Extent2D targetExtent =
+            vk::Extent2D()
+                .setHeight(calleeDependencies.targetTexture.getBaseExtent().height)
+                .setWidth(calleeDependencies.targetTexture.getBaseExtent().width);
+        auto copyPlan = detail::screen_capture::CopyPlan{
+            .resources = m_resourceContainer.giveMeResource(targetExtent), .calleeDependencies = &calleeDependencies};
 
         // need way to wait for commands to be submitted BEFORE telling worker to start?
         detail::screen_capture::GPUSynchronizationInfo syncInfo = m_copyPolicy.triggerSubmission(copyPlan);
@@ -294,7 +301,7 @@ class ScreenCapture
     void cleanupDependencies(core::device::StarDevice &device)
     {
         (void)device;
-        m_actionRouter.cleanupRender(&m_deviceInfo);
+        m_resourceContainer.cleanupRender();
     }
 
     void registerWithEventBus()
