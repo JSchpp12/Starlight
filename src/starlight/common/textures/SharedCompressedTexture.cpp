@@ -3,68 +3,44 @@
 #include "FileHelpers.hpp"
 #include "starlight/core/Exceptions.hpp"
 
-ktx_transcode_fmt_e star::SharedCompressedTexture::GetResultTargetCompressedFormat(
-    const vk::PhysicalDevice &physicalDevice)
+static bool VerifyFiles(const std::string &imagePath)
 {
-    std::vector<ktx_transcode_fmt_e> availableFormats;
-    GetSupportedCompressedTextureFormats(physicalDevice, availableFormats);
-
-    return SelectTranscodeFormat(availableFormats);
+    return star::file_helpers::GetFileExtension(imagePath) == ".ktx2" && star::file_helpers::FileExists(imagePath);
 }
 
-star::SharedCompressedTexture::SharedCompressedTexture(std::string pathToFile)
-    : m_pathToFile(std::move(pathToFile)), selectedTranscodeTargetFormat(KTX_TTF_RGBA32)
+static ktx_transcode_fmt_e SelectTranscodeFormat(const std::vector<ktx_transcode_fmt_e> &availableFormats)
 {
-}
+    assert(availableFormats.size() > 0 && "System does not support any compression formats");
+    ktx_transcode_fmt_e targetFormat{};
 
-star::SharedCompressedTexture::SharedCompressedTexture(std::string pathToFile, ktx_transcode_fmt_e resultFormat)
-    : m_pathToFile(std::move(pathToFile)), selectedTranscodeTargetFormat(resultFormat)
-{
-}
-
-star::SharedCompressedTexture::SharedCompressedTexture(std::string pathToFile, const vk::PhysicalDevice &physicalDevice)
-    : m_pathToFile(std::move(pathToFile)),
-      selectedTranscodeTargetFormat(GetResultTargetCompressedFormat(physicalDevice))
-{
-    if (!VerifyFiles(m_pathToFile))
+    // find any available format which is not the raw format
+    for (const auto &format : availableFormats)
     {
-        std::ostringstream oss;
-        oss << "File verification failed. Either file is not a ktx2 file type or does not exist: " << m_pathToFile;
-        STAR_THROW(oss.str());
+        if (format != KTX_TTF_RGBA32)
+        {
+            targetFormat = format;
+            break;
+        }
     }
 
-    this->selectedTranscodeTargetFormat = GetResultTargetCompressedFormat(physicalDevice);
-}
-
-star::SharedCompressedTexture::~SharedCompressedTexture()
-{
-    if (m_compTexture != nullptr)
+    if (!targetFormat)
     {
-        ktxTexture2_Destroy(m_compTexture);
-        m_compTexture = nullptr;
+        targetFormat = KTX_TTF_RGBA32;
     }
+
+    return targetFormat;
 }
 
-void star::SharedCompressedTexture::triggerTranscode()
+static bool IsFormatSupported(const vk::PhysicalDevice &physicalDevice, const vk::Format &format)
 {
-    ktxTexture2 *texture = nullptr;
-
-    giveMeTranscodedImage(texture);
+    vk::FormatProperties properties;
+    physicalDevice.getFormatProperties(format, &properties);
+    return ((properties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eTransferDst) &&
+            (properties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImage));
 }
 
-void star::SharedCompressedTexture::giveMeTranscodedImage(ktxTexture2 *&texture)
-{
-    if (m_compTexture == nullptr)
-        loadKTX();
-
-    if (!hasBeenTranscoded)
-        transcode();
-
-    texture = m_compTexture;
-}
-
-void star::SharedCompressedTexture::GetSupportedCompressedTextureFormats(
-    const vk::PhysicalDevice &physicalDevice, std::vector<ktx_transcode_fmt_e> &availableFormats)
+static void GetSupportedCompressedTextureFormats(const vk::PhysicalDevice &physicalDevice,
+                                                 std::vector<ktx_transcode_fmt_e> &availableFormats)
 {
     availableFormats.clear();
 
@@ -97,45 +73,61 @@ void star::SharedCompressedTexture::GetSupportedCompressedTextureFormats(
     availableFormats.push_back(KTX_TTF_RGBA32);
 }
 
-bool star::SharedCompressedTexture::IsFormatSupported(const vk::PhysicalDevice &physicalDevice,
-                                                      const vk::Format &format)
+static ktx_transcode_fmt_e GetResultTargetCompressedFormat(const vk::PhysicalDevice &physicalDevice)
 {
-    vk::FormatProperties properties;
-    physicalDevice.getFormatProperties(format, &properties);
-    return ((properties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eTransferDst) &&
-            (properties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImage));
+    std::vector<ktx_transcode_fmt_e> availableFormats;
+    GetSupportedCompressedTextureFormats(physicalDevice, availableFormats);
+
+    return SelectTranscodeFormat(availableFormats);
 }
 
-ktx_transcode_fmt_e star::SharedCompressedTexture::SelectTranscodeFormat(
-    const std::vector<ktx_transcode_fmt_e> &availableFormats)
+star::SharedCompressedTexture::SharedCompressedTexture(std::string pathToFile)
+    : m_pathToFile(std::move(pathToFile)), selectedTranscodeTargetFormat(KTX_TTF_RGBA32)
 {
-    assert(availableFormats.size() > 0 && "System does not support any compression formats");
-
-    ktx_transcode_fmt_e targetFormat{};
-
-    assert(availableFormats.size() > 0 && "There are no available target transcode formats for this device");
-
-    // find any available format which is not the raw format
-    for (const auto &format : availableFormats)
-    {
-        if (format != KTX_TTF_RGBA32)
-        {
-            targetFormat = format;
-            break;
-        }
-    }
-
-    if (!targetFormat)
-    {
-        targetFormat = KTX_TTF_RGBA32;
-    }
-
-    return targetFormat;
 }
 
-bool star::SharedCompressedTexture::VerifyFiles(const std::string &imagePath)
+star::SharedCompressedTexture::SharedCompressedTexture(std::string pathToFile, ktx_transcode_fmt_e resultFormat)
+    : m_pathToFile(std::move(pathToFile)), selectedTranscodeTargetFormat(resultFormat)
 {
-    return file_helpers::GetFileExtension(imagePath) == ".ktx2" && file_helpers::FileExists(imagePath);
+}
+
+star::SharedCompressedTexture::SharedCompressedTexture(std::string pathToFile, const vk::PhysicalDevice &physicalDevice)
+    : m_pathToFile(std::move(pathToFile)),
+      selectedTranscodeTargetFormat(GetResultTargetCompressedFormat(physicalDevice))
+{
+    if (!VerifyFiles(m_pathToFile))
+    {
+        std::ostringstream oss;
+        oss << "File verification failed. Either file is not a ktx2 file type or does not exist: " << m_pathToFile;
+        STAR_THROW(oss.str());
+    }
+}
+
+star::SharedCompressedTexture::~SharedCompressedTexture()
+{
+    if (m_compTexture != nullptr)
+    {
+        ktxTexture2_Destroy(m_compTexture);
+        m_compTexture = nullptr;
+    }
+}
+
+void star::SharedCompressedTexture::triggerTranscode()
+{
+    ktxTexture2 *texture = nullptr;
+
+    giveMeTranscodedImage(texture);
+}
+
+void star::SharedCompressedTexture::giveMeTranscodedImage(ktxTexture2 *&texture)
+{
+    if (m_compTexture == nullptr)
+        loadKTX();
+
+    if (!hasBeenTranscoded)
+        transcode();
+
+    texture = m_compTexture;
 }
 
 void star::SharedCompressedTexture::loadKTX()

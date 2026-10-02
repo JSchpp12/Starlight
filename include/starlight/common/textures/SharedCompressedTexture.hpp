@@ -1,8 +1,8 @@
 #pragma once
 
+#include <ktx.h>
 #include <vulkan/vulkan.hpp>
 
-#include <ktx.h>
 
 namespace star
 {
@@ -27,7 +27,7 @@ class SharedCompressedTexture
     SharedCompressedTexture &operator=(const SharedCompressedTexture &) = delete;
     SharedCompressedTexture(SharedCompressedTexture &&) = default;
     SharedCompressedTexture &operator=(SharedCompressedTexture &&) = default;
-    virtual ~SharedCompressedTexture();
+    ~SharedCompressedTexture();
 
     void triggerTranscode();
 
@@ -44,8 +44,6 @@ class SharedCompressedTexture
     ktxTexture2 *m_compTexture{nullptr};
     bool hasBeenTranscoded = false;
 
-    static ktx_transcode_fmt_e GetResultTargetCompressedFormat(const vk::PhysicalDevice &physicalDevice);
-
     /// @brief Will create compressed texture with default non-compressed texture format
     /// @param pathToFile
     SharedCompressedTexture(std::string pathToFile);
@@ -53,15 +51,6 @@ class SharedCompressedTexture
     SharedCompressedTexture(std::string pathToFile, ktx_transcode_fmt_e resultFormat);
 
     SharedCompressedTexture(std::string pathToFile, const vk::PhysicalDevice &physicalDevice);
-
-    static void GetSupportedCompressedTextureFormats(const vk::PhysicalDevice &physicalDevice,
-                                                     std::vector<ktx_transcode_fmt_e> &availableFormats);
-
-    static bool IsFormatSupported(const vk::PhysicalDevice &physicalDevice, const vk::Format &format);
-
-    static ktx_transcode_fmt_e SelectTranscodeFormat(const std::vector<ktx_transcode_fmt_e> &availableFormats);
-
-    static bool VerifyFiles(const std::string &imagePath);
 
     void loadKTX();
 

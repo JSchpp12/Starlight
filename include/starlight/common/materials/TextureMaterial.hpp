@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SharedCompressedTexture.hpp"
 #include "StarMaterial.hpp"
 
 #include <star_common/Handle.hpp>
@@ -47,7 +48,5 @@ class TextureMaterial : public StarMaterial
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context,
                                                             const uint8_t &numFramesInFlight,
                                                             StarShaderInfo::Builder builder) override;
-
-  private:
 };
 } // namespace star

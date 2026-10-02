@@ -2,7 +2,6 @@
 
 #include "FileHelpers.hpp"
 #include "ManagerRenderResource.hpp"
-#include "SharedCompressedTexture.hpp"
 #include "StarShaderInfo.hpp"
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "TransferRequest_TextureFile.hpp"
