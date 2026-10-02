@@ -38,6 +38,7 @@ class TextureMaterial : public StarMaterial
   protected:
     std::string m_texturePath = "";
     Handle m_textureHandle = Handle();
+    //TODO: Remove because this can also be used for regular textures which muddies the waters here.
     std::unique_ptr<SharedCompressedTexture> m_preTranscodedTexture = nullptr;
 
     /// Register the texture's GPU transfer-completion semaphore as a one-time
