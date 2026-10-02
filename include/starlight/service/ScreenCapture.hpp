@@ -15,7 +15,7 @@
 #include "starlight/command/frames/GetFrameTracker.hpp"
 #include "starlight/core/waiter/sync_renderer/Factory.hpp"
 #include "starlight/job/worker/DefaultWorker.hpp"
-#include "starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
+#include "starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
 #include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
@@ -209,7 +209,7 @@ class ScreenCapture
             oss << "Image Writer_" << std::to_string(i);
 
             auto worker = tm.registerWorker(
-                {job::worker::DefaultWorker{job::worker::default_worker::BusyWaitTaskHandlingPolicy<
+                {job::worker::DefaultWorker{job::worker::default_worker::SleepWaitTaskHandlingPolicy<
                                                 job::tasks::write_image_to_disk::WriteImageTask, 500>{true},
                                             oss.str()}},
                 job::tasks::write_image_to_disk::WriteImageTypeName);

@@ -65,6 +65,8 @@ class DefaultEngineInitPolicy
 
     static service::Service createShaderService();
 
+    static service::Service createPipelineCommandService();
+
   protected:
     virtual std::vector<service::Service> addAdditionalServices()
     {

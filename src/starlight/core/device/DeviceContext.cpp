@@ -11,7 +11,7 @@
 #include "starlight/command/frames/GetFrameTracker.hpp"
 #include "starlight/core/WorkerPool.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
-#include "starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.hpp"
+#include "starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
 #include "starlight/service/QueueManagerService.hpp"
 #include "starlight/service/TaskSchedulerService.hpp"
 #include "starlight/service/TransferService.hpp"
@@ -209,7 +209,7 @@ void star::core::device::DeviceContext::initWorkers(core::WorkerPool &pool,
 
     // create worker for pipeline building
     job::worker::Worker pipelineWorker{job::worker::DefaultWorker{
-        job::worker::default_worker::BusyWaitTaskHandlingPolicy<job::tasks::build_pipeline::BuildPipelineTask, 64>{},
+        job::worker::default_worker::SleepWaitTaskHandlingPolicy<job::tasks::build_pipeline::BuildPipelineTask, 64>{},
         "Pipeline_Builder"}};
 
     if (!pool.allocateWorker())
@@ -219,7 +219,7 @@ void star::core::device::DeviceContext::initWorkers(core::WorkerPool &pool,
 
     // create worker for shader compilation
     job::worker::Worker shaderWorker{job::worker::DefaultWorker{
-        job::worker::default_worker::BusyWaitTaskHandlingPolicy<job::tasks::compile_shader::CompileShaderTask, 64>{},
+        job::worker::default_worker::SleepWaitTaskHandlingPolicy<job::tasks::compile_shader::CompileShaderTask, 64>{},
         "Shader_Compiler"}};
     m_taskManager.registerWorker(std::move(shaderWorker), job::tasks::compile_shader::CompileShaderTypeName);
 }

@@ -3,20 +3,20 @@
 #include "starlight/core/WorkerPool.hpp"
 #include "starlight/core/device/managers/GraphicsContainer.hpp"
 #include "starlight/job/TaskManager.hpp"
-#include "starlight/policy/command/ListenForCreateShader.hpp"
+#include "starlight/policy/command/ListenForCreatePipeline.hpp"
 #include "starlight/service/InitParameters.hpp"
 
 namespace star::service
 {
-class ShaderService
+class PipelineCommandService
 {
   public:
-    ShaderService();
-    ShaderService(const ShaderService &) = delete;
-    ShaderService &operator=(const ShaderService &) = delete;
-    ShaderService(ShaderService &&other);
-    ShaderService &operator=(ShaderService &&other);
-    ~ShaderService() = default;
+    PipelineCommandService();
+    PipelineCommandService(const PipelineCommandService &) = delete;
+    PipelineCommandService &operator=(const PipelineCommandService &) = delete;
+    PipelineCommandService(PipelineCommandService &&other);
+    PipelineCommandService &operator=(PipelineCommandService &&other);
+    ~PipelineCommandService() = default;
 
     void init();
 
@@ -24,14 +24,14 @@ class ShaderService
 
     void setInitParameters(InitParameters &params);
 
-    void onCreateShader(star::command::shader::CreateShader &cmd);
+    void onCreatePipeline(star::command::pipeline::CreatePipeline &cmd);
 
     void negotiateWorkers(core::WorkerPool &pool, job::TaskManager &tm)
     {
     }
 
   private:
-    policy::command::ListenForCreateShader<ShaderService> m_listenForCreateShader;
+    policy::command::ListenForCreatePipeline<PipelineCommandService> m_listenForCreatePipeline;
     core::device::manager::GraphicsContainer *m_graphicsManagers = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
 

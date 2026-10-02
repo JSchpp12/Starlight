@@ -2,12 +2,26 @@
 
 #include "FileHelpers.hpp"
 #include "ManagerRenderResource.hpp"
+#include "SharedCompressedTexture.hpp"
 #include "StarShaderInfo.hpp"
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "TransferRequest_TextureFile.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 
 #include <cassert>
+#include <memory>
+
+star::TextureMaterial::TextureMaterial(std::string texturePath,
+                                       std::unique_ptr<SharedCompressedTexture> preTranscodedTexture)
+    : m_texturePath(std::move(texturePath)), m_preTranscodedTexture(std::move(preTranscodedTexture))
+{
+    if (!file_helpers::FileExists(m_texturePath))
+    {
+        STAR_THROW("Provided texture path for material does not exist: " + m_texturePath);
+    }
+}
+
+star::TextureMaterial::~TextureMaterial() = default;
 
 star::TextureMaterial::TextureMaterial(std::string texturePath, const glm::vec4 &surfaceColor,
                                        const glm::vec4 &highlightColor, const glm::vec4 &ambient,
@@ -49,13 +63,18 @@ void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
     auto texture = std::unique_ptr<TransferRequest::Texture>();
     if (TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_texturePath))
     {
-        texture = std::make_unique<TransferRequest::CompressedTextureFile>(
-            std::move(graphicsIndex), std::move(deviceProperties),
-            std::make_unique<SharedCompressedTexture>(
+        std::unique_ptr<SharedCompressedTexture> compressed = std::move(m_preTranscodedTexture);
+        if (!compressed)
+        {
+            compressed = std::make_unique<SharedCompressedTexture>(
                 SharedCompressedTexture::Builder()
                     .setPath(m_texturePath)
                     .setAttemptGPUCompressionScheme(context.getDevice().getPhysicalDevice())
-                    .build()));
+                    .build());
+        }
+
+        texture = std::make_unique<TransferRequest::CompressedTextureFile>(
+            std::move(graphicsIndex), std::move(deviceProperties), std::move(compressed));
     }
     else
     {
