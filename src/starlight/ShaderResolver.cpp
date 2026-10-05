@@ -1,6 +1,6 @@
 #include "starlight/ShaderResolver.hpp"
 
-#include "starlight/command/shader/LoadShader.hpp"
+#include "starlight/command/shader/CreateShader.hpp"
 
 #include <cassert>
 
@@ -15,13 +15,14 @@ Handle ShaderResolver::resolve(Shader_Stage stage) const
 ShaderResolver ShaderResolver::Builder::build()
 {
     absl::flat_hash_map<Shader_Stage, Handle> handles;
-    for (auto &[stage, path] : m_paths)
+    for (const auto &[stage, path] : m_paths)
     {
-        command::shader::LoadShader cmd;
-        cmd.setPath(path).setStage(stage);
+        command::shader::CreateShader cmd;
+        cmd.setStage(stage).setPath(std::filesystem::path(path));
         m_bus.submit(cmd);
         handles[stage] = cmd.getReply().get();
     }
+
     return ShaderResolver(std::move(handles));
 }
 } // namespace star

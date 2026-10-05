@@ -1,5 +1,7 @@
 #include "starlight/object/StarObject.hpp"
 
+#include "starlight/command/pipeline/CreatePipeline.hpp"
+
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
@@ -157,8 +159,35 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
                                              vk::PipelineLayout pipelineLayout,
                                              const core::renderer::RenderingTargetInfo &renderInfo)
 {
-    return context.getPipelineManager().submit(
-        core::device::manager::PipelineRequest(getPipelineProvider(pipelineLayout), swapChainExtent, renderInfo));
+    PipelineProvider provider = getPipelineProvider(pipelineLayout);
+
+    command::pipeline::CreatePipeline cmd;
+
+    if (provider.getType() == PipelineType::Compute)
+    {
+        cmd.setComputePipeline().setPipelineLayout(provider.getLayout());
+
+        for (const auto &shader : provider.getShaders())
+        {
+            cmd.addShaderHandle(shader);
+        }
+    }
+    else
+    {
+        cmd.setGraphicsPipeline()
+            .setPipelineLayout(provider.getLayout())
+            .setSwapChainExtent(swapChainExtent)
+            .setRenderingTargetInfo(renderInfo)
+            .setGraphicsOverrides(provider.getGraphicsOverrides());
+
+        for (const auto &shader : provider.getShaders())
+        {
+            cmd.addShaderHandle(shader);
+        }
+    }
+
+    context.getCmdBus().submit(cmd);
+    return cmd.getReply().get();
 }
 
 star::PipelineProvider star::StarObject::getPipelineProvider(vk::PipelineLayout pipelineLayout)

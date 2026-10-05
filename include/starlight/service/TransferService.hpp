@@ -18,7 +18,6 @@
 
 #include <absl/container/flat_hash_map.h>
 
-#include <array>
 #include <sstream>
 #include <vector>
 
@@ -32,7 +31,6 @@ using ListenForSubmitTransferTask =
 class TransferService
 {
   public:
-    static constexpr size_t MAX_QUEUES = 5;
     TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues,
                     size_t targetNumQueuesToUse = 1);
     TransferService(absl::flat_hash_map<star::Queue_Type, Handle> engineReservedQueues, TransferServiceConfig config,
@@ -54,7 +52,7 @@ class TransferService
     void onSubmitTransfer(star::command::transfer::SubmitTransferTask &cmd);
 
   private:
-    std::array<StarSemaphore, MAX_QUEUES + 1> m_workerSemaphores;
+    std::vector<StarSemaphore> m_workerSemaphores;
     std::vector<uint32_t> m_workerQueueFamilyIndices;
     size_t m_numStandardTransferWorkers = 0;
     size_t m_nextStandardWorker{0};
@@ -157,9 +155,6 @@ class TransferService
                     "TransferWorker"}};
                 m_taskManager->registerWorker(std::move(transferWorker), job::tasks::transfer::TransferTaskName);
             }
-
-            if (i == MAX_QUEUES - 1)
-                break;
         }
 
         if (m_taskManager->getNumOfWorkersForType(
@@ -171,6 +166,13 @@ class TransferService
         const size_t total = m_taskManager->getNumOfWorkersForType(transferWorkerHandle(0));
         m_numStandardTransferWorkers = total > 1 ? total - 1 : 1;
         m_nextStandardWorker = 0;
+
+        {
+            std::ostringstream countOss;
+            countOss << "Created " << total << " transfer worker(s): 1 high-priority + " << (total > 1 ? total - 1 : 0)
+                     << " standard";
+            core::logging::log(boost::log::trivial::info, countOss.str());
+        }
     }
 
     template <size_t THighSize, size_t TStandardSize> void dispatchCreateWorkers()
@@ -188,6 +190,6 @@ class TransferService
 
     Handle transferWorkerHandle(uint16_t workerIndex) const noexcept;
 
-    void initSemaphores() noexcept;
+    void initSemaphores();
 };
 } // namespace star::service

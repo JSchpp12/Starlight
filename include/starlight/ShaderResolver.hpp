@@ -34,12 +34,13 @@ class ShaderResolver
 
     ShaderResolver() = default;
 
-    Handle resolve(Shader_Stage stage) const;
-
-  private:
     explicit ShaderResolver(absl::flat_hash_map<Shader_Stage, Handle> handles) : m_handles(std::move(handles))
     {
     }
+
+    Handle resolve(Shader_Stage stage) const;
+
+  private:
     absl::flat_hash_map<Shader_Stage, Handle> m_handles;
 };
 

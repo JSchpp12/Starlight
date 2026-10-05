@@ -5,6 +5,7 @@
 #include "starlight/service/FrameInFlightControllerService.hpp"
 #include "starlight/service/HeadlessRenderResultWriteService.hpp"
 #include "starlight/service/IOService.hpp"
+#include "starlight/service/PipelineCommandService.hpp"
 #include "starlight/service/SceneLoaderService.hpp"
 #include "starlight/service/ScreenCapture.hpp"
 #include "starlight/service/ShaderService.hpp"
@@ -57,14 +58,16 @@ common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFli
 
 std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalDeviceServices()
 {
-    std::vector<service::Service> services = std::vector<service::Service>(7);
-    services[0] = createFrameInFlightControllerService();
-    services[1] = createIOService();
-    services[2] = createCommandOrderService();
-    services[3] = createScreenCaptureService();
-    services[4] = createHeadlessCaptureService();
-    services[5] = createSceneLoaderService();
-    services[6] = createShaderService();
+    std::vector<service::Service> services;
+    services.reserve(8);
+    services.push_back(createFrameInFlightControllerService());
+    services.push_back(createIOService());
+    services.push_back(createCommandOrderService());
+    services.push_back(createScreenCaptureService());
+    services.push_back(createHeadlessCaptureService());
+    services.push_back(createSceneLoaderService());
+    services.push_back(createShaderService());
+    services.push_back(createPipelineCommandService());
 
     {
         auto addServices = addAdditionalServices();
@@ -124,6 +127,11 @@ service::Service DefaultEngineInitPolicy::createCommandOrderService()
 service::Service DefaultEngineInitPolicy::createShaderService()
 {
     return service::Service{service::ShaderService()};
+}
+
+service::Service DefaultEngineInitPolicy::createPipelineCommandService()
+{
+    return service::Service{service::PipelineCommandService()};
 }
 
 core::RenderingInstance DefaultEngineInitPolicy::createRenderingInstance(std::string appName)

@@ -26,7 +26,8 @@ TransferService::TransferService(absl::flat_hash_map<star::Queue_Type, Handle> e
 }
 
 TransferService::TransferService(TransferService &&other) noexcept
-    : m_workerSemaphores(), m_workerQueueFamilyIndices(std::move(other.m_workerQueueFamilyIndices)),
+    : m_workerSemaphores(std::move(other.m_workerSemaphores)),
+      m_workerQueueFamilyIndices(std::move(other.m_workerQueueFamilyIndices)),
       m_numStandardTransferWorkers(std::move(other.m_numStandardTransferWorkers)),
       m_nextStandardWorker(std::move(other.m_nextStandardWorker)),
       m_engineReservedQueues(std::move(other.m_engineReservedQueues)),
@@ -35,8 +36,6 @@ TransferService::TransferService(TransferService &&other) noexcept
       m_graphicsManagers(other.m_graphicsManagers), m_eventBus(other.m_eventBus), m_cmdBus(std::move(other.m_cmdBus)),
       m_taskManager(other.m_taskManager), m_workerPool(other.m_workerPool)
 {
-    std::move(std::begin(other.m_workerSemaphores), std::end(other.m_workerSemaphores), std::begin(m_workerSemaphores));
-
     if (m_cmdBus != nullptr)
     {
         other.cleanupListeners(*m_cmdBus);
@@ -48,8 +47,7 @@ TransferService &TransferService::operator=(TransferService &&other) noexcept
 {
     if (this != &other)
     {
-        std::move(std::begin(other.m_workerSemaphores), std::end(other.m_workerSemaphores),
-                  std::begin(m_workerSemaphores));
+        m_workerSemaphores = std::move(other.m_workerSemaphores);
 
         m_workerQueueFamilyIndices = std::move(other.m_workerQueueFamilyIndices);
         m_numStandardTransferWorkers = std::move(other.m_numStandardTransferWorkers);
@@ -261,8 +259,13 @@ Handle TransferService::transferWorkerHandle(uint16_t workerIndex) const noexcep
         .id = workerIndex};
 }
 
-void TransferService::initSemaphores() noexcept
+void TransferService::initSemaphores()
 {
+    // One semaphore per worker plus one: worker 0 uses [0] for standard and [1] for
+    // high-priority submissions; worker N uses [N + 1] (see applySync in onSubmitTransfer).
+    const size_t numWorkers = m_taskManager->getNumOfWorkersForType(transferWorkerHandle(0));
+    m_workerSemaphores.resize(numWorkers + 1);
+
     for (size_t i{0}; i < m_workerSemaphores.size(); i++)
     {
         const auto nS =
