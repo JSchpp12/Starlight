@@ -30,8 +30,8 @@ class EngineServices
     /// @param service New service
     void addFirst(Service service);
 
-    /// Hand ownership of all contained services to the caller.
-    /// May only be called once; a second call throws.
+    /// @brief Hand ownership of all contained services to the caller. May only be called once; a second call throws.
+    /// @return
     std::vector<Service> takeAll();
 
     size_t size() const;

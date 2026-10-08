@@ -639,8 +639,9 @@ target_include_directories(${STARLIGHT_NAME}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/materials>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/textures>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/helpers>
-        # --- Install interface    # --- Install interface (install-tree paths) ---
+        # --- Install interface (install-tree paths) ---
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${libshaderc_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${glm_SOURCE_DIR}>
         $<BUILD_INTERFACE:${Stb_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -714,6 +715,12 @@ install(TARGETS ${STARLIGHT_NAME} shaderc_combined
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FILES_MATCHING PATTERN "*.h" PATTERN)
+
+# shaderc/shaderc.hpp is referenced by public starlight headers (Compiler.hpp);
+# ship the vendored headers so install-tree consumers can resolve the include.
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extern/shaderc/libshaderc/include/shaderc
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/shaderc
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
 include(CMakePackageConfigHelpers)
 
