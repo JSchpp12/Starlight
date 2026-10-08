@@ -307,13 +307,7 @@ void star::core::device::DeviceContext::initServices(core::WorkerPool &pool, std
                                    *m_renderResourceManager,
                                    frameSetup};
 
-    // init services 0, 1 and 2: TaskSchedulerService, QueueOwnershipService then TransferService
-    m_services[0].init(pool, params);
-    m_services[1].init(pool, params);
-    m_services[2].init(pool, params);
-
-    // init the rest after the transfer queues are created
-    for (size_t i{3}; i < m_services.size(); i++)
+    for (size_t i{0}; i < m_services.size(); i++)
     {
         m_services[i].init(pool, params);
     }

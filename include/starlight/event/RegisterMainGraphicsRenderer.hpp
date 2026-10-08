@@ -4,6 +4,7 @@
 
 #include <star_common/IEvent.hpp>
 #include <string_view>
+
 namespace star::event
 {
 namespace register_main_graphics_renderer

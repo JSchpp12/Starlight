@@ -1,17 +1,6 @@
 #include "starlight/policy/DefaultEngineInitPolicy.hpp"
 
 #include "starlight/common/ConfigFile.hpp"
-#include "starlight/service/CommandOrderService.hpp"
-#include "starlight/service/FrameInFlightControllerService.hpp"
-#include "starlight/service/HeadlessRenderResultWriteService.hpp"
-#include "starlight/service/IOService.hpp"
-#include "starlight/service/PipelineCommandService.hpp"
-#include "starlight/service/SceneLoaderService.hpp"
-#include "starlight/service/ScreenCapture.hpp"
-#include "starlight/service/ShaderService.hpp"
-#include "starlight/service/detail/screen_capture/CopyDirectorPolicy.hpp"
-#include "starlight/service/detail/screen_capture/CreateDependenciesPolicies.hpp"
-#include "starlight/service/detail/screen_capture/WorkerControllerPolicies.hpp"
 
 #include <string>
 
@@ -36,7 +25,9 @@ star::core::device::StarDevice star::policy::DefaultEngineInitPolicy::createNewD
                        .addRequiredDeviceRequirements(startupDeviceRequirements);
 
     const int overridenEngineID =
-        star::ConfigFile::getInt(star::Config_Settings::required_device_feature_gpu_index, -1);
+        m_overrideRenderingDeviceIndex.has_value()
+            ? m_overrideRenderingDeviceIndex.value()
+            : star::ConfigFile::getInt(star::Config_Settings::required_device_feature_gpu_index, -1);
     if (overridenEngineID != -1)
         builder.setOverrideDeviceID(overridenEngineID);
 
@@ -58,80 +49,7 @@ common::FrameTracker::Setup star::policy::DefaultEngineInitPolicy::getFrameInFli
 
 std::vector<service::Service> star::policy::DefaultEngineInitPolicy::getAdditionalDeviceServices()
 {
-    std::vector<service::Service> services;
-    services.reserve(8);
-    services.push_back(createFrameInFlightControllerService());
-    services.push_back(createIOService());
-    services.push_back(createCommandOrderService());
-    services.push_back(createScreenCaptureService());
-    services.push_back(createHeadlessCaptureService());
-    services.push_back(createSceneLoaderService());
-    services.push_back(createShaderService());
-    services.push_back(createPipelineCommandService());
-
-    {
-        auto addServices = addAdditionalServices();
-        for (size_t i{0}; i < addServices.size(); i++)
-        {
-            services.emplace_back(std::move(addServices[i]));
-        }
-    }
-
-    if (m_addServiceLoader)
-    {
-        auto addServices = m_addServiceLoader();
-        for (size_t i{0}; i < addServices.size(); i++)
-        {
-            services.emplace_back(std::move(addServices[i]));
-        }
-    }
-
-    return services;
-}
-
-service::Service DefaultEngineInitPolicy::createScreenCaptureService()
-{
-    uint32_t maxWorkers = star::ConfigFile::getUint32(star::Config_Settings::max_image_worker_count, 2);
-
-    return service::Service{service::ScreenCapture{service::detail::screen_capture::WorkerControllerPolicy{},
-                                                   service::detail::screen_capture::DefaultCreatePolicy{},
-                                                   service::detail::screen_capture::DefaultCopyPolicy{}, maxWorkers}};
-}
-
-service::Service DefaultEngineInitPolicy::createIOService()
-{
-    return service::Service{service::IOService()};
-}
-
-service::Service DefaultEngineInitPolicy::createSceneLoaderService()
-{
-    return service::Service{
-        service::SceneLoaderService(star::ConfigFile::getString(star::Config_Settings::scene_file, "default_scene"))};
-}
-
-service::Service DefaultEngineInitPolicy::createFrameInFlightControllerService()
-{
-    return service::Service{service::FrameInFlightControllerService{}};
-}
-
-service::Service DefaultEngineInitPolicy::createHeadlessCaptureService()
-{
-    return service::Service{service::HeadlessRenderResultWriteService{}};
-}
-
-service::Service DefaultEngineInitPolicy::createCommandOrderService()
-{
-    return service::Service{service::CommandOrderService()};
-}
-
-service::Service DefaultEngineInitPolicy::createShaderService()
-{
-    return service::Service{service::ShaderService()};
-}
-
-service::Service DefaultEngineInitPolicy::createPipelineCommandService()
-{
-    return service::Service{service::PipelineCommandService()};
+    return m_engineServices.takeAll();
 }
 
 core::RenderingInstance DefaultEngineInitPolicy::createRenderingInstance(std::string appName)

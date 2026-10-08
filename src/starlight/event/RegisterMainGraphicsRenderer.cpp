@@ -5,8 +5,7 @@
 namespace star::event
 {
 RegisterMainGraphicsRenderer::RegisterMainGraphicsRenderer(core::renderer::RenderPhase *renderer)
-    : common::IEvent(common::HandleTypeRegistry::instance().registerType(GetUniqueTypeName())),
-      m_renderer(renderer)
+    : common::IEvent(common::HandleTypeRegistry::instance().registerType(GetUniqueTypeName())), m_renderer(renderer)
 {
 }
 } // namespace star::event
