@@ -1,6 +1,7 @@
 #include "service/detail/screen_capture/PerExtentResources.hpp"
 
 #include "StarTextures/Texture.hpp"
+#include "starlight/factory/TextureFactory.hpp"
 #include "wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
 
 #include <boost/functional/hash.hpp>
@@ -13,7 +14,7 @@ namespace star::service::detail::screen_capture
 static wrappers::graphics::policies::GenericBufferCreateAllocatePolicy CreateBufferPolicy(
     DeviceInfo *deviceInfo, const vk::Format &targetImageFormat, const vk::Extent2D &extent)
 {
-    const vk::DeviceSize size = StarTextures::Texture::CalculateSize(
+    const vk::DeviceSize size = StarTextures::TextureFactory::CalculateSize(
         targetImageFormat, vk::Extent3D().setHeight(extent.height).setWidth(extent.width).setDepth(1), 1,
         vk::ImageType::e2D, 1);
     return wrappers::graphics::policies::GenericBufferCreateAllocatePolicy{

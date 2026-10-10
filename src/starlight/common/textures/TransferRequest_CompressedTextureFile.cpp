@@ -8,6 +8,7 @@
 
 #include <assert.h>
 
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 
@@ -47,8 +48,8 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         std::ostringstream oss;
         oss << "Compressed texture ready for upload: " << compressedTexture->getPathToFile() << " ("
             << texture->baseWidth << "x" << texture->baseHeight << ", " << texture->numLevels << " mips, "
-            << vk::to_string(static_cast<vk::Format>(texture->vkFormat)) << ", " << std::fixed
-            << std::setprecision(1) << (texture->dataSize / (1024.0 * 1024.0)) << " MB)";
+            << vk::to_string(static_cast<vk::Format>(texture->vkFormat)) << ", " << std::fixed << std::setprecision(1)
+            << (texture->dataSize / (1024.0 * 1024.0)) << " MB)";
         core::logging::debug(oss.str());
     }
 
@@ -93,6 +94,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
                 .setSharingMode(vk::SharingMode::eConcurrent),
             "compresesd_texture")
         .setBaseFormat(static_cast<vk::Format>(texture->vkFormat))
+        .setMipmapLevels(texture->numLevels)
         .addViewInfo(vk::ImageViewCreateInfo()
                          .setViewType(vk::ImageViewType::e2D)
                          .setFormat(static_cast<vk::Format>(texture->vkFormat))
@@ -165,24 +167,10 @@ void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(Star
             STAR_THROW("Failed to get image offset into compressed texture");
         }
 
-        const uint32_t width{texture->baseWidth >> i};
-        const uint32_t height{texture->baseHeight >> i};
-
-        if (width == 0)
-        {
-            const std::string msg = "Invalid layout when handling mip level: " + std::to_string(i) +
-                                    "Transcoded compressed texture has a width which is 0" +
-                                    compressedTexture->getPathToFile();
-            star::core::logging::warning(msg);
-        }
-
-        if (height == 0)
-        {
-            const std::string msg = "Invalid layout when handling mip level: " + std::to_string(i) +
-                                    "Transcoded compressed texture has a height which is 0" +
-                                    compressedTexture->getPathToFile();
-            star::core::logging::warning(msg);
-        }
+        // Non-square textures reach the end of the smaller dimension's mip
+        // chain before the larger one, so clamp each level to at least 1.
+        const uint32_t width{std::max(1u, texture->baseWidth >> i)};
+        const uint32_t height{std::max(1u, texture->baseHeight >> i)};
 
         vk::BufferImageCopy copyRegion{};
         copyRegion.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;

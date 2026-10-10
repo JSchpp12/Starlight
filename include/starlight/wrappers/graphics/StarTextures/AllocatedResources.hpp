@@ -11,14 +11,14 @@ class AllocatedResources : public Resources
     VmaAllocation allocationMemory = VmaAllocation();
 
     AllocatedResources(const vk::Image &image, const VmaAllocation &allocationMemory, VmaAllocator allocator)
-        : Resources(image), allocationMemory(allocationMemory), m_allocator(std::move(allocator)){};
-    AllocatedResources(const vk::Image &image, const std::unordered_map<vk::Format, vk::ImageView> &views,
-                       const VmaAllocation &allocationMemory, VmaAllocator allocator)
+        : Resources(image), allocationMemory(allocationMemory), m_allocator(std::move(allocator)) {};
+    AllocatedResources(const vk::Image &image, const TextureView &views, const VmaAllocation &allocationMemory,
+                       VmaAllocator allocator)
         : Resources(image, views), allocationMemory(allocationMemory), m_allocator(std::move(allocator))
     {
     }
-    AllocatedResources(const vk::Image &image, const std::unordered_map<vk::Format, vk::ImageView> &views,
-                       const vk::Sampler &sampler, const VmaAllocation &allocationMemory, VmaAllocator allocator)
+    AllocatedResources(const vk::Image &image, const TextureView &views, const vk::Sampler &sampler,
+                       const VmaAllocation &allocationMemory, VmaAllocator allocator)
         : Resources(image, views, sampler), allocationMemory(allocationMemory), m_allocator(allocator)
     {
     }

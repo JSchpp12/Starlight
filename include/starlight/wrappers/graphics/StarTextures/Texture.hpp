@@ -2,14 +2,21 @@
 
 #include "FormatInfo.hpp"
 #include "StarTextures/Resources.hpp"
+#include "StarTextures/TextureView.hpp"
 #include "device/StarDevice.hpp"
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 
+#include <memory>
 #include <optional>
 #include <unordered_map>
 #include <vector>
+
+namespace star::command::texture
+{
+struct MakeTexture;
+} // namespace star::command::texture
 
 namespace star::StarTextures
 {
@@ -37,12 +44,19 @@ class Texture
         std::string allocationName = "Default Texture Name";
     };
 
+    /// Compatibility facade over command::texture::MakeTexture.
     class Builder
     {
       public:
         Builder(core::device::StarDevice &device, const vk::Image &vulkanImage);
 
-        Builder(core::device::StarDevice &device);
+        explicit Builder(core::device::StarDevice &device);
+
+        Builder(const Builder &other);
+        Builder &operator=(const Builder &other);
+        Builder(Builder &&) noexcept;
+        Builder &operator=(Builder &&) noexcept;
+        ~Builder();
 
         Builder &setCreateInfo(VmaAllocationCreateInfo nAllocInfo, vk::ImageCreateInfo nCreateInfo,
                                std::string nAllocationName);
@@ -53,6 +67,8 @@ class Texture
 
         Builder &setBaseFormat(const vk::Format &nFormat);
 
+        Builder &setMipmapLevels(uint32_t nLevels);
+
         Builder &setSizeInfo(vk::DeviceSize size, vk::Extent3D resolution);
 
         std::unique_ptr<Texture> buildUnique();
@@ -62,33 +78,12 @@ class Texture
         Texture build();
 
       private:
-        core::device::StarDevice &device;
-        std::optional<vk::Format> format = std::nullopt;
-        std::optional<Creators> createNewAllocationInfo = std::nullopt;
-        std::optional<vk::Image> vulkanImage = std::nullopt;
-
-        std::vector<vk::ImageViewCreateInfo> viewInfos = std::vector<vk::ImageViewCreateInfo>();
-        std::optional<vk::SamplerCreateInfo> samplerInfo = std::nullopt;
-        std::optional<vk::DeviceSize> overrideSize = std::nullopt;
-        std::optional<vk::Extent3D> overrideResolution = std::nullopt;
+        std::unique_ptr<command::texture::MakeTexture> m_makeTexture;
     };
 
     Texture() = default;
-    Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-            const vk::Format &baseFormat, const vk::Extent3D &baseExtent, vk::DeviceSize size);
-
-    Texture(vk::Device &device, vk::Image &vulkanImage, const std::vector<vk::ImageViewCreateInfo> &imageViewInfos,
-            const vk::Format &baseFormat, const vk::SamplerCreateInfo &samplerInfo, const vk::Extent3D &baseExtent,
-            vk::DeviceSize size);
-
-    Texture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
-            const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
-            const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat);
-
-    Texture(vk::Device &device, VmaAllocator &allocator, const vk::ImageCreateInfo &createInfo,
-            const std::string &allocationName, const VmaAllocationCreateInfo &allocationCreateInfo,
-            const std::vector<vk::ImageViewCreateInfo> &imageViewInfos, const vk::Format &baseFormat,
-            const vk::SamplerCreateInfo &samplerInfo);
+    Texture(std::shared_ptr<Resources> memoryResources, const vk::Format &baseFormat, uint32_t mipmapLevels,
+            const vk::Extent3D &baseExtent, vk::DeviceSize size);
     virtual ~Texture() = default;
 
     vk::ImageLayout &getImageLayout()
@@ -141,56 +136,11 @@ class Texture
         return size;
     }
 
-    static vk::DeviceSize CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
-                                        const uint32_t &arrayLayers, const vk::ImageType &imageType,
-                                        const uint32_t &mipmapLevels);
-
   protected:
     std::shared_ptr<Resources> memoryResources = std::shared_ptr<Resources>();
     vk::Format baseFormat;
     uint32_t mipmapLevels = 0;
     vk::Extent3D baseExtent = {0, 0, 0};
     vk::DeviceSize size = 0;
-
-    static vk::Extent3D GetLevelExtent(const vk::Extent3D &baseExtent, const uint32_t &level);
-
-    static uint32_t CeilDiv(const uint32_t &width, const uint32_t &height);
-
-    static std::shared_ptr<StarTextures::Resources> CreateResource(vk::Device &device, const vk::Format &baseFormat,
-                                                                   VmaAllocator &allocator,
-                                                                   const VmaAllocationCreateInfo &allocationCreateInfo,
-                                                                   const vk::ImageCreateInfo &imageCreateInfo,
-                                                                   const std::string &allocationName);
-
-    static std::shared_ptr<StarTextures::Resources> CreateResource(
-        vk::Device &device, const vk::Format &baseFormat, VmaAllocator &allocator,
-        const VmaAllocationCreateInfo &allocationCreateInfo, const vk::ImageCreateInfo &imageCreateInfo,
-        const std::string &allocationName, const std::vector<vk::ImageViewCreateInfo> &imageViewCreateInfos);
-
-    static std::shared_ptr<StarTextures::Resources> CreateResource(
-        vk::Device &device, const vk::Format &baseFormat, VmaAllocator &allocator,
-        const VmaAllocationCreateInfo &allocationCreateInfo, const vk::ImageCreateInfo &imageCreateInfo,
-        const std::string &allocationName, const std::vector<vk::ImageViewCreateInfo> &imageViewCreateInfos,
-        const vk::SamplerCreateInfo &samplerCreateInfo);
-
-    static vk::Sampler CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo);
-
-    static void CreateAllocation(vk::Device &device, const vk::Format &baseFormat, VmaAllocator &allocator,
-                                 const VmaAllocationCreateInfo &allocationCreateInfo,
-                                 const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
-                                 vk::Image &textureImage, const std::string &allocationName);
-
-    static vk::ImageView CreateImageView(vk::Device &device, const vk::ImageViewCreateInfo &imageViewCreateInfo);
-
-    static uint32_t ExtractMipmapLevels(const std::vector<vk::ImageViewCreateInfo> &imageViewInfo);
-
-    static std::unordered_map<vk::Format, vk::ImageView> CreateImageViews(
-        vk::Device &device, vk::Image vulkanImage, std::vector<vk::ImageViewCreateInfo> imageViewCreateInfo);
-
-    static void VerifyImageCreateInfo(const vk::ImageCreateInfo &createInfo);
-
-    static void LogImageCreateFailure(const vk::Result &result);
-
-    friend class Builder;
 };
 } // namespace star::StarTextures
