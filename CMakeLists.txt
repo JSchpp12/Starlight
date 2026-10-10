@@ -716,10 +716,9 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FILES_MATCHING PATTERN "*.h" PATTERN)
 
-# shaderc/shaderc.hpp is referenced by public starlight headers (Compiler.hpp);
 # ship the vendored headers so install-tree consumers can resolve the include.
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extern/shaderc/libshaderc/include/shaderc
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/shaderc
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extern/shaderc/libshaderc/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
 include(CMakePackageConfigHelpers)
