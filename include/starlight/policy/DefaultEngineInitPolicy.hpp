@@ -2,13 +2,13 @@
 
 #include "starlight/core/Exceptions.hpp"
 #include "starlight/core/device/IStartupDeviceRequirementsProvider.hpp"
-#include "starlight/service/Service.hpp"
+#include "starlight/service/EngineServices.hpp"
 
 #include <star_common/FrameTracker.hpp>
 #include <vulkan/vulkan.hpp>
 
-#include <functional>
 #include <memory>
+#include <optional>
 #include <set>
 #include <utility>
 
@@ -18,18 +18,15 @@ namespace star::policy
 class DefaultEngineInitPolicy
 {
   public:
-    using LoadAdditionalServices = std::function<std::vector<service::Service>()>;
     using StartupDeviceRequirementsProvider = core::device::IStartupDeviceRequirementsProvider;
 
-    DefaultEngineInitPolicy() = default;
-    explicit DefaultEngineInitPolicy(LoadAdditionalServices addServiceLoader)
-        : m_addServiceLoader(std::move(addServiceLoader)) {};
-    explicit DefaultEngineInitPolicy(std::unique_ptr<StartupDeviceRequirementsProvider> startupDeviceRequirements)
-        : m_startupDeviceRequirements(std::move(startupDeviceRequirements)) {};
-    DefaultEngineInitPolicy(LoadAdditionalServices addServiceLoader,
-                            std::unique_ptr<StartupDeviceRequirementsProvider> startupDeviceRequirements)
-        : m_addServiceLoader(std::move(addServiceLoader)),
-          m_startupDeviceRequirements(std::move(startupDeviceRequirements)) {};
+    DefaultEngineInitPolicy(service::EngineServices &engineServices,
+                            std::unique_ptr<StartupDeviceRequirementsProvider> startupDeviceRequirements = {},
+                            std::optional<int> overrideRenderingDeviceIndex = std::nullopt)
+        : m_engineServices(engineServices), m_startupDeviceRequirements(std::move(startupDeviceRequirements)),
+          m_overrideRenderingDeviceIndex(overrideRenderingDeviceIndex)
+    {
+    }
 
     DefaultEngineInitPolicy(const DefaultEngineInitPolicy &) = delete;
     DefaultEngineInitPolicy &operator=(const DefaultEngineInitPolicy &) = delete;
@@ -51,28 +48,7 @@ class DefaultEngineInitPolicy
 
     core::RenderingInstance createRenderingInstance(std::string appName);
 
-    static service::Service createScreenCaptureService();
-
-    static service::Service createIOService();
-
-    static service::Service createFrameInFlightControllerService();
-
-    static service::Service createHeadlessCaptureService();
-
-    static service::Service createSceneLoaderService();
-
-    static service::Service createCommandOrderService();
-
-    static service::Service createShaderService();
-
-    static service::Service createPipelineCommandService();
-
   protected:
-    virtual std::vector<service::Service> addAdditionalServices()
-    {
-        return {};
-    };
-
     /// Consume the startup requirements provider. The provider is released as part of this call.
     core::device::DeviceRequirements consumeStartupDeviceRequirements()
     {
@@ -87,8 +63,9 @@ class DefaultEngineInitPolicy
     }
 
   private:
-    LoadAdditionalServices m_addServiceLoader;
+    service::EngineServices &m_engineServices;
     std::unique_ptr<StartupDeviceRequirementsProvider> m_startupDeviceRequirements;
+    std::optional<int> m_overrideRenderingDeviceIndex{std::nullopt};
     bool m_startupRequirementsConsumed{false};
     uint8_t m_maxNumFramesInFlight{1};
 };

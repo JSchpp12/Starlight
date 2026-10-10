@@ -11,11 +11,20 @@ namespace star::job::tasks::compile_shader
 {
 constexpr std::string_view CompileShaderTypeName = "star::job::tasks::compile_shader";
 
+/// Whether debug info is generated for compiled shaders by default. Derived
+/// from NDEBUG so debug builds opt in and release builds opt out.
+#ifdef NDEBUG
+constexpr bool defaultCompileDebug = false;
+#else
+constexpr bool defaultCompileDebug = true;
+#endif
+
 struct CompileShaderPayload
 {
     std::string path;
     star::Shader_Stage stage;
     uint32_t handleID;
+    bool compileDebug = defaultCompileDebug;
     std::unique_ptr<Compiler> compiler = nullptr;
     std::unique_ptr<StarShader> finalizedShaderObject = nullptr;
     std::shared_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
@@ -28,6 +37,6 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p);
 void Execute(void *p);
 
 CompileShaderTask Create(const std::string &fileName, const star::Shader_Stage &stage, const Handle &shaderHandle,
-                         Compiler compiler);
+                         Compiler compiler, bool compileDebug = defaultCompileDebug);
 
 } // namespace star::job::tasks::compile_shader

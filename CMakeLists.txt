@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.3.0
+    VERSION 1.3.1
 )
 
 include(CheckIncludeFile)
@@ -199,6 +199,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/service/HeadlessRenderResultWriteService.cpp"
     "src/starlight/service/IOService.cpp"
     "src/starlight/service/CommandOrderService.cpp"
+    "src/starlight/service/EngineServices.cpp"
+    "src/starlight/service/EngineServicesFactory.cpp"
     "src/starlight/service/TaskSchedulerService.cpp"
     "src/starlight/service/ShaderService.cpp"
     "src/starlight/service/TransferService.cpp"
@@ -455,6 +457,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/service/HeadlessRenderResultWriteService.hpp"
     "include/starlight/service/IOService.hpp"
     "include/starlight/service/CommandOrderService.hpp"
+    "include/starlight/service/EngineServices.hpp"
+    "include/starlight/service/EngineServicesFactory.hpp"
     "include/starlight/service/TaskSchedulerService.hpp"
     "include/starlight/service/ShaderService.hpp"
     "include/starlight/service/TransferService.hpp"
@@ -635,8 +639,9 @@ target_include_directories(${STARLIGHT_NAME}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/materials>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/textures>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/starlight/common/helpers>
-        # --- Install interface    # --- Install interface (install-tree paths) ---
+        # --- Install interface (install-tree paths) ---
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${libshaderc_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${glm_SOURCE_DIR}>
         $<BUILD_INTERFACE:${Stb_INCLUDE_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -710,6 +715,11 @@ install(TARGETS ${STARLIGHT_NAME} shaderc_combined
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FILES_MATCHING PATTERN "*.h" PATTERN)
+
+# ship the vendored headers so install-tree consumers can resolve the include.
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extern/shaderc/libshaderc/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 
 include(CMakePackageConfigHelpers)
 

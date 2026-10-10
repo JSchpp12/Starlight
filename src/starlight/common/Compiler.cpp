@@ -7,16 +7,10 @@
 namespace star
 {
 
-#ifdef NDEBUG
-bool Compiler::compileDebug = false;
-#else
-bool Compiler::compileDebug = true;
-#endif
-
-std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool optimize)
+std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool optimize, bool compileDebug)
 {
     shaderc::Compiler shaderCompiler;
-    shaderc::CompileOptions compilerOptions = getCompileOptions(pathToFile);
+    shaderc::CompileOptions compilerOptions = getCompileOptions(pathToFile, compileDebug);
 
     auto stageC = getShaderCStageFlag(pathToFile);
     auto name = file_helpers::GetFullPath(pathToFile);
@@ -80,7 +74,7 @@ std::string Compiler::preprocessShader(shaderc::Compiler &compiler, shaderc::Com
     return {result.cbegin(), result.cend()};
 }
 
-shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath)
+shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath, bool compileDebug)
 {
     shaderc::CompileOptions options;
 
