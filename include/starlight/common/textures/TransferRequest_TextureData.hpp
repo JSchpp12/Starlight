@@ -106,6 +106,11 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
         }
     }
 
+    virtual std::string getDebugDescription() const override
+    {
+        return "generated texture data (" + std::to_string(m_width) + "x" + std::to_string(m_height) + ")";
+    }
+
     std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(core::device::StarDevice &device) const override
     {
         assert(m_height != 0 && m_width != 0 && "Height and width must be defined");

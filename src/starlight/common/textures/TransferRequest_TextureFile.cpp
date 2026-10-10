@@ -37,6 +37,11 @@ star::TransferRequest::TextureFile::TextureFile(uint32_t graphicsQueueFamilyInde
     }
 }
 
+std::string star::TransferRequest::TextureFile::getDebugDescription() const
+{
+    return m_imagePath;
+}
+
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::createStagingBuffer(
     core::device::StarDevice &device) const
 {

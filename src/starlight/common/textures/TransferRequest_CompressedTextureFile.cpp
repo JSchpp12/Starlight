@@ -8,6 +8,14 @@
 
 #include <assert.h>
 
+#include <iomanip>
+#include <sstream>
+
+std::string star::TransferRequest::CompressedTextureFile::getDebugDescription() const
+{
+    return compressedTexture->getPathToFile();
+}
+
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedTextureFile::createStagingBuffer(
     core::device::StarDevice &device) const
 {
@@ -32,20 +40,22 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedText
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTextureFile::createFinal(
     core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
-    {
-        const std::string msg = "Beginning compressed texture transcode" + compressedTexture->getPathToFile();
-        core::logging::debug(boost::log::trivial::info, msg);
-    }
-
     ktxTexture2 *texture = nullptr;
     this->compressedTexture->giveMeTranscodedImage(texture);
+
+    {
+        std::ostringstream oss;
+        oss << "Compressed texture ready for upload: " << compressedTexture->getPathToFile() << " ("
+            << texture->baseWidth << "x" << texture->baseHeight << ", " << texture->numLevels << " mips, "
+            << vk::to_string(static_cast<vk::Format>(texture->vkFormat)) << ", " << std::fixed
+            << std::setprecision(1) << (texture->dataSize / (1024.0 * 1024.0)) << " MB)";
+        core::logging::debug(oss.str());
+    }
 
     std::vector<uint32_t> indices = std::vector<uint32_t>{uint32_t(this->graphicsQueueFamilyIndex)};
     indices.reserve(transferQueueFamilyIndex.size() + 1);
     for (const auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
-
-    core::logging::debug(boost::log::trivial::info, "Done");
 
     if (texture->baseHeight == 0)
     {

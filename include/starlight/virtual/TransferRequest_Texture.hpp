@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <string>
+
 namespace star::TransferRequest
 {
 class Texture : private Memory<star::StarTextures::Texture>
@@ -14,6 +16,13 @@ class Texture : private Memory<star::StarTextures::Texture>
     virtual ~Texture() = default;
 
     virtual void prep() override {};
+
+    /// Human-readable identity of the texture being transferred. Used by the transfer workers for debug logging so each
+    /// record can be traced back to a specific texture. Requests without a source file can use the default.
+    virtual std::string getDebugDescription() const
+    {
+        return "unnamed texture";
+    }
 
     virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(
         core::device::StarDevice &device) const override = 0;
