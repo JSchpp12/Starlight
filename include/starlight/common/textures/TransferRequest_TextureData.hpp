@@ -2,6 +2,8 @@
 
 #include "TransferRequest_Texture.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/texture/MakeTexture.hpp"
+
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -148,36 +150,44 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
         uint32_t indexCount = 0;
         star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), indexCount);
 
-        return star::StarTextures::Texture::Builder(device)
-            .setCreateInfo(Allocator::AllocationBuilder()
-                               .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                               .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
-                               .build(),
-                           vk::ImageCreateInfo()
-                               .setExtent(vk::Extent3D().setWidth(m_width).setHeight(m_height).setDepth(1))
-                               .setUsage(vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst)
-                               .setImageType(vk::ImageType::e2D)
-                               .setMipLevels(1)
-                               .setArrayLayers(1)
-                               .setTiling(vk::ImageTiling::eOptimal)
-                               .setInitialLayout(vk::ImageLayout::eUndefined)
-                               .setSamples(vk::SampleCountFlagBits::e1)
-                               .setSharingMode(vk::SharingMode::eConcurrent)
-                               .setPQueueFamilyIndices(indices.data())
-                               .setQueueFamilyIndexCount(indexCount)
-                               .setFormat(baseFormat),
-                           "GeneratedTexture")
-            .setBaseFormat(baseFormat)
-            .addViewInfo(vk::ImageViewCreateInfo()
-                             .setViewType(vk::ImageViewType::e2D)
-                             .setFormat(baseFormat)
-                             .setSubresourceRange(vk::ImageSubresourceRange()
-                                                      .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                                      .setBaseArrayLayer(0)
-                                                      .setLayerCount(1)
-                                                      .setBaseMipLevel(0)
-                                                      .setLevelCount(1)))
-            .buildUnique();
+        star::StarTextures::Texture texture;
+        const auto makeResult =
+            star::maker::texture::MakeTexture(device)
+                .setCreateInfo(Allocator::AllocationBuilder()
+                                   .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                                   .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
+                                   .build(),
+                               vk::ImageCreateInfo()
+                                   .setExtent(vk::Extent3D().setWidth(m_width).setHeight(m_height).setDepth(1))
+                                   .setUsage(vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst)
+                                   .setImageType(vk::ImageType::e2D)
+                                   .setMipLevels(1)
+                                   .setArrayLayers(1)
+                                   .setTiling(vk::ImageTiling::eOptimal)
+                                   .setInitialLayout(vk::ImageLayout::eUndefined)
+                                   .setSamples(vk::SampleCountFlagBits::e1)
+                                   .setSharingMode(vk::SharingMode::eConcurrent)
+                                   .setPQueueFamilyIndices(indices.data())
+                                   .setQueueFamilyIndexCount(indexCount)
+                                   .setFormat(baseFormat),
+                               "GeneratedTexture")
+                .setBaseFormat(baseFormat)
+                .addViewInfo(vk::ImageViewCreateInfo()
+                                 .setViewType(vk::ImageViewType::e2D)
+                                 .setFormat(baseFormat)
+                                 .setSubresourceRange(vk::ImageSubresourceRange()
+                                                          .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                                          .setBaseArrayLayer(0)
+                                                          .setLayerCount(1)
+                                                          .setBaseMipLevel(0)
+                                                          .setLevelCount(1)))
+                .make(&texture, 1);
+        if (!makeResult)
+        {
+            STAR_THROW("Failed to create generated texture: " + makeResult.error().detail);
+        }
+
+        return std::make_unique<star::StarTextures::Texture>(std::move(texture));
     }
 
     virtual void copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer, star::StarTextures::Texture &dst,

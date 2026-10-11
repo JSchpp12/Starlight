@@ -30,7 +30,7 @@ void TextureFactory::CreateAllocation(vk::Device &device, const vk::Format &base
     {
         LogImageCreateFailure(result);
 
-        STAR_THROW("Failed to create image");
+        vk::detail::resultCheck(result, "Failed to create image via vmaCreateImage");
     }
 
 #ifndef NDEBUG
@@ -151,7 +151,7 @@ void TextureFactory::VerifyNewAllocation(core::device::StarDevice &device, const
         std::ostringstream oss;
         oss << "Hardware does not support creating image with format " << vk::to_string(baseFormat) << ", usage "
             << vk::to_string(effectiveInfo.usage) << ", tiling " << vk::to_string(effectiveInfo.tiling);
-        STAR_THROW(oss.str());
+        throw vk::FormatNotSupportedError(oss.str());
     }
 }
 

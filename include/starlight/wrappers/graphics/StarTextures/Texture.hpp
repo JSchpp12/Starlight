@@ -13,11 +13,6 @@
 #include <unordered_map>
 #include <vector>
 
-namespace star::command::texture
-{
-struct MakeTexture;
-} // namespace star::command::texture
-
 namespace star::StarTextures
 {
 class Texture
@@ -42,43 +37,6 @@ class Texture
         vk::ImageCreateInfo createInfo = vk::ImageCreateInfo();
         VmaAllocationCreateInfo allocationCreateInfo = VmaAllocationCreateInfo();
         std::string allocationName = "Default Texture Name";
-    };
-
-    /// Compatibility facade over command::texture::MakeTexture.
-    class Builder
-    {
-      public:
-        Builder(core::device::StarDevice &device, const vk::Image &vulkanImage);
-
-        explicit Builder(core::device::StarDevice &device);
-
-        Builder(const Builder &other);
-        Builder &operator=(const Builder &other);
-        Builder(Builder &&) noexcept;
-        Builder &operator=(Builder &&) noexcept;
-        ~Builder();
-
-        Builder &setCreateInfo(VmaAllocationCreateInfo nAllocInfo, vk::ImageCreateInfo nCreateInfo,
-                               std::string nAllocationName);
-
-        Builder &addViewInfo(const vk::ImageViewCreateInfo &nCreateInfo);
-
-        Builder &setSamplerInfo(const vk::SamplerCreateInfo &nCreateInfo);
-
-        Builder &setBaseFormat(const vk::Format &nFormat);
-
-        Builder &setMipmapLevels(uint32_t nLevels);
-
-        Builder &setSizeInfo(vk::DeviceSize size, vk::Extent3D resolution);
-
-        std::unique_ptr<Texture> buildUnique();
-
-        std::shared_ptr<Texture> buildShared();
-
-        Texture build();
-
-      private:
-        std::unique_ptr<command::texture::MakeTexture> m_makeTexture;
     };
 
     Texture() = default;

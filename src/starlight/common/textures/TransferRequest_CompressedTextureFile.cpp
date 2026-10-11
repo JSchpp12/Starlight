@@ -3,6 +3,8 @@
 #include "FileHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/texture/MakeTexture.hpp"
+
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -74,54 +76,62 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         STAR_THROW(msg);
     }
 
-    return StarTextures::Texture::Builder(device)
-        .setCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::ImageCreateInfo()
-                .setExtent(vk::Extent3D().setWidth(texture->baseWidth).setHeight(texture->baseHeight).setDepth(1))
-                .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
-                .setPQueueFamilyIndices(indices.data())
-                .setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
-                .setImageType(vk::ImageType::e2D)
-                .setMipLevels(texture->numLevels)
-                .setArrayLayers(1)
-                .setTiling(vk::ImageTiling::eOptimal)
-                .setInitialLayout(vk::ImageLayout::eUndefined)
-                .setSamples(vk::SampleCountFlagBits::e1)
-                .setSharingMode(vk::SharingMode::eConcurrent),
-            "compresesd_texture")
-        .setBaseFormat(static_cast<vk::Format>(texture->vkFormat))
-        .setMipmapLevels(texture->numLevels)
-        .addViewInfo(vk::ImageViewCreateInfo()
-                         .setViewType(vk::ImageViewType::e2D)
-                         .setFormat(static_cast<vk::Format>(texture->vkFormat))
-                         .setSubresourceRange(vk::ImageSubresourceRange()
-                                                  .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                                  .setBaseArrayLayer(0)
-                                                  .setLayerCount(1)
-                                                  .setBaseMipLevel(0)
-                                                  .setLevelCount(texture->numLevels)))
-        .setSamplerInfo(vk::SamplerCreateInfo()
-                            .setAnisotropyEnable(true)
-                            .setMaxAnisotropy(StarTextures::Texture::SelectAnisotropyLevel(this->deviceProperties))
-                            .setMagFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
-                            .setMinFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
-                            .setMinFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
-                            .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
-                            .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
-                            .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
-                            .setBorderColor(vk::BorderColor::eIntOpaqueBlack)
-                            .setUnnormalizedCoordinates(VK_FALSE)
-                            .setCompareEnable(VK_FALSE)
-                            .setCompareOp(vk::CompareOp::eAlways)
-                            .setMipmapMode(vk::SamplerMipmapMode::eLinear)
-                            .setMipLodBias(0.0f)
-                            .setMinLod(0.0f)
-                            .setMaxLod(static_cast<float>(texture->numLevels)))
-        .buildUnique();
+    star::StarTextures::Texture builtTexture;
+    const auto makeResult =
+        star::maker::texture::MakeTexture(device)
+            .setCreateInfo(
+                Allocator::AllocationBuilder()
+                    .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                    .setUsage(VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO)
+                    .build(),
+                vk::ImageCreateInfo()
+                    .setExtent(vk::Extent3D().setWidth(texture->baseWidth).setHeight(texture->baseHeight).setDepth(1))
+                    .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
+                    .setPQueueFamilyIndices(indices.data())
+                    .setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
+                    .setImageType(vk::ImageType::e2D)
+                    .setMipLevels(texture->numLevels)
+                    .setArrayLayers(1)
+                    .setTiling(vk::ImageTiling::eOptimal)
+                    .setInitialLayout(vk::ImageLayout::eUndefined)
+                    .setSamples(vk::SampleCountFlagBits::e1)
+                    .setSharingMode(vk::SharingMode::eConcurrent),
+                "compresesd_texture")
+            .setBaseFormat(static_cast<vk::Format>(texture->vkFormat))
+            .setMipmapLevels(texture->numLevels)
+            .addViewInfo(vk::ImageViewCreateInfo()
+                             .setViewType(vk::ImageViewType::e2D)
+                             .setFormat(static_cast<vk::Format>(texture->vkFormat))
+                             .setSubresourceRange(vk::ImageSubresourceRange()
+                                                      .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                                      .setBaseArrayLayer(0)
+                                                      .setLayerCount(1)
+                                                      .setBaseMipLevel(0)
+                                                      .setLevelCount(texture->numLevels)))
+            .setSamplerInfo(vk::SamplerCreateInfo()
+                                .setAnisotropyEnable(true)
+                                .setMaxAnisotropy(StarTextures::Texture::SelectAnisotropyLevel(this->deviceProperties))
+                                .setMagFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
+                                .setMinFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
+                                .setMinFilter(StarTextures::Texture::SelectTextureFiltering(this->deviceProperties))
+                                .setAddressModeU(vk::SamplerAddressMode::eClampToEdge)
+                                .setAddressModeV(vk::SamplerAddressMode::eClampToEdge)
+                                .setAddressModeW(vk::SamplerAddressMode::eClampToEdge)
+                                .setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+                                .setUnnormalizedCoordinates(VK_FALSE)
+                                .setCompareEnable(VK_FALSE)
+                                .setCompareOp(vk::CompareOp::eAlways)
+                                .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+                                .setMipLodBias(0.0f)
+                                .setMinLod(0.0f)
+                                .setMaxLod(static_cast<float>(texture->numLevels)))
+            .make(&builtTexture, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create texture from compressed file: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarTextures::Texture>(std::move(builtTexture));
 }
 
 void star::TransferRequest::CompressedTextureFile::copyFromTransferSRCToDST(StarBuffers::Buffer &srcBuffer,

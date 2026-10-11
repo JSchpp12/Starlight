@@ -1,7 +1,6 @@
 #include "StarTextures/Texture.hpp"
 
 #include "ConfigFile.hpp"
-#include "starlight/command/texture/MakeTexture.hpp"
 #include "starlight/factory/TextureFactory.hpp"
 
 #include <cassert>
@@ -128,91 +127,4 @@ star::StarTextures::Texture::Texture(std::shared_ptr<Resources> memoryResources,
     : memoryResources(std::move(memoryResources)), baseFormat(baseFormat), mipmapLevels(mipmapLevels),
       baseExtent(baseExtent), size(size)
 {
-}
-
-star::StarTextures::Texture::Builder::Builder(core::device::StarDevice &device, const vk::Image &vulkanImage)
-    : m_makeTexture(std::make_unique<command::texture::MakeTexture>(device, vulkanImage))
-{
-}
-
-star::StarTextures::Texture::Builder::Builder(core::device::StarDevice &device)
-    : m_makeTexture(std::make_unique<command::texture::MakeTexture>(device))
-{
-}
-
-star::StarTextures::Texture::Builder::Builder(Builder &&) noexcept = default;
-
-star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::operator=(Builder &&) noexcept = default;
-
-star::StarTextures::Texture::Builder::Builder(const Builder &other)
-    : m_makeTexture(other.m_makeTexture ? std::make_unique<command::texture::MakeTexture>(*other.m_makeTexture)
-                                        : nullptr)
-{
-}
-
-star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::operator=(const Builder &other)
-{
-    if (this != &other)
-    {
-        m_makeTexture =
-            other.m_makeTexture ? std::make_unique<command::texture::MakeTexture>(*other.m_makeTexture) : nullptr;
-    }
-    return *this;
-}
-
-star::StarTextures::Texture::Builder::~Builder() = default;
-
-star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setCreateInfo(
-    VmaAllocationCreateInfo nAllocInfo, vk::ImageCreateInfo nCreateInfo, std::string nAllocName)
-{
-    m_makeTexture->setCreateInfo(nAllocInfo, std::move(nCreateInfo), std::move(nAllocName));
-    return *this;
-}
-
-star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::addViewInfo(
-    const vk::ImageViewCreateInfo &nCreateInfo)
-{
-    m_makeTexture->addViewInfo(nCreateInfo);
-    return *this;
-}
-
-star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setSamplerInfo(
-    const vk::SamplerCreateInfo &nCreateInfo)
-{
-    m_makeTexture->setSamplerInfo(nCreateInfo);
-    return *this;
-}
-
-star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setBaseFormat(const vk::Format &nFormat)
-{
-    m_makeTexture->setBaseFormat(nFormat);
-    return *this;
-}
-
-star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setMipmapLevels(uint32_t nLevels)
-{
-    m_makeTexture->setMipmapLevels(nLevels);
-    return *this;
-}
-
-star::StarTextures::Texture::Builder &star::StarTextures::Texture::Builder::setSizeInfo(vk::DeviceSize size,
-                                                                                        vk::Extent3D resolution)
-{
-    m_makeTexture->setSizeInfo(size, resolution);
-    return *this;
-}
-
-std::unique_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builder::buildUnique()
-{
-    return m_makeTexture->buildUnique();
-}
-
-std::shared_ptr<star::StarTextures::Texture> star::StarTextures::Texture::Builder::buildShared()
-{
-    return m_makeTexture->buildShared();
-}
-
-star::StarTextures::Texture star::StarTextures::Texture::Builder::build()
-{
-    return m_makeTexture->build();
 }
