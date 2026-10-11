@@ -22,6 +22,8 @@ class TextureFile : public Texture
 
     virtual void writeDataToStageBuffer(StarBuffers::Buffer &stagingBuffer) const override;
 
+    virtual std::string getDebugDescription() const override;
+
   protected:
   private:
     uint32_t graphicsQueueFamilyIndex;

@@ -223,7 +223,7 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
 
             request.textureTransferRequest->prep();
 
-            core::logging::log(boost::log::trivial::info, "Creating Texture");
+            core::logging::debug("Creating texture: ", request.textureTransferRequest->getDebugDescription());
 
             job::TransferManagerThread::CreateTexture(
                 device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,

@@ -7,6 +7,7 @@
 #include <ktx.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace star::TransferRequest
@@ -28,6 +29,8 @@ class CompressedTextureFile : public TransferRequest::Texture
                                           vk::CommandBuffer &commandBuffer) const override;
 
     virtual void writeDataToStageBuffer(StarBuffers::Buffer &stagingBuffer) const override;
+
+    virtual std::string getDebugDescription() const override;
 
     static bool IsFileCompressedTexture(const std::string &filePath);
 

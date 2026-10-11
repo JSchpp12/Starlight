@@ -6,6 +6,8 @@
 #include "core/device/DeviceContext.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
 
+#include "starlight/maker/texture/MakeTexture.hpp"
+
 #include <star_common/HandleTypeRegistry.hpp>
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -76,8 +78,7 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultColorAttachments(
                                                                                 int height)
 {
     vk::Format colorFormat = vk::Format::eUndefined;
-    std::vector<StarTextures::Texture> colorTextures;
-    colorTextures.reserve(numToCreate);
+    std::vector<StarTextures::Texture> colorTextures(numToCreate);
     {
         colorFormat =
             selectFormat(context, {vk::Format::eR8G8B8A8Srgb, vk::Format::eR8G8B8A8Unorm},
@@ -85,7 +86,7 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultColorAttachments(
                              vk::FormatFeatureFlagBits::eStorageImage);
 
         auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice())
+            star::maker::texture::MakeTexture(context.getDevice())
                 .setCreateInfo(Allocator::AllocationBuilder()
                                    .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
                                    .setUsage(VMA_MEMORY_USAGE_GPU_ONLY)
@@ -113,9 +114,10 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultColorAttachments(
                                                           .setBaseMipLevel(0)
                                                           .setLevelCount(1)));
 
-        for (uint8_t i = 0; i < numToCreate; i++)
+        const auto makeResult = builder.make(colorTextures.data(), numToCreate);
+        if (!makeResult)
         {
-            colorTextures.emplace_back(builder.build());
+            STAR_THROW("RenderTargets: failed to create color attachments: " + makeResult.error().detail);
         }
     }
 
@@ -129,15 +131,14 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultDepthAttachments(
     const auto &props = context.getDevice().getPhysicalDevice().getProperties();
 
     vk::Format depthFormat = vk::Format::eUndefined;
-    std::vector<StarTextures::Texture> depthTextures;
-    depthTextures.reserve(numToCreate);
+    std::vector<StarTextures::Texture> depthTextures(numToCreate);
     {
         depthFormat =
             selectFormat(context, {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
                          vk::FormatFeatureFlagBits::eDepthStencilAttachment | vk::FormatFeatureFlagBits::eSampledImage);
 
         auto builder =
-            star::StarTextures::Texture::Builder(context.getDevice())
+            star::maker::texture::MakeTexture(context.getDevice())
                 .setCreateInfo(
                     Allocator::AllocationBuilder()
                         .setFlags(VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
@@ -181,9 +182,10 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultDepthAttachments(
                                     .setMinLod(0.0f)
                                     .setMaxLod(0.0f));
 
-        for (uint8_t i = 0; i < numToCreate; i++)
+        const auto makeResult = builder.make(depthTextures.data(), numToCreate);
+        if (!makeResult)
         {
-            depthTextures.push_back(builder.build());
+            STAR_THROW("RenderTargets: failed to create depth attachments: " + makeResult.error().detail);
         }
     }
 
