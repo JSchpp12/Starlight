@@ -1,6 +1,10 @@
 #include "service/detail/screen_capture/CreateDependenciesPolicies.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
+
 #include <cassert>
+#include <vector>
 
 namespace star::service::detail::screen_capture
 {
@@ -9,25 +13,26 @@ std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuf
     core::device::StarDevice &device, const uint8_t &numFramesInFlight, const vk::Extent2D &renderingResolution,
     const vk::DeviceSize &bufferSize)
 {
-    auto buffers = std::vector<StarBuffers::Buffer>();
+    auto buffers = std::vector<StarBuffers::Buffer>(numFramesInFlight);
 
-    auto builder = StarBuffers::Buffer::Builder(device.getAllocator().get())
-                       .setAllocationCreateInfo(Allocator::AllocationBuilder()
-                                                    .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
-                                                              VMA_ALLOCATION_CREATE_MAPPED_BIT)
-                                                    .setUsage(VMA_MEMORY_USAGE_AUTO_PREFER_HOST)
-                                                    .build(),
-                                                vk::BufferCreateInfo()
-                                                    .setSharingMode(vk::SharingMode::eExclusive)
-                                                    .setSize(bufferSize)
-                                                    .setUsage(vk::BufferUsageFlagBits::eTransferDst),
-                                                "ScreenCapture_DstBuffer")
+    auto builder = star::maker::buffer::MakeBuffer(device)
+                       .setCreateInfo(Allocator::AllocationBuilder()
+                                          .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
+                                                    VMA_ALLOCATION_CREATE_MAPPED_BIT)
+                                          .setUsage(VMA_MEMORY_USAGE_AUTO_PREFER_HOST)
+                                          .build(),
+                                      vk::BufferCreateInfo()
+                                          .setSharingMode(vk::SharingMode::eExclusive)
+                                          .setSize(bufferSize)
+                                          .setUsage(vk::BufferUsageFlagBits::eTransferDst),
+                                      "ScreenCapture_DstBuffer")
                        .setInstanceCount(uint32_t{1})
                        .setInstanceSize(bufferSize);
 
-    for (uint8_t i = 0; i < numFramesInFlight; i++)
+    const auto makeResult = builder.make(buffers.data(), numFramesInFlight);
+    if (!makeResult)
     {
-        buffers.emplace_back(builder.build());
+        STAR_THROW("Failed to create screen capture dst buffers: " + makeResult.error().detail);
     }
 
     return buffers;

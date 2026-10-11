@@ -3,8 +3,8 @@
 #include "FileHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
 #include "starlight/maker/texture/MakeTexture.hpp"
-
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -25,19 +25,26 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::CompressedText
     ktxTexture2 *texture = nullptr;
     this->compressedTexture->giveMeTranscodedImage(texture);
 
-    return star::StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setInstanceCount(1)
-        .setInstanceSize(texture->dataSize)
-        .setAllocationCreateInfo(
-            VmaAllocationCreateInfo{.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
-                                             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-                                    .usage = VMA_MEMORY_USAGE_AUTO},
-            vk::BufferCreateInfo()
-                .setSize(texture->dataSize)
-                .setSharingMode(vk::SharingMode::eExclusive)
-                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            "CompressedTexture_TransferSRCBuffer")
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult =
+        star::maker::buffer::MakeBuffer(device)
+            .setInstanceCount(1)
+            .setInstanceSize(texture->dataSize)
+            .setCreateInfo(VmaAllocationCreateInfo{.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                                            VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+                                                   .usage = VMA_MEMORY_USAGE_AUTO},
+                           vk::BufferCreateInfo()
+                               .setSize(texture->dataSize)
+                               .setSharingMode(vk::SharingMode::eExclusive)
+                               .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                           "CompressedTexture_TransferSRCBuffer")
+            .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create staging buffer for compressed texture: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTextureFile::createFinal(

@@ -1,6 +1,7 @@
 #include "starlight/common/buffers/TransferRequest_InstanceColorInfo.hpp"
 
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -21,20 +22,27 @@ std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::c
 {
     const vk::DeviceSize bSize = GetMemorySize(m_colors);
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(bSize)
-                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            "InstanceColorInfo_src")
-        .setInstanceCount(1)
-        .setInstanceSize(bSize)
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                .setCreateInfo(Allocator::AllocationBuilder()
+                                                   .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                                                             VMA_ALLOCATION_CREATE_MAPPED_BIT)
+                                                   .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                   .build(),
+                                               vk::BufferCreateInfo()
+                                                   .setSharingMode(vk::SharingMode::eExclusive)
+                                                   .setSize(bSize)
+                                                   .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                                               "InstanceColorInfo_src")
+                                .setInstanceCount(1)
+                                .setInstanceSize(bSize)
+                                .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create staging buffer for instance color info: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::createFinal(
@@ -48,22 +56,29 @@ std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::c
     for (auto &index : transferQueueFamilyIndex)
         indices.push_back(index);
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eConcurrent)
-                .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
-                .setQueueFamilyIndices(indices)
-                .setSize(bSize)
-                .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
-            "InstanceModelInfo")
-        .setInstanceCount(1)
-        .setInstanceSize(bSize)
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                .setCreateInfo(Allocator::AllocationBuilder()
+                                                   .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                                                   .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                   .build(),
+                                               vk::BufferCreateInfo()
+                                                   .setSharingMode(vk::SharingMode::eConcurrent)
+                                                   .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
+                                                   .setQueueFamilyIndices(indices)
+                                                   .setSize(bSize)
+                                                   .setUsage(vk::BufferUsageFlagBits::eTransferDst |
+                                                             vk::BufferUsageFlagBits::eUniformBuffer),
+                                               "InstanceModelInfo")
+                                .setInstanceCount(1)
+                                .setInstanceSize(bSize)
+                                .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create final buffer for instance color info: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 void star::TransferRequest::InstanceColorInfo::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const

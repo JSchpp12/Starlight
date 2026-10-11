@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.3.2
+    VERSION 1.3.3
 )
 
 include(CheckIncludeFile)
@@ -131,8 +131,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/wrappers/graphics/StarTextures/FormatInfo.cpp"
     "src/starlight/wrappers/graphics/StarTextures/Texture.cpp"
     "src/starlight/wrappers/graphics/StarTextures/TextureView.cpp"
-    "src/starlight/wrappers/graphics/StarTextures/TextureViewBuilder.cpp"
     "src/starlight/factory/TextureFactory.cpp"
+    "src/starlight/factory/BufferFactory.cpp"
     "src/starlight/wrappers/graphics/StarTextures/Resources.cpp"
     "src/starlight/wrappers/graphics/StarTextures/AllocatedResources.cpp"
     "src/starlight/wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.cpp"
@@ -291,6 +291,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/command/shader/CreateShader.cpp"
     "src/starlight/command/pipeline/CreatePipeline.cpp"
     "src/starlight/maker/texture/MakeTexture.cpp"
+    "src/starlight/maker/texture/MakeTextureView.cpp"
+    "src/starlight/maker/buffer/MakeBuffer.cpp"
     "src/starlight/service/PipelineCommandService.cpp"
     "src/starlight/policy/command/ListenForCreateLight.cpp" 
     "src/starlight/service/detail/scene_loader/LightReader.cpp" 
@@ -472,6 +474,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/command/shader/CreateShader.hpp"
     "include/starlight/command/pipeline/CreatePipeline.hpp"
     "include/starlight/maker/texture/MakeTexture.hpp"
+    "include/starlight/maker/texture/MakeTextureView.hpp"
+    "include/starlight/maker/buffer/MakeBuffer.hpp"
     "include/starlight/policy/command/ListenForCreateShader.hpp"
     "include/starlight/policy/command/ListenForCreatePipeline.hpp"
     "include/starlight/service/PipelineCommandService.hpp"
@@ -489,8 +493,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/wrappers/graphics/StarTextures/FormatInfo.hpp"
     "include/starlight/wrappers/graphics/StarTextures/Texture.hpp"
     "include/starlight/wrappers/graphics/StarTextures/TextureView.hpp"
-    "include/starlight/wrappers/graphics/StarTextures/TextureViewBuilder.hpp"
     "include/starlight/factory/TextureFactory.hpp"
+    "include/starlight/factory/BufferFactory.hpp"
     "include/starlight/wrappers/graphics/policies/GenericImageCreateAllocatePolicy.hpp"
     "include/starlight/wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
     "include/starlight/wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"

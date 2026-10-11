@@ -1,5 +1,8 @@
 #include "TransferRequest_LightList.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
+
 #include <star_common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createStagingBuffer(
@@ -8,20 +11,27 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
     uint32_t numLights = 0;
     star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(LightBufferObject) * numLights)
-                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            "LightList_Stage")
-        .setInstanceCount(numLights)
-        .setInstanceSize(sizeof(LightBufferObject))
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                .setCreateInfo(Allocator::AllocationBuilder()
+                                                   .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                                             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
+                                                   .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                   .build(),
+                                               vk::BufferCreateInfo()
+                                                   .setSharingMode(vk::SharingMode::eExclusive)
+                                                   .setSize(sizeof(LightBufferObject) * numLights)
+                                                   .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                                               "LightList_Stage")
+                                .setInstanceCount(numLights)
+                                .setInstanceSize(sizeof(LightBufferObject))
+                                .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create staging buffer for light list: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::createFinal(
@@ -36,22 +46,29 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
     star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
     star::common::casts::SafeCast<size_t, uint32_t>(myLights.size(), numLights);
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eConcurrent)
-                .setPQueueFamilyIndices(indices.data())
-                .setQueueFamilyIndexCount(numIndices)
-                .setSize(sizeof(LightBufferObject) * numLights)
-                .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer),
-            "LightInfo")
-        .setInstanceCount(numLights)
-        .setInstanceSize(sizeof(LightBufferObject))
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                .setCreateInfo(Allocator::AllocationBuilder()
+                                                   .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                                                   .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                   .build(),
+                                               vk::BufferCreateInfo()
+                                                   .setSharingMode(vk::SharingMode::eConcurrent)
+                                                   .setPQueueFamilyIndices(indices.data())
+                                                   .setQueueFamilyIndexCount(numIndices)
+                                                   .setSize(sizeof(LightBufferObject) * numLights)
+                                                   .setUsage(vk::BufferUsageFlagBits::eTransferDst |
+                                                             vk::BufferUsageFlagBits::eStorageBuffer),
+                                               "LightInfo")
+                                .setInstanceCount(numLights)
+                                .setInstanceSize(sizeof(LightBufferObject))
+                                .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create final buffer for light list: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 void star::TransferRequest::LightList::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const

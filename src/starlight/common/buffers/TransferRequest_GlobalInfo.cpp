@@ -1,22 +1,32 @@
 #include "TransferRequest_GlobalInfo.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
+
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::createStagingBuffer(
     core::device::StarDevice &device) const
 {
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(GlobalUniformBufferObject))
-                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            "GlobalInfo_TransferSRC")
-        .setInstanceCount(1)
-        .setInstanceSize(sizeof(GlobalUniformBufferObject))
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                .setCreateInfo(Allocator::AllocationBuilder()
+                                                   .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                                                             VMA_ALLOCATION_CREATE_MAPPED_BIT)
+                                                   .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                   .build(),
+                                               vk::BufferCreateInfo()
+                                                   .setSharingMode(vk::SharingMode::eExclusive)
+                                                   .setSize(sizeof(GlobalUniformBufferObject))
+                                                   .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                                               "GlobalInfo_TransferSRC")
+                                .setInstanceCount(1)
+                                .setInstanceSize(sizeof(GlobalUniformBufferObject))
+                                .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create staging buffer for global info: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::createFinal(
@@ -37,15 +47,22 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::GlobalInfo::cr
                              .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer)
                              .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
                              .setPQueueFamilyIndices(indices.data());
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(Allocator::AllocationBuilder()
-                                     .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                                     .setUsage(VMA_MEMORY_USAGE_AUTO)
-                                     .build(),
-                                 bCreate, "GlobalInfo")
-        .setInstanceCount(1)
-        .setInstanceSize(sizeof(GlobalUniformBufferObject))
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                .setCreateInfo(Allocator::AllocationBuilder()
+                                                   .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                                                   .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                   .build(),
+                                               bCreate, "GlobalInfo")
+                                .setInstanceCount(1)
+                                .setInstanceSize(sizeof(GlobalUniformBufferObject))
+                                .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create final buffer for global info: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 void star::TransferRequest::GlobalInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const
