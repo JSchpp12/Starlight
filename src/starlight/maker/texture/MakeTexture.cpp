@@ -14,11 +14,11 @@ static std::unexpected<TextureMakeError> Err(TextureMakeError::Cause cause, std:
 }
 
 MakeTexture::MakeTexture(core::device::StarDevice &device, const vk::Image &vulkanImage)
-    : m_device(device), m_vulkanImage(vulkanImage)
+    : m_device(device), m_vulkanImage(vulkanImage), m_viewInfos(device)
 {
 }
 
-MakeTexture::MakeTexture(core::device::StarDevice &device) : m_device(device)
+MakeTexture::MakeTexture(core::device::StarDevice &device) : m_device(device), m_viewInfos(device)
 {
 }
 
@@ -32,7 +32,7 @@ MakeTexture &MakeTexture::setCreateInfo(VmaAllocationCreateInfo nAllocInfo, vk::
 
 MakeTexture &MakeTexture::addViewInfo(const vk::ImageViewCreateInfo &nCreateInfo)
 {
-    m_viewInfos.add(nCreateInfo);
+    m_viewInfos.addViewInfo(nCreateInfo);
     return *this;
 }
 
@@ -136,13 +136,11 @@ StarTextures::Texture MakeTexture::createTexture()
     {
         const StarTextures::Texture::Creators &creators = m_createNewAllocationInfo.value();
 
-        if (m_samplerInfo.has_value())
-        {
-            return StarTextures::TextureFactory::CreateTexture(m_device, creators, format, m_viewInfos, m_mipmapLevels,
-                                                               m_samplerInfo.value());
-        }
+        auto resources = StarTextures::TextureFactory::CreateImage(m_device, creators, format);
+        buildViewsAndSampler(*resources, creators.allocationName);
 
-        return StarTextures::TextureFactory::CreateTexture(m_device, creators, format, m_viewInfos, m_mipmapLevels);
+        return StarTextures::TextureFactory::FinishNewAllocation(creators, format, m_mipmapLevels,
+                                                                 std::move(resources));
     }
 
     if (m_vulkanImage.has_value())
@@ -151,18 +149,45 @@ StarTextures::Texture MakeTexture::createTexture()
         assert(m_overrideResolution.has_value() &&
                "Resolution MUST be provided for externally created/managed texture");
 
+        const auto views = buildViews(m_vulkanImage.value(), {});
+
         if (m_samplerInfo.has_value())
         {
-            return StarTextures::TextureFactory::CreateTexture(m_device, m_vulkanImage.value(), format, m_viewInfos,
+            return StarTextures::TextureFactory::CreateTexture(m_device, m_vulkanImage.value(), format, views,
                                                                m_mipmapLevels, m_samplerInfo.value(),
                                                                m_overrideResolution.value(), m_overrideSize.value());
         }
 
-        return StarTextures::TextureFactory::CreateTexture(m_device, m_vulkanImage.value(), format, m_viewInfos,
+        return StarTextures::TextureFactory::CreateTexture(m_device, m_vulkanImage.value(), format, views,
                                                            m_mipmapLevels, m_overrideResolution.value(),
                                                            m_overrideSize.value());
     }
 
     throw std::runtime_error("Invalid builder config");
+}
+
+StarTextures::TextureView MakeTexture::buildViews(vk::Image image, const std::string &debugName)
+{
+    m_viewInfos.setImage(image).setMipmapLevels(m_mipmapLevels).setDebugName(debugName);
+
+    star::StarTextures::TextureView views;
+    const auto result = m_viewInfos.make(&views, 1);
+    if (!result)
+    {
+        throw std::runtime_error("Failed to build texture views: " + result.error().detail);
+    }
+
+    return views;
+}
+
+void MakeTexture::buildViewsAndSampler(StarTextures::Resources &resources, const std::string &debugName)
+{
+    resources.views = buildViews(resources.image, debugName);
+
+    if (m_samplerInfo.has_value())
+    {
+        resources.sampler = StarTextures::TextureFactory::CreateImageSampler(m_device.getVulkanDevice(),
+                                                                             m_samplerInfo.value(), debugName);
+    }
 }
 } // namespace star::maker::texture
