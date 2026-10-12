@@ -10,7 +10,7 @@ struct GenericBufferCreateAllocatePolicy
     using Object = star::StarBuffers::Buffer;
 
     mutable VmaAllocator allocator;
-    mutable vk::Device device;
+    star::core::device::StarDevice *device = nullptr;
     std::string allocationName;
     VmaAllocationCreateInfo allocInfo;
     vk::BufferCreateInfo createInfo;
@@ -21,7 +21,7 @@ struct GenericBufferCreateAllocatePolicy
     Object create() const
     {
         vk::DeviceSize offset = 0;
-        const auto resources = star::StarBuffers::BufferFactory::CreateResource(device, allocator, allocInfo,
+        const auto resources = star::StarBuffers::BufferFactory::CreateResource(*device, allocator, allocInfo,
                                                                                 createInfo, allocationName, offset);
         const vk::DeviceSize alignmentSize =
             star::StarBuffers::BufferFactory::GetAlignment(instanceSize, minOffsetAlignment);

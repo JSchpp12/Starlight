@@ -45,8 +45,8 @@ struct MakeBuffer : public star::common::Maker<star::StarBuffers::Buffer, Buffer
     MakeBuffer &setMinOffsetAlignment(vk::DeviceSize nMinOffsetAlignment);
 
     /// @brief Build num buffers in place at dst.
-    /// @return The number of buffers built, or an error whose `built` member reports how many
-    ///         buffers were constructed at dst before the failure.
+    /// @return The number of buffers built, or an error whose `built` member reports how many buffers were constructed
+    /// at dst before the failure.
     [[nodiscard]] std::expected<size_t, BufferMakeError> make(star::StarBuffers::Buffer *dst,
                                                               size_t num) noexcept override;
 

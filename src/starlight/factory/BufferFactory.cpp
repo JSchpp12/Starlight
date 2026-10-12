@@ -10,28 +10,7 @@
 
 namespace star::StarBuffers
 {
-#ifndef NDEBUG
-/// @brief Assign a VK_EXT_debug_utils object name so the validation layers can identify the object. No-op when
-/// validation/debug utils are not enabled.
-static void AssignDebugName(vk::Device &device, vk::ObjectType objectType, uint64_t objectHandle,
-                            const std::string &name)
-{
-    if (name.empty())
-    {
-        return;
-    }
-
-    // VK_EXT_debug_utils is enabled alongside VK_LAYER_KHRONOS_validation, so names assigned here are visible to the
-    // validation layers and external debuggers.
-    vk::DebugUtilsObjectNameInfoEXT nameInfo = vk::DebugUtilsObjectNameInfoEXT()
-                                                   .setObjectType(objectType)
-                                                   .setObjectHandle(objectHandle)
-                                                   .setPObjectName(name.c_str());
-    device.setDebugUtilsObjectNameEXT(nameInfo);
-}
-#endif
-
-void BufferFactory::CreateAllocation(vk::Device &device, VmaAllocator &allocator,
+void BufferFactory::CreateAllocation(core::device::StarDevice &device, VmaAllocator &allocator,
                                      const VmaAllocationCreateInfo &allocationCreateInfo,
                                      const vk::BufferCreateInfo &bufferCreateInfo, VmaAllocation &allocation,
                                      vk::Buffer &buffer, const std::string &allocationName,
@@ -51,8 +30,12 @@ void BufferFactory::CreateAllocation(vk::Device &device, VmaAllocator &allocator
         vk::detail::resultCheck(result, "Failed to create buffer via vmaCreateBuffer");
     }
 
+    // Label the VMA allocation in every build configuration so buffers remain identifiable in VMA statistics dumps
+    // and memory profilers. This mirrors the naming that used to happen during buffer creation.
+    vmaSetAllocationName(allocator, allocation, (allocationName + "_BUFFER").c_str());
+
 #ifndef NDEBUG
-    AssignDebugName(device, vk::ObjectType::eBuffer, (uint64_t)(VkBuffer)(buffer), allocationName);
+    device.assignDebugName(vk::ObjectType::eBuffer, (uint64_t)(VkBuffer)(buffer), allocationName);
 #endif
 }
 
@@ -81,7 +64,7 @@ void BufferFactory::LogBufferCreateFailure(const vk::Result &result)
     core::logging::log(boost::log::trivial::error, oss.str());
 }
 
-std::shared_ptr<Resources> BufferFactory::CreateResource(vk::Device &device, VmaAllocator &allocator,
+std::shared_ptr<Resources> BufferFactory::CreateResource(core::device::StarDevice &device, VmaAllocator &allocator,
                                                          const VmaAllocationCreateInfo &allocationCreateInfo,
                                                          const vk::BufferCreateInfo &bufferCreateInfo,
                                                          const std::string &allocationName, vk::DeviceSize &offset)
@@ -138,8 +121,8 @@ Buffer BufferFactory::CreateBuffer(core::device::StarDevice &device, const Buffe
     auto &allocator = device.getAllocator().get();
 
     vk::DeviceSize offset = 0;
-    auto resources = CreateResource(device.getVulkanDevice(), allocator, creators.allocationCreateInfo,
-                                    creators.createInfo, creators.allocationName, offset);
+    auto resources = CreateResource(device, allocator, creators.allocationCreateInfo, creators.createInfo,
+                                    creators.allocationName, offset);
 
     return FinishNewAllocation(creators, instanceCount, instanceSize, minOffsetAlignment, offset, std::move(resources));
 }

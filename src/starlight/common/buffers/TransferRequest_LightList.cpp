@@ -59,7 +59,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightList::cre
                                                    .setSize(sizeof(LightBufferObject) * numLights)
                                                    .setUsage(vk::BufferUsageFlagBits::eTransferDst |
                                                              vk::BufferUsageFlagBits::eStorageBuffer),
-                                               "LightInfo")
+                                               "LightList")
                                 .setInstanceCount(numLights)
                                 .setInstanceSize(sizeof(LightBufferObject))
                                 .make(&builtBuffer, 1);

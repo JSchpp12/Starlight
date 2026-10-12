@@ -32,6 +32,11 @@ std::vector<star::StarBuffers::Buffer> DefaultCreatePolicy::createHostVisibleBuf
     const auto makeResult = builder.make(buffers.data(), numFramesInFlight);
     if (!makeResult)
     {
+        for (size_t i = 0; i < makeResult.error().built; ++i)
+        {
+            buffers[i].cleanupRender(device.getVulkanDevice());
+        }
+
         STAR_THROW("Failed to create screen capture dst buffers: " + makeResult.error().detail);
     }
 

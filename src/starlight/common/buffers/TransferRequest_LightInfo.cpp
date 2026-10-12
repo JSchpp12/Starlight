@@ -19,7 +19,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::LightInfo::cre
                                                    .setSharingMode(vk::SharingMode::eExclusive)
                                                    .setSize(sizeof(int))
                                                    .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-                                               "LightList_Stage")
+                                               "LightInfo_Stage")
                                 .setInstanceCount(star::common::casts::size_t_to_unsigned_int(1))
                                 .setInstanceSize(sizeof(int))
                                 .make(&builtBuffer, 1);

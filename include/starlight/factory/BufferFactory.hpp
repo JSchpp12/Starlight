@@ -17,7 +17,7 @@ namespace star::StarBuffers
 class BufferFactory
 {
   public:
-    static std::shared_ptr<Resources> CreateResource(vk::Device &device, VmaAllocator &allocator,
+    static std::shared_ptr<Resources> CreateResource(core::device::StarDevice &device, VmaAllocator &allocator,
                                                      const VmaAllocationCreateInfo &allocationCreateInfo,
                                                      const vk::BufferCreateInfo &bufferCreateInfo,
                                                      const std::string &allocationName, vk::DeviceSize &offset);
@@ -47,7 +47,7 @@ class BufferFactory
                                       const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment,
                                       const vk::DeviceSize &offset, std::shared_ptr<Resources> resources);
 
-    static void CreateAllocation(vk::Device &device, VmaAllocator &allocator,
+    static void CreateAllocation(core::device::StarDevice &device, VmaAllocator &allocator,
                                  const VmaAllocationCreateInfo &allocationCreateInfo,
                                  const vk::BufferCreateInfo &bufferCreateInfo, VmaAllocation &allocation,
                                  vk::Buffer &buffer, const std::string &allocationName,
