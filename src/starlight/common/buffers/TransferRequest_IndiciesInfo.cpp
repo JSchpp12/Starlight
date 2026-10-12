@@ -73,7 +73,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
                     .setPQueueFamilyIndices(indices.data())
                     .setSize(sizeof(uint32_t) * star::common::casts::size_t_to_unsigned_int(this->indices.size()))
                     .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer),
-                "IndicesInfoBuffer_Src")
+                "IndicesInfoBuffer")
             .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->indices.size()))
             .setInstanceSize(sizeof(uint32_t))
             .make(&builtBuffer, 1);

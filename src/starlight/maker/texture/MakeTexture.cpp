@@ -186,8 +186,8 @@ void MakeTexture::buildViewsAndSampler(StarTextures::Resources &resources, const
 
     if (m_samplerInfo.has_value())
     {
-        resources.sampler = StarTextures::TextureFactory::CreateImageSampler(m_device.getVulkanDevice(),
-                                                                             m_samplerInfo.value(), debugName);
+        resources.sampler =
+            StarTextures::TextureFactory::CreateImageSampler(m_device, m_samplerInfo.value(), debugName);
     }
 }
 } // namespace star::maker::texture

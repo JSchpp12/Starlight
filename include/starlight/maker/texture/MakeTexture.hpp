@@ -58,7 +58,8 @@ struct MakeTexture : public star::common::Maker<star::StarTextures::Texture, Tex
 
     /// @brief Build num textures in place at dst.
     /// @return The number of textures built, or an error whose `built` member reports how many
-    ///         textures were constructed at dst before the failure.
+    ///         textures were constructed at dst before the failure. The maker destroys nothing on error; the
+    ///         caller is responsible for destroying the constructed prefix.
     [[nodiscard]] std::expected<size_t, TextureMakeError> make(star::StarTextures::Texture *dst,
                                                                size_t num) noexcept override;
 

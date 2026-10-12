@@ -14,29 +14,8 @@
 namespace star::StarTextures
 {
 
-#ifndef NDEBUG
-/// @brief Assign a VK_EXT_debug_utils object name so the validation layers can identify the object. No-op when
-/// validation/debug utils are not enabled.
-static void AssignDebugName(vk::Device &device, vk::ObjectType objectType, uint64_t objectHandle,
-                            const std::string &name)
-{
-    if (name.empty())
-    {
-        return;
-    }
-
-    // VK_EXT_debug_utils is enabled alongside VK_LAYER_KHRONOS_validation, so names assigned here are visible to the
-    // validation layers and external debuggers.
-    vk::DebugUtilsObjectNameInfoEXT nameInfo = vk::DebugUtilsObjectNameInfoEXT()
-                                                   .setObjectType(objectType)
-                                                   .setObjectHandle(objectHandle)
-                                                   .setPObjectName(name.c_str());
-    device.setDebugUtilsObjectNameEXT(nameInfo);
-}
-#endif
-
-void TextureFactory::CreateAllocation(vk::Device &device, const vk::Format &baseFormat, VmaAllocator &allocator,
-                                      const VmaAllocationCreateInfo &allocationCreateInfo,
+void TextureFactory::CreateAllocation(core::device::StarDevice &device, const vk::Format &baseFormat,
+                                      VmaAllocator &allocator, const VmaAllocationCreateInfo &allocationCreateInfo,
                                       const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
                                       vk::Image &textureImage, const std::string &allocationName)
 {
@@ -57,13 +36,13 @@ void TextureFactory::CreateAllocation(vk::Device &device, const vk::Format &base
     }
 
 #ifndef NDEBUG
-    AssignDebugName(device, vk::ObjectType::eImage, (uint64_t)(VkImage)(textureImage), allocationName);
+    device.assignDebugName(vk::ObjectType::eImage, (uint64_t)(VkImage)(textureImage), allocationName);
     const std::string fullAllocationName = std::string(allocationName) + "_ALLOCATION";
     vmaSetAllocationName(allocator, allocation, fullAllocationName.c_str());
 #endif
 }
 
-TextureView TextureFactory::CreateViews(vk::Device &device, vk::Image image,
+TextureView TextureFactory::CreateViews(core::device::StarDevice &device, vk::Image image,
                                         std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
                                         const std::string &debugName)
 {
@@ -89,17 +68,13 @@ TextureView TextureFactory::CreateViews(vk::Device &device, vk::Image image,
         vk::ImageViewCreateInfo info = viewInfo;
         info.image = image;
 
-        vk::ImageView view = device.createImageView(info);
-        if (!view)
-        {
-            STAR_THROW("failed to create texture image view!");
-        }
+        vk::ImageView view = device.getVulkanDevice().createImageView(info);
 
 #ifndef NDEBUG
         if (!debugName.empty())
         {
-            AssignDebugName(device, vk::ObjectType::eImageView, (uint64_t)(VkImageView)(view),
-                            debugName + "_VIEW_" + std::to_string(viewIndex));
+            device.assignDebugName(vk::ObjectType::eImageView, (uint64_t)(VkImageView)(view),
+                                   debugName + "_VIEW_" + std::to_string(viewIndex));
         }
         ++viewIndex;
 #endif
@@ -147,12 +122,12 @@ std::shared_ptr<Resources> TextureFactory::CreateImage(core::device::StarDevice 
 {
     VerifyNewAllocation(device, creators, baseFormat);
 
-    return CreateResource(device.getVulkanDevice(), baseFormat, device.getAllocator().get(),
-                          creators.allocationCreateInfo, creators.createInfo, creators.allocationName);
+    return CreateResource(device, baseFormat, device.getAllocator().get(), creators.allocationCreateInfo,
+                          creators.createInfo, creators.allocationName);
 }
 
-std::shared_ptr<Resources> TextureFactory::CreateResource(vk::Device &device, const vk::Format &baseFormat,
-                                                          VmaAllocator &allocator,
+std::shared_ptr<Resources> TextureFactory::CreateResource(core::device::StarDevice &device,
+                                                          const vk::Format &baseFormat, VmaAllocator &allocator,
                                                           const VmaAllocationCreateInfo &allocationCreateInfo,
                                                           const vk::ImageCreateInfo &imageCreateInfo,
                                                           const std::string &allocationName)
@@ -208,26 +183,22 @@ Texture TextureFactory::CreateTexture(core::device::StarDevice &device, const vk
                                       const vk::SamplerCreateInfo &samplerInfo, const vk::Extent3D &resolution,
                                       vk::DeviceSize size)
 {
-    const auto sampler = CreateImageSampler(device.getVulkanDevice(), samplerInfo);
+    const auto sampler = CreateImageSampler(device, samplerInfo);
     auto resources = std::make_shared<Resources>(vulkanImage, views, sampler);
 
     return Texture(std::move(resources), baseFormat, mipmapLevels, resolution, size);
 }
 
-vk::Sampler TextureFactory::CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo,
+vk::Sampler TextureFactory::CreateImageSampler(core::device::StarDevice &device,
+                                               const vk::SamplerCreateInfo &samplerCreateInfo,
                                                const std::string &debugName)
 {
-    vk::Sampler sampler{device.createSampler(samplerCreateInfo)};
-
-    if (!sampler)
-    {
-        STAR_THROW("Failed to create sampler");
-    }
+    vk::Sampler sampler{device.getVulkanDevice().createSampler(samplerCreateInfo)};
 
 #ifndef NDEBUG
     if (!debugName.empty())
     {
-        AssignDebugName(device, vk::ObjectType::eSampler, (uint64_t)(VkSampler)(sampler), debugName + "_SAMPLER");
+        device.assignDebugName(vk::ObjectType::eSampler, (uint64_t)(VkSampler)(sampler), debugName + "_SAMPLER");
     }
 #endif
 

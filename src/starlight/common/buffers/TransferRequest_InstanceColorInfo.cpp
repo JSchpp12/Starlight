@@ -69,7 +69,7 @@ std::unique_ptr<StarBuffers::Buffer> star::TransferRequest::InstanceColorInfo::c
                                                    .setSize(bSize)
                                                    .setUsage(vk::BufferUsageFlagBits::eTransferDst |
                                                              vk::BufferUsageFlagBits::eUniformBuffer),
-                                               "InstanceModelInfo")
+                                               "InstanceColorInfo")
                                 .setInstanceCount(1)
                                 .setInstanceSize(bSize)
                                 .make(&builtBuffer, 1);

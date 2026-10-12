@@ -25,18 +25,19 @@ class TextureFactory
                                                   const vk::Format &baseFormat);
 
     /// @brief Low-level image + VMA allocation creation (no hardware verification).
-    static std::shared_ptr<Resources> CreateResource(vk::Device &device, const vk::Format &baseFormat,
+    static std::shared_ptr<Resources> CreateResource(core::device::StarDevice &device, const vk::Format &baseFormat,
                                                      VmaAllocator &allocator,
                                                      const VmaAllocationCreateInfo &allocationCreateInfo,
                                                      const vk::ImageCreateInfo &imageCreateInfo,
                                                      const std::string &allocationName);
 
     /// @brief Dedicated builder for a texture's image views from ordered view create infos.
-    static TextureView CreateViews(vk::Device &device, vk::Image image,
+    static TextureView CreateViews(core::device::StarDevice &device, vk::Image image,
                                    std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
                                    const std::string &debugName);
 
-    static vk::Sampler CreateImageSampler(vk::Device &device, const vk::SamplerCreateInfo &samplerCreateInfo,
+    static vk::Sampler CreateImageSampler(core::device::StarDevice &device,
+                                          const vk::SamplerCreateInfo &samplerCreateInfo,
                                           const std::string &debugName = {});
 
     /// @brief Build a complete Texture for a newly allocated image once its resources (views/sampler) are attached.
@@ -61,8 +62,8 @@ class TextureFactory
     static void VerifyNewAllocation(core::device::StarDevice &device, const Texture::Creators &creators,
                                     const vk::Format &baseFormat);
 
-    static void CreateAllocation(vk::Device &device, const vk::Format &baseFormat, VmaAllocator &allocator,
-                                 const VmaAllocationCreateInfo &allocationCreateInfo,
+    static void CreateAllocation(core::device::StarDevice &device, const vk::Format &baseFormat,
+                                 VmaAllocator &allocator, const VmaAllocationCreateInfo &allocationCreateInfo,
                                  const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
                                  vk::Image &textureImage, const std::string &allocationName);
 

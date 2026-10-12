@@ -97,7 +97,6 @@ std::expected<size_t, TextureViewMakeError> MakeTextureView::make(star::StarText
 
 star::StarTextures::TextureView MakeTextureView::createView()
 {
-    return star::StarTextures::TextureFactory::CreateViews(m_device.getVulkanDevice(), m_image, m_views,
-                                                           m_mipmapLevels, m_debugName);
+    return star::StarTextures::TextureFactory::CreateViews(m_device, m_image, m_views, m_mipmapLevels, m_debugName);
 }
 } // namespace star::maker::texture

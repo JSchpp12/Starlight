@@ -15,6 +15,21 @@
 
 namespace star::core::device
 {
+
+template <typename NameRange> static void AppendNameList(std::ostringstream &oss, const NameRange &names)
+{
+    if (names.empty())
+    {
+        oss << "  none\n";
+        return;
+    }
+
+    for (const auto &name : names)
+    {
+        oss << "  " << name << '\n';
+    }
+}
+
 inline static void LogPhysicalDeviceInfo(const vk::PhysicalDevice &physicalDevice)
 {
     std::string log = "Selected physical device info: \n";
@@ -207,20 +222,6 @@ static std::vector<std::string> GetMissingRequiredDeviceExtensions(
     }
 
     return missingNames;
-}
-
-template <typename NameRange> static void AppendNameList(std::ostringstream &oss, const NameRange &names)
-{
-    if (names.empty())
-    {
-        oss << "  none\n";
-        return;
-    }
-
-    for (const auto &name : names)
-    {
-        oss << "  " << name << '\n';
-    }
 }
 
 static void LogPhysicalDeviceSelectionResult(const vk::PhysicalDevice &device,
@@ -744,5 +745,30 @@ core::SwapChainSupportDetails StarDevice::QuerySwapchainSupport(const vk::Physic
     }
 
     return details;
+}
+
+void StarDevice::assignDebugName(vk::ObjectType objectType, uint64_t objectHandle, const std::string &name)
+{
+#ifndef NDEBUG
+    if (name.empty())
+    {
+        return;
+    }
+
+    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT == nullptr)
+    {
+        return;
+    }
+
+    vk::DebugUtilsObjectNameInfoEXT nameInfo = vk::DebugUtilsObjectNameInfoEXT()
+                                                   .setObjectType(objectType)
+                                                   .setObjectHandle(objectHandle)
+                                                   .setPObjectName(name.c_str());
+    this->vulkanDevice.setDebugUtilsObjectNameEXT(nameInfo);
+#else
+    static_cast<void>(objectType);
+    static_cast<void>(objectHandle);
+    static_cast<void>(name);
+#endif
 }
 } // namespace star::core::device
