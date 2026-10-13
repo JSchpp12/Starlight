@@ -19,6 +19,7 @@ static wrappers::graphics::policies::GenericBufferCreateAllocatePolicy CreateBuf
         vk::ImageType::e2D, 1);
     return wrappers::graphics::policies::GenericBufferCreateAllocatePolicy{
         .allocator = std::move(deviceInfo->device->getAllocator().get()),
+        .device = deviceInfo->device,
         .allocationName = "PerExtentResource",
         .allocInfo = Allocator::AllocationBuilder()
                          .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)

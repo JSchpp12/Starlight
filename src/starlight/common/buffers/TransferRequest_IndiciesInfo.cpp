@@ -1,5 +1,8 @@
 #include "TransferRequest_IndicesInfo.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
+
 #include <star_common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::createStagingBuffer(
@@ -8,20 +11,28 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
     uint32_t numIndices = 0;
     star::common::casts::SafeCast<size_t, uint32_t>(this->indices.size(), numIndices);
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(sizeof(uint32_t) * star::common::casts::size_t_to_unsigned_int(this->indices.size()))
-                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            "IndicesInfoBuffer_Src")
-        .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->indices.size()))
-        .setInstanceSize(sizeof(uint32_t))
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult =
+        star::maker::buffer::MakeBuffer(device)
+            .setCreateInfo(
+                Allocator::AllocationBuilder()
+                    .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
+                    .setUsage(VMA_MEMORY_USAGE_AUTO)
+                    .build(),
+                vk::BufferCreateInfo()
+                    .setSharingMode(vk::SharingMode::eExclusive)
+                    .setSize(sizeof(uint32_t) * star::common::casts::size_t_to_unsigned_int(this->indices.size()))
+                    .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                "IndicesInfoBuffer_Src")
+            .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->indices.size()))
+            .setInstanceSize(sizeof(uint32_t))
+            .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create staging buffer for indices info: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 void star::TransferRequest::IndicesInfo::writeDataToStageBuffer(StarBuffers::Buffer &buffer) const
@@ -48,20 +59,28 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::IndicesInfo::c
     uint32_t numIndices = 0;
     star::common::casts::SafeCast<size_t, uint32_t>(indices.size(), numIndices);
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eConcurrent)
-                .setQueueFamilyIndexCount(indices.size())
-                .setPQueueFamilyIndices(indices.data())
-                .setSize(sizeof(uint32_t) * star::common::casts::size_t_to_unsigned_int(this->indices.size()))
-                .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer),
-            "IndicesInfoBuffer_Src")
-        .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->indices.size()))
-        .setInstanceSize(sizeof(uint32_t))
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult =
+        star::maker::buffer::MakeBuffer(device)
+            .setCreateInfo(
+                Allocator::AllocationBuilder()
+                    .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                    .setUsage(VMA_MEMORY_USAGE_AUTO)
+                    .build(),
+                vk::BufferCreateInfo()
+                    .setSharingMode(vk::SharingMode::eConcurrent)
+                    .setQueueFamilyIndexCount(indices.size())
+                    .setPQueueFamilyIndices(indices.data())
+                    .setSize(sizeof(uint32_t) * star::common::casts::size_t_to_unsigned_int(this->indices.size()))
+                    .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer),
+                "IndicesInfoBuffer")
+            .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->indices.size()))
+            .setInstanceSize(sizeof(uint32_t))
+            .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create final buffer for indices info: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }

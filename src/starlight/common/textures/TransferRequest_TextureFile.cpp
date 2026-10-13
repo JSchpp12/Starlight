@@ -5,6 +5,7 @@
 #include "Enums.hpp"
 #include "FileHelpers.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
 #include "starlight/maker/texture/MakeTexture.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -51,20 +52,27 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::c
 
     const vk::DeviceSize size = width * height * channels * 4;
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(size)
-                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            m_imagePath + "_TransferSRCBuffer")
-        .setInstanceCount(1)
-        .setInstanceSize(size)
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                .setCreateInfo(Allocator::AllocationBuilder()
+                                                   .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                                             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
+                                                   .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                   .build(),
+                                               vk::BufferCreateInfo()
+                                                   .setSharingMode(vk::SharingMode::eExclusive)
+                                                   .setSize(size)
+                                                   .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                                               m_imagePath + "_TransferSRCBuffer")
+                                .setInstanceCount(1)
+                                .setInstanceSize(size)
+                                .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create staging buffer for texture file: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile::createFinal(

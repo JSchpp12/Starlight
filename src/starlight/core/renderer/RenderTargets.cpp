@@ -117,6 +117,11 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultColorAttachments(
         const auto makeResult = builder.make(colorTextures.data(), numToCreate);
         if (!makeResult)
         {
+            for (size_t i = 0; i < makeResult.error().built; ++i)
+            {
+                colorTextures[i].cleanupRender(context.getDevice().getVulkanDevice());
+            }
+
             STAR_THROW("RenderTargets: failed to create color attachments: " + makeResult.error().detail);
         }
     }
@@ -185,6 +190,12 @@ std::vector<StarTextures::Texture> RenderTargets::createDefaultDepthAttachments(
         const auto makeResult = builder.make(depthTextures.data(), numToCreate);
         if (!makeResult)
         {
+            // The maker destroys nothing on error: destroy the attachments it already built before unwinding.
+            for (size_t i = 0; i < makeResult.error().built; ++i)
+            {
+                depthTextures[i].cleanupRender(context.getDevice().getVulkanDevice());
+            }
+
             STAR_THROW("RenderTargets: failed to create depth attachments: " + makeResult.error().detail);
         }
     }

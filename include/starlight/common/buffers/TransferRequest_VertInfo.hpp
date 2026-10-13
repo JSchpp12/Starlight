@@ -3,6 +3,9 @@
 #include "TransferRequest_Buffer.hpp"
 #include "Vertex.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
+
 #include <star_common/helper/CastHelpers.hpp>
 
 #include <stdexcept>
@@ -36,22 +39,29 @@ template <typename T = Vertex> class VertInfo : public Buffer
             throw std::runtime_error("Failed to parse numerical values for vert info buffer creation");
         }
 
-        return StarBuffers::Buffer::Builder(device.getAllocator().get())
-            .setAllocationCreateInfo(
-                Allocator::AllocationBuilder()
-                    .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                    .setUsage(VMA_MEMORY_USAGE_AUTO)
-                    .build(),
-                vk::BufferCreateInfo()
-                    .setSharingMode(vk::SharingMode::eConcurrent)
-                    .setPQueueFamilyIndices(indices.data())
-                    .setQueueFamilyIndexCount(numInds)
-                    .setSize(sizeof(T) * numVerts)
-                    .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer),
-                "VertexBuffer")
-            .setInstanceCount(numVerts)
-            .setInstanceSize(sizeof(T))
-            .buildUnique();
+        star::StarBuffers::Buffer builtBuffer;
+        const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                    .setCreateInfo(Allocator::AllocationBuilder()
+                                                       .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                                                       .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                       .build(),
+                                                   vk::BufferCreateInfo()
+                                                       .setSharingMode(vk::SharingMode::eConcurrent)
+                                                       .setPQueueFamilyIndices(indices.data())
+                                                       .setQueueFamilyIndexCount(numInds)
+                                                       .setSize(sizeof(T) * numVerts)
+                                                       .setUsage(vk::BufferUsageFlagBits::eTransferDst |
+                                                                 vk::BufferUsageFlagBits::eVertexBuffer),
+                                                   "VertexBuffer")
+                                    .setInstanceCount(numVerts)
+                                    .setInstanceSize(sizeof(T))
+                                    .make(&builtBuffer, 1);
+        if (!makeResult)
+        {
+            STAR_THROW("Failed to create final buffer for vert info: " + makeResult.error().detail);
+        }
+
+        return std::make_unique<StarBuffers::Buffer>(std::move(builtBuffer));
     }
 
     std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(core::device::StarDevice &device) const override
@@ -62,20 +72,27 @@ template <typename T = Vertex> class VertInfo : public Buffer
             throw std::runtime_error("Failed to cast numerical info for vert info creation");
         }
 
-        return StarBuffers::Buffer::Builder(device.getAllocator().get())
-            .setAllocationCreateInfo(
-                Allocator::AllocationBuilder()
-                    .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
-                    .setUsage(VMA_MEMORY_USAGE_AUTO)
-                    .build(),
-                vk::BufferCreateInfo()
-                    .setSharingMode(vk::SharingMode::eExclusive)
-                    .setSize(sizeof(T) * numVerts)
-                    .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-                "VertexBuffer_Stage")
-            .setInstanceCount(numVerts)
-            .setInstanceSize(sizeof(T))
-            .buildUnique();
+        star::StarBuffers::Buffer builtBuffer;
+        const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                    .setCreateInfo(Allocator::AllocationBuilder()
+                                                       .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
+                                                       .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                       .build(),
+                                                   vk::BufferCreateInfo()
+                                                       .setSharingMode(vk::SharingMode::eExclusive)
+                                                       .setSize(sizeof(T) * numVerts)
+                                                       .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                                                   "VertexBuffer_Stage")
+                                    .setInstanceCount(numVerts)
+                                    .setInstanceSize(sizeof(T))
+                                    .make(&builtBuffer, 1);
+        if (!makeResult)
+        {
+            STAR_THROW("Failed to create staging buffer for vert info: " + makeResult.error().detail);
+        }
+
+        return std::make_unique<StarBuffers::Buffer>(std::move(builtBuffer));
     }
 
     void writeDataToStageBuffer(StarBuffers::Buffer &buffer) const override

@@ -2,8 +2,8 @@
 
 #include "TransferRequest_Texture.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
 #include "starlight/maker/texture/MakeTexture.hpp"
-
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -118,20 +118,27 @@ template <typename TData, uint32_t TChannels> class TextureData : public Texture
         assert(m_height != 0 && m_width != 0 && "Height and width must be defined");
         const size_t size = getSizeOfData();
 
-        return StarBuffers::Buffer::Builder(device.getAllocator().get())
-            .setAllocationCreateInfo(
-                Allocator::AllocationBuilder()
-                    .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
-                    .setUsage(VMA_MEMORY_USAGE_AUTO)
-                    .build(),
-                vk::BufferCreateInfo()
-                    .setSharingMode(vk::SharingMode::eExclusive)
-                    .setSize(size)
-                    .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-                "GeneratedTextureData")
-            .setInstanceCount(1)
-            .setInstanceSize(size)
-            .buildUnique();
+        star::StarBuffers::Buffer builtBuffer;
+        const auto makeResult = star::maker::buffer::MakeBuffer(device)
+                                    .setCreateInfo(Allocator::AllocationBuilder()
+                                                       .setFlags(VMA_ALLOCATION_CREATE_MAPPED_BIT |
+                                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT)
+                                                       .setUsage(VMA_MEMORY_USAGE_AUTO)
+                                                       .build(),
+                                                   vk::BufferCreateInfo()
+                                                       .setSharingMode(vk::SharingMode::eExclusive)
+                                                       .setSize(size)
+                                                       .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                                                   "GeneratedTextureData")
+                                    .setInstanceCount(1)
+                                    .setInstanceSize(size)
+                                    .make(&builtBuffer, 1);
+        if (!makeResult)
+        {
+            STAR_THROW("Failed to create staging buffer for generated texture data: " + makeResult.error().detail);
+        }
+
+        return std::make_unique<StarBuffers::Buffer>(std::move(builtBuffer));
     }
 
     std::unique_ptr<star::StarTextures::Texture> createFinal(

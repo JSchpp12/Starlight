@@ -1,29 +1,41 @@
 #include "TransferRequest_InstanceModelInfo.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+#include "starlight/factory/BufferFactory.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
+
 #include <star_common/helper/CastHelpers.hpp>
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelInfo::createStagingBuffer(
     core::device::StarDevice &device) const
 {
     const vk::DeviceSize alignmentInstanceSize =
-        StarBuffers::Buffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
+        StarBuffers::BufferFactory::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eExclusive)
-                .setSize(
-                    star::common::casts::size_t_to_unsigned_int(this->displayMatrixInfo.size() * alignmentInstanceSize))
-                .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
-            "InstanceModelInfo_Src")
-        .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->displayMatrixInfo.size()))
-        .setInstanceSize(sizeof(glm::mat4))
-        .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult =
+        star::maker::buffer::MakeBuffer(device)
+            .setCreateInfo(
+                Allocator::AllocationBuilder()
+                    .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
+                    .setUsage(VMA_MEMORY_USAGE_AUTO)
+                    .build(),
+                vk::BufferCreateInfo()
+                    .setSharingMode(vk::SharingMode::eExclusive)
+                    .setSize(star::common::casts::size_t_to_unsigned_int(this->displayMatrixInfo.size() *
+                                                                         alignmentInstanceSize))
+                    .setUsage(vk::BufferUsageFlagBits::eTransferSrc),
+                "InstanceModelInfo_Src")
+            .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->displayMatrixInfo.size()))
+            .setInstanceSize(sizeof(glm::mat4))
+            .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
+            .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create staging buffer for instance model info: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelInfo::createFinal(
@@ -36,26 +48,34 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::InstanceModelI
         indices.push_back(index);
 
     const vk::DeviceSize alignmentInstanceSize =
-        StarBuffers::Buffer::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
+        StarBuffers::BufferFactory::GetAlignment(sizeof(glm::mat4), this->minUniformBufferOffsetAlignment);
 
-    return StarBuffers::Buffer::Builder(device.getAllocator().get())
-        .setAllocationCreateInfo(
-            Allocator::AllocationBuilder()
-                .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
-                .setUsage(VMA_MEMORY_USAGE_AUTO)
-                .build(),
-            vk::BufferCreateInfo()
-                .setSharingMode(vk::SharingMode::eConcurrent)
-                .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
-                .setQueueFamilyIndices(indices)
-                .setSize(
-                    star::common::casts::size_t_to_unsigned_int(this->displayMatrixInfo.size() * alignmentInstanceSize))
-                .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
-            "InstanceModelInfo")
-        .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->displayMatrixInfo.size()))
-        .setInstanceSize(sizeof(glm::mat4))
-        .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
-        .buildUnique();
+    star::StarBuffers::Buffer builtBuffer;
+    const auto makeResult =
+        star::maker::buffer::MakeBuffer(device)
+            .setCreateInfo(
+                Allocator::AllocationBuilder()
+                    .setFlags(VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT)
+                    .setUsage(VMA_MEMORY_USAGE_AUTO)
+                    .build(),
+                vk::BufferCreateInfo()
+                    .setSharingMode(vk::SharingMode::eConcurrent)
+                    .setQueueFamilyIndexCount(static_cast<uint32_t>(indices.size()))
+                    .setQueueFamilyIndices(indices)
+                    .setSize(star::common::casts::size_t_to_unsigned_int(this->displayMatrixInfo.size() *
+                                                                         alignmentInstanceSize))
+                    .setUsage(vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer),
+                "InstanceModelInfo")
+            .setInstanceCount(star::common::casts::size_t_to_unsigned_int(this->displayMatrixInfo.size()))
+            .setInstanceSize(sizeof(glm::mat4))
+            .setMinOffsetAlignment(this->minUniformBufferOffsetAlignment)
+            .make(&builtBuffer, 1);
+    if (!makeResult)
+    {
+        STAR_THROW("Failed to create final buffer for instance model info: " + makeResult.error().detail);
+    }
+
+    return std::make_unique<star::StarBuffers::Buffer>(std::move(builtBuffer));
 }
 
 void star::TransferRequest::InstanceModelInfo::writeDataToStageBuffer(star::StarBuffers::Buffer &buffer) const

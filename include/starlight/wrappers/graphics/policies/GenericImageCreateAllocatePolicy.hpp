@@ -16,7 +16,7 @@ struct GenericImageCreateAllocatePolicy
     std::string allocationName;
     VmaAllocationCreateInfo allocationCreateInfo;
     mutable VmaAllocator allocator;
-    mutable vk::Device device;
+    star::core::device::StarDevice *device = nullptr;
 
     Object create() const
     {
@@ -32,7 +32,7 @@ struct GenericImageCreateAllocatePolicy
                               .setSharingMode(vk::SharingMode::eExclusive);
 
         const auto resources = star::StarTextures::TextureFactory::CreateResource(
-            device, format, allocator, allocationCreateInfo, createInfo, allocationName);
+            *device, format, allocator, allocationCreateInfo, createInfo, allocationName);
         const uint32_t mipmapLevels = createInfo.mipLevels;
         const vk::DeviceSize size = star::StarTextures::TextureFactory::CalculateSize(
             format, createInfo.extent, createInfo.arrayLayers, createInfo.imageType, mipmapLevels);

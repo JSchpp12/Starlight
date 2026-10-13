@@ -1,16 +1,19 @@
 #pragma once
 
 #include "Allocator.hpp"
-#include "IStartupDeviceRequirementsProvider.hpp"
 #include "Enums.hpp"
+#include "IStartupDeviceRequirementsProvider.hpp"
 #include "RenderingInstance.hpp"
 #include "SwapChainSupportDetails.hpp"
 #include "wrappers/graphics/QueueFamilyIndices.hpp"
 
+
 #include <star_common/IRenderDevice.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <set>
+#include <string>
 #include <vector>
 
 #include <vulkan/vulkan.hpp>
@@ -41,12 +44,10 @@ class StarDevice : public star::common::IRenderDevice
 
         std::vector<const char *> GetRequiredDeviceExtensions() const
         {
-            return {VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
-                    VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
-                    VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
-                    VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-                    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-                    VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
+            return {
+                VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME,
+                VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+                VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,    VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME};
         }
 
       public:
@@ -131,6 +132,8 @@ class StarDevice : public star::common::IRenderDevice
     uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags propertyFlags);
 
     bool verifyImageCreate(vk::ImageCreateInfo imageInfo);
+
+    void assignDebugName(vk::ObjectType objectType, uint64_t objectHandle, const std::string &name);
 
     QueueFamilyIndices getQueueInfo();
 #pragma endregion
