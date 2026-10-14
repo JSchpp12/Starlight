@@ -757,6 +757,14 @@ void StarDevice::assignDebugName(vk::ObjectType objectType, uint64_t objectHandl
 
     if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT == nullptr)
     {
+        static std::once_flag entryPointUnavailableLogged;
+        std::call_once(entryPointUnavailableLogged, [] {
+            star::core::logging::log(
+                star::core::logging::LogLevel::warning,
+                "StarDevice: vkSetDebugUtilsObjectNameEXT could not be resolved; debug object names will not be "
+                "attached. Ensure the VK_EXT_debug_utils instance extension is enabled.");
+        });
+
         return;
     }
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "starlight/maker/texture/MakeTextureView.hpp"
 #include "starlight/wrappers/graphics/StarTextures/Texture.hpp"
 
 #include <star_common/Maker.hpp>
@@ -46,9 +45,9 @@ struct MakeTexture : public star::common::Maker<star::StarTextures::Texture, Tex
     MakeTexture &setCreateInfo(VmaAllocationCreateInfo nAllocInfo, vk::ImageCreateInfo nCreateInfo,
                                std::string nAllocationName);
 
-    /// @brief Debug name applied to an externally provided image (and its views) in debug builds. Only used on the
-    /// externally managed image path; newly allocated images are named through the allocation name given to
-    /// setCreateInfo instead.
+    /// @brief Debug name applied to an externally provided image, its views and its sampler in debug builds. Only
+    /// used on the externally managed image path; newly allocated images are named through the allocation name given
+    /// to setCreateInfo instead.
     MakeTexture &setDebugName(std::string nDebugName);
 
     MakeTexture &addViewInfo(const vk::ImageViewCreateInfo &nCreateInfo);
@@ -71,16 +70,13 @@ struct MakeTexture : public star::common::Maker<star::StarTextures::Texture, Tex
   private:
     star::StarTextures::Texture createTexture();
 
-    star::StarTextures::TextureView buildViews(vk::Image image, const std::string &debugName);
-    void buildViewsAndSampler(star::StarTextures::Resources &resources, const std::string &debugName);
-
     core::device::StarDevice &m_device;
     std::optional<vk::Format> m_format = std::nullopt;
     std::optional<star::StarTextures::Texture::Creators> m_createNewAllocationInfo = std::nullopt;
     std::optional<vk::Image> m_vulkanImage = std::nullopt;
     std::string m_debugName;
 
-    MakeTextureView m_viewInfos;
+    std::vector<vk::ImageViewCreateInfo> m_viewInfos;
     std::optional<vk::SamplerCreateInfo> m_samplerInfo = std::nullopt;
     std::optional<vk::DeviceSize> m_overrideSize = std::nullopt;
     std::optional<vk::Extent3D> m_overrideResolution = std::nullopt;

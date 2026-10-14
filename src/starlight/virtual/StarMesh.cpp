@@ -29,8 +29,9 @@ static void CalcBoundingBox(const std::vector<star::Vertex> &verts, glm::vec3 &u
     upperBoundingBoxCoord = max;
 }
 
-StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vector<Vertex> &vertices,
-                   std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked)
+StarMesh::StarMesh(Handle vertBuffer, Handle indBuffer, const std::vector<Vertex> &vertices,
+                   const std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material,
+                   bool hasAdjacenciesPacked)
     : material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), triangular(indices.size() % 3 == 0),
       numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
       numInds(star::common::casts::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
@@ -38,9 +39,9 @@ StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vecto
     CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
 }
 
-StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vector<Vertex> &vertices,
-                   std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material,
-                   const glm::vec3 &boundBoxMinCoord, const glm::vec3 &boundBoxMaxCoord, bool packAdjacencies)
+StarMesh::StarMesh(Handle vertBuffer, Handle indBuffer, const std::vector<Vertex> &vertices,
+                   const std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material,
+                   glm::vec3 boundBoxMinCoord, glm::vec3 boundBoxMaxCoord, bool packAdjacencies)
     : material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), triangular(indices.size() % 3 == 0),
       aaboundingBoxBounds{boundBoxMinCoord, boundBoxMaxCoord},
       numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
@@ -49,12 +50,12 @@ StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, std::vecto
     CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
 }
 
-StarMesh::StarMesh(const Handle &vertBuffer, const Handle &indBuffer, uint32_t vertexCount, uint32_t indexCount,
-                   std::shared_ptr<StarMaterial> material, const glm::vec3 &boundBoxMinCoord,
-                   const glm::vec3 &boundBoxMaxCoord, bool hasAdjacenciesPacked)
+StarMesh::StarMesh(Handle vertBuffer, Handle indBuffer, uint32_t vertexCount, uint32_t indexCount,
+                   std::shared_ptr<StarMaterial> material, glm::vec3 boundBoxMinCoord, glm::vec3 boundBoxMaxCoord,
+                   bool hasAdjacenciesPacked)
     : material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), triangular(indexCount % 3 == 0),
-      aaboundingBoxBounds{boundBoxMinCoord, boundBoxMaxCoord}, numVerts(vertexCount), numInds(indexCount),
-      vertBuffer(vertBuffer), indBuffer(indBuffer)
+      aaboundingBoxBounds{std::move(boundBoxMinCoord), std::move(boundBoxMaxCoord)}, numVerts(vertexCount),
+      numInds(indexCount), vertBuffer(vertBuffer), indBuffer(indBuffer)
 {
 }
 
@@ -63,7 +64,7 @@ void star::StarMesh::prepRender(star::core::device::DeviceContext &context)
     m_deviceID = context.getDeviceID();
 }
 
-bool star::StarMesh::isKnownToBeReady(const uint8_t &frameInFlightIndex)
+bool star::StarMesh::isKnownToBeReady(uint8_t frameInFlightIndex)
 {
     if (this->isReady)
         return true;
@@ -81,8 +82,8 @@ bool star::StarMesh::isKnownToBeReady(const uint8_t &frameInFlightIndex)
 }
 
 void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                              const uint8_t &frameInFlightIndex, const uint32_t &instanceCount,
-                                              uint32_t descriptorSetStartIndex)
+                                              uint8_t frameInFlightIndex, uint32_t instanceCount,
+                                              uint32_t descriptorSetStartIndex, uint32_t firstInstance)
 {
 
     this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex, descriptorSetStartIndex);
@@ -92,7 +93,7 @@ void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, 
     auto &iBuff = ManagerRenderResource::getBuffer(m_deviceID, this->indBuffer);
     commandBuffer.bindVertexBuffers(0, vBuff.getVulkanBuffer(), offset);
     commandBuffer.bindIndexBuffer(iBuff.getVulkanBuffer(), offset, vk::IndexType::eUint32);
-    commandBuffer.drawIndexed(this->numInds, instanceCount, 0, 0, 0);
+    commandBuffer.drawIndexed(this->numInds, instanceCount, 0, 0, firstInstance);
 }
 
 void star::StarMesh::registerTransferWaits(core::device::DeviceContext &context, Handle commandBuffer)

@@ -22,9 +22,8 @@ star::TextureMaterial::TextureMaterial(std::string texturePath,
 
 star::TextureMaterial::~TextureMaterial() = default;
 
-star::TextureMaterial::TextureMaterial(std::string texturePath, const glm::vec4 &surfaceColor,
-                                       const glm::vec4 &highlightColor, const glm::vec4 &ambient,
-                                       const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny)
+star::TextureMaterial::TextureMaterial(std::string texturePath, glm::vec4 surfaceColor, glm::vec4 highlightColor,
+                                       glm::vec4 ambient, glm::vec4 diffuse, glm::vec4 specular, int shiny)
     : StarMaterial(surfaceColor, highlightColor, ambient, diffuse, specular, shiny),
       m_texturePath(std::move(texturePath))
 {
@@ -86,7 +85,7 @@ void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
     m_textureHandle = star::ManagerRenderResource::addRequest(context.getDeviceID(), std::move(texture));
 }
 
-void star::TextureMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+void star::TextureMaterial::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                                        star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
     preloadTexture(context);
@@ -117,7 +116,7 @@ void star::TextureMaterial::registerTextureTransferWait(core::device::DeviceCont
 }
 
 std::unique_ptr<star::StarShaderInfo> star::TextureMaterial::buildShaderInfo(core::device::DeviceContext &context,
-                                                                             const uint8_t &numFramesInFlight,
+                                                                             uint8_t numFramesInFlight,
                                                                              StarShaderInfo::Builder builder)
 {
     assert(m_textureHandle.isInitialized() && "Material needs to be prepared before it can be used");
@@ -133,7 +132,7 @@ std::unique_ptr<star::StarShaderInfo> star::TextureMaterial::buildShaderInfo(cor
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::TextureMaterial::getDescriptorRequests(
-    const int &numFramesInFlight) const
+    int numFramesInFlight) const
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>{
         std::pair<vk::DescriptorType, const int>(vk::DescriptorType::eCombinedImageSampler, 2 * numFramesInFlight)};

@@ -1,6 +1,6 @@
 #include "StarMaterial.hpp"
 
-void star::StarMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+void star::StarMaterial::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                                     star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
     // Only texture-bearing materials register transfer waits against the provided
@@ -33,19 +33,19 @@ void star::StarMaterial::bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayo
     }
 }
 
-bool star::StarMaterial::isKnownToBeReady(const uint8_t &frameInFlightIndex)
+bool star::StarMaterial::isKnownToBeReady(uint8_t frameInFlightIndex)
 {
     return this->shaderInfo->isReady(frameInFlightIndex);
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::StarMaterial::getDescriptorRequests(
-    const int &numFramesInFlight) const
+    int numFramesInFlight) const
 {
     return std::vector<std::pair<vk::DescriptorType, const int>>();
 }
 
 std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarMaterial::getDataSemaphores(
-    const uint8_t &frameInFlightIndex) const
+    uint8_t frameInFlightIndex) const
 {
     auto semaphoreInfo = std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>>();
 
@@ -53,7 +53,7 @@ std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> star::StarMaterial::g
 }
 
 std::unique_ptr<star::StarShaderInfo> star::StarMaterial::buildShaderInfo(core::device::DeviceContext &device,
-                                                                          const uint8_t &numFramesInFlight,
+                                                                          uint8_t numFramesInFlight,
                                                                           StarShaderInfo::Builder builder)
 {
     return builder.build();

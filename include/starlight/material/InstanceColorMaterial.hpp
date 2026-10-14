@@ -14,8 +14,7 @@ class InstanceColorMaterial : public StarMaterial
     void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &constBuilder) const override;
 
   protected:
-    std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context,
-                                                    const uint8_t &numFramesInFlight,
+    std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                                                     StarShaderInfo::Builder builder) override;
 
     std::unique_ptr<IColorProvider> m_colorProvider;

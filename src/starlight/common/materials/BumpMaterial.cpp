@@ -11,7 +11,7 @@ void star::BumpMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout
     constBuilder.addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 }
 
-void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+void star::BumpMaterial::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                                     star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
     if (star::TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_bumpMapFilePath))
@@ -46,7 +46,7 @@ void star::BumpMaterial::prepRender(core::device::DeviceContext &context, const 
 }
 
 std::unique_ptr<star::StarShaderInfo> star::BumpMaterial::buildShaderInfo(core::device::DeviceContext &context,
-                                                                          const uint8_t &numFramesInFlight,
+                                                                          uint8_t numFramesInFlight,
                                                                           StarShaderInfo::Builder builder)
 {
     assert(m_bumpMap.isInitialized() && "Underlying textures must be initialized before use");
@@ -64,7 +64,7 @@ std::unique_ptr<star::StarShaderInfo> star::BumpMaterial::buildShaderInfo(core::
 }
 
 std::vector<std::pair<vk::DescriptorType, const int>> star::BumpMaterial::getDescriptorRequests(
-    const int &numFramesInFlight) const
+    int numFramesInFlight) const
 {
     auto requests = TextureMaterial::getDescriptorRequests(numFramesInFlight);
     return std::vector<std::pair<vk::DescriptorType, const int>>{

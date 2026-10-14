@@ -6,7 +6,6 @@
 #include "starlight/core/Exceptions.hpp"
 #include <unordered_set>
 
-
 star::core::RenderingInstance::RenderingInstance(const std::string &applicationName,
                                                  std::vector<const char *> &extensions)
 {
@@ -40,10 +39,9 @@ vk::Instance star::core::RenderingInstance::createInstance(const std::string &ap
         extensions.push_back(extension);
     }
 
-    if (m_enableValidationLayers)
-    {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
+#ifndef NDEBUG
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
 
     uint32_t extensionCount = 0;
     star::common::casts::SafeCast<size_t, uint32_t>(extensions.size(), extensionCount);

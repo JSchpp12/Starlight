@@ -20,25 +20,25 @@ class TextureMaterial : public StarMaterial
     /// preloadTexture will use it directly instead of loading the path lazily.
     TextureMaterial(std::string texturePath, std::unique_ptr<SharedCompressedTexture> preTranscodedTexture);
 
-    TextureMaterial(std::string texturePath, const glm::vec4 &surfaceColor, const glm::vec4 &highlightColor,
-                    const glm::vec4 &ambient, const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny);
+    TextureMaterial(std::string texturePath, glm::vec4 surfaceColor, glm::vec4 highlightColor, glm::vec4 ambient,
+                    glm::vec4 diffuse, glm::vec4 specular, int shiny);
 
     virtual ~TextureMaterial();
 
     void preloadTexture(core::device::DeviceContext &context);
 
-    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+    virtual void prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                             star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer) override;
 
     virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
-        const int &numFramesInFlight) const override;
+        int numFramesInFlight) const override;
 
     virtual void addDescriptorSetLayoutsTo(StarDescriptorSetLayout::Builder &builder) const override;
 
   protected:
     std::string m_texturePath = "";
     Handle m_textureHandle = Handle();
-    //TODO: Remove because this can also be used for regular textures which muddies the waters here.
+    // TODO: Remove because this can also be used for regular textures which muddies the waters here.
     std::unique_ptr<SharedCompressedTexture> m_preTranscodedTexture = nullptr;
 
     /// Register the texture's GPU transfer-completion semaphore as a one-time
@@ -47,7 +47,7 @@ class TextureMaterial : public StarMaterial
                                             star::Handle textureHandle);
 
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context,
-                                                            const uint8_t &numFramesInFlight,
+                                                            uint8_t numFramesInFlight,
                                                             StarShaderInfo::Builder builder) override;
 };
 } // namespace star
