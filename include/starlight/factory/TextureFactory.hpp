@@ -44,15 +44,31 @@ class TextureFactory
     static Texture FinishNewAllocation(const Texture::Creators &creators, const vk::Format &baseFormat,
                                        uint32_t mipmapLevels, std::shared_ptr<Resources> resources);
 
-    /// @brief Build a complete Texture for an externally owned Vulkan image and pre-built views.
-    static Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage,
-                                 const vk::Format &baseFormat, const TextureView &views, uint32_t mipmapLevels,
-                                 const vk::Extent3D &resolution, vk::DeviceSize size);
+    /// @brief Build a complete Texture for a newly allocated image: creates and names the image/allocation, builds
+    ///        and names the views, and assembles the final Texture. All debug names derive from
+    ///        creators.allocationName.
+    static Texture CreateAllocatedTexture(core::device::StarDevice &device, const Texture::Creators &creators,
+                                          const vk::Format &baseFormat,
+                                          std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels);
 
+    /// @brief CreateAllocatedTexture with an additional image sampler, named from creators.allocationName.
+    static Texture CreateAllocatedTexture(core::device::StarDevice &device, const Texture::Creators &creators,
+                                          const vk::Format &baseFormat,
+                                          std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
+                                          const vk::SamplerCreateInfo &samplerInfo);
+
+    /// @brief Build a complete Texture for an externally owned Vulkan image: names the image, builds and names the
+    ///        views, and assembles the final Texture. All debug names derive from debugName.
     static Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage,
-                                 const vk::Format &baseFormat, const TextureView &views, uint32_t mipmapLevels,
-                                 const vk::SamplerCreateInfo &samplerInfo, const vk::Extent3D &resolution,
+                                 const vk::Format &baseFormat, std::span<const vk::ImageViewCreateInfo> viewInfos,
+                                 uint32_t mipmapLevels, const std::string &debugName, const vk::Extent3D &resolution,
                                  vk::DeviceSize size);
+
+    /// @brief CreateTexture with an additional image sampler, named from debugName.
+    static Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage,
+                                 const vk::Format &baseFormat, std::span<const vk::ImageViewCreateInfo> viewInfos,
+                                 uint32_t mipmapLevels, const vk::SamplerCreateInfo &samplerInfo,
+                                 const std::string &debugName, const vk::Extent3D &resolution, vk::DeviceSize size);
 
     static vk::DeviceSize CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
                                         const uint32_t &arrayLayers, const vk::ImageType &imageType,

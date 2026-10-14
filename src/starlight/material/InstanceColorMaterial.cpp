@@ -11,7 +11,7 @@ void InstanceColorMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLay
 }
 
 std::unique_ptr<StarShaderInfo> InstanceColorMaterial::buildShaderInfo(core::device::DeviceContext &context,
-                                                                       const uint8_t &numFramesInFlight,
+                                                                       uint8_t numFramesInFlight,
                                                                        StarShaderInfo::Builder builder)
 {
     assert(m_colorProvider);

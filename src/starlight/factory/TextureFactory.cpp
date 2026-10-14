@@ -167,23 +167,51 @@ Texture TextureFactory::FinishNewAllocation(const Texture::Creators &creators, c
     return Texture(std::move(resources), baseFormat, mipmapLevels, creators.createInfo.extent, size);
 }
 
+Texture TextureFactory::CreateAllocatedTexture(core::device::StarDevice &device, const Texture::Creators &creators,
+                                               const vk::Format &baseFormat,
+                                               std::span<const vk::ImageViewCreateInfo> viewInfos,
+                                               uint32_t mipmapLevels)
+{
+    std::shared_ptr<Resources> resources = CreateImage(device, creators, baseFormat);
+    resources->views = CreateViews(device, resources->image, viewInfos, mipmapLevels, creators.allocationName);
+
+    return FinishNewAllocation(creators, baseFormat, mipmapLevels, std::move(resources));
+}
+
+Texture TextureFactory::CreateAllocatedTexture(core::device::StarDevice &device, const Texture::Creators &creators,
+                                               const vk::Format &baseFormat,
+                                               std::span<const vk::ImageViewCreateInfo> viewInfos,
+                                               uint32_t mipmapLevels, const vk::SamplerCreateInfo &samplerInfo)
+{
+    std::shared_ptr<Resources> resources = CreateImage(device, creators, baseFormat);
+    resources->views = CreateViews(device, resources->image, viewInfos, mipmapLevels, creators.allocationName);
+    resources->sampler = CreateImageSampler(device, samplerInfo, creators.allocationName);
+
+    return FinishNewAllocation(creators, baseFormat, mipmapLevels, std::move(resources));
+}
+
 Texture TextureFactory::CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage,
-                                      const vk::Format &baseFormat, const TextureView &views, uint32_t mipmapLevels,
+                                      const vk::Format &baseFormat, std::span<const vk::ImageViewCreateInfo> viewInfos,
+                                      uint32_t mipmapLevels, const std::string &debugName,
                                       const vk::Extent3D &resolution, vk::DeviceSize size)
 {
-    static_cast<void>(device);
+    device.assignDebugName(vk::ObjectType::eImage, (uint64_t)(VkImage)(vulkanImage), debugName);
 
+    TextureView views = CreateViews(device, vulkanImage, viewInfos, mipmapLevels, debugName);
     auto resources = std::make_shared<Resources>(vulkanImage, views);
 
     return Texture(std::move(resources), baseFormat, mipmapLevels, resolution, size);
 }
 
 Texture TextureFactory::CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage,
-                                      const vk::Format &baseFormat, const TextureView &views, uint32_t mipmapLevels,
-                                      const vk::SamplerCreateInfo &samplerInfo, const vk::Extent3D &resolution,
-                                      vk::DeviceSize size)
+                                      const vk::Format &baseFormat, std::span<const vk::ImageViewCreateInfo> viewInfos,
+                                      uint32_t mipmapLevels, const vk::SamplerCreateInfo &samplerInfo,
+                                      const std::string &debugName, const vk::Extent3D &resolution, vk::DeviceSize size)
 {
-    const auto sampler = CreateImageSampler(device, samplerInfo);
+    device.assignDebugName(vk::ObjectType::eImage, (uint64_t)(VkImage)(vulkanImage), debugName);
+
+    TextureView views = CreateViews(device, vulkanImage, viewInfos, mipmapLevels, debugName);
+    vk::Sampler sampler = CreateImageSampler(device, samplerInfo, debugName);
     auto resources = std::make_shared<Resources>(vulkanImage, views, sampler);
 
     return Texture(std::move(resources), baseFormat, mipmapLevels, resolution, size);

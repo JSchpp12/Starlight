@@ -28,8 +28,8 @@ class StarMaterial
     glm::vec4 specular{0.5f, 0.5f, 0.5f, 1.0f};
     int shinyCoefficient = 1;
 
-    StarMaterial(const glm::vec4 &surfaceColor, const glm::vec4 &highlightColor, const glm::vec4 &ambient,
-                 const glm::vec4 &diffuse, const glm::vec4 &specular, const int &shiny)
+    StarMaterial(glm::vec4 surfaceColor, glm::vec4 highlightColor, glm::vec4 ambient, glm::vec4 diffuse,
+                 glm::vec4 specular, int shiny)
         : surfaceColor(surfaceColor), highlightColor(highlightColor), ambient(ambient), diffuse(diffuse),
           specular(specular), shinyCoefficient(shiny) {};
 
@@ -40,7 +40,7 @@ class StarMaterial
     /// Entry point for rendering preparations. Ensure the base is called for every child instance
     /// </summary>
     /// <param name="device"></param>
-    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight,
+    virtual void prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                             star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer);
 
     virtual void cleanupRender(core::device::DeviceContext &context);
@@ -48,24 +48,21 @@ class StarMaterial
     virtual void bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout, int swapChainImageIndex,
                       uint32_t firstSetIndex = 0);
 
-    bool isKnownToBeReady(const uint8_t &swapChainImageIndex);
+    bool isKnownToBeReady(uint8_t swapChainImageIndex);
 
     /// Add the descriptor types to be used in this material to the provided layout builder. The layout builder should
     /// already contain parent descriptor information.
     virtual void addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout::Builder &frameBuilder) const {};
 
-    virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(
-        const int &numFramesInFlight) const;
+    virtual std::vector<std::pair<vk::DescriptorType, const int>> getDescriptorRequests(int numFramesInFlight) const;
 
-    std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> getDataSemaphores(
-        const uint8_t &frameInFlightIndex) const;
+    std::set<std::pair<vk::Semaphore, vk::PipelineStageFlags>> getDataSemaphores(uint8_t frameInFlightIndex) const;
 
   protected:
     std::unique_ptr<StarShaderInfo> shaderInfo;
 
     /// @brief Create descriptor sets which will be used when this material is bound. Make sure that all global sets are
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &device,
-                                                            const uint8_t &numFramesInFlight,
-                                                            StarShaderInfo::Builder builder);
+                                                            uint8_t numFramesInFlight, StarShaderInfo::Builder builder);
 };
 } // namespace star
