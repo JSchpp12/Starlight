@@ -62,6 +62,13 @@ MakeTexture &MakeTexture::setSizeInfo(vk::DeviceSize size, vk::Extent3D resoluti
     return *this;
 }
 
+MakeTexture &MakeTexture::setDebugName(std::string nDebugName)
+{
+    m_debugName = std::move(nDebugName);
+
+    return *this;
+}
+
 std::expected<size_t, TextureMakeError> MakeTexture::make(StarTextures::Texture *dst, size_t num) noexcept
 {
     if (!m_format.has_value())
@@ -149,7 +156,13 @@ StarTextures::Texture MakeTexture::createTexture()
         assert(m_overrideResolution.has_value() &&
                "Resolution MUST be provided for externally created/managed texture");
 
-        const auto views = buildViews(m_vulkanImage.value(), {});
+        if (!m_debugName.empty())
+        {
+            m_device.assignDebugName(vk::ObjectType::eImage, (uint64_t)(VkImage)(m_vulkanImage.value()),
+                                     m_debugName);
+        }
+
+        const auto views = buildViews(m_vulkanImage.value(), m_debugName);
 
         if (m_samplerInfo.has_value())
         {
