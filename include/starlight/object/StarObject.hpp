@@ -54,7 +54,7 @@ class StarObject
 
     virtual void cleanupRender(core::device::DeviceContext &device);
 
-    virtual Handle buildPipeline(core::device::DeviceContext &device, const vk::Extent2D &swapChainExtent,
+    virtual Handle buildPipeline(core::device::DeviceContext &device, vk::Extent2D swapChainExtent,
                                  vk::PipelineLayout pipelineLayout,
                                  const core::renderer::RenderingTargetInfo &renderInfo);
 
@@ -71,18 +71,18 @@ class StarObject
                                        uint32_t globalSetCount, star::Handle commandBuffer);
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context,
-                                       star::StarShaderInfo::Builder fullEngineBuilder, const Handle &sharedPipeline,
+                                       star::StarShaderInfo::Builder fullEngineBuilder, Handle sharedPipeline,
                                        uint32_t globalSetCount, star::Handle commandBuffer);
 
     virtual core::renderer::RenderingContext buildRenderingContext(star::core::device::DeviceContext &context);
 
     /// Function to contain any commands to be submitted before the start of the rendering pass this object is contained
     /// in begins
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
-                                             const uint64_t &frameIndex);
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &frameTracker,
+                                             uint64_t frameIndex);
 
     /// Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
-    virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex) {};
+    virtual void recordPostRenderPassCommands(vk::CommandBuffer commandBuffer, int frameInFlightIndex) {};
 
     /// <summary>
     /// Create render call
@@ -90,23 +90,23 @@ class StarObject
     /// <param name="commandBuffer"></param>
     /// <param name="pipelineLayout"></param>
     /// <param name="swapChainIndexNum"></param>
-    void recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                  const uint8_t &swapChainIndexNum, const uint64_t &frameIndex);
+    virtual void recordRenderPassCommands(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout,
+                                          uint8_t swapChainIndexNum, uint64_t frameIndex);
 
     /// @brief Create an instance of this object.
     /// @return A reference to the created instance. The object will own the instance.
     StarEntity &createInstance();
 
-    StarEntity &getInstance(const size_t &index = 0);
-    const StarEntity &getInstance(const size_t &index = 0) const;
+    StarEntity &getInstance(size_t index = 0);
+    const StarEntity &getInstance(size_t index = 0) const;
 
     const ManagerController::RenderResource::InstanceModelInfo &getInstanceModelController()
     {
         return m_instanceInfo.getControllerModel();
     }
 
-    virtual void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                             const Handle &targetCommandBuffer,
+    virtual void frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
+                             Handle targetCommandBuffer,
                              const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
     /// @brief Create descriptor set layouts for this object.
@@ -139,7 +139,7 @@ class StarObject
         {
         }
 
-        void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+        void prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight)
         {
             m_infoManagerInstanceModel.prepRender(context, numFramesInFlight);
             m_infoManagerInstanceNormal.prepRender(context, numFramesInFlight);
@@ -156,14 +156,14 @@ class StarObject
             return m_instances.back();
         }
 
-        StarEntity &getInstance(const size_t &index)
+        StarEntity &getInstance(size_t index)
         {
             assert(index < m_instances.size());
             setManagersToUpdate();
 
             return m_instances[index];
         }
-        const StarEntity &getInstance(const size_t &index) const
+        const StarEntity &getInstance(size_t index) const
         {
             assert(index < m_instances.size());
             return m_instances[index];
@@ -215,10 +215,10 @@ class StarObject
 
     virtual void createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds);
 
-    std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(const uint8_t &numFramesInFlight);
+    std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(uint8_t numFramesInFlight);
 
-    virtual void updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                     const Handle &targetCommandBuffer,
+    virtual void updateDependentData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
+                                     Handle targetCommandBuffer,
                                      const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
   private:
@@ -245,21 +245,21 @@ class StarObject
 
     void registerMeshTransferWaits(star::core::device::DeviceContext &context, star::Handle commandBuffer);
 
-    void recordDrawCommandNormals(vk::CommandBuffer &commandBuffer);
+    void recordDrawCommandNormals(vk::CommandBuffer commandBuffer);
 
-    void recordDrawCommandBoundingBox(vk::CommandBuffer &commandBuffer, int inFlightIndex);
+    void recordDrawCommandBoundingBox(vk::CommandBuffer commandBuffer, int inFlightIndex);
 
     void calculateBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds);
 
     void prepareMeshes(star::core::device::DeviceContext &context);
 
-    void updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                            const Handle &targetCommandBuffer,
+    void updateInstanceData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
+                            Handle targetCommandBuffer,
                             const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
-    bool isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex);
+    bool isKnownToBeReadyForRecordRender(uint8_t frameInFlightIndex);
 
-    void recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
-                                             const uint64_t &frameIndex);
+    void recordDependentDataPipelineBarriers(vk::CommandBuffer commandBuffer, const common::FrameTracker &frameTracker,
+                                             uint64_t frameIndex);
 };
 } // namespace star

@@ -36,7 +36,7 @@ class StarMesh
 
     virtual void prepRender(core::device::DeviceContext &device);
 
-    virtual void recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
+    virtual void recordRenderPassCommands(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout,
                                           uint8_t frameInFlightIndex, uint32_t instanceCount,
                                           uint32_t descriptorSetStartIndex = 0, uint32_t firstInstance = 0);
 

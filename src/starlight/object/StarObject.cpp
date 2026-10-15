@@ -155,7 +155,7 @@ void star::StarObject::cleanupRender(core::device::DeviceContext &context)
     }
 }
 
-star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &context, const vk::Extent2D &swapChainExtent,
+star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &context, vk::Extent2D swapChainExtent,
                                              vk::PipelineLayout pipelineLayout,
                                              const core::renderer::RenderingTargetInfo &renderInfo)
 {
@@ -195,12 +195,12 @@ star::PipelineProvider star::StarObject::getPipelineProvider(vk::PipelineLayout 
     return PipelineProvider({m_vertexShaderHandle, m_fragmentShaderHandle}, pipelineLayout);
 }
 
-star::StarEntity &star::StarObject::getInstance(const size_t &index)
+star::StarEntity &star::StarObject::getInstance(size_t index)
 {
     return m_instanceInfo.getInstance(index);
 }
 
-const star::StarEntity &star::StarObject::getInstance(const size_t &index) const
+const star::StarEntity &star::StarObject::getInstance(size_t index) const
 {
     return m_instanceInfo.getInstance(index);
 }
@@ -227,7 +227,7 @@ void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &
 
 void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
                                              star::StarShaderInfo::Builder fullEngineBuilder,
-                                             const Handle &sharedPipeline, uint32_t globalSetCount,
+                                             Handle sharedPipeline, uint32_t globalSetCount,
                                              star::Handle commandBuffer)
 {
     m_globalSetCount = globalSetCount;
@@ -273,8 +273,8 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
-void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer,
-                                                   const common::FrameTracker &frameTracker, const uint64_t &frameIndex)
+void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer,
+                                                   const common::FrameTracker &frameTracker, uint64_t frameIndex)
 {
     const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
 
@@ -284,8 +284,8 @@ void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer &commandBuf
     recordDependentDataPipelineBarriers(commandBuffer, frameTracker, frameIndex);
 }
 
-void star::StarObject::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
-                                                const uint8_t &swapChainIndexNum, const uint64_t &frameIndex)
+void star::StarObject::recordRenderPassCommands(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout,
+                                                uint8_t swapChainIndexNum, uint64_t frameIndex)
 {
     if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
         return;
@@ -328,8 +328,8 @@ star::StarEntity &star::StarObject::createInstance()
     return m_instanceInfo.create();
 }
 
-void star::StarObject::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                   const Handle &targetCommandBuffer,
+void star::StarObject::frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
+                                   Handle targetCommandBuffer,
                                    const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
     if (!isReady && isRenderReady(context))
@@ -478,7 +478,7 @@ void star::StarObject::createBoundingBox(std::vector<Vertex> &verts, std::vector
     star::GeometryHelpers::calculateAxisAlignedBoundingBox(bbBounds[0], bbBounds[1], verts, inds, true);
 }
 
-void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer &commandBuffer)
+void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer commandBuffer)
 {
     // uint32_t ib = 0;
 
@@ -502,7 +502,7 @@ void star::StarObject::recordDrawCommandNormals(vk::CommandBuffer &commandBuffer
     // }
 }
 
-void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer &commandBuffer, int inFlightIndex)
+void star::StarObject::recordDrawCommandBoundingBox(vk::CommandBuffer commandBuffer, int inFlightIndex)
 {
     // vk::DeviceSize offsets{};
     // commandBuffer.bindVertexBuffers(
@@ -526,7 +526,7 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex> &verts, std::vec
 }
 
 std::vector<std::pair<vk::DescriptorType, const uint32_t>> star::StarObject::getDescriptorRequests(
-    const uint8_t &numFramesInFlight)
+    uint8_t numFramesInFlight)
 {
     std::vector<std::pair<vk::DescriptorType, const uint32_t>> requests{
         std::make_pair(vk::DescriptorType::eUniformBuffer, 2), std::make_pair(vk::DescriptorType::eStorageBuffer, 2)};
@@ -570,15 +570,15 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
     return true;
 }
 
-void star::StarObject::updateDependentData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                           const Handle &targetCommandBuffer,
+void star::StarObject::updateDependentData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
+                                           Handle targetCommandBuffer,
                                            const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
     updateInstanceData(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
 }
 
-void star::StarObject::updateInstanceData(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                          const Handle &targetCommandBuffer,
+void star::StarObject::updateInstanceData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
+                                          Handle targetCommandBuffer,
                                           const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
     bool updateInstanceModel = false, updateInstanceNormal = false;
@@ -627,7 +627,7 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
     }
 }
 
-bool star::StarObject::isKnownToBeReadyForRecordRender(const uint8_t &frameInFlightIndex)
+bool star::StarObject::isKnownToBeReadyForRecordRender(uint8_t frameInFlightIndex)
 {
     if (!isReady)
     {
@@ -645,9 +645,9 @@ bool star::StarObject::isKnownToBeReadyForRecordRender(const uint8_t &frameInFli
     return true;
 }
 
-void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer &commandBuffer,
+void star::StarObject::recordDependentDataPipelineBarriers(vk::CommandBuffer commandBuffer,
                                                            const common::FrameTracker &frameTracker,
-                                                           const uint64_t &frameIndex)
+                                                           uint64_t frameIndex)
 {
     const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
 
