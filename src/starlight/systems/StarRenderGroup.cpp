@@ -154,8 +154,8 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
     m_largestDescriptorSet = combinedSet;
 }
 
-void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer &mainDrawBuffer, const uint8_t &frameInFlightIndex,
-                                               const uint64_t &frameIndex)
+void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer mainDrawBuffer, uint8_t frameInFlightIndex,
+                                               uint64_t frameIndex)
 {
     for (auto &group : this->m_groups)
     {
