@@ -4,6 +4,7 @@
 #include "starlight/core/Exceptions.hpp"
 #include "starlight/core/device/managers/Pipeline.hpp"
 #include "starlight/core/device/managers/Shader.hpp"
+#include "starlight/service/IOService.hpp"
 #include "starlight/virtual/StarPipeline.hpp"
 #include "starlight/virtual/StarShader.hpp"
 
@@ -17,7 +18,8 @@ PipelineCommandService::PipelineCommandService() : m_listenForCreatePipeline(*th
 }
 
 PipelineCommandService::PipelineCommandService(PipelineCommandService &&other)
-    : m_listenForCreatePipeline(*this), m_graphicsManagers(other.m_graphicsManagers), m_cmdBus(other.m_cmdBus)
+    : m_listenForCreatePipeline(*this), m_graphicsManagers(other.m_graphicsManagers), m_cmdBus(other.m_cmdBus),
+      m_ioService(other.m_ioService)
 {
     if (m_cmdBus != nullptr)
     {
@@ -32,6 +34,7 @@ PipelineCommandService &PipelineCommandService::operator=(PipelineCommandService
     {
         m_graphicsManagers = other.m_graphicsManagers;
         m_cmdBus = other.m_cmdBus;
+        m_ioService = other.m_ioService;
 
         if (m_cmdBus != nullptr)
         {
@@ -71,6 +74,12 @@ void PipelineCommandService::setInitParameters(InitParameters &params)
 {
     m_cmdBus = &params.commandBus;
     m_graphicsManagers = &params.graphicsManagers;
+    // May be null when a custom service list wires PipelineCommandService
+    // without (or before) an IOService: onCreatePipeline then passes request
+    // paths through unresolved rather than dereferencing a null service. In
+    // the default factory (EngineServicesFactory::createDefault) IOService is
+    // parameterized first and this is never null.
+    m_ioService = params.ioService;
 }
 
 void PipelineCommandService::onCreatePipeline(star::command::pipeline::CreatePipeline &cmd)
@@ -92,7 +101,35 @@ void PipelineCommandService::onCreatePipeline(star::command::pipeline::CreatePip
 
     for (const auto &request : cmd.getShaderRequests())
     {
-        core::device::manager::ShaderRequest managerRequest{StarShader{request.pathString(), request.stage},
+        // Resolve each raw shader request path through the IOService before
+        // submission so callers may pass media-relative candidates
+        // (absolute/existing paths resolve to themselves via the as-is probe).
+        // Without an IOService the candidate is passed through unresolved --
+        // matching the pre-resolution behavior -- rather than crashing on a
+        // null service.
+        std::filesystem::path resolvedPath = request.path;
+        if (m_ioService != nullptr)
+        {
+            auto resolved = m_ioService->resolve(request.path, star::io::PathKind::file);
+            if (!resolved)
+            {
+                // A pipeline submitted over a null shader handle can never
+                // finish building (it waits for a ShaderCompiled event that
+                // will never fire), so fail the request outright instead of
+                // handing the caller a handle that implies success.
+                star::core::logging::error("Failed to resolve shader path: ", resolved.error().toString());
+                cmd.getReply().set(std::unexpected(resolved.error()));
+                return;
+            }
+            resolvedPath = std::move(resolved.value());
+        }
+        else
+        {
+            star::core::logging::warning("IOService is not available; passing shader path through unresolved: ",
+                                         request.path.string());
+        }
+
+        core::device::manager::ShaderRequest managerRequest{StarShader{resolvedPath.string(), request.stage},
                                                             request.compiler};
         shaderHandles.push_back(m_graphicsManagers->shaderManager->submit(std::move(managerRequest)));
     }

@@ -4,6 +4,7 @@
 #include "common/helpers/FileHelpers.hpp"
 #include "core/Exceptions.hpp"
 #include "logging/LoggingFactory.hpp"
+#include "starlight/util/io/SearchPolicy.hpp"
 
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -11,6 +12,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <system_error>
 
 using json = nlohmann::json;
 
@@ -36,12 +38,44 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
 
 void star::ConfigFile::load(const std::filesystem::path &configPath)
 {
-    auto raw = config::ConfigReader{}(configPath);
+    // The requested location is authoritative: use it directly when it exists,
+    // so a same-named file in another search location can never silently take
+    // its place. Only when it is missing do the fallback probes (media
+    // directory, then executable directory) run -- and then loudly.
+    std::filesystem::path effectivePath = configPath;
+    std::optional<star::io::IOError> resolutionError;
+
+    std::error_code existsEc;
+    if (!std::filesystem::exists(configPath, existsEc))
+    {
+        auto resolved = star::io::resolvePath(configPath, star::io::PathKind::file);
+        if (resolved)
+        {
+            std::ostringstream oss;
+            oss << "Config file '" << configPath.string() << "' was not found at the requested location; loading '"
+                << resolved.value().string() << "' instead";
+            core::logging::warning(oss.str());
+
+            effectivePath = std::move(resolved.value());
+        }
+        else
+        {
+            // Keep the original candidate so the existing error reporting
+            // fires, enriched with the attempted locations.
+            resolutionError = std::move(resolved).error();
+        }
+    }
+
+    auto raw = config::ConfigReader{}(effectivePath);
     if (!raw.has_value())
     {
         std::ostringstream oss;
-        oss << "Provided config file was not found or could not be read: " << configPath.string() << std::endl
-            << "A default config file should have been created with the starlight app builder project" << std::endl;
+        oss << "Provided config file was not found or could not be read: " << configPath.string() << std::endl;
+        if (resolutionError.has_value())
+        {
+            oss << resolutionError->toString() << std::endl;
+        }
+        oss << "A default config file should have been created with the starlight app builder project" << std::endl;
 
         STAR_THROW(oss.str());
     }
@@ -56,17 +90,41 @@ void star::ConfigFile::load(const std::map<std::string, std::string> &rawValues)
 
 void star::ConfigFile::applyDefaults(std::map<std::string, std::string> values)
 {
+    // The media directory is assumed to live next to the executable; this is
+    // the single value used for the setting regardless of file contents.
+    const auto effectiveMediaDir = file_helpers::GetMediaDirectory();
+
     for (auto &[jsonKey, configKey] : availableSettings)
     {
         if (auto it = values.find(jsonKey); it != values.end())
         {
-            settings[configKey] = it->second;
+            if (configKey == Config_Settings::mediadirectory)
+            {
+                // The media_directory value is always ignored in favor of the
+                // exe-relative location; warn once when a differing value is
+                // discarded so stale configs are visible.
+                if (std::filesystem::path{it->second}.lexically_normal() != effectiveMediaDir.lexically_normal())
+                {
+                    std::ostringstream oss;
+                    oss << "Ignoring config-provided media_directory '" << it->second
+                        << "'; media assets are assumed to live next to the executable: " << effectiveMediaDir.string();
+                    core::logging::warning(oss.str());
+                }
+                settings[configKey] = effectiveMediaDir.string();
+            }
+            else
+            {
+                settings[configKey] = it->second;
+            }
             values.erase(it);
         }
         else
         {
             switch (configKey)
             {
+            case Config_Settings::mediadirectory:
+                settings[configKey] = effectiveMediaDir.string();
+                break;
             case Config_Settings::texture_filtering:
                 settings[configKey] = "linear";
                 break;

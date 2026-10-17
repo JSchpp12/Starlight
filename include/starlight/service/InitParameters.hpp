@@ -16,6 +16,7 @@
 namespace star::service
 {
 class TaskSchedulerService;
+class IOService;
 
 struct InitParameters
 {
@@ -30,5 +31,6 @@ struct InitParameters
     core::device::manager::ManagerCommandBuffer &commandBufferManager;
     ManagerRenderResource &renderResourceManager;
     common::FrameTracker::Setup flightTrackerSetup;
+    IOService *ioService = nullptr;
 };
 } // namespace star::service

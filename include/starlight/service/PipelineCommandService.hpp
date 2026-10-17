@@ -8,6 +8,8 @@
 
 namespace star::service
 {
+class IOService;
+
 class PipelineCommandService
 {
   public:
@@ -34,6 +36,7 @@ class PipelineCommandService
     policy::command::ListenForCreatePipeline<PipelineCommandService> m_listenForCreatePipeline;
     core::device::manager::GraphicsContainer *m_graphicsManagers = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
+    IOService *m_ioService = nullptr;
 
     void initListeners(core::CommandBus &bus);
 

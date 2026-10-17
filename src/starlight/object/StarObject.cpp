@@ -10,9 +10,11 @@
 #include "wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"
 
 #include "common/helpers/GeometryHelpers.hpp"
+#include "core/Exceptions.hpp"
 #include <glm/glm.hpp>
 
 #include <algorithm>
+#include <sstream>
 
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout =
     std::unique_ptr<star::StarDescriptorSetLayout>();
@@ -187,7 +189,17 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
     }
 
     context.getCmdBus().submit(cmd);
-    return cmd.getReply().get();
+    const auto reply = cmd.getReply().get();
+    if (!reply)
+    {
+        // The service reports resolution failures through the reply; a
+        // pipeline that failed to build would otherwise surface as a hang
+        // waiting for a pipeline-ready event that never fires.
+        std::ostringstream oss;
+        oss << "Failed to create pipeline: " << reply.error().toString();
+        STAR_THROW(oss.str());
+    }
+    return reply.value();
 }
 
 star::PipelineProvider star::StarObject::getPipelineProvider(vk::PipelineLayout pipelineLayout)
@@ -225,7 +237,7 @@ void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &
     registerMeshTransferWaits(context, commandBuffer);
 }
 
-void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &context,
+void star::StarObject::onDescriptorPoolReady(core::device::DeviceContext &context,
                                              star::StarShaderInfo::Builder fullEngineBuilder,
                                              const Handle &sharedPipeline, uint32_t globalSetCount,
                                              star::Handle commandBuffer)

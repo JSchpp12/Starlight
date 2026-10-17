@@ -4,12 +4,15 @@
 
 namespace star::service
 {
-IOService::IOService() : m_listenForReadFromFile(*this), m_listenForWriteToFile(*this)
+IOService::IOService(star::io::SearchPolicy policy)
+    : m_policy(std::move(policy)), m_listenForGetPath(*this), m_listenForReadFromFile(*this),
+      m_listenForWriteToFile(*this)
 {
 }
 
 IOService::IOService(IOService &&other)
-    : m_listenForReadFromFile(*this), m_listenForWriteToFile(*this), m_worker(other.m_worker), m_cmdBus(other.m_cmdBus)
+    : m_policy(std::move(other.m_policy)), m_listenForGetPath(*this), m_listenForReadFromFile(*this),
+      m_listenForWriteToFile(*this), m_worker(other.m_worker), m_cmdBus(other.m_cmdBus)
 {
     if (m_cmdBus != nullptr)
     {
@@ -23,6 +26,7 @@ IOService &IOService::operator=(IOService &&other)
 {
     if (this != &other)
     {
+        m_policy = std::move(other.m_policy);
         m_worker = other.m_worker;
         m_cmdBus = other.m_cmdBus;
 
@@ -38,12 +42,14 @@ IOService &IOService::operator=(IOService &&other)
 
 void IOService::initListeners(star::core::CommandBus &bus)
 {
+    m_listenForGetPath.init(bus);
     m_listenForReadFromFile.init(bus);
     m_listenForWriteToFile.init(bus);
 }
 
 void IOService::cleanupListeners(star::core::CommandBus &bus)
 {
+    m_listenForGetPath.cleanup(bus);
     m_listenForReadFromFile.cleanup(bus);
     m_listenForWriteToFile.cleanup(bus);
 }
@@ -65,6 +71,12 @@ void IOService::shutdown()
 void IOService::setInitParameters(InitParameters &params)
 {
     m_cmdBus = &params.commandBus;
+    // Publish this service to later services (ShaderService,
+    // PipelineCommandService) that funnel path resolution through it. Same
+    // pattern as TaskSchedulerService: services are parameterized in list
+    // order, so IOService must precede its consumers (guaranteed by
+    // EngineServicesFactory::createDefault).
+    params.ioService = this;
 }
 
 void IOService::onReadFromFile(command::file_io::ReadFromFile &cmd)
@@ -80,6 +92,17 @@ void IOService::onWriteToFile(command::file_io::WriteToFile &cmd)
 
     // create the event and dispatch to worker
     m_worker->queueTask(&cmd.writeTask);
+}
+
+void IOService::onGetPath(star::command::file_io::GetPath &cmd)
+{
+    cmd.getReply().set(star::io::resolvePath(m_policy, cmd.getCandidate(), cmd.getKind()));
+}
+
+std::expected<std::filesystem::path, star::io::IOError> IOService::resolve(const std::filesystem::path &candidate,
+                                                                           star::io::PathKind kind) const
+{
+    return star::io::resolvePath(m_policy, candidate, kind);
 }
 
 } // namespace star::service
