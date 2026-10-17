@@ -11,13 +11,44 @@
 #include <sstream>
 #include <string_view>
 
-namespace star::StarTextures
+namespace star::StarTextures::TextureFactory
 {
+static void LogImageCreateFailure(const vk::Result &result)
+{
+    std::ostringstream oss;
+    oss << "Failed to create image with Vulkan error: ";
 
-void TextureFactory::CreateAllocation(core::device::StarDevice &device, const vk::Format &baseFormat,
-                                      VmaAllocator &allocator, const VmaAllocationCreateInfo &allocationCreateInfo,
-                                      const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
-                                      vk::Image &textureImage, const std::string &allocationName)
+    if (result == vk::Result::eErrorFeatureNotPresent)
+    {
+        oss << "eErrorFeatureNotPresent";
+    }
+    else
+    {
+        oss << "Undefined error";
+    }
+
+    core::logging::log(boost::log::trivial::error, oss.str());
+}
+
+static void VerifyImageCreateInfo(const vk::ImageCreateInfo &createInfo)
+{
+    assert(createInfo.extent.width != 0 && "width cannot be 0");
+    assert(createInfo.extent.height != 0 && "height cannot be 0");
+    assert(createInfo.extent.depth != 0 && "depth cannot be 0");
+    assert(createInfo.mipLevels != 0 && "mip levels cannnot be 0");
+    assert(createInfo.arrayLayers != 0 && "array layers cannot be 0");
+    assert((createInfo.initialLayout == vk::ImageLayout::eUndefined) ||
+           createInfo.initialLayout == vk::ImageLayout::ePreinitialized &&
+               "Invalid initial layout according to vulkan specs");
+    assert(createInfo.sharingMode == vk::SharingMode::eExclusive ||
+           (createInfo.sharingMode == vk::SharingMode::eConcurrent && createInfo.queueFamilyIndexCount > 1) &&
+               "Must have indices defined for shared resource");
+}
+
+static void CreateAllocation(core::device::StarDevice &device, const vk::Format &baseFormat, VmaAllocator &allocator,
+                             const VmaAllocationCreateInfo &allocationCreateInfo,
+                             const vk::ImageCreateInfo &imageCreateInfo, VmaAllocation &allocation,
+                             vk::Image &textureImage, const std::string &allocationName)
 {
     vk::ImageCreateInfo addFormat = vk::ImageCreateInfo(imageCreateInfo).setFormat(baseFormat);
 
@@ -42,9 +73,37 @@ void TextureFactory::CreateAllocation(core::device::StarDevice &device, const vk
 #endif
 }
 
-TextureView TextureFactory::CreateViews(core::device::StarDevice &device, vk::Image image,
-                                        std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
-                                        const std::string &debugName)
+static void VerifyNewAllocation(core::device::StarDevice &device, const Texture::Creators &creators,
+                                const vk::Format &baseFormat)
+{
+    // Build the effective create info with the baseFormat that CreateAllocation will actually use
+    const vk::ImageCreateInfo effectiveInfo = vk::ImageCreateInfo(creators.createInfo).setFormat(baseFormat);
+
+    if (!device.verifyImageCreate(effectiveInfo))
+    {
+        std::ostringstream oss;
+        oss << "Hardware does not support creating image with format " << vk::to_string(baseFormat) << ", usage "
+            << vk::to_string(effectiveInfo.usage) << ", tiling " << vk::to_string(effectiveInfo.tiling);
+        throw vk::FormatNotSupportedError(oss.str());
+    }
+}
+
+inline static uint32_t CeilDiv(const uint32_t &width, const uint32_t &height)
+{
+    return (width + height - 1) / height;
+}
+
+inline static vk::Extent3D GetLevelExtent(const vk::Extent3D &baseExtent, const uint32_t &level)
+{
+    return vk::Extent3D()
+        .setWidth(std::max(1u, baseExtent.width >> level))
+        .setHeight(std::max(1u, baseExtent.height >> level))
+        .setDepth(std::max(1u, baseExtent.depth >> level));
+}
+
+TextureView CreateViews(core::device::StarDevice &device, vk::Image image,
+                        std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
+                        const std::string &debugName)
 {
     TextureView textureView;
 
@@ -85,40 +144,8 @@ TextureView TextureFactory::CreateViews(core::device::StarDevice &device, vk::Im
     return textureView;
 }
 
-void TextureFactory::VerifyImageCreateInfo(const vk::ImageCreateInfo &createInfo)
-{
-    assert(createInfo.extent.width != 0 && "width cannot be 0");
-    assert(createInfo.extent.height != 0 && "height cannot be 0");
-    assert(createInfo.extent.depth != 0 && "depth cannot be 0");
-    assert(createInfo.mipLevels != 0 && "mip levels cannnot be 0");
-    assert(createInfo.arrayLayers != 0 && "array layers cannot be 0");
-    assert((createInfo.initialLayout == vk::ImageLayout::eUndefined) ||
-           createInfo.initialLayout == vk::ImageLayout::ePreinitialized &&
-               "Invalid initial layout according to vulkan specs");
-    assert(createInfo.sharingMode == vk::SharingMode::eExclusive ||
-           (createInfo.sharingMode == vk::SharingMode::eConcurrent && createInfo.queueFamilyIndexCount > 1) &&
-               "Must have indices defined for shared resource");
-}
-
-void TextureFactory::LogImageCreateFailure(const vk::Result &result)
-{
-    std::ostringstream oss;
-    oss << "Failed to create image with Vulkan error: ";
-
-    if (result == vk::Result::eErrorFeatureNotPresent)
-    {
-        oss << "eErrorFeatureNotPresent";
-    }
-    else
-    {
-        oss << "Undefined error";
-    }
-
-    core::logging::log(boost::log::trivial::error, oss.str());
-}
-
-std::shared_ptr<Resources> TextureFactory::CreateImage(core::device::StarDevice &device,
-                                                       const Texture::Creators &creators, const vk::Format &baseFormat)
+std::shared_ptr<Resources> CreateImage(core::device::StarDevice &device, const Texture::Creators &creators,
+                                       const vk::Format &baseFormat)
 {
     VerifyNewAllocation(device, creators, baseFormat);
 
@@ -126,11 +153,9 @@ std::shared_ptr<Resources> TextureFactory::CreateImage(core::device::StarDevice 
                           creators.createInfo, creators.allocationName);
 }
 
-std::shared_ptr<Resources> TextureFactory::CreateResource(core::device::StarDevice &device,
-                                                          const vk::Format &baseFormat, VmaAllocator &allocator,
-                                                          const VmaAllocationCreateInfo &allocationCreateInfo,
-                                                          const vk::ImageCreateInfo &imageCreateInfo,
-                                                          const std::string &allocationName)
+std::shared_ptr<Resources> CreateResource(core::device::StarDevice &device, const vk::Format &baseFormat,
+                                          VmaAllocator &allocator, const VmaAllocationCreateInfo &allocationCreateInfo,
+                                          const vk::ImageCreateInfo &imageCreateInfo, const std::string &allocationName)
 {
     VerifyImageCreateInfo(imageCreateInfo);
 
@@ -143,23 +168,8 @@ std::shared_ptr<Resources> TextureFactory::CreateResource(core::device::StarDevi
     return std::make_shared<AllocatedResources>(image, allocation, allocator);
 }
 
-void TextureFactory::VerifyNewAllocation(core::device::StarDevice &device, const Texture::Creators &creators,
-                                         const vk::Format &baseFormat)
-{
-    // Build the effective create info with the baseFormat that CreateAllocation will actually use
-    const vk::ImageCreateInfo effectiveInfo = vk::ImageCreateInfo(creators.createInfo).setFormat(baseFormat);
-
-    if (!device.verifyImageCreate(effectiveInfo))
-    {
-        std::ostringstream oss;
-        oss << "Hardware does not support creating image with format " << vk::to_string(baseFormat) << ", usage "
-            << vk::to_string(effectiveInfo.usage) << ", tiling " << vk::to_string(effectiveInfo.tiling);
-        throw vk::FormatNotSupportedError(oss.str());
-    }
-}
-
-Texture TextureFactory::FinishNewAllocation(const Texture::Creators &creators, const vk::Format &baseFormat,
-                                            uint32_t mipmapLevels, std::shared_ptr<Resources> resources)
+Texture FinishNewAllocation(const Texture::Creators &creators, const vk::Format &baseFormat, uint32_t mipmapLevels,
+                            std::shared_ptr<Resources> resources)
 {
     const vk::DeviceSize size = CalculateSize(baseFormat, creators.createInfo.extent, creators.createInfo.arrayLayers,
                                               creators.createInfo.imageType, mipmapLevels);
@@ -167,10 +177,9 @@ Texture TextureFactory::FinishNewAllocation(const Texture::Creators &creators, c
     return Texture(std::move(resources), baseFormat, mipmapLevels, creators.createInfo.extent, size);
 }
 
-Texture TextureFactory::CreateAllocatedTexture(core::device::StarDevice &device, const Texture::Creators &creators,
-                                               const vk::Format &baseFormat,
-                                               std::span<const vk::ImageViewCreateInfo> viewInfos,
-                                               uint32_t mipmapLevels)
+Texture CreateAllocatedTexture(core::device::StarDevice &device, const Texture::Creators &creators,
+                               const vk::Format &baseFormat, std::span<const vk::ImageViewCreateInfo> viewInfos,
+                               uint32_t mipmapLevels)
 {
     std::shared_ptr<Resources> resources = CreateImage(device, creators, baseFormat);
     resources->views = CreateViews(device, resources->image, viewInfos, mipmapLevels, creators.allocationName);
@@ -178,10 +187,9 @@ Texture TextureFactory::CreateAllocatedTexture(core::device::StarDevice &device,
     return FinishNewAllocation(creators, baseFormat, mipmapLevels, std::move(resources));
 }
 
-Texture TextureFactory::CreateAllocatedTexture(core::device::StarDevice &device, const Texture::Creators &creators,
-                                               const vk::Format &baseFormat,
-                                               std::span<const vk::ImageViewCreateInfo> viewInfos,
-                                               uint32_t mipmapLevels, const vk::SamplerCreateInfo &samplerInfo)
+Texture CreateAllocatedTexture(core::device::StarDevice &device, const Texture::Creators &creators,
+                               const vk::Format &baseFormat, std::span<const vk::ImageViewCreateInfo> viewInfos,
+                               uint32_t mipmapLevels, const vk::SamplerCreateInfo &samplerInfo)
 {
     std::shared_ptr<Resources> resources = CreateImage(device, creators, baseFormat);
     resources->views = CreateViews(device, resources->image, viewInfos, mipmapLevels, creators.allocationName);
@@ -190,10 +198,9 @@ Texture TextureFactory::CreateAllocatedTexture(core::device::StarDevice &device,
     return FinishNewAllocation(creators, baseFormat, mipmapLevels, std::move(resources));
 }
 
-Texture TextureFactory::CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage,
-                                      const vk::Format &baseFormat, std::span<const vk::ImageViewCreateInfo> viewInfos,
-                                      uint32_t mipmapLevels, const std::string &debugName,
-                                      const vk::Extent3D &resolution, vk::DeviceSize size)
+Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage, const vk::Format &baseFormat,
+                      std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
+                      const std::string &debugName, const vk::Extent3D &resolution, vk::DeviceSize size)
 {
     device.assignDebugName(vk::ObjectType::eImage, (uint64_t)(VkImage)(vulkanImage), debugName);
 
@@ -203,10 +210,10 @@ Texture TextureFactory::CreateTexture(core::device::StarDevice &device, const vk
     return Texture(std::move(resources), baseFormat, mipmapLevels, resolution, size);
 }
 
-Texture TextureFactory::CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage,
-                                      const vk::Format &baseFormat, std::span<const vk::ImageViewCreateInfo> viewInfos,
-                                      uint32_t mipmapLevels, const vk::SamplerCreateInfo &samplerInfo,
-                                      const std::string &debugName, const vk::Extent3D &resolution, vk::DeviceSize size)
+Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage, const vk::Format &baseFormat,
+                      std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
+                      const vk::SamplerCreateInfo &samplerInfo, const std::string &debugName,
+                      const vk::Extent3D &resolution, vk::DeviceSize size)
 {
     device.assignDebugName(vk::ObjectType::eImage, (uint64_t)(VkImage)(vulkanImage), debugName);
 
@@ -217,9 +224,8 @@ Texture TextureFactory::CreateTexture(core::device::StarDevice &device, const vk
     return Texture(std::move(resources), baseFormat, mipmapLevels, resolution, size);
 }
 
-vk::Sampler TextureFactory::CreateImageSampler(core::device::StarDevice &device,
-                                               const vk::SamplerCreateInfo &samplerCreateInfo,
-                                               const std::string &debugName)
+vk::Sampler CreateImageSampler(core::device::StarDevice &device, const vk::SamplerCreateInfo &samplerCreateInfo,
+                               const std::string &debugName)
 {
     vk::Sampler sampler{device.getVulkanDevice().createSampler(samplerCreateInfo)};
 
@@ -233,9 +239,8 @@ vk::Sampler TextureFactory::CreateImageSampler(core::device::StarDevice &device,
     return sampler;
 }
 
-vk::DeviceSize TextureFactory::CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent,
-                                             const uint32_t &arrayLayers, const vk::ImageType &imageType,
-                                             const uint32_t &mipmapLevels)
+vk::DeviceSize CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent, const uint32_t &arrayLayers,
+                             const vk::ImageType &imageType, const uint32_t &mipmapLevels)
 {
     const FormatInfo info{FormatInfo::Create(baseFormat)};
     vk::DeviceSize totalSize{0};
@@ -276,17 +281,4 @@ vk::DeviceSize TextureFactory::CalculateSize(const vk::Format &baseFormat, const
 
     return totalSize;
 }
-
-uint32_t TextureFactory::CeilDiv(const uint32_t &width, const uint32_t &height)
-{
-    return (width + height - 1) / height;
-}
-
-vk::Extent3D TextureFactory::GetLevelExtent(const vk::Extent3D &baseExtent, const uint32_t &level)
-{
-    return vk::Extent3D()
-        .setWidth(std::max(1u, baseExtent.width >> level))
-        .setHeight(std::max(1u, baseExtent.height >> level))
-        .setDepth(std::max(1u, baseExtent.depth >> level));
-}
-} // namespace star::StarTextures
+} // namespace star::StarTextures::TextureFactory

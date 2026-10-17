@@ -8,13 +8,30 @@
 #include <sstream>
 #include <string_view>
 
-namespace star::StarBuffers
+namespace star::StarBuffers::BufferFactory
 {
-void BufferFactory::CreateAllocation(core::device::StarDevice &device, VmaAllocator &allocator,
-                                     const VmaAllocationCreateInfo &allocationCreateInfo,
-                                     const vk::BufferCreateInfo &bufferCreateInfo, VmaAllocation &allocation,
-                                     vk::Buffer &buffer, const std::string &allocationName,
-                                     VmaAllocationInfo &allocationInfo)
+
+static void LogBufferCreateFailure(const vk::Result &result)
+{
+    std::ostringstream oss;
+    oss << "Failed to create buffer with Vulkan error: ";
+
+    if (result == vk::Result::eErrorOutOfDeviceMemory)
+    {
+        oss << "eErrorOutOfDeviceMemory";
+    }
+    else
+    {
+        oss << "Undefined error";
+    }
+
+    core::logging::log(boost::log::trivial::error, oss.str());
+}
+
+static void CreateAllocation(core::device::StarDevice &device, VmaAllocator &allocator,
+                             const VmaAllocationCreateInfo &allocationCreateInfo,
+                             const vk::BufferCreateInfo &bufferCreateInfo, VmaAllocation &allocation,
+                             vk::Buffer &buffer, const std::string &allocationName, VmaAllocationInfo &allocationInfo)
 {
     vk::Result result;
     {
@@ -39,7 +56,7 @@ void BufferFactory::CreateAllocation(core::device::StarDevice &device, VmaAlloca
 #endif
 }
 
-void BufferFactory::VerifyBufferCreateInfo(const vk::BufferCreateInfo &createInfo)
+static void VerifyBufferCreateInfo(const vk::BufferCreateInfo &createInfo)
 {
     assert(createInfo.size != 0 && "size cannot be 0");
     assert(createInfo.sharingMode == vk::SharingMode::eExclusive ||
@@ -47,44 +64,8 @@ void BufferFactory::VerifyBufferCreateInfo(const vk::BufferCreateInfo &createInf
                "Must have indices defined for shared resource");
 }
 
-void BufferFactory::LogBufferCreateFailure(const vk::Result &result)
-{
-    std::ostringstream oss;
-    oss << "Failed to create buffer with Vulkan error: ";
-
-    if (result == vk::Result::eErrorOutOfDeviceMemory)
-    {
-        oss << "eErrorOutOfDeviceMemory";
-    }
-    else
-    {
-        oss << "Undefined error";
-    }
-
-    core::logging::log(boost::log::trivial::error, oss.str());
-}
-
-std::shared_ptr<Resources> BufferFactory::CreateResource(core::device::StarDevice &device, VmaAllocator &allocator,
-                                                         const VmaAllocationCreateInfo &allocationCreateInfo,
-                                                         const vk::BufferCreateInfo &bufferCreateInfo,
-                                                         const std::string &allocationName, vk::DeviceSize &offset)
-{
-    VerifyBufferCreateInfo(bufferCreateInfo);
-
-    vk::Buffer buffer{VK_NULL_HANDLE};
-    VmaAllocation allocation;
-    VmaAllocationInfo allocationInfo;
-
-    CreateAllocation(device, allocator, allocationCreateInfo, bufferCreateInfo, allocation, buffer, allocationName,
-                     allocationInfo);
-
-    offset = allocationInfo.offset;
-
-    return std::make_shared<Resources>(allocator, allocation, buffer);
-}
-
-void BufferFactory::VerifyNewAllocation(const Buffer::Creators &creators, uint32_t instanceCount,
-                                        const vk::DeviceSize &instanceSize)
+static void VerifyNewAllocation(const Buffer::Creators &creators, uint32_t instanceCount,
+                                const vk::DeviceSize &instanceSize)
 {
     if (creators.createInfo.size == 0)
     {
@@ -102,9 +83,9 @@ void BufferFactory::VerifyNewAllocation(const Buffer::Creators &creators, uint32
     }
 }
 
-Buffer BufferFactory::FinishNewAllocation(const Buffer::Creators &creators, uint32_t instanceCount,
-                                          const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment,
-                                          const vk::DeviceSize &offset, std::shared_ptr<Resources> resources)
+static Buffer FinishNewAllocation(const Buffer::Creators &creators, uint32_t instanceCount,
+                                  const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment,
+                                  const vk::DeviceSize &offset, std::shared_ptr<Resources> resources)
 {
     const vk::DeviceSize alignmentSize = GetAlignment(instanceSize, minOffsetAlignment);
 
@@ -112,9 +93,27 @@ Buffer BufferFactory::FinishNewAllocation(const Buffer::Creators &creators, uint
                   creators.createInfo.usage);
 }
 
-Buffer BufferFactory::CreateBuffer(core::device::StarDevice &device, const Buffer::Creators &creators,
-                                   uint32_t instanceCount, const vk::DeviceSize &instanceSize,
-                                   const vk::DeviceSize &minOffsetAlignment)
+std::shared_ptr<Resources> CreateResource(core::device::StarDevice &device, VmaAllocator &allocator,
+                                          const VmaAllocationCreateInfo &allocationCreateInfo,
+                                          const vk::BufferCreateInfo &bufferCreateInfo,
+                                          const std::string &allocationName, vk::DeviceSize &offset)
+{
+    VerifyBufferCreateInfo(bufferCreateInfo);
+
+    vk::Buffer buffer{VK_NULL_HANDLE};
+    VmaAllocation allocation;
+    VmaAllocationInfo allocationInfo;
+
+    CreateAllocation(device, allocator, allocationCreateInfo, bufferCreateInfo, allocation, buffer, allocationName,
+                     allocationInfo);
+
+    offset = allocationInfo.offset;
+
+    return std::make_shared<Resources>(allocator, allocation, buffer);
+}
+
+Buffer CreateBuffer(core::device::StarDevice &device, const Buffer::Creators &creators, uint32_t instanceCount,
+                    const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment)
 {
     VerifyNewAllocation(creators, instanceCount, instanceSize);
 
@@ -127,7 +126,7 @@ Buffer BufferFactory::CreateBuffer(core::device::StarDevice &device, const Buffe
     return FinishNewAllocation(creators, instanceCount, instanceSize, minOffsetAlignment, offset, std::move(resources));
 }
 
-vk::DeviceSize BufferFactory::GetAlignment(const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment)
+vk::DeviceSize GetAlignment(const vk::DeviceSize &instanceSize, const vk::DeviceSize &minOffsetAlignment)
 {
     if (minOffsetAlignment > 0)
     {
@@ -135,4 +134,4 @@ vk::DeviceSize BufferFactory::GetAlignment(const vk::DeviceSize &instanceSize, c
     }
     return instanceSize;
 }
-} // namespace star::StarBuffers
+} // namespace star::StarBuffers::BufferFactory

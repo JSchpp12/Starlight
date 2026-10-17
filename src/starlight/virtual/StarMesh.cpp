@@ -81,7 +81,7 @@ bool star::StarMesh::isKnownToBeReady(uint8_t frameInFlightIndex)
     return false;
 }
 
-void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer &commandBuffer, vk::PipelineLayout &pipelineLayout,
+void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout,
                                               uint8_t frameInFlightIndex, uint32_t instanceCount,
                                               uint32_t descriptorSetStartIndex, uint32_t firstInstance)
 {
