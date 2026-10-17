@@ -92,16 +92,16 @@ class DefaultRenderPhase : public RenderPhase
     virtual vk::RenderingAttachmentInfo prepareDynamicRenderingInfoDepthAttachment(
         const common::FrameTracker &frameTracker);
 
-    virtual void recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
-                                const uint64_t &frameIndex);
+    virtual void recordCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &frameTracker,
+                                uint64_t frameIndex);
 
     /// Override to bind the global descriptor set once per render group per frame
     /// (instead of once per mesh) before delegating to the base group iteration.
-    virtual void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                      const uint64_t &frameIndex) override;
+    virtual void recordRenderingCalls(vk::CommandBuffer commandBuffer, uint8_t frameInFlightIndex,
+                                      uint64_t frameIndex) override;
 
-    void recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
-                                         const uint64_t &frameIndex);
+    void recordCommandBufferDependencies(vk::CommandBuffer commandBuffer, const common::FrameTracker &frameTracker,
+                                         uint64_t frameIndex);
 
   private:
     static void AddOwnsAllResourcesBarrier(const common::FrameTracker &frameTracker, const uint64_t &frameIndex,

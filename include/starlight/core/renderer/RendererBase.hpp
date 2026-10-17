@@ -19,10 +19,10 @@ class RendererBase
         : m_objects(std::move(objects)) {};
     virtual ~RendererBase() = default;
 
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft);
-    virtual void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft);
-    virtual void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                      const uint64_t &frameIndex);
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft);
+    virtual void recordPostRenderingCalls(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft);
+    virtual void recordRenderingCalls(vk::CommandBuffer commandBuffer, uint8_t frameInFlightIndex,
+                                      uint64_t frameIndex);
     virtual void recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &ft,
                                      const uint64_t &frameIndex) = 0;
     virtual void cleanupRender(common::IDeviceContext &context);

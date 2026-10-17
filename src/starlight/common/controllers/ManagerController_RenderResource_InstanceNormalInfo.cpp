@@ -12,7 +12,7 @@ void star::ManagerController::RenderResource::InstanceNormalInfo::setForUpdate()
 }
 
 void star::ManagerController::RenderResource::InstanceNormalInfo::prepRender(core::device::DeviceContext &context,
-                                                                             const uint8_t &numFramesInFlight)
+                                                                             uint8_t numFramesInFlight)
 {
     m_needsUpdatedThisFrame.resize(numFramesInFlight, true);
 

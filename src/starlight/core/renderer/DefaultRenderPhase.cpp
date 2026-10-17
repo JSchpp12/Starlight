@@ -220,14 +220,11 @@ void DefaultRenderPhase::recordCommandBuffer(StarCommandBuffer &commandBuffer, c
     commandBuffer.buffer(frameTracker.getCurrent().getFrameInFlightIndex()).end();
 }
 
-void DefaultRenderPhase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                              const uint64_t &frameIndex)
+void DefaultRenderPhase::recordRenderingCalls(vk::CommandBuffer commandBuffer, uint8_t frameInFlightIndex,
+                                              uint64_t frameIndex)
 {
     for (auto &group : m_renderGroups)
     {
-        // Bind the global descriptor set (camera/lights) once for this render group's pipeline layout before any object
-        // records its per-mesh draws. Previously every mesh rebound the global set (and the per-object instance set)
-        // via the material; now only the material set is rebound per mesh.
         if (m_globalShaderInfo)
         {
             assert(m_globalShaderInfo->getNumDescriptorSets(frameInFlightIndex) <= m_descriptors.size());
@@ -244,8 +241,8 @@ void DefaultRenderPhase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, 
     }
 }
 
-void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &frameTracker,
-                                        const uint64_t &frameIndex)
+void DefaultRenderPhase::recordCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &frameTracker,
+                                        uint64_t frameIndex)
 {
     vk::Viewport viewport = this->prepareRenderingViewport(m_renderingContext.targetResolution);
     commandBuffer.setViewport(0, viewport);
@@ -279,9 +276,8 @@ void DefaultRenderPhase::recordCommands(vk::CommandBuffer &commandBuffer, const 
     recordPostRenderingCalls(commandBuffer, frameTracker);
 }
 
-void DefaultRenderPhase::recordCommandBufferDependencies(vk::CommandBuffer &commandBuffer,
-                                                         const common::FrameTracker &frameTracker,
-                                                         const uint64_t &frameIndex)
+void DefaultRenderPhase::recordCommandBufferDependencies(vk::CommandBuffer commandBuffer,
+                                                         const common::FrameTracker &frameTracker, uint64_t frameIndex)
 {
     if (m_barrFunction == nullptr)
         return;

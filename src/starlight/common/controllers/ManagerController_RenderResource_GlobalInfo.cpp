@@ -8,7 +8,7 @@ star::ManagerController::RenderResource::GlobalInfo::GlobalInfo(std::shared_ptr<
 }
 
 void star::ManagerController::RenderResource::GlobalInfo::prepRender(core::device::DeviceContext &context,
-                                                                     const uint8_t &numFramesInFlight)
+                                                                     uint8_t numFramesInFlight)
 {
     Buffer::prepRender(context, numFramesInFlight);
 }

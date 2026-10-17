@@ -15,7 +15,7 @@ class InstanceNormalInfo : public ManagerController::RenderResource::Buffer
 
     void setForUpdate();
 
-    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
+    void prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight) override;
 
   protected:
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,

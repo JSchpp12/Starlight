@@ -19,7 +19,7 @@ static void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star:
     cmdBus.submit(star::command_order::DeclarePass{std::move(commandBuffer), queue->getParentQueueFamilyIndex()});
 }
 
-void RendererBase::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft)
+void RendererBase::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft)
 {
     for (auto &group : m_renderGroups)
     {
@@ -27,8 +27,8 @@ void RendererBase::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer,
     }
 }
 
-void RendererBase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                        const uint64_t &frameIndex)
+void RendererBase::recordRenderingCalls(vk::CommandBuffer commandBuffer, uint8_t frameInFlightIndex,
+                                        uint64_t frameIndex)
 {
     for (auto &group : m_renderGroups)
     {
@@ -36,7 +36,7 @@ void RendererBase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const 
     }
 }
 
-void RendererBase::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft)
+void RendererBase::recordPostRenderingCalls(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft)
 {
     for (auto &group : m_renderGroups)
     {

@@ -28,7 +28,7 @@ template <typename TTransferType, typename TDataType> class Controller
         return hasAlreadyBeenUpdatedThisFrame(currentFrameCount) || doesFrameInFlightDataNeedUpdated(frameTracker);
     }
 
-    virtual void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight)
+    virtual void prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight)
     {
         if (m_resourceHandles.size() == 0)
         {

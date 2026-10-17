@@ -10,7 +10,7 @@ namespace star::ManagerController::RenderResource
 class LightInfo : public ManagerController::RenderResource::Buffer
 {
   public:
-    LightInfo(const uint8_t &numFramesInFlight, const std::shared_ptr<std::vector<Light>> lights)
+    LightInfo(uint8_t numFramesInFlight, const std::shared_ptr<std::vector<Light>> lights)
         : lights(lights), lastWriteNumLights(std::vector<uint32_t>(numFramesInFlight))
     {
     }

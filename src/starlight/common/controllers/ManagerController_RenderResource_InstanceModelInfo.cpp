@@ -12,7 +12,7 @@ star::ManagerController::RenderResource::InstanceModelInfo::InstanceModelInfo(st
 }
 
 void star::ManagerController::RenderResource::InstanceModelInfo::prepRender(core::device::DeviceContext &context,
-                                                                            const uint8_t &numFramesInFlight)
+                                                                            uint8_t numFramesInFlight)
 {
     m_needsUpdatedThisFrame.resize(numFramesInFlight, true);
 

@@ -28,7 +28,7 @@ static star::core::graphics::SemaphoreInfo GetTransferRequestSyncToPreviousDraw(
     return star::core::graphics::SemaphoreInfo{.signalValue = currentSignalValue, .semaphore = semaphore};
 }
 
-void RenderPhase::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft)
+void RenderPhase::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft)
 {
     for (auto &group : m_renderGroups)
     {
@@ -36,8 +36,7 @@ void RenderPhase::recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, 
     }
 }
 
-void RenderPhase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                       const uint64_t &frameIndex)
+void RenderPhase::recordRenderingCalls(vk::CommandBuffer commandBuffer, uint8_t frameInFlightIndex, uint64_t frameIndex)
 {
     for (auto &group : m_renderGroups)
     {
@@ -45,7 +44,7 @@ void RenderPhase::recordRenderingCalls(vk::CommandBuffer &commandBuffer, const u
     }
 }
 
-void RenderPhase::recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft)
+void RenderPhase::recordPostRenderingCalls(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft)
 {
     for (auto &group : m_renderGroups)
     {

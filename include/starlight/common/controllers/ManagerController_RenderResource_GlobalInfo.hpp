@@ -11,7 +11,7 @@ class GlobalInfo : public star::ManagerController::RenderResource::Buffer
     GlobalInfo(std::shared_ptr<StarCamera> camera);
     virtual ~GlobalInfo() = default;
 
-    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
+    void prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight) override;
 
     const StarCamera *getCamera() const noexcept
     {

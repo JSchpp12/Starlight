@@ -13,7 +13,7 @@ class InstanceModelInfo : public Buffer
 
     virtual ~InstanceModelInfo() = default;
 
-    void prepRender(core::device::DeviceContext &context, const uint8_t &numFramesInFlight) override;
+    void prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight) override;
 
     void setToUpdate();
 

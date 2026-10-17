@@ -200,7 +200,7 @@ const star::common::FrameTracker &star::core::device::DeviceContext::frameTracke
 
 void star::core::device::DeviceContext::initWorkers(core::WorkerPool &pool,
                                                     absl::flat_hash_map<star::Queue_Type, Handle> engineReserved,
-                                                    const uint8_t &numFramesInFlight)
+                                                    uint8_t numFramesInFlight)
 {
     ManagerRenderResource::init(m_deviceID, &m_device, m_commandBus);
 
@@ -259,7 +259,7 @@ void star::core::device::DeviceContext::shutdownServices()
     }
 }
 
-void star::core::device::DeviceContext::logInit(const uint8_t &numFramesInFlight) const
+void star::core::device::DeviceContext::logInit(uint8_t numFramesInFlight) const
 {
     std::ostringstream oss;
     oss << "Initializing device context: \n \tNumber of frames in flight: " << std::to_string(numFramesInFlight);

@@ -8,7 +8,7 @@ namespace star::ManagerController::RenderResource
 class LightList : public ManagerController::RenderResource::Buffer
 {
   public:
-    LightList(const uint8_t &numFramesInFlight, std::shared_ptr<std::vector<Light>> lights)
+    LightList(uint8_t numFramesInFlight, std::shared_ptr<std::vector<Light>> lights)
         : m_lights(std::move(lights)), m_lastWriteNumLights(std::vector<uint16_t>(numFramesInFlight))
     {
     }
@@ -30,6 +30,6 @@ class LightList : public ManagerController::RenderResource::Buffer
     std::unique_ptr<TransferRequest::Buffer> createTransferRequest(core::device::DeviceContext &context,
                                                                    uint8_t frameInFlightIndex) override;
 
-    void storeLightCount(const uint8_t &frameInFlightIndex);
+    void storeLightCount(uint8_t frameInFlightIndex);
 };
 } // namespace star::ManagerController::RenderResource

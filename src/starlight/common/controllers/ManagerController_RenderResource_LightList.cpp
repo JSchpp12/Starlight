@@ -27,7 +27,7 @@ bool star::ManagerController::RenderResource::LightList::doesFrameInFlightDataNe
     return m_lastWriteNumLights[frameInFlightIndex] != m_lights->size();
 }
 
-void star::ManagerController::RenderResource::LightList::storeLightCount(const uint8_t &frameInFlightIndex)
+void star::ManagerController::RenderResource::LightList::storeLightCount(uint8_t frameInFlightIndex)
 {
     assert(frameInFlightIndex < m_lastWriteNumLights.size());
 

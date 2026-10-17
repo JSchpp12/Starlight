@@ -39,10 +39,9 @@ class RenderPhase
 
     /// Recording helpers that iterate the render groups; phases may override
     /// for custom pre/post-pass work.
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft);
-    virtual void recordRenderingCalls(vk::CommandBuffer &commandBuffer, const uint8_t &frameInFlightIndex,
-                                      const uint64_t &frameIndex);
-    virtual void recordPostRenderingCalls(vk::CommandBuffer &commandBuffer, const common::FrameTracker &ft);
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft);
+    virtual void recordRenderingCalls(vk::CommandBuffer commandBuffer, uint8_t frameInFlightIndex, uint64_t frameIndex);
+    virtual void recordPostRenderingCalls(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft);
 
     const Handle &getCommandBuffer() const
     {

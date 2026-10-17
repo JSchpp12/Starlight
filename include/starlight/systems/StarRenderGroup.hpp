@@ -47,17 +47,16 @@ class StarRenderGroup
         return m_pipelineLayout;
     }
 
-    void frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                     const Handle &targetCommandBuffer,
+    void frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex, Handle targetCommandBuffer,
                      const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
     virtual void recordRenderPassCommands(vk::CommandBuffer mainDrawBuffer, uint8_t swapChainImageIndex,
                                           uint64_t frameIndex);
 
-    virtual void recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer,
-                                             const common::FrameTracker &frameTracker, const uint64_t &frameIndex);
+    virtual void recordPreRenderPassCommands(vk::CommandBuffer mainDrawBuffer,
+                                             const common::FrameTracker &frameTracker, uint64_t frameIndex);
 
-    virtual void recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex);
+    virtual void recordPostRenderPassCommands(vk::CommandBuffer commandBuffer, int frameInFlightIndex);
 
   protected:
     struct RenderObjectInfo

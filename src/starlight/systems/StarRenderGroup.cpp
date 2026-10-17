@@ -47,9 +47,6 @@ void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &c
     {
         auto fullSetLayout = rendererBuilder.getCurrentSetLayouts();
 
-        // The renderer builder carries only the global set layout(s) at this point;
-        // everything that follows belongs to the objects. Record how many sets sit
-        // in front of the per-object sets so objects know their set indices.
         globalSetCount = static_cast<uint32_t>(fullSetLayout.size());
         for (auto &set : m_largestDescriptorSet)
         {
@@ -73,8 +70,8 @@ void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &c
     }
 }
 
-void StarRenderGroup::frameUpdate(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex,
-                                  const Handle &targetCommandBuffer,
+void StarRenderGroup::frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
+                                  Handle targetCommandBuffer,
                                   const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
     for (auto &group : m_groups)
@@ -169,8 +166,8 @@ void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer mainDrawBuffer,
     }
 }
 
-void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuffer,
-                                                  const common::FrameTracker &frameTracker, const uint64_t &frameIndex)
+void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer mainDrawBuffer,
+                                                  const common::FrameTracker &frameTracker, uint64_t frameIndex)
 {
     for (auto &group : this->m_groups)
     {
@@ -182,7 +179,7 @@ void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer &mainDrawBuf
     }
 }
 
-void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer &commandBuffer, const int &frameInFlightIndex)
+void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer commandBuffer, int frameInFlightIndex)
 {
     for (auto &group : this->m_groups)
     {
