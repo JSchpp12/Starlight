@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.3.6
+    VERSION 1.3.7
 )
 
 include(CheckIncludeFile)
@@ -83,6 +83,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/command/SaveSceneState.cpp"
     "src/starlight/command/FileIO/WriteToFile.cpp"
     "src/starlight/command/FileIO/ReadFromFile.cpp"
+    "src/starlight/util/io/SearchPolicy.cpp"
     "src/starlight/command/TaskScheduler/SubmitTask.cpp"
     "src/starlight/command/GetScreenCaptureSyncInfo.cpp"
     "src/starlight/command/headless_render_result_write/GetFileNameForFrame.cpp"
@@ -338,6 +339,9 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/command/SaveSceneState.hpp"
     "include/starlight/command/FileIO/WriteToFile.hpp"
     "include/starlight/command/FileIO/ReadFromFile.hpp"
+    "include/starlight/command/FileIO/GetPath.hpp"
+    "include/starlight/util/io/SearchPolicy.hpp"
+    "include/starlight/util/io/IOError.hpp"
     "include/starlight/command/TaskScheduler/SubmitTask.hpp"
     "include/starlight/command/GetScreenCaptureSyncInfo.hpp"
     "include/starlight/command/headless_render_result_write/GetFileNameForFrame.hpp"
@@ -569,6 +573,7 @@ add_library(${STARLIGHT_NAME} STATIC "${${STARLIGHT_NAME}_SOURCE};${${STARLIGHT_
 
 set(${STARLIGHT_NAME}_INCLUDE_DIRS
     "include/starlight/"
+    "include/starlight/util/"
     "include/starlight/virtual/"
     "include/starlight/internals"
     "include/starlight/virtual/ModulePlug/"

@@ -16,7 +16,7 @@ bool FileExists(std::string_view filePath);
 /// Search through directory where the provided file is located, and see if another file exists of the same name, just
 /// different type/extension
 std::vector<std::filesystem::path> FindFilesInDirectoryWithSameNameIgnoreFileType(const std::string &directoryPath,
-                                                                                    const std::string &name);
+                                                                                  const std::string &name);
 
 std::string ReadFile(const std::string &pathToFile, bool includeCarriageReturns = true);
 
@@ -34,5 +34,10 @@ Shader_Stage GetStageOfShader(std::string_view pathToFile);
 
 void CreateDirectoryIfDoesNotExist(const std::filesystem::path &pathToDirectory);
 
-std::filesystem::path GetExecutableDirectory();
+/// Directory containing the running executable. Resolved once and cached; the
+/// value cannot change for the lifetime of the process.
+const std::filesystem::path &GetExecutableDirectory();
+
+/// Directory containing media assets.
+std::filesystem::path GetMediaDirectory();
 } // namespace star::file_helpers

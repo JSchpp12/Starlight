@@ -8,6 +8,8 @@
 
 namespace star::service
 {
+class IOService;
+
 class ShaderService
 {
   public:
@@ -34,6 +36,7 @@ class ShaderService
     policy::command::ListenForCreateShader<ShaderService> m_listenForCreateShader;
     core::device::manager::GraphicsContainer *m_graphicsManagers = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
+    IOService *m_ioService = nullptr;
 
     void initListeners(core::CommandBus &bus);
 

@@ -24,7 +24,7 @@ bool FileExists(std::string_view filePath)
 }
 
 std::vector<std::filesystem::path> FindFilesInDirectoryWithSameNameIgnoreFileType(const std::string &directoryPath,
-                                                                                    const std::string &name)
+                                                                                  const std::string &name)
 {
     std::vector<std::filesystem::path> found;
 
@@ -113,14 +113,14 @@ std::string GetFullPath(const std::string &pathToFile)
     {
         return std::filesystem::canonical(std::filesystem::path(pathToFile)).string();
     }
-    catch (const std::runtime_error& e)
+    catch (const std::runtime_error &e)
     {
-        std::ostringstream oss; 
+        std::ostringstream oss;
         oss << "An error ocurred while compiling full path for file. The following message was provided: " << e.what();
         STAR_THROW(oss.str());
     }
 
-    return ""; 
+    return "";
 }
 
 std::string GetFileNameWithoutExtension(const std::string &pathToFile)
@@ -182,10 +182,14 @@ void CreateDirectoryIfDoesNotExist(const std::filesystem::path &pathToDirectory)
     }
 }
 
-std::filesystem::path GetExecutableDirectory()
+const std::filesystem::path &GetExecutableDirectory()
 {
-    const std::string exePath = star::common::paths::GetRuntimePath().string();
-    const auto parentDir = GetParentDirectory(exePath).value(); // should always have a value
-    return parentDir.string();
+    static const std::filesystem::path exeDirectory = star::common::paths::GetRuntimePath().parent_path();
+    return exeDirectory;
+}
+
+std::filesystem::path GetMediaDirectory()
+{
+    return GetExecutableDirectory() / "media";
 }
 } // namespace star::file_helpers

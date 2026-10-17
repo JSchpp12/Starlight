@@ -1,7 +1,6 @@
 #include "starlight/object/BasicObject.hpp"
 
 #include "BumpMaterial.hpp"
-#include "ConfigFile.hpp"
 #include "FileHelpers.hpp"
 #include "StarMesh.hpp"
 #include "TransferRequest_IndicesInfo.hpp"
@@ -140,7 +139,8 @@ star::BasicObject::BasicObject(std::string objFilePath, const std::filesystem::p
     m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);
 }
 
-static std::pair<std::string, std::string> selectShaderPaths(const std::vector<std::shared_ptr<star::StarMaterial>> &materials)
+static std::pair<std::string, std::string> selectShaderPaths(
+    const std::vector<std::shared_ptr<star::StarMaterial>> &materials)
 {
     assert(!materials.empty() && "Mesh materials should always exist");
 
@@ -159,22 +159,23 @@ static std::pair<std::string, std::string> selectShaderPaths(const std::vector<s
     std::string vertShaderPath;
     std::string fragShaderPath;
 
+    // Plain media-relative candidates: the ShaderService funnels these through
+    // its IOService pointer (probe as-is -> media-relative -> exe-relative)
+    // before submission to the shader manager.
     if (isBumpyMaterial)
     {
-        vertShaderPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.vert";
-        fragShaderPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/bump.frag";
+        vertShaderPath = "shaders/bump.vert";
+        fragShaderPath = "shaders/bump.frag";
     }
     else if (isTextureMaterial)
     {
-        vertShaderPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.vert";
-        fragShaderPath = star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/default.frag";
+        vertShaderPath = "shaders/default.vert";
+        fragShaderPath = "shaders/default.frag";
     }
     else
     {
-        vertShaderPath =
-            star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.vert";
-        fragShaderPath =
-            star::ConfigFile::getSetting(star::Config_Settings::mediadirectory) + "/shaders/vertColor.frag";
+        vertShaderPath = "shaders/vertColor.vert";
+        fragShaderPath = "shaders/vertColor.frag";
     }
 
     return {vertShaderPath, fragShaderPath};
@@ -191,7 +192,7 @@ star::ShaderResolver star::BasicObject::PrepareResolver(const std::string &objFi
 }
 
 star::ShaderResolver star::BasicObject::PrepareResolver(const std::string &objFilePath,
-                                                         const std::filesystem::path &materialDir, core::CommandBus &bus)
+                                                        const std::filesystem::path &materialDir, core::CommandBus &bus)
 {
     auto materials = LoadMaterials(objFilePath, materialDir);
     auto [vertPath, fragPath] = selectShaderPaths(materials);

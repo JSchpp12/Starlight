@@ -9,6 +9,7 @@
 
 #include <cassert>
 #include <string_view>
+#include <utility>
 
 namespace star::core
 {
@@ -34,10 +35,14 @@ class CommandBus
     }
     template <typename TCmd> void submit(TCmd &&command) const noexcept
     {
-        const uint16_t typeID = command_bus::ResolveTypeID<TCmd>(m_types); 
+        static_assert(
+            !requires { std::declval<TCmd &>().getReply(); },
+            "submit(TCmd&&) discards the command's reply together with the temporary. Keep the command in a "
+            "named variable and submit by lvalue instead.");
+        const uint16_t typeID = command_bus::ResolveTypeID<TCmd>(m_types);
 
-        command.setType(typeID); 
-        submitKnownType(static_cast<common::IServiceCommand &>(command)); 
+        command.setType(typeID);
+        submitKnownType(static_cast<common::IServiceCommand &>(command));
     }
 
     void submitKnownType(common::IServiceCommand &command) const;

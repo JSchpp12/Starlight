@@ -1,6 +1,7 @@
 #pragma once
 
 #include "starlight/command/shader/ShaderBuildRequest.hpp"
+#include "starlight/util/io/IOError.hpp"
 
 #include <StarPipeline.hpp>
 #include <core/renderer/RenderingTargetInfo.hpp>
@@ -9,6 +10,7 @@
 
 #include <array>
 #include <cstddef>
+#include <expected>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -28,8 +30,10 @@ inline constexpr const char *GetUniqueTypeName()
 /// Request that a graphics or compute pipeline be built asynchronously. Shaders
 /// may be supplied either as already resolved handles or as raw build requests
 /// that the service resolves first. The reply holds a pending pipeline handle;
-/// it does not wait for PipelineReady.
-struct CreatePipeline : public star::common::IServiceCommandWithReply<Handle>
+/// it does not wait for PipelineReady. A failed shader-path resolution is
+/// reported through the reply's IOError so callers can fail loudly instead of
+/// waiting on a pipeline that can never finish building.
+struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expected<Handle, star::io::IOError>>
 {
     static inline constexpr std::string_view GetUniqueTypeName()
     {
