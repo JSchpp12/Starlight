@@ -80,6 +80,7 @@ void SceneLoaderService::resolveSceneFilePath()
     }
 
     m_sceneFilePath = resolved.value().string();
+    star::core::logging::info("SceneLoaderService using scene file: ", m_sceneFilePath);
 }
 
 void SceneLoaderService::shutdown()
