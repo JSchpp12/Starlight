@@ -9,6 +9,8 @@
 
 namespace star::service
 {
+class IOService;
+
 class SceneLoaderService
 {
   public:
@@ -44,9 +46,12 @@ class SceneLoaderService
     policy::ListenForSaveSceneState<SceneLoaderService> m_onSceneSave;
     policy::command::ListenForCreateLight<SceneLoaderService> m_onCreateLight;
     star::core::CommandBus *m_deviceCommandBus = nullptr;
+    IOService *m_ioService = nullptr;
 
     void initListeners(core::CommandBus &commandBus) noexcept;
 
     void cleanupListeners(core::CommandBus &commandBus) noexcept;
+
+    void resolveSceneFilePath();
 };
 } // namespace star::service

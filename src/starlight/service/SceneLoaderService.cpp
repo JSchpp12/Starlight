@@ -2,6 +2,7 @@
 
 #include "starlight/command/CreateObject.hpp"
 #include "starlight/common/io/JSONFileWriter.hpp"
+#include "starlight/service/IOService.hpp"
 #include "starlight/service/detail/scene_loader/LightReader.hpp"
 #include "starlight/service/detail/scene_loader/LightWriter.hpp"
 #include "starlight/service/detail/scene_loader/ObjectReader.hpp"
@@ -19,7 +20,8 @@ SceneLoaderService::SceneLoaderService(std::string sceneFilePath)
 
 SceneLoaderService::SceneLoaderService(SceneLoaderService &&other) noexcept
     : m_sceneFilePath(std::move(other.m_sceneFilePath)), m_objectTracker(std::move(other.m_objectTracker)),
-      m_onCreate(*this), m_onSceneSave(*this), m_onCreateLight(*this), m_deviceCommandBus(other.m_deviceCommandBus)
+      m_onCreate(*this), m_onSceneSave(*this), m_onCreateLight(*this), m_deviceCommandBus(other.m_deviceCommandBus),
+      m_ioService(other.m_ioService)
 {
 
     if (m_deviceCommandBus != nullptr)
@@ -36,6 +38,7 @@ SceneLoaderService &SceneLoaderService::operator=(SceneLoaderService &&other) no
         m_objectTracker = std::move(other.m_objectTracker);
         m_sceneFilePath = std::move(other.m_sceneFilePath);
         m_deviceCommandBus = other.m_deviceCommandBus;
+        m_ioService = other.m_ioService;
         if (m_deviceCommandBus != nullptr)
         {
             other.cleanup();
@@ -50,12 +53,33 @@ void SceneLoaderService::init()
 {
     assert(m_deviceCommandBus != nullptr);
 
+    resolveSceneFilePath();
+
     initListeners(*m_deviceCommandBus);
 }
 
 void SceneLoaderService::setInitParameters(star::service::InitParameters &params)
 {
     m_deviceCommandBus = &params.commandBus;
+    m_ioService = params.ioService;
+}
+
+void SceneLoaderService::resolveSceneFilePath()
+{
+    if (m_ioService == nullptr)
+    {
+        star::core::logging::warning("IOService is not available; using scene file path unresolved: ", m_sceneFilePath);
+        return;
+    }
+
+    const auto resolved = m_ioService->resolve(m_sceneFilePath, star::io::PathKind::file);
+    if (!resolved)
+    {
+        star::core::logging::warning("Failed to resolve scene file path: ", resolved.error().toString());
+        return;
+    }
+
+    m_sceneFilePath = resolved.value().string();
 }
 
 void SceneLoaderService::shutdown()
@@ -224,7 +248,7 @@ void SceneLoaderService::onCreateLight(star::command::CreateLight &cmd)
     }
     else
     {
-        newLight->push_back(Light()); 
+        newLight->push_back(Light());
     }
 
     m_lightTracker[name] = newLight;
