@@ -37,6 +37,7 @@ class StarDevice : public star::common::IRenderDevice
         std::set<Rendering_Device_Features> m_deviceFeatures;
         std::vector<const char *> m_extensions;
         std::optional<vk::SurfaceKHR> m_surface{std::nullopt};
+        bool m_requiresShaderFloat64{false};
 
         vk::PhysicalDevice pickPhysicalDevice(
             const std::vector<const char *> &requiredDeviceExtensions,
@@ -57,6 +58,7 @@ class StarDevice : public star::common::IRenderDevice
         Builder &setRenderingDeviceFeatures(std::set<Rendering_Device_Features> features);
         Builder &setAdditionalExtensions(const std::vector<const char *> &extensions);
         Builder &setOptionalSurface(vk::SurfaceKHR surface);
+        Builder &setRequiresShaderFloat64(bool requiresShaderFloat64);
         StarDevice build();
     };
 

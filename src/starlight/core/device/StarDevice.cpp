@@ -37,14 +37,22 @@ inline static void LogPhysicalDeviceInfo(const vk::PhysicalDevice &physicalDevic
     star::core::logging::log(core::logging::LogLevel::info, log);
 }
 
-static std::vector<PhysicalDeviceFeatureRequest> GetEngineRequiredPhysicalDeviceFeatureRequests()
+static std::vector<PhysicalDeviceFeatureRequest> GetEngineRequiredPhysicalDeviceFeatureRequests(
+    bool requiresShaderFloat64)
 {
-    return {
+    std::vector<PhysicalDeviceFeatureRequest> requests{
         {&vk::PhysicalDeviceFeatures::geometryShader, "geometryShader"},
         {&vk::PhysicalDeviceFeatures::samplerAnisotropy, "samplerAnisotropy"},
         {&vk::PhysicalDeviceFeatures::fillModeNonSolid, "fillModeNonSolid"},
         {&vk::PhysicalDeviceFeatures::logicOp, "logicOp"},
     };
+
+    if (requiresShaderFloat64)
+    {
+        requests.push_back({&vk::PhysicalDeviceFeatures::shaderFloat64, "shaderFloat64"});
+    }
+
+    return requests;
 }
 
 static std::vector<std::string_view> GetMissingRequiredPhysicalDeviceFeatures(
@@ -437,12 +445,18 @@ StarDevice::Builder &StarDevice::Builder::setOptionalSurface(vk::SurfaceKHR surf
     return *this;
 }
 
+StarDevice::Builder &StarDevice::Builder::setRequiresShaderFloat64(bool requiresShaderFloat64)
+{
+    m_requiresShaderFloat64 = requiresShaderFloat64;
+    return *this;
+}
+
 StarDevice StarDevice::Builder::build()
 {
     vk::PhysicalDevice physicalDevice{VK_NULL_HANDLE};
     vk::Device device{VK_NULL_HANDLE};
 
-    auto requiredFeatureRequests = GetEngineRequiredPhysicalDeviceFeatureRequests();
+    auto requiredFeatureRequests = GetEngineRequiredPhysicalDeviceFeatureRequests(m_requiresShaderFloat64);
     requiredFeatureRequests.insert(requiredFeatureRequests.end(),
                                    m_additionalDeviceRequirements.physicalDeviceFeatureRequests.begin(),
                                    m_additionalDeviceRequirements.physicalDeviceFeatureRequests.end());

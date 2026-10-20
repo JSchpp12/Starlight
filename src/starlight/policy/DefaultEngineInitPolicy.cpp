@@ -22,7 +22,9 @@ star::core::device::StarDevice star::policy::DefaultEngineInitPolicy::createNewD
 
     auto builder = core::device::StarDevice::Builder(renderingInstance)
                        .setRenderingDeviceFeatures(engineRenderingDeviceFeatures)
-                       .addRequiredDeviceRequirements(startupDeviceRequirements);
+                       .addRequiredDeviceRequirements(startupDeviceRequirements)
+                       .setRequiresShaderFloat64(star::ConfigFile::getBool(
+                           star::Config_Settings::required_device_feature_shader_float_64, false));
 
     const int overridenEngineID =
         m_overrideRenderingDeviceIndex.has_value()
