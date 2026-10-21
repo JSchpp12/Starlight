@@ -16,7 +16,6 @@
 #include <string_view>
 #include <system_error>
 
-
 using json = nlohmann::json;
 
 std::map<star::Config_Settings, std::string> star::ConfigFile::settings = {};
@@ -253,9 +252,7 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
     STAR_THROW(oss.str());
 }
 
-namespace
-{
-uint32_t parseUint32(std::string_view value)
+static uint32_t parseUint32(std::string_view value)
 {
     auto v = std::string(value);
     int parsed = std::stoi(v);
@@ -271,17 +268,17 @@ uint32_t parseUint32(std::string_view value)
     return result;
 }
 
-int parseInt(std::string_view value)
+static int parseInt(std::string_view value)
 {
     return std::stoi(std::string(value));
 }
 
-double parseDouble(std::string_view value)
+static double parseDouble(std::string_view value)
 {
     return std::stod(std::string(value));
 }
 
-bool parseBool(std::string_view value)
+static bool parseBool(std::string_view value)
 {
     std::string lowered(value);
     std::transform(lowered.begin(), lowered.end(), lowered.begin(),
@@ -298,7 +295,6 @@ bool parseBool(std::string_view value)
 
     throw std::invalid_argument("Unable to parse boolean value: " + std::string(value));
 }
-} // namespace
 
 uint32_t star::ConfigFile::getUint32(Config_Settings setting, uint32_t defaultVal)
 {
