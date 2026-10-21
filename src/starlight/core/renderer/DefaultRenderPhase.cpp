@@ -19,7 +19,7 @@
 #include <star_common/EventBus.hpp>
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
-#include <vma/vk_mem_alloc.h>
+#include <vk_mem_alloc.h>
 
 #include <algorithm>
 #include <cassert>
