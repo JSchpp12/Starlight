@@ -24,47 +24,6 @@ void StarPipeline::destroy(vk::Device device)
     }
 }
 
-vk::ShaderModule PipelineProvider::createShaderModule(vk::Device &device, const std::vector<uint32_t> &sourceCode)
-{
-    vk::ShaderModuleCreateInfo createInfo{};
-    createInfo.sType = vk::StructureType::eShaderModuleCreateInfo;
-    createInfo.codeSize = 4 * sourceCode.size();
-    createInfo.pCode = sourceCode.data();
-
-    VkShaderModule shaderModule = device.createShaderModule(createInfo);
-    if (!shaderModule)
-    {
-        throw std::runtime_error("failed to create shader module");
-    }
-    return shaderModule;
-}
-
-void PipelineProvider::processShaders(vk::Device &device, const RenderResourceDependencies &deps,
-                                      vk::ShaderModule &vertModule, vk::ShaderModule &fragModule,
-                                      vk::ShaderModule &geoModule)
-{
-    for (const auto &shader : deps.compiledShaders)
-    {
-        switch (shader.first.getStage())
-        {
-        case (Shader_Stage::vertex): {
-            vertModule = createShaderModule(device, *shader.second);
-            break;
-        }
-        case (Shader_Stage::fragment): {
-            fragModule = createShaderModule(device, *shader.second);
-            break;
-        }
-        case (Shader_Stage::geometry): {
-            geoModule = createShaderModule(device, *shader.second);
-            break;
-        }
-        default:
-            throw std::runtime_error("Unsupported shader stage");
-        }
-    }
-}
-
 StarPipeline PipelineProvider::build(vk::Device device, const RenderResourceDependencies &deps) const
 {
     vk::Pipeline pipeline =
@@ -74,36 +33,7 @@ StarPipeline PipelineProvider::build(vk::Device device, const RenderResourceDepe
 
 vk::Pipeline PipelineProvider::buildGraphics(vk::Device device, const RenderResourceDependencies &deps) const
 {
-    vk::ShaderModule vertShaderModule = VK_NULL_HANDLE, fragShaderModule = VK_NULL_HANDLE,
-                     geomShaderModule = VK_NULL_HANDLE;
-
-    processShaders(device, deps, vertShaderModule, fragShaderModule, geomShaderModule);
-
-    std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
-
-    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{};
-    vertShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-    vertShaderStageInfo.stage = vk::ShaderStageFlagBits::eVertex;
-    vertShaderStageInfo.module = vertShaderModule;
-    vertShaderStageInfo.pName = "main";
-    shaderStages.push_back(vertShaderStageInfo);
-
-    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
-    fragShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-    fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
-    fragShaderStageInfo.module = fragShaderModule;
-    fragShaderStageInfo.pName = "main";
-    shaderStages.push_back(fragShaderStageInfo);
-
-    if (geomShaderModule != VK_NULL_HANDLE)
-    {
-        vk::PipelineShaderStageCreateInfo geomShaderStageInfo{};
-        geomShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-        geomShaderStageInfo.stage = vk::ShaderStageFlagBits::eGeometry;
-        geomShaderStageInfo.module = geomShaderModule;
-        geomShaderStageInfo.pName = "main";
-        shaderStages.push_back(geomShaderStageInfo);
-    }
+    std::vector<vk::PipelineShaderStageCreateInfo> shaderStages = deps.shaderStages;
 
     // ---- Vertex input: provider overrides, falling back to the global VulkanVertex ----
     std::vector<vk::VertexInputBindingDescription> vertexBindings = m_graphics.vertexInput.bindings;
@@ -258,40 +188,25 @@ vk::Pipeline PipelineProvider::buildGraphics(vk::Device device, const RenderReso
         throw std::runtime_error("unknown error has occurred, more than one pipeline was created ");
     }
 
-    device.destroyShaderModule(vertShaderModule);
-    device.destroyShaderModule(fragShaderModule);
-    if (geomShaderModule != VK_NULL_HANDLE)
-        device.destroyShaderModule(geomShaderModule);
-
     return result.value.at(0);
 }
 
 vk::Pipeline PipelineProvider::buildCompute(vk::Device device, const RenderResourceDependencies &deps) const
 {
-    assert(deps.compiledShaders.size() == 1 && "More shaders than expected for a compute pipeline");
-    assert(deps.compiledShaders.at(0).first.getStage() == star::Shader_Stage::compute &&
+    assert(deps.shaderStages.size() == 1 && "More shaders than expected for a compute pipeline");
+    assert(deps.shaderStages.at(0).stage == vk::ShaderStageFlagBits::eCompute &&
            "Shaders for a compute pipeline should be compute shaders");
-
-    vk::ShaderModule compShaderModule = createShaderModule(device, *deps.compiledShaders[0].second);
-
-    vk::PipelineShaderStageCreateInfo compShaderStageInfo{};
-    compShaderStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-    compShaderStageInfo.stage = vk::ShaderStageFlagBits::eCompute;
-    compShaderStageInfo.module = compShaderModule;
-    compShaderStageInfo.pName = "main";
 
     vk::ComputePipelineCreateInfo createInfo{};
     createInfo.sType = vk::StructureType::eComputePipelineCreateInfo;
     createInfo.layout = m_layout;
-    createInfo.stage = compShaderStageInfo;
+    createInfo.stage = deps.shaderStages[0];
 
     auto result = device.createComputePipeline(VK_NULL_HANDLE, createInfo);
     if (result.result != vk::Result::eSuccess)
     {
         throw std::runtime_error("failed to create compute pipeline");
     }
-
-    device.destroyShaderModule(compShaderModule);
 
     return result.value;
 }

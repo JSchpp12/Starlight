@@ -110,11 +110,11 @@ void ShaderService::onCreateShader(star::command::shader::CreateShader &cmd)
     else
     {
         star::core::logging::warning("IOService is not available; passing shader path through unresolved: ",
-                                     request.path.string());
+                                     request.path);
     }
 
-    core::device::manager::ShaderRequest managerRequest{StarShader{resolvedPath.string(), request.stage},
-                                                        request.compiler};
+    core::device::manager::ShaderRequest managerRequest{std::move(resolvedPath), StarShader{request.stage},
+                                                        std::move(cmd.getMacroDefinitions())};
     cmd.getReply().set(m_graphicsManagers->shaderManager->submit(std::move(managerRequest)));
 }
 } // namespace star::service

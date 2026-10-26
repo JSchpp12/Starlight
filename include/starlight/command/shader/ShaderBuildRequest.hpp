@@ -1,12 +1,10 @@
 #pragma once
 
-#include <Compiler.hpp>
+#include "core/ShaderMacroDefinitions.hpp"
+
 #include <Enums.hpp>
 
-#include <cstddef>
 #include <filesystem>
-#include <string>
-#include <utility>
 
 namespace star::command::shader
 {
@@ -29,6 +27,6 @@ struct ShaderBuildRequest
 
     Shader_Stage stage = Shader_Stage::none;
     std::filesystem::path path;
-    Compiler compiler;
+    core::ShaderMacroDefinitions macroDefinitions;
 };
 } // namespace star::command::shader

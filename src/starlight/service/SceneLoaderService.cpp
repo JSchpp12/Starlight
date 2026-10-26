@@ -8,6 +8,7 @@
 #include "starlight/service/detail/scene_loader/ObjectReader.hpp"
 #include "starlight/service/detail/scene_loader/ObjectWriter.hpp"
 
+#include <fstream>
 #include <nlohmann/json.hpp>
 
 namespace star::service

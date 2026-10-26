@@ -20,7 +20,7 @@ ShaderResolver ShaderResolver::Builder::build()
     for (const auto &[stage, path] : m_paths)
     {
         command::shader::CreateShader cmd;
-        cmd.setStage(stage).setPath(std::filesystem::path(path));
+        cmd.setStage(stage).setPath(path);
         m_bus.submit(cmd);
         const auto reply = cmd.getReply().get();
         if (!reply)

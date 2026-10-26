@@ -48,7 +48,7 @@ class PipelineProvider
   public:
     struct RenderResourceDependencies
     {
-        std::vector<std::pair<star::StarShader, std::shared_ptr<std::vector<uint32_t>>>> compiledShaders;
+        std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
         core::renderer::RenderingTargetInfo renderingTargetInfo;
         vk::Extent2D swapChainExtent;
     };
@@ -102,11 +102,6 @@ class PipelineProvider
 
     vk::Pipeline buildGraphics(vk::Device device, const RenderResourceDependencies &deps) const;
     vk::Pipeline buildCompute(vk::Device device, const RenderResourceDependencies &deps) const;
-
-    static vk::ShaderModule createShaderModule(vk::Device &device, const std::vector<uint32_t> &sourceCode);
-
-    static void processShaders(vk::Device &device, const RenderResourceDependencies &deps, vk::ShaderModule &vertModule,
-                               vk::ShaderModule &fragModule, vk::ShaderModule &geoModule);
 };
 
 /// Minimal built pipeline handle. Owns the vk::Pipeline and knows its bind

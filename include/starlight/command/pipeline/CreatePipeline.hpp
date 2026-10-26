@@ -27,12 +27,6 @@ inline constexpr const char *GetUniqueTypeName()
 }
 } // namespace create_pipeline
 
-/// Request that a graphics or compute pipeline be built asynchronously. Shaders
-/// may be supplied either as already resolved handles or as raw build requests
-/// that the service resolves first. The reply holds a pending pipeline handle;
-/// it does not wait for PipelineReady. A failed shader-path resolution is
-/// reported through the reply's IOError so callers can fail loudly instead of
-/// waiting on a pipeline that can never finish building.
 struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expected<Handle, star::io::IOError>>
 {
     static inline constexpr std::string_view GetUniqueTypeName()

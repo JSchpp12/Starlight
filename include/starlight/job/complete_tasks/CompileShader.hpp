@@ -3,7 +3,8 @@
 #include "job/complete_tasks/CompleteTask.hpp"
 #include "StarShader.hpp"
 
-#include <vector>
+#include <cstdint>
+#include <future>
 #include <string_view>
 
 namespace star::job::complete_tasks::compile_shader
@@ -12,18 +13,15 @@ constexpr std::string_view CompileShaderTypeName = "star::job::complete_tasks::c
 
 struct CompileCompletePayload
 {
-    uint32_t handleID;
-    std::unique_ptr<star::StarShader> finalizedShaderObject = nullptr;
-    std::shared_ptr<std::vector<uint32_t>> compiledShaderCode = nullptr;
+    uint32_t handleID = 0;
+    std::future<star::StarShader> shaderFuture;
 };
-
 
 void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, void *graphicsManagers);
 
 void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers,
                                   void *payload);
 
-star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(
-    uint32_t handleID, std::unique_ptr<StarShader> finalizedShaderObject,
-    std::shared_ptr<std::vector<uint32_t>> finalizedCompiledShader);
-}
+star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(uint32_t handleID,
+                                                                   std::future<star::StarShader> shaderFuture);
+} // namespace star::job::complete_tasks::compile_shader

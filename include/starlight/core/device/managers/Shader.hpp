@@ -1,30 +1,22 @@
 #pragma once
 
-#include "Compiler.hpp"
 #include "StarShader.hpp"
+#include "core/ShaderMacroDefinitions.hpp"
 #include "device/managers/TaskCreatedResourceManager.hpp"
 
-#include <array>
-#include <memory>
-#include <stack>
+#include <filesystem>
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
-#include <vector>
+#include <utility>
+
 
 namespace star::core::device::manager
 {
 struct ShaderRequest
 {
-    ShaderRequest() = default;
-    ShaderRequest(StarShader shader) : shader(std::move(shader))
-    {
-    }
-    ShaderRequest(StarShader shader, Compiler compiler) : shader(std::move(shader)), compiler(std::move(compiler))
-    {
-    }
-
+    std::filesystem::path path;
     StarShader shader;
-    Compiler compiler;
+    star::core::ShaderMacroDefinitions macroDefinitions;
 };
 struct ShaderRecord
 {
@@ -38,33 +30,18 @@ struct ShaderRecord
 
     bool isReady() const
     {
-        return m_compiledShader != nullptr;
+        return request.shader.isValid();
     }
 
-    void setCompiledShader(std::shared_ptr<std::vector<uint32_t>> compiledShader)
+    void setCompiledShader(StarShader shader)
     {
-        m_compiledShader = std::move(compiledShader);
+        request.shader = std::move(shader);
     }
 
     void cleanupRender(core::device::StarDevice &device)
     {
-        if (m_compiledShader)
-        {
-            m_compiledShader.reset();
-        }
+        request.shader.cleanupRender(device.getVulkanDevice());
     }
-
-    std::shared_ptr<std::vector<uint32_t>> giveMeCompiledShader()
-    {
-        assert(m_compiledShader);
-        std::shared_ptr<std::vector<uint32_t>> tmp = m_compiledShader;
-        m_compiledShader = nullptr;
-
-        return tmp;
-    }
-
-  private:
-    std::shared_ptr<std::vector<uint32_t>> m_compiledShader = nullptr;
 };
 class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>
 {

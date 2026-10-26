@@ -43,21 +43,15 @@ struct CreateShader : public star::common::IServiceCommandWithReply<std::expecte
         return *this;
     }
 
-    CreateShader &setCompiler(Compiler compiler)
-    {
-        m_request.compiler = std::move(compiler);
-        return *this;
-    }
-
     CreateShader &setMacroDefinitions(const star::core::ShaderMacroDefinitions &macroDefinitions)
     {
-        m_request.compiler.setMacroDefinitions(macroDefinitions);
+        m_request.macroDefinitions = macroDefinitions;
         return *this;
     }
 
     CreateShader &setMacroDefinitions(star::core::ShaderMacroDefinitions &&macroDefinitions)
     {
-        m_request.compiler.setMacroDefinitions(std::move(macroDefinitions));
+        m_request.macroDefinitions = std::move(macroDefinitions);
         return *this;
     }
 
@@ -71,11 +65,6 @@ struct CreateShader : public star::common::IServiceCommandWithReply<std::expecte
         return m_request.path;
     }
 
-    const Compiler &getCompiler() const
-    {
-        return m_request.compiler;
-    }
-
     const ShaderBuildRequest &getBuildRequest() const
     {
         return m_request;
@@ -83,7 +72,11 @@ struct CreateShader : public star::common::IServiceCommandWithReply<std::expecte
 
     const star::core::ShaderMacroDefinitions &getMacroDefinitions() const
     {
-        return m_request.compiler.getMacroDefinitions();
+        return m_request.macroDefinitions;
+    }
+    star::core::ShaderMacroDefinitions &getMacroDefinitions()
+    {
+        return m_request.macroDefinitions;
     }
 
   private:

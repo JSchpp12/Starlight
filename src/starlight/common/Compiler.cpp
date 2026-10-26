@@ -7,7 +7,7 @@
 namespace star
 {
 
-std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool optimize, bool compileDebug)
+std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool compileDebug)
 {
     shaderc::Compiler shaderCompiler;
     shaderc::CompileOptions compilerOptions = getCompileOptions(pathToFile, compileDebug);
@@ -33,6 +33,7 @@ std::vector<uint32_t> Compiler::compile(const std::string &pathToFile, bool opti
 shaderc_shader_kind Compiler::getShaderCStageFlag(const std::string &pathToFile)
 {
     auto extension = file_helpers::GetFileExtension(pathToFile);
+    (void)extension;
 
     if (extension == ".vert")
     {
