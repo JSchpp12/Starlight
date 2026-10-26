@@ -67,6 +67,7 @@ add_subdirectory("extern/shaderc")
 set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/StarEngine.cpp"
     "src/starlight/core/CommandSubmitter.cpp"
+    "src/starlight/core/ShaderMacroDefinitions.cpp"
     "src/starlight/core/helper/queue/QueueHelpers.cpp"
     "src/starlight/core/helper/command_buffer/CommandBufferHelpers.cpp"
     "src/starlight/data_structure/dynamic/ThreadSharedObjectPool.cpp"
@@ -84,7 +85,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/command/FileIO/WriteToFile.cpp"
     "src/starlight/command/FileIO/ReadFromFile.cpp"
     "src/starlight/util/io/SearchPolicy.cpp"
-    "src/starlight/command/TaskScheduler/SubmitTask.cpp"
+    "src/starlight/command/task_scheduler/SubmitTask.cpp"
     "src/starlight/command/GetScreenCaptureSyncInfo.cpp"
     "src/starlight/command/headless_render_result_write/GetFileNameForFrame.cpp"
     "src/starlight/command/headless_render_result_write/GetSetOutputDir.cpp"
@@ -322,6 +323,7 @@ set(${STARLIGHT_NAME}_TARGET_SOURCE ${${STARLIGHT_NAME}_SOURCE} PARENT_SCOPE)
 set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/StarEngine.hpp"
     "include/starlight/core/CommandSubmitter.hpp"
+    "include/starlight/core/ShaderMacroDefinitions.hpp"
     "include/starlight/core/TypeErasedCallable.hpp"
     "include/starlight/core/WorkerPool.hpp"
     "include/starlight/core/helper/queue/QueueHelpers.hpp"
@@ -342,7 +344,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/command/FileIO/GetPath.hpp"
     "include/starlight/util/io/SearchPolicy.hpp"
     "include/starlight/util/io/IOError.hpp"
-    "include/starlight/command/TaskScheduler/SubmitTask.hpp"
+    "include/starlight/command/task_scheduler/SubmitTask.hpp"
     "include/starlight/command/GetScreenCaptureSyncInfo.hpp"
     "include/starlight/command/headless_render_result_write/GetFileNameForFrame.hpp"
     "include/starlight/command/headless_render_result_write/GetSetOutputDir.hpp"

@@ -80,9 +80,19 @@ shaderc::CompileOptions Compiler::getCompileOptions(const std::string &filePath,
 
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
     options.SetTargetSpirv(shaderc_spirv_version_1_6);
-    if (!m_precompilerMacros.empty())
+    for (std::size_t i = 0; i < m_macroDefinitions.getMacroDefinitionCount(); ++i)
     {
-        options.AddMacroDefinition(m_precompilerMacros);
+        const auto &macroDefinition = m_macroDefinitions.getMacroDefinition(i);
+        const auto &name = macroDefinition.name;
+        const auto &value = macroDefinition.value;
+        if (value.has_value())
+        {
+            options.AddMacroDefinition(name, *value);
+        }
+        else
+        {
+            options.AddMacroDefinition(name);
+        }
     }
 
     if (compileDebug)

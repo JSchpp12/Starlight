@@ -54,8 +54,6 @@ struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expec
 
     CreatePipeline &addShaderHandle(Handle handle);
 
-    CreatePipeline &addShaderRequest(shader::ShaderBuildRequest request);
-
     CreatePipeline &setPipelineLayout(vk::PipelineLayout layout)
     {
         m_layout = layout;
@@ -95,14 +93,9 @@ struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expec
         return {m_shaderHandles.data(), m_numShaderHandles};
     }
 
-    std::span<const shader::ShaderBuildRequest> getShaderRequests() const
-    {
-        return {m_shaderRequests.data(), m_numShaderRequests};
-    }
-
     std::size_t getShaderCount() const
     {
-        return m_numShaderHandles + m_numShaderRequests;
+        return m_numShaderHandles;
     }
 
     vk::PipelineLayout getPipelineLayout() const
@@ -128,9 +121,7 @@ struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expec
   private:
     PipelineType m_type = PipelineType::Graphics;
     std::array<Handle, shader::MaxShadersPerPipeline> m_shaderHandles{};
-    std::array<shader::ShaderBuildRequest, shader::MaxShadersPerPipeline> m_shaderRequests{};
     std::size_t m_numShaderHandles = 0;
-    std::size_t m_numShaderRequests = 0;
     vk::PipelineLayout m_layout = VK_NULL_HANDLE;
     vk::Extent2D m_swapChainExtent{};
     core::renderer::RenderingTargetInfo m_renderingTargetInfo{};
