@@ -65,6 +65,7 @@ enum Config_Settings
     texture_anisotropy,
     frames_in_flight,
     required_device_feature_gpu_index,
+    required_device_feature_shader_float_64,
     resolution_x,
     resolution_y,
     tmp_directory,

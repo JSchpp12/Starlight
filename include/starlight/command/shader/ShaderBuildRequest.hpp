@@ -21,19 +21,10 @@ inline constexpr std::size_t MaxShadersPerPipeline = 4;
 struct ShaderBuildRequest
 {
     ShaderBuildRequest() = default;
-    ShaderBuildRequest(Shader_Stage stage, std::filesystem::path path, Compiler compiler = Compiler())
-        : stage(stage), path(std::move(path)), compiler(std::move(compiler))
-    {
-    }
 
     bool isValid() const
     {
         return stage != Shader_Stage::none && !path.empty();
-    }
-
-    std::string pathString() const
-    {
-        return path.string();
     }
 
     Shader_Stage stage = Shader_Stage::none;

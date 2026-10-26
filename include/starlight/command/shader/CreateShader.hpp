@@ -1,6 +1,7 @@
 #pragma once
 
 #include "starlight/command/shader/ShaderBuildRequest.hpp"
+#include "starlight/core/ShaderMacroDefinitions.hpp"
 #include "starlight/util/io/IOError.hpp"
 
 #include <star_common/Handle.hpp>
@@ -21,8 +22,8 @@ inline constexpr const char *GetUniqueTypeName()
 }
 } // namespace create_shader
 
-/// Request that a single shader be loaded and compiled asynchronously. The reply
-/// holds a pending handle; it does not wait for compilation to finish.
+/// @brief Request that a single shader be loaded and compiled asynchronously. The reply holds a pending handle; it does
+/// not wait for compilation to finish.
 struct CreateShader : public star::common::IServiceCommandWithReply<std::expected<Handle, star::io::IOError>>
 {
     static inline constexpr std::string_view GetUniqueTypeName()
@@ -48,6 +49,18 @@ struct CreateShader : public star::common::IServiceCommandWithReply<std::expecte
         return *this;
     }
 
+    CreateShader &setMacroDefinitions(const star::core::ShaderMacroDefinitions &macroDefinitions)
+    {
+        m_request.compiler.setMacroDefinitions(macroDefinitions);
+        return *this;
+    }
+
+    CreateShader &setMacroDefinitions(star::core::ShaderMacroDefinitions &&macroDefinitions)
+    {
+        m_request.compiler.setMacroDefinitions(std::move(macroDefinitions));
+        return *this;
+    }
+
     Shader_Stage getStage() const
     {
         return m_request.stage;
@@ -66,6 +79,11 @@ struct CreateShader : public star::common::IServiceCommandWithReply<std::expecte
     const ShaderBuildRequest &getBuildRequest() const
     {
         return m_request;
+    }
+
+    const star::core::ShaderMacroDefinitions &getMacroDefinitions() const
+    {
+        return m_request.compiler.getMacroDefinitions();
     }
 
   private:

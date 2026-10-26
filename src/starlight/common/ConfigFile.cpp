@@ -8,6 +8,8 @@
 
 #include <star_common/helper/CastHelpers.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <stdexcept>
@@ -25,6 +27,8 @@ std::map<std::string, star::Config_Settings> star::ConfigFile::availableSettings
     std::pair<std::string, star::Config_Settings>("texture_anisotropy", star::Config_Settings::texture_anisotropy),
     std::pair<std::string, star::Config_Settings>("frames_in_flight", star::Config_Settings::frames_in_flight),
     std::make_pair("required_device_feature_gpu_index", star::Config_Settings::required_device_feature_gpu_index),
+    std::make_pair("required_device_feature_shader_float64",
+                   star::Config_Settings::required_device_feature_shader_float_64),
     std::make_pair("resolution_x", star::Config_Settings::resolution_x),
     std::make_pair("resolution_y", star::Config_Settings::resolution_y),
     std::make_pair("tmp_dir", star::Config_Settings::tmp_directory),
@@ -163,6 +167,9 @@ void star::ConfigFile::applyDefaults(std::map<std::string, std::string> values)
             case Config_Settings::required_device_feature_gpu_index:
                 settings[configKey] = "-1";
                 break;
+            case Config_Settings::required_device_feature_shader_float_64:
+                settings[configKey] = "false";
+                break;
             case Config_Settings::transfer_high_priority_queue_size:
                 settings[configKey] = "low";
                 break;
@@ -201,6 +208,9 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
         break;
     case (Config_Settings::required_device_feature_gpu_index):
         name = "required_device_feature_gpu_index";
+        break;
+    case (Config_Settings::required_device_feature_shader_float_64):
+        name = "required_device_feature_shader_float64";
         break;
     case (Config_Settings::resolution_x):
         name = "resolution_x";
@@ -242,9 +252,7 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
     STAR_THROW(oss.str());
 }
 
-namespace
-{
-uint32_t parseUint32(std::string_view value)
+static uint32_t parseUint32(std::string_view value)
 {
     auto v = std::string(value);
     int parsed = std::stoi(v);
@@ -260,16 +268,33 @@ uint32_t parseUint32(std::string_view value)
     return result;
 }
 
-int parseInt(std::string_view value)
+static int parseInt(std::string_view value)
 {
     return std::stoi(std::string(value));
 }
 
-double parseDouble(std::string_view value)
+static double parseDouble(std::string_view value)
 {
     return std::stod(std::string(value));
 }
-} // namespace
+
+static bool parseBool(std::string_view value)
+{
+    std::string lowered(value);
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    if (lowered == "true" || lowered == "1")
+    {
+        return true;
+    }
+    if (lowered == "false" || lowered == "0")
+    {
+        return false;
+    }
+
+    throw std::invalid_argument("Unable to parse boolean value: " + std::string(value));
+}
 
 uint32_t star::ConfigFile::getUint32(Config_Settings setting, uint32_t defaultVal)
 {
@@ -300,6 +325,18 @@ double star::ConfigFile::getDouble(Config_Settings setting, double defaultVal)
     try
     {
         return parseDouble(getSetting(setting));
+    }
+    catch (const std::exception &)
+    {
+        return defaultVal;
+    }
+}
+
+bool star::ConfigFile::getBool(Config_Settings setting, bool defaultVal)
+{
+    try
+    {
+        return parseBool(getSetting(setting));
     }
     catch (const std::exception &)
     {

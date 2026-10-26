@@ -1,19 +1,20 @@
 #pragma once
 
 #include "InitParameters.hpp"
-#include "starlight/command/TaskScheduler/SubmitTask.hpp"
-#include "starlight/core/CommandBus.hpp"
-#include "starlight/core/WorkerPool.hpp"
 #include "job/TaskManager.hpp"
 #include "job/worker/Worker.hpp"
+#include "starlight/command/task_scheduler/SubmitTask.hpp"
+#include "starlight/core/CommandBus.hpp"
+#include "starlight/core/WorkerPool.hpp"
 #include "starlight/policy/command/ListenFor.hpp"
 
 namespace star::service
 {
 template <typename T>
-using ListenForSubmitTask = star::policy::command::ListenFor<
-    T, star::command::task_scheduler::SubmitTask,
-    star::command::task_scheduler::submit_task::GetSubmitTaskCommandTypeName, &T::onSubmitTask>;
+using ListenForSubmitTask =
+    star::policy::command::ListenFor<T, star::command::task_scheduler::SubmitTask,
+                                     star::command::task_scheduler::submit_task::GetSubmitTaskCommandTypeName,
+                                     &T::onSubmitTask>;
 
 class TaskSchedulerService
 {

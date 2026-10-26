@@ -2,8 +2,6 @@
 
 #include "starlight/core/Exceptions.hpp"
 
-#include <unordered_set>
-
 namespace star::command::pipeline
 {
 CreatePipeline &CreatePipeline::addShaderHandle(Handle handle)
@@ -17,22 +15,6 @@ CreatePipeline &CreatePipeline::addShaderHandle(Handle handle)
     return *this;
 }
 
-CreatePipeline &CreatePipeline::addShaderRequest(shader::ShaderBuildRequest request)
-{
-    if (!request.isValid())
-    {
-        STAR_THROW("Cannot add an invalid shader build request to a CreatePipeline");
-    }
-
-    if (m_numShaderRequests >= shader::MaxShadersPerPipeline)
-    {
-        STAR_THROW("CreatePipeline cannot hold more than MaxShadersPerPipeline shader requests");
-    }
-
-    m_shaderRequests[m_numShaderRequests++] = std::move(request);
-    return *this;
-}
-
 void CreatePipeline::validate() const
 {
     const std::size_t numShaders = getShaderCount();
@@ -42,14 +24,6 @@ void CreatePipeline::validate() const
         if (numShaders != 1)
         {
             STAR_THROW("A compute pipeline requires exactly one compute shader");
-        }
-
-        for (std::size_t i = 0; i < m_numShaderRequests; ++i)
-        {
-            if (m_shaderRequests[i].stage != Shader_Stage::compute)
-            {
-                STAR_THROW("A compute pipeline only accepts compute shaders");
-            }
         }
 
         for (std::size_t i = 0; i < m_numShaderHandles; ++i)
@@ -65,15 +39,6 @@ void CreatePipeline::validate() const
         if (numShaders == 0)
         {
             STAR_THROW("A graphics pipeline requires at least one shader");
-        }
-
-        std::unordered_set<Shader_Stage> stages;
-        for (std::size_t i = 0; i < m_numShaderRequests; ++i)
-        {
-            if (!stages.insert(m_shaderRequests[i].stage).second)
-            {
-                STAR_THROW("A graphics pipeline accepts at most one shader per stage");
-            }
         }
 
         if (m_swapChainExtent.width == 0 || m_swapChainExtent.height == 0)
