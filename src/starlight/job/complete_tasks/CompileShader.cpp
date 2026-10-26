@@ -62,6 +62,13 @@ void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus
         .id = p->handleID};
 
     StarShader compiledShader = ExtractCompiledShader(p->shaderFuture);
+    if (!compiledShader.isValid())
+    {
+        const auto message =
+            star::core::make_message("Shader creation produced an invalid module for handle [", p->handleID, "]");
+        STAR_THROW(message);
+    }
+
     std::cout << "Marking shader at index [" << p->handleID << "] as ready" << std::endl;
     gm->shaderManager->get(shader)->setCompiledShader(std::move(compiledShader));
     eb->emit(core::device::system::event::ShaderCompiled{shader});
