@@ -2,12 +2,10 @@
 
 #include "starlight/command/shader/ShaderBuildRequest.hpp"
 #include "starlight/core/ShaderMacroDefinitions.hpp"
-#include "starlight/util/io/IOError.hpp"
 
 #include <star_common/Handle.hpp>
 #include <star_common/IServiceCommandWithReply.hpp>
 
-#include <expected>
 #include <filesystem>
 #include <string_view>
 #include <utility>
@@ -22,9 +20,9 @@ inline constexpr const char *GetUniqueTypeName()
 }
 } // namespace create_shader
 
-/// @brief Request that a single shader be loaded and compiled asynchronously. The reply holds a pending handle; it does
-/// not wait for compilation to finish.
-struct CreateShader : public star::common::IServiceCommandWithReply<std::expected<Handle, star::io::IOError>>
+/// @brief Request that a single shader be resolved, loaded, and compiled asynchronously. The reply holds the pending
+/// handle; it does not wait for compilation to finish.
+struct CreateShader : public star::common::IServiceCommandWithReply<Handle>
 {
     static inline constexpr std::string_view GetUniqueTypeName()
     {

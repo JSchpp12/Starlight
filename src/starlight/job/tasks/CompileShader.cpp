@@ -4,6 +4,7 @@
 #include "logging/LoggingFactory.hpp"
 
 #include <exception>
+#include <utility>
 #include <vector>
 
 namespace star::job::tasks::compile_shader
@@ -26,33 +27,54 @@ void Execute(void *p)
         core::logging::log(boost::log::trivial::info, msg);
     }
 
-    try
+    CompileResult result = [&]() -> CompileResult
     {
-        // use the default shader compiler
-        star::Compiler compiler{data->macroDefinitions};
-        const std::vector<uint32_t> compiledCode = compiler.compile(data->path.string(), data->compileDebug);
+        // Resolve on the worker thread: the caller only had to hand over a
+        // value copy of the resolver, never the IOService (which belongs to
+        // the main thread).
+        const auto resolvedPath = data->pathResolver.resolve(data->path, star::io::PathKind::file);
+        if (!resolvedPath)
+        {
+            return std::unexpected(CompileFailure{CompileFailureKind::pathResolution, resolvedPath.error().toString()});
+        }
 
-        core::logging::log(boost::log::trivial::info, "Done");
+        core::logging::log(boost::log::trivial::info, "Resolved shader path: " + resolvedPath->string());
 
-        data->shaderPromise.set_value(StarShader{data->device, data->stage, compiledCode});
-    }
-    catch (...)
-    {
-        // Keep the failure on the main thread instead of letting it unwind
-        // through the worker thread.
-        data->shaderPromise.set_exception(std::current_exception());
-    }
+        try
+        {
+            // use the default shader compiler
+            star::Compiler compiler{data->macroDefinitions};
+            const std::vector<uint32_t> compiledCode = compiler.compile(resolvedPath->string(), data->compileDebug);
+
+            core::logging::log(boost::log::trivial::info, "Done");
+
+            return StarShader{data->device, data->stage, compiledCode};
+        }
+        catch (const std::exception &e)
+        {
+            return std::unexpected(CompileFailure{CompileFailureKind::compilation, e.what()});
+        }
+        catch (...)
+        {
+            return std::unexpected(CompileFailure{CompileFailureKind::compilation, "unknown compilation error"});
+        }
+    }();
+
+    // Report the outcome as a value; the complete task owns the failure policy.
+    data->shaderPromise.set_value(std::move(result));
 }
 
 CompileShaderTask Create(std::filesystem::path fileName, const star::Shader_Stage &stage, const Handle &shaderHandle,
-                         vk::Device device, star::core::ShaderMacroDefinitions macroDefinitions, bool compileDebug)
+                         vk::Device device, star::core::ShaderMacroDefinitions macroDefinitions,
+                         star::io::PathResolver pathResolver, bool compileDebug)
 {
-    auto promise = std::promise<StarShader>{};
+    auto promise = std::promise<CompileResult>{};
     auto future = promise.get_future();
 
     return CompileShaderTask::Builder<CompileShaderPayload>()
         .setPayload(CompileShaderPayload{.path = fileName,
                                          .macroDefinitions = std::move(macroDefinitions),
+                                         .pathResolver = std::move(pathResolver),
                                          .stage = stage,
                                          .handleID = shaderHandle.getID(),
                                          .compileDebug = compileDebug,

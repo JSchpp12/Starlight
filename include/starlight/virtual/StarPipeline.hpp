@@ -8,9 +8,7 @@
 #include <star_common/Handle.hpp>
 #include <vulkan/vulkan.hpp>
 
-#include <memory>
 #include <optional>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -104,9 +102,6 @@ class PipelineProvider
     vk::Pipeline buildCompute(vk::Device device, const RenderResourceDependencies &deps) const;
 };
 
-/// Minimal built pipeline handle. Owns the vk::Pipeline and knows its bind
-/// point; nothing else is retained after build. Created exclusively by
-/// PipelineProvider::build.
 class StarPipeline
 {
   public:

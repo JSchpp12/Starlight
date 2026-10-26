@@ -159,9 +159,8 @@ static std::pair<std::string, std::string> selectShaderPaths(
     std::string vertShaderPath;
     std::string fragShaderPath;
 
-    // Plain media-relative candidates: the ShaderService funnels these through
-    // its IOService pointer (probe as-is -> media-relative -> exe-relative)
-    // before submission to the shader manager.
+    // Plain media-relative candidates: the shader compile worker resolves these
+    // (probe as-is -> media-relative -> exe-relative) before compiling.
     if (isBumpyMaterial)
     {
         vertShaderPath = "shaders/bump.vert";

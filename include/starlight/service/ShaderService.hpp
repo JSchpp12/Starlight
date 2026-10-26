@@ -5,11 +5,10 @@
 #include "starlight/job/TaskManager.hpp"
 #include "starlight/policy/command/ListenForCreateShader.hpp"
 #include "starlight/service/InitParameters.hpp"
+#include "starlight/util/io/PathResolver.hpp"
 
 namespace star::service
 {
-class IOService;
-
 class ShaderService
 {
   public:
@@ -36,7 +35,7 @@ class ShaderService
     policy::command::ListenForCreateShader<ShaderService> m_listenForCreateShader;
     core::device::manager::GraphicsContainer *m_graphicsManagers = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
-    IOService *m_ioService = nullptr;
+    const star::io::PathResolver *m_pathResolver = nullptr;
 
     void initListeners(core::CommandBus &bus);
 

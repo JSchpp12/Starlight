@@ -77,9 +77,8 @@ void PipelineCommandService::onCreatePipeline(star::command::pipeline::CreatePip
 
     cmd.validate();
 
-    // Shaders are resolved and compiled by CreateShader before the pipeline is
-    // submitted, so the service only has handles to forward to the pipeline
-    // manager.
+    // Shader handles come from CreateShader, which compiles asynchronously;
+    // the service only forwards the handles to the pipeline manager.
     std::vector<Handle> shaderHandles;
     shaderHandles.reserve(cmd.getShaderCount());
 

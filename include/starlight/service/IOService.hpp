@@ -10,6 +10,7 @@
 #include "starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
 #include "starlight/policy/command/ListenFor.hpp"
 #include "starlight/service/InitParameters.hpp"
+#include "starlight/util/io/PathResolver.hpp"
 #include "starlight/util/io/SearchPolicy.hpp"
 
 #include <expected>
@@ -34,7 +35,14 @@ using ListenForGetPath =
 ///
 /// Reading and writing are queued to an IOWorker (see onReadFromFile /
 /// onWriteToFile); *path resolution* is not. resolve() and the GetPath
-/// command both run the search synchronously on the calling thread
+/// command both run the search synchronously on the calling thread.
+///
+/// Thread safety: the service object itself (listener registration, moves,
+/// lifetime) belongs to the thread that owns it, and the command bus is not
+/// safe to submit/register from other threads. Resolution does not need the
+/// service though: resolver() returns an immutable PathResolver whose
+/// resolve() is safe to call concurrently. Copy it by value and hand it to a
+/// secondary thread.
 class IOService
 {
   public:
@@ -60,11 +68,19 @@ class IOService
     /// IOService pointer (e.g. the terrain module, which only has the bus).
     void onGetPath(star::command::file_io::GetPath &cmd);
 
-    /// Direct, synchronous resolution for callers that already hold this
-    /// service (ShaderService, PipelineCommandService). Same semantics and same
-    /// policy as the GetPath command above, minus the bus round-trip.
+    /// @brief Resolves the given candidate path according to the IOService's search policy.
+    /// @param candidate The candidate path to resolve.
+    /// @param kind The kind of path being resolved (e.g., absolute, relative).
+    /// @return The resolved path if successful, or an IOError if resolution fails.
     std::expected<std::filesystem::path, star::io::IOError> resolve(const std::filesystem::path &candidate,
                                                                     star::io::PathKind kind) const;
+
+    /// @brief  Returns the immutable PathResolver for this IOService.
+    /// @return A const reference to the PathResolver.
+    const star::io::PathResolver &resolver() const noexcept
+    {
+        return m_resolver;
+    }
 
     void negotiateWorkers(core::WorkerPool &pool, job::TaskManager &tm)
     {
@@ -72,7 +88,7 @@ class IOService
     }
 
   private:
-    star::io::SearchPolicy m_policy;
+    star::io::PathResolver m_resolver;
     ListenForGetPath<IOService> m_listenForGetPath;
     ListenForReadFromFile<IOService> m_listenForReadFromFile;
     ListenForWriteToFile<IOService> m_listenForWriteToFile;

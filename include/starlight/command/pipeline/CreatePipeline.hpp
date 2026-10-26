@@ -1,7 +1,6 @@
 #pragma once
 
 #include "starlight/command/shader/ShaderBuildRequest.hpp"
-#include "starlight/util/io/IOError.hpp"
 
 #include <StarPipeline.hpp>
 #include <core/renderer/RenderingTargetInfo.hpp>
@@ -10,7 +9,6 @@
 
 #include <array>
 #include <cstddef>
-#include <expected>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -27,7 +25,11 @@ inline constexpr const char *GetUniqueTypeName()
 }
 } // namespace create_pipeline
 
-struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expected<Handle, star::io::IOError>>
+/// Request that a graphics or compute pipeline be built from already-created shader handles. The reply holds the
+/// pending pipeline handle; it does not wait for the build to finish. Invalid recipes throw during validation, and
+/// shader path/compile failures are handled by the asynchronous shader compile path, so there is no IOError channel
+/// here.
+struct CreatePipeline : public star::common::IServiceCommandWithReply<Handle>
 {
     static inline constexpr std::string_view GetUniqueTypeName()
     {

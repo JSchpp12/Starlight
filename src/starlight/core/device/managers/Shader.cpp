@@ -9,6 +9,7 @@ void star::core::device::manager::Shader::submitTask(device::StarDevice &device,
 {
     taskSystem.submitTask(job::tasks::compile_shader::Create(
                               std::move(storedRecord->request.path), storedRecord->request.shader.getStage(), handle,
-                              device.getVulkanDevice(), std::move(storedRecord->request.macroDefinitions)),
+                              device.getVulkanDevice(), std::move(storedRecord->request.macroDefinitions),
+                              std::move(storedRecord->request.pathResolver)),
                           job::tasks::compile_shader::CompileShaderTypeName);
 }

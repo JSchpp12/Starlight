@@ -3,12 +3,12 @@
 #include "StarShader.hpp"
 #include "core/ShaderMacroDefinitions.hpp"
 #include "device/managers/TaskCreatedResourceManager.hpp"
+#include "starlight/util/io/PathResolver.hpp"
 
 #include <filesystem>
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 #include <utility>
-
 
 namespace star::core::device::manager
 {
@@ -17,6 +17,7 @@ struct ShaderRequest
     std::filesystem::path path;
     StarShader shader;
     star::core::ShaderMacroDefinitions macroDefinitions;
+    star::io::PathResolver pathResolver;
 };
 struct ShaderRecord
 {
