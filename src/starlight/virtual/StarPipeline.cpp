@@ -1,5 +1,7 @@
 #include "StarPipeline.hpp"
 
+#include "starlight/core/Exceptions.hpp"
+
 #include <cassert>
 #include <stdexcept>
 
@@ -24,17 +26,98 @@ void StarPipeline::destroy(vk::Device device)
     }
 }
 
-StarPipeline PipelineProvider::build(vk::Device device, const RenderResourceDependencies &deps) const
+PipelineProvider::Builder &PipelineProvider::Builder::setShaders(std::vector<Handle> shaders)
 {
-    vk::Pipeline pipeline =
-        (m_type == PipelineType::Graphics) ? buildGraphics(device, deps) : buildCompute(device, deps);
+    m_type = PipelineType::Graphics;
+    m_shaders = std::move(shaders);
+    return *this;
+}
+
+PipelineProvider::Builder &PipelineProvider::Builder::setComputeShader(Handle shader)
+{
+    m_type = PipelineType::Compute;
+    m_shaders = {std::move(shader)};
+    return *this;
+}
+
+PipelineProvider::Builder &PipelineProvider::Builder::setPipelineLayout(vk::PipelineLayout layout)
+{
+    m_layout = layout;
+    return *this;
+}
+
+PipelineProvider::Builder &PipelineProvider::Builder::setGraphicsOverrides(GraphicsOverrides overrides)
+{
+    m_graphics = std::move(overrides);
+    return *this;
+}
+
+PipelineProvider::Builder &PipelineProvider::Builder::setPipelineConstantsForStage(Shader_Stage stage,
+                                                                                   StarPipelineConstants constants)
+{
+    assert(!m_pipelineConstants.contains(stage) && "Pipeline constants for this stage have already been set");
+    m_pipelineConstants[stage] = std::move(constants);
+    return *this;
+}
+
+PipelineProvider PipelineProvider::Builder::build()
+{
+    PipelineProvider provider;
+    provider.m_type = m_type;
+    provider.m_shaders = std::move(m_shaders);
+    provider.m_layout = m_layout;
+    provider.m_graphics = std::move(m_graphics);
+    provider.m_pipelineConstants = std::move(m_pipelineConstants);
+    return provider;
+}
+
+static Shader_Stage ToShaderStage(vk::ShaderStageFlagBits stage)
+{
+    switch (stage)
+    {
+    case vk::ShaderStageFlagBits::eVertex:
+        return Shader_Stage::vertex;
+    case vk::ShaderStageFlagBits::eFragment:
+        return Shader_Stage::fragment;
+    case vk::ShaderStageFlagBits::eCompute:
+        return Shader_Stage::compute;
+    default:
+        assert(false && "Unsupported shader stage");
+        STAR_THROW("Unsupported shader stage");
+    }
+}
+
+PipelineProvider::SpecializedStages PipelineProvider::processPipelineConstants(
+    const std::vector<vk::PipelineShaderStageCreateInfo> &workingShaderInfos)
+{
+    SpecializedStages result;
+    result.shaderStages = workingShaderInfos;
+    result.specializationInfos.reserve(workingShaderInfos.size());
+
+    for (size_t i = 0; i < workingShaderInfos.size(); ++i)
+    {
+        // Process each shader stage for specialization constants if needed
+        if (m_pipelineConstants.contains(ToShaderStage(workingShaderInfos[i].stage)))
+        {
+            result.specializationInfos.push_back(
+                m_pipelineConstants[ToShaderStage(workingShaderInfos[i].stage)].getSpecializationInfo());
+            result.shaderStages[i].pSpecializationInfo = &result.specializationInfos.back();
+        }
+    }
+    return result;
+}
+
+StarPipeline PipelineProvider::createPipeline(vk::Device device, RenderResourceDependencies &deps)
+{
+    vk::Pipeline pipeline = (m_type == PipelineType::Graphics)
+                                ? buildGraphics(device, deps, processPipelineConstants(deps.shaderStages))
+                                : buildCompute(device, deps, processPipelineConstants(deps.shaderStages));
     return StarPipeline{pipeline, m_type};
 }
 
-vk::Pipeline PipelineProvider::buildGraphics(vk::Device device, const RenderResourceDependencies &deps) const
+vk::Pipeline PipelineProvider::buildGraphics(vk::Device device, RenderResourceDependencies &deps,
+                                             const SpecializedStages &specializedStages)
 {
-    std::vector<vk::PipelineShaderStageCreateInfo> shaderStages = deps.shaderStages;
-
     // ---- Vertex input: provider overrides, falling back to the global VulkanVertex ----
     std::vector<vk::VertexInputBindingDescription> vertexBindings = m_graphics.vertexInput.bindings;
     std::vector<vk::VertexInputAttributeDescription> vertexAttributes = m_graphics.vertexInput.attributes;
@@ -160,8 +243,8 @@ vk::Pipeline PipelineProvider::buildGraphics(vk::Device device, const RenderReso
     /* Pipeline */
     vk::GraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
-    pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-    pipelineInfo.pStages = shaderStages.data();
+    pipelineInfo.stageCount = static_cast<uint32_t>(specializedStages.shaderStages.size());
+    pipelineInfo.pStages = specializedStages.shaderStages.data();
 
     pipelineInfo.pVertexInputState = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState = &inputAssembly;
@@ -191,7 +274,8 @@ vk::Pipeline PipelineProvider::buildGraphics(vk::Device device, const RenderReso
     return result.value.at(0);
 }
 
-vk::Pipeline PipelineProvider::buildCompute(vk::Device device, const RenderResourceDependencies &deps) const
+vk::Pipeline PipelineProvider::buildCompute(vk::Device device, RenderResourceDependencies &deps,
+                                            const SpecializedStages &specializedStages)
 {
     assert(deps.shaderStages.size() == 1 && "More shaders than expected for a compute pipeline");
     assert(deps.shaderStages.at(0).stage == vk::ShaderStageFlagBits::eCompute &&
@@ -200,7 +284,7 @@ vk::Pipeline PipelineProvider::buildCompute(vk::Device device, const RenderResou
     vk::ComputePipelineCreateInfo createInfo{};
     createInfo.sType = vk::StructureType::eComputePipelineCreateInfo;
     createInfo.layout = m_layout;
-    createInfo.stage = deps.shaderStages[0];
+    createInfo.stage = specializedStages.shaderStages[0];
 
     auto result = device.createComputePipeline(VK_NULL_HANDLE, createInfo);
     if (result.result != vk::Result::eSuccess)

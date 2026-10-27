@@ -13,9 +13,6 @@ namespace star::command::shader
 /// on the heap.
 inline constexpr std::size_t MaxShadersPerPipeline = 4;
 
-/// Inert description of a shader that should be compiled. This is a command-side
-/// value type so that commands can describe shader work without depending on the
-/// device managers.
 struct ShaderBuildRequest
 {
     ShaderBuildRequest() = default;

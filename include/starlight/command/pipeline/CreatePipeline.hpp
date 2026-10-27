@@ -1,16 +1,17 @@
 #pragma once
 
 #include "starlight/command/shader/ShaderBuildRequest.hpp"
+#include "starlight/wrappers/graphics/StarPipelineConstants.hpp"
 
 #include <StarPipeline.hpp>
-#include <core/renderer/RenderingTargetInfo.hpp>
-#include <star_common/Handle.hpp>
-#include <star_common/IServiceCommandWithReply.hpp>
-
+#include <absl/container/flat_hash_map.h>
 #include <array>
+#include <core/renderer/RenderingTargetInfo.hpp>
 #include <cstddef>
 #include <optional>
 #include <span>
+#include <star_common/Handle.hpp>
+#include <star_common/IServiceCommandWithReply.hpp>
 #include <string_view>
 #include <utility>
 #include <vulkan/vulkan.hpp>
@@ -74,6 +75,15 @@ struct CreatePipeline : public star::common::IServiceCommandWithReply<Handle>
         return *this;
     }
 
+    CreatePipeline &setPipelineConstantForStage(star::Shader_Stage shader, StarPipelineConstants constants)
+    {
+        assert(!m_pipelineConstants.contains(shader) &&
+               "Pipeline constants for the given shader stage have already been set.");
+
+        m_pipelineConstants[shader] = std::move(constants);
+        return *this;
+    }
+
     /// Validate the pipeline recipe. Throws on an invalid configuration. The
     /// service calls this before touching any manager so an invalid request never
     /// produces a partial resource.
@@ -114,11 +124,17 @@ struct CreatePipeline : public star::common::IServiceCommandWithReply<Handle>
         return m_graphicsOverrides;
     }
 
+    const absl::flat_hash_map<star::Shader_Stage, StarPipelineConstants> &getPipelineConstants() const
+    {
+        return m_pipelineConstants;
+    }
+
   private:
-    PipelineType m_type = PipelineType::Graphics;
+    absl::flat_hash_map<star::Shader_Stage, StarPipelineConstants> m_pipelineConstants{};
+    PipelineType m_type{PipelineType::Graphics};
     std::array<Handle, shader::MaxShadersPerPipeline> m_shaderHandles{};
-    std::size_t m_numShaderHandles = 0;
-    vk::PipelineLayout m_layout = VK_NULL_HANDLE;
+    std::size_t m_numShaderHandles{0};
+    vk::PipelineLayout m_layout{VK_NULL_HANDLE};
     vk::Extent2D m_swapChainExtent{};
     core::renderer::RenderingTargetInfo m_renderingTargetInfo{};
     std::optional<GraphicsOverrides> m_graphicsOverrides;

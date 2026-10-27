@@ -192,7 +192,10 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
 
 star::PipelineProvider star::StarObject::getPipelineProvider(vk::PipelineLayout pipelineLayout)
 {
-    return PipelineProvider({m_vertexShaderHandle, m_fragmentShaderHandle}, pipelineLayout);
+    return PipelineProvider::Builder()
+        .setShaders({m_vertexShaderHandle, m_fragmentShaderHandle})
+        .setPipelineLayout(pipelineLayout)
+        .build();
 }
 
 star::StarEntity &star::StarObject::getInstance(size_t index)
