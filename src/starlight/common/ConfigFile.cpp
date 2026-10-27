@@ -186,6 +186,45 @@ void star::ConfigFile::applyDefaults(std::map<std::string, std::string> values)
     }
 }
 
+static std::string GetSettingName(star::Config_Settings setting)
+{
+    switch (setting)
+    {
+    case (star::Config_Settings::app_name):
+        return "app_name";
+    case (star::Config_Settings::frames_in_flight):
+        return "frames_in_flight";
+    case (star::Config_Settings::mediadirectory):
+        return "media_directory";
+    case (star::Config_Settings::required_device_feature_gpu_index):
+        return "required_device_feature_gpu_index";
+    case (star::Config_Settings::required_device_feature_shader_float_64):
+        return "required_device_feature_shader_float64";
+    case (star::Config_Settings::resolution_x):
+        return "resolution_x";
+    case (star::Config_Settings::resolution_y):
+        return "resolution_y";
+    case (star::Config_Settings::texture_anisotropy):
+        return "texture_anisotropy";
+    case (star::Config_Settings::texture_filtering):
+        return "texture_filtering";
+    case (star::Config_Settings::tmp_directory):
+        return "tmp_directory";
+    case (star::Config_Settings::scene_file):
+        return "scene_file";
+    case (star::Config_Settings::max_image_worker_count):
+        return "max_image_worker_count";
+    case (star::Config_Settings::transfer_high_priority_queue_size):
+        return "transfer_high_priority_queue_size";
+    case (star::Config_Settings::transfer_standard_priority_queue_size):
+        return "transfer_standard_priority_queue_size";
+    case (star::Config_Settings::transfer_standard_priority_worker_count):
+        return "transfer_standard_priority_worker_count";
+    default:
+        return "UNKNOWN";
+    }
+}
+
 std::string star::ConfigFile::getSetting(Config_Settings setting)
 {
     auto it = settings.find(setting);
@@ -194,61 +233,8 @@ std::string star::ConfigFile::getSetting(Config_Settings setting)
         return it->second;
     }
 
-    std::string name;
-    switch (setting)
-    {
-    case (Config_Settings::app_name):
-        name = "app_name";
-        break;
-    case (Config_Settings::frames_in_flight):
-        name = "frames_in_flight";
-        break;
-    case (Config_Settings::mediadirectory):
-        name = "media_directory";
-        break;
-    case (Config_Settings::required_device_feature_gpu_index):
-        name = "required_device_feature_gpu_index";
-        break;
-    case (Config_Settings::required_device_feature_shader_float_64):
-        name = "required_device_feature_shader_float64";
-        break;
-    case (Config_Settings::resolution_x):
-        name = "resolution_x";
-        break;
-    case (Config_Settings::resolution_y):
-        name = "resolution_y";
-        break;
-    case (Config_Settings::texture_anisotropy):
-        name = "texture_anisotropy";
-        break;
-    case (Config_Settings::texture_filtering):
-        name = "texture_filtering";
-        break;
-    case (Config_Settings::tmp_directory):
-        name = "tmp_directory";
-        break;
-    case (Config_Settings::scene_file):
-        name = "scene_file";
-        break;
-    case (Config_Settings::max_image_worker_count):
-        name = "max_image_worker_count";
-        break;
-    case (Config_Settings::transfer_high_priority_queue_size):
-        name = "transfer_high_priority_queue_size";
-        break;
-    case (Config_Settings::transfer_standard_priority_queue_size):
-        name = "transfer_standard_priority_queue_size";
-        break;
-    case (Config_Settings::transfer_standard_priority_worker_count):
-        name = "transfer_standard_priority_worker_count";
-        break;
-    default:
-        name = "UNKNOWN";
-        break;
-    }
-
     std::ostringstream oss;
-    oss << "Setting not found: " << name << std::endl;
+    oss << "Setting not found: " << GetSettingName(setting) << std::endl;
     STAR_THROW(oss.str());
 }
 
@@ -296,62 +282,90 @@ static bool parseBool(std::string_view value)
     throw std::invalid_argument("Unable to parse boolean value: " + std::string(value));
 }
 
+static void LogSettingFallback(const char *expectedType, star::Config_Settings setting, const std::string &rawValue,
+                               const std::exception &ex, const std::string &defaultValue)
+{
+    std::ostringstream oss;
+    oss << "Failed to parse config setting '" << GetSettingName(setting) << "'";
+    if (!rawValue.empty())
+    {
+        oss << " with value '" << rawValue << "'";
+    }
+    oss << " as " << expectedType << " (" << ex.what() << "); using default value: " << defaultValue;
+    star::core::logging::warning(oss.str());
+}
+
 uint32_t star::ConfigFile::getUint32(Config_Settings setting, uint32_t defaultVal)
 {
+    std::string rawValue;
     try
     {
-        return parseUint32(getSetting(setting));
+        rawValue = getSetting(setting);
+        return parseUint32(rawValue);
     }
-    catch (const std::exception &)
+    catch (const std::exception &ex)
     {
+        LogSettingFallback("an unsigned integer", setting, rawValue, ex, std::to_string(defaultVal));
         return defaultVal;
     }
 }
 
 int star::ConfigFile::getInt(Config_Settings setting, int defaultVal)
 {
+    std::string rawValue;
     try
     {
-        return parseInt(getSetting(setting));
+        rawValue = getSetting(setting);
+        return parseInt(rawValue);
     }
-    catch (const std::exception &)
+    catch (const std::exception &ex)
     {
+        LogSettingFallback("an integer", setting, rawValue, ex, std::to_string(defaultVal));
         return defaultVal;
     }
 }
 
 double star::ConfigFile::getDouble(Config_Settings setting, double defaultVal)
 {
+    std::string rawValue;
     try
     {
-        return parseDouble(getSetting(setting));
+        rawValue = getSetting(setting);
+        return parseDouble(rawValue);
     }
-    catch (const std::exception &)
+    catch (const std::exception &ex)
     {
+        LogSettingFallback("a number", setting, rawValue, ex, std::to_string(defaultVal));
         return defaultVal;
     }
 }
 
 bool star::ConfigFile::getBool(Config_Settings setting, bool defaultVal)
 {
+    std::string rawValue;
     try
     {
-        return parseBool(getSetting(setting));
+        rawValue = getSetting(setting);
+        return parseBool(rawValue);
     }
-    catch (const std::exception &)
+    catch (const std::exception &ex)
     {
+        LogSettingFallback("a boolean", setting, rawValue, ex, defaultVal ? "true" : "false");
         return defaultVal;
     }
 }
 
 std::string star::ConfigFile::getString(Config_Settings setting, std::string_view defaultVal)
 {
+    std::string rawValue;
     try
     {
-        return getSetting(setting);
+        rawValue = getSetting(setting);
+        return rawValue;
     }
-    catch (const std::exception &)
+    catch (const std::exception &ex)
     {
+        LogSettingFallback("a string", setting, rawValue, ex, std::string(defaultVal));
         return std::string(defaultVal);
     }
 }
