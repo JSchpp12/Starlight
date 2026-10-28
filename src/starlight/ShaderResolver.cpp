@@ -1,10 +1,8 @@
 #include "starlight/ShaderResolver.hpp"
 
 #include "starlight/command/shader/CreateShader.hpp"
-#include "starlight/core/Exceptions.hpp"
 
 #include <cassert>
-#include <sstream>
 
 namespace star
 {
@@ -20,16 +18,9 @@ ShaderResolver ShaderResolver::Builder::build()
     for (const auto &[stage, path] : m_paths)
     {
         command::shader::CreateShader cmd;
-        cmd.setStage(stage).setPath(std::filesystem::path(path));
+        cmd.setStage(stage).setPath(path);
         m_bus.submit(cmd);
-        const auto reply = cmd.getReply().get();
-        if (!reply)
-        {
-            std::ostringstream oss;
-            oss << "Failed to create shader from path '" << path << "':\n" << reply.error().toString();
-            STAR_THROW(oss.str());
-        }
-        handles[stage] = reply.value();
+        handles[stage] = cmd.getReply().get();
     }
 
     return ShaderResolver(std::move(handles));

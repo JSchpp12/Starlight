@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.4.0
+    VERSION 1.5.0
 )
 
 include(CheckIncludeFile)
@@ -71,7 +71,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/helper/queue/QueueHelpers.cpp"
     "src/starlight/core/helper/command_buffer/CommandBufferHelpers.cpp"
     "src/starlight/data_structure/dynamic/ThreadSharedObjectPool.cpp"
-    "src/starlight/graphics/PipelineFactory.cpp"
     "src/starlight/core/WorkerPool.cpp"
     "src/starlight/core/CommandBus.cpp"
     "src/starlight/command/CreateObject.cpp"
@@ -133,16 +132,17 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/wrappers/graphics/StarTextures/FormatInfo.cpp"
     "src/starlight/wrappers/graphics/StarTextures/Texture.cpp"
     "src/starlight/wrappers/graphics/StarTextures/TextureView.cpp"
-    "src/starlight/factory/TextureFactory.cpp"
-    "src/starlight/factory/BufferFactory.cpp"
+    "src/starlight/wrappers/graphics/StarPipelineConstants.cpp"
     "src/starlight/wrappers/graphics/StarTextures/Resources.cpp"
     "src/starlight/wrappers/graphics/StarTextures/AllocatedResources.cpp"
     "src/starlight/wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.cpp"
     "src/starlight/wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.cpp"
-    "src/starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.cpp"
     "src/starlight/wrappers/graphics/StarBuffers/Buffer.cpp"
     "src/starlight/wrappers/graphics/StarBuffers/Resources.cpp"
     "src/starlight/wrappers/graphics/QueueFamilyIndices.cpp"
+    "src/starlight/factory/TextureFactory.cpp"
+    "src/starlight/factory/BufferFactory.cpp"
+    "src/starlight/core/waiter/one_shot/CreateDescriptorsOnEventPolicy.cpp"
     "src/starlight/managers/ManagerRenderResource.cpp"
     "src/starlight/core/HandleContainer.cpp"
     "src/starlight/core/LinearHandleContainer.cpp"
@@ -306,7 +306,6 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/common/entities/Light_json.cpp" 
     "src/starlight/core/json/glm_json.cpp" 
     "src/starlight/event/PipelineReady.cpp" 
-    "src/starlight/core/waiter/one_shot/WaiterFactory.cpp" 
     "src/starlight/core/waiter/one_shot/detail/CachedPipelinePayload.cpp" 
     "src/starlight/core/helper/star_object/ObjectHelpers.cpp" 
     "src/starlight/core/renderer/TimelineSynchronizer.cpp" 
@@ -329,7 +328,6 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/helper/queue/QueueHelpers.hpp"
     "include/starlight/core/helper/command_buffer/CommandBufferHelpers.hpp"
     "include/starlight/data_structure/dynamic/ThreadSharedObjectPool.hpp"
-    "include/starlight/graphics/PipelineFactory.hpp"
     "include/starlight/command/command_order/DeclareDependency.hpp"
     "include/starlight/command/command_order/DeclarePass.hpp"
     "include/starlight/command/command_order/TriggerPass.hpp"
@@ -343,6 +341,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/command/FileIO/ReadFromFile.hpp"
     "include/starlight/command/FileIO/GetPath.hpp"
     "include/starlight/util/io/SearchPolicy.hpp"
+    "include/starlight/util/io/PathResolver.hpp"
     "include/starlight/util/io/IOError.hpp"
     "include/starlight/command/task_scheduler/SubmitTask.hpp"
     "include/starlight/command/GetScreenCaptureSyncInfo.hpp"
@@ -410,6 +409,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/wrappers/graphics/StarCommandPool.hpp"
     "include/starlight/wrappers/Allocator.hpp"
     "include/starlight/wrappers/graphics/QueueFamilyIndices.hpp"
+    "include/starlight/wrappers/graphics/StarPipelineConstants.hpp"
     "include/starlight/core/device/managers/ManagerBase.hpp"
     "include/starlight/core/device/managers/ManagerCommandBuffer.hpp"
     "include/starlight/core/device/managers/Shader.hpp"
@@ -527,6 +527,7 @@ set(${STARLIGHT_NAME}_HEADERS
      "include/starlight/job/tasks/actions/WritePngMaskAction.hpp"
      "include/starlight/job/tasks/actions/WriteTiffImageAction.hpp"
     "include/starlight/job/tasks/CompileShader.hpp"
+    "include/starlight/job/tasks/CompileShaderResult.hpp"
     "include/starlight/job/tasks/BuildPipeline.hpp"
     "include/starlight/job/tasks/IOTask.hpp"
     "include/starlight/job/tasks/TransferTask.hpp"

@@ -7,7 +7,7 @@ static void SignalPipelineReady(star::common::EventBus &evtBus, star::Handle reg
 {
     star::event::PipelineReady evt{std::move(registration)};
 
-    evtBus.emit(evt); 
+    evtBus.emit(evt);
 }
 
 void star::job::complete_tasks::ExecuteBuildPipelineComplete(void *device, void *taskSystem, void *eventBus,
@@ -25,12 +25,12 @@ void star::job::complete_tasks::ExecuteBuildPipelineComplete(void *device, void 
 
     gm->pipelineManager->get(handle)->builtPipeline = std::move(p->pipeline);
 
-    auto *evtBus = static_cast<star::common::EventBus *>(eventBus); 
-    SignalPipelineReady(*evtBus, std::move(handle)); 
+    auto *evtBus = static_cast<star::common::EventBus *>(eventBus);
+    SignalPipelineReady(*evtBus, std::move(handle));
 }
 
-star::job::complete_tasks::CompleteTask star::job::complete_tasks::CreateBuildPipelineComplete(
-    uint32_t handleID, StarPipeline pipeline)
+star::job::complete_tasks::CompleteTask star::job::complete_tasks::CreateBuildPipelineComplete(uint32_t handleID,
+                                                                                               StarPipeline pipeline)
 {
     return CompleteTask::Builder<PipelineBuildCompletePayload>()
         .setPayload(PipelineBuildCompletePayload{.handleID = std::move(handleID), .pipeline = std::move(pipeline)})

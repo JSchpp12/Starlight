@@ -5,6 +5,7 @@
 #include <star_common/IEvent.hpp>
 
 #include <cassert>
+#include <type_traits>
 #include <utility>
 
 namespace star::core::device::system::event
@@ -21,7 +22,17 @@ template <typename TManagerRequest> class ManagerRequest : public star::common::
 
     TManagerRequest giveMeRequest() const
     {
-        return m_request;
+        // Requests are consumed exactly once by the manager's event callback.
+        // Move out when the request owns move-only state (e.g. a compiled
+        // StarShader); copyable request types keep their existing behaviour.
+        if constexpr (std::is_copy_constructible_v<TManagerRequest>)
+        {
+            return m_request;
+        }
+        else
+        {
+            return std::move(const_cast<ManagerRequest *>(this)->m_request);
+        }
     }
     Handle &getResultingHandle() const
     {

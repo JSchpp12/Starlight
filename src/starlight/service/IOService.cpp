@@ -5,13 +5,13 @@
 namespace star::service
 {
 IOService::IOService(star::io::SearchPolicy policy)
-    : m_policy(std::move(policy)), m_listenForGetPath(*this), m_listenForReadFromFile(*this),
+    : m_resolver(std::move(policy)), m_listenForGetPath(*this), m_listenForReadFromFile(*this),
       m_listenForWriteToFile(*this)
 {
 }
 
 IOService::IOService(IOService &&other)
-    : m_policy(std::move(other.m_policy)), m_listenForGetPath(*this), m_listenForReadFromFile(*this),
+    : m_resolver(std::move(other.m_resolver)), m_listenForGetPath(*this), m_listenForReadFromFile(*this),
       m_listenForWriteToFile(*this), m_worker(other.m_worker), m_cmdBus(other.m_cmdBus)
 {
     if (m_cmdBus != nullptr)
@@ -26,7 +26,7 @@ IOService &IOService::operator=(IOService &&other)
 {
     if (this != &other)
     {
-        m_policy = std::move(other.m_policy);
+        m_resolver = std::move(other.m_resolver);
         m_worker = other.m_worker;
         m_cmdBus = other.m_cmdBus;
 
@@ -96,13 +96,13 @@ void IOService::onWriteToFile(command::file_io::WriteToFile &cmd)
 
 void IOService::onGetPath(star::command::file_io::GetPath &cmd)
 {
-    cmd.getReply().set(star::io::resolvePath(m_policy, cmd.getCandidate(), cmd.getKind()));
+    cmd.getReply().set(m_resolver.resolve(cmd.getCandidate(), cmd.getKind()));
 }
 
 std::expected<std::filesystem::path, star::io::IOError> IOService::resolve(const std::filesystem::path &candidate,
                                                                            star::io::PathKind kind) const
 {
-    return star::io::resolvePath(m_policy, candidate, kind);
+    return m_resolver.resolve(candidate, kind);
 }
 
 } // namespace star::service

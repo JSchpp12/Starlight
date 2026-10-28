@@ -41,12 +41,10 @@ struct PipelineRecord
         builtPipeline.destroy(device.getVulkanDevice());
     }
 
-    /// Recipe retained for shader-compiled matching + (optionally) cache keying.
     PipelineRequest request = PipelineRequest();
-    /// The built pipeline handle. Default-constructed (vk::Pipeline == VK_NULL_HANDLE)
-    /// until the build task completes.
     StarPipeline builtPipeline;
     uint8_t numCompiled = 0;
+    bool buildQueued = false;
 };
 
 constexpr std::string_view PipelineCreateEventTypeName = "star::event::pipeline";
@@ -60,7 +58,6 @@ class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineReque
     {
     }
     virtual ~Pipeline() = default;
-
     Pipeline(const Pipeline &) = delete;
     Pipeline &operator=(const Pipeline &) = delete;
     Pipeline(Pipeline &&) = delete;

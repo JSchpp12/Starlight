@@ -9,7 +9,7 @@ void ExecuteBuildPipeline(void *p)
 {
     auto *payload = static_cast<PipelineBuildPayload *>(p);
 
-    payload->data->built = payload->data->provider.build(payload->data->device, payload->data->deps);
+    payload->data->built = payload->data->provider.createPipeline(payload->data->device, payload->data->deps);
 }
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateBuildComplete(void *p)

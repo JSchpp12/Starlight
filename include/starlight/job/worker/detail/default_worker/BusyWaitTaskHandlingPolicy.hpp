@@ -87,14 +87,14 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
         }
         catch (const std::exception &e)
         {
-            std::cerr << "Thread exception: " << e.what() << std::endl;
+            std::ostringstream oss;
+            oss << "Thread exception: " << e.what();
+            star::core::logging::error(oss.str());
             return;
         }
         catch (...)
         {
-            const std::string msg = "An unknown and unhandled exception was encountered. Thread will now exit.";
-            star::core::logging::fatal(msg);
-            std::cerr << msg << std::endl;
+            star::core::logging::fatal("An unknown and unhandled exception was encountered. Thread will now exit.");
             return;
         }
     }

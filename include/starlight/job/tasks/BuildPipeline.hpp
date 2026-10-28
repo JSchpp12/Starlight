@@ -2,6 +2,7 @@
 
 #include "StarPipeline.hpp"
 #include "job/tasks/Task.hpp"
+#include "starlight/wrappers/graphics/StarPipelineConstants.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -12,19 +13,18 @@ namespace star::job::tasks::build_pipeline
 
 constexpr std::string_view BuildPipelineTaskName = "star::job::tasks::build_pipeline";
 
-struct PipelineData{
-    star::StarPipeline::RenderResourceDependencies deps; 
-    /// Build recipe; consumed by ExecuteBuildPipeline.
-    star::PipelineProvider provider; 
-    /// Built handle; produced by ExecuteBuildPipeline, consumed by the complete task.
+struct PipelineData
+{
+    star::StarPipeline::RenderResourceDependencies deps;
+    star::PipelineProvider provider;
     star::StarPipeline built;
-    vk::Device device; 
-    uint32_t handleID; 
+    vk::Device device;
+    uint32_t handleID;
 };
 
 struct PipelineBuildPayload
 {
-    std::unique_ptr<PipelineData> data; 
+    std::unique_ptr<PipelineData> data;
 };
 
 using BuildPipelineTask = star::job::tasks::Task<sizeof(PipelineBuildPayload), alignof(PipelineBuildPayload)>;

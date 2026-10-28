@@ -10,11 +10,9 @@
 #include "wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"
 
 #include "common/helpers/GeometryHelpers.hpp"
-#include "core/Exceptions.hpp"
 #include <glm/glm.hpp>
 
 #include <algorithm>
-#include <sstream>
 
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout =
     std::unique_ptr<star::StarDescriptorSetLayout>();
@@ -189,22 +187,15 @@ star::Handle star::StarObject::buildPipeline(core::device::DeviceContext &contex
     }
 
     context.getCmdBus().submit(cmd);
-    const auto reply = cmd.getReply().get();
-    if (!reply)
-    {
-        // The service reports resolution failures through the reply; a
-        // pipeline that failed to build would otherwise surface as a hang
-        // waiting for a pipeline-ready event that never fires.
-        std::ostringstream oss;
-        oss << "Failed to create pipeline: " << reply.error().toString();
-        STAR_THROW(oss.str());
-    }
-    return reply.value();
+    return cmd.getReply().get();
 }
 
 star::PipelineProvider star::StarObject::getPipelineProvider(vk::PipelineLayout pipelineLayout)
 {
-    return PipelineProvider({m_vertexShaderHandle, m_fragmentShaderHandle}, pipelineLayout);
+    return PipelineProvider::Builder()
+        .setShaders({m_vertexShaderHandle, m_fragmentShaderHandle})
+        .setPipelineLayout(pipelineLayout)
+        .build();
 }
 
 star::StarEntity &star::StarObject::getInstance(size_t index)
@@ -238,9 +229,8 @@ void star::StarObject::onDescriptorPoolReady(star::core::device::DeviceContext &
 }
 
 void star::StarObject::onDescriptorPoolReady(core::device::DeviceContext &context,
-                                             star::StarShaderInfo::Builder fullEngineBuilder,
-                                             Handle sharedPipeline, uint32_t globalSetCount,
-                                             star::Handle commandBuffer)
+                                             star::StarShaderInfo::Builder fullEngineBuilder, Handle sharedPipeline,
+                                             uint32_t globalSetCount, star::Handle commandBuffer)
 {
     m_globalSetCount = globalSetCount;
 

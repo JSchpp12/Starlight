@@ -70,6 +70,36 @@ void PipelineCommandService::setInitParameters(InitParameters &params)
     m_graphicsManagers = &params.graphicsManagers;
 }
 
+static PipelineProvider CreatePipelineProviderFromCmd(star::command::pipeline::CreatePipeline &cmd)
+{
+    // Shader handles come from CreateShader, which compiles asynchronously;
+    // the service only forwards the handles to the pipeline manager.
+    std::vector<Handle> shaderHandles;
+    shaderHandles.reserve(cmd.getShaderCount());
+    for (const auto &handle : cmd.getShaderHandles())
+    {
+        shaderHandles.push_back(handle);
+    }
+
+    auto builder = PipelineProvider::Builder().setPipelineLayout(cmd.getPipelineLayout());
+    for (const auto &shader : cmd.getPipelineConstants())
+    {
+        builder.setPipelineConstantsForStage(shader.first, shader.second);
+    }
+
+    if (cmd.getPipelineType() == PipelineType::Compute)
+    {
+        return builder.setComputeShader(shaderHandles.front()).build();
+    }
+
+    if (cmd.getGraphicsOverrides().has_value())
+    {
+        builder.setGraphicsOverrides(*cmd.getGraphicsOverrides());
+    }
+
+    return builder.setShaders(std::move(shaderHandles)).build();
+}
+
 void PipelineCommandService::onCreatePipeline(star::command::pipeline::CreatePipeline &cmd)
 {
     assert(m_graphicsManagers != nullptr && m_graphicsManagers->pipelineManager != nullptr &&
@@ -77,32 +107,7 @@ void PipelineCommandService::onCreatePipeline(star::command::pipeline::CreatePip
 
     cmd.validate();
 
-    // Shaders are resolved and compiled by CreateShader before the pipeline is
-    // submitted, so the service only has handles to forward to the pipeline
-    // manager.
-    std::vector<Handle> shaderHandles;
-    shaderHandles.reserve(cmd.getShaderCount());
-
-    for (const auto &handle : cmd.getShaderHandles())
-    {
-        shaderHandles.push_back(handle);
-    }
-
-    PipelineProvider provider = [&]() {
-        if (cmd.getPipelineType() == PipelineType::Compute)
-        {
-            return PipelineProvider(shaderHandles.front(), cmd.getPipelineLayout());
-        }
-
-        if (cmd.getGraphicsOverrides().has_value())
-        {
-            return PipelineProvider(shaderHandles, cmd.getPipelineLayout(), *cmd.getGraphicsOverrides());
-        }
-
-        return PipelineProvider(shaderHandles, cmd.getPipelineLayout());
-    }();
-
-    core::device::manager::PipelineRequest request{std::move(provider), cmd.getSwapChainExtent(),
+    core::device::manager::PipelineRequest request{CreatePipelineProviderFromCmd(cmd), cmd.getSwapChainExtent(),
                                                    cmd.getRenderingTargetInfo()};
 
     cmd.getReply().set(m_graphicsManagers->pipelineManager->submit(std::move(request)));

@@ -60,8 +60,11 @@ PipelineProvider CubeObject::getPipelineProvider(vk::PipelineLayout pipelineLayo
 {
     if (m_renderMode == RenderMode::lines)
     {
-        return PipelineProvider({m_vertexShaderHandle, m_fragmentShaderHandle}, pipelineLayout,
-                                GraphicsOverrides{.topology = vk::PrimitiveTopology::eLineList});
+        return PipelineProvider::Builder()
+            .setShaders({m_vertexShaderHandle, m_fragmentShaderHandle})
+            .setPipelineLayout(pipelineLayout)
+            .setGraphicsOverrides(GraphicsOverrides{.topology = vk::PrimitiveTopology::eLineList})
+            .build();
     }
 
     return StarObject::getPipelineProvider(pipelineLayout);

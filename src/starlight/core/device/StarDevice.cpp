@@ -601,7 +601,9 @@ bool StarDevice::verifyImageCreate(vk::ImageCreateInfo imageInfo)
     }
     catch (const std::exception &ex)
     {
-        std::cout << "An error occurred while attempting to verify new image: " << ex.what() << std::endl;
+        std::ostringstream oss;
+        oss << "An error occurred while attempting to verify new image: " << ex.what();
+        star::core::logging::warning(oss.str());
         return false;
     }
     return true;

@@ -1,18 +1,17 @@
 #pragma once
 
 #include "starlight/command/shader/ShaderBuildRequest.hpp"
-#include "starlight/util/io/IOError.hpp"
+#include "starlight/wrappers/graphics/StarPipelineConstants.hpp"
 
 #include <StarPipeline.hpp>
-#include <core/renderer/RenderingTargetInfo.hpp>
-#include <star_common/Handle.hpp>
-#include <star_common/IServiceCommandWithReply.hpp>
-
+#include <absl/container/flat_hash_map.h>
 #include <array>
+#include <core/renderer/RenderingTargetInfo.hpp>
 #include <cstddef>
-#include <expected>
 #include <optional>
 #include <span>
+#include <star_common/Handle.hpp>
+#include <star_common/IServiceCommandWithReply.hpp>
 #include <string_view>
 #include <utility>
 #include <vulkan/vulkan.hpp>
@@ -27,13 +26,11 @@ inline constexpr const char *GetUniqueTypeName()
 }
 } // namespace create_pipeline
 
-/// Request that a graphics or compute pipeline be built asynchronously. Shaders
-/// may be supplied either as already resolved handles or as raw build requests
-/// that the service resolves first. The reply holds a pending pipeline handle;
-/// it does not wait for PipelineReady. A failed shader-path resolution is
-/// reported through the reply's IOError so callers can fail loudly instead of
-/// waiting on a pipeline that can never finish building.
-struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expected<Handle, star::io::IOError>>
+/// Request that a graphics or compute pipeline be built from already-created shader handles. The reply holds the
+/// pending pipeline handle; it does not wait for the build to finish. Invalid recipes throw during validation, and
+/// shader path/compile failures are handled by the asynchronous shader compile path, so there is no IOError channel
+/// here.
+struct CreatePipeline : public star::common::IServiceCommandWithReply<Handle>
 {
     static inline constexpr std::string_view GetUniqueTypeName()
     {
@@ -78,6 +75,15 @@ struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expec
         return *this;
     }
 
+    CreatePipeline &setPipelineConstantForStage(star::Shader_Stage shader, StarPipelineConstants constants)
+    {
+        assert(!m_pipelineConstants.contains(shader) &&
+               "Pipeline constants for the given shader stage have already been set.");
+
+        m_pipelineConstants[shader] = std::move(constants);
+        return *this;
+    }
+
     /// Validate the pipeline recipe. Throws on an invalid configuration. The
     /// service calls this before touching any manager so an invalid request never
     /// produces a partial resource.
@@ -118,11 +124,17 @@ struct CreatePipeline : public star::common::IServiceCommandWithReply<std::expec
         return m_graphicsOverrides;
     }
 
+    const absl::flat_hash_map<star::Shader_Stage, StarPipelineConstants> &getPipelineConstants() const
+    {
+        return m_pipelineConstants;
+    }
+
   private:
-    PipelineType m_type = PipelineType::Graphics;
+    absl::flat_hash_map<star::Shader_Stage, StarPipelineConstants> m_pipelineConstants{};
+    PipelineType m_type{PipelineType::Graphics};
     std::array<Handle, shader::MaxShadersPerPipeline> m_shaderHandles{};
-    std::size_t m_numShaderHandles = 0;
-    vk::PipelineLayout m_layout = VK_NULL_HANDLE;
+    std::size_t m_numShaderHandles{0};
+    vk::PipelineLayout m_layout{VK_NULL_HANDLE};
     vk::Extent2D m_swapChainExtent{};
     core::renderer::RenderingTargetInfo m_renderingTargetInfo{};
     std::optional<GraphicsOverrides> m_graphicsOverrides;

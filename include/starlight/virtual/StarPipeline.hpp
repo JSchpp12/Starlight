@@ -4,14 +4,13 @@
 #include "VulkanVertex.hpp"
 #include "core/device/StarDevice.hpp"
 #include "core/renderer/RenderingTargetInfo.hpp"
+#include "wrappers/graphics/StarPipelineConstants.hpp"
 
+#include <absl/container/flat_hash_map.h>
 #include <star_common/Handle.hpp>
 #include <vulkan/vulkan.hpp>
 
-#include <memory>
 #include <optional>
-#include <string>
-#include <utility>
 #include <vector>
 
 namespace star
@@ -48,34 +47,47 @@ class PipelineProvider
   public:
     struct RenderResourceDependencies
     {
-        std::vector<std::pair<star::StarShader, std::shared_ptr<std::vector<uint32_t>>>> compiledShaders;
+        std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
         core::renderer::RenderingTargetInfo renderingTargetInfo;
         vk::Extent2D swapChainExtent;
     };
 
+    /// Builds a PipelineProvider describing either a graphics or a compute pipeline.
+    class Builder
+    {
+      public:
+        /// Defaults to a graphics pipeline: engine-default state + the global VulkanVertex layout.
+        Builder() = default;
+
+        /// Shader stages for a graphics pipeline.
+        Builder &setShaders(std::vector<Handle> shaders);
+
+        /// Single compute shader. Selects a compute pipeline.
+        Builder &setComputeShader(Handle shader);
+
+        Builder &setPipelineLayout(vk::PipelineLayout layout);
+
+        /// Custom vertex input / state overrides for a graphics pipeline.
+        Builder &setGraphicsOverrides(GraphicsOverrides overrides);
+
+        Builder &setPipelineConstantsForStage(Shader_Stage stage, StarPipelineConstants constants);
+
+        PipelineProvider build();
+
+      private:
+        std::vector<Handle> m_shaders;
+        absl::flat_hash_map<Shader_Stage, star::StarPipelineConstants> m_pipelineConstants;
+        vk::PipelineLayout m_layout{VK_NULL_HANDLE};
+        GraphicsOverrides m_graphics;
+        PipelineType m_type{PipelineType::Graphics};
+    };
+
+    friend class Builder;
+
     PipelineProvider() = default;
 
-    /// Default graphics pipeline: engine-default state + the global VulkanVertex layout.
-    PipelineProvider(std::vector<Handle> shaders, vk::PipelineLayout layout)
-        : m_type(PipelineType::Graphics), m_shaders(std::move(shaders)), m_layout(layout)
-    {
-    }
-
-    /// Graphics pipeline with custom vertex input / state overrides.
-    PipelineProvider(std::vector<Handle> shaders, vk::PipelineLayout layout, GraphicsOverrides overrides)
-        : m_type(PipelineType::Graphics), m_shaders(std::move(shaders)), m_layout(layout),
-          m_graphics(std::move(overrides))
-    {
-    }
-
-    /// Compute pipeline (single compute shader).
-    PipelineProvider(Handle computeShader, vk::PipelineLayout layout)
-        : m_type(PipelineType::Compute), m_shaders{std::move(computeShader)}, m_layout(layout)
-    {
-    }
-
     /// Build the Vulkan pipeline object. Returns a minimal StarPipeline handle.
-    StarPipeline build(vk::Device device, const RenderResourceDependencies &deps) const;
+    StarPipeline createPipeline(vk::Device device, RenderResourceDependencies &deps);
 
     PipelineType getType() const
     {
@@ -95,23 +107,26 @@ class PipelineProvider
     }
 
   private:
-    PipelineType m_type = PipelineType::Graphics;
+    struct SpecializedStages
+    {
+        std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
+        std::vector<vk::SpecializationInfo> specializationInfos;
+    };
+
     std::vector<Handle> m_shaders;
-    vk::PipelineLayout m_layout = VK_NULL_HANDLE;
     GraphicsOverrides m_graphics;
+    absl::flat_hash_map<Shader_Stage, star::StarPipelineConstants> m_pipelineConstants;
+    vk::PipelineLayout m_layout{VK_NULL_HANDLE};
+    PipelineType m_type{PipelineType::Graphics};
 
-    vk::Pipeline buildGraphics(vk::Device device, const RenderResourceDependencies &deps) const;
-    vk::Pipeline buildCompute(vk::Device device, const RenderResourceDependencies &deps) const;
-
-    static vk::ShaderModule createShaderModule(vk::Device &device, const std::vector<uint32_t> &sourceCode);
-
-    static void processShaders(vk::Device &device, const RenderResourceDependencies &deps, vk::ShaderModule &vertModule,
-                               vk::ShaderModule &fragModule, vk::ShaderModule &geoModule);
+    vk::Pipeline buildGraphics(vk::Device device, RenderResourceDependencies &deps,
+                               const SpecializedStages &specializedStages);
+    vk::Pipeline buildCompute(vk::Device device, RenderResourceDependencies &deps,
+                              const SpecializedStages &specializedStages);
+    SpecializedStages processPipelineConstants(
+        const std::vector<vk::PipelineShaderStageCreateInfo> &workingShaderInfos);
 };
 
-/// Minimal built pipeline handle. Owns the vk::Pipeline and knows its bind
-/// point; nothing else is retained after build. Created exclusively by
-/// PipelineProvider::build.
 class StarPipeline
 {
   public:
@@ -152,8 +167,8 @@ class StarPipeline
     using RenderResourceDependencies = PipelineProvider::RenderResourceDependencies;
 
   private:
-    vk::Pipeline m_pipeline = VK_NULL_HANDLE;
-    PipelineType m_type = PipelineType::Graphics;
+    vk::Pipeline m_pipeline{VK_NULL_HANDLE};
+    PipelineType m_type{PipelineType::Graphics};
 };
 
 } // namespace star

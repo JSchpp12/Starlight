@@ -41,8 +41,29 @@ std::optional<std::map<std::string, std::string>> ConfigReader::operator()(
     auto values = std::map<std::string, std::string>{};
     for (auto it = configJson.begin(); it != configJson.end(); ++it)
     {
-        values[it.key()] = it.value().get<std::string>();
+        if (!it.value().is_string())
+        {
+            std::ostringstream oss;
+            oss << "Invalid config value for '" << it.key() << "' in " << configPath.string()
+                << ": expected a string but found " << it.value().type_name() << " (" << it.value().dump() << ")";
+            core::logging::error(oss.str());
+            return std::nullopt;
+        }
+
+        try
+        {
+            values[it.key()] = it.value().get<std::string>();
+        }
+        catch (const std::exception &e)
+        {
+            std::ostringstream oss;
+            oss << "Failed to read config value for '" << it.key() << "' in " << configPath.string() << ": "
+                << e.what();
+            core::logging::error(oss.str());
+            return std::nullopt;
+        }
     }
+
     return values;
 }
 } // namespace star::config

@@ -2,12 +2,10 @@
 
 #include "starlight/command/shader/ShaderBuildRequest.hpp"
 #include "starlight/core/ShaderMacroDefinitions.hpp"
-#include "starlight/util/io/IOError.hpp"
 
 #include <star_common/Handle.hpp>
 #include <star_common/IServiceCommandWithReply.hpp>
 
-#include <expected>
 #include <filesystem>
 #include <string_view>
 #include <utility>
@@ -22,9 +20,9 @@ inline constexpr const char *GetUniqueTypeName()
 }
 } // namespace create_shader
 
-/// @brief Request that a single shader be loaded and compiled asynchronously. The reply holds a pending handle; it does
-/// not wait for compilation to finish.
-struct CreateShader : public star::common::IServiceCommandWithReply<std::expected<Handle, star::io::IOError>>
+/// @brief Request that a single shader be resolved, loaded, and compiled asynchronously. The reply holds the pending
+/// handle; it does not wait for compilation to finish.
+struct CreateShader : public star::common::IServiceCommandWithReply<Handle>
 {
     static inline constexpr std::string_view GetUniqueTypeName()
     {
@@ -43,21 +41,15 @@ struct CreateShader : public star::common::IServiceCommandWithReply<std::expecte
         return *this;
     }
 
-    CreateShader &setCompiler(Compiler compiler)
-    {
-        m_request.compiler = std::move(compiler);
-        return *this;
-    }
-
     CreateShader &setMacroDefinitions(const star::core::ShaderMacroDefinitions &macroDefinitions)
     {
-        m_request.compiler.setMacroDefinitions(macroDefinitions);
+        m_request.macroDefinitions = macroDefinitions;
         return *this;
     }
 
     CreateShader &setMacroDefinitions(star::core::ShaderMacroDefinitions &&macroDefinitions)
     {
-        m_request.compiler.setMacroDefinitions(std::move(macroDefinitions));
+        m_request.macroDefinitions = std::move(macroDefinitions);
         return *this;
     }
 
@@ -71,11 +63,6 @@ struct CreateShader : public star::common::IServiceCommandWithReply<std::expecte
         return m_request.path;
     }
 
-    const Compiler &getCompiler() const
-    {
-        return m_request.compiler;
-    }
-
     const ShaderBuildRequest &getBuildRequest() const
     {
         return m_request;
@@ -83,7 +70,11 @@ struct CreateShader : public star::common::IServiceCommandWithReply<std::expecte
 
     const star::core::ShaderMacroDefinitions &getMacroDefinitions() const
     {
-        return m_request.compiler.getMacroDefinitions();
+        return m_request.macroDefinitions;
+    }
+    star::core::ShaderMacroDefinitions &getMacroDefinitions()
+    {
+        return m_request.macroDefinitions;
     }
 
   private:

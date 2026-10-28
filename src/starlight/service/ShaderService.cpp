@@ -14,7 +14,7 @@ ShaderService::ShaderService() : m_listenForCreateShader(*this)
 
 ShaderService::ShaderService(ShaderService &&other)
     : m_listenForCreateShader(*this), m_graphicsManagers(other.m_graphicsManagers), m_cmdBus(other.m_cmdBus),
-      m_ioService(other.m_ioService)
+      m_pathResolver(std::move(other.m_pathResolver))
 {
     if (m_cmdBus != nullptr)
     {
@@ -29,7 +29,7 @@ ShaderService &ShaderService::operator=(ShaderService &&other)
     {
         m_graphicsManagers = other.m_graphicsManagers;
         m_cmdBus = other.m_cmdBus;
-        m_ioService = other.m_ioService;
+        m_pathResolver = std::move(other.m_pathResolver);
 
         if (m_cmdBus != nullptr)
         {
@@ -67,14 +67,12 @@ void ShaderService::shutdown()
 
 void ShaderService::setInitParameters(InitParameters &params)
 {
+    assert(params.ioService != nullptr &&
+           "IO service not available. The IO service must be created before the ShaderService");
+
     m_cmdBus = &params.commandBus;
     m_graphicsManagers = &params.graphicsManagers;
-    // May be null when a custom service list wires ShaderService without (or
-    // before) an IOService: onCreateShader then passes request paths through
-    // unresolved rather than dereferencing a null service. In the default
-    // factory (EngineServicesFactory::createDefault) IOService is parameterized
-    // first and this is never null.
-    m_ioService = params.ioService;
+    m_pathResolver = &params.ioService->resolver();
 }
 
 void ShaderService::onCreateShader(star::command::shader::CreateShader &cmd)
@@ -88,33 +86,12 @@ void ShaderService::onCreateShader(star::command::shader::CreateShader &cmd)
         STAR_THROW("CreateShader received an invalid shader build request");
     }
 
-    // Resolve the shader path through the IOService before submission so
-    // callers may pass media-relative candidates (absolute/existing paths
-    // resolve to themselves via the as-is probe). Without an IOService the
-    // candidate is passed through unresolved -- matching the pre-resolution
-    // behavior -- rather than crashing on a null service.
-    std::filesystem::path resolvedPath = request.path;
-    if (m_ioService != nullptr)
-    {
-        auto resolved = m_ioService->resolve(request.path, star::io::PathKind::file);
-        if (!resolved)
-        {
-            // Surface the failure through the reply so callers can abort
-            // instead of silently holding a null handle.
-            star::core::logging::error("Failed to resolve shader path: ", resolved.error().toString());
-            cmd.getReply().set(std::unexpected(resolved.error()));
-            return;
-        }
-        resolvedPath = std::move(resolved.value());
-    }
-    else
-    {
-        star::core::logging::warning("IOService is not available; passing shader path through unresolved: ",
-                                     request.path.string());
-    }
-
-    core::device::manager::ShaderRequest managerRequest{StarShader{resolvedPath.string(), request.stage},
-                                                        request.compiler};
+    // The candidate is handed over unresolved. CompileShader::Execute resolves
+    // it on the worker thread with the injected resolver; a failure is reported
+    // through the compile-complete path (with the attempted locations) rather
+    // than synchronously through this reply.
+    core::device::manager::ShaderRequest managerRequest{request.path, StarShader{request.stage},
+                                                        std::move(cmd.getMacroDefinitions()), *m_pathResolver};
     cmd.getReply().set(m_graphicsManagers->shaderManager->submit(std::move(managerRequest)));
 }
 } // namespace star::service

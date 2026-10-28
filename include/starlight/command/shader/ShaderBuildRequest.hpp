@@ -1,12 +1,10 @@
 #pragma once
 
-#include <Compiler.hpp>
+#include "core/ShaderMacroDefinitions.hpp"
+
 #include <Enums.hpp>
 
-#include <cstddef>
 #include <filesystem>
-#include <string>
-#include <utility>
 
 namespace star::command::shader
 {
@@ -15,9 +13,6 @@ namespace star::command::shader
 /// on the heap.
 inline constexpr std::size_t MaxShadersPerPipeline = 4;
 
-/// Inert description of a shader that should be compiled. This is a command-side
-/// value type so that commands can describe shader work without depending on the
-/// device managers.
 struct ShaderBuildRequest
 {
     ShaderBuildRequest() = default;
@@ -29,6 +24,6 @@ struct ShaderBuildRequest
 
     Shader_Stage stage = Shader_Stage::none;
     std::filesystem::path path;
-    Compiler compiler;
+    core::ShaderMacroDefinitions macroDefinitions;
 };
 } // namespace star::command::shader

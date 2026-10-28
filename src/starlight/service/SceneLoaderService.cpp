@@ -8,7 +8,9 @@
 #include "starlight/service/detail/scene_loader/ObjectReader.hpp"
 #include "starlight/service/detail/scene_loader/ObjectWriter.hpp"
 
+#include <fstream>
 #include <nlohmann/json.hpp>
+#include <sstream>
 
 namespace star::service
 {
@@ -119,6 +121,9 @@ std::optional<nlohmann::json> TryReadFile(const std::string &path)
     }
     catch (const std::exception &ex)
     {
+        std::ostringstream oss;
+        oss << "Failed to parse scene file " << path << ": " << ex.what();
+        core::logging::error(oss.str());
         return std::nullopt;
     }
 

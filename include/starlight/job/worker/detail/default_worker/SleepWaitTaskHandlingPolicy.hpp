@@ -76,12 +76,12 @@ class SleepWaitTaskHandlingPolicy : public BusyWaitTaskHandlingPolicy<TTask, TQu
 
     virtual void wait() override
     {
-        core::logging::info("Entering wait");
+        core::logging::debug("Entering wait");
 
         boost::unique_lock<boost::mutex> lock(*m_taskMutex);
         m_hasTask->wait(lock, [this] { return !this->m_shouldRun->load() || !this->m_tasks->empty(); });
 
-        core::logging::info("Exiting wait");
+        core::logging::debug("Exiting wait");
     }
 };
 } // namespace star::job::worker::default_worker
