@@ -18,7 +18,7 @@ struct GenericBufferCreateAllocatePolicy
     uint32_t instanceCount = 0;
     vk::DeviceSize minOffsetAlignment = 1;
 
-    Object create() const
+    Object operator()() const
     {
         vk::DeviceSize offset = 0;
         const auto resources = star::StarBuffers::BufferFactory::CreateResource(*device, allocator, allocInfo,

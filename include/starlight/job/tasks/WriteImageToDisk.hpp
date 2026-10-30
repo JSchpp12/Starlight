@@ -5,8 +5,9 @@
 #include "job/tasks/actions/WritePngImageAction.hpp"
 #include "job/tasks/actions/WritePngMaskAction.hpp"
 #include "job/tasks/actions/WriteTiffImageAction.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
 #include "starlight/wrappers/graphics/StarSemaphore.hpp"
-#include "starlight/wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
+
 
 #include "StarBuffers/Buffer.hpp"
 
@@ -21,8 +22,8 @@ inline static constexpr std::string_view WriteImageTypeName = "star::job::tasks:
 
 struct PoolOwnedWriteImagePayload
 {
-    using PoolType = data_structure::dynamic::ThreadSharedObjectPool<
-        star::StarBuffers::Buffer, wrappers::graphics::policies::GenericBufferCreateAllocatePolicy, 50>;
+    using PoolType =
+        data_structure::dynamic::ThreadSharedObjectPool<star::StarBuffers::Buffer, star::maker::buffer::MakeBuffer, 50>;
 
     struct Data
     {

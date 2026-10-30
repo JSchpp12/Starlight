@@ -34,10 +34,10 @@ void PoolOwnedWriteImagePayload::operator()()
 
     if (data->waitInfo.has_value())
     {
-        star::core::logging::info(data->path + " - Starting wait for semaphore. Value: " +
-                                  std::to_string(data->waitInfo.value().signalValue));
+        star::core::logging::debug(data->path + " - Starting wait for semaphore. Value: " +
+                                   std::to_string(data->waitInfo.value().signalValue));
         WaitUntilSemaphoreIsReady(data->device, data->waitInfo.value().vkSemaphore, data->waitInfo->signalValue);
-        star::core::logging::info(data->path + " - Done waiting for semaphore");
+        star::core::logging::debug(data->path + " - Done waiting for semaphore");
     }
 
     auto &buffer = data->owningObjectPool->get(data->registrationHandle);

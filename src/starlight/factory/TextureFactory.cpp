@@ -30,6 +30,23 @@ static void LogImageCreateFailure(const vk::Result &result)
     core::logging::log(boost::log::trivial::error, oss.str());
 }
 
+static void LogTextureAllocation(const std::string &name, const vk::Format &format,
+                                 const vk::ImageCreateInfo &createInfo, vk::DeviceSize size)
+{
+    core::logging::debug("Allocated texture \"", name, "\": ", createInfo.extent.width, "x", createInfo.extent.height,
+                         "x", createInfo.extent.depth, ", size=", size, " bytes, format=", vk::to_string(format),
+                         ", usage=", vk::to_string(createInfo.usage), ", mipLevels=", createInfo.mipLevels,
+                         ", arrayLayers=", createInfo.arrayLayers);
+}
+
+static void LogExternalTextureWrap(const std::string &name, const vk::Format &format, const vk::Extent3D &extent,
+                                   uint32_t mipLevels, vk::DeviceSize size)
+{
+    core::logging::debug("Wrapped external texture \"", name, "\": ", extent.width, "x", extent.height, "x",
+                         extent.depth, ", size=", size, " bytes, format=", vk::to_string(format),
+                         ", usage=externally managed, mipLevels=", mipLevels);
+}
+
 static void VerifyImageCreateInfo(const vk::ImageCreateInfo &createInfo)
 {
     assert(createInfo.extent.width != 0 && "width cannot be 0");
@@ -165,6 +182,10 @@ std::shared_ptr<Resources> CreateResource(core::device::StarDevice &device, cons
     CreateAllocation(device, baseFormat, allocator, allocationCreateInfo, imageCreateInfo, allocation, image,
                      allocationName);
 
+    const vk::DeviceSize size = CalculateSize(baseFormat, imageCreateInfo.extent, imageCreateInfo.arrayLayers,
+                                              imageCreateInfo.imageType, imageCreateInfo.mipLevels);
+    LogTextureAllocation(allocationName, baseFormat, imageCreateInfo, size);
+
     return std::make_shared<AllocatedResources>(image, allocation, allocator);
 }
 
@@ -207,6 +228,8 @@ Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanI
     TextureView views = CreateViews(device, vulkanImage, viewInfos, mipmapLevels, debugName);
     auto resources = std::make_shared<Resources>(vulkanImage, views);
 
+    LogExternalTextureWrap(debugName, baseFormat, resolution, mipmapLevels, size);
+
     return Texture(std::move(resources), baseFormat, mipmapLevels, resolution, size);
 }
 
@@ -220,6 +243,8 @@ Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanI
     TextureView views = CreateViews(device, vulkanImage, viewInfos, mipmapLevels, debugName);
     vk::Sampler sampler = CreateImageSampler(device, samplerInfo, debugName);
     auto resources = std::make_shared<Resources>(vulkanImage, views, sampler);
+
+    LogExternalTextureWrap(debugName, baseFormat, resolution, mipmapLevels, size);
 
     return Texture(std::move(resources), baseFormat, mipmapLevels, resolution, size);
 }
