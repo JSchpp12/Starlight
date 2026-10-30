@@ -12,17 +12,16 @@
 
 namespace star::data_structure::dynamic
 {
-template <typename TCreatePolicy, typename TObject>
-concept CreatePolicyLike = requires(TCreatePolicy c) {
-    { c.create() } -> std::same_as<TObject>;
+template <typename TMaker, typename TObject>
+concept MakerLike = requires(TMaker maker) {
+    { maker() } -> std::same_as<TObject>;
 };
 
-template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCapacity> class ThreadSharedObjectPool
+template <typename TObject, MakerLike<TObject> TMaker, size_t TCapacity> class ThreadSharedObjectPool
 {
   public:
-    explicit ThreadSharedObjectPool(TCreatePolicy createPolicy)
-        : m_objects(TCapacity), m_created(TCapacity, false), m_createPolicy(std::move(createPolicy)),
-          m_available()
+    explicit ThreadSharedObjectPool(TMaker maker)
+        : m_objects(TCapacity), m_created(TCapacity, false), m_maker(std::move(maker)), m_available()
     {
         for (uint32_t i = 0; i < TCapacity; ++i)
         {
@@ -84,14 +83,14 @@ template <typename TObject, CreatePolicyLike<TObject> TCreatePolicy, size_t TCap
   private:
     std::vector<TObject> m_objects;
     std::vector<bool> m_created;
-    TCreatePolicy m_createPolicy;
+    TMaker m_maker;
     boost::lockfree::queue<Handle, boost::lockfree::capacity<TCapacity>> m_available;
 
     void ensureCreated(const uint32_t &idx)
     {
         if (!m_created[idx])
         {
-            m_objects[idx] = m_createPolicy.create();
+            m_objects[idx] = m_maker();
             m_created[idx] = true;
         }
     }

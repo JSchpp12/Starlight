@@ -2,7 +2,7 @@
 
 #include "StarTextures/Texture.hpp"
 #include "starlight/factory/TextureFactory.hpp"
-#include "wrappers/graphics/policies/GenericBufferCreateAllocatePolicy.hpp"
+#include "starlight/maker/buffer/MakeBuffer.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -11,26 +11,25 @@
 namespace star::service::detail::screen_capture
 {
 
-static wrappers::graphics::policies::GenericBufferCreateAllocatePolicy CreateBufferPolicy(
-    DeviceInfo *deviceInfo, const vk::Format &targetImageFormat, const vk::Extent2D &extent)
+static star::maker::buffer::MakeBuffer CreateBufferMaker(DeviceInfo *deviceInfo, const vk::Format &targetImageFormat,
+                                                         const vk::Extent2D &extent)
 {
     const vk::DeviceSize size = StarTextures::TextureFactory::CalculateSize(
         targetImageFormat, vk::Extent3D().setHeight(extent.height).setWidth(extent.width).setDepth(1), 1,
         vk::ImageType::e2D, 1);
-    return wrappers::graphics::policies::GenericBufferCreateAllocatePolicy{
-        .allocator = std::move(deviceInfo->device->getAllocator().get()),
-        .device = deviceInfo->device,
-        .allocationName = "PerExtentResource",
-        .allocInfo = Allocator::AllocationBuilder()
-                         .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
-                         .setUsage(VMA_MEMORY_USAGE_AUTO_PREFER_HOST)
-                         .build(),
-        .createInfo = vk::BufferCreateInfo()
-                          .setSharingMode(vk::SharingMode::eExclusive)
-                          .setSize(size)
-                          .setUsage(vk::BufferUsageFlagBits::eTransferDst),
-        .instanceSize = size,
-        .instanceCount = 1};
+
+    return star::maker::buffer::MakeBuffer(*deviceInfo->device)
+        .setCreateInfo(Allocator::AllocationBuilder()
+                           .setFlags(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT)
+                           .setUsage(VMA_MEMORY_USAGE_AUTO_PREFER_HOST)
+                           .build(),
+                       vk::BufferCreateInfo()
+                           .setSharingMode(vk::SharingMode::eExclusive)
+                           .setSize(size)
+                           .setUsage(vk::BufferUsageFlagBits::eTransferDst),
+                       "PerExtentResource")
+        .setInstanceCount(1)
+        .setInstanceSize(size);
 }
 
 std::size_t Extent2DHash::operator()(const vk::Extent2D &e) const noexcept
@@ -59,7 +58,7 @@ CopyResource PerExtentResources::giveMeResource(const vk::Extent2D &targetExtent
     {
         container =
             m_resources
-                .insert(std::make_pair(targetExtent, std::make_unique<CopyResourcesContainer>(CreateBufferPolicy(
+                .insert(std::make_pair(targetExtent, std::make_unique<CopyResourcesContainer>(CreateBufferMaker(
                                                          m_deviceInfo, vk::Format::eR8G8B8A8Unorm, targetExtent))))
                 .first->second.get();
     }
