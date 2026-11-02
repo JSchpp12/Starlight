@@ -313,7 +313,9 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/primitive/SquareObject.cpp"
     "src/starlight/primitive/SquareMeshBuilder.cpp"
     "src/starlight/primitive/CubeObject.cpp"
-    "src/starlight/primitive/CubeMeshBuilder.cpp"
+    "src/starlight/primitive/cube/MeshFactory.cpp"
+    "src/starlight/primitive/cube/SolidColor.cpp"
+    "src/starlight/primitive/cube/TextureColor.cpp"
     "src/starlight/material/InstanceColorMaterial.cpp"
      "src/starlight/common/buffers/TransferRequest_InstanceColorInfo.cpp")
 

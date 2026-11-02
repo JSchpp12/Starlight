@@ -6,26 +6,36 @@
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/material/DefaultColorProvider.hpp"
 #include "starlight/material/InstanceColorMaterial.hpp"
-#include "starlight/primitive/CubeMeshBuilder.hpp"
 #include "starlight/primitive/MeshData.hpp"
+#include "starlight/primitive/cube/MeshFactory.hpp"
+
+#include <variant>
 
 namespace star::primitive
 {
 
-static std::shared_ptr<star::material::InstanceColorMaterial> GetMaterial(const std::vector<CubeDesc> &desc)
+static std::shared_ptr<star::material::InstanceColorMaterial> GetMaterial(const std::vector<cube::CubeDesc> &desc)
 {
     std::vector<star::Color> colors;
     colors.reserve(desc.size());
     for (const auto &d : desc)
     {
-        colors.push_back(d.color);
+        if (const auto *solidColor = std::get_if<cube::SolidColor>(&d.coloringApproach))
+        {
+            colors.push_back(solidColor->getColor());
+        }
+        else
+        {
+            // Texture-based coloring has no per-instance color yet.
+            colors.push_back(star::Color{1.0f, 1.0f, 1.0f, 1.0f});
+        }
     }
 
     return std::make_shared<star::material::InstanceColorMaterial>(
         std::make_unique<star::material::DefaultColorProvider>(std::move(colors)));
 }
 
-CubeObject::CubeObject(std::vector<CubeDesc> desc, ShaderResolver &shaderResolver, RenderMode renderMode)
+CubeObject::CubeObject(std::vector<cube::CubeDesc> desc, ShaderResolver &shaderResolver, RenderMode renderMode)
     : StarObject({GetMaterial(desc)}), m_desc(std::move(desc)), m_renderMode(renderMode)
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
@@ -45,8 +55,7 @@ std::vector<StarMesh> CubeObject::loadMeshes(core::device::DeviceContext &contex
 
             ->getParentQueueFamilyIndex();
 
-    MeshData meshData =
-        m_renderMode == RenderMode::lines ? BuildCubeWireMesh() : BuildCubeMesh(m_desc, this->m_meshMaterials.front());
+    MeshData meshData = m_renderMode == RenderMode::lines ? cube::BuildCubeWireMesh() : cube::BuildCubeMesh();
 
     auto vertBuffer = context.getManagerRenderResource().addRequest(
         context.getDeviceID(), std::make_unique<star::TransferRequest::VertInfo<>>(graphicsIndex, meshData.vertices));

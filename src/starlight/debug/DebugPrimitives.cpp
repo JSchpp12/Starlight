@@ -18,7 +18,7 @@ std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info, ShaderRes
     return square;
 }
 
-std::shared_ptr<StarObject> CreateCube(std::vector<primitive::CubeDesc> info, ShaderResolver &shaderResolver,
+std::shared_ptr<StarObject> CreateCube(std::vector<primitive::cube::CubeDesc> info, ShaderResolver &shaderResolver,
                                        primitive::CubeObject::RenderMode renderMode)
 {
     return std::make_shared<star::primitive::CubeObject>(std::move(info), shaderResolver, renderMode);

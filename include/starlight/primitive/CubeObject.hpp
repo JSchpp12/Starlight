@@ -2,7 +2,7 @@
 
 #include "starlight/ShaderResolver.hpp"
 #include "starlight/object/StarObject.hpp"
-#include "starlight/primitive/CubeDesc.hpp"
+#include "starlight/primitive/cube/CubeDesc.hpp"
 #include <Enums.hpp>
 #include <StarMesh.hpp>
 #include <device/DeviceContext.hpp>
@@ -23,7 +23,7 @@ class CubeObject : public StarObject
         lines
     };
 
-    CubeObject(std::vector<CubeDesc> desc, ShaderResolver &shaderResolver,
+    CubeObject(std::vector<cube::CubeDesc> desc, ShaderResolver &shaderResolver,
                RenderMode renderMode = RenderMode::triangles);
 
   protected:
@@ -32,7 +32,7 @@ class CubeObject : public StarObject
     PipelineProvider getPipelineProvider(vk::PipelineLayout pipelineLayout) override;
 
   private:
-    std::vector<CubeDesc> m_desc;
+    std::vector<cube::CubeDesc> m_desc;
     RenderMode m_renderMode{RenderMode::triangles};
 };
 
