@@ -52,6 +52,7 @@ find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(absl CONFIG REQUIRED)
 find_package(TIFF REQUIRED)
+find_package(tinyexr CONFIG REQUIRED)
 
 # add all necessary dependencies
 set(SPIRV_REFLECT_EXECUTABLE OFF CACHE BOOL "" FORCE)
@@ -84,6 +85,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/command/FileIO/WriteToFile.cpp"
     "src/starlight/command/FileIO/ReadFromFile.cpp"
     "src/starlight/util/io/SearchPolicy.cpp"
+    "src/starlight/util/io/ReadPng.cpp"
+    "src/starlight/structs/PngData.cpp"
     "src/starlight/command/task_scheduler/SubmitTask.cpp"
     "src/starlight/command/GetScreenCaptureSyncInfo.cpp"
     "src/starlight/command/headless_render_result_write/GetFileNameForFrame.cpp"
@@ -345,6 +348,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/util/io/SearchPolicy.hpp"
     "include/starlight/util/io/PathResolver.hpp"
     "include/starlight/util/io/IOError.hpp"
+    "include/starlight/util/io/ReadPng.hpp"
+    "include/starlight/util/io/PngLoadException.hpp"
     "include/starlight/command/task_scheduler/SubmitTask.hpp"
     "include/starlight/command/GetScreenCaptureSyncInfo.hpp"
     "include/starlight/command/headless_render_result_write/GetFileNameForFrame.hpp"
@@ -562,6 +567,8 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/structs/LightBufferObject.hpp"
     "include/starlight/structs/Vertex.hpp"
     "include/starlight/structs/Color.hpp"
+    "include/starlight/structs/ImageFileInfo.hpp"
+    "include/starlight/structs/PngData.hpp"
     "include/starlight/structs/Ray.hpp"
     "include/starlight/templates/StarApplication.hpp"
     "include/starlight/templates/StarResourceContainer.hpp"
@@ -621,6 +628,7 @@ target_link_libraries(${STARLIGHT_NAME}
         Vulkan::Vulkan
         shaderc_combined
         GPUOpen::VulkanMemoryAllocator
+        unofficial::tinyexr::tinyexr
     PRIVATE
         SPIRV-Tools
         tinyobjloader::tinyobjloader

@@ -29,7 +29,5 @@ class TextureFile : public Texture
     uint32_t graphicsQueueFamilyIndex;
     vk::PhysicalDeviceProperties deviceProperties;
     std::string m_imagePath;
-
-    static void GetTextureInfo(const std::string &imagePath, int &width, int &height, int &channels);
 };
 } // namespace star::TransferRequest
