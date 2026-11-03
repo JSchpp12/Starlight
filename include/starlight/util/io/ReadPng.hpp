@@ -2,7 +2,8 @@
 
 #include "starlight/structs/ImageFileInfo.hpp"
 #include "starlight/structs/PngData.hpp"
-#include "starlight/util/io/PngLoadException.hpp"
+#include "starlight/util/io/ImageLoadException.hpp"
+#include "starlight/util/io/ImageParseException.hpp"
 
 #include <expected>
 #include <filesystem>
@@ -16,12 +17,12 @@ class ReadPng
     explicit ReadPng(std::filesystem::path path);
 
     /// @brief Reads the file header and returns the image's size, resolution and channel format.
-    /// @throws star::core::RuntimeError if the file cannot be decoded.
-    ImageFileInfo getInfo() const;
+    /// @returns The image info, or the reason the header could not be parsed.
+    std::expected<ImageFileInfo, ImageParseException> getInfo() const noexcept;
 
     /// @brief Loads the file's pixel data as RGBA8.
     /// @returns The pixel data, or the reason stb could not decode the file.
-    std::expected<PngData, PngLoadException> read() const;
+    std::expected<PngData, ImageLoadException> read() const;
 
   private:
     std::filesystem::path m_path;

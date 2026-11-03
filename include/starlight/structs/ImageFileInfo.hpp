@@ -20,7 +20,7 @@ enum class ImageChannelFormat : std::uint8_t
 /// @brief Header-level description of an image file, without its pixel data.
 struct ImageFileInfo
 {
-    /// Byte size of the stored pixel data, assuming one byte per channel.
+    /// Byte size of the stored pixel data in the file's native channel format.
     std::size_t size = 0;
     /// Width, height and depth of the image in pixels.
     glm::vec3 resolution{0.0f, 0.0f, 0.0f};

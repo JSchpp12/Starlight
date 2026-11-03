@@ -7,13 +7,13 @@
 
 namespace star::io
 {
-/// @brief Describes why stb could not decode a PNG file.
-class PngLoadException : public std::runtime_error
+/// @brief Describes why an image reader could not decode a file's pixel data.
+class ImageLoadException : public std::runtime_error
 {
   public:
-    PngLoadException(std::filesystem::path path, std::string reason)
-        : std::runtime_error("Failed to load PNG file '" + path.string() + "': " + reason),
-          m_path(std::move(path)), m_reason(std::move(reason))
+    ImageLoadException(std::filesystem::path path, std::string reason)
+        : std::runtime_error("Failed to load image file '" + path.string() + "': " + reason), m_path(std::move(path)),
+          m_reason(std::move(reason))
     {
     }
 

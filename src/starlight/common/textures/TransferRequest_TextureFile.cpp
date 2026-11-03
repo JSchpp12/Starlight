@@ -24,6 +24,17 @@ static bool IsTextureFile(const std::string path)
     return false;
 }
 
+static star::ImageFileInfo GetImageInfoOrThrow(const std::string &path)
+{
+    const auto imageInfo = star::io::ReadPng(path).getInfo();
+    if (!imageInfo)
+    {
+        STAR_THROW(imageInfo.error().what());
+    }
+
+    return *imageInfo;
+}
+
 star::TransferRequest::TextureFile::TextureFile(uint32_t graphicsQueueFamilyIndex,
                                                 vk::PhysicalDeviceProperties deviceProperties, std::string imagePath)
     : graphicsQueueFamilyIndex(std::move(graphicsQueueFamilyIndex)), deviceProperties(std::move(deviceProperties)),
@@ -44,7 +55,7 @@ std::string star::TransferRequest::TextureFile::getDebugDescription() const
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::createStagingBuffer(
     core::device::StarDevice &device) const
 {
-    const auto imageInfo = io::ReadPng(m_imagePath).getInfo();
+    const auto imageInfo = GetImageInfoOrThrow(m_imagePath);
 
     // stb expands every image to RGBA when loading (STBI_rgb_alpha), so the staging buffer
     // must hold four bytes for every pixel regardless of the file's channel format.
@@ -78,7 +89,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::c
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile::createFinal(
     core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
-    const auto imageInfo = io::ReadPng(m_imagePath).getInfo();
+    const auto imageInfo = GetImageInfoOrThrow(m_imagePath);
     const auto width = static_cast<uint32_t>(imageInfo.resolution.x);
     const auto height = static_cast<uint32_t>(imageInfo.resolution.y);
 
@@ -169,7 +180,7 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     StarTextures::Texture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
                                                  vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-    const auto imageInfo = io::ReadPng(m_imagePath).getInfo();
+    const auto imageInfo = GetImageInfoOrThrow(m_imagePath);
     const auto width = static_cast<uint32_t>(imageInfo.resolution.x);
     const auto height = static_cast<uint32_t>(imageInfo.resolution.y);
 
