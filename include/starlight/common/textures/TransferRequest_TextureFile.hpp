@@ -2,6 +2,8 @@
 
 #include "TransferRequest_Texture.hpp"
 
+#include "starlight/structs/ImageFileInfo.hpp"
+
 #include <string>
 
 namespace star::TransferRequest
@@ -29,5 +31,6 @@ class TextureFile : public Texture
     uint32_t graphicsQueueFamilyIndex;
     vk::PhysicalDeviceProperties deviceProperties;
     std::string m_imagePath;
+    ImageFileInfo m_imageInfo;
 };
 } // namespace star::TransferRequest

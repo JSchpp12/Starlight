@@ -2,15 +2,12 @@
 
 #include "Allocator.hpp"
 #include "ConfigFile.hpp"
-#include "Enums.hpp"
 #include "FileHelpers.hpp"
 #include "starlight/core/Exceptions.hpp"
 #include "starlight/maker/buffer/MakeBuffer.hpp"
 #include "starlight/maker/texture/MakeTexture.hpp"
 #include "starlight/structs/ImageFileInfo.hpp"
 #include "starlight/util/io/ReadPng.hpp"
-
-#include <cassert>
 
 static bool IsTextureFile(const std::string path)
 {
@@ -45,6 +42,8 @@ star::TransferRequest::TextureFile::TextureFile(uint32_t graphicsQueueFamilyInde
         std::string msg = "Texture file does not exist or is not a valid image file:" + m_imagePath;
         STAR_THROW(msg);
     }
+
+    m_imageInfo = GetImageInfoOrThrow(m_imagePath);
 }
 
 std::string star::TransferRequest::TextureFile::getDebugDescription() const
@@ -55,7 +54,7 @@ std::string star::TransferRequest::TextureFile::getDebugDescription() const
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::createStagingBuffer(
     core::device::StarDevice &device) const
 {
-    const auto imageInfo = GetImageInfoOrThrow(m_imagePath);
+    const auto &imageInfo = m_imageInfo;
 
     // stb expands every image to RGBA when loading (STBI_rgb_alpha), so the staging buffer
     // must hold four bytes for every pixel regardless of the file's channel format.
@@ -89,7 +88,7 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::c
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile::createFinal(
     core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
-    const auto imageInfo = GetImageInfoOrThrow(m_imagePath);
+    const auto &imageInfo = m_imageInfo;
     const auto width = static_cast<uint32_t>(imageInfo.resolution.x);
     const auto height = static_cast<uint32_t>(imageInfo.resolution.y);
 
@@ -180,7 +179,7 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     StarTextures::Texture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
                                                  vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-    const auto imageInfo = GetImageInfoOrThrow(m_imagePath);
+    const auto &imageInfo = m_imageInfo;
     const auto width = static_cast<uint32_t>(imageInfo.resolution.x);
     const auto height = static_cast<uint32_t>(imageInfo.resolution.y);
 

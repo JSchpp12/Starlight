@@ -34,10 +34,8 @@ struct GenericImageCreateAllocatePolicy
         const auto resources = star::StarTextures::TextureFactory::CreateResource(
             *device, format, allocator, allocationCreateInfo, createInfo, allocationName);
         const uint32_t mipmapLevels = createInfo.mipLevels;
-        const vk::DeviceSize size = star::StarTextures::TextureFactory::CalculateSize(
-            format, createInfo.extent, createInfo.arrayLayers, createInfo.imageType, mipmapLevels);
 
-        return Object(resources, format, mipmapLevels, createInfo.extent, size);
+        return Object(resources, format, mipmapLevels, createInfo.extent);
     }
 };
 } // namespace star::wrappers::graphics::policies

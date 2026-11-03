@@ -54,9 +54,8 @@ MakeTexture &MakeTexture::setMipmapLevels(uint32_t nLevels)
     return *this;
 }
 
-MakeTexture &MakeTexture::setSizeInfo(vk::DeviceSize size, vk::Extent3D resolution)
+MakeTexture &MakeTexture::setResolution(vk::Extent3D resolution)
 {
-    m_overrideSize = std::make_optional(size);
     m_overrideResolution = std::make_optional(resolution);
 
     return *this;
@@ -155,7 +154,6 @@ StarTextures::Texture MakeTexture::createTexture()
 
     if (m_vulkanImage.has_value())
     {
-        assert(m_overrideSize.has_value() && "Size MUST be calculated/provided for externally created/managed texture");
         assert(m_overrideResolution.has_value() &&
                "Resolution MUST be provided for externally created/managed texture");
 
@@ -163,12 +161,11 @@ StarTextures::Texture MakeTexture::createTexture()
         {
             return StarTextures::TextureFactory::CreateTexture(m_device, m_vulkanImage.value(), format, m_viewInfos,
                                                                m_mipmapLevels, m_samplerInfo.value(), m_debugName,
-                                                               m_overrideResolution.value(), m_overrideSize.value());
+                                                               m_overrideResolution.value());
         }
 
         return StarTextures::TextureFactory::CreateTexture(m_device, m_vulkanImage.value(), format, m_viewInfos,
-                                                           m_mipmapLevels, m_debugName, m_overrideResolution.value(),
-                                                           m_overrideSize.value());
+                                                           m_mipmapLevels, m_debugName, m_overrideResolution.value());
     }
 
     throw std::runtime_error("Invalid builder config");
