@@ -19,8 +19,8 @@ std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info, ShaderRes
 }
 
 std::shared_ptr<StarObject> CreateCube(std::vector<primitive::cube::CubeDesc> info, ShaderResolver &shaderResolver,
-                                       primitive::CubeObject::RenderMode renderMode)
+                                       primitive::CubeObject::OptionalRenderingOverrides overrides)
 {
-    return std::make_shared<star::primitive::CubeObject>(std::move(info), shaderResolver, renderMode);
+    return std::make_shared<star::primitive::CubeObject>(std::move(info), shaderResolver, std::move(overrides));
 }
 } // namespace star::debug

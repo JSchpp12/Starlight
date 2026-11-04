@@ -17,6 +17,10 @@ class Skybox : public Texture
 {
   public:
     Skybox(std::shared_ptr<std::future<SkyboxInfo>> skyboxInfo, uint32_t graphicsQueueFamilyIndex);
+    Skybox(Skybox &&) = default;
+    Skybox &operator=(Skybox &&) = default;
+    Skybox(const Skybox &) = default;
+    Skybox &operator=(const Skybox &) = default;
     virtual ~Skybox() = default;
 
     virtual void prep() override;

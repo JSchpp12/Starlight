@@ -8,6 +8,7 @@
 #include <device/DeviceContext.hpp>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace star::primitive
@@ -16,15 +17,19 @@ namespace star::primitive
 class CubeObject : public StarObject
 {
   public:
-    /// @brief Topology type used
-    enum class RenderMode
+    /// @brief Lean render-state override set for a cube object's pipeline to override engine defaults.
+    struct OptionalRenderingOverrides
     {
-        triangles,
-        lines
+        std::optional<vk::PrimitiveTopology> topology{};
+        std::optional<vk::CullModeFlags> cullMode{};
+        std::optional<vk::PipelineDepthStencilStateCreateInfo> depthStencil{};
     };
 
-    CubeObject(std::vector<cube::CubeDesc> desc, ShaderResolver &shaderResolver,
-               RenderMode renderMode = RenderMode::triangles);
+    /// @brief Create a cube object.
+    /// @param renderOverrides Optional render-state changes for this object's pipeline (topology, cull mode,
+    /// depth/stencil).
+    CubeObject(std::vector<cube::CubeDesc> desc, const ShaderResolver &shaderResolver,
+               OptionalRenderingOverrides renderOverrides = OptionalRenderingOverrides{});
 
   protected:
     std::vector<StarMesh> loadMeshes(core::device::DeviceContext &context) override;
@@ -33,7 +38,7 @@ class CubeObject : public StarObject
 
   private:
     std::vector<cube::CubeDesc> m_desc;
-    RenderMode m_renderMode{RenderMode::triangles};
+    OptionalRenderingOverrides m_renderOverrides;
 };
 
 } // namespace star::primitive
