@@ -6,16 +6,15 @@
 namespace star
 {
 /// @brief Owning handle to pixel data allocated by tinyexr's LoadEXR.
-struct ExrData
+class ExrData
 {
+  public:
     /// @param data Pixel data allocated by LoadEXR; must be released with free().
     /// @param size Number of floats in the buffer.
     ExrData(float *data, std::size_t size) noexcept;
     ~ExrData();
-
     ExrData(const ExrData &) = delete;
     ExrData &operator=(const ExrData &) = delete;
-
     ExrData(ExrData &&other) noexcept;
     ExrData &operator=(ExrData &&other) noexcept;
 
