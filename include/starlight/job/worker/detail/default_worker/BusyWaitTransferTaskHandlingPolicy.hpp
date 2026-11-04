@@ -162,6 +162,9 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             }
             else
             {
+                // Free staging buffers whose transfer fence has already signaled. Force draining early in case more
+                // re-use does not happen
+                CheckForCleanups(device, m_processRequestInfos);
                 wait();
             }
 
