@@ -123,8 +123,8 @@ vk::ImageView star::StarTextures::Texture::getImageView(const vk::Format *reques
 }
 
 star::StarTextures::Texture::Texture(std::shared_ptr<Resources> memoryResources, const vk::Format &baseFormat,
-                                     uint32_t mipmapLevels, const vk::Extent3D &baseExtent, vk::DeviceSize size)
+                                     uint32_t mipmapLevels, const vk::Extent3D &baseExtent)
     : memoryResources(std::move(memoryResources)), baseFormat(baseFormat), mipmapLevels(mipmapLevels),
-      baseExtent(baseExtent), size(size)
+      baseExtent(baseExtent)
 {
 }

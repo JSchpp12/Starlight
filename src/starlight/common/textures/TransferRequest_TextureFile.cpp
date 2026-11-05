@@ -2,18 +2,12 @@
 
 #include "Allocator.hpp"
 #include "ConfigFile.hpp"
-#include "Enums.hpp"
 #include "FileHelpers.hpp"
 #include "starlight/core/Exceptions.hpp"
 #include "starlight/maker/buffer/MakeBuffer.hpp"
 #include "starlight/maker/texture/MakeTexture.hpp"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
-#include <star_common/helper/CastHelpers.hpp>
-
-#include <cassert>
+#include "starlight/structs/ImageFileInfo.hpp"
+#include "starlight/util/io/ReadPng.hpp"
 
 static bool IsTextureFile(const std::string path)
 {
@@ -27,6 +21,17 @@ static bool IsTextureFile(const std::string path)
     return false;
 }
 
+static star::ImageFileInfo GetImageInfoOrThrow(const std::string &path)
+{
+    const auto imageInfo = star::io::ReadPng(path).getInfo();
+    if (!imageInfo)
+    {
+        STAR_THROW(imageInfo.error().what());
+    }
+
+    return *imageInfo;
+}
+
 star::TransferRequest::TextureFile::TextureFile(uint32_t graphicsQueueFamilyIndex,
                                                 vk::PhysicalDeviceProperties deviceProperties, std::string imagePath)
     : graphicsQueueFamilyIndex(std::move(graphicsQueueFamilyIndex)), deviceProperties(std::move(deviceProperties)),
@@ -37,6 +42,8 @@ star::TransferRequest::TextureFile::TextureFile(uint32_t graphicsQueueFamilyInde
         std::string msg = "Texture file does not exist or is not a valid image file:" + m_imagePath;
         STAR_THROW(msg);
     }
+
+    m_imageInfo = GetImageInfoOrThrow(m_imagePath);
 }
 
 std::string star::TransferRequest::TextureFile::getDebugDescription() const
@@ -47,10 +54,13 @@ std::string star::TransferRequest::TextureFile::getDebugDescription() const
 std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::createStagingBuffer(
     core::device::StarDevice &device) const
 {
-    int width, height, channels = 0;
-    GetTextureInfo(m_imagePath, width, height, channels);
+    const auto &imageInfo = m_imageInfo;
 
-    const vk::DeviceSize size = width * height * channels * 4;
+    // stb expands every image to RGBA when loading (STBI_rgb_alpha), so the staging buffer
+    // must hold four bytes for every pixel regardless of the file's channel format.
+    const vk::DeviceSize size =
+        static_cast<vk::DeviceSize>(imageInfo.resolution.x) * static_cast<vk::DeviceSize>(imageInfo.resolution.y) *
+        static_cast<vk::DeviceSize>(imageInfo.resolution.z) * GetSizeInMemory(ImageChannelFormat::Rgba);
 
     star::StarBuffers::Buffer builtBuffer;
     const auto makeResult = star::maker::buffer::MakeBuffer(device)
@@ -78,8 +88,9 @@ std::unique_ptr<star::StarBuffers::Buffer> star::TransferRequest::TextureFile::c
 std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile::createFinal(
     core::device::StarDevice &device, const std::vector<uint32_t> &transferQueueFamilyIndex) const
 {
-    int width, height, channels = 0;
-    GetTextureInfo(m_imagePath, width, height, channels);
+    const auto &imageInfo = m_imageInfo;
+    const auto width = static_cast<uint32_t>(imageInfo.resolution.x);
+    const auto height = static_cast<uint32_t>(imageInfo.resolution.y);
 
     std::vector<uint32_t> indices = std::vector<uint32_t>{this->graphicsQueueFamilyIndex};
     indices.reserve(transferQueueFamilyIndex.size() + 1);
@@ -143,38 +154,20 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::TextureFile:
 
 void star::TransferRequest::TextureFile::writeDataToStageBuffer(star::StarBuffers::Buffer &stagingBuffer) const
 {
-    int l_width, l_height, l_channels = 0;
-    unsigned char *pixelData(stbi_load(m_imagePath.c_str(), &l_width, &l_height, &l_channels, STBI_rgb_alpha));
+    const io::ReadPng reader(m_imagePath);
 
-    if (!star::file_helpers::FileExists(m_imagePath))
+    auto pngData = reader.read();
+    if (!pngData)
     {
-        throw std::runtime_error("Provided file does not exist");
+        STAR_THROW(pngData.error().what());
     }
 
-    if (!pixelData)
-    {
-        throw std::runtime_error("Unable to load image");
-    }
-
-    // apply overriden alpha value if needed
-
-    for (int i = 0; i < l_height; i++)
-    {
-        for (int j = 0; j < l_width; j++)
-        {
-            unsigned char *pixelOffset = pixelData + (i + l_height * j) * 4;
-            pixelOffset[3] = (unsigned char)255;
-        }
-    }
-
-    const vk::DeviceSize imageSize = l_width * l_height * 4;
+    const auto pixelData = pngData->data();
 
     void *mapped = nullptr;
     stagingBuffer.map(&mapped);
-    stagingBuffer.writeToBuffer(pixelData, mapped, imageSize);
+    stagingBuffer.writeToBuffer(pixelData.data(), mapped, pixelData.size());
     stagingBuffer.unmap();
-
-    stbi_image_free(pixelData);
 }
 
 void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuffers::Buffer &srcBuffer,
@@ -186,17 +179,9 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     StarTextures::Texture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
                                                  vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-    uint32_t width, height, channels;
-    {
-        int rWidth, rHeight, rChannels;
-        GetTextureInfo(m_imagePath, rWidth, rHeight, rChannels);
-        if (!star::common::casts::SafeCast<int, uint32_t>(rWidth, width) ||
-            !star::common::casts::SafeCast<int, uint32_t>(rHeight, height) ||
-            !star::common::casts::SafeCast<int, uint32_t>(rChannels, channels))
-        {
-            throw std::runtime_error("Invalid values read from texture");
-        }
-    }
+    const auto &imageInfo = m_imageInfo;
+    const auto width = static_cast<uint32_t>(imageInfo.resolution.x);
+    const auto height = static_cast<uint32_t>(imageInfo.resolution.y);
 
     vk::BufferImageCopy region{};
     region.bufferOffset = 0;
@@ -216,10 +201,4 @@ void star::TransferRequest::TextureFile::copyFromTransferSRCToDST(star::StarBuff
     StarTextures::Texture::TransitionImageLayout(dstTexture, commandBuffer, dstTexture.getBaseFormat(),
                                                  vk::ImageLayout::eTransferDstOptimal,
                                                  vk::ImageLayout::eShaderReadOnlyOptimal);
-}
-
-void star::TransferRequest::TextureFile::GetTextureInfo(const std::string &imagePath, int &width, int &height,
-                                                        int &channels)
-{
-    stbi_info(imagePath.c_str(), &width, &height, &channels);
 }

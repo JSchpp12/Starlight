@@ -1,8 +1,8 @@
-#include "starlight/primitive/CubeMeshBuilder.hpp"
+#include "starlight/primitive/cube/MeshFactory.hpp"
 
-namespace star::primitive
+namespace star::primitive::cube
 {
-MeshData BuildCubeMesh(const std::vector<CubeDesc> &desc, std::shared_ptr<star::StarMaterial> material)
+MeshData BuildCubeMesh()
 {
     constexpr float half = 0.5f;
 
@@ -269,4 +269,4 @@ MeshData BuildCubeWireMesh()
 
     return mesh;
 }
-} // namespace star::primitive
+} // namespace star::primitive::cube

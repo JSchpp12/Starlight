@@ -58,7 +58,8 @@ struct MakeTexture : public star::common::Maker<star::StarTextures::Texture, Tex
 
     MakeTexture &setMipmapLevels(uint32_t nLevels);
 
-    MakeTexture &setSizeInfo(vk::DeviceSize size, vk::Extent3D resolution);
+    /// @brief Resolution of an externally managed image. Required when building from an existing image.
+    MakeTexture &setResolution(vk::Extent3D resolution);
 
     /// @brief Build num textures in place at dst.
     /// @return The number of textures built, or an error whose `built` member reports how many  textures were
@@ -78,7 +79,6 @@ struct MakeTexture : public star::common::Maker<star::StarTextures::Texture, Tex
 
     std::vector<vk::ImageViewCreateInfo> m_viewInfos;
     std::optional<vk::SamplerCreateInfo> m_samplerInfo = std::nullopt;
-    std::optional<vk::DeviceSize> m_overrideSize = std::nullopt;
     std::optional<vk::Extent3D> m_overrideResolution = std::nullopt;
     uint32_t m_mipmapLevels = 1;
 };

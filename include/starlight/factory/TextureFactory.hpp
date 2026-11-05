@@ -53,13 +53,13 @@ Texture CreateAllocatedTexture(core::device::StarDevice &device, const Texture::
 ///        views, and assembles the final Texture. All debug names derive from debugName.
 Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage, const vk::Format &baseFormat,
                       std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
-                      const std::string &debugName, const vk::Extent3D &resolution, vk::DeviceSize size);
+                      const std::string &debugName, const vk::Extent3D &resolution);
 
 /// @brief CreateTexture with an additional image sampler, named from debugName.
 Texture CreateTexture(core::device::StarDevice &device, const vk::Image &vulkanImage, const vk::Format &baseFormat,
                       std::span<const vk::ImageViewCreateInfo> viewInfos, uint32_t mipmapLevels,
                       const vk::SamplerCreateInfo &samplerInfo, const std::string &debugName,
-                      const vk::Extent3D &resolution, vk::DeviceSize size);
+                      const vk::Extent3D &resolution);
 
 vk::DeviceSize CalculateSize(const vk::Format &baseFormat, const vk::Extent3D &baseExtent, const uint32_t &arrayLayers,
                              const vk::ImageType &imageType, const uint32_t &mipmapLevels);

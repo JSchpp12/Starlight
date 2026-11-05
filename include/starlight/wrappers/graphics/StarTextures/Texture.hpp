@@ -41,7 +41,7 @@ class Texture
 
     Texture() = default;
     Texture(std::shared_ptr<Resources> memoryResources, const vk::Format &baseFormat, uint32_t mipmapLevels,
-            const vk::Extent3D &baseExtent, vk::DeviceSize size);
+            const vk::Extent3D &baseExtent);
     virtual ~Texture() = default;
 
     vk::ImageLayout &getImageLayout()
@@ -87,18 +87,10 @@ class Texture
         return this->mipmapLevels;
     }
 
-    vk::DeviceSize getSize() const
-    {
-        assert(size != 0 && "getSize() called on image that does not support size");
-
-        return size;
-    }
-
   protected:
     std::shared_ptr<Resources> memoryResources = std::shared_ptr<Resources>();
     vk::Format baseFormat;
     uint32_t mipmapLevels = 0;
     vk::Extent3D baseExtent = {0, 0, 0};
-    vk::DeviceSize size = 0;
 };
 } // namespace star::StarTextures

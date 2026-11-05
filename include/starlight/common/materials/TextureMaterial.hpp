@@ -14,11 +14,15 @@ class SharedCompressedTexture;
 class TextureMaterial : public StarMaterial
 {
   public:
-    TextureMaterial(std::string texturePath);
+    explicit TextureMaterial(std::string texturePath);
 
     /// Construct with a texture that has already been loaded and transcoded.
     /// preloadTexture will use it directly instead of loading the path lazily.
     TextureMaterial(std::string texturePath, std::unique_ptr<SharedCompressedTexture> preTranscodedTexture);
+
+    /// Construct around a texture that has already been created and registered with the render resources.
+    /// preloadTexture will use it directly instead of loading a path.
+    explicit TextureMaterial(Handle preloadedTexture);
 
     TextureMaterial(std::string texturePath, glm::vec4 surfaceColor, glm::vec4 highlightColor, glm::vec4 ambient,
                     glm::vec4 diffuse, glm::vec4 specular, int shiny);

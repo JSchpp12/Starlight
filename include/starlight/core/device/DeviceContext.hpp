@@ -172,7 +172,7 @@ class DeviceContext : public star::common::IDeviceContext
         return *m_graphicsManagers.fenceManager;
     }
 
-    const Handle &getDeviceID()
+    const Handle &getDeviceID() const
     {
         return m_deviceID;
     }
