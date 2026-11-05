@@ -29,18 +29,23 @@ std::optional<ImageChannelFormat> ToChannelFormat(int channels) noexcept
 }
 } // namespace
 
-ReadExr::ReadExr(std::filesystem::path path) : m_path(std::move(path))
+ReadExr::ReadExr(std::filesystem::path path, PathResolver pathResolver)
+    : m_path(std::move(path)), m_pathResolver(std::move(pathResolver))
 {
 }
 
 std::expected<ImageFileInfo, ImageParseException> ReadExr::getInfo() const noexcept
 {
-    const std::string pathString = m_path.string();
+    const auto resolved = m_pathResolver.resolve(m_path, PathKind::file);
+    if (!resolved)
+        return std::unexpected(ImageParseException(m_path, resolved.error().toString()));
+
+    const std::string pathString = resolved->string();
 
     EXRVersion version{};
     if (ParseEXRVersionFromFile(&version, pathString.c_str()) != TINYEXR_SUCCESS)
     {
-        return std::unexpected(ImageParseException(m_path, "failed to read EXR version info"));
+        return std::unexpected(ImageParseException(*resolved, "failed to read EXR version info"));
     }
 
     EXRHeader header{};
@@ -51,7 +56,8 @@ std::expected<ImageFileInfo, ImageParseException> ReadExr::getInfo() const noexc
     {
         const std::string reason = error ? error : "unknown error";
         FreeEXRErrorMessage(error);
-        return std::unexpected(ImageParseException(m_path, reason));
+        FreeEXRHeader(&header);
+        return std::unexpected(ImageParseException(*resolved, reason));
     }
 
     const int width = header.data_window.max_x - header.data_window.min_x + 1;
@@ -59,7 +65,7 @@ std::expected<ImageFileInfo, ImageParseException> ReadExr::getInfo() const noexc
     if (width <= 0 || height <= 0)
     {
         FreeEXRHeader(&header);
-        return std::unexpected(ImageParseException(m_path, "invalid resolution"));
+        return std::unexpected(ImageParseException(*resolved, "invalid resolution"));
     }
 
     // HALF channels occupy two bytes per sample; FLOAT and UINT occupy four.
@@ -76,7 +82,7 @@ std::expected<ImageFileInfo, ImageParseException> ReadExr::getInfo() const noexc
     if (!format)
     {
         return std::unexpected(
-            ImageParseException(m_path, "unsupported channel count: " + std::to_string(channelCount)));
+            ImageParseException(*resolved, "unsupported channel count: " + std::to_string(channelCount)));
     }
 
     return ImageFileInfo{
@@ -88,7 +94,11 @@ std::expected<ImageFileInfo, ImageParseException> ReadExr::getInfo() const noexc
 
 std::expected<ExrData, ImageLoadException> ReadExr::read() const
 {
-    const std::string pathString = m_path.string();
+    const auto resolved = m_pathResolver.resolve(m_path, PathKind::file);
+    if (!resolved)
+        return std::unexpected(ImageLoadException(m_path, resolved.error().toString()));
+
+    const std::string pathString = resolved->string();
 
     float *pixels = nullptr;
     int width = 0;
@@ -99,7 +109,7 @@ std::expected<ExrData, ImageLoadException> ReadExr::read() const
     {
         const std::string reason = error ? error : "unknown error";
         FreeEXRErrorMessage(error);
-        return std::unexpected(ImageLoadException(m_path, reason));
+        return std::unexpected(ImageLoadException(*resolved, reason));
     }
 
     // LoadEXR always writes four (RGBA) float channels per pixel.

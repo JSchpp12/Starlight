@@ -27,30 +27,36 @@ static std::optional<ImageChannelFormat> ToChannelFormat(int channels) noexcept
     }
 }
 
-ReadPng::ReadPng(std::filesystem::path path) : m_path(std::move(path))
+ReadPng::ReadPng(std::filesystem::path path, PathResolver pathResolver)
+    : m_path(std::move(path)), m_pathResolver(std::move(pathResolver))
 {
 }
 
 std::expected<ImageFileInfo, ImageParseException> ReadPng::getInfo() const noexcept
 {
-    const std::string pathString = m_path.string();
+    const auto resolved = m_pathResolver.resolve(m_path, PathKind::file);
+    if (!resolved)
+        return std::unexpected(ImageParseException(m_path, resolved.error().toString()));
+
+    const std::string pathString = resolved->string();
 
     int width = 0, height = 0, channels = 0;
     if (!stbi_info(pathString.c_str(), &width, &height, &channels))
     {
         const char *failureReason = stbi_failure_reason();
-        return std::unexpected(ImageParseException(m_path, failureReason ? failureReason : "unknown error"));
+        return std::unexpected(ImageParseException(*resolved, failureReason ? failureReason : "unknown error"));
     }
 
     if (width <= 0 || height <= 0)
     {
-        return std::unexpected(ImageParseException(m_path, "invalid resolution"));
+        return std::unexpected(ImageParseException(*resolved, "invalid resolution"));
     }
 
     const auto format = ToChannelFormat(channels);
     if (!format)
     {
-        return std::unexpected(ImageParseException(m_path, "unsupported channel count: " + std::to_string(channels)));
+        return std::unexpected(
+            ImageParseException(*resolved, "unsupported channel count: " + std::to_string(channels)));
     }
 
     const auto texelSize = GetSizeInMemory(*format);
@@ -63,14 +69,18 @@ std::expected<ImageFileInfo, ImageParseException> ReadPng::getInfo() const noexc
 
 std::expected<PngData, ImageLoadException> ReadPng::read() const
 {
-    const std::string pathString = m_path.string();
+    const auto resolved = m_pathResolver.resolve(m_path, PathKind::file);
+    if (!resolved)
+        return std::unexpected(ImageLoadException(m_path, resolved.error().toString()));
+
+    const std::string pathString = resolved->string();
 
     int width = 0, height = 0, channels = 0;
     unsigned char *pixels = stbi_load(pathString.c_str(), &width, &height, &channels, STBI_rgb_alpha);
     if (!pixels)
     {
         const char *failureReason = stbi_failure_reason();
-        return std::unexpected(ImageLoadException(m_path, failureReason ? failureReason : "unknown error"));
+        return std::unexpected(ImageLoadException(*resolved, failureReason ? failureReason : "unknown error"));
     }
 
     // stbi_load with STBI_rgb_alpha always expands the file to four channels.

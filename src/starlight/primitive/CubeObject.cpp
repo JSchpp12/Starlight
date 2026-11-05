@@ -3,6 +3,7 @@
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
 #include "starlight/common/ConfigFile.hpp"
+#include "starlight/common/materials/TextureMaterial.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/material/DefaultColorProvider.hpp"
 #include "starlight/material/InstanceColorMaterial.hpp"
@@ -14,8 +15,17 @@
 namespace star::primitive
 {
 
-static std::shared_ptr<star::material::InstanceColorMaterial> GetMaterial(const std::vector<cube::CubeDesc> &desc)
+static std::shared_ptr<star::StarMaterial> GetMaterial(const std::vector<cube::CubeDesc> &desc)
 {
+    // A texture-colored cube binds its texture through the material, so the first texture descriptor selects a
+    // texture material for the object. Instances in an object share one material, so mixed descriptors cannot
+    // each use their own.
+    for (const auto &d : desc)
+    {
+        if (const auto *textureColor = std::get_if<cube::TextureColor>(&d.coloringApproach))
+            return std::make_shared<star::TextureMaterial>(textureColor->getHandle());
+    }
+
     std::vector<star::Color> colors;
     colors.reserve(desc.size());
     for (const auto &d : desc)
@@ -26,7 +36,7 @@ static std::shared_ptr<star::material::InstanceColorMaterial> GetMaterial(const 
         }
         else
         {
-            // Texture-based coloring has no per-instance color yet.
+            // Texture-based coloring has no per-instance color.
             colors.push_back(star::Color{1.0f, 1.0f, 1.0f, 1.0f});
         }
     }
@@ -56,6 +66,7 @@ std::vector<StarMesh> CubeObject::loadMeshes(core::device::DeviceContext &contex
 
             ->getParentQueueFamilyIndex();
 
+    // A line-list topology override is the sole signal for the wireframe mesh; per-cube desc data does not apply to it.
     const bool isWire =
         m_renderOverrides.topology.has_value() && *m_renderOverrides.topology == vk::PrimitiveTopology::eLineList;
     MeshData meshData = isWire ? cube::BuildCubeWireMesh() : cube::BuildCubeMesh();

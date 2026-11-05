@@ -3,15 +3,13 @@
 #include "starlight/primitive/cube/SolidColor.hpp"
 #include "starlight/primitive/cube/TextureColor.hpp"
 
-#include <glm/glm.hpp>
-
 #include <variant>
 
 namespace star::primitive::cube
 {
+/// @brief Description of one cube instance in a CubeObject.
 struct CubeDesc
 {
-    glm::vec3 size{1.0, 1.0, 1.0};
     std::variant<SolidColor, TextureColor> coloringApproach{SolidColor{}};
 };
 

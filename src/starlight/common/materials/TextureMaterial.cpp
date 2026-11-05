@@ -9,6 +9,7 @@
 
 #include <cassert>
 #include <memory>
+#include <utility>
 
 star::TextureMaterial::TextureMaterial(std::string texturePath,
                                        std::unique_ptr<SharedCompressedTexture> preTranscodedTexture)
@@ -21,6 +22,12 @@ star::TextureMaterial::TextureMaterial(std::string texturePath,
 }
 
 star::TextureMaterial::~TextureMaterial() = default;
+
+star::TextureMaterial::TextureMaterial(Handle preloadedTexture) : m_textureHandle(std::move(preloadedTexture))
+{
+    if (!m_textureHandle.isInitialized())
+        STAR_THROW("TextureMaterial requires an initialized texture handle");
+}
 
 star::TextureMaterial::TextureMaterial(std::string texturePath, glm::vec4 surfaceColor, glm::vec4 highlightColor,
                                        glm::vec4 ambient, glm::vec4 diffuse, glm::vec4 specular, int shiny)
