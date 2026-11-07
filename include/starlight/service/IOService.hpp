@@ -32,11 +32,6 @@ using ListenForGetPath =
     star::policy::command::ListenFor<T, star::command::file_io::GetPath,
                                      star::command::file_io::get_path::GetGetPathCommandTypeName, &T::onGetPath>;
 /// Owns the engine's file IO.
-///
-/// Reading and writing are queued to an IOWorker (see onReadFromFile /
-/// onWriteToFile); *path resolution* is not. resolve() and the GetPath
-/// command both run the search synchronously on the calling thread.
-///
 /// Thread safety: the service object itself (listener registration, moves,
 /// lifetime) belongs to the thread that owns it, and the command bus is not
 /// safe to submit/register from other threads. Resolution does not need the

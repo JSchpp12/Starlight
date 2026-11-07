@@ -136,6 +136,13 @@ void star::StarObject::init(core::device::DeviceContext &context)
 
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 {
+    // Drain any setup this object recorded (its release gates are waited on here).
+    if (m_setup.has_value())
+    {
+        m_setup->cleanupRender(context);
+        m_setup.reset();
+    }
+
     // normalExtrusionPipeline->cleanupRender(context.getDevice());
     // this->normalExtrusionPipeline.reset();
 
@@ -275,9 +282,27 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
-void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer,
-                                                   const common::FrameTracker &frameTracker, uint64_t frameIndex)
+star::StarObject::StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials,
+                             star::setup::RenderResourceSetup setup)
+    : m_meshMaterials(std::move(meshMaterials))
 {
+    // A setup with no definitions carries no work; treat it as absent so the object draws immediately instead of
+    // waiting one frame for a no-op record.
+    if (!setup.definitions.empty())
+        m_setup.emplace(std::move(setup));
+}
+
+void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer,
+                                                   const common::FrameTracker &frameTracker, uint64_t frameIndex,
+                                                   const core::graphics::RecordingSubmissionInfo *recordingInfo)
+{
+    if (m_setup.has_value())
+    {
+        const core::graphics::SemaphoreInfo gate =
+            recordingInfo != nullptr ? recordingInfo->gate : core::graphics::SemaphoreInfo{};
+        m_setup->record(commandBuffer, gate);
+    }
+
     const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
 
     if (!isKnownToBeReadyForRecordRender(frameInFlightIndex))
@@ -289,6 +314,9 @@ void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer commandBuff
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout,
                                                 uint8_t swapChainIndexNum, uint64_t frameIndex)
 {
+    if (m_setup.has_value() && !m_setup->isDone())
+        return;
+
     if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
         return;
 
@@ -334,6 +362,15 @@ void star::StarObject::frameUpdate(core::device::DeviceContext &context, uint8_t
                                    Handle targetCommandBuffer,
                                    const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
+    if (m_setup.has_value())
+    {
+        m_setup->prepRender(context);
+
+        // Nothing left to record or release: drop the setup so its storage does not outlive its use.
+        if (m_setup->isFullyDrained())
+            m_setup.reset();
+    }
+
     if (!isReady && isRenderReady(context))
         isReady = true;
 
@@ -397,9 +434,10 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
                 .build();
         instanceLayout->prepRender(context.getDevice());
 
-        auto instanceBuilder = StarShaderInfo::Builder(frameBuilder.getDeviceID(), frameBuilder.getDevice(),
-                                                       frameBuilder.getPool(), numFramesInFlight)
-                                   .addSetLayout(instanceLayout);
+        auto instanceBuilder =
+            StarShaderInfo::Builder(frameBuilder.getDeviceID(), frameBuilder.getDevice(), frameBuilder.getPool(),
+                                    numFramesInFlight, frameBuilder.getBufferManager(), frameBuilder.getImageManager())
+                .addSetLayout(instanceLayout);
         for (uint8_t i = 0; i < numFramesInFlight; i++)
         {
             const auto &instanceModelHandle = m_instanceInfo.getControllerModel().getHandle(i);
@@ -430,8 +468,9 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
     // instead of a copy of the global + instance sets.
     for (auto &material : m_meshMaterials)
     {
-        auto materialBuilder = StarShaderInfo::Builder(frameBuilder.getDeviceID(), frameBuilder.getDevice(),
-                                                       frameBuilder.getPool(), numFramesInFlight);
+        auto materialBuilder =
+            StarShaderInfo::Builder(frameBuilder.getDeviceID(), frameBuilder.getDevice(), frameBuilder.getPool(),
+                                    numFramesInFlight, frameBuilder.getBufferManager(), frameBuilder.getImageManager());
         if (hasMaterialSet)
             materialBuilder.addSetLayout(materialSetLayout);
 

@@ -138,8 +138,8 @@ TextureView CreateViews(core::device::StarDevice &device, vk::Image image,
             STAR_THROW(oss.str());
         }
 
-        assert(!textureView.contains(viewInfo.format) &&
-               "Duplicate format requested for view. Only one view per format is supported");
+        assert(!textureView.contains(viewInfo.format, viewInfo.viewType) &&
+               "Duplicate format and view type requested. Only one view per format/view-type pair is supported");
 
         vk::ImageViewCreateInfo info = viewInfo;
         info.image = image;
@@ -155,7 +155,7 @@ TextureView CreateViews(core::device::StarDevice &device, vk::Image image,
         ++viewIndex;
 #endif
 
-        textureView.addView(info.format, view);
+        textureView.addView(info.format, info.viewType, view);
     }
 
     return textureView;

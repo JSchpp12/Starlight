@@ -5,6 +5,8 @@
 #include "StarTextures/Texture.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 
+#include <cassert>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <span>
@@ -65,64 +67,113 @@ class FrameData
         ManagerController::RenderResource::Buffer *controller{nullptr};
     };
 
-    /// A registered buffer handle with no per-frame transfer -- the same handle is bound to every frame-in-flight's
-    /// descriptor set.
-    struct FixedBufferHandle
+    /// One handle bound to every frame-in-flight's descriptor set, or one per frame-in-flight (fi-th handle -> fi-th
+    /// set). The fixed form stores a bare Handle -- no vector is allocated.
+    class HandleSet
     {
-        Handle handle;
+      public:
+        explicit HandleSet(Handle handle) : m_handles(handle)
+        {
+        }
+
+        explicit HandleSet(std::vector<Handle> handles) : m_handles(std::move(handles))
+        {
+        }
+
+        /// @brief True when a single handle is bound to every frame-in-flight's descriptor set.
+        bool isFixed() const noexcept
+        {
+            return std::holds_alternative<Handle>(m_handles);
+        }
+
+        /// @brief The handle bound in `frameInFlight`'s descriptor set. A single handle is returned for every frame.
+        Handle handleFor(uint8_t frameInFlight) const noexcept
+        {
+            if (const auto *fixed = std::get_if<Handle>(&m_handles))
+            {
+                return *fixed;
+            }
+
+            const auto &perFrame = std::get<std::vector<Handle>>(m_handles);
+            assert(frameInFlight < perFrame.size() && "Frame in flight is out of range for handles");
+            return perFrame[frameInFlight];
+        }
+
+      private:
+        std::variant<Handle, std::vector<Handle>> m_handles;
     };
 
-    struct OwnedBuffer
+    /// A buffer handle held by a manager -- either ManagerRenderResource or the device's Buffer manager. Resolved
+    /// by handle type at descriptor-write time, so manager record storage may move underneath it. Construct from a
+    /// single Handle to bind that buffer to every frame-in-flight's descriptor set, or from a per-frame-in-flight
+    /// vector to bind the fi-th handle to the fi-th set. Binding-only.
+    class BufferHandle
     {
-        std::vector<std::shared_ptr<StarBuffers::Buffer>> buffers;
+      public:
+        explicit BufferHandle(Handle handle) : m_handles(handle)
+        {
+        }
+
+        explicit BufferHandle(std::vector<Handle> handles) : m_handles(std::move(handles))
+        {
+        }
+
+        bool isFixed() const noexcept
+        {
+            return m_handles.isFixed();
+        }
+
+        Handle handleFor(uint8_t frameInFlight) const noexcept
+        {
+            return m_handles.handleFor(frameInFlight);
+        }
+
+      private:
+        HandleSet m_handles;
     };
 
-    /// A single texture handle registered with ManagerRenderResource (transfer-
-    /// uploaded). Resolved to a texture by StarShaderInfo at bind time. Binding-only.
-    struct TextureHandle
+    /// A texture handle held by a manager -- either ManagerRenderResource (transfer-uploaded) or the device's Image
+    /// manager. Resolved by handle type when the descriptor set is written, so manager record storage may move
+    /// underneath it. Construct from a single Handle to bind that texture to every frame-in-flight's descriptor set,
+    /// or from a per-frame-in-flight vector to bind the fi-th handle to the fi-th set. Binding-only.
+    class TextureHandle
     {
-        std::vector<Handle> handles;
+      public:
+        TextureHandle(Handle handle, vk::ImageLayout layout, std::optional<vk::Format> format = std::nullopt)
+            : m_handles(handle), layout(layout), format(format)
+        {
+        }
+
+        TextureHandle(std::vector<Handle> handles, vk::ImageLayout layout,
+                      std::optional<vk::Format> format = std::nullopt)
+            : m_handles(std::move(handles)), layout(layout), format(format)
+        {
+        }
+
+        bool isFixed() const noexcept
+        {
+            return m_handles.isFixed();
+        }
+
+        Handle handleFor(uint8_t frameInFlight) const noexcept
+        {
+            return m_handles.handleFor(frameInFlight);
+        }
+
         vk::ImageLayout layout;
         std::optional<vk::Format> format;
+
+      private:
+        HandleSet m_handles;
     };
 
-    struct FixedTextureHandle
-    {
-        Handle handle;
-        vk::ImageLayout layout;
-        std::optional<vk::Format> format;
-    };
-
-    /// Per-frame-in-flight borrowed render-target textures -- the fi-th texture pointer is bound to the fi-th
-    /// descriptor set. For render targets owned by another phase
-    struct BorrowedTexture
-    {
-        std::vector<const StarTextures::Texture *> textures;
-        vk::ImageLayout layout;
-        std::optional<vk::Format> format;
-    };
-
-    /// Per-frame-in-flight textures owned by this phase -- the fi-th texture is bound to the fi-th descriptor set. For
-    /// compute-written images the phase itself owns. Binding-only.
-    struct OwnedTexture
-    {
-        std::vector<std::shared_ptr<StarTextures::Texture>> textures;
-        vk::ImageLayout layout;
-        std::optional<vk::Format> format;
-    };
-
-    using Resource = std::variant<DrivenBuffer, BorrowedBuffer, TextureHandle, FixedBufferHandle, OwnedBuffer,
-                                  BorrowedTexture, OwnedTexture, FixedTextureHandle>;
+    using Resource = std::variant<DrivenBuffer, BorrowedBuffer, BufferHandle, TextureHandle>;
 
     FrameData &add(std::shared_ptr<ManagerController::RenderResource::Buffer> controller);
     FrameData &add(std::shared_ptr<ManagerController::RenderResource::Buffer> controller, Handle role);
     FrameData &add(BorrowedBuffer borrowed, Handle role);
+    FrameData &add(BufferHandle handle, Handle role);
     FrameData &add(TextureHandle texture, Handle role);
-    FrameData &add(FixedBufferHandle handle, Handle role);
-    FrameData &add(OwnedBuffer buffers, Handle role);
-    FrameData &add(BorrowedTexture textures, Handle role);
-    FrameData &add(OwnedTexture textures, Handle role);
-    FrameData &add(FixedTextureHandle texture, Handle role);
 
     /// Prep each driven buffer controller (allocates its per-frame-in-flight
     /// handles). Binding-only resources are not touched.

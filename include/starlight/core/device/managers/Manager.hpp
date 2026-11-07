@@ -47,12 +47,12 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
         return insert(std::move(resource));
     }
 
-    TRecord *get(const Handle &handle)
+    virtual TRecord *get(const Handle &handle)
     {
         return &m_records.get(handle);
     }
 
-    const TRecord *get(const Handle &handle) const
+    virtual const TRecord *get(const Handle &handle) const
     {
         return &m_records.get(handle);
     }
@@ -81,7 +81,7 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
     void deleteRequest(device::StarDevice &device, const Handle &requestHandle)
     {
         assert(requestHandle.getType() == this->getHandleType());
-        m_records.removeRecord(requestHandle, &device);
+        m_records.remove(requestHandle, &device);
     }
 
   protected:

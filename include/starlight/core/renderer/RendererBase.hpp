@@ -21,8 +21,7 @@ class RendererBase
 
     virtual void recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft);
     virtual void recordPostRenderingCalls(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft);
-    virtual void recordRenderingCalls(vk::CommandBuffer commandBuffer, uint8_t frameInFlightIndex,
-                                      uint64_t frameIndex);
+    virtual void recordRenderingCalls(vk::CommandBuffer commandBuffer, uint8_t frameInFlightIndex, uint64_t frameIndex);
     virtual void recordCommandBuffer(StarCommandBuffer &commandBuffer, const common::FrameTracker &ft,
                                      const uint64_t &frameIndex) = 0;
     virtual void cleanupRender(common::IDeviceContext &context);
@@ -61,6 +60,7 @@ class RendererBase
     RenderTargets m_renderTargets;
     std::vector<StarRenderGroup> m_renderGroups;
     Handle m_commandBuffer;
+    std::optional<core::graphics::RecordingSubmissionInfo> m_recordingInfo;
 
     void updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);
 

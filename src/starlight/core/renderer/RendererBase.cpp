@@ -21,9 +21,13 @@ static void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star:
 
 void RendererBase::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft)
 {
+    if (m_renderGroups.empty())
+        return;
+
+    const auto *info = m_recordingInfo.has_value() ? &m_recordingInfo.value() : nullptr;
     for (auto &group : m_renderGroups)
     {
-        group.recordPreRenderPassCommands(commandBuffer, ft, ft.getCurrent().getGlobalFrameCounter());
+        group.recordPreRenderPassCommands(commandBuffer, ft, ft.getCurrent().getGlobalFrameCounter(), info);
     }
 }
 
@@ -69,6 +73,16 @@ void RendererBase::frameUpdate(common::IDeviceContext &context)
 {
     auto &c = static_cast<core::device::DeviceContext &>(context);
     updateRenderingGroups(c, c.frameTracker().getCurrent().getFrameInFlightIndex());
+
+    m_recordingInfo.reset();
+    for (const auto &group : m_renderGroups)
+    {
+        if (group.hasPendingSetup())
+        {
+            m_recordingInfo = core::graphics::GetRecordingSubmissionInfo(c, m_commandBuffer);
+            break;
+        }
+    }
 }
 
 std::vector<star::StarRenderGroup> RendererBase::CreateRenderingGroups(core::device::DeviceContext &context,
@@ -84,7 +98,7 @@ std::vector<star::StarRenderGroup> RendererBase::CreateRenderingGroups(core::dev
         // if it is not, create a new render group
         for (size_t j = 0; j < renderingGroups.size(); j++)
         {
-            if (renderingGroups[j].isObjectCompatible(*objects[i]))
+            if (renderingGroups[j].isObjectCompatible(*objects[i], context))
             {
                 match = &renderingGroups[j];
                 break;
@@ -93,7 +107,7 @@ std::vector<star::StarRenderGroup> RendererBase::CreateRenderingGroups(core::dev
 
         if (match != nullptr)
         {
-            match->addObject(objects[i]);
+            match->addObject(objects[i], context);
         }
         else
         {

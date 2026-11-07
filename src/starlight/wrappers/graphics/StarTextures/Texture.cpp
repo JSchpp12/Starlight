@@ -110,18 +110,6 @@ vk::Filter star::StarTextures::Texture::SelectTextureFiltering(const vk::Physica
     return filterType;
 }
 
-vk::ImageView star::StarTextures::Texture::getImageView(const vk::Format *requestedFormat) const
-{
-    // Forward the lookup into the resource's view storage. When no format is requested fall back to the texture's base
-    // format instead of an arbitrary view.
-    const vk::Format format = requestedFormat != nullptr ? *requestedFormat : baseFormat;
-
-    assert(memoryResources->views.contains(format) &&
-           "The image must be created with the proper image view before being requested");
-
-    return memoryResources->views.get(format);
-}
-
 star::StarTextures::Texture::Texture(std::shared_ptr<Resources> memoryResources, const vk::Format &baseFormat,
                                      uint32_t mipmapLevels, const vk::Extent3D &baseExtent)
     : memoryResources(std::move(memoryResources)), baseFormat(baseFormat), mipmapLevels(mipmapLevels),

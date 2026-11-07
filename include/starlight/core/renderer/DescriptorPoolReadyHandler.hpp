@@ -41,7 +41,8 @@ struct OnDescriptorPoolReadyWaiter
 
         this->globalSetLayout = createGlobalDescriptorSetLayout(context);
         auto globalBuilder =
-            StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool, numFramesInFlight)
+            StarShaderInfo::Builder(context.getDeviceID(), context.getDevice(), *defaultPool, numFramesInFlight,
+                                    &context.getBufferManager(), &context.getImageManager())
                 .addSetLayout(this->globalSetLayout);
         for (int i = 0; i < numFramesInFlight; i++)
         {

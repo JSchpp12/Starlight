@@ -5,6 +5,7 @@
 
 #include <star_common/HandleTypeRegistry.hpp>
 
+#include <future>
 #include <set>
 
 namespace star::service
@@ -111,6 +112,19 @@ void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTa
     auto *payload = static_cast<TransferPayload *>(cmd.task.getPayload());
     const bool high = (payload->priority == TransferPriority::High);
 
+    // A request that keeps its staging buffer alive gets a buffer-manager slot registered here, on the submitting
+    // thread, before the task reaches a worker. The worker fills the promise once the buffer exists; the returned
+    // handle travels to the caller, which releases it after the recorded work on it has completed.
+    std::optional<Handle> stagingBuffer{};
+    if (payload->request->textureTransferRequest != nullptr &&
+        payload->request->textureTransferRequest->takesStagingOwnership)
+    {
+        auto stagingPromise = std::promise<std::expected<star::StarBuffers::Buffer, std::string>>{};
+        stagingBuffer =
+            m_graphicsManagers->bufferManager.submit(core::device::manager::BufferRequest{stagingPromise.get_future()});
+        payload->request->textureTransferRequest->stagingBufferSlot = std::move(stagingPromise);
+    }
+
     auto applySync = [&](uint16_t id) -> star::core::graphics::SemaphoreInfo {
         StarSemaphore *s =
             (id == 0) ? (high ? &m_workerSemaphores[1] : &m_workerSemaphores[0]) : &m_workerSemaphores[id + 1];
@@ -128,7 +142,8 @@ void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTa
         m_taskManager->submitTask(std::move(cmd.task), transferWorkerHandle(0));
         cmd.getReply().set({.semaphore = {.vkSemaphore = sync.semaphore, .signalValue = sync.signalValue},
                             .queueFamilyIndex = m_workerQueueFamilyIndices[0],
-                            .workerId = uint16_t{0}});
+                            .workerId = uint16_t{0},
+                            .stagingBuffer = stagingBuffer});
         return;
     }
 
@@ -149,6 +164,7 @@ void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTa
                 .semaphore = StarSemaphore{sync.semaphore, sync.signalValue},
                 .queueFamilyIndex = m_workerQueueFamilyIndices[id],
                 .workerId = id,
+                .stagingBuffer = stagingBuffer,
             });
             return true;
         }
@@ -177,6 +193,7 @@ void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTa
         .semaphore = StarSemaphore{.vkSemaphore = sync.semaphore, .signalValue = sync.signalValue},
         .queueFamilyIndex = m_workerQueueFamilyIndices[0],
         .workerId = uint16_t{0},
+        .stagingBuffer = stagingBuffer,
     });
 }
 

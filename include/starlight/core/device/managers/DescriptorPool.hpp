@@ -14,6 +14,10 @@ namespace star::core::device::manager
 struct DescriptorPoolRequest
 {
     absl::flat_hash_map<vk::DescriptorType, uint32_t> requests;
+    /// Pool creation flags. Callers that free individual sets must request eFreeDescriptorSet.
+    vk::DescriptorPoolCreateFlags poolFlags{};
+    /// Explicit maximum set count. Zero derives it from the sum of the requested descriptor counts (engine default).
+    uint32_t maxSets{0};
 };
 
 struct DescriptorPoolRecord
@@ -42,9 +46,10 @@ class DescriptorPool : public Manager<DescriptorPoolRecord, DescriptorPoolReques
 
   private:
     std::unique_ptr<StarDescriptorPool> currentPool;
+    Handle m_defaultPoolSlot;
     Handle m_engineSceneInitCallbackDone;
-    uint8_t m_numFramesInFlight = 0;
-    common::EventBus *m_eventBus = nullptr;
+    uint8_t m_numFramesInFlight{0};
+    common::EventBus *m_eventBus{nullptr};
 
     virtual void init(device::StarDevice *device) override;
 

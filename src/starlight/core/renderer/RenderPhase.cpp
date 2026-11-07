@@ -6,6 +6,7 @@
 
 #include <star_common/Handle.hpp>
 
+#include <cassert>
 #include <tuple>
 
 namespace star::core::renderer
@@ -30,9 +31,14 @@ static star::core::graphics::SemaphoreInfo GetTransferRequestSyncToPreviousDraw(
 
 void RenderPhase::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft)
 {
+    if (m_renderGroups.empty())
+        return;
+
+    // Resolved in frameUpdate; recording only consumes the gate.
+    const auto *info = m_recordingInfo.has_value() ? &m_recordingInfo.value() : nullptr;
     for (auto &group : m_renderGroups)
     {
-        group.recordPreRenderPassCommands(commandBuffer, ft, ft.getCurrent().getGlobalFrameCounter());
+        group.recordPreRenderPassCommands(commandBuffer, ft, ft.getCurrent().getGlobalFrameCounter(), info);
     }
 }
 
@@ -66,6 +72,18 @@ void RenderPhase::frameUpdate(common::IDeviceContext &context)
 {
     auto &c = static_cast<core::device::DeviceContext &>(context);
     updateRenderingGroups(c, c.frameTracker().getCurrent().getFrameInFlightIndex());
+
+    // Resolve the recording gate now, before recording, and only while a setup still needs it. The pass trigger is
+    // established before the scene's frameUpdate (see StarEngine::run), so the gate is valid here.
+    m_recordingInfo.reset();
+    for (const auto &group : m_renderGroups)
+    {
+        if (group.hasPendingSetup())
+        {
+            m_recordingInfo = core::graphics::GetRecordingSubmissionInfo(c, m_commandBuffer);
+            break;
+        }
+    }
 }
 
 void RenderPhase::updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex)

@@ -46,21 +46,26 @@ class Texture
 
     vk::ImageLayout &getImageLayout()
     {
-        return memoryResources->trackedImageLayout;
+        static vk::ImageLayout blankLayout = vk::ImageLayout::eUndefined;
+        return memoryResources ? memoryResources->trackedImageLayout : blankLayout;
     }
     const vk::Extent3D &getBaseExtent() const
     {
-        assert(baseExtent.height != 0 && baseExtent.width != 0 && baseExtent.depth != 0);
+        // A blank texture (failed transfer) has no resources and a zero extent; only sanity-check real textures.
+        if (memoryResources)
+            assert(baseExtent.height != 0 && baseExtent.width != 0 && baseExtent.depth != 0);
 
         return baseExtent;
     }
     const vk::ImageLayout &getImageLayout() const
     {
-        return memoryResources->trackedImageLayout;
+        static const vk::ImageLayout blankLayout = vk::ImageLayout::eUndefined;
+        return memoryResources ? memoryResources->trackedImageLayout : blankLayout;
     }
     void setImageLayout(vk::ImageLayout imageLayout)
     {
-        memoryResources->trackedImageLayout = std::move(imageLayout);
+        if (memoryResources)
+            memoryResources->trackedImageLayout = std::move(imageLayout);
     }
     void cleanupRender(vk::Device &device)
     {
@@ -69,15 +74,27 @@ class Texture
             memoryResources->cleanupRender(device);
         }
     }
+    /// @brief The image, or a null handle when this is a blank texture (for example a failed transfer).
     const vk::Image &getVulkanImage() const
     {
-        return this->memoryResources->image;
+        static const vk::Image blankImage{};
+        return memoryResources ? memoryResources->image : blankImage;
     }
     const std::optional<vk::Sampler> &getSampler() const
     {
-        return this->memoryResources->sampler;
+        static const std::optional<vk::Sampler> blankSampler{};
+        return memoryResources ? memoryResources->sampler : blankSampler;
     }
-    vk::ImageView getImageView(const vk::Format *requestedFormat = nullptr) const;
+    /// @brief All views created for this texture, keyed by {format, view type}.
+    /// @details A single image can expose several views (e.g. a cube view for sampling and a 2D-array view for
+    /// storage). Query them with TextureView::get(format) for the sampling view, or
+    /// TextureView::get(format, viewType) for an exact pair. A blank texture carries no views, so every lookup
+    /// returns a null handle.
+    const TextureView &getImageView() const
+    {
+        static const TextureView blankViews{};
+        return memoryResources ? memoryResources->views : blankViews;
+    }
     const vk::Format &getBaseFormat() const
     {
         return this->baseFormat;

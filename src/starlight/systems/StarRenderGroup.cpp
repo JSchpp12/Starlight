@@ -2,8 +2,8 @@
 
 namespace star
 {
+
 StarRenderGroup::StarRenderGroup(core::device::DeviceContext &device, std::shared_ptr<StarObject> baseObject)
-    : m_device(&device)
 {
     auto objInfo = RenderObjectInfo(baseObject);
     this->m_groups.push_back(Group(objInfo));
@@ -89,7 +89,7 @@ void StarRenderGroup::prepRender(core::device::DeviceContext &context)
     prepareObjects(context);
 }
 
-void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
+void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject, core::device::DeviceContext &context)
 {
     // check if any other object can share the same Pipeline
     Group *targetGroup = nullptr;
@@ -117,9 +117,8 @@ void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject)
         targetGroup->objects.push_back(objInfo);
     }
 
-    assert(m_device != nullptr && "Device was never provided");
     // check if this new object has a larger descriptor set layout than the current one
-    auto newLayouts = newObject->getDescriptorSetLayouts(*m_device);
+    auto newLayouts = newObject->getDescriptorSetLayouts(context);
 
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> combinedSet =
         std::vector<std::shared_ptr<StarDescriptorSetLayout>>();
@@ -167,14 +166,15 @@ void StarRenderGroup::recordRenderPassCommands(vk::CommandBuffer mainDrawBuffer,
 }
 
 void StarRenderGroup::recordPreRenderPassCommands(vk::CommandBuffer mainDrawBuffer,
-                                                  const common::FrameTracker &frameTracker, uint64_t frameIndex)
+                                                  const common::FrameTracker &frameTracker, uint64_t frameIndex,
+                                                  const core::graphics::RecordingSubmissionInfo *recordingInfo)
 {
     for (auto &group : this->m_groups)
     {
-        group.baseObject.object->recordPreRenderPassCommands(mainDrawBuffer, frameTracker, frameIndex);
+        group.baseObject.object->recordPreRenderPassCommands(mainDrawBuffer, frameTracker, frameIndex, recordingInfo);
         for (auto &obj : group.objects)
         {
-            obj.object->recordPreRenderPassCommands(mainDrawBuffer, frameTracker, frameIndex);
+            obj.object->recordPreRenderPassCommands(mainDrawBuffer, frameTracker, frameIndex, recordingInfo);
         }
     }
 }
@@ -191,12 +191,27 @@ void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer commandBuff
     }
 }
 
-bool StarRenderGroup::isObjectCompatible(StarObject &object)
+bool StarRenderGroup::hasPendingSetup() const
 {
-    assert(m_device != nullptr && "Device was never provided");
+    for (const auto &group : this->m_groups)
+    {
+        if (group.baseObject.object->hasPendingSetup())
+            return true;
 
+        for (const auto &obj : group.objects)
+        {
+            if (obj.object->hasPendingSetup())
+                return true;
+        }
+    }
+
+    return false;
+}
+
+bool StarRenderGroup::isObjectCompatible(StarObject &object, core::device::DeviceContext &context)
+{
     // check if descriptor layouts are compatible
-    auto compLayouts = object.getDescriptorSetLayouts(*m_device);
+    auto compLayouts = object.getDescriptorSetLayouts(context);
 
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> *largerSet = &m_largestDescriptorSet;
     std::vector<std::shared_ptr<StarDescriptorSetLayout>> *smallerSet = &compLayouts;

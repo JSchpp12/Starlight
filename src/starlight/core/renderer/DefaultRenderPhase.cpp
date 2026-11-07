@@ -380,7 +380,7 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderPhase::prepareDyn
     const auto *r = m_renderingContext.recordDependentImage.get(m_renderTargets.colorHandles()[index]);
 
     vk::RenderingAttachmentInfoKHR colorAttachmentInfo{};
-    colorAttachmentInfo.imageView = r->getImageView();
+    colorAttachmentInfo.imageView = r->getImageView().get(r->getBaseFormat());
     colorAttachmentInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
     colorAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     colorAttachmentInfo.storeOp = vk::AttachmentStoreOp::eStore;
@@ -395,8 +395,8 @@ vk::RenderingAttachmentInfo star::core::renderer::DefaultRenderPhase::prepareDyn
     size_t index = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
 
     vk::RenderingAttachmentInfoKHR depthAttachmentInfo{};
-    depthAttachmentInfo.imageView =
-        m_renderingContext.recordDependentImage.get(m_renderTargets.depthHandles()[index])->getImageView();
+    const auto *depthTexture = m_renderingContext.recordDependentImage.get(m_renderTargets.depthHandles()[index]);
+    depthAttachmentInfo.imageView = depthTexture->getImageView().get(depthTexture->getBaseFormat());
     depthAttachmentInfo.imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
     depthAttachmentInfo.loadOp = vk::AttachmentLoadOp::eClear;
     depthAttachmentInfo.storeOp = vk::AttachmentStoreOp::eDontCare;

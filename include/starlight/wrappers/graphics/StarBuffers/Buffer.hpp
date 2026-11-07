@@ -65,7 +65,9 @@ class Buffer
 
     vk::Buffer getVulkanBuffer() const
     {
-        return this->resources->buffer;
+        // A blank buffer (e.g. a manager slot whose producer failed, or a buffer moved out of) has no resources;
+        // report a null handle rather than dereferencing.
+        return this->resources ? this->resources->buffer : vk::Buffer{VK_NULL_HANDLE};
     }
     const uint32_t &getInstanceCount() const
     {

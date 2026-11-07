@@ -84,6 +84,16 @@ class DeviceContext : public star::common::IDeviceContext
         return m_graphicsManagers.imageManager;
     }
 
+    manager::Buffer &getBufferManager()
+    {
+        return m_graphicsManagers.bufferManager;
+    }
+
+    const manager::Buffer &getBufferManager() const
+    {
+        return m_graphicsManagers.bufferManager;
+    }
+
     common::EventBus &getEventBus()
     {
         return m_eventBus;

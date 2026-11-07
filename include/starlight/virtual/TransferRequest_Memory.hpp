@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace star::TransferRequest
@@ -19,6 +20,14 @@ template <typename T> class Memory
     ~Memory() = default;
 
     virtual void prep() {};
+
+    /// @brief Publish a terminal failure to any consumer-side promise this request owns.
+    /// @details Called by the transfer worker on its outermost failure boundary so consumers receive a blank resource
+    /// plus a reason instead of a broken promise.
+    virtual void publishFailure(const std::string &message)
+    {
+        (void)message;
+    }
 
     virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(core::device::StarDevice &device) const = 0;
 

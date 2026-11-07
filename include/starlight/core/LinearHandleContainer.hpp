@@ -30,6 +30,10 @@ template <typename TData> class LinearHandleContainer : public HandleContainer<T
         m_filled.reserve(startCapacity);
         m_expandingAmt = expandingAmt;
     }
+    LinearHandleContainer(const LinearHandleContainer &) = default;
+    LinearHandleContainer &operator=(const LinearHandleContainer &) = default;
+    LinearHandleContainer(LinearHandleContainer &&) noexcept = default;
+    LinearHandleContainer &operator=(LinearHandleContainer &&) noexcept = default;
     virtual ~LinearHandleContainer() = default;
 
     std::vector<TData> &getData()

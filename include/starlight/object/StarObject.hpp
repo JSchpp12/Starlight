@@ -2,13 +2,14 @@
 
 #include "StarCommandBuffer.hpp"
 #include "StarEntity.hpp"
-#include "StarGraphicsPipeline.hpp"
 #include "StarMaterial.hpp"
 #include "StarMesh.hpp"
 #include "StarPipeline.hpp"
 #include "StarShaderInfo.hpp"
 #include "core/device/DeviceContext.hpp"
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "core/renderer/RenderingContext.hpp"
+#include "starlight/setup/RenderResourceSetup.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
@@ -39,8 +40,11 @@ class StarObject
 
     static void cleanupSharedResources(core::device::DeviceContext &device);
     StarObject() = default;
-    explicit StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials)
-        : m_meshMaterials(std::move(meshMaterials)) {};
+    /// @param setup One-shot work this object's sampled resource requires. It is recorded on the first pre-pass where
+    /// every contribution is ready; the object does not draw until it reports done. A setup with no steps and no
+    /// pending-release slots carries no work and is ignored.
+    explicit StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials,
+                        star::setup::RenderResourceSetup setup = {});
 
     StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials, Handle vertexShader, Handle fragmentShader)
         : m_meshMaterials(std::move(meshMaterials)), m_vertexShaderHandle(vertexShader),
@@ -77,9 +81,19 @@ class StarObject
     virtual core::renderer::RenderingContext buildRenderingContext(star::core::device::DeviceContext &context);
 
     /// Function to contain any commands to be submitted before the start of the rendering pass this object is contained
-    /// in begins
+    /// in begins.
+    /// @param recordingInfo Recording submission of the phase's command buffer. Null when no object in the phase has a
+    /// pending one-shot setup, in which case no completion gate is needed.
     virtual void recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &frameTracker,
-                                             uint64_t frameIndex);
+                                             uint64_t frameIndex,
+                                             const core::graphics::RecordingSubmissionInfo *recordingInfo);
+
+    /// @brief True while this object still has one-shot setup that must be recorded before it can draw.
+    /// @details Phases resolve the recording submission only while at least one object reports true.
+    virtual bool hasPendingSetup() const
+    {
+        return m_setup.has_value() && !m_setup->isDone();
+    }
 
     /// Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
     virtual void recordPostRenderPassCommands(vk::CommandBuffer commandBuffer, int frameInFlightIndex) {};
@@ -208,6 +222,9 @@ class StarObject
 
     std::vector<StarMesh> meshes;
     bool isReady = false;
+
+    /// @brief One-shot GPU setup for a resource this object samples; empty when it has none.
+    std::optional<star::setup::RenderResourceSetup> m_setup;
 
     virtual std::vector<StarMesh> loadMeshes(star::core::device::DeviceContext &device) = 0;
 

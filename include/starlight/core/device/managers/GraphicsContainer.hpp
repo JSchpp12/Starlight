@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Buffer.hpp"
 #include "DescriptorPool.hpp"
 #include "Fence.hpp"
 #include "Image.hpp"
@@ -18,7 +19,8 @@ struct GraphicsContainer
     GraphicsContainer(const GraphicsContainer &) noexcept = delete;
     GraphicsContainer &operator=(const GraphicsContainer &) noexcept = delete;
     GraphicsContainer(GraphicsContainer &&other) noexcept
-        : queueManager(std::move(other.queueManager)), descriptorPoolManager(std::move(other.descriptorPoolManager)),
+        : queueManager(std::move(other.queueManager)), bufferManager(std::move(other.bufferManager)),
+          descriptorPoolManager(std::move(other.descriptorPoolManager)),
           semaphoreManager(std::move(other.semaphoreManager)), shaderManager(std::move(other.shaderManager)),
           pipelineManager(std::move(other.pipelineManager)), fenceManager(std::move(other.fenceManager)),
           imageManager(std::move(other.imageManager)) {};
@@ -27,6 +29,7 @@ struct GraphicsContainer
         if (this != &other)
         {
             queueManager = std::move(other.queueManager);
+            bufferManager = std::move(other.bufferManager);
             descriptorPoolManager = std::move(other.descriptorPoolManager);
             semaphoreManager = std::move(other.semaphoreManager);
             shaderManager = std::move(other.shaderManager);
@@ -41,6 +44,7 @@ struct GraphicsContainer
     void init(StarDevice *device, common::EventBus &bus, job::TaskManager &taskSystem, const uint8_t &numFramesInFlight)
     {
         queueManager.init(device);
+        bufferManager.init(device, bus);
         descriptorPoolManager->init(numFramesInFlight, device, bus);
         semaphoreManager->init(device, bus);
         shaderManager->init(device, bus, taskSystem);
@@ -52,6 +56,7 @@ struct GraphicsContainer
     void cleanupRender()
     {
         queueManager.cleanupRender();
+        bufferManager.cleanupRender();
         descriptorPoolManager->cleanupRender();
         fenceManager->cleanupRender();
         pipelineManager->cleanupRender();
@@ -61,6 +66,7 @@ struct GraphicsContainer
     }
 
     Queue queueManager;
+    Buffer bufferManager;
     std::unique_ptr<DescriptorPool> descriptorPoolManager = std::make_unique<DescriptorPool>();
     std::unique_ptr<Semaphore> semaphoreManager = std::make_unique<Semaphore>();
     std::unique_ptr<Shader> shaderManager = std::make_unique<Shader>();
