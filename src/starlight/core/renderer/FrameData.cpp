@@ -5,8 +5,6 @@
 
 #include <star_common/TypeRegistry.hpp>
 
-#include <cassert>
-
 namespace star::core::renderer
 {
 namespace
@@ -59,38 +57,10 @@ FrameData &FrameData::add(TextureHandle texture, Handle role)
     return *this;
 }
 
-FrameData &FrameData::add(FixedBufferHandle handle, Handle role)
+FrameData &FrameData::add(BufferHandle handle, Handle role)
 {
     m_roleIndex[role] = m_resources.size();
     m_resources.emplace_back(role, Resource{std::move(handle)});
-    return *this;
-}
-
-FrameData &FrameData::add(OwnedBuffer buffers, Handle role)
-{
-    m_roleIndex[role] = m_resources.size();
-    m_resources.emplace_back(role, Resource{std::move(buffers)});
-    return *this;
-}
-
-FrameData &FrameData::add(BorrowedTexture textures, Handle role)
-{
-    m_roleIndex[role] = m_resources.size();
-    m_resources.emplace_back(role, Resource{std::move(textures)});
-    return *this;
-}
-
-FrameData &FrameData::add(OwnedTexture textures, Handle role)
-{
-    m_roleIndex[role] = m_resources.size();
-    m_resources.emplace_back(role, Resource{std::move(textures)});
-    return *this;
-}
-
-FrameData &FrameData::add(FixedTextureHandle texture, Handle role)
-{
-    m_roleIndex[role] = m_resources.size();
-    m_resources.emplace_back(role, Resource{std::move(texture)});
     return *this;
 }
 

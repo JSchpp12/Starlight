@@ -46,8 +46,9 @@ static std::shared_ptr<star::StarMaterial> GetMaterial(const std::vector<cube::C
 }
 
 CubeObject::CubeObject(std::vector<cube::CubeDesc> desc, const ShaderResolver &shaderResolver,
-                       OptionalRenderingOverrides renderOverrides)
-    : StarObject({GetMaterial(desc)}), m_desc(std::move(desc)), m_renderOverrides(std::move(renderOverrides))
+                       OptionalRenderingOverrides renderOverrides, star::setup::RenderResourceSetup setup)
+    : StarObject({GetMaterial(desc)}, std::move(setup)), m_desc(std::move(desc)),
+      m_renderOverrides(std::move(renderOverrides))
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
     m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);

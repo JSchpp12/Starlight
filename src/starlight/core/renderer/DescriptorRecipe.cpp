@@ -50,10 +50,10 @@ Handle shaderInfoHandle(std::string_view name)
 }
 
 DescriptorRecipe::DescriptorRecipe(core::device::DeviceContext *context,
-                                   std::vector<ShaderInfoTarget> shaderInfoTargets,
-                                   std::vector<Binding> bindings, std::vector<StarRenderGroup> *renderGroups,
-                                   Handle groupShaderInfo, RenderingTargetInfo renderingTargetInfo,
-                                   Handle commandBuffer, std::function<void(core::device::DeviceContext &)> onReady)
+                                   std::vector<ShaderInfoTarget> shaderInfoTargets, std::vector<Binding> bindings,
+                                   std::vector<StarRenderGroup> *renderGroups, Handle groupShaderInfo,
+                                   RenderingTargetInfo renderingTargetInfo, Handle commandBuffer,
+                                   std::function<void(core::device::DeviceContext &)> onReady)
     : m_context(context), m_shaderInfoTargets(std::move(shaderInfoTargets)), m_bindings(std::move(bindings)),
       m_renderGroups(renderGroups), m_groupShaderInfo(groupShaderInfo),
       m_renderingTargetInfo(std::move(renderingTargetInfo)), m_commandBuffer(commandBuffer),
@@ -102,9 +102,8 @@ int DescriptorRecipe::operator()()
         uint32_t expected = 0;
         for (const auto &[localSet, bindings] : bySet)
         {
-            assert(localSet == expected &&
-                   "non-contiguous set numbers within a shader-info target -- sets must be "
-                   "declared for every index from baseSet upward with no gaps");
+            assert(localSet == expected && "non-contiguous set numbers within a shader-info target -- sets must be "
+                                           "declared for every index from baseSet upward with no gaps");
             (void)bindings;
             expected++;
         }
@@ -121,8 +120,9 @@ int DescriptorRecipe::operator()()
         assert(it != byShaderInfo.end() && "shaderInfo target registered but has no bindings");
         const auto &bySet = it->second;
 
-        auto builder =
-            StarShaderInfo::Builder(m_context->getDeviceID(), m_context->getDevice(), *defaultPool, numFramesInFlight);
+        auto builder = StarShaderInfo::Builder(m_context->getDeviceID(), m_context->getDevice(), *defaultPool,
+                                               numFramesInFlight, &m_context->getBufferManager(),
+                                               &m_context->getImageManager());
 
         // One layout per set, in ascending set order.
         std::vector<uint32_t> setOrder;
@@ -163,35 +163,15 @@ int DescriptorRecipe::operator()()
                         const auto &bb = std::get<FrameData::BorrowedBuffer>(*res);
                         builder.add(StarShaderInfo::BufferInfo{bb.controller->getHandle(i)});
                     }
-                    else if (std::holds_alternative<FrameData::FixedBufferHandle>(*res))
+                    else if (std::holds_alternative<FrameData::BufferHandle>(*res))
                     {
-                        const auto &h = std::get<FrameData::FixedBufferHandle>(*res);
-                        builder.add(StarShaderInfo::BufferInfo{h.handle});
-                    }
-                    else if (std::holds_alternative<FrameData::OwnedBuffer>(*res))
-                    {
-                        const auto &b = std::get<FrameData::OwnedBuffer>(*res);
-                        builder.add(StarShaderInfo::BufferInfo{b.buffers[i].get()});
+                        const auto &h = std::get<FrameData::BufferHandle>(*res);
+                        builder.add(StarShaderInfo::BufferInfo{h.handleFor(i)});
                     }
                     else if (std::holds_alternative<FrameData::TextureHandle>(*res))
                     {
                         const auto &t = std::get<FrameData::TextureHandle>(*res);
-                        builder.add(StarShaderInfo::TextureInfo{t.handles[i], t.layout, t.format});
-                    }
-                    else if (std::holds_alternative<FrameData::FixedTextureHandle>(*res))
-                    {
-                        const auto &t = std::get<FrameData::FixedTextureHandle>(*res);
-                        builder.add(StarShaderInfo::TextureInfo{t.handle, t.layout, t.format});
-                    }
-                    else if (std::holds_alternative<FrameData::BorrowedTexture>(*res))
-                    {
-                        const auto &t = std::get<FrameData::BorrowedTexture>(*res);
-                        builder.add(StarShaderInfo::TextureInfo{t.textures[i], t.layout, t.format});
-                    }
-                    else if (std::holds_alternative<FrameData::OwnedTexture>(*res))
-                    {
-                        const auto &t = std::get<FrameData::OwnedTexture>(*res);
-                        builder.add(StarShaderInfo::TextureInfo{t.textures[i].get(), t.layout, t.format});
+                        builder.add(StarShaderInfo::TextureInfo{t.handleFor(i), t.layout, t.format});
                     }
                 }
             }
@@ -207,8 +187,9 @@ int DescriptorRecipe::operator()()
     if (m_renderGroups)
     {
         assert(m_commandBuffer.isInitialized() && "render-group notification requires a command buffer");
-        auto groupBuilder =
-            StarShaderInfo::Builder(m_context->getDeviceID(), m_context->getDevice(), *defaultPool, numFramesInFlight);
+        auto groupBuilder = StarShaderInfo::Builder(m_context->getDeviceID(), m_context->getDevice(), *defaultPool,
+                                                    numFramesInFlight, &m_context->getBufferManager(),
+                                                    &m_context->getImageManager());
         for (const auto &layout : groupLayouts)
             groupBuilder.addSetLayout(layout);
         for (auto &group : *m_renderGroups)
@@ -240,8 +221,7 @@ DescriptorRecipe::Builder &DescriptorRecipe::Builder::setShaderInfoOut(Handle sh
     }
     else
     {
-        assert(it->out == out &&
-               "setShaderInfoOut() called again with a different output for the same shaderInfo");
+        assert(it->out == out && "setShaderInfoOut() called again with a different output for the same shaderInfo");
         assert(it->baseSet == baseSet &&
                "setShaderInfoOut() called again with a different baseSet for the same shaderInfo");
     }

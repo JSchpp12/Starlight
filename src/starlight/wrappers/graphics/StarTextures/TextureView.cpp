@@ -5,46 +5,54 @@
 
 namespace star::StarTextures
 {
-TextureView::TextureView(std::unordered_map<vk::Format, vk::ImageView> views)
+TextureView &TextureView::addView(vk::Format format, vk::ImageViewType viewType, vk::ImageView view)
 {
-    if (views.size() == 1)
-    {
-        const auto &[format, view] = *views.begin();
-        m_views = SingleView{format, view};
-    }
-    else if (views.empty())
-    {
-        m_views = NoView{};
-    }
-    else
-    {
-        m_views = MultipleViews{std::move(views)};
-    }
-}
+    const ViewKey key{format, viewType};
 
-TextureView &TextureView::addView(vk::Format format, vk::ImageView view)
-{
     if (std::holds_alternative<NoView>(m_views))
     {
         // First view for this texture, keep it inline.
-        m_views = SingleView{format, view};
+        m_views = SingleView{key, view};
     }
-    else if (std::holds_alternative<SingleView>(m_views))
+    else if (const auto *single = std::get_if<SingleView>(&m_views))
     {
-        // Already holding one view, promote to multiple.
-        const SingleView &single = std::get<SingleView>(m_views);
-
+        // Already holding one view, promote to multiple. A second view of the same format with a different view type
+        // (e.g. a 2D-array storage view alongside a cube sampling view) lands here too.
         MultipleViews multiple;
-        multiple.views.emplace(single.getFormat(), single.getView());
-        multiple.views.emplace(format, view);
+        multiple.samplingKey = single->getKey();
+        multiple.views.emplace(single->getKey(), single->getView());
+        multiple.views.emplace(key, view);
         m_views = std::move(multiple);
     }
     else
     {
-        std::get<MultipleViews>(m_views).views.emplace(format, view);
+        std::get<MultipleViews>(m_views).views.emplace(key, view);
     }
 
     return *this;
+}
+
+bool TextureView::contains(vk::Format format, vk::ImageViewType viewType) const
+{
+    const ViewKey key{format, viewType};
+
+    return std::visit(
+        [&key](const auto &holder) -> bool {
+            using T = std::decay_t<decltype(holder)>;
+            if constexpr (std::is_same_v<T, NoView>)
+            {
+                return false;
+            }
+            else if constexpr (std::is_same_v<T, SingleView>)
+            {
+                return holder.getKey() == key;
+            }
+            else
+            {
+                return holder.views.contains(key);
+            }
+        },
+        m_views);
 }
 
 bool TextureView::contains(vk::Format format) const
@@ -58,11 +66,40 @@ bool TextureView::contains(vk::Format format) const
             }
             else if constexpr (std::is_same_v<T, SingleView>)
             {
-                return holder.getFormat() == format;
+                return holder.getKey().format == format;
             }
             else
             {
-                return holder.views.find(format) != holder.views.end();
+                for (const auto &entry : holder.views)
+                {
+                    if (entry.first.format == format)
+                        return true;
+                }
+                return false;
+            }
+        },
+        m_views);
+}
+
+vk::ImageView TextureView::get(vk::Format format, vk::ImageViewType viewType) const
+{
+    const ViewKey key{format, viewType};
+
+    return std::visit(
+        [&key](const auto &holder) -> vk::ImageView {
+            using T = std::decay_t<decltype(holder)>;
+            if constexpr (std::is_same_v<T, NoView>)
+            {
+                return vk::ImageView();
+            }
+            else if constexpr (std::is_same_v<T, SingleView>)
+            {
+                return holder.getKey() == key ? holder.getView() : vk::ImageView();
+            }
+            else
+            {
+                const auto found = holder.views.find(key);
+                return found != holder.views.end() ? found->second : vk::ImageView();
             }
         },
         m_views);
@@ -79,12 +116,22 @@ vk::ImageView TextureView::get(vk::Format format) const
             }
             else if constexpr (std::is_same_v<T, SingleView>)
             {
-                return holder.getFormat() == format ? holder.getView() : vk::ImageView();
+                return holder.getKey().format == format ? holder.getView() : vk::ImageView();
             }
             else
             {
-                const auto found = holder.views.find(format);
-                return found != holder.views.end() ? found->second : vk::ImageView();
+                // Prefer the view type the format lookup originally returned (the sampling view).
+                const ViewKey sampling{format, holder.samplingKey.viewType};
+                const auto found = holder.views.find(sampling);
+                if (found != holder.views.end())
+                    return found->second;
+
+                for (const auto &entry : holder.views)
+                {
+                    if (entry.first.format == format)
+                        return entry.second;
+                }
+                return vk::ImageView();
             }
         },
         m_views);

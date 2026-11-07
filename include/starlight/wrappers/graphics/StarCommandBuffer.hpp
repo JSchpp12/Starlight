@@ -99,6 +99,16 @@ class StarCommandBuffer
 
     void wait(int bufferIndex = 0);
 
+    /// @brief Marks the buffer as submitted so abandonRecording() knows the fence will eventually signal.
+    void markSubmitted() noexcept
+    {
+        m_submitted = true;
+    }
+
+    /// @brief Discards an in-progress recording that will never be submitted (e.g. a failed transfer) and restores the
+    /// fence to its initial signaled state so this buffer can be reused without blocking in begin().
+    void abandonRecording(int bufferIndex = 0);
+
     void prepRender(vk::Device vulkanDevice, const StarCommandPool *parentPool, int numBuffersToCreate, bool initFences,
                     bool initSemaphores);
 
@@ -124,6 +134,8 @@ class StarCommandBuffer
     Queue_Type type;
 
     bool recorded = false;
+    /// @brief True once the current recording has been submitted; cleared when (re)beginning or resetting.
+    bool m_submitted = false;
 
     void createSemaphores();
 

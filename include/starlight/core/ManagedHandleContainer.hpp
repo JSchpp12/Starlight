@@ -32,6 +32,10 @@ class ManagedHandleContainer : public LinearHandleContainer<TData>
         : LinearHandleContainer<TData>(std::move(registeredHandleType), startCapacity, expandingAmt)
     {
     }
+    ManagedHandleContainer(const ManagedHandleContainer &) = default;
+    ManagedHandleContainer &operator=(const ManagedHandleContainer &) = default;
+    ManagedHandleContainer(ManagedHandleContainer &&) noexcept = default;
+    ManagedHandleContainer &operator=(ManagedHandleContainer &&) noexcept = default;
     virtual ~ManagedHandleContainer() = default;
 
     void cleanupAll(device::StarDevice *device = nullptr)

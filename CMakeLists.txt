@@ -165,6 +165,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/device/managers/Fence.cpp"
     "src/starlight/core/device/managers/DescriptorPool.cpp"
     "src/starlight/core/device/managers/Image.cpp"
+    "src/starlight/core/device/managers/Buffer.cpp"
     "src/starlight/core/device/managers/Queue.cpp"
     "src/starlight/core/device/system/event/ShaderCompiled.cpp"
     "src/starlight/core/device/system/event/ManagerRequest.cpp"
@@ -321,6 +322,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/primitive/cube/MeshFactory.cpp"
     "src/starlight/primitive/cube/SolidColor.cpp"
     "src/starlight/primitive/cube/TextureColor.cpp"
+    "src/starlight/setup/RenderResourceSetup.cpp"
     "src/starlight/material/InstanceColorMaterial.cpp"
      "src/starlight/common/buffers/TransferRequest_InstanceColorInfo.cpp")
 
@@ -433,6 +435,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/device/managers/GraphicsContainer.hpp"
     "include/starlight/core/device/managers/DescriptorPool.hpp"
     "include/starlight/core/device/managers/Image.hpp"
+    "include/starlight/core/device/managers/Buffer.hpp"
     "include/starlight/core/device/managers/Queue.hpp"
     "include/starlight/core/device/system/event/ShaderCompiled.hpp"
     "include/starlight/core/device/system/event/ManagerRequest.hpp"
@@ -563,6 +566,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/policy/ListenForRenderReadyForFinalization.hpp"
     "include/starlight/policy/event/ListenFor.hpp"
     "include/starlight/core/Exceptions.hpp"
+    "include/starlight/setup/RenderResourceSetup.hpp"
     "include/starlight/common/entities/Light.hpp"
     #header only
     "include/starlight/util/log/PhysicalDeviceLogging.hpp"
@@ -575,6 +579,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/structs/PngData.hpp"
     "include/starlight/structs/ExrData.hpp"
     "include/starlight/structs/Ray.hpp"
+    "include/starlight/structs/QueueFamilyOwnership.hpp"
     "include/starlight/templates/StarApplication.hpp"
     "include/starlight/templates/StarResourceContainer.hpp"
     "include/starlight/templates/FileResourceManager.hpp"

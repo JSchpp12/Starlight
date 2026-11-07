@@ -1,5 +1,6 @@
 #include "managers/ManagerRenderResource.hpp"
 
+#include "core/logging/LoggingFactory.hpp"
 #include "job/TransferWorker.hpp"
 #include "job/tasks/TransferTask.hpp"
 #include "starlight/command/transfer/SubmitTransferTask.hpp"
@@ -87,7 +88,8 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
                                                      std::unique_ptr<star::TransferRequest::Texture> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
+                                                     const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex,
+                                                     std::optional<star::Handle> *outStagingBuffer)
 {
     assert(s_cmdBus != nullptr);
 
@@ -112,6 +114,9 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
 
     if (outTransferQueueFamilyIndex != nullptr)
         *outTransferQueueFamilyIndex = result.queueFamilyIndex;
+
+    if (outStagingBuffer != nullptr)
+        *outStagingBuffer = result.stagingBuffer;
 
     newFull.gpuWorkDoneSignaledInfo = result.semaphore;
     return newHandle;
@@ -251,18 +256,19 @@ star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &
     auto &container = bufferStorage.at(deviceID)->get(handle);
     if (!container.resource)
     {
+        // Wait for the transfer thread to finish reporting on the request.
         if (!container.cpuWorkDoneByTransferThread.load())
-        {
             container.cpuWorkDoneByTransferThread.wait(false);
-        }
-        else
+
+        // The wait may have published the resource; only fail soft when it is genuinely absent.
+        if (!container.resource)
         {
-            STAR_THROW("Unknown error has occurred during getBuffer. This can happen if the transfer "
-                       "flag is not properly reset");
+            core::logging::warning(
+                "ManagerRenderResource: transfer finished without a buffer; returning a blank buffer");
+            static StarBuffers::Buffer blankBuffer{};
+            return blankBuffer;
         }
     }
-
-    assert(container.resource && "Resource should always exist before returning");
 
     return *container.resource;
 }
@@ -273,21 +279,20 @@ star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const Handl
                common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName) &&
            "Handle provided is not a texture handle");
 
-    const auto &container = textureStorage.at(deviceID)->get(handle);
+    auto &container = textureStorage.at(deviceID)->get(handle);
     if (!container.resource)
     {
         if (!container.cpuWorkDoneByTransferThread.load())
-        {
             container.cpuWorkDoneByTransferThread.wait(false);
-        }
-        else
+
+        if (!container.resource)
         {
-            throw std::runtime_error("Unknown error has occurred during getBuffer. This can happen if the transfer "
-                                     "flag is not properly reset");
+            core::logging::warning(
+                "ManagerRenderResource: transfer finished without a texture; returning a blank texture");
+            static StarTextures::Texture blankTexture{};
+            return blankTexture;
         }
     }
-
-    assert(container.resource && "Resource should always exist before returning");
 
     return *container.resource;
 }

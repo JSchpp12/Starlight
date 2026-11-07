@@ -64,7 +64,7 @@ std::vector<star::StarRenderGroup> CreateRenderingGroups(star::core::device::Dev
 
         for (size_t j = 0; j < renderingGroups.size(); j++)
         {
-            if (renderingGroups[j].isObjectCompatible(*objects[i]))
+            if (renderingGroups[j].isObjectCompatible(*objects[i], context))
             {
                 match = &renderingGroups[j];
                 break;
@@ -73,7 +73,7 @@ std::vector<star::StarRenderGroup> CreateRenderingGroups(star::core::device::Dev
 
         if (match != nullptr)
         {
-            match->addObject(objects[i]);
+            match->addObject(objects[i], context);
         }
         else
         {

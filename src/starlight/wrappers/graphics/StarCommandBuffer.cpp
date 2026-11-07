@@ -63,6 +63,8 @@ void star::StarCommandBuffer::begin(int buffIndex)
     if (this->readyFence.size() > 0)
         wait(buffIndex);
 
+    this->m_submitted = false;
+
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
 
@@ -92,6 +94,7 @@ void star::StarCommandBuffer::begin(const int buffIndex, const vk::CommandBuffer
         wait(buffIndex);
 
     this->recorded = true;
+    this->m_submitted = false;
 
     // create begin
     this->commandBuffers[buffIndex].begin(beginInfo);
@@ -141,6 +144,36 @@ void star::StarCommandBuffer::reset(int bufferIndex)
     // reset vulkan buffers
     this->commandBuffers.at(bufferIndex).reset();
 
+    this->recorded = false;
+    this->m_submitted = false;
+}
+
+void star::StarCommandBuffer::abandonRecording(int bufferIndex)
+{
+    assert(bufferIndex < this->commandBuffers.size() && "Requested buffer does not exist");
+
+    // A submitted buffer's fence will signal; wait for it before discarding. An unsubmitted recording never signals,
+    // so waiting on it would hang.
+    if (m_submitted && bufferIndex < this->readyFence.size())
+    {
+        (void)this->vulkanDevice.waitForFences(this->readyFence.at(bufferIndex), VK_TRUE, UINT64_MAX);
+    }
+
+    this->commandBuffers.at(bufferIndex).reset();
+
+    // The pool expects a signaled fence before the next begin() (which waits and then resets it). wait()/begin() leave
+    // it unsignaled, so recreate it signaled here.
+    if (bufferIndex < this->readyFence.size())
+    {
+        this->vulkanDevice.destroyFence(this->readyFence[bufferIndex]);
+
+        vk::FenceCreateInfo fenceInfo{};
+        fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
+        fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+        this->readyFence[bufferIndex] = this->vulkanDevice.createFence(fenceInfo);
+    }
+
+    this->m_submitted = false;
     this->recorded = false;
 }
 
@@ -229,6 +262,8 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
     {
         targetQueue.submit(submitInfo);
     }
+
+    this->m_submitted = true;
 }
 
 bool star::StarCommandBuffer::isFenceReady(const int &bufferIndex)

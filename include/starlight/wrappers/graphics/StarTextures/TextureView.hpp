@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <cstdint>
+#include <functional>
 #include <unordered_map>
 #include <variant>
 
@@ -13,39 +15,59 @@ struct NoView
 {
 };
 
+/// @brief Identifies one view of an image.
+struct ViewKey
+{
+    vk::Format format = vk::Format::eUndefined;
+    vk::ImageViewType viewType = vk::ImageViewType::e2D;
+
+    bool operator==(const ViewKey &other) const
+    {
+        return format == other.format && viewType == other.viewType;
+    }
+
+    struct Hash
+    {
+        std::size_t operator()(const ViewKey &key) const noexcept
+        {
+            const std::uint64_t packed =
+                (static_cast<std::uint64_t>(key.format) << 32) | static_cast<std::uint32_t>(key.viewType);
+            return std::hash<std::uint64_t>{}(packed);
+        }
+    };
+};
+
 /// @brief Holds exactly one created texture view.
 class SingleView
 {
   public:
     SingleView() = default;
-    SingleView(vk::Format format, vk::ImageView view) : m_view{format, view}
+    SingleView(ViewKey key, vk::ImageView view) : m_key(key), m_view(view)
     {
     }
 
-    vk::Format getFormat() const
+    const ViewKey &getKey() const
     {
-        return m_view.format;
+        return m_key;
     }
 
     vk::ImageView getView() const
     {
-        return m_view.view;
+        return m_view;
     }
 
   private:
-    struct ViewInfo
-    {
-        vk::Format format{vk::Format::eUndefined};
-        vk::ImageView view{};
-    };
-
-    ViewInfo m_view{};
+    ViewKey m_key{};
+    vk::ImageView m_view{};
 };
 
-/// @brief Holds multiple created texture views in the same map
+/// @brief Holds multiple created views, keyed by {format, view type}.
 struct MultipleViews
 {
-    std::unordered_map<vk::Format, vk::ImageView> views = std::unordered_map<vk::Format, vk::ImageView>();
+    std::unordered_map<ViewKey, vk::ImageView, ViewKey::Hash> views = {};
+    /// Key of the view the texture exposed before it grew additional views. The format-only lookup returns the view
+    /// matching the requested format with this view type, so the sampling path keeps binding the original view.
+    ViewKey samplingKey = {};
 };
 
 /// @brief Storage for a texture's created views.
@@ -56,20 +78,20 @@ class TextureView
   public:
     TextureView() = default;
 
-    TextureView(vk::Format format, vk::ImageView view) : m_views(SingleView{format, view})
-    {
-    }
+    /// Add a created view. The first view is stored inline; a second view promotes the storage to MultipleViews, even
+    /// when it shares the format (a different view type is enough).
+    TextureView &addView(vk::Format format, vk::ImageViewType viewType, vk::ImageView view);
 
-    explicit TextureView(std::unordered_map<vk::Format, vk::ImageView> views);
+    /// @brief True when a view exists for the exact format and view type pair.
+    bool contains(vk::Format format, vk::ImageViewType viewType) const;
 
-    /// Add a created view. The first view is stored inline; a second view
-    /// promotes the storage to MultipleViews.
-    TextureView &addView(vk::Format format, vk::ImageView view);
-
+    /// @brief True when any view of this format exists.
     bool contains(vk::Format format) const;
 
-    /// Returns the view for the requested format, or a null handle if it is not
-    /// present.
+    /// @brief View for the exact format and view type pair, or a null handle when absent.
+    vk::ImageView get(vk::Format format, vk::ImageViewType viewType) const;
+
+    /// @brief Sampling view for this format, or a null handle when absent.
     vk::ImageView get(vk::Format format) const;
 
     /// Destroy every stored view and reset the storage.

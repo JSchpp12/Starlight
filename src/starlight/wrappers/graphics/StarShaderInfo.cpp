@@ -1,5 +1,31 @@
 #include "StarShaderInfo.hpp"
 
+#include "core/device/managers/Buffer.hpp"
+#include "core/device/managers/Image.hpp"
+#include "core/logging/LoggingFactory.hpp"
+
+/// @brief Whether this handle refers to a slot in the device's Buffer manager (FrameData::BufferHandle)
+/// rather than a transfer-uploaded resource tracked by ManagerRenderResource.
+/// @details The two systems mint different handle types; the device manager resolves its own handles through the
+/// manager at use time so it never depends on where the manager's record storage lives.
+static bool IsDeviceBufferManagerHandle(const star::Handle &handle)
+{
+    return handle.isInitialized() &&
+           handle.getType() == star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                   star::core::device::manager::GetBufferHandleTypeName);
+}
+
+/// @brief Whether this handle refers to a slot in the device's Image manager (FrameData::TextureHandle)
+/// rather than a transfer-uploaded texture tracked by ManagerRenderResource.
+/// @details Same split as the buffer manager: image records live in manager-owned storage that may move, so the
+/// image manager resolves its own handles at use time.
+static bool IsDeviceImageManagerHandle(const star::Handle &handle)
+{
+    return handle.isInitialized() &&
+           handle.getType() == star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                   star::common::special_types::GetImageTypeName);
+}
+
 vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet(const Handle &deviceID)
 {
     while (!m_pendingBuildIndices.empty())
@@ -39,14 +65,35 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceI
         const auto &info = shaderInfos[index].bufferInfo.value();
         if (info.handle.has_value())
         {
-            if (!ManagerRenderResource::isReady(deviceID, info.handle.value()))
+            if (IsDeviceBufferManagerHandle(info.handle.value()))
             {
-                ManagerRenderResource::waitForReady(deviceID, info.handle.value());
-            }
-            const auto &buffer = ManagerRenderResource::getBuffer(deviceID, info.handle.value());
+                assert(this->m_bufferManager != nullptr &&
+                       "Device-managed buffer handle requires the buffer manager to be provided by the builder");
+                const auto *record = this->m_bufferManager->get(info.handle.value());
+                const auto *buffer = record != nullptr ? record->getBuffer() : nullptr;
+                if (buffer == nullptr || buffer->getVulkanBuffer() == VK_NULL_HANDLE)
+                {
+                    // The producer failed and the manager handed back a blank buffer. Skip the write; consumers are
+                    // expected to tolerate the unbound resource.
+                    core::logging::warning(
+                        "Buffer manager slot is blank; skipping descriptor write for a failed transfer");
+                    return;
+                }
 
-            auto bufferInfo = vk::DescriptorBufferInfo{buffer.getVulkanBuffer(), 0, buffer.getBufferSize()};
-            this->descriptorWriter->writeBuffer(index, bufferInfo);
+                auto bufferInfo = vk::DescriptorBufferInfo{buffer->getVulkanBuffer(), 0, buffer->getBufferSize()};
+                this->descriptorWriter->writeBuffer(index, bufferInfo);
+            }
+            else
+            {
+                if (!ManagerRenderResource::isReady(deviceID, info.handle.value()))
+                {
+                    ManagerRenderResource::waitForReady(deviceID, info.handle.value());
+                }
+                const auto &buffer = ManagerRenderResource::getBuffer(deviceID, info.handle.value());
+
+                auto bufferInfo = vk::DescriptorBufferInfo{buffer.getVulkanBuffer(), 0, buffer.getBufferSize()};
+                this->descriptorWriter->writeBuffer(index, bufferInfo);
+            }
         }
         else if (info.buffer.has_value())
         {
@@ -62,14 +109,26 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceI
     }
     else if (shaderInfos[index].textureInfo.has_value())
     {
+        const auto &texInfo = shaderInfos[index].textureInfo.value();
         const StarTextures::Texture *texture = nullptr;
-        if (shaderInfos[index].textureInfo.value().texture != nullptr)
-            texture = shaderInfos[index].textureInfo.value().texture;
-        else if (shaderInfos[index].textureInfo.value().handle.isInitialized())
-            texture = &star::ManagerRenderResource::getTexture(deviceID, shaderInfos[index].textureInfo.value().handle);
-        else if (shaderInfos[index].textureInfo.value().texture != nullptr)
+        if (texInfo.texture != nullptr)
         {
-            texture = shaderInfos[index].textureInfo.value().texture;
+            texture = texInfo.texture;
+        }
+        else if (texInfo.handle.isInitialized())
+        {
+            if (IsDeviceImageManagerHandle(texInfo.handle))
+            {
+                assert(this->m_imageManager != nullptr &&
+                       "Image-manager handle requires the image manager to be provided by the builder");
+                const auto *record = this->m_imageManager->get(texInfo.handle);
+                assert(record != nullptr && "Image must be resolved before the descriptor set is written");
+                texture = &record->texture;
+            }
+            else
+            {
+                texture = &star::ManagerRenderResource::getTexture(deviceID, texInfo.handle);
+            }
         }
         else
         {
@@ -80,10 +139,17 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceI
         vk::DescriptorImageInfo textureInfo;
         textureInfo.sampler = texture->getSampler().has_value() ? texture->getSampler().value() : VK_NULL_HANDLE;
         textureInfo.imageLayout = shaderInfos[index].textureInfo.value().expectedLayout;
-        textureInfo.imageView =
-            shaderInfos[index].textureInfo.value().requestedImageViewFormat.has_value()
-                ? texture->getImageView(&shaderInfos[index].textureInfo.value().requestedImageViewFormat.value())
-                : texture->getImageView();
+        const auto &views = texture->getImageView();
+        const auto &requestedFormat = shaderInfos[index].textureInfo.value().requestedImageViewFormat;
+        textureInfo.imageView = views.get(requestedFormat.has_value() ? *requestedFormat : texture->getBaseFormat());
+
+        if (!textureInfo.imageView)
+        {
+            // Failed/blank texture, or a missing view for the requested format. Skip the write; consumers are expected
+            // to tolerate the unbound resource.
+            core::logging::warning("Texture has no view for the requested format; skipping descriptor write");
+            return;
+        }
 
         this->descriptorWriter->writeImage(index, textureInfo);
     }
@@ -118,16 +184,33 @@ bool star::StarShaderInfo::isReady(uint8_t frameInFlight)
     {
         for (size_t i{0}; i < set->shaderInfos.size(); i++)
         {
+            const auto &shaderInfo = set->shaderInfos[i];
 
-            if (set->shaderInfos[0].bufferInfo.has_value() && set->shaderInfos[0].bufferInfo.value().handle.has_value())
+            if (shaderInfo.bufferInfo.has_value())
             {
-                if (!ManagerRenderResource::isReady(m_deviceID, set->shaderInfos[0].bufferInfo.value().handle.value()))
-                    return false;
+                const auto &info = shaderInfo.bufferInfo.value();
+                if (info.handle.has_value())
+                {
+                    if (IsDeviceBufferManagerHandle(info.handle.value()))
+                    {
+                        // A failed producer leaves a blank buffer, but readiness must stay true: reporting false here
+                        // would spin the engine's scene-ready wait loop forever. Consumers check the resource.
+                        if (set->getBufferManager() == nullptr ||
+                            !set->getBufferManager()->get(info.handle.value())->isReady())
+                            return false;
+                    }
+                    else if (!ManagerRenderResource::isReady(m_deviceID, info.handle.value()))
+                        return false;
+                }
+                // Buffer infos without a handle point at an already-created buffer and are ready by construction.
             }
-            else if (set->shaderInfos[0].textureInfo.has_value())
+            else if (shaderInfo.textureInfo.has_value())
             {
-                if (set->shaderInfos[0].textureInfo.value().handle.isInitialized() &&
-                    !ManagerRenderResource::isReady(m_deviceID, set->shaderInfos[0].textureInfo.value().handle))
+                const auto &info = shaderInfo.textureInfo.value();
+                // Image-manager records are ready by construction; only transfer-uploaded textures can still be
+                // pending.
+                if (info.handle.isInitialized() && !IsDeviceImageManagerHandle(info.handle) &&
+                    !ManagerRenderResource::isReady(m_deviceID, info.handle))
                 {
                     return false;
                 }
@@ -196,7 +279,27 @@ void star::StarShaderInfo::getDescriptors(uint8_t frameInFlight, vk::DescriptorS
                     auto &info = set->shaderInfos[i].bufferInfo.value();
                     auto &handle = set->shaderInfos[i].bufferInfo.value().handle.value();
 
-                    const auto &buffer = ManagerRenderResource::getBuffer(m_deviceID, handle).getVulkanBuffer();
+                    vk::Buffer buffer{};
+                    if (IsDeviceBufferManagerHandle(handle))
+                    {
+                        assert(
+                            set->getBufferManager() != nullptr &&
+                            "Device-managed buffer handle requires the buffer manager to be provided by the builder");
+                        const auto *record = set->getBufferManager()->get(handle);
+                        const auto *managed = record != nullptr ? record->getBuffer() : nullptr;
+                        buffer = managed != nullptr ? managed->getVulkanBuffer() : VK_NULL_HANDLE;
+                    }
+                    else
+                    {
+                        buffer = ManagerRenderResource::getBuffer(m_deviceID, handle).getVulkanBuffer();
+                    }
+
+                    if (buffer == VK_NULL_HANDLE)
+                    {
+                        // A failed transfer hands back a blank buffer; never write a null buffer into the set.
+                        continue;
+                    }
+
                     if (info.currentBuffer == VK_NULL_HANDLE)
                     {
                         info.currentBuffer = buffer;
@@ -212,14 +315,27 @@ void star::StarShaderInfo::getDescriptors(uint8_t frameInFlight, vk::DescriptorS
                 {
                     auto &info = set->shaderInfos[i].textureInfo.value();
 
-                    const auto &texture = ManagerRenderResource::getTexture(m_deviceID, info.handle).getVulkanImage();
+                    vk::Image image{};
+                    if (IsDeviceImageManagerHandle(info.handle))
+                    {
+                        assert(set->getImageManager() != nullptr &&
+                               "Image-manager handle requires the image manager to be provided by the builder");
+                        const auto *record = set->getImageManager()->get(info.handle);
+                        assert(record != nullptr && "Image must be resolved before the descriptor set is written");
+                        image = record->texture.getVulkanImage();
+                    }
+                    else
+                    {
+                        image = ManagerRenderResource::getTexture(m_deviceID, info.handle).getVulkanImage();
+                    }
+
                     if (!info.currentImage.has_value())
                     {
-                        info.currentImage = texture;
+                        info.currentImage = image;
                     }
-                    else if (info.currentImage.value() != texture)
+                    else if (info.currentImage.value() != image)
                     {
-                        info.currentImage = texture;
+                        info.currentImage = image;
                         set->buildIndex(m_deviceID, i);
                     }
                 }
@@ -274,7 +390,7 @@ void star::StarShaderInfo::setNewResource(size_t setIndex, size_t bindingIndex, 
 
 star::StarShaderInfo::Builder &star::StarShaderInfo::Builder::startSet()
 {
-    this->activeSet->push_back(
-        std::make_shared<ShaderInfoSet>(this->device, m_pool, *this->layouts[this->activeSet->size()]));
+    this->activeSet->push_back(std::make_shared<ShaderInfoSet>(
+        this->device, m_pool, *this->layouts[this->activeSet->size()], m_bufferManager, m_imageManager));
     return *this;
 }

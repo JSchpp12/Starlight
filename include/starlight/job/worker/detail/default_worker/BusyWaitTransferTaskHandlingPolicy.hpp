@@ -207,31 +207,57 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
 
         EnsureInfoReady(vkDevice, *workingInfo);
 
-        if (request.bufferTransferRequest)
+        try
         {
-            assert(request.resultingBuffer.has_value() && request.resultingBuffer.value() != nullptr &&
-                   "Buffer request must contain both a request and a resulting address");
+            if (request.bufferTransferRequest)
+            {
+                assert(request.resultingBuffer.has_value() && request.resultingBuffer.value() != nullptr &&
+                       "Buffer request must contain both a request and a resulting address");
 
-            request.bufferTransferRequest->prep();
+                request.bufferTransferRequest->prep();
 
-            job::TransferManagerThread::CreateBuffer(
-                device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
-                *workingInfo, request.bufferTransferRequest.get(), request.resultingBuffer.value(),
-                request.gpuDoneNotificationToMain, request.workSyncInfo);
+                job::TransferManagerThread::CreateBuffer(
+                    device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
+                    *workingInfo, request.bufferTransferRequest.get(), request.resultingBuffer.value(),
+                    request.gpuDoneNotificationToMain, request.workSyncInfo);
+            }
+            else if (request.textureTransferRequest)
+            {
+                assert(request.resultingTexture.has_value() && request.resultingTexture.value() != nullptr &&
+                       "Texture request must contain both a request and a resulting address");
+
+                request.textureTransferRequest->prep();
+
+                core::logging::debug("Creating texture: ", request.textureTransferRequest->getDebugDescription());
+
+                job::TransferManagerThread::CreateTexture(
+                    device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
+                    *workingInfo, request.textureTransferRequest.get(), request.resultingTexture.value(),
+                    request.gpuDoneNotificationToMain, request.workSyncInfo);
+            }
         }
-        else if (request.textureTransferRequest)
+        catch (const std::exception &e)
         {
-            assert(request.resultingTexture.has_value() && request.resultingTexture.value() != nullptr &&
-                   "Texture request must contain both a request and a resulting address");
+            // Fail soft: publish the reason into whatever promises the request owns so consumers receive a blank
+            // resource instead of a broken promise, then let the worker keep running.
+            core::logging::warning("Transfer worker failed: ", e.what());
+            if (request.bufferTransferRequest)
+                request.bufferTransferRequest->publishFailure(e.what());
+            else if (request.textureTransferRequest)
+                request.textureTransferRequest->publishFailure(e.what());
 
-            request.textureTransferRequest->prep();
+            // The command buffer may have been begun and never submitted; restore it so this pool slot is reusable.
+            workingInfo->commandBuffer->abandonRecording(0);
+        }
+        catch (...)
+        {
+            core::logging::warning("Transfer worker failed with a non-standard exception");
+            if (request.bufferTransferRequest)
+                request.bufferTransferRequest->publishFailure("non-standard transfer worker exception");
+            else if (request.textureTransferRequest)
+                request.textureTransferRequest->publishFailure("non-standard transfer worker exception");
 
-            core::logging::debug("Creating texture: ", request.textureTransferRequest->getDebugDescription());
-
-            job::TransferManagerThread::CreateTexture(
-                device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
-                *workingInfo, request.textureTransferRequest.get(), request.resultingTexture.value(),
-                request.gpuDoneNotificationToMain, request.workSyncInfo);
+            workingInfo->commandBuffer->abandonRecording(0);
         }
 
         m_processRequestInfos.push(std::move(workingInfo));

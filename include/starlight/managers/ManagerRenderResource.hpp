@@ -78,9 +78,13 @@ class ManagerRenderResource
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
                              const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
 
+    /// @param outStagingBuffer When non-null, receives the buffer-manager slot for the request's staging buffer if the
+    /// request takes staging ownership. The caller releases it through the buffer manager once the work using it has
+    /// completed.
     static Handle addRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Texture> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
-                             const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
+                             const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr,
+                             std::optional<star::Handle> *outStagingBuffer = nullptr);
 
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request

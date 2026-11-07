@@ -18,6 +18,10 @@ template <typename TData> class HandleContainer
     HandleContainer(uint16_t handleType) : m_handleType(std::move(handleType))
     {
     }
+    HandleContainer(const HandleContainer &) = default;
+    HandleContainer &operator=(const HandleContainer &) = default;
+    HandleContainer(HandleContainer &&) noexcept = default;
+    HandleContainer &operator=(HandleContainer &&) noexcept = default;
     virtual ~HandleContainer() = default;
 
     Handle insert(TData newData)

@@ -75,6 +75,7 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
         }
     }
 
+    processInfo.commandBuffer->markSubmitted();
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
@@ -140,7 +141,12 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
         }
     }
 
-    processInfo.setInProcessDeps(std::move(transferSrcBuffer));
+    processInfo.commandBuffer->markSubmitted();
+
+    if (newTextureRequest->takesStagingOwnership)
+        newTextureRequest->adoptStagingBuffer(*transferSrcBuffer);
+    else
+        processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
 void TransferManagerThread::CheckForCleanups(vk::Device device,

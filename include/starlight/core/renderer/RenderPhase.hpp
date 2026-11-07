@@ -90,6 +90,7 @@ class RenderPhase
 
     std::vector<StarRenderGroup> m_renderGroups;
     Handle m_commandBuffer;
+    std::optional<core::graphics::RecordingSubmissionInfo> m_recordingInfo;
     std::shared_ptr<FrameData> m_frameData;
     /// True when this phase owns and drives its FrameData controllers each
     /// frame; false when the FrameData is borrowed and driven by another phase.

@@ -1,8 +1,8 @@
 #include "core/device/managers/DescriptorPool.hpp"
 
 #include "event/ConsumeDescriptorRequests.hpp"
-#include "event/EnginePhaseComplete.hpp"
 #include "event/DescriptorPoolReady.hpp"
+#include "event/EnginePhaseComplete.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 
@@ -26,6 +26,10 @@ void DescriptorPool::init(const uint8_t &numFramesInFlight, device::StarDevice *
 void DescriptorPool::init(device::StarDevice *device)
 {
     Manager<DescriptorPoolRecord, DescriptorPoolRequest, 1>::init(device);
+
+    // Claim id 0 now: the engine pool is only created when the load phase completes
+    if (!m_defaultPoolSlot.isInitialized())
+        m_defaultPoolSlot = m_records.reserve();
 }
 
 void DescriptorPool::registerListenForEnginePhaseComplete(common::EventBus &bus)
@@ -41,7 +45,7 @@ void DescriptorPool::registerListenForEnginePhaseComplete(common::EventBus &bus)
 
 void DescriptorPool::eventCallback(const star::common::IEvent &e, bool &keepAlive)
 {
-    const auto &event = static_cast<const star::event::EnginePhaseComplete &>(e); 
+    const auto &event = static_cast<const star::event::EnginePhaseComplete &>(e);
     if (event.getPhase() == star::event::EnginePhaseComplete::Phase::load)
     {
         // on engine phase complete we will now need to emit another event
@@ -61,7 +65,7 @@ void DescriptorPool::eventCallback(const star::common::IEvent &e, bool &keepAliv
             }
         }
 
-        this->insert({std::move(processedTypes)});
+        this->m_records.commit(m_defaultPoolSlot, createRecord(DescriptorPoolRequest{std::move(processedTypes)}));
 
         this->m_eventBus->emit(event::DescriptorPoolReady{});
         keepAlive = false;
@@ -83,7 +87,11 @@ DescriptorPoolRecord DescriptorPool::createRecord(DescriptorPoolRequest &&reques
         maxSets += active.second;
     }
 
+    if (request.maxSets != 0)
+        maxSets = request.maxSets;
+
     builder.setMaxSets(maxSets);
+    builder.setPoolFlags(request.poolFlags);
 
     return {builder.build()};
 }

@@ -97,8 +97,30 @@ class StarShaderInfo
     {
         std::vector<ShaderInfo> shaderInfos = std::vector<ShaderInfo>();
 
-        ShaderInfoSet(core::device::StarDevice &device, StarDescriptorPool &pool, StarDescriptorSetLayout &setLayout)
-            : device(device), m_pool(pool), setLayout(setLayout) {};
+        ShaderInfoSet(core::device::StarDevice &device, StarDescriptorPool &pool, StarDescriptorSetLayout &setLayout,
+                      core::device::manager::Buffer *bufferManager = nullptr,
+                      core::device::manager::Image *imageManager = nullptr)
+            : device(device), m_pool(pool), setLayout(setLayout), m_bufferManager(bufferManager),
+              m_imageManager(imageManager) {};
+
+        /// @brief The device buffer manager this set resolves managed-buffer handles through, or nullptr when the
+        /// set was built without one.
+        /// @details Managed-buffer handles (FrameData::BufferHandle) refer to slots in the device's Buffer
+        /// manager. The manager's record storage may reallocate as it grows, so the handles are stored here and
+        /// resolved through the manager at descriptor-write time instead of capturing pointers to its records.
+        core::device::manager::Buffer *getBufferManager() const
+        {
+            return m_bufferManager;
+        }
+
+        /// @brief The device image manager this set resolves image-manager handles through, or nullptr when the set
+        /// was built without one.
+        /// @details Same rationale as the buffer manager: image records live in manager-owned storage that may move,
+        /// so FrameData::TextureHandle handles are resolved at descriptor-write time.
+        core::device::manager::Image *getImageManager() const
+        {
+            return m_imageManager;
+        }
 
         void setNewResource(size_t index, ShaderInfo newInfo);
 
@@ -119,6 +141,8 @@ class StarShaderInfo
         core::device::StarDevice &device;
         StarDescriptorPool &m_pool;
         StarDescriptorSetLayout &setLayout;
+        core::device::manager::Buffer *m_bufferManager = nullptr;
+        core::device::manager::Image *m_imageManager = nullptr;
         std::vector<size_t> m_pendingBuildIndices;
         bool setNeedsRebuild = true;
         bool isBuilt = false;
@@ -131,8 +155,10 @@ class StarShaderInfo
     {
       public:
         Builder(Handle deviceID, core::device::StarDevice &device, StarDescriptorPool &pool,
-                const uint8_t numFramesInFlight)
-            : m_deviceID(deviceID), device(device), m_pool(pool), sets(numFramesInFlight) {};
+                const uint8_t numFramesInFlight, core::device::manager::Buffer *bufferManager = nullptr,
+                core::device::manager::Image *imageManager = nullptr)
+            : m_deviceID(deviceID), device(device), m_pool(pool), m_bufferManager(bufferManager),
+              m_imageManager(imageManager), sets(numFramesInFlight) {};
 
         Builder &addSetLayout(std::shared_ptr<StarDescriptorSetLayout> layout)
         {
@@ -176,6 +202,18 @@ class StarShaderInfo
         {
             return m_pool;
         }
+        /// @brief The device buffer manager passed at construction, or nullptr. Propagate this to derived builders
+        /// so managed-buffer handles stay resolvable at descriptor-write time.
+        core::device::manager::Buffer *getBufferManager() const
+        {
+            return m_bufferManager;
+        }
+        /// @brief The device image manager passed at construction, or nullptr. Propagate this to derived builders
+        /// so image-manager handles stay resolvable at descriptor-write time.
+        core::device::manager::Image *getImageManager() const
+        {
+            return m_imageManager;
+        }
         core::device::StarDevice &getDevice()
         {
             return device;
@@ -193,6 +231,8 @@ class StarShaderInfo
         star::Handle m_deviceID;
         core::device::StarDevice &device;
         StarDescriptorPool &m_pool;
+        core::device::manager::Buffer *m_bufferManager = nullptr;
+        core::device::manager::Image *m_imageManager = nullptr;
         std::vector<std::shared_ptr<ShaderInfoSet>> *activeSet = nullptr;
 
         std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> layouts =
