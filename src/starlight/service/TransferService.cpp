@@ -2,6 +2,7 @@
 
 #include "core/logging/LoggingFactory.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/event/GetQueue.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 
