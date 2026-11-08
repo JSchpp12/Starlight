@@ -35,7 +35,8 @@ std::vector<Handle> RenderTargets::registerTextures(core::device::DeviceContext 
 
         assert(r != nullptr);
         auto *result = static_cast<core::device::manager::ImageRecord *>(r);
-        renderingContext.recordDependentImage.manualInsert(handles[i], &result->texture);
+        assert(result->getTexture() != nullptr && "Render target images are created synchronously");
+        renderingContext.recordDependentImage.manualInsert(handles[i], result->getTexture());
     }
 
     return handles;
@@ -47,13 +48,13 @@ void RenderTargets::frameUpdate(core::device::DeviceContext &context, RenderingC
 
     if (!m_colorHandles.empty())
     {
-        renderingContext.recordDependentImage.manualInsert(m_colorHandles[fi],
-                                                           &context.getImageManager().get(m_colorHandles[fi])->texture);
+        renderingContext.recordDependentImage.manualInsert(
+            m_colorHandles[fi], context.getImageManager().get(m_colorHandles[fi])->getTexture());
     }
     if (!m_depthHandles.empty())
     {
-        renderingContext.recordDependentImage.manualInsert(m_depthHandles[fi],
-                                                           &context.getImageManager().get(m_depthHandles[fi])->texture);
+        renderingContext.recordDependentImage.manualInsert(
+            m_depthHandles[fi], context.getImageManager().get(m_depthHandles[fi])->getTexture());
     }
 }
 

@@ -47,14 +47,23 @@ struct PipelineRecord
     bool buildQueued = false;
 };
 
-constexpr std::string_view PipelineCreateEventTypeName = "star::event::pipeline";
+constexpr std::string_view PipelineCreateEventTypeName = "stPipE";
 
-class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>
+/// @brief Compile-time name of the pipeline resource type, used for handle registration and failure logging.
+struct PipelineResourceTypeName
+{
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return common::special_types::PipelineTypeName;
+    }
+};
+
+class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50, PipelineResourceTypeName>
 {
   public:
     Pipeline()
-        : TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>(common::special_types::PipelineTypeName,
-                                                                          PipelineCreateEventTypeName)
+        : TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50, PipelineResourceTypeName>(
+              PipelineCreateEventTypeName)
     {
     }
     virtual ~Pipeline() = default;

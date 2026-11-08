@@ -4,6 +4,8 @@
 #include "logging/LoggingFactory.hpp"
 
 #include <sstream>
+#include <type_traits>
+#include <variant>
 
 namespace star::job
 {
@@ -11,32 +13,41 @@ namespace star::job
 void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQueue &queue,
                                          const vk::PhysicalDeviceProperties &deviceProperties,
                                          const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                                         ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
-                                         std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
+                                         ProcessRequestInfo &processInfo, BufferTransferData &requestData,
                                          boost::atomic<bool> *gpuDoneSignalMain,
                                          core::graphics::GPUWorkSyncInfo &syncInfo)
 {
-    auto transferSrcBuffer = newBufferRequest->createStagingBuffer(device);
+    auto &newBufferRequest = *requestData.request;
+
+    auto transferSrcBuffer = newBufferRequest.createStagingBuffer(device);
     if (transferSrcBuffer->getBufferSize() == 0)
         STAR_THROW("Failed to create transfer src buffer");
 
+    auto newResult = newBufferRequest.createFinal(device, allTransferQueueFamilyIndicesInUse);
+    if (newResult->getBufferSize() == 0)
     {
-        auto newResult = newBufferRequest->createFinal(device, allTransferQueueFamilyIndicesInUse);
-        if (newResult->getBufferSize() == 0)
-        {
-            STAR_THROW("Failed to create final buffer");
-        }
-        if (!*resultingBuffer ||
-            (resultingBuffer->get() && newResult->getBufferSize() > resultingBuffer->get()->getBufferSize()))
-        {
-            resultingBuffer->swap(newResult);
-        }
+        STAR_THROW("Failed to create final buffer");
     }
 
-    newBufferRequest->writeDataToStageBuffer(*transferSrcBuffer);
+    auto *resultingBuffer = std::get_if<std::unique_ptr<StarBuffers::Buffer> *>(&requestData.destination);
+    StarBuffers::Buffer *destination = nullptr;
+    if (resultingBuffer != nullptr)
+    {
+        if (!**resultingBuffer ||
+            ((*resultingBuffer)->get() && newResult->getBufferSize() > (*resultingBuffer)->get()->getBufferSize()))
+        {
+            (*resultingBuffer)->swap(newResult);
+        }
+        destination = (*resultingBuffer)->get();
+    }
+    else
+    {
+        destination = newResult.get();
+    }
 
-    newBufferRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingBuffer->get(),
-                                               processInfo.commandBuffer->buffer(0));
+    newBufferRequest.writeDataToStageBuffer(*transferSrcBuffer);
+
+    newBufferRequest.copyFromTransferSRCToDST(*transferSrcBuffer, *destination, processInfo.commandBuffer->buffer(0));
 
     processInfo.commandBuffer->buffer(0).end();
 
@@ -76,33 +87,39 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
     }
 
     processInfo.commandBuffer->markSubmitted();
+
+    // The Buffer manager owns the buffer from here on: publish it into the pending record the caller registered.
+    if (auto *bufferSlot = std::get_if<BufferTransferPromise>(&requestData.destination))
+    {
+        bufferSlot->set_value(std::expected<StarBuffers::Buffer, core::ResourceCreationError>{std::move(*newResult)});
+    }
+
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
 void TransferManagerThread::CreateTexture(core::device::StarDevice &device, StarQueue &queue,
                                           const vk::PhysicalDeviceProperties &deviceProperties,
                                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                                          ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
-                                          std::unique_ptr<StarTextures::Texture> *resultingTexture,
+                                          ProcessRequestInfo &processInfo, TextureTransferData &requestData,
                                           boost::atomic<bool> *gpuDoneSignalToMain,
                                           core::graphics::GPUWorkSyncInfo &syncInfo)
 {
-    auto transferSrcBuffer = newTextureRequest->createStagingBuffer(device);
+    auto &newTextureRequest = *requestData.request;
+
+    auto transferSrcBuffer = newTextureRequest.createStagingBuffer(device);
 
     bool newImageCreated = true;
 
-    auto finalTexture = newTextureRequest->createFinal(device, allTransferQueueFamilyIndicesInUse);
-    resultingTexture->swap(finalTexture);
+    auto finalTexture = newTextureRequest.createFinal(device, allTransferQueueFamilyIndicesInUse);
 
-    newTextureRequest->writeDataToStageBuffer(*transferSrcBuffer);
+    newTextureRequest.writeDataToStageBuffer(*transferSrcBuffer);
 
     if (!newImageCreated)
     {
         STAR_THROW("Unsupported image operation in transfer manager");
     }
 
-    newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(),
-                                                processInfo.commandBuffer->buffer(0));
+    newTextureRequest.copyFromTransferSRCToDST(*transferSrcBuffer, *finalTexture, processInfo.commandBuffer->buffer(0));
 
     processInfo.commandBuffer->buffer(0).end();
 
@@ -143,10 +160,45 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
 
     processInfo.commandBuffer->markSubmitted();
 
-    if (newTextureRequest->takesStagingOwnership)
-        newTextureRequest->adoptStagingBuffer(*transferSrcBuffer);
+    // The Image manager owns the texture from here on: publish it into the pending record the caller registered.
+    requestData.slot.set_value(
+        std::expected<StarTextures::Texture, core::ResourceCreationError>{std::move(*finalTexture)});
+
+    if (newTextureRequest.takesStagingOwnership)
+        newTextureRequest.adoptStagingBuffer(*transferSrcBuffer);
     else
         processInfo.setInProcessDeps(std::move(transferSrcBuffer));
+}
+
+void TransferManagerThread::PublishFailure(InterThreadRequest &request, const core::ResourceCreationError &error)
+{
+    std::visit(
+        [&error](auto &data) {
+            using DataType = std::decay_t<decltype(data)>;
+            if constexpr (std::is_same_v<DataType, BufferTransferData>)
+            {
+                // Legacy buffer requests publish nothing: their consumer watches the completion flag and the record's
+                // resource. Manager-owned buffers receive the failure reason through their slot.
+                if (auto *bufferSlot = std::get_if<BufferTransferPromise>(&data.destination))
+                {
+                    bufferSlot->set_value(std::unexpected(error));
+                }
+            }
+            else
+            {
+                data.slot.set_value(std::unexpected(error));
+
+                auto &texture = *data.request;
+                if (texture.stagingBufferSlot.has_value())
+                {
+                    texture.stagingBufferSlot->set_value(std::unexpected(error));
+                    texture.stagingBufferSlot.reset();
+                }
+
+                texture.onTransferFailed(error.what());
+            }
+        },
+        request.data);
 }
 
 void TransferManagerThread::CheckForCleanups(vk::Device device,

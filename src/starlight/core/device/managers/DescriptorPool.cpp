@@ -10,7 +10,8 @@
 
 namespace star::core::device::manager
 {
-DescriptorPool::DescriptorPool() : Manager<DescriptorPoolRecord, DescriptorPoolRequest, 1>(GetDescriptorPoolTypeName)
+DescriptorPool::DescriptorPool()
+    : Manager<DescriptorPoolRecord, DescriptorPoolRequest, 5, DescriptorPoolResourceTypeName>()
 {
 }
 
@@ -25,7 +26,7 @@ void DescriptorPool::init(const uint8_t &numFramesInFlight, device::StarDevice *
 
 void DescriptorPool::init(device::StarDevice *device)
 {
-    Manager<DescriptorPoolRecord, DescriptorPoolRequest, 1>::init(device);
+    Manager<DescriptorPoolRecord, DescriptorPoolRequest, 5, DescriptorPoolResourceTypeName>::init(device);
 
     // Claim id 0 now: the engine pool is only created when the load phase completes
     if (!m_defaultPoolSlot.isInitialized())
@@ -65,7 +66,8 @@ void DescriptorPool::eventCallback(const star::common::IEvent &e, bool &keepAliv
             }
         }
 
-        this->m_records.commit(m_defaultPoolSlot, createRecord(DescriptorPoolRequest{std::move(processedTypes)}));
+        this->m_records.commit(m_defaultPoolSlot, ResourceSlot<DescriptorPoolRecord, DescriptorPoolResourceTypeName>{
+                                                      createRecord(DescriptorPoolRequest{std::move(processedTypes)})});
 
         this->m_eventBus->emit(event::DescriptorPoolReady{});
         keepAlive = false;

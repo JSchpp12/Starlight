@@ -2,6 +2,7 @@
 
 #include "StarTextures/Texture.hpp"
 #include "TransferRequest_Memory.hpp"
+#include "core/exceptions/ResourceCreationError.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -19,6 +20,8 @@ class Texture : private Memory<star::StarTextures::Texture>
   public:
     Texture() = default;
     virtual ~Texture() = default;
+
+    using Memory<star::StarTextures::Texture>::onTransferFailed;
 
     virtual void prep() override {};
 
@@ -48,9 +51,8 @@ class Texture : private Memory<star::StarTextures::Texture>
     bool takesStagingOwnership = false;
 
     /// @brief Slot the TransferService registered with the buffer manager, filled by the worker after submission.
-    /// @details Holds the staging buffer, or the failure reason, until the setup that owns the returned handle
-    /// releases it.
-    std::optional<std::promise<std::expected<StarBuffers::Buffer, std::string>>> stagingBufferSlot{};
+    /// @details Holds the staging buffer, or the exception that explains why it could not be produced.
+    std::optional<std::promise<std::expected<StarBuffers::Buffer, core::ResourceCreationError>>> stagingBufferSlot{};
 
     /// @brief Publish the staging buffer into the manager slot after submission.
     /// @details Only called when takesStagingOwnership is true. The worker passes its buffer by reference and moves it
@@ -60,18 +62,9 @@ class Texture : private Memory<star::StarTextures::Texture>
     {
         assert(stagingBufferSlot.has_value() &&
                "A request taking staging ownership must have a buffer-manager slot registered by the TransferService");
-        stagingBufferSlot->set_value(std::expected<StarBuffers::Buffer, std::string>{std::move(stagingBuffer)});
+        stagingBufferSlot->set_value(
+            std::expected<StarBuffers::Buffer, core::ResourceCreationError>{std::move(stagingBuffer)});
         stagingBufferSlot.reset();
-    }
-
-    /// @brief Publish a terminal failure into the staging slot so the buffer manager hands out a blank buffer.
-    virtual void publishFailure(const std::string &message) override
-    {
-        if (stagingBufferSlot.has_value())
-        {
-            stagingBufferSlot->set_value(std::unexpected(message));
-            stagingBufferSlot.reset();
-        }
     }
 };
 } // namespace star::TransferRequest

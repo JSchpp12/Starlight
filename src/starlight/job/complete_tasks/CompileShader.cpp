@@ -86,7 +86,12 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
 
     for (size_t i = 0; i < gm->pipelineManager->getRecords().getData().size(); i++)
     {
-        auto &record = gm->pipelineManager->getRecords().getData()[i];
+        // Pipeline records are created synchronously; a null slot only exists for an unpublished future.
+        auto *recordPtr = gm->pipelineManager->getRecords().getData()[i].get();
+        if (recordPtr == nullptr)
+            continue;
+
+        auto &record = *recordPtr;
         if (!record.isReady() && !record.buildQueued && record.numCompiled != 0 &&
             record.numCompiled == record.request.provider.getShaders().size())
         {

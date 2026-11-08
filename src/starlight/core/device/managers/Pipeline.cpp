@@ -11,12 +11,13 @@ namespace star::core::device::manager
 
 void Pipeline::init(device::StarDevice *device, common::EventBus &eventBus, job::TaskManager &taskSystem)
 {
-    TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>::init(device, eventBus, taskSystem);
+    TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50, PipelineResourceTypeName>::init(device, eventBus,
+                                                                                                    taskSystem);
 }
 
 void Pipeline::cleanupRender()
 {
-    this->TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50>::cleanupRender();
+    this->TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50, PipelineResourceTypeName>::cleanupRender();
 
     std::vector<const Handle *> unsubscribers;
     for (const auto &subscriberInfo : m_subscriberShaderBuildInfo)

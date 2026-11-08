@@ -21,12 +21,21 @@ struct FenceRecord
     }
 };
 
-constexpr std::string_view GetFenceEventName = "star::core::device::manager::fence";
+constexpr std::string_view GetFenceEventName = "stFenE";
 
-class Fence : public ManagerEventBusTies<FenceRecord, FenceRequest, 50>
+/// @brief Compile-time name of the fence resource type, used for handle registration and failure logging.
+struct FenceResourceTypeName
+{
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return common::special_types::FenceTypeName;
+    }
+};
+
+class Fence : public ManagerEventBusTies<FenceRecord, FenceRequest, 50, FenceResourceTypeName>
 {
   public:
-    Fence() : ManagerEventBusTies<FenceRecord, FenceRequest, 50>(common::special_types::FenceTypeName, GetFenceEventName)
+    Fence() : ManagerEventBusTies<FenceRecord, FenceRequest, 50, FenceResourceTypeName>(GetFenceEventName)
     {
     }
     virtual ~Fence() = default;

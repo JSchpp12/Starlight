@@ -34,6 +34,7 @@ class BumpMaterial : public TextureMaterial
   protected:
     std::string m_bumpMapFilePath = "";
     Handle m_bumpMap = Handle();
+    star::StarSemaphore m_bumpMapTransfer{};
 
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context,
                                                             uint8_t numFramesInFlight,

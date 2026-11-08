@@ -8,13 +8,15 @@ template <typename T>
 concept RecordStructWithHasReady = requires(const T record) {
     { record.isReady() } -> std::same_as<bool>;
 };
-template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
+template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount,
+          ResourceTypeNameProvider TResourceTypeName>
     requires RecordStructWithHasReady<TRecord>
-class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>
+class TaskCreatedResourceManager
+    : public ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>
 {
   public:
-    TaskCreatedResourceManager(std::string_view handleTypeName, std::string_view eventTypeName)
-        : ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>(handleTypeName, eventTypeName){};
+    explicit TaskCreatedResourceManager(std::string_view eventTypeName)
+        : ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>(eventTypeName) {};
     virtual ~TaskCreatedResourceManager() = default;
     TaskCreatedResourceManager(const TaskCreatedResourceManager &) noexcept = delete;
     TaskCreatedResourceManager &operator=(const TaskCreatedResourceManager &) noexcept = delete;
@@ -26,7 +28,8 @@ class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResource
         assert(this->m_device != nullptr && this->m_deviceTaskSystem != nullptr && this->m_eventBus != nullptr &&
                "Device or Task System not initialized");
 
-        auto handle = this->ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::submit(std::move(request));
+        auto handle = this->ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>::submit(
+            std::move(request));
 
         TRecord *record = this->get(handle);
         submitTask(*this->m_device, handle, *this->m_deviceTaskSystem, *this->m_eventBus, record);
@@ -41,8 +44,8 @@ class TaskCreatedResourceManager : public ManagerEventBusTies<TRecord, TResource
     }
 
   protected:
-    using Manager<TRecord, TResourceRequest, TMaxRecordCount>::submit;
-    using ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount>::init; 
+    using Manager<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>::submit;
+    using ManagerEventBusTies<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>::init;
 
     job::TaskManager *m_deviceTaskSystem = nullptr;
 

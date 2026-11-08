@@ -78,14 +78,6 @@ class ManagerRenderResource
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
                              const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
 
-    /// @param outStagingBuffer When non-null, receives the buffer-manager slot for the request's staging buffer if the
-    /// request takes staging ownership. The caller releases it through the buffer manager once the work using it has
-    /// completed.
-    static Handle addRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Texture> newRequest,
-                             vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
-                             const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr,
-                             std::optional<star::Handle> *outStagingBuffer = nullptr);
-
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
     /// @param waitInfo GPU synchronization info which transfer worker will wait on before submitting its commands to
@@ -104,17 +96,11 @@ class ManagerRenderResource
 
     static StarBuffers::Buffer &getBuffer(const Handle &deviceID, const Handle &handle);
 
-    static StarTextures::Texture &getTexture(const Handle &deviceID, const Handle &handle);
-
     static void cleanup(const Handle &deviceID, core::device::StarDevice &device);
 
     template <typename T> static FinalizedResourceRequest<T> *get(const Handle &deviceID, const Handle &handle)
     {
-        if constexpr (std::is_same_v<T, StarTextures::Texture>)
-        {
-            return &textureStorage.at(deviceID)->get(handle);
-        }
-        else if constexpr (std::is_same_v<T, StarBuffers::Buffer>)
+        if constexpr (std::is_same_v<T, StarBuffers::Buffer>)
         {
             return &bufferStorage.at(deviceID)->get(handle);
         }
@@ -128,10 +114,6 @@ class ManagerRenderResource
 
   protected:
     static std::unordered_map<Handle, core::device::StarDevice *, star::HandleHash> devices;
-    static std::unordered_map<
-        Handle, std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>>>,
-        star::HandleHash>
-        textureStorage;
     static std::unordered_map<
         Handle, std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>>>,
         star::HandleHash>

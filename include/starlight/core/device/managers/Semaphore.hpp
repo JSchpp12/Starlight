@@ -51,13 +51,23 @@ struct SemaphoreRecord
     }
 };
 
-constexpr std::string_view GetSemaphoreEventTypeName = "semaphore_event_callback";
-class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 2000>
+constexpr std::string_view GetSemaphoreEventTypeName = "stSemE";
+
+/// @brief Compile-time name of the semaphore resource type, used for handle registration and failure logging.
+struct SemaphoreResourceTypeName
+{
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return common::special_types::SemaphoreTypeName;
+    }
+};
+
+class Semaphore : public ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 2000, SemaphoreResourceTypeName>
 {
   public:
     Semaphore()
-        : ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 2000>(common::special_types::SemaphoreTypeName,
-                                                                       GetSemaphoreEventTypeName)
+        : ManagerEventBusTies<SemaphoreRecord, SemaphoreRequest, 2000, SemaphoreResourceTypeName>(
+              GetSemaphoreEventTypeName)
     {
     }
     virtual ~Semaphore() = default;
