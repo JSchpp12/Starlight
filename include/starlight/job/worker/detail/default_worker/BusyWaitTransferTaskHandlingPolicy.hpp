@@ -13,6 +13,7 @@
 
 #include <queue>
 #include <sstream>
+#include <variant>
 
 namespace star::job::worker::default_worker
 {
@@ -209,29 +210,28 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
 
         try
         {
-            if (request.bufferTransferRequest)
+            if (auto *bufferData = std::get_if<job::TransferManagerThread::BufferTransferData>(&request.data))
             {
-                assert(request.resultingBuffer.has_value() && request.resultingBuffer.value() != nullptr &&
-                       "Buffer request must contain both a request and a resulting address");
+                assert(bufferData->request && "Buffer request must contain a request");
 
-                request.bufferTransferRequest->prep();
+                bufferData->request->prep();
 
                 job::TransferManagerThread::CreateBuffer(
                     device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
-                    *workingInfo, request.bufferTransferRequest.get(), request.resultingBuffer.value(),
-                    request.gpuDoneNotificationToMain, request.workSyncInfo);
+                    *workingInfo, *bufferData, request.gpuDoneNotificationToMain, request.workSyncInfo);
             }
-            else if (request.textureTransferRequest)
+            else if (auto *textureData = std::get_if<job::TransferManagerThread::TextureTransferData>(&request.data))
             {
                 // Textures are published through the request's image-manager slot; there is no record pointer.
-                request.textureTransferRequest->prep();
+                assert(textureData->request && "Texture request must contain a request");
 
-                core::logging::debug("Creating texture: ", request.textureTransferRequest->getDebugDescription());
+                textureData->request->prep();
 
-                job::TransferManagerThread::CreateTexture(device, m_queue, m_device.getPhysicalDevice().getProperties(),
-                                                          m_allTransferQueueFamilyIndicesInUse, *workingInfo,
-                                                          request.textureTransferRequest.get(), request.textureSlot,
-                                                          request.gpuDoneNotificationToMain, request.workSyncInfo);
+                core::logging::debug("Creating texture: ", textureData->request->getDebugDescription());
+
+                job::TransferManagerThread::CreateTexture(
+                    device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
+                    *workingInfo, *textureData, request.gpuDoneNotificationToMain, request.workSyncInfo);
             }
         }
         catch (const std::exception &e)

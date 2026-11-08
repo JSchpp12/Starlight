@@ -7,6 +7,7 @@
 
 #include <future>
 #include <set>
+#include <variant>
 
 namespace star::service
 {
@@ -14,7 +15,7 @@ TransferService::TransferService(absl::flat_hash_map<star::Queue_Type, Handle> e
                                  size_t targetNumQueuesToUse)
     : m_engineReservedQueues(std::move(engineReservedQueues)), m_selectedQueues(),
       m_targetNumQueuesToUse(targetNumQueuesToUse), m_config(), m_listenerTransferTask(*this),
-      m_listenerTextureTransfer(*this)
+      m_listenerTextureTransfer(*this), m_listenerBufferTransfer(*this)
 {
 }
 
@@ -22,7 +23,7 @@ TransferService::TransferService(absl::flat_hash_map<star::Queue_Type, Handle> e
                                  TransferServiceConfig config, size_t targetNumQueuesToUse)
     : m_engineReservedQueues(std::move(engineReservedQueues)), m_selectedQueues(),
       m_targetNumQueuesToUse(config.standardPriorityWorkerCount + 1), m_config(std::move(config)),
-      m_listenerTransferTask(*this), m_listenerTextureTransfer(*this)
+      m_listenerTransferTask(*this), m_listenerTextureTransfer(*this), m_listenerBufferTransfer(*this)
 {
     (void)targetNumQueuesToUse;
 }
@@ -35,8 +36,9 @@ TransferService::TransferService(TransferService &&other) noexcept
       m_engineReservedQueues(std::move(other.m_engineReservedQueues)),
       m_selectedQueues(std::move(other.m_selectedQueues)), m_targetNumQueuesToUse(other.m_targetNumQueuesToUse),
       m_config(other.m_config), m_listenerTransferTask(*this), m_listenerTextureTransfer(*this),
-      m_device(other.m_device), m_graphicsManagers(other.m_graphicsManagers), m_eventBus(other.m_eventBus),
-      m_cmdBus(std::move(other.m_cmdBus)), m_taskManager(other.m_taskManager), m_workerPool(other.m_workerPool)
+      m_listenerBufferTransfer(*this), m_device(other.m_device), m_graphicsManagers(other.m_graphicsManagers),
+      m_eventBus(other.m_eventBus), m_cmdBus(std::move(other.m_cmdBus)), m_taskManager(other.m_taskManager),
+      m_workerPool(other.m_workerPool)
 {
     if (m_cmdBus != nullptr)
     {
@@ -118,13 +120,13 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
     // thread, before the task reaches a worker. The worker fills the promise once the buffer exists; the returned
     // handle travels to the caller, which releases it after the recorded work on it has completed.
     std::optional<Handle> stagingBuffer{};
-    if (payload->request->textureTransferRequest != nullptr &&
-        payload->request->textureTransferRequest->takesStagingOwnership)
+    if (auto *textureData = std::get_if<job::TransferManagerThread::TextureTransferData>(&payload->request->data);
+        textureData != nullptr && textureData->request->takesStagingOwnership)
     {
         auto stagingPromise = std::promise<core::device::manager::PendingResult<star::StarBuffers::Buffer>>{};
         stagingBuffer =
             m_graphicsManagers->bufferManager.submit(core::device::manager::BufferRequest{stagingPromise.get_future()});
-        payload->request->textureTransferRequest->stagingBufferSlot = std::move(stagingPromise);
+        textureData->request->stagingBufferSlot = std::move(stagingPromise);
     }
 
     auto applySync = [&](uint16_t id) -> star::core::graphics::SemaphoreInfo {
@@ -225,6 +227,28 @@ void TransferService::onSubmitTexture(star::command::transfer::SubmitTextureTran
     cmd.getReply().set({.image = image, .semaphore = result.semaphore, .stagingBuffer = result.stagingBuffer});
 }
 
+void TransferService::onSubmitBuffer(star::command::transfer::SubmitBufferTransfer &cmd)
+{
+    using namespace job::tasks::transfer;
+
+    assert(m_graphicsManagers && m_taskManager && "TransferService not initialized");
+
+    // The Buffer manager owns the buffer from here on: its record holds a future the transfer worker fills with the
+    // created buffer (or the exception that explains why it failed). No ManagerRenderResource record is allocated for
+    // it.
+    std::promise<core::device::manager::PendingResult<star::StarBuffers::Buffer>> bufferPromise{};
+    const Handle buffer =
+        m_graphicsManagers->bufferManager.submit(core::device::manager::BufferRequest{bufferPromise.get_future()});
+
+    auto interThreadRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
+        nullptr, std::move(cmd.request), std::move(bufferPromise));
+    const auto result = submitTransferTask(
+        CreateTransferTask(TransferPayload{TransferPriority::Standard, std::move(interThreadRequest)}),
+        TransferPriority::Standard);
+
+    cmd.getReply().set({.buffer = buffer, .semaphore = result.semaphore});
+}
+
 void TransferService::dispatchCreateWorkersFromConfig()
 {
     const auto hi = m_config.highPrioritySize;
@@ -291,12 +315,14 @@ void TransferService::cleanupListeners(star::core::CommandBus &cmdBus)
 {
     m_listenerTransferTask.cleanup(cmdBus);
     m_listenerTextureTransfer.cleanup(cmdBus);
+    m_listenerBufferTransfer.cleanup(cmdBus);
 }
 
 void TransferService::initListeners(star::core::CommandBus &cmdBus)
 {
     m_listenerTransferTask.init(cmdBus);
     m_listenerTextureTransfer.init(cmdBus);
+    m_listenerBufferTransfer.init(cmdBus);
 }
 
 Handle TransferService::transferWorkerHandle(uint16_t workerIndex) const noexcept

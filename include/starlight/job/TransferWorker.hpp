@@ -16,8 +16,8 @@
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
-#include <optional>
 #include <queue>
+#include <variant>
 #include <vector>
 
 namespace star::job
@@ -26,16 +26,30 @@ namespace star::job
 class TransferManagerThread
 {
   public:
+    using BufferTransferPromise = std::promise<std::expected<StarBuffers::Buffer, core::ResourceCreationError>>;
     using TextureTransferPromise = std::promise<std::expected<StarTextures::Texture, core::ResourceCreationError>>;
+
+    struct BufferTransferData
+    {
+        std::unique_ptr<TransferRequest::Buffer> request;
+        /// Caller-owned destination (legacy ManagerRenderResource path) or a buffer-manager slot.
+        std::variant<std::unique_ptr<StarBuffers::Buffer> *, BufferTransferPromise> destination;
+    };
+
+    struct TextureTransferData
+    {
+        std::unique_ptr<TransferRequest::Texture> request;
+        TextureTransferPromise slot;
+    };
+
+    /// @brief One of the two transfer paths a request can describe.
+    using TransferData = std::variant<BufferTransferData, TextureTransferData>;
 
     struct InterThreadRequest
     {
         core::graphics::GPUWorkSyncInfo workSyncInfo;
         boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
-        std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest = nullptr;
-        std::unique_ptr<TransferRequest::Texture> textureTransferRequest = nullptr;
-        std::optional<TextureTransferPromise> textureSlot = std::nullopt;
-        std::optional<std::unique_ptr<StarBuffers::Buffer> *> resultingBuffer = std::nullopt;
+        TransferData data;
 
         InterThreadRequest() = default;
 
@@ -43,7 +57,7 @@ class TransferManagerThread
                            std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
                            std::unique_ptr<StarBuffers::Buffer> &resultingBuffer)
             : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBuffer)
+              data(BufferTransferData{std::move(bufferTransferRequest), &resultingBuffer})
         {
         }
 
@@ -52,7 +66,18 @@ class TransferManagerThread
                            std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
                            core::graphics::GPUWorkSyncInfo workSyncInfo)
             : workSyncInfo(std::move(workSyncInfo)), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              bufferTransferRequest(std::move(bufferTransferRequest)), resultingBuffer(&resultingBuffer)
+              data(BufferTransferData{std::move(bufferTransferRequest), &resultingBuffer})
+        {
+        }
+
+        /// @brief Manager-owned buffer: the worker publishes through the buffer-manager slot.
+        /// @details No ManagerRenderResource record and no completion flag exist; the Pending future is the readiness
+        /// signal, so gpuDoneNotificationToMain may be null.
+        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
+                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
+                           BufferTransferPromise bufferSlot)
+            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
+              data(BufferTransferData{std::move(bufferTransferRequest), std::move(bufferSlot)})
         {
         }
 
@@ -61,19 +86,17 @@ class TransferManagerThread
         /// signal, so gpuDoneNotificationToMain may be null.
         InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
                            std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
-                           std::optional<TextureTransferPromise> textureSlot)
+                           TextureTransferPromise textureSlot)
             : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              textureTransferRequest(std::move(textureTransferRequest)), textureSlot(std::move(textureSlot))
+              data(TextureTransferData{std::move(textureTransferRequest), std::move(textureSlot)})
         {
         }
 
         void reset()
         {
             gpuDoneNotificationToMain = nullptr;
-            bufferTransferRequest = nullptr;
-            textureTransferRequest = nullptr;
-            textureSlot = std::nullopt;
-            resultingBuffer = std::nullopt;
+            workSyncInfo = core::graphics::GPUWorkSyncInfo{};
+            data = BufferTransferData{};
         }
     };
 
@@ -112,18 +135,18 @@ class TransferManagerThread
         std::unique_ptr<StarBuffers::Buffer> inProcessTransferSrcBuffer = nullptr;
     };
 
+    /// @brief Create the buffer described by a buffer transfer request and publish it to its destination.
     static void CreateBuffer(core::device::StarDevice &device, StarQueue &queue,
                              const vk::PhysicalDeviceProperties &deviceProperties,
                              const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                             ProcessRequestInfo &processInfo, TransferRequest::Buffer *newBufferRequest,
-                             std::unique_ptr<StarBuffers::Buffer> *resultingBuffer,
+                             ProcessRequestInfo &processInfo, BufferTransferData &requestData,
                              boost::atomic<bool> *gpuDoneSignalMain, core::graphics::GPUWorkSyncInfo &syncInfo);
 
+    /// @brief Create the texture described by a texture transfer request and publish it into its slot.
     static void CreateTexture(core::device::StarDevice &device, StarQueue &queue,
                               const vk::PhysicalDeviceProperties &deviceProperties,
                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
-                              ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
-                              std::optional<TextureTransferPromise> &textureSlot,
+                              ProcessRequestInfo &processInfo, TextureTransferData &requestData,
                               boost::atomic<bool> *gpuDoneSignalToMain, core::graphics::GPUWorkSyncInfo &syncInfo);
 
     static void CheckForCleanups(vk::Device device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
