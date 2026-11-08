@@ -52,8 +52,7 @@ class StarRenderGroup
     /// @param recordingInfo Recording submission of the phase's command buffer, or null when no object in the phase
     /// has a pending setup and no completion gate is needed.
     void recordPreRenderPassCommands(vk::CommandBuffer mainDrawBuffer, const common::FrameTracker &frameTracker,
-                                     uint64_t frameIndex,
-                                     const core::graphics::RecordingSubmissionInfo *recordingInfo);
+                                     uint64_t frameIndex, const core::graphics::RecordingSubmissionInfo *recordingInfo);
 
     void recordPostRenderPassCommands(vk::CommandBuffer commandBuffer, int frameInFlightIndex);
 
@@ -78,7 +77,7 @@ class StarRenderGroup
 
     void prepareObjects(star::core::device::DeviceContext &context);
 
-    virtual vk::PipelineLayout createPipelineLayout(
-        core::device::DeviceContext &context, std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout);
+    vk::PipelineLayout createPipelineLayout(core::device::DeviceContext &context,
+                                            std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout);
 };
 } // namespace star
