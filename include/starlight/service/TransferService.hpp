@@ -2,6 +2,7 @@
 
 #include "InitParameters.hpp"
 #include "TransferServiceConfig.hpp"
+#include "starlight/command/transfer/SubmitTextureTransfer.hpp"
 #include "starlight/command/transfer/SubmitTransferTask.hpp"
 #include "starlight/core/WorkerPool.hpp"
 #include "starlight/core/device/StarDevice.hpp"
@@ -28,6 +29,12 @@ using ListenForSubmitTransferTask =
     star::policy::command::ListenFor<T, star::command::transfer::SubmitTransferTask,
                                      star::command::transfer::submit_transfer::GetUniqueTypeName, &T::onSubmitTransfer>;
 
+template <typename T>
+using ListenForSubmitTextureTransfer =
+    star::policy::command::ListenFor<T, star::command::transfer::SubmitTextureTransfer,
+                                     star::command::transfer::submit_texture_transfer::GetUniqueTypeName,
+                                     &T::onSubmitTexture>;
+
 class TransferService
 {
   public:
@@ -51,6 +58,8 @@ class TransferService
 
     void onSubmitTransfer(star::command::transfer::SubmitTransferTask &cmd);
 
+    void onSubmitTexture(star::command::transfer::SubmitTextureTransfer &cmd);
+
   private:
     std::vector<StarSemaphore> m_workerSemaphores;
     std::vector<uint32_t> m_workerQueueFamilyIndices;
@@ -61,6 +70,7 @@ class TransferService
     size_t m_targetNumQueuesToUse{1};
     TransferServiceConfig m_config{};
     ListenForSubmitTransferTask<TransferService> m_listenerTransferTask;
+    ListenForSubmitTextureTransfer<TransferService> m_listenerTextureTransfer;
     core::device::StarDevice *m_device{nullptr};
     core::device::manager::GraphicsContainer *m_graphicsManagers{nullptr};
     common::EventBus *m_eventBus{nullptr};
@@ -183,6 +193,10 @@ class TransferService
     }
 
     void dispatchCreateWorkersFromConfig();
+
+    /// @brief Route a transfer task to a worker and return the submission's sync/staging information.
+    star::command::transfer::SubmitTransferResult submitTransferTask(job::tasks::transfer::TransferTask task,
+                                                                     job::tasks::transfer::TransferPriority priority);
 
     void cleanupListeners(star::core::CommandBus &cmdBus);
 

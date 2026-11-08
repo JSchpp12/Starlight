@@ -9,12 +9,13 @@
 
 namespace star::core::device::manager
 {
-template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount>
-class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecordCount>
+template <typename TRecord, typename TResourceRequest, size_t TMaxRecordCount,
+          ResourceTypeNameProvider TResourceTypeName>
+class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>
 {
   public:
-    ManagerEventBusTies(std::string_view handleTypeName, const std::string_view eventTypeName)
-        : Manager<TRecord, TResourceRequest, TMaxRecordCount>(handleTypeName),
+    explicit ManagerEventBusTies(const std::string_view eventTypeName)
+        : Manager<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>(),
           m_registeredHandleEventType(common::HandleTypeRegistry::instance().registerType(eventTypeName))
     {
     }
@@ -23,7 +24,7 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
     ManagerEventBusTies &operator=(const ManagerEventBusTies &) = delete;
 
     ManagerEventBusTies(ManagerEventBusTies &&other) noexcept
-        : Manager<TRecord, TResourceRequest, TMaxRecordCount>(std::move(other)), m_subscriberInfo(),
+        : Manager<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>(std::move(other)), m_subscriberInfo(),
           m_eventBus(other.m_eventBus)
     {
         // Unsubscribe source BEFORE moving handle
@@ -50,7 +51,7 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
                 other.unsubscribe(*other.m_eventBus);
             }
 
-            Manager<TRecord, TResourceRequest, TMaxRecordCount>::operator=(std::move(other));
+            Manager<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>::operator=(std::move(other));
             m_eventBus = other.m_eventBus;
             m_registeredHandleEventType = std::move(other.m_registeredHandleEventType);
             m_subscriberInfo = std::move(other.m_subscriberInfo);
@@ -86,12 +87,12 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
         assert(m_eventBus);
 
         unsubscribe(*m_eventBus);
-        this->Manager<TRecord, TResourceRequest, TMaxRecordCount>::cleanupRender();
+        this->Manager<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>::cleanupRender();
     }
 
   protected:
-    using Manager<TRecord, TResourceRequest, TMaxRecordCount>::init;
-    
+    using Manager<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>::init;
+
     Handle m_subscriberInfo;
     common::EventBus *m_eventBus = nullptr;
 

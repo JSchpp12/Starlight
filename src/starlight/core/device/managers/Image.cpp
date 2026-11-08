@@ -4,19 +4,14 @@
 
 namespace star::core::device::manager
 {
-Image::Image()
-    : ManagerEventBusTies<ImageRecord, ImageRequest, 30>(common::special_types::GetImageTypeName, GetImageEventTypeName)
+Image::Image() : Base(GetImageEventTypeName)
 {
 }
 
 ImageRecord Image::createRecord(ImageRequest &&request) const
 {
-    if (request.createPolicy.has_value())
-    {
-        return {request.createPolicy.value().create()};
-    }
-
-    assert(request.createdTexture.has_value());
-    return {request.createdTexture.value()};
+    auto *texture = std::get_if<star::StarTextures::Texture>(&request.payload);
+    assert(texture != nullptr && "A pending image request must be handled by the base createSlot");
+    return ImageRecord{std::move(*texture)};
 }
 } // namespace star::core::device::manager

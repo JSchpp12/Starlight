@@ -21,10 +21,10 @@ template <typename T> class Memory
 
     virtual void prep() {};
 
-    /// @brief Publish a terminal failure to any consumer-side promise this request owns.
-    /// @details Called by the transfer worker on its outermost failure boundary so consumers receive a blank resource
-    /// plus a reason instead of a broken promise.
-    virtual void publishFailure(const std::string &message)
+    /// @brief Hook for failing request-owned promises that are not manager slots.
+    /// @details The transfer worker publishes manager slots itself (TransferManagerThread::PublishFailure); this hook
+    /// exists only for extra promises a concrete request type owns.
+    virtual void onTransferFailed(const std::string &message)
     {
         (void)message;
     }

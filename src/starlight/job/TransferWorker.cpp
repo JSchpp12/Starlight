@@ -83,7 +83,7 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
                                           const vk::PhysicalDeviceProperties &deviceProperties,
                                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                           ProcessRequestInfo &processInfo, TransferRequest::Texture *newTextureRequest,
-                                          std::unique_ptr<StarTextures::Texture> *resultingTexture,
+                                          std::optional<TextureTransferPromise> &textureSlot,
                                           boost::atomic<bool> *gpuDoneSignalToMain,
                                           core::graphics::GPUWorkSyncInfo &syncInfo)
 {
@@ -92,7 +92,6 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
     bool newImageCreated = true;
 
     auto finalTexture = newTextureRequest->createFinal(device, allTransferQueueFamilyIndicesInUse);
-    resultingTexture->swap(finalTexture);
 
     newTextureRequest->writeDataToStageBuffer(*transferSrcBuffer);
 
@@ -101,7 +100,7 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
         STAR_THROW("Unsupported image operation in transfer manager");
     }
 
-    newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *resultingTexture->get(),
+    newTextureRequest->copyFromTransferSRCToDST(*transferSrcBuffer, *finalTexture,
                                                 processInfo.commandBuffer->buffer(0));
 
     processInfo.commandBuffer->buffer(0).end();
@@ -143,10 +142,41 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
 
     processInfo.commandBuffer->markSubmitted();
 
+    // The Image manager owns the texture from here on: publish it into the pending record the caller registered.
+    if (textureSlot.has_value())
+    {
+        textureSlot->set_value(
+            std::expected<StarTextures::Texture, core::ResourceCreationError>{std::move(*finalTexture)});
+        textureSlot.reset();
+    }
+
     if (newTextureRequest->takesStagingOwnership)
         newTextureRequest->adoptStagingBuffer(*transferSrcBuffer);
     else
         processInfo.setInProcessDeps(std::move(transferSrcBuffer));
+}
+
+void TransferManagerThread::PublishFailure(InterThreadRequest &request, const core::ResourceCreationError &error)
+{
+    if (request.textureSlot.has_value())
+    {
+        request.textureSlot->set_value(std::unexpected(error));
+        request.textureSlot.reset();
+    }
+
+    // Buffer requests publish nothing here: their consumer watches the completion flag and the record's resource.
+    if (!request.textureTransferRequest)
+        return;
+
+    auto &texture = *request.textureTransferRequest;
+
+    if (texture.stagingBufferSlot.has_value())
+    {
+        texture.stagingBufferSlot->set_value(std::unexpected(error));
+        texture.stagingBufferSlot.reset();
+    }
+
+    texture.onTransferFailed(error.what());
 }
 
 void TransferManagerThread::CheckForCleanups(vk::Device device,

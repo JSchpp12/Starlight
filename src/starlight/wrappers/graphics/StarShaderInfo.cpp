@@ -15,17 +15,6 @@ static bool IsDeviceBufferManagerHandle(const star::Handle &handle)
                                    star::core::device::manager::GetBufferHandleTypeName);
 }
 
-/// @brief Whether this handle refers to a slot in the device's Image manager (FrameData::TextureHandle)
-/// rather than a transfer-uploaded texture tracked by ManagerRenderResource.
-/// @details Same split as the buffer manager: image records live in manager-owned storage that may move, so the
-/// image manager resolves its own handles at use time.
-static bool IsDeviceImageManagerHandle(const star::Handle &handle)
-{
-    return handle.isInitialized() &&
-           handle.getType() == star::common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                   star::common::special_types::GetImageTypeName);
-}
-
 vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet(const Handle &deviceID)
 {
     while (!m_pendingBuildIndices.empty())
@@ -117,18 +106,21 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceI
         }
         else if (texInfo.handle.isInitialized())
         {
-            if (IsDeviceImageManagerHandle(texInfo.handle))
+            assert(this->m_imageManager != nullptr &&
+                   "Image-manager handle requires the image manager to be provided by the builder");
+
+            // Same pattern as the buffer path: a texture published asynchronously by a transfer worker is awaited
+            // here, so the binding is written with a concrete image the first time the set is built.
+            if (!this->m_imageManager->isReady(texInfo.handle))
+                this->m_imageManager->waitForReady(texInfo.handle);
+
+            const auto *record = this->m_imageManager->get(texInfo.handle);
+            if (record == nullptr || record->getTexture() == nullptr)
             {
-                assert(this->m_imageManager != nullptr &&
-                       "Image-manager handle requires the image manager to be provided by the builder");
-                const auto *record = this->m_imageManager->get(texInfo.handle);
-                assert(record != nullptr && "Image must be resolved before the descriptor set is written");
-                texture = &record->texture;
+                core::logging::warning("Image manager slot is not resolved; skipping descriptor write");
+                return;
             }
-            else
-            {
-                texture = &star::ManagerRenderResource::getTexture(deviceID, texInfo.handle);
-            }
+            texture = record->getTexture();
         }
         else
         {
@@ -196,7 +188,7 @@ bool star::StarShaderInfo::isReady(uint8_t frameInFlight)
                         // A failed producer leaves a blank buffer, but readiness must stay true: reporting false here
                         // would spin the engine's scene-ready wait loop forever. Consumers check the resource.
                         if (set->getBufferManager() == nullptr ||
-                            !set->getBufferManager()->get(info.handle.value())->isReady())
+                            !set->getBufferManager()->isReady(info.handle.value()))
                             return false;
                     }
                     else if (!ManagerRenderResource::isReady(m_deviceID, info.handle.value()))
@@ -207,10 +199,9 @@ bool star::StarShaderInfo::isReady(uint8_t frameInFlight)
             else if (shaderInfo.textureInfo.has_value())
             {
                 const auto &info = shaderInfo.textureInfo.value();
-                // Image-manager records are ready by construction; only transfer-uploaded textures can still be
-                // pending.
-                if (info.handle.isInitialized() && !IsDeviceImageManagerHandle(info.handle) &&
-                    !ManagerRenderResource::isReady(m_deviceID, info.handle))
+                // Image-manager records may hold a future the transfer worker has not published yet.
+                if (info.handle.isInitialized() &&
+                    (set->getImageManager() == nullptr || !set->getImageManager()->isReady(info.handle)))
                 {
                     return false;
                 }
@@ -307,35 +298,6 @@ void star::StarShaderInfo::getDescriptors(uint8_t frameInFlight, vk::DescriptorS
                     else if (info.currentBuffer != buffer)
                     {
                         info.currentBuffer = buffer;
-                        set->buildIndex(m_deviceID, i);
-                    }
-                }
-                else if (set->shaderInfos[i].textureInfo.has_value() &&
-                         set->shaderInfos[i].textureInfo.value().handle.isInitialized())
-                {
-                    auto &info = set->shaderInfos[i].textureInfo.value();
-
-                    vk::Image image{};
-                    if (IsDeviceImageManagerHandle(info.handle))
-                    {
-                        assert(set->getImageManager() != nullptr &&
-                               "Image-manager handle requires the image manager to be provided by the builder");
-                        const auto *record = set->getImageManager()->get(info.handle);
-                        assert(record != nullptr && "Image must be resolved before the descriptor set is written");
-                        image = record->texture.getVulkanImage();
-                    }
-                    else
-                    {
-                        image = ManagerRenderResource::getTexture(m_deviceID, info.handle).getVulkanImage();
-                    }
-
-                    if (!info.currentImage.has_value())
-                    {
-                        info.currentImage = image;
-                    }
-                    else if (info.currentImage.value() != image)
-                    {
-                        info.currentImage = image;
                         set->buildIndex(m_deviceID, i);
                     }
                 }

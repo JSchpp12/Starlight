@@ -27,7 +27,7 @@ class ManagerBase
     }
     ManagerBase(const ManagerBase &) = delete;
     ManagerBase &operator=(const ManagerBase &) = delete;
-    ManagerBase(ManagerBase &&other) noexcept : m_device(other.m_device)
+    ManagerBase(ManagerBase &&other) noexcept : m_device(other.m_device), m_handleType(other.m_handleType)
     {
     }
     ManagerBase &operator=(ManagerBase &&other) noexcept
@@ -35,6 +35,7 @@ class ManagerBase
         if (this != &other)
         {
             m_device = other.m_device;
+            m_handleType = other.m_handleType;
         }
         return *this;
     }

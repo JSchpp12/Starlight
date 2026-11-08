@@ -55,7 +55,7 @@ static RenderTargets createRenderTargets(core::device::DeviceContext &context, R
                                       .setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
                                       .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                                       .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                                      .setImage(vRec->texture.getVulkanImage())
+                                      .setImage(vRec->getTexture()->getVulkanImage())
                                       .setSrcAccessMask(vk::AccessFlagBits2::eNone)
                                       .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
                                       .setDstAccessMask(vk::AccessFlagBits2::eColorAttachmentWrite |
@@ -77,7 +77,7 @@ static RenderTargets createRenderTargets(core::device::DeviceContext &context, R
                                       .setNewLayout(vk::ImageLayout::eDepthAttachmentOptimal)
                                       .setSrcQueueFamilyIndex(vk::QueueFamilyIgnored)
                                       .setDstQueueFamilyIndex(vk::QueueFamilyIgnored)
-                                      .setImage(vRec->texture.getVulkanImage())
+                                      .setImage(vRec->getTexture()->getVulkanImage())
                                       .setSrcAccessMask(vk::AccessFlagBits2::eNone)
                                       .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
                                       .setDstAccessMask(vk::AccessFlagBits2::eDepthStencilAttachmentRead |
@@ -190,7 +190,6 @@ void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
 void DefaultRenderPhase::frameUpdate(common::IDeviceContext &context)
 {
     auto &c = static_cast<core::device::DeviceContext &>(context);
-    size_t i = static_cast<size_t>(c.frameTracker().getCurrent().getFrameInFlightIndex());
     m_renderTargets.frameUpdate(c, m_renderingContext);
 
     updateDependentData(c);

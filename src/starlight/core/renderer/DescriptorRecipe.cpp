@@ -120,9 +120,9 @@ int DescriptorRecipe::operator()()
         assert(it != byShaderInfo.end() && "shaderInfo target registered but has no bindings");
         const auto &bySet = it->second;
 
-        auto builder = StarShaderInfo::Builder(m_context->getDeviceID(), m_context->getDevice(), *defaultPool,
-                                               numFramesInFlight, &m_context->getBufferManager(),
-                                               &m_context->getImageManager());
+        auto builder =
+            StarShaderInfo::Builder(m_context->getDeviceID(), m_context->getDevice(), *defaultPool, numFramesInFlight,
+                                    &m_context->getBufferManager(), &m_context->getImageManager());
 
         // One layout per set, in ascending set order.
         std::vector<uint32_t> setOrder;
@@ -187,9 +187,9 @@ int DescriptorRecipe::operator()()
     if (m_renderGroups)
     {
         assert(m_commandBuffer.isInitialized() && "render-group notification requires a command buffer");
-        auto groupBuilder = StarShaderInfo::Builder(m_context->getDeviceID(), m_context->getDevice(), *defaultPool,
-                                                    numFramesInFlight, &m_context->getBufferManager(),
-                                                    &m_context->getImageManager());
+        auto groupBuilder =
+            StarShaderInfo::Builder(m_context->getDeviceID(), m_context->getDevice(), *defaultPool, numFramesInFlight,
+                                    &m_context->getBufferManager(), &m_context->getImageManager());
         for (const auto &layout : groupLayouts)
             groupBuilder.addSetLayout(layout);
         for (auto &group : *m_renderGroups)

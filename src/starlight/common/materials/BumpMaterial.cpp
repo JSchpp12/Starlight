@@ -2,6 +2,7 @@
 
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "event/GetQueue.hpp"
+#include "starlight/command/transfer/SubmitTextureTransfer.hpp"
 #include <starlight/common/textures/TransferRequest_CompressedTextureFile.hpp>
 #include <starlight/common/textures/TransferRequest_TextureFile.hpp>
 
@@ -14,11 +15,12 @@ void star::BumpMaterial::addDescriptorSetLayoutsTo(star::StarDescriptorSetLayout
 void star::BumpMaterial::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                                     star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
-    if (star::TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_bumpMapFilePath))
+    if (!m_bumpMap.isInitialized())
     {
-        m_bumpMap = ManagerRenderResource::addRequest(
-            context.getDeviceID(),
-            std::make_unique<TransferRequest::CompressedTextureFile>(
+        std::unique_ptr<star::TransferRequest::Texture> bumpMap;
+        if (star::TransferRequest::CompressedTextureFile::IsFileCompressedTexture(m_bumpMapFilePath))
+        {
+            bumpMap = std::make_unique<TransferRequest::CompressedTextureFile>(
                 star::core::helper::GetEngineDefaultQueue(
                     context.getEventBus(), context.getGraphicsManagers().queueManager, Queue_Type::Tgraphics)
                     ->getParentQueueFamilyIndex(),
@@ -26,21 +28,27 @@ void star::BumpMaterial::prepRender(core::device::DeviceContext &context, uint8_
                 std::make_unique<SharedCompressedTexture>(SharedCompressedTexture::Builder()
                                                               .setPath(m_bumpMapFilePath)
                                                               .setNoAttemptGPUCompression()
-                                                              .build())));
-    }
-    else
-    {
-        m_bumpMap = ManagerRenderResource::addRequest(
-            context.getDeviceID(),
-            std::make_unique<TransferRequest::TextureFile>(
+                                                              .build()));
+        }
+        else
+        {
+            bumpMap = std::make_unique<TransferRequest::TextureFile>(
                 star::core::helper::GetEngineDefaultQueue(
                     context.getEventBus(), context.getGraphicsManagers().queueManager, Queue_Type::Tgraphics)
                     ->getParentQueueFamilyIndex(),
-                context.getDevice().getPhysicalDevice().getProperties(), m_bumpMapFilePath));
+                context.getDevice().getPhysicalDevice().getProperties(), m_bumpMapFilePath);
+        }
+
+        star::command::transfer::SubmitTextureTransfer transfer{std::move(bumpMap)};
+        context.getCmdBus().submit(transfer);
+        const auto submission = transfer.getReply().get();
+
+        m_bumpMap = submission.image;
+        m_bumpMapTransfer = submission.semaphore;
     }
 
     if (m_bumpMap.isInitialized())
-        registerTextureTransferWait(context, commandBuffer, m_bumpMap);
+        registerTextureTransferWait(context, commandBuffer, m_bumpMap, m_bumpMapTransfer);
 
     TextureMaterial::prepRender(context, numFramesInFlight, frameBuilder, commandBuffer);
 }

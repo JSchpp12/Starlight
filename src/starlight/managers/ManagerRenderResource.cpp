@@ -16,11 +16,6 @@ std::unordered_map<star::Handle,
                        star::ManagerRenderResource::FinalizedResourceRequest<star::StarBuffers::Buffer>>>,
                    star::HandleHash>
     star::ManagerRenderResource::bufferStorage;
-std::unordered_map<star::Handle,
-                   std::unique_ptr<star::core::ManagedHandleContainer<
-                       star::ManagerRenderResource::FinalizedResourceRequest<star::StarTextures::Texture>>>,
-                   star::HandleHash>
-    star::ManagerRenderResource::textureStorage;
 star::core::CommandBus *star::ManagerRenderResource::s_cmdBus = nullptr;
 
 void star::ManagerRenderResource::init(const Handle &deviceID, star::core::device::StarDevice *device,
@@ -32,11 +27,6 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
         std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>>>(
             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName), 20000,
             50)));
-    textureStorage.insert(std::make_pair(
-        deviceID,
-        std::make_unique<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarTextures::Texture>>>(
-            common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName),
-            20000, 50)));
 
     highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
 
@@ -83,43 +73,6 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
 
     newFull.gpuWorkDoneSignaledInfo = result.semaphore;
     return newBufferHandle;
-}
-
-star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
-                                                     std::unique_ptr<star::TransferRequest::Texture> newRequest,
-                                                     vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex,
-                                                     std::optional<star::Handle> *outStagingBuffer)
-{
-    assert(s_cmdBus != nullptr);
-
-    Handle newHandle = textureStorage.at(deviceID)->insert(FinalizedResourceRequest<star::StarTextures::Texture>());
-    auto &newFull = textureStorage.at(deviceID)->get(newHandle);
-
-    newFull.cpuWorkDoneByTransferThread.store(false);
-
-    auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &newFull.cpuWorkDoneByTransferThread, std::move(newRequest), newFull.resource);
-
-    command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
-        job::tasks::transfer::TransferPayload{isHighPriority ? job::tasks::transfer::TransferPriority::High
-                                                             : job::tasks::transfer::TransferPriority::Standard,
-                                              std::move(request)})};
-
-    s_cmdBus->submit(cmd);
-    const auto result = cmd.getReply().get(); // synchronous: already populated
-
-    if (isHighPriority)
-        highPriorityRequestCompleteFlags.at(deviceID).insert(&newFull.cpuWorkDoneByTransferThread);
-
-    if (outTransferQueueFamilyIndex != nullptr)
-        *outTransferQueueFamilyIndex = result.queueFamilyIndex;
-
-    if (outStagingBuffer != nullptr)
-        *outStagingBuffer = result.stagingBuffer;
-
-    newFull.gpuWorkDoneSignaledInfo = result.semaphore;
-    return newHandle;
 }
 
 void star::ManagerRenderResource::frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex)
@@ -205,11 +158,6 @@ bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &
     {
         return bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread.load();
     }
-    else if (handle.getType() ==
-             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName))
-    {
-        return textureStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread.load();
-    }
     else
     {
         throw std::runtime_error("Invalid type provided");
@@ -229,11 +177,6 @@ void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Han
         common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))
     {
         fence = &bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread;
-    }
-    else if (handle.getType() ==
-             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName))
-    {
-        fence = &textureStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread;
     }
     else
     {
@@ -273,36 +216,10 @@ star::StarBuffers::Buffer &star::ManagerRenderResource::getBuffer(const Handle &
     return *container.resource;
 }
 
-star::StarTextures::Texture &star::ManagerRenderResource::getTexture(const Handle &deviceID, const star::Handle &handle)
-{
-    assert(handle.getType() ==
-               common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::TextureTypeName) &&
-           "Handle provided is not a texture handle");
-
-    auto &container = textureStorage.at(deviceID)->get(handle);
-    if (!container.resource)
-    {
-        if (!container.cpuWorkDoneByTransferThread.load())
-            container.cpuWorkDoneByTransferThread.wait(false);
-
-        if (!container.resource)
-        {
-            core::logging::warning(
-                "ManagerRenderResource: transfer finished without a texture; returning a blank texture");
-            static StarTextures::Texture blankTexture{};
-            return blankTexture;
-        }
-    }
-
-    return *container.resource;
-}
-
 void star::ManagerRenderResource::cleanup(const Handle &deviceID, core::device::StarDevice &device)
 {
     bufferStorage.at(deviceID)->cleanupAll(&device);
     bufferStorage.at(deviceID).reset();
-    textureStorage.at(deviceID)->cleanupAll(&device);
-    textureStorage.at(deviceID).reset();
 
     s_cmdBus = nullptr;
 }

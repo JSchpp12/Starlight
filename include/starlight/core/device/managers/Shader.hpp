@@ -44,12 +44,20 @@ struct ShaderRecord
         request.shader.cleanupRender(device.getVulkanDevice());
     }
 };
-class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>
+constexpr std::string_view GetShaderEventName = "stShEvt";
+/// @brief Compile-time name of the shader resource type, used for handle registration and failure logging.
+struct ShaderResourceTypeName
+{
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return star::common::special_types::ShaderTypeName;
+    }
+};
+
+class Shader : public TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50, ShaderResourceTypeName>
 {
   public:
-    Shader()
-        : TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50>(star::common::special_types::ShaderTypeName,
-                                                                      "shader_event_callback")
+    Shader() : TaskCreatedResourceManager<ShaderRecord, ShaderRequest, 50, ShaderResourceTypeName>(GetShaderEventName)
     {
     }
 

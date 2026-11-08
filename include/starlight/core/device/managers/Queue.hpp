@@ -30,12 +30,21 @@ struct QueueRecord
     }
 };
 
-constexpr std::string_view GetQueueEventTypeName = "star::core::device::manager::queue";
+constexpr std::string_view GetQueueEventTypeName = "stMQue";
 
-class Queue : public Manager<QueueRecord, QueueRequest, 32>
+/// @brief Compile-time name of the queue resource type, used for handle registration and failure logging.
+struct QueueResourceTypeName
+{
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return common::special_types::QueueTypeName;
+    }
+};
+
+class Queue : public Manager<QueueRecord, QueueRequest, 32, QueueResourceTypeName>
 {
   public:
-    Queue() : Manager<QueueRecord, QueueRequest, 32>(common::special_types::QueueTypeName)
+    Queue() : Manager<QueueRecord, QueueRequest, 32, QueueResourceTypeName>()
     {
     }
     Queue(const Queue &) = delete;

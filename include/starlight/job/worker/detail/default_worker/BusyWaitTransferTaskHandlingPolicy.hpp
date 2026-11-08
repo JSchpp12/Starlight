@@ -223,17 +223,15 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             }
             else if (request.textureTransferRequest)
             {
-                assert(request.resultingTexture.has_value() && request.resultingTexture.value() != nullptr &&
-                       "Texture request must contain both a request and a resulting address");
-
+                // Textures are published through the request's image-manager slot; there is no record pointer.
                 request.textureTransferRequest->prep();
 
                 core::logging::debug("Creating texture: ", request.textureTransferRequest->getDebugDescription());
 
-                job::TransferManagerThread::CreateTexture(
-                    device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
-                    *workingInfo, request.textureTransferRequest.get(), request.resultingTexture.value(),
-                    request.gpuDoneNotificationToMain, request.workSyncInfo);
+                job::TransferManagerThread::CreateTexture(device, m_queue, m_device.getPhysicalDevice().getProperties(),
+                                                          m_allTransferQueueFamilyIndicesInUse, *workingInfo,
+                                                          request.textureTransferRequest.get(), request.textureSlot,
+                                                          request.gpuDoneNotificationToMain, request.workSyncInfo);
             }
         }
         catch (const std::exception &e)
@@ -241,10 +239,7 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             // Fail soft: publish the reason into whatever promises the request owns so consumers receive a blank
             // resource instead of a broken promise, then let the worker keep running.
             core::logging::warning("Transfer worker failed: ", e.what());
-            if (request.bufferTransferRequest)
-                request.bufferTransferRequest->publishFailure(e.what());
-            else if (request.textureTransferRequest)
-                request.textureTransferRequest->publishFailure(e.what());
+            job::TransferManagerThread::PublishFailure(request, core::ResourceCreationError{e.what()});
 
             // The command buffer may have been begun and never submitted; restore it so this pool slot is reusable.
             workingInfo->commandBuffer->abandonRecording(0);
@@ -252,18 +247,19 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
         catch (...)
         {
             core::logging::warning("Transfer worker failed with a non-standard exception");
-            if (request.bufferTransferRequest)
-                request.bufferTransferRequest->publishFailure("non-standard transfer worker exception");
-            else if (request.textureTransferRequest)
-                request.textureTransferRequest->publishFailure("non-standard transfer worker exception");
+            job::TransferManagerThread::PublishFailure(
+                request, core::ResourceCreationError{"non-standard transfer worker exception"});
 
             workingInfo->commandBuffer->abandonRecording(0);
         }
 
         m_processRequestInfos.push(std::move(workingInfo));
 
-        request.gpuDoneNotificationToMain->store(true);
-        request.gpuDoneNotificationToMain->notify_all();
+        if (request.gpuDoneNotificationToMain != nullptr)
+        {
+            request.gpuDoneNotificationToMain->store(true);
+            request.gpuDoneNotificationToMain->notify_all();
+        }
     }
 
     static void EnsureInfoReady(vk::Device device, job::TransferManagerThread::ProcessRequestInfo &info)

@@ -5,7 +5,11 @@
 #include "StarShaderInfo.hpp"
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "TransferRequest_TextureFile.hpp"
+#include "core/device/managers/Image.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
+#include "starlight/command/transfer/SubmitTextureTransfer.hpp"
+
+#include <star_common/HandleTypeRegistry.hpp>
 
 #include <cassert>
 #include <memory>
@@ -89,7 +93,12 @@ void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
 
     assert(texture && "Texture MUST be created");
 
-    m_textureHandle = star::ManagerRenderResource::addRequest(context.getDeviceID(), std::move(texture));
+    star::command::transfer::SubmitTextureTransfer transfer{std::move(texture)};
+    context.getCmdBus().submit(transfer);
+    const auto submission = transfer.getReply().get();
+
+    m_textureHandle = submission.image;
+    m_textureTransfer = submission.semaphore;
 }
 
 void star::TextureMaterial::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
@@ -98,21 +107,18 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, uin
     preloadTexture(context);
 
     if (m_textureHandle.isInitialized())
-        registerTextureTransferWait(context, commandBuffer, m_textureHandle);
+        registerTextureTransferWait(context, commandBuffer, m_textureHandle, m_textureTransfer);
 
     StarMaterial::prepRender(context, numFramesInFlight, frameBuilder, commandBuffer);
 }
 
 void star::TextureMaterial::registerTextureTransferWait(core::device::DeviceContext &context,
-                                                        star::Handle commandBuffer, star::Handle textureHandle)
+                                                        star::Handle commandBuffer, star::Handle textureHandle,
+                                                        const star::StarSemaphore &transferSemaphore)
 {
-    assert(textureHandle.isInitialized() && "Texture handle must be initialized before registering its transfer wait");
-
-    const auto *record =
-        context.getManagerRenderResource().get<StarTextures::Texture>(context.getDeviceID(), textureHandle);
-    assert(record != nullptr && "Failed to locate texture record while registering transfer wait");
-
-    const auto &transferSemaphore = record->gpuWorkDoneSignaledInfo;
+    // A preloaded texture has no transfer of its own, so there is nothing to wait on.
+    if (!textureHandle.isInitialized() || transferSemaphore.vkSemaphore == VK_NULL_HANDLE)
+        return;
 
     context.getManagerCommandBuffer()
         .m_manager.get(commandBuffer)

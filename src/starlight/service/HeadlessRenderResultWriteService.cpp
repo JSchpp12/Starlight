@@ -182,9 +182,10 @@ void star::service::HeadlessRenderResultWriteService::onStartOfNextFrame(const e
 
     const size_t index = static_cast<size_t>(m_frameTracker->getCurrent().getFrameInFlightIndex());
     // vk::Semaphore semaphore = m_managerCommandBuffer->getDefault().commandBuffer->getCompleteSemaphores()[index];
-    star::StarTextures::Texture targetImage =
-        m_managerGraphicsContainer->imageManager.get(m_mainGraphicsRenderer->getRenderTargets().colorHandles()[index])
-            ->texture;
+    const auto *targetRecord =
+        m_managerGraphicsContainer->imageManager.get(m_mainGraphicsRenderer->getRenderTargets().colorHandles()[index]);
+    assert(targetRecord != nullptr && targetRecord->getTexture() != nullptr);
+    star::StarTextures::Texture targetImage = *targetRecord->getTexture();
     auto commandBuffer = m_mainGraphicsRenderer->getCommandBuffer();
 
     const auto path = m_outputDir.has_value() ? m_outputDir.value() / getFileName(*m_frameTracker)

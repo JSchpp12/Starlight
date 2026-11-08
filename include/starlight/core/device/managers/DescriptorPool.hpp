@@ -6,7 +6,6 @@
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
-#include <stack>
 #include <unordered_map>
 
 namespace star::core::device::manager
@@ -16,7 +15,6 @@ struct DescriptorPoolRequest
     absl::flat_hash_map<vk::DescriptorType, uint32_t> requests;
     /// Pool creation flags. Callers that free individual sets must request eFreeDescriptorSet.
     vk::DescriptorPoolCreateFlags poolFlags{};
-    /// Explicit maximum set count. Zero derives it from the sum of the requested descriptor counts (engine default).
     uint32_t maxSets{0};
 };
 
@@ -33,9 +31,18 @@ struct DescriptorPoolRecord
         pool.reset();
     }
 };
-constexpr std::string_view GetDescriptorPoolTypeName = "star::DescriptorPool";
+constexpr std::string_view GetDescriptorPoolTypeName = "stDPool";
 
-class DescriptorPool : public Manager<DescriptorPoolRecord, DescriptorPoolRequest, 1>
+/// @brief Compile-time name of the descriptor pool resource type, used for handle registration and failure logging.
+struct DescriptorPoolResourceTypeName
+{
+    static constexpr std::string_view GetUniqueTypeName()
+    {
+        return GetDescriptorPoolTypeName;
+    }
+};
+
+class DescriptorPool : public Manager<DescriptorPoolRecord, DescriptorPoolRequest, 5, DescriptorPoolResourceTypeName>
 {
   public:
     DescriptorPool();
