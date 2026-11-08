@@ -30,7 +30,7 @@ struct QueueRecord
     }
 };
 
-constexpr std::string_view GetQueueEventTypeName = "stMQue";
+constexpr std::string_view GetQueueEventTypeName = "stQueE";
 
 /// @brief Compile-time name of the queue resource type, used for handle registration and failure logging.
 struct QueueResourceTypeName

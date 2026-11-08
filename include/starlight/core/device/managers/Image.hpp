@@ -6,7 +6,7 @@
 
 namespace star::core::device::manager
 {
-constexpr std::string_view GetImageEventTypeName = "stEvtImg";
+constexpr std::string_view GetImageEventTypeName = "stImgE";
 
 /// @brief Compile-time name of the image resource type, used for handle registration and failure logging.
 struct ImageResourceTypeName

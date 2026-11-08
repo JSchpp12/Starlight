@@ -44,7 +44,7 @@ struct ShaderRecord
         request.shader.cleanupRender(device.getVulkanDevice());
     }
 };
-constexpr std::string_view GetShaderEventName = "stShEvt";
+constexpr std::string_view GetShaderEventName = "stShdE";
 /// @brief Compile-time name of the shader resource type, used for handle registration and failure logging.
 struct ShaderResourceTypeName
 {

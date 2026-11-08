@@ -47,7 +47,7 @@ struct PipelineRecord
     bool buildQueued = false;
 };
 
-constexpr std::string_view PipelineCreateEventTypeName = "stEvtPip";
+constexpr std::string_view PipelineCreateEventTypeName = "stPipE";
 
 /// @brief Compile-time name of the pipeline resource type, used for handle registration and failure logging.
 struct PipelineResourceTypeName

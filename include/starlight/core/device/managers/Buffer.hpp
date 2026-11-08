@@ -12,8 +12,8 @@
 
 namespace star::core::device::manager
 {
-constexpr std::string_view GetBufferHandleTypeName = "stMHBuf";
-constexpr std::string_view GetBufferEventTypeName = "stMHEvt";
+constexpr std::string_view GetBufferHandleTypeName = "stBufH";
+constexpr std::string_view GetBufferEventTypeName = "stBufE";
 
 /// @brief Compile-time name of the buffer resource type, used for handle registration and failure logging.
 struct BufferResourceTypeName

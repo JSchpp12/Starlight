@@ -21,7 +21,7 @@ struct FenceRecord
     }
 };
 
-constexpr std::string_view GetFenceEventName = "stMgrFen";
+constexpr std::string_view GetFenceEventName = "stFenE";
 
 /// @brief Compile-time name of the fence resource type, used for handle registration and failure logging.
 struct FenceResourceTypeName

@@ -31,7 +31,7 @@ struct DescriptorPoolRecord
         pool.reset();
     }
 };
-constexpr std::string_view GetDescriptorPoolTypeName = "stDPool";
+constexpr std::string_view GetDescriptorPoolTypeName = "stDplH";
 
 /// @brief Compile-time name of the descriptor pool resource type, used for handle registration and failure logging.
 struct DescriptorPoolResourceTypeName
