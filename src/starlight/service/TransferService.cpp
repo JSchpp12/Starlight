@@ -244,8 +244,7 @@ void TransferService::onSubmitBuffer(star::command::transfer::SubmitBufferTransf
     auto interThreadRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
         nullptr, std::move(cmd.request), std::move(bufferPromise));
     const auto result = submitTransferTask(
-        CreateTransferTask(TransferPayload{TransferPriority::Standard, std::move(interThreadRequest)}),
-        TransferPriority::Standard);
+        CreateTransferTask(TransferPayload{cmd.priority, std::move(interThreadRequest)}), cmd.priority);
 
     cmd.getReply().set({.buffer = buffer, .semaphore = result.semaphore});
 }

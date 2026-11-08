@@ -1,5 +1,6 @@
 #pragma once
 
+#include "starlight/job/tasks/TransferTask.hpp"
 #include "starlight/virtual/TransferRequest_Buffer.hpp"
 #include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
@@ -39,10 +40,14 @@ struct SubmitBufferTransfer : public star::common::IServiceCommandWithReply<Subm
         return submit_buffer_transfer::GetUniqueTypeName();
     }
 
-    explicit SubmitBufferTransfer(std::unique_ptr<star::TransferRequest::Buffer> request) : request(std::move(request))
+    explicit SubmitBufferTransfer(
+        std::unique_ptr<star::TransferRequest::Buffer> request,
+        job::tasks::transfer::TransferPriority priority = job::tasks::transfer::TransferPriority::Standard)
+        : request(std::move(request)), priority(priority)
     {
     }
 
     std::unique_ptr<star::TransferRequest::Buffer> request;
+    job::tasks::transfer::TransferPriority priority = job::tasks::transfer::TransferPriority::Standard;
 };
 } // namespace star::command::transfer
