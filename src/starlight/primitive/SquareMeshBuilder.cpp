@@ -23,7 +23,7 @@ MeshData BuildSquareMesh(const SquareDesc &desc)
     mesh.indices = {0, 1, 2, 2, 3, 0};
 
     mesh.material = std::make_shared<VertColorMaterial>(glm::vec4(1.0f), glm::vec4(1.0f), glm::vec4(1.0f), desc.color,
-                                                        glm::vec4(0.0f), 1.0f);
+                                                        glm::vec4(0.0f), 1);
 
     return mesh;
 }
