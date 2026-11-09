@@ -63,6 +63,7 @@ void SceneLoaderService::init()
 void SceneLoaderService::setInitParameters(star::service::InitParameters &params)
 {
     m_deviceCommandBus = &params.commandBus;
+    m_context = &params.context;
     m_ioService = params.ioService;
 }
 
@@ -143,7 +144,8 @@ void SceneLoaderService::onCreateObject(command::CreateObject &event)
                    uniqueName);
     }
 
-    auto newObject = event.load();
+    assert(m_context != nullptr && "SceneLoaderService requires the DeviceContext in InitParameters");
+    auto newObject = event.load(*m_context);
     newObject->createInstance();
 
     m_objectTracker.insert(std::make_pair(uniqueName, newObject));

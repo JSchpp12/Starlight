@@ -46,6 +46,7 @@ class SceneLoaderService
     policy::ListenForSaveSceneState<SceneLoaderService> m_onSceneSave;
     policy::command::ListenForCreateLight<SceneLoaderService> m_onCreateLight;
     star::core::CommandBus *m_deviceCommandBus = nullptr;
+    star::core::device::DeviceContext *m_context = nullptr;
     IOService *m_ioService = nullptr;
 
     void initListeners(core::CommandBus &commandBus) noexcept;

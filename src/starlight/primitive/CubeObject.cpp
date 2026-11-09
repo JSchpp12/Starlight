@@ -4,6 +4,7 @@
 #include "TransferRequest_VertInfo.hpp"
 #include "starlight/common/ConfigFile.hpp"
 #include "starlight/common/materials/TextureMaterial.hpp"
+#include "starlight/core/device/managers/Material.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/material/DefaultColorProvider.hpp"
 #include "starlight/material/InstanceColorMaterial.hpp"
@@ -15,7 +16,7 @@
 namespace star::primitive
 {
 
-static std::shared_ptr<star::StarMaterial> GetMaterial(const std::vector<cube::CubeDesc> &desc)
+static std::unique_ptr<star::StarMaterial> GetMaterial(const std::vector<cube::CubeDesc> &desc)
 {
     // A texture-colored cube binds its texture through the material, so the first texture descriptor selects a
     // texture material for the object. Instances in an object share one material, so mixed descriptors cannot
@@ -23,7 +24,7 @@ static std::shared_ptr<star::StarMaterial> GetMaterial(const std::vector<cube::C
     for (const auto &d : desc)
     {
         if (const auto *textureColor = std::get_if<cube::TextureColor>(&d.coloringApproach))
-            return std::make_shared<star::TextureMaterial>(textureColor->getHandle());
+            return std::make_unique<star::TextureMaterial>(textureColor->getHandle());
     }
 
     std::vector<star::Color> colors;
@@ -41,13 +42,22 @@ static std::shared_ptr<star::StarMaterial> GetMaterial(const std::vector<cube::C
         }
     }
 
-    return std::make_shared<star::material::InstanceColorMaterial>(
+    return std::make_unique<star::material::InstanceColorMaterial>(
         std::make_unique<star::material::DefaultColorProvider>(std::move(colors)));
 }
 
-CubeObject::CubeObject(std::vector<cube::CubeDesc> desc, const ShaderResolver &shaderResolver,
-                       OptionalRenderingOverrides renderOverrides, star::setup::RenderResourceSetup setup)
-    : StarObject({GetMaterial(desc)}, std::move(setup)), m_desc(std::move(desc)),
+std::vector<Handle> CubeObject::MakeMaterialHandles(core::device::DeviceContext &context,
+                                                    const std::vector<cube::CubeDesc> &desc)
+{
+    auto material = GetMaterial(desc);
+    return {context.getGraphicsManagers().materialManager.submit(
+        star::core::device::manager::MaterialRequest{std::move(material)})};
+}
+
+CubeObject::CubeObject(std::vector<cube::CubeDesc> desc, std::vector<Handle> materialHandles,
+                       const ShaderResolver &shaderResolver, OptionalRenderingOverrides renderOverrides,
+                       star::setup::RenderResourceSetup setup)
+    : StarObject(std::move(materialHandles), std::move(setup)), m_desc(std::move(desc)),
       m_renderOverrides(std::move(renderOverrides))
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
@@ -77,7 +87,7 @@ std::vector<StarMesh> CubeObject::loadMeshes(core::device::DeviceContext &contex
     auto indBuffer = context.getManagerRenderResource().addRequest(
         context.getDeviceID(), std::make_unique<star::TransferRequest::IndicesInfo>(graphicsIndex, meshData.indices));
 
-    return {StarMesh(vertBuffer, indBuffer, meshData.vertices, meshData.indices, m_meshMaterials.front(), false)};
+    return {StarMesh(vertBuffer, indBuffer, meshData.vertices, meshData.indices, m_materialHandles.front(), false)};
 }
 
 PipelineProvider CubeObject::getPipelineProvider(vk::PipelineLayout pipelineLayout)

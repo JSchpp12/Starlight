@@ -283,7 +283,9 @@ void star::core::device::DeviceContext::setAllServiceParameters()
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_renderResourceManager,
-                                   frameTracker().getSetup()};
+                                   frameTracker().getSetup(),
+                                   nullptr,
+                                   *this};
 
     for (auto &service : m_services)
     {
@@ -305,7 +307,9 @@ void star::core::device::DeviceContext::initServices(core::WorkerPool &pool, std
                                    m_graphicsManagers,
                                    *m_commandBufferManager,
                                    *m_renderResourceManager,
-                                   frameSetup};
+                                   frameSetup,
+                                   nullptr,
+                                   *this};
 
     for (size_t i{0}; i < m_services.size(); i++)
     {

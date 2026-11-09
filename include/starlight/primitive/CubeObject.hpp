@@ -36,9 +36,14 @@ class CubeObject : public StarObject
     /// depth/stencil).
     /// @param setup Optional one-shot setup for a sampled texture (e.g. an equirect->cube conversion). The object does
     /// not draw until it has run; an empty setup carries no work and is ignored.
-    CubeObject(std::vector<cube::CubeDesc> desc, const ShaderResolver &shaderResolver,
+    CubeObject(std::vector<cube::CubeDesc> desc, std::vector<Handle> materialHandles,
+               const ShaderResolver &shaderResolver,
                OptionalRenderingOverrides renderOverrides = DefaultRenderOverrides(),
                star::setup::RenderResourceSetup setup = {});
+
+    /// @brief Build and submit the material for these cube descriptors, returning its manager handle.
+    static std::vector<Handle> MakeMaterialHandles(core::device::DeviceContext &context,
+                                                   const std::vector<cube::CubeDesc> &desc);
 
   protected:
     std::vector<StarMesh> loadMeshes(core::device::DeviceContext &context) override;

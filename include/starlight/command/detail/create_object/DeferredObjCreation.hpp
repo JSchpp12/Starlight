@@ -11,7 +11,7 @@ namespace star::command::create_object
 class DeferredObjCreation : public ObjectLoader
 {
   public:
-    using Factory = std::function<std::shared_ptr<StarObject>(ShaderResolver &)>;
+    using Factory = std::function<std::shared_ptr<StarObject>(core::device::DeviceContext &, ShaderResolver &)>;
 
     explicit DeferredObjCreation(Factory factory) : m_factory(std::move(factory))
     {
@@ -19,9 +19,10 @@ class DeferredObjCreation : public ObjectLoader
 
     virtual ~DeferredObjCreation() = default;
 
-    virtual std::shared_ptr<StarObject> load(ShaderResolver &shaderResolver) override
+    virtual std::shared_ptr<StarObject> load(core::device::DeviceContext &context,
+                                             ShaderResolver &shaderResolver) override
     {
-        return m_factory(shaderResolver);
+        return m_factory(context, shaderResolver);
     }
 
   private:

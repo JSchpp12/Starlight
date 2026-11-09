@@ -165,6 +165,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/device/managers/Fence.cpp"
     "src/starlight/core/device/managers/DescriptorPool.cpp"
     "src/starlight/core/device/managers/Image.cpp"
+    "src/starlight/core/device/managers/Material.cpp"
     "src/starlight/core/device/managers/Buffer.cpp"
     "src/starlight/core/device/managers/Queue.cpp"
     "src/starlight/core/device/system/event/ShaderCompiled.cpp"

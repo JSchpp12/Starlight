@@ -13,6 +13,11 @@
 #include <star_common/EventBus.hpp>
 #include <star_common/FrameTracker.hpp>
 
+namespace star::core::device
+{
+class DeviceContext;
+}
+
 namespace star::service
 {
 class TaskSchedulerService;
@@ -32,5 +37,6 @@ struct InitParameters
     ManagerRenderResource &renderResourceManager;
     common::FrameTracker::Setup flightTrackerSetup;
     IOService *ioService = nullptr;
+    core::device::DeviceContext &context;
 };
 } // namespace star::service

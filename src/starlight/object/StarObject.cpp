@@ -7,6 +7,7 @@
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
+#include "device/managers/Material.hpp"
 #include "wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"
 
 #include "common/helpers/GeometryHelpers.hpp"
@@ -128,8 +129,8 @@ void star::StarObject::cleanupSharedResources(core::device::DeviceContext &devic
 
 void star::StarObject::init(core::device::DeviceContext &context)
 {
-    auto submitter =
-        std::make_shared<wrappers::graphics::policies::SubmitDescriptorRequestsPolicy>(getDescriptorRequests(1));
+    auto submitter = std::make_shared<wrappers::graphics::policies::SubmitDescriptorRequestsPolicy>(
+        getDescriptorRequests(context, 1));
 
     submitter->init(context.getEventBus());
 }
@@ -148,11 +149,12 @@ void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 
     // this->setLayout.reset();
 
-    // cleanup any material
-
-    for (auto &material : m_meshMaterials)
+    // cleanup any material (the manager owns the records; this only runs each material's GPU cleanup)
+    auto &materialManager = context.getGraphicsManagers().materialManager;
+    for (const Handle &handle : m_materialHandles)
     {
-        material->cleanupRender(context);
+        if (auto *material = materialManager.getMaterial(handle))
+            material->cleanupRender(context);
     }
 
     if (m_instanceShaderInfo)
@@ -282,12 +284,9 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
-star::StarObject::StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials,
-                             star::setup::RenderResourceSetup setup)
-    : m_meshMaterials(std::move(meshMaterials))
+star::StarObject::StarObject(std::vector<Handle> materialHandles, star::setup::RenderResourceSetup setup)
+    : m_materialHandles(std::move(materialHandles))
 {
-    // A setup with no definitions carries no work; treat it as absent so the object draws immediately instead of
-    // waiting one frame for a no-op record.
     if (!setup.definitions.empty())
         m_setup.emplace(std::move(setup));
 }
@@ -394,8 +393,10 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
             .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
     allSets.emplace_back(updateSetBuilder.build());
 
-    assert(m_meshMaterials.size() > 0 && "Materials should always exist");
-    m_meshMaterials.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
+    assert(!m_materialHandles.empty() && "Materials should always exist");
+    context.getGraphicsManagers()
+        .materialManager.getMaterial(m_materialHandles.front())
+        ->addDescriptorSetLayoutsTo(staticSetBuilder);
     auto staticSet = staticSetBuilder.build();
 
     if (staticSet->getBindings().size() > 0)
@@ -417,7 +418,7 @@ void star::StarObject::prepareMeshes(star::core::device::DeviceContext &device)
 void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
                                      star::StarShaderInfo::Builder &frameBuilder, star::Handle commandBuffer)
 {
-    assert(m_meshMaterials.size() > 0 && "Mesh materials should exist");
+    assert(!m_materialHandles.empty() && "Mesh materials should exist");
 
     const uint8_t numFramesInFlight = context.frameTracker().getSetup().getNumFramesInFlight();
 
@@ -453,8 +454,9 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
     // Build the per-mesh (material) set layout once. All materials in an object
     // share a compatible layout because objects in a render group share a shader.
+    auto &materialManager = context.getGraphicsManagers().materialManager;
     auto staticSetBuilder = StarDescriptorSetLayout::Builder();
-    m_meshMaterials.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
+    materialManager.getMaterial(m_materialHandles.front())->addDescriptorSetLayoutsTo(staticSetBuilder);
     std::shared_ptr<StarDescriptorSetLayout> materialSetLayout = staticSetBuilder.build();
     const bool hasMaterialSet = materialSetLayout->getBindings().size() > 0;
     if (hasMaterialSet)
@@ -466,7 +468,7 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
     // Give each material its own builder containing only the material set layout
     // (if any), so the material's StarShaderInfo owns only its per-mesh set(s)
     // instead of a copy of the global + instance sets.
-    for (auto &material : m_meshMaterials)
+    for (const Handle &handle : m_materialHandles)
     {
         auto materialBuilder =
             StarShaderInfo::Builder(frameBuilder.getDeviceID(), frameBuilder.getDevice(), frameBuilder.getPool(),
@@ -474,7 +476,8 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
         if (hasMaterialSet)
             materialBuilder.addSetLayout(materialSetLayout);
 
-        material->prepRender(context, numFramesInFlight, materialBuilder, commandBuffer);
+        if (auto *material = materialManager.getMaterial(handle))
+            material->prepRender(context, numFramesInFlight, materialBuilder, commandBuffer);
     }
 }
 
@@ -567,13 +570,18 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex> &verts, std::vec
 }
 
 std::vector<std::pair<vk::DescriptorType, const uint32_t>> star::StarObject::getDescriptorRequests(
-    uint8_t numFramesInFlight)
+    core::device::DeviceContext &context, uint8_t numFramesInFlight)
 {
     std::vector<std::pair<vk::DescriptorType, const uint32_t>> requests{
         std::make_pair(vk::DescriptorType::eUniformBuffer, 2), std::make_pair(vk::DescriptorType::eStorageBuffer, 2)};
 
-    for (auto &material : m_meshMaterials)
+    auto &materialManager = context.getGraphicsManagers().materialManager;
+    for (const Handle &handle : m_materialHandles)
     {
+        auto *material = materialManager.getMaterial(handle);
+        if (material == nullptr)
+            continue;
+
         auto matRequests = material->getDescriptorRequests(numFramesInFlight);
         for (auto &type : matRequests)
         {

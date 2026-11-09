@@ -11,6 +11,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <array>
+#include <cassert>
 
 namespace star
 {
@@ -18,19 +19,18 @@ class StarMesh
 {
   public:
     StarMesh(Handle vertBuffer, Handle indBuffer, const std::vector<Vertex> &vertices,
-             const std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, bool hasAdjacenciesPacked);
+             const std::vector<uint32_t> &indices, Handle material, bool hasAdjacenciesPacked);
 
     StarMesh(Handle vertBuffer, Handle indBuffer, const std::vector<Vertex> &vertices,
-             const std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material, glm::vec3 boundBoxMinCoord,
+             const std::vector<uint32_t> &indices, Handle material, glm::vec3 boundBoxMinCoord,
              glm::vec3 boundBoxMaxCoord, bool packAdjacencies = false);
 
     /// Construct with a precomputed bounding box and explicit vertex/index counts,
     /// without needing the host vertex data. Use when vertices are uploaded as a
     /// compact, non-Vertex host type (e.g. a terrain-specific vertex format) and the
     /// bounding box has already been computed by the caller.
-    StarMesh(Handle vertBuffer, Handle indBuffer, uint32_t vertexCount, uint32_t indexCount,
-             std::shared_ptr<StarMaterial> material, glm::vec3 boundBoxMinCoord, glm::vec3 boundBoxMaxCoord,
-             bool hasAdjacenciesPacked = false);
+    StarMesh(Handle vertBuffer, Handle indBuffer, uint32_t vertexCount, uint32_t indexCount, Handle material,
+             glm::vec3 boundBoxMinCoord, glm::vec3 boundBoxMaxCoord, bool hasAdjacenciesPacked = false);
 
     virtual ~StarMesh() = default;
 
@@ -46,7 +46,8 @@ class StarMesh
 
     StarMaterial &getMaterial()
     {
-        return *this->material;
+        assert(m_material != nullptr && "StarMesh::prepRender must run before getMaterial()");
+        return *m_material;
     }
     bool hasAdjacentVertsPacked() const
     {
@@ -74,7 +75,9 @@ class StarMesh
     Handle m_deviceID;
     Handle vertBuffer, indBuffer;
     glm::vec3 aaboundingBoxBounds[2];
-    std::shared_ptr<StarMaterial> material;
+    Handle m_materialHandle;
+    /// @brief Resolved in prepRender from the device context; the material object is manager-owned.
+    StarMaterial *m_material = nullptr;
     uint32_t numVerts = 0, numInds = 0;
     bool hasAdjacenciesPacked = false;
     bool triangular = false;

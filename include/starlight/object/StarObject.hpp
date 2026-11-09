@@ -43,11 +43,11 @@ class StarObject
     /// @param setup One-shot work this object's sampled resource requires. It is recorded on the first pre-pass where
     /// every contribution is ready; the object does not draw until it reports done. A setup with no steps and no
     /// pending-release slots carries no work and is ignored.
-    explicit StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials,
-                        star::setup::RenderResourceSetup setup = {});
+    /// @param materialHandles Handles already submitted to the MaterialManager by the caller.
+    explicit StarObject(std::vector<Handle> materialHandles, star::setup::RenderResourceSetup setup = {});
 
-    StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials, Handle vertexShader, Handle fragmentShader)
-        : m_meshMaterials(std::move(meshMaterials)), m_vertexShaderHandle(vertexShader),
+    StarObject(std::vector<Handle> materialHandles, Handle vertexShader, Handle fragmentShader)
+        : m_materialHandles(std::move(materialHandles)), m_vertexShaderHandle(vertexShader),
           m_fragmentShaderHandle(fragmentShader) {};
 
     virtual ~StarObject() = default;
@@ -204,7 +204,8 @@ class StarObject
     };
     /// pipeline + rendering infos
     // Pipeline* sharedPipeline = nullptr;
-    std::vector<std::shared_ptr<StarMaterial>> m_meshMaterials = std::vector<std::shared_ptr<StarMaterial>>();
+    /// @brief Manager handles this object's meshes bind through. Submitted externally.
+    std::vector<Handle> m_materialHandles;
     Handle pipeline, sharedPipeline;
     Handle m_vertexShaderHandle, m_fragmentShaderHandle;
     core::renderer::RenderingContext renderingContext;
@@ -232,7 +233,8 @@ class StarObject
 
     virtual void createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds);
 
-    std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(uint8_t numFramesInFlight);
+    std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(
+        core::device::DeviceContext &context, uint8_t numFramesInFlight);
 
     virtual void updateDependentData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
                                      Handle targetCommandBuffer,
