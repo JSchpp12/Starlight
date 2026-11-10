@@ -1,5 +1,10 @@
 #include "starlight/object/BasicObject.hpp"
 
+#include "starlight/common/materials/BumpMaterial.hpp"
+#include "starlight/common/materials/TextureMaterial.hpp"
+#include "starlight/common/materials/VertColorMaterial.hpp"
+#include "starlight/material/MaterialProvider.hpp"
+
 #include "device/managers/Material.hpp"
 
 #include "BumpMaterial.hpp"
@@ -126,35 +131,38 @@ static std::vector<std::unique_ptr<star::StarMaterial>> LoadMaterials(
     return materials;
 }
 
-std::vector<star::Handle> star::BasicObject::MakeMaterialHandles(core::device::DeviceContext &context,
-                                                                 const std::string &objFilePath,
-                                                                 std::optional<std::filesystem::path> materialDir)
+std::vector<std::unique_ptr<star::IMaterialProvider>> star::BasicObject::MakeMaterialProviders(
+    core::device::DeviceContext &context, const std::string &objFilePath,
+    std::optional<std::filesystem::path> materialDir)
 {
+    (void)context;
+
     auto materials =
         materialDir.has_value() ? LoadMaterials(objFilePath, materialDir.value()) : LoadMaterials(objFilePath);
 
-    auto &materialManager = context.getGraphicsManagers().materialManager;
-    std::vector<star::Handle> handles;
-    handles.reserve(materials.size());
+    std::vector<std::unique_ptr<star::IMaterialProvider>> providers;
+    providers.reserve(materials.size());
     for (auto &material : materials)
     {
-        handles.push_back(materialManager.submit(star::core::device::manager::MaterialRequest{std::move(material)}));
+        providers.push_back(std::make_unique<star::MaterialProvider>(std::move(material)));
     }
 
-    return handles;
+    return providers;
 }
 
-star::BasicObject::BasicObject(std::string objFilePath, std::vector<star::Handle> materialHandles,
+star::BasicObject::BasicObject(std::string objFilePath,
+                               std::vector<std::unique_ptr<star::IMaterialProvider>> materialProviders,
                                ShaderResolver &shaderResolver)
-    : StarObject(std::move(materialHandles)), m_objFilePath(std::move(objFilePath))
+    : StarObject(std::move(materialProviders)), m_objFilePath(std::move(objFilePath))
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
     m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);
 }
 
 star::BasicObject::BasicObject(std::string objFilePath, const std::filesystem::path &materialDir,
-                               std::vector<star::Handle> materialHandles, ShaderResolver &shaderResolver)
-    : StarObject(std::move(materialHandles)), m_objFilePath(std::move(objFilePath))
+                               std::vector<std::unique_ptr<star::IMaterialProvider>> materialProviders,
+                               ShaderResolver &shaderResolver)
+    : StarObject(std::move(materialProviders)), m_objFilePath(std::move(objFilePath))
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
     m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);

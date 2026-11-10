@@ -1,12 +1,12 @@
 #pragma once
 
 #include "core/graphics/GPUWorkSyncInfo.hpp"
-#include "starlight/command/material/CreateMaterial.hpp"
+#include "starlight/command/material/MakeMaterial.hpp"
 #include "starlight/command/material/SetMaterialResource.hpp"
+#include "starlight/core/WorkerPool.hpp"
 #include "starlight/event/StartOfNextFrame.hpp"
 #include "starlight/policy/command/ListenFor.hpp"
 #include "starlight/policy/event/ListenFor.hpp"
-#include "starlight/core/WorkerPool.hpp"
 #include "starlight/service/InitParameters.hpp"
 
 #include <star_common/Handle.hpp>
@@ -21,19 +21,18 @@ class DeviceContext;
 namespace star::service
 {
 template <typename T>
-using ListenForCreateMaterial =
-    star::policy::command::ListenFor<T, star::command::material::CreateMaterial,
-                                     star::command::material::create_material::GetTypeName, &T::onCreateMaterial>;
-template <typename T>
 using ListenForSetMaterialResource =
     star::policy::command::ListenFor<T, star::command::material::SetMaterialResource,
                                      star::command::material::set_material_resource::GetTypeName,
                                      &T::onSetMaterialResource>;
 template <typename T>
+using ListenForMakeMaterial =
+    star::policy::command::ListenFor<T, star::command::material::MakeMaterial,
+                                     star::command::material::make_material::GetTypeName, &T::onMakeMaterial>;
+template <typename T>
 using ListenForStartOfNextFrame =
     star::policy::event::ListenFor<T, star::event::StartOfNextFrame,
-                                   star::event::start_of_next_frame::GetUniqueTypeName,
-                                   &T::onStartOfNextFrame>;
+                                   star::event::start_of_next_frame::GetUniqueTypeName, &T::onStartOfNextFrame>;
 
 /// @brief Material lifecycle service: creation, resource switching, and retirement.
 /// @details The swap commits in the command handler; its one-shot setup is handed to the owning pass's
@@ -41,7 +40,7 @@ using ListenForStartOfNextFrame =
 class MaterialService
 {
   public:
-    MaterialService() : m_listenForCreate(*this), m_listenForSet(*this), m_listenForFrame(*this)
+    MaterialService() : m_listenForSet(*this), m_listenForMake(*this), m_listenForFrame(*this)
     {
     }
     MaterialService(const MaterialService &) = delete;
@@ -58,7 +57,7 @@ class MaterialService
     void init();
     void shutdown();
 
-    void onCreateMaterial(command::material::CreateMaterial &cmd);
+    void onMakeMaterial(command::material::MakeMaterial &cmd);
     void onSetMaterialResource(command::material::SetMaterialResource &cmd);
     void onStartOfNextFrame(const event::StartOfNextFrame &event, bool &keepAlive);
 
@@ -76,8 +75,8 @@ class MaterialService
     void cleanupListeners(common::EventBus &bus);
     void drainRetires();
 
-    ListenForCreateMaterial<MaterialService> m_listenForCreate;
     ListenForSetMaterialResource<MaterialService> m_listenForSet;
+    ListenForMakeMaterial<MaterialService> m_listenForMake;
     ListenForStartOfNextFrame<MaterialService> m_listenForFrame;
 
     core::device::DeviceContext *m_context = nullptr;

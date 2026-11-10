@@ -35,23 +35,47 @@ vk::DescriptorSet star::StarShaderInfo::ShaderInfoSet::getDescriptorSet(const Ha
 
 void star::StarShaderInfo::ShaderInfoSet::setNewResource(size_t index, ShaderInfo newInfo)
 {
+    assert(index < slots.size() && "Binding index is outside the set layout's binding range");
+    assert(setLayout.getBindings().contains(static_cast<uint32_t>(index)) &&
+           "Binding index is not declared by the set layout");
+
     m_pendingBuildIndices.emplace_back(static_cast<uint32_t>(index));
 
-    this->shaderInfos[index] = std::move(newInfo);
+    this->slots[index] = std::move(newInfo);
 }
 
-void star::StarShaderInfo::ShaderInfoSet::add(const star::StarShaderInfo::ShaderInfo &shaderInfo)
+void star::StarShaderInfo::ShaderInfoSet::add(ShaderInfo shaderInfo)
 {
-    this->shaderInfos.push_back(shaderInfo);
+    assert(m_nextAddBinding < m_bindingOrder.size() &&
+           "More resources were added than the set layout declares bindings");
+
+    this->slots[m_bindingOrder[m_nextAddBinding++]] = std::move(shaderInfo);
+}
+
+bool star::StarShaderInfo::ShaderInfoSet::hasAllRequiredResources() const
+{
+    for (const uint32_t binding : m_bindingOrder)
+    {
+        if (binding >= slots.size() || !slots[binding].has_value())
+            return false;
+    }
+
+    return true;
 }
 
 void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceID, size_t index)
 {
     assert(this->descriptorWriter && "Dependencies must have been built first");
+    assert(index < slots.size() && "Binding index is outside the set layout's binding range");
 
-    if (shaderInfos[index].bufferInfo.has_value())
+    if (!slots[index].has_value())
+        return;
+
+    const auto &shaderInfo = *slots[index];
+
+    if (shaderInfo.bufferInfo.has_value())
     {
-        const auto &info = shaderInfos[index].bufferInfo.value();
+        const auto &info = shaderInfo.bufferInfo.value();
         if (info.handle.has_value())
         {
             if (IsDeviceBufferManagerHandle(info.handle.value()))
@@ -96,9 +120,9 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceI
             throw std::runtime_error("Invalid buffer info provided to shader builder");
         }
     }
-    else if (shaderInfos[index].textureInfo.has_value())
+    else if (shaderInfo.textureInfo.has_value())
     {
-        const auto &texInfo = shaderInfos[index].textureInfo.value();
+        const auto &texInfo = shaderInfo.textureInfo.value();
         const StarTextures::Texture *texture = nullptr;
         if (texInfo.texture != nullptr)
         {
@@ -130,9 +154,9 @@ void star::StarShaderInfo::ShaderInfoSet::buildIndex(const star::Handle &deviceI
 
         vk::DescriptorImageInfo textureInfo;
         textureInfo.sampler = texture->getSampler().has_value() ? texture->getSampler().value() : VK_NULL_HANDLE;
-        textureInfo.imageLayout = shaderInfos[index].textureInfo.value().expectedLayout;
+        textureInfo.imageLayout = texInfo.expectedLayout;
         const auto &views = texture->getImageView();
-        const auto &requestedFormat = shaderInfos[index].textureInfo.value().requestedImageViewFormat;
+        const auto &requestedFormat = texInfo.requestedImageViewFormat;
         textureInfo.imageView = views.get(requestedFormat.has_value() ? *requestedFormat : texture->getBaseFormat());
 
         if (!textureInfo.imageView)
@@ -153,7 +177,7 @@ void star::StarShaderInfo::ShaderInfoSet::build(const star::Handle &deviceID)
 
     StarDescriptorPool *pool = nullptr;
     this->descriptorWriter = std::make_unique<StarDescriptorWriter>(this->device, this->setLayout, m_pool);
-    for (size_t i = 0; i < this->shaderInfos.size(); i++)
+    for (size_t i = 0; i < this->slots.size(); i++)
     {
         buildIndex(deviceID, i);
     }
@@ -174,9 +198,12 @@ bool star::StarShaderInfo::isReady(uint8_t frameInFlight)
 {
     for (const auto &set : this->shaderInfoSets[static_cast<size_t>(frameInFlight)])
     {
-        for (size_t i{0}; i < set->shaderInfos.size(); i++)
+        for (const uint32_t binding : set->getBindings())
         {
-            const auto &shaderInfo = set->shaderInfos[i];
+            if (binding >= set->slots.size() || !set->slots[binding].has_value())
+                return false;
+
+            const auto &shaderInfo = *set->slots[binding];
 
             if (shaderInfo.bufferInfo.has_value())
             {
@@ -258,48 +285,55 @@ void star::StarShaderInfo::getDescriptors(uint8_t frameInFlight, vk::DescriptorS
 
     for (auto &set : this->shaderInfoSets[static_cast<size_t>(frameInFlight)])
     {
+        // Do not build or return a set until every layout binding has a resource slot.
+        if (!set->hasAllRequiredResources())
+            continue;
+
         if (!set->getIsBuilt())
-            set->build(m_deviceID);
-        else
         {
-            for (size_t i{0}; i < set->shaderInfos.size(); i++)
+            set->build(m_deviceID);
+            continue;
+        }
+
+        for (size_t i{0}; i < set->slots.size(); i++)
+        {
+            if (!set->slots[i].has_value())
+                continue;
+
+            auto &shaderInfo = *set->slots[i];
+            if (shaderInfo.bufferInfo.has_value() && shaderInfo.bufferInfo.value().handle.has_value())
             {
-                if (set->shaderInfos[i].bufferInfo.has_value() &&
-                    set->shaderInfos[i].bufferInfo.value().handle.has_value())
+                auto &info = shaderInfo.bufferInfo.value();
+                auto &handle = info.handle.value();
+
+                vk::Buffer buffer{};
+                if (IsDeviceBufferManagerHandle(handle))
                 {
-                    auto &info = set->shaderInfos[i].bufferInfo.value();
-                    auto &handle = set->shaderInfos[i].bufferInfo.value().handle.value();
+                    assert(set->getBufferManager() != nullptr &&
+                           "Device-managed buffer handle requires the buffer manager to be provided by the builder");
+                    const auto *record = set->getBufferManager()->get(handle);
+                    const auto *managed = record != nullptr ? record->getBuffer() : nullptr;
+                    buffer = managed != nullptr ? managed->getVulkanBuffer() : VK_NULL_HANDLE;
+                }
+                else
+                {
+                    buffer = ManagerRenderResource::getBuffer(m_deviceID, handle).getVulkanBuffer();
+                }
 
-                    vk::Buffer buffer{};
-                    if (IsDeviceBufferManagerHandle(handle))
-                    {
-                        assert(
-                            set->getBufferManager() != nullptr &&
-                            "Device-managed buffer handle requires the buffer manager to be provided by the builder");
-                        const auto *record = set->getBufferManager()->get(handle);
-                        const auto *managed = record != nullptr ? record->getBuffer() : nullptr;
-                        buffer = managed != nullptr ? managed->getVulkanBuffer() : VK_NULL_HANDLE;
-                    }
-                    else
-                    {
-                        buffer = ManagerRenderResource::getBuffer(m_deviceID, handle).getVulkanBuffer();
-                    }
+                if (buffer == VK_NULL_HANDLE)
+                {
+                    // A failed transfer hands back a blank buffer; never write a null buffer into the set.
+                    continue;
+                }
 
-                    if (buffer == VK_NULL_HANDLE)
-                    {
-                        // A failed transfer hands back a blank buffer; never write a null buffer into the set.
-                        continue;
-                    }
-
-                    if (info.currentBuffer == VK_NULL_HANDLE)
-                    {
-                        info.currentBuffer = buffer;
-                    }
-                    else if (info.currentBuffer != buffer)
-                    {
-                        info.currentBuffer = buffer;
-                        set->buildIndex(m_deviceID, i);
-                    }
+                if (info.currentBuffer == VK_NULL_HANDLE)
+                {
+                    info.currentBuffer = buffer;
+                }
+                else if (info.currentBuffer != buffer)
+                {
+                    info.currentBuffer = buffer;
+                    set->buildIndex(m_deviceID, i);
                 }
             }
         }
@@ -307,7 +341,11 @@ void star::StarShaderInfo::getDescriptors(uint8_t frameInFlight, vk::DescriptorS
 
     for (size_t i{0}; i < this->shaderInfoSets[frameInFlight].size(); i++)
     {
-        *data++ = this->shaderInfoSets[frameInFlight][i]->getDescriptorSet(m_deviceID);
+        auto &set = this->shaderInfoSets[frameInFlight][i];
+        if (!set->hasAllRequiredResources())
+            continue;
+
+        *data++ = set->getDescriptorSet(m_deviceID);
         numWritten++;
     }
 }

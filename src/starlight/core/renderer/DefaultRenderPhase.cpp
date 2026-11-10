@@ -172,7 +172,7 @@ void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
         target.m_renderTargets = createRenderTargets(m_context, target.m_renderingContext);
 
     for (auto &group : target.m_renderGroups)
-        group.prepRender(m_context);
+        group.prepRender(m_context, target.m_commandBuffer);
 
     const auto global = shaderInfoHandle("Global");
     DescriptorRecipe::Builder(m_context.getEventBus(), m_context, star::event::DescriptorPoolReady::GetUniqueTypeName())

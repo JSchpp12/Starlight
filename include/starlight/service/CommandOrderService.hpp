@@ -2,7 +2,6 @@
 
 #include "starlight/command/command_order/DeclareDependency.hpp"
 #include "starlight/command/command_order/DeclarePass.hpp"
-#include "starlight/command/command_order/AddRenderResourceSetup.hpp"
 #include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/command/command_order/TriggerPass.hpp"
 #include "starlight/core/WorkerPool.hpp"
@@ -53,12 +52,6 @@ using ListenForTriggerPass =
                                      &T::onTriggerPass>;
 
 template <typename T>
-using ListenForAddRenderResourceSetup =
-    star::policy::command::ListenFor<T, star::command_order::AddRenderResourceSetup,
-                                     star::command_order::add_render_resource_setup::GetTypeName,
-                                     &T::onAddRenderResourceSetup>;
-
-template <typename T>
 using ListenForGetPassInfo =
     star::policy::command::ListenFor<T, star::command_order::GetPassInfo,
                                      star::command_order::get_pass_info::GetPassInfoTypeName, &T::onGetPassInfo>;
@@ -99,8 +92,6 @@ class CommandOrderService
 
     void onTriggerPass(star::command_order::TriggerPass &cmd);
 
-    void onAddRenderResourceSetup(star::command_order::AddRenderResourceSetup &cmd);
-
     void onGetPassInfo(star::command_order::GetPassInfo &cmd);
 
   private:
@@ -116,7 +107,6 @@ class CommandOrderService
     command_order::ListenForDeclareDependency<CommandOrderService> m_listenForDeclareDependency;
     command_order::ListenForDeclarePass<CommandOrderService> m_listenForDeclarePass;
     command_order::ListenForTriggerPass<CommandOrderService> m_listenForTriggerPass;
-    command_order::ListenForAddRenderResourceSetup<CommandOrderService> m_listenForAddRenderResourceSetup;
     command_order::ListenForGetPassInfo<CommandOrderService> m_listenForGetPassInfo;
     // events
     command_order::ListenForInitComplete<CommandOrderService> m_listenForInitPhaseComplete;
@@ -130,10 +120,6 @@ class CommandOrderService
     common::EventBus *m_evtBus = nullptr;
     const star::common::FrameTracker *m_ft = nullptr;
     star::core::device::manager::Semaphore *m_sem{nullptr};
-    /// @brief Used to run a TriggerPass's one-shot prepare callbacks.
-    core::device::DeviceContext *m_context = nullptr;
-    /// @brief Used to hand prepared definitions to the pass's CompleteRequest.
-    core::device::manager::ManagerCommandBuffer *m_commandBuffers = nullptr;
 
     void initListeners(core::CommandBus &cmdBus);
 

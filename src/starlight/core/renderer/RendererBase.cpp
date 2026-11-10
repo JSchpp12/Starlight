@@ -82,6 +82,9 @@ void RendererBase::prepRender(common::IDeviceContext &context)
     m_commandBuffer = c.getManagerCommandBuffer().submit(getCommandBufferRequest(),
                                                          c.frameTracker().getCurrent().getGlobalFrameCounter());
     RegisterWithCommandOrder(c.getCmdBus(), c.getEventBus(), c.getGraphicsManagers().queueManager, m_commandBuffer);
+
+    for (auto &group : m_renderGroups)
+        group.prepRender(c, m_commandBuffer);
 }
 
 void RendererBase::frameUpdate(common::IDeviceContext &context)

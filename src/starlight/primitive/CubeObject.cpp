@@ -8,6 +8,7 @@
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 #include "starlight/material/DefaultColorProvider.hpp"
 #include "starlight/material/InstanceColorMaterial.hpp"
+#include "starlight/material/MaterialProvider.hpp"
 #include "starlight/primitive/MeshData.hpp"
 #include "starlight/primitive/cube/MeshFactory.hpp"
 
@@ -46,18 +47,18 @@ static std::unique_ptr<star::StarMaterial> GetMaterial(const std::vector<cube::C
         std::make_unique<star::material::DefaultColorProvider>(std::move(colors)));
 }
 
-std::vector<Handle> CubeObject::MakeMaterialHandles(core::device::DeviceContext &context,
-                                                    const std::vector<cube::CubeDesc> &desc)
+std::vector<std::unique_ptr<star::IMaterialProvider>> CubeObject::MakeMaterialProviders(
+    const std::vector<cube::CubeDesc> &desc)
 {
-    auto material = GetMaterial(desc);
-    return {context.getGraphicsManagers().materialManager.submit(
-        star::core::device::manager::MaterialRequest{std::move(material)})};
+    std::vector<std::unique_ptr<star::IMaterialProvider>> providers;
+    providers.push_back(std::make_unique<star::MaterialProvider>(GetMaterial(desc)));
+    return providers;
 }
 
-CubeObject::CubeObject(std::vector<cube::CubeDesc> desc, std::vector<Handle> materialHandles,
+CubeObject::CubeObject(std::vector<cube::CubeDesc> desc,
+                       std::vector<std::unique_ptr<star::IMaterialProvider>> materialProviders,
                        const ShaderResolver &shaderResolver, OptionalRenderingOverrides renderOverrides)
-    : StarObject(std::move(materialHandles)), m_desc(std::move(desc)),
-      m_renderOverrides(std::move(renderOverrides))
+    : StarObject(std::move(materialProviders)), m_desc(std::move(desc)), m_renderOverrides(std::move(renderOverrides))
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
     m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);

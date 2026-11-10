@@ -34,7 +34,8 @@ void star::StarMaterial::setResourceHandle(size_t setIndex, size_t bindingIndex,
 
 void star::StarMaterial::cleanupRender(core::device::DeviceContext &context)
 {
-    shaderInfo->cleanupRender(context.getDevice());
+    if (shaderInfo)
+        shaderInfo->cleanupRender(context.getDevice());
 }
 
 void star::StarMaterial::bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout,

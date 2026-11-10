@@ -11,8 +11,8 @@ FromObjFileLoader::FromObjFileLoader(std::string objFilePath) : m_objFilePath(st
 std::shared_ptr<StarObject> FromObjFileLoader::load(core::device::DeviceContext &context,
                                                     ShaderResolver &shaderResolver)
 {
-    auto materialHandles = BasicObject::MakeMaterialHandles(context, m_objFilePath);
-    return std::make_shared<BasicObject>(std::move(m_objFilePath), std::move(materialHandles), shaderResolver);
+    auto materialProviders = BasicObject::MakeMaterialProviders(context, m_objFilePath);
+    return std::make_shared<BasicObject>(std::move(m_objFilePath), std::move(materialProviders), shaderResolver);
 }
 
 } // namespace star::command::create_object

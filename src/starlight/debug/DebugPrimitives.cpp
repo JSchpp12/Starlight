@@ -22,8 +22,8 @@ std::shared_ptr<StarObject> CreateCube(core::device::DeviceContext &context,
                                        std::vector<primitive::cube::CubeDesc> info, ShaderResolver &shaderResolver,
                                        primitive::CubeObject::OptionalRenderingOverrides overrides)
 {
-    auto materialHandles = star::primitive::CubeObject::MakeMaterialHandles(context, info);
-    return std::make_shared<star::primitive::CubeObject>(std::move(info), std::move(materialHandles), shaderResolver,
-                                                         std::move(overrides));
+    auto materialProviders = star::primitive::CubeObject::MakeMaterialProviders(info);
+    return std::make_shared<star::primitive::CubeObject>(std::move(info), std::move(materialProviders),
+                                                         shaderResolver, std::move(overrides));
 }
 } // namespace star::debug

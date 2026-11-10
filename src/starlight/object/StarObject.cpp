@@ -1,6 +1,7 @@
 #include "starlight/object/StarObject.hpp"
 
 #include "starlight/command/pipeline/CreatePipeline.hpp"
+#include "starlight/command/material/MakeMaterial.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
@@ -214,8 +215,24 @@ const star::StarEntity &star::StarObject::getInstance(size_t index) const
     return m_instanceInfo.getInstance(index);
 }
 
-void star::StarObject::prepRender(star::core::device::DeviceContext &context)
+void star::StarObject::prepRender(star::core::device::DeviceContext &context, Handle commandBuffer)
 {
+    // Create materials once, now that the owning pass's command buffer is known. The service applies the
+    // material's transfer waits and one-shot prep directly to that pass.
+    if (m_materialHandles.empty() && !m_materialProviders.empty())
+    {
+        for (auto &provider : m_materialProviders)
+        {
+            auto made = provider->make(context);
+            command::material::MakeMaterial cmd{std::move(made.material), std::move(made.waits), std::move(made.prep),
+                                                commandBuffer};
+            context.getCmdBus().submit(cmd);
+            m_materialHandles.push_back(cmd.getReply().get());
+        }
+
+        m_materialProviders.clear();
+    }
+
     prepStarObject(context);
 }
 
@@ -281,8 +298,8 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
-star::StarObject::StarObject(std::vector<Handle> materialHandles)
-    : m_materialHandles(std::move(materialHandles))
+star::StarObject::StarObject(std::vector<std::unique_ptr<IMaterialProvider>> materialProviders)
+    : m_materialProviders(std::move(materialProviders))
 {
 }
 
@@ -378,10 +395,17 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
             .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
     allSets.emplace_back(updateSetBuilder.build());
 
-    assert(!m_materialHandles.empty() && "Materials should always exist");
-    context.getGraphicsManagers()
-        .materialManager.getMaterial(m_materialHandles.front())
-        ->addDescriptorSetLayoutsTo(staticSetBuilder);
+    if (!m_materialProviders.empty())
+    {
+        m_materialProviders.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
+    }
+    else
+    {
+        assert(!m_materialHandles.empty() && "Materials should always exist");
+        context.getGraphicsManagers()
+            .materialManager.getMaterial(m_materialHandles.front())
+            ->addDescriptorSetLayoutsTo(staticSetBuilder);
+    }
     auto staticSet = staticSetBuilder.build();
 
     if (staticSet->getBindings().size() > 0)
@@ -559,6 +583,20 @@ std::vector<std::pair<vk::DescriptorType, const uint32_t>> star::StarObject::get
 {
     std::vector<std::pair<vk::DescriptorType, const uint32_t>> requests{
         std::make_pair(vk::DescriptorType::eUniformBuffer, 2), std::make_pair(vk::DescriptorType::eStorageBuffer, 2)};
+
+    if (!m_materialProviders.empty())
+    {
+        for (const auto &provider : m_materialProviders)
+        {
+            auto matRequests = provider->getDescriptorRequests(numFramesInFlight);
+            for (auto &type : matRequests)
+            {
+                requests.push_back(std::move(type));
+            }
+        }
+
+        return requests;
+    }
 
     auto &materialManager = context.getGraphicsManagers().materialManager;
     for (const Handle &handle : m_materialHandles)

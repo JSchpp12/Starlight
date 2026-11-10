@@ -84,9 +84,9 @@ void StarRenderGroup::frameUpdate(core::device::DeviceContext &context, uint8_t 
     }
 }
 
-void StarRenderGroup::prepRender(core::device::DeviceContext &context)
+void StarRenderGroup::prepRender(core::device::DeviceContext &context, Handle commandBuffer)
 {
-    prepareObjects(context);
+    prepareObjects(context, commandBuffer);
 }
 
 void StarRenderGroup::addObject(std::shared_ptr<StarObject> newObject, core::device::DeviceContext &context)
@@ -214,17 +214,17 @@ bool StarRenderGroup::isObjectCompatible(StarObject &object, core::device::Devic
     return true;
 }
 
-void StarRenderGroup::prepareObjects(star::core::device::DeviceContext &context)
+void StarRenderGroup::prepareObjects(star::core::device::DeviceContext &context, Handle commandBuffer)
 {
     // get descriptor sets from objects and place into render structs
     for (auto &group : m_groups)
     {
         // prepare base object
-        group.baseObject.object->prepRender(context);
+        group.baseObject.object->prepRender(context, commandBuffer);
 
         for (auto &renderObject : group.objects)
         {
-            renderObject.object->prepRender(context);
+            renderObject.object->prepRender(context, commandBuffer);
         }
     }
 }

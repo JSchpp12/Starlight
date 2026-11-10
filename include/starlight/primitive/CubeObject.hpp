@@ -34,13 +34,13 @@ class CubeObject : public StarObject
     /// @brief Create a cube object.
     /// @param renderOverrides Optional render-state changes for this object's pipeline (topology, cull mode,
     /// depth/stencil).
-    CubeObject(std::vector<cube::CubeDesc> desc, std::vector<Handle> materialHandles,
+    CubeObject(std::vector<cube::CubeDesc> desc, std::vector<std::unique_ptr<IMaterialProvider>> materialProviders,
                const ShaderResolver &shaderResolver,
                OptionalRenderingOverrides renderOverrides = DefaultRenderOverrides());
 
-    /// @brief Build and submit the material for these cube descriptors, returning its manager handle.
-    static std::vector<Handle> MakeMaterialHandles(core::device::DeviceContext &context,
-                                                   const std::vector<cube::CubeDesc> &desc);
+    /// @brief Build the deferred material recipe for these cube descriptors.
+    static std::vector<std::unique_ptr<IMaterialProvider>> MakeMaterialProviders(
+        const std::vector<cube::CubeDesc> &desc);
 
   protected:
     std::vector<StarMesh> loadMeshes(core::device::DeviceContext &context) override;

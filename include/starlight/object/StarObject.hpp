@@ -9,6 +9,7 @@
 #include "core/device/DeviceContext.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "core/renderer/RenderingContext.hpp"
+#include "starlight/material/IMaterialProvider.hpp"
 #include "starlight/setup/RenderResourceSetup.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
@@ -40,12 +41,10 @@ class StarObject
 
     static void cleanupSharedResources(core::device::DeviceContext &device);
     StarObject() = default;
-    /// @param materialHandles Handles already submitted to the MaterialManager by the caller.
-    explicit StarObject(std::vector<Handle> materialHandles);
 
-    StarObject(std::vector<Handle> materialHandles, Handle vertexShader, Handle fragmentShader)
-        : m_materialHandles(std::move(materialHandles)), m_vertexShaderHandle(vertexShader),
-          m_fragmentShaderHandle(fragmentShader) {};
+    /// @param materialProviders Deferred material recipes. Instances are created at prepRender, when the
+    /// owning pass's command buffer is available.
+    explicit StarObject(std::vector<std::unique_ptr<IMaterialProvider>> materialProviders);
 
     virtual ~StarObject() = default;
 
@@ -64,7 +63,7 @@ class StarObject
     /// vertex/fragment shader handles and the global VulkanVertex layout.
     virtual PipelineProvider getPipelineProvider(vk::PipelineLayout pipelineLayout);
 
-    virtual void prepRender(star::core::device::DeviceContext &context);
+    virtual void prepRender(star::core::device::DeviceContext &context, Handle commandBuffer);
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context, StarShaderInfo::Builder fullEngineBuilder,
                                        vk::PipelineLayout pipelineLayout,
@@ -194,8 +193,10 @@ class StarObject
     };
     /// pipeline + rendering infos
     // Pipeline* sharedPipeline = nullptr;
-    /// @brief Manager handles this object's meshes bind through. Submitted externally.
+    /// @brief Manager handles this object's meshes bind through. Populated at prepRender.
     std::vector<Handle> m_materialHandles;
+    /// @brief Deferred material recipes. Consumed at prepRender to produce m_materialHandles.
+    std::vector<std::unique_ptr<IMaterialProvider>> m_materialProviders;
     Handle pipeline, sharedPipeline;
     Handle m_vertexShaderHandle, m_fragmentShaderHandle;
     core::renderer::RenderingContext renderingContext;

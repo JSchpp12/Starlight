@@ -25,7 +25,7 @@ class StarRenderGroup
     StarRenderGroup &operator=(const StarRenderGroup &) = default;
     ~StarRenderGroup() = default;
 
-    void prepRender(core::device::DeviceContext &context);
+    void prepRender(core::device::DeviceContext &context, Handle commandBuffer);
 
     void cleanupRender(core::device::DeviceContext &context);
 
@@ -72,7 +72,7 @@ class StarRenderGroup
     std::vector<Group> m_groups;
     vk::PipelineLayout m_pipelineLayout{VK_NULL_HANDLE};
 
-    void prepareObjects(star::core::device::DeviceContext &context);
+    void prepareObjects(star::core::device::DeviceContext &context, Handle commandBuffer);
 
     vk::PipelineLayout createPipelineLayout(core::device::DeviceContext &context,
                                             std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout);

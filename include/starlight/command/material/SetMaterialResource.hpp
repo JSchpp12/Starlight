@@ -1,7 +1,5 @@
 #pragma once
 
-#include "MaterialTransferWait.hpp"
-
 #include <starlight/setup/RenderResourceSetup.hpp>
 #include <starlight/wrappers/graphics/StarSemaphore.hpp>
 #include <starlight/wrappers/graphics/StarShaderInfo.hpp>
@@ -34,7 +32,7 @@ struct SetMaterialResource : public star::common::IServiceCommand
     }
 
     SetMaterialResource(Handle material, Handle recordingCommandBuffer, size_t setIndex, size_t bindingIndex,
-                        StarShaderInfo::ShaderInfo newHandle, std::vector<MaterialTransferWait> waits,
+                        StarShaderInfo::ShaderInfo newHandle, std::vector<setup::TransferWait> waits,
                         star::setup::RenderResourceSetup::PrepRequest prep,
                         std::optional<size_t> frameInFlightIndex = std::nullopt)
         : material(std::move(material)), recordingCommandBuffer(std::move(recordingCommandBuffer)), setIndex(setIndex),
@@ -54,7 +52,7 @@ struct SetMaterialResource : public star::common::IServiceCommand
     StarShaderInfo::ShaderInfo newHandle;
     /// @brief Restrict the replacement to one frame in flight; empty replaces it in every frame.
     std::optional<size_t> frameInFlightIndex;
-    std::vector<MaterialTransferWait> waits;
+    std::vector<setup::TransferWait> waits;
     /// @brief One-shot work for the new resource. CommandOrderService is bypassed; the service prepares it directly.
     star::setup::RenderResourceSetup::PrepRequest prep;
 };

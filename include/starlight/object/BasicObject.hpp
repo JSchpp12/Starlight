@@ -20,14 +20,16 @@ namespace star
 class BasicObject : public StarObject
 {
   public:
-    BasicObject(std::string objFilePath, std::vector<Handle> materialHandles, ShaderResolver &shaderResolver);
-    BasicObject(std::string objFilePath, const std::filesystem::path &materialDir, std::vector<Handle> materialHandles,
+    BasicObject(std::string objFilePath, std::vector<std::unique_ptr<IMaterialProvider>> materialProviders,
                 ShaderResolver &shaderResolver);
+    BasicObject(std::string objFilePath, const std::filesystem::path &materialDir,
+                std::vector<std::unique_ptr<IMaterialProvider>> materialProviders, ShaderResolver &shaderResolver);
     virtual ~BasicObject() = default;
 
-    /// @brief Build and submit this object's materials, returning their manager handles.
-    static std::vector<Handle> MakeMaterialHandles(core::device::DeviceContext &context, const std::string &objFilePath,
-                                                   std::optional<std::filesystem::path> materialDir = std::nullopt);
+    /// @brief Build the deferred material recipes for this object.
+    static std::vector<std::unique_ptr<IMaterialProvider>> MakeMaterialProviders(
+        core::device::DeviceContext &context, const std::string &objFilePath,
+        std::optional<std::filesystem::path> materialDir = std::nullopt);
 
     static ShaderResolver PrepareResolver(const std::string &objFilePath, core::CommandBus &bus);
     static ShaderResolver PrepareResolver(const std::string &objFilePath, const std::filesystem::path &materialDir,

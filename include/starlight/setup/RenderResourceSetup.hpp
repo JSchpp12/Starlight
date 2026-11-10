@@ -2,6 +2,7 @@
 
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "structs/QueueFamilyOwnership.hpp"
+#include "wrappers/graphics/StarSemaphore.hpp"
 
 #include <star_common/Handle.hpp>
 
@@ -21,10 +22,19 @@ class DeviceContext;
 
 namespace star::setup
 {
+/// @brief One transfer-completion wait a pass must observe before it samples/uses a resource.
+struct TransferWait
+{
+    Handle key;
+    star::StarSemaphore semaphore;
+    vk::PipelineStageFlags stages =
+        vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader;
+};
+
 /// @brief One-shot GPU work a render phase records before it samples a resource.
-/// @details Preparation is separate from recording. A `PrepRequest` carries the device-side prepare
-/// callback plus the record-only work. CommandOrderService runs the prepare and hands only the
-/// prepared definition to the pass's RenderResourceSetup.
+/// @details Preparation is separate from recording. A `PrepRequest` carries only the device-side prepare
+/// callback; the object that owns the material runs it and hands the prepared definition to the pass's
+/// RenderResourceSetup, which records it inline before the pass's draws.
 struct RenderResourceSetup
 {
     /// @brief Transition an image between layouts.
@@ -124,13 +134,12 @@ struct RenderResourceSetup
         void cleanupRender(core::device::DeviceContext &context);
     };
 
-    /// @brief A definition plus the one-time device work needed before it can record.
-    /// @details `prepare` fills `definition`; it may block on a producer's futures. Only the prepared definition
-    /// reaches a pass's RenderResourceSetup.
+    /// @brief The one-time device work needed before a resource can record.
+    /// @details `prepare` fills the caller-provided definition; it may block on a producer's futures. The
+    /// prepared definition is owned by the consuming pass's RenderResourceSetup, never by the producer.
     struct PrepRequest
     {
         std::function<void(const core::device::DeviceContext &, ResourcePrepDefinition &)> prepare{};
-        ResourcePrepDefinition definition{};
     };
 
     /// @brief Prepared definitions in recording order.
@@ -152,8 +161,7 @@ struct RenderResourceSetup
     void prepare(const core::device::DeviceContext &context);
 
     /// @brief Records every ready, not-yet-recorded definition in one pass.
-    void record(vk::CommandBuffer commandBuffer,
-                const core::graphics::SemaphoreInfo &recordingSubmissionGate);
+    void record(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingSubmissionGate);
 
     /// @brief Teardown backstop: host-waits every release gate, runs each keepAlive, and clears.
     void cleanupRender(core::device::DeviceContext &context);
