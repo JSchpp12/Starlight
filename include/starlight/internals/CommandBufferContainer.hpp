@@ -4,6 +4,7 @@
 #include "StarCommandBuffer.hpp"
 #include "device/StarDevice.hpp"
 #include "device/managers/Queue.hpp"
+#include "starlight/setup/RenderResourceSetup.hpp"
 
 #include <absl/container/flat_hash_map.h>
 #include <star_common/FrameTracker.hpp>
@@ -107,6 +108,21 @@ class CommandBufferContainer
             overrideBufferSubmissionCallback;
         SemaphoreInfo oneTimeWaitSemaphoreInfo;
         PerFrameScratchData scratch;
+
+        /// @brief One-shot work this pass records inline before its own commands.
+        setup::RenderResourceSetup renderResourceSetup;
+
+        /// @brief Adds a definition that CommandOrderService already prepared.
+        void add(setup::RenderResourceSetup::ResourcePrepDefinition definition);
+        [[nodiscard]] bool isDone() const;
+        [[nodiscard]] bool hasWork() const;
+        /// @brief Resolves one-shot work's per-frame readiness before the pass records.
+        void prepareSetup(const core::device::DeviceContext &context);
+        void recordSetup(vk::CommandBuffer commandBuffer,
+                         const core::graphics::SemaphoreInfo &recordingGate);
+        void cleanupSetup(core::device::DeviceContext &context);
+
+        ~CompleteRequest();
 
         CompleteRequest(
             std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)>

@@ -11,10 +11,11 @@ star::StarScene::StarScene(star::StarScene::IsReadyFunction isReady, std::shared
 {
 }
 
-star::Handle star::StarScene::addProvider(std::unique_ptr<star::core::renderer::IRenderPhaseProvider> provider)
+star::Handle star::StarScene::addProvider(std::unique_ptr<star::core::renderer::IRenderPhaseProvider> provider,
+                                          core::device::DeviceContext &context)
 {
     const star::Handle handle = m_phases.reserve();
-    m_providers.push({std::move(provider), handle});
+    m_phases.commit(handle, provider->build(context, *this));
     m_phaseHandles.push_back(handle);
     return handle;
 }
@@ -69,11 +70,4 @@ void star::StarScene::prepRender(core::device::DeviceContext &context,
     }
 
     m_primaryRenderer.prepRender(context);
-
-    while (!m_providers.empty())
-    {
-        auto [provider, handle] = std::move(m_providers.front());
-        m_providers.pop();
-        m_phases.commit(handle, provider->build(context, *this));
-    }
 }

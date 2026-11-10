@@ -14,7 +14,6 @@
 
 #include <functional>
 #include <memory>
-#include <queue>
 #include <utility>
 #include <vector>
 
@@ -40,10 +39,11 @@ class StarScene : public core::renderer::RenderPhaseRegistry
 
     void cleanupRender(core::device::DeviceContext &context);
 
-    /// Queue a render phase provider to be built at prepRender time. The returned
-    /// handle is the slot the phase will occupy once built; thread it into any
-    /// sibling provider that needs to reach this phase's data.
-    Handle addProvider(std::unique_ptr<core::renderer::IRenderPhaseProvider> provider);
+    /// Build a render phase provider immediately and commit its phase. The returned handle is the
+    /// slot the phase occupies; thread it into any sibling provider that needs to reach this
+    /// phase's data. Providers must be added in dependency order (producer before consumer).
+    Handle addProvider(std::unique_ptr<core::renderer::IRenderPhaseProvider> provider,
+                       core::device::DeviceContext &context);
 
     bool isReady(core::device::DeviceContext &context);
 
@@ -77,7 +77,6 @@ class StarScene : public core::renderer::RenderPhaseRegistry
     common::Renderer m_primaryRenderer;
     std::vector<common::Renderer> m_renderers;
 
-    std::queue<std::pair<std::unique_ptr<core::renderer::IRenderPhaseProvider>, Handle>> m_providers;
     core::LinearHandleContainer<std::unique_ptr<core::renderer::RenderPhase>> m_phases{
         common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::RenderPhaseTypeName),
         MaxRenderPhases};

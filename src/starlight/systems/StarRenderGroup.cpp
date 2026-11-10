@@ -191,23 +191,6 @@ void StarRenderGroup::recordPostRenderPassCommands(vk::CommandBuffer commandBuff
     }
 }
 
-bool StarRenderGroup::hasPendingSetup() const
-{
-    for (const auto &group : this->m_groups)
-    {
-        if (group.baseObject.object->hasPendingSetup())
-            return true;
-
-        for (const auto &obj : group.objects)
-        {
-            if (obj.object->hasPendingSetup())
-                return true;
-        }
-    }
-
-    return false;
-}
-
 bool StarRenderGroup::isObjectCompatible(StarObject &object, core::device::DeviceContext &context)
 {
     // check if descriptor layouts are compatible

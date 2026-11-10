@@ -40,11 +40,8 @@ class StarObject
 
     static void cleanupSharedResources(core::device::DeviceContext &device);
     StarObject() = default;
-    /// @param setup One-shot work this object's sampled resource requires. It is recorded on the first pre-pass where
-    /// every contribution is ready; the object does not draw until it reports done. A setup with no steps and no
-    /// pending-release slots carries no work and is ignored.
     /// @param materialHandles Handles already submitted to the MaterialManager by the caller.
-    explicit StarObject(std::vector<Handle> materialHandles, star::setup::RenderResourceSetup setup = {});
+    explicit StarObject(std::vector<Handle> materialHandles);
 
     StarObject(std::vector<Handle> materialHandles, Handle vertexShader, Handle fragmentShader)
         : m_materialHandles(std::move(materialHandles)), m_vertexShaderHandle(vertexShader),
@@ -87,13 +84,6 @@ class StarObject
     virtual void recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &frameTracker,
                                              uint64_t frameIndex,
                                              const core::graphics::RecordingSubmissionInfo *recordingInfo);
-
-    /// @brief True while this object still has one-shot setup that must be recorded before it can draw.
-    /// @details Phases resolve the recording submission only while at least one object reports true.
-    virtual bool hasPendingSetup() const
-    {
-        return m_setup.has_value() && !m_setup->isDone();
-    }
 
     /// Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
     virtual void recordPostRenderPassCommands(vk::CommandBuffer commandBuffer, int frameInFlightIndex) {};
@@ -224,8 +214,8 @@ class StarObject
     std::vector<StarMesh> meshes;
     bool isReady = false;
 
-    /// @brief One-shot GPU setup for a resource this object samples; empty when it has none.
-    std::optional<star::setup::RenderResourceSetup> m_setup;
+    /// @brief The owning pass's setup, used only to gate this object's draw.
+    star::setup::RenderResourceSetup *m_setup = nullptr;
 
     virtual std::vector<StarMesh> loadMeshes(star::core::device::DeviceContext &device) = 0;
 

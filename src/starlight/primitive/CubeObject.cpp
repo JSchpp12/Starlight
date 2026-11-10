@@ -55,9 +55,8 @@ std::vector<Handle> CubeObject::MakeMaterialHandles(core::device::DeviceContext 
 }
 
 CubeObject::CubeObject(std::vector<cube::CubeDesc> desc, std::vector<Handle> materialHandles,
-                       const ShaderResolver &shaderResolver, OptionalRenderingOverrides renderOverrides,
-                       star::setup::RenderResourceSetup setup)
-    : StarObject(std::move(materialHandles), std::move(setup)), m_desc(std::move(desc)),
+                       const ShaderResolver &shaderResolver, OptionalRenderingOverrides renderOverrides)
+    : StarObject(std::move(materialHandles)), m_desc(std::move(desc)),
       m_renderOverrides(std::move(renderOverrides))
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);

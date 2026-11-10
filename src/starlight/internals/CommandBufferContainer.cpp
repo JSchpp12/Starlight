@@ -1,5 +1,12 @@
 #include "internals/CommandBufferContainer.hpp"
 
+#include "core/device/DeviceContext.hpp"
+#include "core/graphics/GPUWorkSyncInfo.hpp"
+#include "core/logging/LoggingFactory.hpp"
+#include "starlight/setup/RenderResourceSetup.hpp"
+
+#include <utility>
+
 star::CommandBufferContainer::CommandBufferContainer(core::device::StarDevice &device, const uint8_t &numImagesInFlight)
     : bufferGroupsWithSubOrders({std::make_pair(star::Command_Buffer_Order::before_render_pass, std::vector<Handle>(5)),
                                  std::make_pair(star::Command_Buffer_Order::main_render_pass, std::vector<Handle>(5)),
@@ -160,6 +167,47 @@ void star::CommandBufferContainer::cleanup(core::device::StarDevice &device)
     for (auto &request : this->allBuffers)
     {
         request->commandBuffer->cleanupRender(device.getVulkanDevice());
+    }
+}
+
+void star::CommandBufferContainer::CompleteRequest::add(
+    setup::RenderResourceSetup::ResourcePrepDefinition definition)
+{
+    renderResourceSetup.add(std::move(definition));
+}
+
+bool star::CommandBufferContainer::CompleteRequest::isDone() const
+{
+    return renderResourceSetup.isDone();
+}
+
+bool star::CommandBufferContainer::CompleteRequest::hasWork() const
+{
+    return renderResourceSetup.hasWork();
+}
+
+void star::CommandBufferContainer::CompleteRequest::prepareSetup(const core::device::DeviceContext &context)
+{
+    renderResourceSetup.prepare(context);
+}
+
+void star::CommandBufferContainer::CompleteRequest::recordSetup(
+    vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingGate)
+{
+    renderResourceSetup.record(commandBuffer, recordingGate);
+}
+
+void star::CommandBufferContainer::CompleteRequest::cleanupSetup(core::device::DeviceContext &context)
+{
+    renderResourceSetup.cleanupRender(context);
+}
+
+star::CommandBufferContainer::CompleteRequest::~CompleteRequest()
+{
+    if (renderResourceSetup.hasWork())
+    {
+        core::logging::warning(
+            "CompleteRequest destroyed with one-shot setup still pending; a phase cleanup was missed");
     }
 }
 

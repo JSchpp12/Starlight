@@ -11,15 +11,17 @@ namespace star::service
 {
 CommandOrderService::CommandOrderService()
     : m_passes(), m_listenForDeclareDependency(*this), m_listenForDeclarePass(*this), m_listenForTriggerPass(*this),
-      m_listenForGetPassInfo(*this), m_listenForInitPhaseComplete(*this), m_listenForStartOfNextFrame(*this)
+      m_listenForAddRenderResourceSetup(*this), m_listenForGetPassInfo(*this), m_listenForInitPhaseComplete(*this),
+      m_listenForStartOfNextFrame(*this)
 {
 }
 
 CommandOrderService::CommandOrderService(CommandOrderService &&other)
     : m_passes(std::move(other.m_passes)), m_listenForDeclareDependency(*this), m_listenForDeclarePass(*this),
-      m_listenForTriggerPass(*this), m_listenForGetPassInfo(*this), m_listenForInitPhaseComplete(*this),
-      m_listenForStartOfNextFrame(*this), m_cmdBus(other.m_cmdBus), m_evtBus(other.m_evtBus), m_ft(other.m_ft),
-      m_sem(other.m_sem)
+      m_listenForTriggerPass(*this), m_listenForAddRenderResourceSetup(*this), m_listenForGetPassInfo(*this),
+      m_listenForInitPhaseComplete(*this), m_listenForStartOfNextFrame(*this), m_cmdBus(other.m_cmdBus),
+      m_evtBus(other.m_evtBus), m_ft(other.m_ft), m_sem(other.m_sem), m_context(other.m_context),
+      m_commandBuffers(other.m_commandBuffers)
 {
     if (m_cmdBus != nullptr && m_evtBus != nullptr)
     {
@@ -40,6 +42,8 @@ CommandOrderService &CommandOrderService::operator=(CommandOrderService &&other)
         m_evtBus = other.m_evtBus;
         m_ft = other.m_ft;
         m_sem = other.m_sem;
+        m_context = other.m_context;
+        m_commandBuffers = other.m_commandBuffers;
 
         if (m_cmdBus != nullptr && m_evtBus != nullptr)
         {
@@ -73,6 +77,8 @@ void CommandOrderService::setInitParameters(star::service::InitParameters &param
     m_cmdBus = &params.commandBus;
     m_evtBus = &params.eventBus;
     m_sem = params.graphicsManagers.semaphoreManager.get();
+    m_context = &params.context;
+    m_commandBuffers = &params.commandBufferManager;
 
     star::frames::GetFrameTracker ftCmd{};
     m_cmdBus->submit(ftCmd);
@@ -139,6 +145,16 @@ void CommandOrderService::onTriggerPass(star::command_order::TriggerPass &cmd)
     m_triggeredPasses.emplace_back(std::move(cmd.description));
 
     removeElementFromNotTriggeredPasses(passHandle);
+}
+
+void CommandOrderService::onAddRenderResourceSetup(star::command_order::AddRenderResourceSetup &cmd)
+{
+    assert(cmd.commandBuffer.isInitialized() && "AddRenderResourceSetup requires an owning command buffer");
+    assert(m_commandBuffers != nullptr && "CommandOrderService is not initialized with a command-buffer manager");
+
+    auto &request = m_commandBuffers->get(cmd.commandBuffer);
+    for (auto &definition : cmd.definitions)
+        request.add(std::move(definition));
 }
 
 void CommandOrderService::onStartOfNextFrame(const event::StartOfNextFrame &event, bool &keepAlive)
@@ -221,6 +237,7 @@ void CommandOrderService::initListeners(core::CommandBus &cmdBus)
     m_listenForDeclareDependency.init(cmdBus);
     m_listenForDeclarePass.init(cmdBus);
     m_listenForTriggerPass.init(cmdBus);
+    m_listenForAddRenderResourceSetup.init(cmdBus);
     m_listenForGetPassInfo.init(cmdBus);
 }
 
@@ -235,6 +252,7 @@ void CommandOrderService::cleanupListeners(core::CommandBus &cmdBus)
     m_listenForDeclareDependency.cleanup(cmdBus);
     m_listenForDeclarePass.cleanup(cmdBus);
     m_listenForTriggerPass.cleanup(cmdBus);
+    m_listenForAddRenderResourceSetup.cleanup(cmdBus);
     m_listenForGetPassInfo.cleanup(cmdBus);
 }
 

@@ -3,6 +3,7 @@
 #include "core/renderer/FrameData.hpp"
 #include "core/renderer/RenderTargets.hpp"
 #include "core/renderer/RenderingTargetInfo.hpp"
+#include "internals/CommandBufferContainer.hpp"
 #include "systems/StarRenderGroup.hpp"
 
 #include <star_common/FrameTracker.hpp>
@@ -90,6 +91,8 @@ class RenderPhase
 
     std::vector<StarRenderGroup> m_renderGroups;
     Handle m_commandBuffer;
+    /// @brief The command-buffer manager, used to reach this pass's request at record/cleanup time.
+    core::device::manager::ManagerCommandBuffer *m_commandBuffers = nullptr;
     std::optional<core::graphics::RecordingSubmissionInfo> m_recordingInfo;
     std::shared_ptr<FrameData> m_frameData;
     /// True when this phase owns and drives its FrameData controllers each

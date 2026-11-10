@@ -34,12 +34,9 @@ class CubeObject : public StarObject
     /// @brief Create a cube object.
     /// @param renderOverrides Optional render-state changes for this object's pipeline (topology, cull mode,
     /// depth/stencil).
-    /// @param setup Optional one-shot setup for a sampled texture (e.g. an equirect->cube conversion). The object does
-    /// not draw until it has run; an empty setup carries no work and is ignored.
     CubeObject(std::vector<cube::CubeDesc> desc, std::vector<Handle> materialHandles,
                const ShaderResolver &shaderResolver,
-               OptionalRenderingOverrides renderOverrides = DefaultRenderOverrides(),
-               star::setup::RenderResourceSetup setup = {});
+               OptionalRenderingOverrides renderOverrides = DefaultRenderOverrides());
 
     /// @brief Build and submit the material for these cube descriptors, returning its manager handle.
     static std::vector<Handle> MakeMaterialHandles(core::device::DeviceContext &context,

@@ -342,6 +342,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/command/command_order/DeclareDependency.hpp"
     "include/starlight/command/command_order/DeclarePass.hpp"
     "include/starlight/command/command_order/TriggerPass.hpp"
+    "include/starlight/command/command_order/AddRenderResourceSetup.hpp"
     "include/starlight/command/command_order/GetPassInfo.hpp"
     "include/starlight/command/CreateObject.hpp"
     "include/starlight/command/detail/create_object/ObjectLoader.hpp"

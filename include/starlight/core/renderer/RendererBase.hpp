@@ -2,6 +2,7 @@
 
 #include "core/renderer/RenderPhaseConfig.hpp"
 #include "core/renderer/RenderTargets.hpp"
+#include "internals/CommandBufferContainer.hpp"
 #include "systems/StarRenderGroup.hpp"
 
 #include <star_common/IDeviceContext.hpp>
@@ -60,6 +61,8 @@ class RendererBase
     RenderTargets m_renderTargets;
     std::vector<StarRenderGroup> m_renderGroups;
     Handle m_commandBuffer;
+    /// @brief The command-buffer manager, used to reach this pass's request at record/cleanup time.
+    core::device::manager::ManagerCommandBuffer *m_commandBuffers = nullptr;
     std::optional<core::graphics::RecordingSubmissionInfo> m_recordingInfo;
 
     void updateRenderingGroups(core::device::DeviceContext &context, const uint8_t &frameInFlightIndex);

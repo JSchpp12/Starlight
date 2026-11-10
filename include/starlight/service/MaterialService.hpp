@@ -36,9 +36,8 @@ using ListenForStartOfNextFrame =
                                    &T::onStartOfNextFrame>;
 
 /// @brief Material lifecycle service: creation, resource switching, and retirement.
-/// @details Basic implementation: the swap commits in the command handler. Recording the one-shot
-/// RenderResourceSetup through CommandOrderService is the next step; until then the setup is retained and cleaned at
-/// shutdown.
+/// @details The swap commits in the command handler; its one-shot setup is handed to the owning pass's
+/// CompleteRequest so the pass preps and records it inline.
 class MaterialService
 {
   public:
@@ -88,7 +87,6 @@ class MaterialService
     common::EventBus *m_evtBus = nullptr;
 
     std::vector<RetireEntry> m_retires;
-    std::vector<setup::RenderResourceSetup> m_orphanedSetups;
     bool m_listenersInitialized = false;
 };
 } // namespace star::service

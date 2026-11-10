@@ -35,10 +35,11 @@ struct SetMaterialResource : public star::common::IServiceCommand
 
     SetMaterialResource(Handle material, Handle recordingCommandBuffer, size_t setIndex, size_t bindingIndex,
                         StarShaderInfo::ShaderInfo newHandle, std::vector<MaterialTransferWait> waits,
-                        star::setup::RenderResourceSetup setup, std::optional<size_t> frameInFlightIndex = std::nullopt)
+                        star::setup::RenderResourceSetup::PrepRequest prep,
+                        std::optional<size_t> frameInFlightIndex = std::nullopt)
         : material(std::move(material)), recordingCommandBuffer(std::move(recordingCommandBuffer)), setIndex(setIndex),
           bindingIndex(bindingIndex), newHandle(std::move(newHandle)), frameInFlightIndex(frameInFlightIndex),
-          waits(std::move(waits)), setup(std::move(setup))
+          waits(std::move(waits)), prep(std::move(prep))
     {
     }
 
@@ -54,6 +55,7 @@ struct SetMaterialResource : public star::common::IServiceCommand
     /// @brief Restrict the replacement to one frame in flight; empty replaces it in every frame.
     std::optional<size_t> frameInFlightIndex;
     std::vector<MaterialTransferWait> waits;
-    star::setup::RenderResourceSetup setup;
+    /// @brief One-shot work for the new resource. CommandOrderService is bypassed; the service prepares it directly.
+    star::setup::RenderResourceSetup::PrepRequest prep;
 };
 } // namespace star::command::material

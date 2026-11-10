@@ -15,8 +15,7 @@ namespace star::service
 MaterialService::MaterialService(MaterialService &&other) noexcept
     : m_listenForCreate(*this), m_listenForSet(*this), m_listenForFrame(*this), m_context(other.m_context),
       m_device(other.m_device), m_graphicsManagers(other.m_graphicsManagers), m_cmdBus(other.m_cmdBus),
-      m_evtBus(other.m_evtBus), m_retires(std::move(other.m_retires)),
-      m_orphanedSetups(std::move(other.m_orphanedSetups)), m_listenersInitialized(false)
+      m_evtBus(other.m_evtBus), m_retires(std::move(other.m_retires)), m_listenersInitialized(false)
 {
     assert(!other.m_listenersInitialized && "MaterialService must be moved before init");
 
@@ -57,15 +56,7 @@ void MaterialService::shutdown()
         m_listenersInitialized = false;
     }
 
-    // The one-shot setups are not recorded yet (CommandOrderService injection is the next step); clean them while the
-    // device is alive.
-    if (m_context != nullptr)
-    {
-        for (auto &setup : m_orphanedSetups)
-            setup.cleanupRender(*m_context);
-    }
-
-    m_orphanedSetups.clear();
+    // One-shot setups are owned by the pass requests and drained by DeviceContext's pending-work cleanup.
     m_retires.clear();
 }
 
@@ -83,6 +74,7 @@ void MaterialService::onCreateMaterial(command::material::CreateMaterial &cmd)
 void MaterialService::onSetMaterialResource(command::material::SetMaterialResource &cmd)
 {
     assert(m_graphicsManagers != nullptr);
+    assert(m_context != nullptr && "MaterialService requires a DeviceContext to place one-shot work");
 
     auto &materials = m_graphicsManagers->materialManager;
     auto *material = materials.getMaterial(cmd.material);
@@ -106,9 +98,22 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
         }
     }
 
-    // TODO: hand the setup to CommandOrderService for recording and retire the old resource against the owning
-    // render phase's gate. Until then the setup is retained and cleaned at shutdown.
-    m_orphanedSetups.push_back(std::move(cmd.setup));
+    // Prepare and hand the work to the owning pass's request; clean it immediately if no pass was reported.
+    if (m_context != nullptr)
+    {
+        if (cmd.prep.prepare)
+            cmd.prep.prepare(*m_context, cmd.prep.definition);
+
+        if (cmd.recordingCommandBuffer.isInitialized())
+        {
+            m_context->getManagerCommandBuffer().m_manager.get(cmd.recordingCommandBuffer)
+                .add(std::move(cmd.prep.definition));
+        }
+        else
+        {
+            cmd.prep.definition.cleanupRender(*m_context);
+        }
+    }
 }
 
 void MaterialService::onStartOfNextFrame(const event::StartOfNextFrame &, bool &)

@@ -149,11 +149,16 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
             evtBus.emit(star::event::FrameComplete{});
         }
 
-        m_systemManager.getContext(m_defaultDevice).waitIdle();
-        m_application.shutdown(m_systemManager.getContext(m_defaultDevice));
-        currentScene->cleanupRender(m_systemManager.getContext(m_defaultDevice));
+        auto &context = m_systemManager.getContext(m_defaultDevice);
+        context.waitIdle();
+
+        // Scene cleanup drains every phase's one-shot work while the device, managers, and app-held GPU contexts (the
+        // skybox conversion pool and layouts) are all still alive. Application shutdown must follow it.
+        currentScene->cleanupRender(context);
+        m_application.shutdown(context);
+
         // need to cleanup services first
-        m_systemManager.getContext(m_defaultDevice).cleanupRender();
+        context.cleanupRender();
         m_initPolicy.cleanup(m_renderingInstance); // destroy surface
     }
 

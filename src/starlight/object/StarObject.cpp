@@ -14,6 +14,7 @@
 #include <glm/glm.hpp>
 
 #include <algorithm>
+#include <memory>
 
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout =
     std::unique_ptr<star::StarDescriptorSetLayout>();
@@ -137,12 +138,8 @@ void star::StarObject::init(core::device::DeviceContext &context)
 
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 {
-    // Drain any setup this object recorded (its release gates are waited on here).
-    if (m_setup.has_value())
-    {
-        m_setup->cleanupRender(context);
-        m_setup.reset();
-    }
+    // One-shot work is owned and cleaned by the pass request; this object only observes it.
+    m_setup = nullptr;
 
     // normalExtrusionPipeline->cleanupRender(context.getDevice());
     // this->normalExtrusionPipeline.reset();
@@ -284,23 +281,16 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
-star::StarObject::StarObject(std::vector<Handle> materialHandles, star::setup::RenderResourceSetup setup)
+star::StarObject::StarObject(std::vector<Handle> materialHandles)
     : m_materialHandles(std::move(materialHandles))
 {
-    if (!setup.definitions.empty())
-        m_setup.emplace(std::move(setup));
 }
 
 void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer,
                                                    const common::FrameTracker &frameTracker, uint64_t frameIndex,
                                                    const core::graphics::RecordingSubmissionInfo *recordingInfo)
 {
-    if (m_setup.has_value())
-    {
-        const core::graphics::SemaphoreInfo gate =
-            recordingInfo != nullptr ? recordingInfo->gate : core::graphics::SemaphoreInfo{};
-        m_setup->record(commandBuffer, gate);
-    }
+    (void)recordingInfo; // One-shot setup is now recorded by the owning pass, not this object.
 
     const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
 
@@ -313,7 +303,7 @@ void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer commandBuff
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout,
                                                 uint8_t swapChainIndexNum, uint64_t frameIndex)
 {
-    if (m_setup.has_value() && !m_setup->isDone())
+    if (m_setup && !m_setup->isDone())
         return;
 
     if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
@@ -361,14 +351,9 @@ void star::StarObject::frameUpdate(core::device::DeviceContext &context, uint8_t
                                    Handle targetCommandBuffer,
                                    const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
-    if (m_setup.has_value())
-    {
-        m_setup->prepRender(context);
-
-        // Nothing left to record or release: drop the setup so its storage does not outlive its use.
-        if (m_setup->isFullyDrained())
-            m_setup.reset();
-    }
+    // Observe the owning pass's setup for the draw gate. The work itself is handed over by the app's TriggerPass.
+    if (targetCommandBuffer.isInitialized())
+        m_setup = &context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer).renderResourceSetup;
 
     if (!isReady && isRenderReady(context))
         isReady = true;

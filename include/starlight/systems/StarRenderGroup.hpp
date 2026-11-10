@@ -46,9 +46,6 @@ class StarRenderGroup
 
     void recordRenderPassCommands(vk::CommandBuffer mainDrawBuffer, uint8_t swapChainImageIndex, uint64_t frameIndex);
 
-    /// @brief True while any object in this group still has one-shot setup that must be recorded.
-    bool hasPendingSetup() const;
-
     /// @param recordingInfo Recording submission of the phase's command buffer, or null when no object in the phase
     /// has a pending setup and no completion gate is needed.
     void recordPreRenderPassCommands(vk::CommandBuffer mainDrawBuffer, const common::FrameTracker &frameTracker,

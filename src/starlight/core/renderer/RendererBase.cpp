@@ -2,6 +2,7 @@
 
 #include "starlight/command/command_order/DeclarePass.hpp"
 #include "starlight/command/command_order/GetPassInfo.hpp"
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 
 #include <star_common/EventBus.hpp>
@@ -21,6 +22,14 @@ static void RegisterWithCommandOrder(const star::core::CommandBus &cmdBus, star:
 
 void RendererBase::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft)
 {
+    // One-shot setup records inline, before the pass's own commands. This runs inside the caller's begin()/end().
+    if (m_commandBuffers != nullptr)
+    {
+        const core::graphics::SemaphoreInfo gate =
+            m_recordingInfo.has_value() ? m_recordingInfo->gate : core::graphics::SemaphoreInfo{};
+        m_commandBuffers->get(m_commandBuffer).recordSetup(commandBuffer, gate);
+    }
+
     if (m_renderGroups.empty())
         return;
 
@@ -56,6 +65,12 @@ void RendererBase::cleanupRender(common::IDeviceContext &context)
     {
         m_renderGroups[i].cleanupRender(c);
     }
+
+    // Objects are released above; drain this pass's one-shot work while the app-held GPU contexts are still alive.
+    if (m_commandBuffer.isInitialized())
+    {
+        c.getManagerCommandBuffer().m_manager.get(m_commandBuffer).cleanupSetup(c);
+    }
 }
 
 void RendererBase::prepRender(common::IDeviceContext &context)
@@ -74,14 +89,15 @@ void RendererBase::frameUpdate(common::IDeviceContext &context)
     auto &c = static_cast<core::device::DeviceContext &>(context);
     updateRenderingGroups(c, c.frameTracker().getCurrent().getFrameInFlightIndex());
 
+    m_commandBuffers = m_commandBuffer.isInitialized() ? &c.getManagerCommandBuffer().m_manager : nullptr;
     m_recordingInfo.reset();
-    for (const auto &group : m_renderGroups)
+
+    if (m_commandBuffers != nullptr)
     {
-        if (group.hasPendingSetup())
-        {
+        auto &request = m_commandBuffers->get(m_commandBuffer);
+        request.prepareSetup(c);
+        if (!request.isDone())
             m_recordingInfo = core::graphics::GetRecordingSubmissionInfo(c, m_commandBuffer);
-            break;
-        }
     }
 }
 
