@@ -5,7 +5,7 @@
 #include <starlight/wrappers/graphics/StarShaderInfo.hpp>
 
 #include <star_common/Handle.hpp>
-#include <star_common/IServiceCommand.hpp>
+#include <star_common/IServiceCommandWithReply.hpp>
 
 #include <cstddef>
 #include <optional>
@@ -24,7 +24,7 @@ inline constexpr const char *GetTypeName()
 } // namespace set_material_resource
 
 /// @brief Retarget a material's primary resource and carry the one-shot work that must precede sampling it.
-struct SetMaterialResource : public star::common::IServiceCommand
+struct SetMaterialResource : public star::common::IServiceCommandWithReply<bool>
 {
     static inline constexpr std::string_view GetUniqueTypeName()
     {

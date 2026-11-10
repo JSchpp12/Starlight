@@ -77,6 +77,11 @@ class MaterialService
     void cleanupListeners(core::CommandBus &bus);
     void cleanupListeners(common::EventBus &bus);
     void queueRetire(const Handle &resource, const Handle &pass);
+    /// @brief True when the incoming resource's manager record exists and carries a valid GPU object.
+    /// @details Blocks until a pending transfer publishes; a failed transfer resolves to a blank record and fails.
+    [[nodiscard]] bool validateIncomingResource(const StarShaderInfo::ShaderInfo &info);
+    /// @brief Deletes a rejected incoming resource record. The caller must have made the device idle.
+    void deleteIncomingResource(const StarShaderInfo::ShaderInfo &info);
     void drainRetires();
 
     ListenForSetMaterialResource<MaterialService> m_listenForSet;

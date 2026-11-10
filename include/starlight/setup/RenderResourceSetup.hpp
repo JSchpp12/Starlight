@@ -133,6 +133,10 @@ struct RenderResourceSetup
         /// @brief Non-blocking release drain: runs the keepAlive once the recorded gate has been observed passed.
         /// @return True when recorded and the release is consumed; false while work or the gate remains.
         [[nodiscard]] bool tryDrainRelease(core::device::DeviceContext &context);
+        /// @brief Runs the release's keepAlive assuming the caller has already made the device idle, then clears it.
+        /// @details Used when a definition will never be recorded (failed swap). Unlike cleanupRender it never calls
+        /// DeviceContext::waitIdle(), which would tear down the task manager mid-run.
+        void releaseAssumeDeviceIdle(core::device::DeviceContext &context);
         /// @brief Waits for the release gate (or device idleness) and runs its keepAlive.
         void cleanupRender(core::device::DeviceContext &context);
     };

@@ -197,6 +197,20 @@ bool RenderResourceSetup::ResourcePrepDefinition::record(vk::CommandBuffer comma
     return true;
 }
 
+void RenderResourceSetup::ResourcePrepDefinition::releaseAssumeDeviceIdle(core::device::DeviceContext &context)
+{
+    if (release.keepAlive)
+    {
+        release.keepAlive(context);
+        release.keepAlive = {};
+    }
+
+    release.timelineSemaphore = VK_NULL_HANDLE;
+    release.waitForValue = 0;
+    release.gateOnRecordingSubmission = false;
+    recorded = true;
+}
+
 void RenderResourceSetup::ResourcePrepDefinition::cleanupRender(core::device::DeviceContext &context)
 {
     if (release.keepAlive)
@@ -209,17 +223,9 @@ void RenderResourceSetup::ResourcePrepDefinition::cleanupRender(core::device::De
                 vk::SemaphoreWaitInfo().setSemaphores(release.timelineSemaphore).setValues(release.waitForValue),
                 UINT64_MAX);
         }
-        else
-        {
-            // The gate was never stamped (or is unobservable): fall back to device idleness before freeing.
-            context.waitIdle();
-        }
-
-        release.keepAlive(context);
-        release.keepAlive = {};
     }
 
-    recorded = true;
+    releaseAssumeDeviceIdle(context);
 }
 
 bool RenderResourceSetup::ResourcePrepDefinition::tryDrainRelease(core::device::DeviceContext &context)

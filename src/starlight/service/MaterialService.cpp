@@ -5,9 +5,11 @@
 #include "core/device/managers/Image.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "device/managers/Material.hpp"
+#include "managers/ManagerRenderResource.hpp"
 #include "virtual/StarMaterial.hpp"
 
 #include <cassert>
+#include <exception>
 #include <utility>
 #include <vulkan/vulkan.hpp>
 
@@ -126,12 +128,47 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
     auto &materials = m_graphicsManagers->materialManager;
     auto *material = materials.getMaterial(cmd.material);
     if (material == nullptr)
+    {
+        core::logging::warning("MaterialService: SetMaterialResource for an unknown material");
+        cmd.getReply().set(false);
         return;
+    }
 
     // Retirement tracks the material's primary resource (set 0 / binding 0). A secondary binding (e.g. a bump map)
     // needs per-binding roles; swapping one must not retire the primary resource.
     const bool isPrimaryBinding = cmd.setIndex == 0 && cmd.bindingIndex == 0;
     const Handle previous = isPrimaryBinding ? material->getResourceHandle() : Handle{};
+
+    // Prepare first: the incoming resource's one-shot work is required both for validation and for the pass.
+    setup::RenderResourceSetup::ResourcePrepDefinition definition;
+    bool prepareSucceeded = true;
+    try
+    {
+        if (cmd.prep.prepare)
+            cmd.prep.prepare(*m_context, definition);
+    }
+    catch (const std::exception &e)
+    {
+        prepareSucceeded = false;
+        core::logging::warning("MaterialService: resource preparation failed: ", e.what());
+    }
+
+    // Validate before rebinding so a failed transfer keeps the old resource bound.
+    if (!prepareSucceeded || !validateIncomingResource(cmd.newHandle))
+    {
+        core::logging::warning("MaterialService: incoming resource is not usable; keeping the previous resource");
+
+        // The transfer may have submitted GPU work. Wait through the raw device (DeviceContext::waitIdle() would
+        // tear down the task manager mid-run), then free the abandoned per-make resources and the resource record.
+        if (m_device != nullptr)
+            m_device->getVulkanDevice().waitIdle();
+
+        definition.releaseAssumeDeviceIdle(*m_context);
+        deleteIncomingResource(cmd.newHandle);
+
+        cmd.getReply().set(false);
+        return;
+    }
 
     material->setResourceHandle(cmd.setIndex, cmd.bindingIndex, std::move(cmd.newHandle), cmd.frameInFlightIndex);
 
@@ -146,7 +183,7 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
 
     // The swap command carries the owning render phase's command buffer; its one-time wait info is consumed by the
     // submission that records that phase.
-    if (m_context != nullptr && cmd.recordingCommandBuffer.isInitialized() && !cmd.waits.empty())
+    if (cmd.recordingCommandBuffer.isInitialized() && !cmd.waits.empty())
     {
         auto &request = m_context->getManagerCommandBuffer().m_manager.get(cmd.recordingCommandBuffer);
         for (const auto &wait : cmd.waits)
@@ -159,27 +196,101 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
         }
     }
 
-    // Prepare and hand the work to the owning pass's request; clean it immediately if no pass was reported.
-    if (m_context != nullptr)
+    if (cmd.recordingCommandBuffer.isInitialized())
     {
-        setup::RenderResourceSetup::ResourcePrepDefinition definition;
-        if (cmd.prep.prepare)
-            cmd.prep.prepare(*m_context, definition);
-
-        if (cmd.recordingCommandBuffer.isInitialized())
-        {
-            m_context->getManagerCommandBuffer().m_manager.get(cmd.recordingCommandBuffer).add(std::move(definition));
-        }
-        else
-        {
-            definition.cleanupRender(*m_context);
-        }
+        m_context->getManagerCommandBuffer().m_manager.get(cmd.recordingCommandBuffer).add(std::move(definition));
     }
+    else
+    {
+        // No pass can record the one-shot work; release it once the transfer has retired.
+        if (m_device != nullptr)
+            m_device->getVulkanDevice().waitIdle();
+        definition.releaseAssumeDeviceIdle(*m_context);
+    }
+
+    cmd.getReply().set(true);
 }
 
-void MaterialService::onStartOfNextFrame(const event::StartOfNextFrame &, bool &)
+bool MaterialService::validateIncomingResource(const StarShaderInfo::ShaderInfo &info)
+{
+    if (info.textureInfo.has_value())
+    {
+        const auto &textureInfo = *info.textureInfo;
+        if (!textureInfo.handle.isInitialized())
+            return textureInfo.texture != nullptr;
+
+        auto &imageManager = m_graphicsManagers->imageManager;
+        imageManager.waitForReady(textureInfo.handle);
+
+        const auto *record = imageManager.get(textureInfo.handle);
+        if (record == nullptr || record->getTexture() == nullptr)
+            return false;
+
+        const auto *texture = record->getTexture();
+        if (texture->getVulkanImage() == VK_NULL_HANDLE)
+            return false;
+
+        return texture->getImageView().get(texture->getBaseFormat()) != VK_NULL_HANDLE;
+    }
+
+    if (info.bufferInfo.has_value())
+    {
+        const auto &bufferInfo = *info.bufferInfo;
+        if (bufferInfo.buffer.has_value())
+            return *bufferInfo.buffer != nullptr;
+
+        if (!bufferInfo.handle.has_value())
+            return false;
+
+        const Handle handle = *bufferInfo.handle;
+        if (handle.getType() == m_graphicsManagers->bufferManager.getHandleType())
+        {
+            auto &bufferManager = m_graphicsManagers->bufferManager;
+            bufferManager.waitForReady(handle);
+
+            const auto *record = bufferManager.get(handle);
+            return record != nullptr && record->getBuffer() != nullptr &&
+                   record->getBuffer()->getVulkanBuffer() != VK_NULL_HANDLE;
+        }
+
+        ManagerRenderResource::waitForReady(m_context->getDeviceID(), handle);
+        return ManagerRenderResource::getBuffer(m_context->getDeviceID(), handle).getVulkanBuffer() != VK_NULL_HANDLE;
+    }
+
+    return false;
+}
+
+void MaterialService::deleteIncomingResource(const StarShaderInfo::ShaderInfo &info)
+{
+    if (info.textureInfo.has_value())
+    {
+        const auto &textureInfo = *info.textureInfo;
+        if (!textureInfo.handle.isInitialized())
+            return;
+
+        auto &imageManager = m_graphicsManagers->imageManager;
+        if (imageManager.isReady(textureInfo.handle))
+            imageManager.deleteRequest(*m_device, textureInfo.handle);
+        return;
+    }
+
+    if (!info.bufferInfo.has_value() || !info.bufferInfo->handle.has_value())
+        return;
+
+    const Handle handle = *info.bufferInfo->handle;
+    if (handle.getType() != m_graphicsManagers->bufferManager.getHandleType())
+        return;
+
+    auto &bufferManager = m_graphicsManagers->bufferManager;
+    if (bufferManager.isReady(handle))
+        bufferManager.deleteRequest(*m_device, handle);
+}
+
+void MaterialService::onStartOfNextFrame(const event::StartOfNextFrame &, bool &keepAlive)
 {
     drainRetires();
+
+    keepAlive = true;
 }
 
 void MaterialService::queueRetire(const Handle &resource, const Handle &pass)
