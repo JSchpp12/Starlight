@@ -192,6 +192,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/ListenForStartOfNextFramePolicy.cpp"
     "src/starlight/core/service/Service.cpp"
     "src/starlight/service/SceneLoaderService.cpp"
+    "src/starlight/service/MaterialService.cpp"
     "src/starlight/service/detail/scene_loader/SceneObjectTracker.cpp"
     "src/starlight/service/FrameInFlightControllerService.cpp"
     "src/starlight/service/ScreenCapture.cpp"

@@ -13,6 +13,25 @@ void star::StarMaterial::prepRender(core::device::DeviceContext &context, uint8_
     }
 }
 
+void star::StarMaterial::setResourceHandle(size_t setIndex, size_t bindingIndex, StarShaderInfo::ShaderInfo newHandle,
+                                           std::optional<size_t> frameInFlightIndex)
+{
+    if (newHandle.bufferInfo.has_value())
+    {
+        m_resourceHandle = newHandle.bufferInfo->handle.value_or(Handle());
+        if (shaderInfo)
+            shaderInfo->setNewResource(setIndex, bindingIndex, std::move(newHandle.bufferInfo.value()),
+                                       frameInFlightIndex);
+    }
+    else if (newHandle.textureInfo.has_value())
+    {
+        m_resourceHandle = newHandle.textureInfo->handle;
+        if (shaderInfo)
+            shaderInfo->setNewResource(setIndex, bindingIndex, std::move(newHandle.textureInfo.value()),
+                                       frameInFlightIndex);
+    }
+}
+
 void star::StarMaterial::cleanupRender(core::device::DeviceContext &context)
 {
     shaderInfo->cleanupRender(context.getDevice());

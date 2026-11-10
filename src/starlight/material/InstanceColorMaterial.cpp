@@ -16,21 +16,24 @@ std::unique_ptr<StarShaderInfo> InstanceColorMaterial::buildShaderInfo(core::dev
 {
     assert(m_colorProvider);
 
-    auto colors = context.getManagerRenderResource().addRequest(
+    m_colorBuffer = context.getManagerRenderResource().addRequest(
         context.getDeviceID(),
         std::make_unique<TransferRequest::InstanceColorInfo>(
             m_colorProvider->getColors(),
             core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
                                                 star::Queue_Type::Tgraphics)
                 ->getParentQueueFamilyIndex()));
+    if (!m_resourceHandle.isInitialized())
+        m_resourceHandle = m_colorBuffer;
 
     for (size_t i{0}; i < context.frameTracker().getSetup().getNumFramesInFlight(); i++)
     {
         builder.startOnFrameIndex(i);
         builder.startSet();
-        builder.add(star::StarShaderInfo::BufferInfo{colors});
+        builder.add(star::StarShaderInfo::BufferInfo{m_colorBuffer});
     }
 
     return builder.build();
 }
+
 } // namespace star::material

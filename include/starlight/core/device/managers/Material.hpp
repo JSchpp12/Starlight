@@ -75,6 +75,8 @@ class Material : public ManagerEventBusTies<MaterialRecord, MaterialRequest, 30,
 
     using Base::get;
 
+    Handle getResourceHandle(const Handle &material) const;
+
     star::StarMaterial *getMaterial(const Handle &handle)
     {
         auto *record = get(handle);

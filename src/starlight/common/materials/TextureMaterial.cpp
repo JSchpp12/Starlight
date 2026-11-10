@@ -105,16 +105,20 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, uin
                                        star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
     preloadTexture(context);
+    if (!m_resourceHandle.isInitialized())
+        m_resourceHandle = m_textureHandle;
 
     if (m_textureHandle.isInitialized())
-        registerTextureTransferWait(context, commandBuffer, m_textureHandle, m_textureTransfer);
+        registerTextureTransferWait(context, commandBuffer, m_textureHandle, m_textureTransfer,
+                                    m_textureTransferStages);
 
     StarMaterial::prepRender(context, numFramesInFlight, frameBuilder, commandBuffer);
 }
 
 void star::TextureMaterial::registerTextureTransferWait(core::device::DeviceContext &context,
                                                         star::Handle commandBuffer, star::Handle textureHandle,
-                                                        const star::StarSemaphore &transferSemaphore)
+                                                        const star::StarSemaphore &transferSemaphore,
+                                                        vk::PipelineStageFlags waitStages)
 {
     // A preloaded texture has no transfer of its own, so there is nothing to wait on.
     if (!textureHandle.isInitialized() || transferSemaphore.vkSemaphore == VK_NULL_HANDLE)
@@ -122,9 +126,7 @@ void star::TextureMaterial::registerTextureTransferWait(core::device::DeviceCont
 
     context.getManagerCommandBuffer()
         .m_manager.get(commandBuffer)
-        .oneTimeWaitSemaphoreInfo.insert(textureHandle, transferSemaphore.vkSemaphore,
-                                         vk::PipelineStageFlagBits::eFragmentShader |
-                                             vk::PipelineStageFlagBits::eVertexShader,
+        .oneTimeWaitSemaphoreInfo.insert(textureHandle, transferSemaphore.vkSemaphore, waitStages,
                                          transferSemaphore.signalValue);
 }
 
