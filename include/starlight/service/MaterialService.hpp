@@ -11,6 +11,7 @@
 
 #include <star_common/Handle.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace star::core::device
@@ -66,13 +67,16 @@ class MaterialService
     {
         Handle handle;
         bool isImage{false};
-        core::graphics::SemaphoreInfo gate;
+        /// @brief Recording-submission gate captured at swap time. Empty when the pass could not report one, in
+        /// which case the entry is held for the teardown backstop.
+        std::optional<core::graphics::SemaphoreInfo> gate;
     };
 
     void initListeners(core::CommandBus &bus);
     void initListeners(common::EventBus &bus);
     void cleanupListeners(core::CommandBus &bus);
     void cleanupListeners(common::EventBus &bus);
+    void queueRetire(const Handle &resource, const Handle &pass);
     void drainRetires();
 
     ListenForSetMaterialResource<MaterialService> m_listenForSet;

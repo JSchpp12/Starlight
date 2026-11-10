@@ -118,8 +118,8 @@ class CommandBufferContainer
         [[nodiscard]] bool hasWork() const;
         /// @brief Resolves one-shot work's per-frame readiness before the pass records.
         void prepareSetup(const core::device::DeviceContext &context);
-        void recordSetup(vk::CommandBuffer commandBuffer,
-                         const core::graphics::SemaphoreInfo &recordingGate);
+        void recordSetup(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingGate);
+        void pollSetupReleases(core::device::DeviceContext &context);
         void cleanupSetup(core::device::DeviceContext &context);
 
         ~CompleteRequest();

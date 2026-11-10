@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include <cassert>
+
 namespace star
 {
 /// <summary>
@@ -130,6 +132,19 @@ class StarObject
     const Handle &getFragmentShaderHandle() const
     {
         return m_fragmentShaderHandle;
+    }
+
+    /// @brief Manager handle of a material created for this object. Available once prepRender has run.
+    const Handle &getMaterialHandle(size_t index) const
+    {
+        assert(index < m_materialHandles.size());
+        return m_materialHandles[index];
+    }
+
+    /// @brief Manager handles of every material created for this object (in mesh order).
+    const std::vector<Handle> &getMaterialHandles() const
+    {
+        return m_materialHandles;
     }
 #pragma endregion
 

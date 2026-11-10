@@ -182,8 +182,8 @@ void RenderResourceSetup::ResourcePrepDefinition::prepare(const core::device::De
     }
 }
 
-bool RenderResourceSetup::ResourcePrepDefinition::record(
-    vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingSubmissionGate)
+bool RenderResourceSetup::ResourcePrepDefinition::record(vk::CommandBuffer commandBuffer,
+                                                         const core::graphics::SemaphoreInfo &recordingSubmissionGate)
 {
     if (recorded)
         return true;
@@ -205,10 +205,9 @@ void RenderResourceSetup::ResourcePrepDefinition::cleanupRender(core::device::De
 
         if (release.timelineSemaphore != VK_NULL_HANDLE)
         {
-            (void)device.waitSemaphores(vk::SemaphoreWaitInfo()
-                                            .setSemaphores(release.timelineSemaphore)
-                                            .setValues(release.waitForValue),
-                                        UINT64_MAX);
+            (void)device.waitSemaphores(
+                vk::SemaphoreWaitInfo().setSemaphores(release.timelineSemaphore).setValues(release.waitForValue),
+                UINT64_MAX);
         }
         else
         {
@@ -221,6 +220,27 @@ void RenderResourceSetup::ResourcePrepDefinition::cleanupRender(core::device::De
     }
 
     recorded = true;
+}
+
+bool RenderResourceSetup::ResourcePrepDefinition::tryDrainRelease(core::device::DeviceContext &context)
+{
+    if (!recorded)
+        return false;
+
+    if (!release.keepAlive)
+        return true;
+
+    // An unobservable gate cannot be polled. Leave it to cleanupRender(), which waits for device idleness instead.
+    if (release.timelineSemaphore == VK_NULL_HANDLE || release.waitForValue == 0)
+        return false;
+
+    const vk::Device device = context.getDevice().getVulkanDevice();
+    if (device.getSemaphoreCounterValue(release.timelineSemaphore) < release.waitForValue)
+        return false;
+
+    release.keepAlive(context);
+    release.keepAlive = {};
+    return true;
 }
 
 void RenderResourceSetup::add(ResourcePrepDefinition definition)
@@ -248,6 +268,14 @@ void RenderResourceSetup::record(vk::CommandBuffer commandBuffer,
 {
     for (auto &definition : definitions)
         (void)definition.record(commandBuffer, recordingSubmissionGate);
+}
+
+void RenderResourceSetup::pollReleases(core::device::DeviceContext &context)
+{
+    // Erase drained definitions so the setup does not grow without bound across repeated one-shot work (e.g. a
+    // runtime material swap) and so per-make releases are actually run while the app is running.
+    std::erase_if(definitions,
+                  [&context](ResourcePrepDefinition &definition) { return definition.tryDrainRelease(context); });
 }
 
 void RenderResourceSetup::cleanupRender(core::device::DeviceContext &context)

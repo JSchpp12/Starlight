@@ -170,8 +170,7 @@ void star::CommandBufferContainer::cleanup(core::device::StarDevice &device)
     }
 }
 
-void star::CommandBufferContainer::CompleteRequest::add(
-    setup::RenderResourceSetup::ResourcePrepDefinition definition)
+void star::CommandBufferContainer::CompleteRequest::add(setup::RenderResourceSetup::ResourcePrepDefinition definition)
 {
     renderResourceSetup.add(std::move(definition));
 }
@@ -191,10 +190,15 @@ void star::CommandBufferContainer::CompleteRequest::prepareSetup(const core::dev
     renderResourceSetup.prepare(context);
 }
 
-void star::CommandBufferContainer::CompleteRequest::recordSetup(
-    vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingGate)
+void star::CommandBufferContainer::CompleteRequest::recordSetup(vk::CommandBuffer commandBuffer,
+                                                                const core::graphics::SemaphoreInfo &recordingGate)
 {
     renderResourceSetup.record(commandBuffer, recordingGate);
+}
+
+void star::CommandBufferContainer::CompleteRequest::pollSetupReleases(core::device::DeviceContext &context)
+{
+    renderResourceSetup.pollReleases(context);
 }
 
 void star::CommandBufferContainer::CompleteRequest::cleanupSetup(core::device::DeviceContext &context)

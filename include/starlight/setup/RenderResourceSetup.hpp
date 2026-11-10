@@ -130,6 +130,9 @@ struct RenderResourceSetup
         /// @brief Records the steps when prepare() found them ready, stamps the release, and marks recorded.
         [[nodiscard]] bool record(vk::CommandBuffer commandBuffer,
                                   const core::graphics::SemaphoreInfo &recordingSubmissionGate);
+        /// @brief Non-blocking release drain: runs the keepAlive once the recorded gate has been observed passed.
+        /// @return True when recorded and the release is consumed; false while work or the gate remains.
+        [[nodiscard]] bool tryDrainRelease(core::device::DeviceContext &context);
         /// @brief Waits for the release gate (or device idleness) and runs its keepAlive.
         void cleanupRender(core::device::DeviceContext &context);
     };
@@ -162,6 +165,11 @@ struct RenderResourceSetup
 
     /// @brief Records every ready, not-yet-recorded definition in one pass.
     void record(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingSubmissionGate);
+
+    /// @brief Non-blocking per-frame drain: runs passed releases and erases fully drained definitions.
+    /// @details Call from the owning phase's frameUpdate after prepare(). Without it, a recorded definition's
+    /// keepAlive (e.g. a per-make descriptor set) is only ever run by the teardown backstop.
+    void pollReleases(core::device::DeviceContext &context);
 
     /// @brief Teardown backstop: host-waits every release gate, runs each keepAlive, and clears.
     void cleanupRender(core::device::DeviceContext &context);

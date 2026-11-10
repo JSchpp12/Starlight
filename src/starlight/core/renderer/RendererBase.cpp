@@ -1,8 +1,8 @@
 #include "core/renderer/RendererBase.hpp"
 
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "starlight/command/command_order/DeclarePass.hpp"
 #include "starlight/command/command_order/GetPassInfo.hpp"
-#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "starlight/core/helper/queue/QueueHelpers.hpp"
 
 #include <star_common/EventBus.hpp>
@@ -99,6 +99,8 @@ void RendererBase::frameUpdate(common::IDeviceContext &context)
     {
         auto &request = m_commandBuffers->get(m_commandBuffer);
         request.prepareSetup(c);
+        // Drain releases from definitions recorded on earlier frames (see RenderPhase::frameUpdate).
+        request.pollSetupReleases(c);
         if (!request.isDone())
             m_recordingInfo = core::graphics::GetRecordingSubmissionInfo(c, m_commandBuffer);
     }

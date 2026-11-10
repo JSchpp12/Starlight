@@ -3,6 +3,7 @@
 #include "core/device/DeviceContext.hpp"
 #include "core/device/managers/Buffer.hpp"
 #include "core/device/managers/Image.hpp"
+#include "core/logging/LoggingFactory.hpp"
 #include "device/managers/Material.hpp"
 #include "virtual/StarMaterial.hpp"
 
@@ -56,7 +57,29 @@ void MaterialService::shutdown()
         m_listenersInitialized = false;
     }
 
-    // One-shot setups are owned by the pass requests and drained by DeviceContext's pending-work cleanup.
+    // One-shot setups are owned by the pass requests and drained by DeviceContext's pending-work cleanup. Anything
+    // still in the retire queue was ungated (the owning pass was never triggered) or waiting on a producer; the
+    // engine waits for device idleness before services shut down, so a published resource can be destroyed now.
+    // A slot that is still pending belongs to its producer and the manager, and is left alone.
+    if (m_device != nullptr && m_graphicsManagers != nullptr)
+    {
+        auto &imageManager = m_graphicsManagers->imageManager;
+        auto &bufferManager = m_graphicsManagers->bufferManager;
+
+        for (const auto &entry : m_retires)
+        {
+            if (entry.isImage)
+            {
+                if (imageManager.isReady(entry.handle))
+                    imageManager.deleteRequest(*m_device, entry.handle);
+            }
+            else if (bufferManager.isReady(entry.handle))
+            {
+                bufferManager.deleteRequest(*m_device, entry.handle);
+            }
+        }
+    }
+
     m_retires.clear();
 }
 
@@ -105,7 +128,21 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
     if (material == nullptr)
         return;
 
+    // Retirement tracks the material's primary resource (set 0 / binding 0). A secondary binding (e.g. a bump map)
+    // needs per-binding roles; swapping one must not retire the primary resource.
+    const bool isPrimaryBinding = cmd.setIndex == 0 && cmd.bindingIndex == 0;
+    const Handle previous = isPrimaryBinding ? material->getResourceHandle() : Handle{};
+
     material->setResourceHandle(cmd.setIndex, cmd.bindingIndex, std::move(cmd.newHandle), cmd.frameInFlightIndex);
+
+    // The old resource's last GPU use precedes this recording submission, so it is safe to queue against that pass's
+    // gate as soon as the material stops referencing it.
+    if (isPrimaryBinding)
+    {
+        const Handle current = material->getResourceHandle();
+        if (previous.isInitialized() && !previous.isSameElementAs(current))
+            queueRetire(previous, cmd.recordingCommandBuffer);
+    }
 
     // The swap command carries the owning render phase's command buffer; its one-time wait info is consumed by the
     // submission that records that phase.
@@ -145,6 +182,44 @@ void MaterialService::onStartOfNextFrame(const event::StartOfNextFrame &, bool &
     drainRetires();
 }
 
+void MaterialService::queueRetire(const Handle &resource, const Handle &pass)
+{
+    if (m_graphicsManagers == nullptr)
+        return;
+
+    RetireEntry entry{};
+    entry.handle = resource;
+
+    if (resource.getType() == m_graphicsManagers->imageManager.getHandleType())
+    {
+        entry.isImage = true;
+    }
+    else if (resource.getType() == m_graphicsManagers->bufferManager.getHandleType())
+    {
+        entry.isImage = false;
+    }
+    else
+    {
+        core::logging::warning("MaterialService: replaced resource has an unknown handle type; it will not be retired");
+        return;
+    }
+
+    // Capture the gate now: once StartOfNextFrame has run, CommandOrderService has cleared the pass triggers and
+    // GetPassInfo can no longer report the recording submission. An ungated entry is held for the teardown backstop.
+    if (pass.isInitialized() && m_context != nullptr)
+    {
+        const auto gate = core::graphics::GetRecordingSubmissionInfo(*m_context, pass).gate;
+        if (gate.semaphore != VK_NULL_HANDLE && gate.signalValue != 0)
+            entry.gate = gate;
+    }
+
+    if (!entry.gate)
+        core::logging::warning(
+            "MaterialService: no recording gate available for a retired resource; held until teardown");
+
+    m_retires.push_back(std::move(entry));
+}
+
 void MaterialService::drainRetires()
 {
     if (m_device == nullptr || m_graphicsManagers == nullptr)
@@ -156,18 +231,34 @@ void MaterialService::drainRetires()
 
     for (auto it = m_retires.begin(); it != m_retires.end();)
     {
-        const auto &gate = it->gate;
-        if (gate.semaphore == VK_NULL_HANDLE || gate.signalValue == 0 ||
-            device.getSemaphoreCounterValue(gate.semaphore) < gate.signalValue)
+        if (!it->gate || device.getSemaphoreCounterValue(it->gate->semaphore) < it->gate->signalValue)
         {
             ++it;
             continue;
         }
 
         if (it->isImage)
+        {
+            // A slot whose producer has not published yet still belongs to that producer; deleting it would strand
+            // the texture it later creates. Retry next frame.
+            if (!imageManager.isReady(it->handle))
+            {
+                ++it;
+                continue;
+            }
+
             imageManager.deleteRequest(*m_device, it->handle);
+        }
         else
+        {
+            if (!bufferManager.isReady(it->handle))
+            {
+                ++it;
+                continue;
+            }
+
             bufferManager.deleteRequest(*m_device, it->handle);
+        }
 
         it = m_retires.erase(it);
     }
