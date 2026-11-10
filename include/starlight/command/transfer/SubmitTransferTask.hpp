@@ -23,8 +23,6 @@ struct SubmitTransferResult
     star::StarSemaphore semaphore;
     uint32_t queueFamilyIndex{0};
     uint32_t workerId{0};
-    /// Buffer-manager slot for the staging buffer, present when the request takes staging ownership.
-    std::optional<star::Handle> stagingBuffer{};
 };
 
 struct SubmitTransferTask : public star::common::IServiceCommandWithReply<SubmitTransferResult>

@@ -106,20 +106,26 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
 {
     auto &newTextureRequest = *requestData.request;
 
-    auto transferSrcBuffer = newTextureRequest.createStagingBuffer(device);
+    std::unique_ptr<StarBuffers::Buffer> transferSrcBuffer = newTextureRequest.createStagingBuffer(device);
+    if (transferSrcBuffer && transferSrcBuffer->getBufferSize() == 0)
+        STAR_THROW("Failed to create transfer src buffer");
 
     bool newImageCreated = true;
 
     auto finalTexture = newTextureRequest.createFinal(device, allTransferQueueFamilyIndicesInUse);
 
-    newTextureRequest.writeDataToStageBuffer(*transferSrcBuffer);
-
-    if (!newImageCreated)
+    if (transferSrcBuffer)
     {
-        STAR_THROW("Unsupported image operation in transfer manager");
-    }
+        newTextureRequest.writeDataToStageBuffer(*transferSrcBuffer);
 
-    newTextureRequest.copyFromTransferSRCToDST(*transferSrcBuffer, *finalTexture, processInfo.commandBuffer->buffer(0));
+        if (!newImageCreated)
+        {
+            STAR_THROW("Unsupported image operation in transfer manager");
+        }
+
+        newTextureRequest.copyFromTransferSRCToDST(*transferSrcBuffer, *finalTexture,
+                                                   processInfo.commandBuffer->buffer(0));
+    }
 
     processInfo.commandBuffer->buffer(0).end();
 
@@ -164,9 +170,11 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
     requestData.slot.set_value(
         std::expected<StarTextures::Texture, core::ResourceCreationError>{std::move(*finalTexture)});
 
-    if (newTextureRequest.takesStagingOwnership)
-        newTextureRequest.adoptStagingBuffer(*transferSrcBuffer);
-    else
+    // The request may publish its one-shot contribution after submission.
+    newTextureRequest.onTransferComplete();
+
+    // Staging, when used, is worker-owned and fence-freed; no caller adopts it.
+    if (transferSrcBuffer)
         processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
@@ -189,12 +197,6 @@ void TransferManagerThread::PublishFailure(InterThreadRequest &request, const co
                 data.slot.set_value(std::unexpected(error));
 
                 auto &texture = *data.request;
-                if (texture.stagingBufferSlot.has_value())
-                {
-                    texture.stagingBufferSlot->set_value(std::unexpected(error));
-                    texture.stagingBufferSlot.reset();
-                }
-
                 texture.onTransferFailed(error.what());
             }
         },
