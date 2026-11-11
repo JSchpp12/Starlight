@@ -20,7 +20,7 @@ else()
     set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 endif()
 
-find_package(starlight_common REQUIRED)
+find_package(starlight_common REQUIRED) 
 
 # Vendored projects enable -Werror by default. Keep those flags out of
 # third-party builds; STAR_ENABLE_WARNINGS is scoped to first-party targets.
@@ -179,6 +179,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/event/FrameComplete.cpp"
     "src/starlight/event/RegisterMainGraphicsRenderer.cpp"
     "src/starlight/event/StartOfNextFrame.cpp"
+    "src/starlight/event/ManagerReservedMemoryUpdate.cpp"
     "src/starlight/event/GetQueue.cpp"
     "src/starlight/event/DescriptorPoolReady.cpp"
     "src/starlight/policy/command/ListenFor.cpp"
@@ -298,6 +299,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/command/ListenForGetFrameTracker.cpp"
     "src/starlight/policy/event/ListenForFrameComplete.cpp"
     "src/starlight/policy/event/ListenForPrepForNextFrame.cpp"
+    "src/starlight/policy/event/ListenForManagerReservedMemoryUpdate.cpp"
     "src/starlight/core/graphics/GPUWorkSyncInfo.cpp" 
     "src/starlight/command/CreateLight.cpp" 
     "src/starlight/command/shader/CreateShader.cpp"
@@ -456,6 +458,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/event/FrameComplete.hpp"
     "include/starlight/event/RegisterMainGraphicsRenderer.hpp"
     "include/starlight/event/StartOfNextFrame.hpp"
+    "include/starlight/event/ManagerReservedMemoryUpdate.hpp"
     "include/starlight/event/GetQueue.hpp"
     "include/starlight/event/DescriptorPoolReady.hpp"
     "include/starlight/policy/command/ListenFor.hpp"
@@ -575,6 +578,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/policy/DefaultEngineLoopPolicy.hpp"
     "include/starlight/policy/ListenForRenderReadyForFinalization.hpp"
     "include/starlight/policy/event/ListenFor.hpp"
+    "include/starlight/policy/event/ListenForManagerReservedMemoryUpdate.hpp"
     "include/starlight/core/Exceptions.hpp"
     "include/starlight/setup/RenderResourceSetup.hpp"
     "include/starlight/common/entities/Light.hpp"

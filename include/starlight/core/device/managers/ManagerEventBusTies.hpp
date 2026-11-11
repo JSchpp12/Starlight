@@ -4,8 +4,13 @@
 
 #include "Enums.hpp"
 #include "core/device/system/event/ManagerRequest.hpp"
+#include "core/logging/LoggingFactory.hpp"
+#include "event/ManagerReservedMemoryUpdate.hpp"
 
 #include <star_common/EventBus.hpp>
+
+#include <cstddef>
+#include <utility>
 
 namespace star::core::device::manager
 {
@@ -62,6 +67,30 @@ class ManagerEventBusTies : public Manager<TRecord, TResourceRequest, TMaxRecord
             }
         }
         return *this;
+    }
+
+    /// @brief Submit a resource request and publish a reallocation event if the record storage moved.
+    /// @details The event is emitted after the base insert, so the new slot is already filled and listeners
+    /// can safely re-resolve every handle they hold. Emission is synchronous on the submitting thread; the
+    /// engine currently submits on the main thread.
+    virtual Handle submit(TResourceRequest resource) override
+    {
+        auto &storage = this->m_records.getData();
+        auto *previousData = storage.data();
+        const size_t previousCapacity = storage.capacity();
+
+        Handle handle =
+            Manager<TRecord, TResourceRequest, TMaxRecordCount, TResourceTypeName>::submit(std::move(resource));
+
+        if (m_eventBus != nullptr && (storage.data() != previousData || storage.capacity() != previousCapacity))
+        {
+            star::core::logging::debug("ManagerReservedMemoryUpdate raised: handle type ", this->getHandleType(),
+                                       ", capacity ", previousCapacity, " -> ", storage.capacity());
+            m_eventBus->emit(
+                star::event::ManagerReservedMemoryUpdate{this->getHandleType(), static_cast<void *>(this)});
+        }
+
+        return handle;
     }
 
     virtual void init(device::StarDevice *device, common::EventBus &eventBus)
