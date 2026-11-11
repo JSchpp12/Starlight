@@ -2,6 +2,7 @@
 
 #include "starlight/command/command_order/DeclareDependency.hpp"
 #include "starlight/command/command_order/DeclarePass.hpp"
+#include "starlight/command/command_order/ForceCPURecordingWait.hpp"
 #include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/command/command_order/TriggerPass.hpp"
 #include "starlight/core/WorkerPool.hpp"
@@ -55,6 +56,12 @@ template <typename T>
 using ListenForGetPassInfo =
     star::policy::command::ListenFor<T, star::command_order::GetPassInfo,
                                      star::command_order::get_pass_info::GetPassInfoTypeName, &T::onGetPassInfo>;
+
+template <typename T>
+using ListenForForceCPURecordingWait =
+    star::policy::command::ListenFor<T, star::command_order::ForceCPURecordingWait,
+                                     star::command_order::force_cpu_recording_wait::GetTypeName,
+                                     &T::onForceCPURecordingWait>;
 } // namespace command_order
 
 class CommandOrderService
@@ -94,6 +101,8 @@ class CommandOrderService
 
     void onGetPassInfo(star::command_order::GetPassInfo &cmd);
 
+    void onForceCPURecordingWait(star::command_order::ForceCPURecordingWait &cmd);
+
   private:
     enum Phase
     {
@@ -108,6 +117,7 @@ class CommandOrderService
     command_order::ListenForDeclarePass<CommandOrderService> m_listenForDeclarePass;
     command_order::ListenForTriggerPass<CommandOrderService> m_listenForTriggerPass;
     command_order::ListenForGetPassInfo<CommandOrderService> m_listenForGetPassInfo;
+    command_order::ListenForForceCPURecordingWait<CommandOrderService> m_listenForForceCPURecordingWait;
     // events
     command_order::ListenForInitComplete<CommandOrderService> m_listenForInitPhaseComplete;
     command_order::ListenForStartOfNextFrame<CommandOrderService> m_listenForStartOfNextFrame;
@@ -120,6 +130,9 @@ class CommandOrderService
     common::EventBus *m_evtBus = nullptr;
     const star::common::FrameTracker *m_ft = nullptr;
     star::core::device::manager::Semaphore *m_sem{nullptr};
+    star::core::device::manager::ManagerCommandBuffer *m_commandBufferManager{nullptr};
+    star::core::device::manager::GraphicsContainer *m_graphicsManagers{nullptr};
+    Handle m_deviceID{};
 
     void initListeners(core::CommandBus &cmdBus);
 

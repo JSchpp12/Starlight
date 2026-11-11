@@ -1,5 +1,6 @@
 #include "StarCommandBuffer.hpp"
 
+#include <boost/container/small_vector.hpp>
 #include <star_common/helper/CastHelpers.hpp>
 
 star::StarCommandBuffer::StarCommandBuffer(vk::Device device, int numBuffersToCreate, const StarCommandPool *parentPool,
@@ -178,27 +179,22 @@ void star::StarCommandBuffer::abandonRecording(int bufferIndex)
 }
 
 void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
-                                     std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>> *overrideWait,
-                                     std::vector<std::optional<uint64_t>> *additionalWaitsSignaledValues,
-                                     vk::Fence *overrideFence, std::vector<vk::Semaphore> *additionalSignalSemaphores)
+                                     std::span<const Data> additionalWaits, vk::Fence *overrideFence,
+                                     std::vector<vk::Semaphore> *additionalSignalSemaphores)
 {
-    std::vector<vk::Semaphore> waits = std::vector<vk::Semaphore>();
-    std::vector<vk::PipelineStageFlags> waitPoints = std::vector<vk::PipelineStageFlags>();
-    std::vector<uint64_t> waitSignalValues;
+    boost::container::small_vector<vk::Semaphore, 8> waits;
+    boost::container::small_vector<vk::PipelineStageFlags, 8> waitPoints;
+    boost::container::small_vector<uint64_t, 8> waitSignalValues;
 
     bool useTimeline = false;
-    if (overrideWait != nullptr)
+    for (const Data &wait : additionalWaits)
     {
-        for (size_t i{0}; i < overrideWait->size(); i++)
+        waits.push_back(wait.semaphore);
+        waitPoints.push_back(wait.waitPoints);
+        waitSignalValues.push_back(wait.signaledValue.value_or(0));
+        if (wait.signaledValue.has_value())
         {
-            waits.push_back(overrideWait->at(i).first);
-            waitPoints.push_back(overrideWait->at(i).second);
-            waitSignalValues.push_back(
-                additionalWaitsSignaledValues->at(i).has_value() ? additionalWaitsSignaledValues->at(i).value() : 0);
-            if (additionalWaitsSignaledValues->at(i).has_value())
-            {
-                useTimeline = true;
-            }
+            useTimeline = true;
         }
     }
 
@@ -213,7 +209,7 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
         }
     }
 
-    std::vector<vk::Semaphore> signalSemaphores = std::vector<vk::Semaphore>();
+    boost::container::small_vector<vk::Semaphore, 8> signalSemaphores;
     if (this->completeSemaphores.size() > 0)
     {
         signalSemaphores.push_back(this->completeSemaphores.at(bufferIndex));

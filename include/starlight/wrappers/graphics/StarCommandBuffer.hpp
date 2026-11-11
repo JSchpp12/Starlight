@@ -6,9 +6,16 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <vector>
+
+namespace star::common
+{
+class FrameTracker;
+} // namespace star::common
 
 namespace star
 {
@@ -18,6 +25,23 @@ namespace star
 class StarCommandBuffer
 {
   public:
+    /// @brief One semaphore wait for a submission.
+    /// @details A present `signaledValue` means a timeline semaphore; absent means a binary wait whose value is
+    /// treated as 0.
+    struct Data
+    {
+        vk::Semaphore semaphore{};
+        vk::PipelineStageFlags waitPoints{};
+        std::optional<uint64_t> signaledValue{std::nullopt};
+    };
+
+    /// @brief Overrides the command-buffer submission path for a pass.
+    /// @details `additionalWaits` is a non-owning view of the command-buffer manager's per-submission scratch list;
+    /// implementations must consume it synchronously and must not store it.
+    using SubmissionOverride =
+        std::function<vk::Semaphore(StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *,
+                                    std::span<const Data>, StarQueue &)>;
+
     StarCommandBuffer() = default;
     StarCommandBuffer(const StarCommandBuffer &) = delete;
     StarCommandBuffer &operator=(const StarCommandBuffer &) = delete;
@@ -67,9 +91,7 @@ class StarCommandBuffer
 
     void reset(int bufferIndex);
 
-    void submit(int bufferIndex, vk::Queue &targetQueue,
-                std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>> *additionalWaits = nullptr,
-                std::vector<std::optional<uint64_t>> *additionalWaitsSignaledValues = nullptr,
+    void submit(int bufferIndex, vk::Queue &targetQueue, std::span<const Data> additionalWaits = {},
                 vk::Fence *additionalFences = nullptr,
                 std::vector<vk::Semaphore> *additionalSignalSemaphores = nullptr);
 

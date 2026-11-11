@@ -134,9 +134,6 @@ template <InitLike TEngineInitPolicy, LoopLike TMainLoopPolicy, ExitLike TEngine
                 m_systemManager.getContext(m_defaultDevice),
                 m_systemManager.getContext(m_defaultDevice).frameTracker().getCurrent().getFrameInFlightIndex());
 
-            ManagerRenderResource::frameUpdate(
-                m_systemManager.getContext(m_defaultDevice).getDeviceID(),
-                m_systemManager.getContext(m_defaultDevice).frameTracker().getCurrent().getFrameInFlightIndex());
             vk::Semaphore allBuffersSubmitted = m_systemManager.getContext(m_defaultDevice)
                                                     .getManagerCommandBuffer()
                                                     .update(m_systemManager.getContext(m_defaultDevice).frameTracker());

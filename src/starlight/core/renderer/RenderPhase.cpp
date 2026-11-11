@@ -3,6 +3,7 @@
 
 #include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/core/graphics/GPUWorkSyncInfo.hpp"
+#include "starlight/core/transfer/RegisterTransferWait.hpp"
 
 #include <star_common/Handle.hpp>
 
@@ -121,10 +122,10 @@ void RenderPhase::updateDependentData(core::device::DeviceContext &context)
         return;
 
     auto result = m_frameData->frameUpdate(context);
-    auto &record = context.getManagerCommandBuffer().m_manager.get(m_commandBuffer);
     for (const auto &w : result.waits)
     {
-        record.oneTimeWaitSemaphoreInfo.insert(w.handle, w.semaphore, w.waitStage, w.signalValue);
+        core::transfer::RegisterTransferWait(context, m_commandBuffer, w.handle, w.semaphore, w.signalValue,
+                                             w.waitStage);
         m_renderingContext.addBufferToRenderingContext(context, w.handle);
     }
 }

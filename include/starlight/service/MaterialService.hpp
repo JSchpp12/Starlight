@@ -79,7 +79,10 @@ class MaterialService
     void queueRetire(const Handle &resource, const Handle &pass);
     /// @brief True when the incoming resource's manager record exists and carries a valid GPU object.
     /// @details Blocks until a pending transfer publishes; a failed transfer resolves to a blank record and fails.
-    [[nodiscard]] bool validateIncomingResource(const StarShaderInfo::ShaderInfo &info);
+    /// Buffer-manager keys in @p waits are validated too, so a failed buffer transfer rejects the swap even when the
+    /// prepared resource itself is an unrelated (e.g. GPU-only texture) handle.
+    [[nodiscard]] bool validateIncomingResource(const StarShaderInfo::ShaderInfo &info,
+                                                const std::vector<setup::TransferWait> &waits);
     /// @brief Deletes a rejected incoming resource record. The caller must have made the device idle.
     void deleteIncomingResource(const StarShaderInfo::ShaderInfo &info);
     void drainRetires();

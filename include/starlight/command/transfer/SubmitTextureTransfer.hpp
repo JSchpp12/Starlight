@@ -7,7 +7,6 @@
 #include <star_common/IServiceCommandWithReply.hpp>
 
 #include <memory>
-#include <optional>
 #include <string_view>
 
 namespace star::command::transfer

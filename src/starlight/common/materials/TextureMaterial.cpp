@@ -8,6 +8,7 @@
 #include "core/device/managers/Image.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "starlight/command/transfer/SubmitTextureTransfer.hpp"
+#include "starlight/core/transfer/RegisterTransferWait.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 
@@ -124,10 +125,8 @@ void star::TextureMaterial::registerTextureTransferWait(core::device::DeviceCont
     if (!textureHandle.isInitialized() || transferSemaphore.vkSemaphore == VK_NULL_HANDLE)
         return;
 
-    context.getManagerCommandBuffer()
-        .m_manager.get(commandBuffer)
-        .oneTimeWaitSemaphoreInfo.insert(textureHandle, transferSemaphore.vkSemaphore, waitStages,
-                                         transferSemaphore.signalValue);
+    star::core::transfer::RegisterTransferWait(context, commandBuffer, textureHandle, transferSemaphore.vkSemaphore,
+                                               transferSemaphore.signalValue, waitStages);
 }
 
 std::unique_ptr<star::StarShaderInfo> star::TextureMaterial::buildShaderInfo(core::device::DeviceContext &context,

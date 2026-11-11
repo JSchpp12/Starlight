@@ -149,9 +149,13 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     if (mainGraphicsBuffer.beforeBufferSubmissionCallback.has_value())
         mainGraphicsBuffer.beforeBufferSubmissionCallback.value()(frameTracker.getCurrent().getFrameInFlightIndex());
 
+    const bool readinessOk = mainGraphicsBuffer.runCPURecordingWaits();
     if (!mainGraphicsBuffer.recordOnce)
     {
-        mainGraphicsBuffer.recordBufferCallback(*mainGraphicsBuffer.commandBuffer, frameTracker, currentFrameIndex);
+        if (readinessOk)
+            mainGraphicsBuffer.recordBufferCallback(*mainGraphicsBuffer.commandBuffer, frameTracker, currentFrameIndex);
+        else
+            mainGraphicsBuffer.recordEmpty(static_cast<uint8_t>(frameTracker.getCurrent().getFrameInFlightIndex()));
     }
 
     auto mainGraphicsSemaphore =

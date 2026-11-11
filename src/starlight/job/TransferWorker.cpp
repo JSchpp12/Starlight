@@ -94,6 +94,9 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
         bufferSlot->set_value(std::expected<StarBuffers::Buffer, core::ResourceCreationError>{std::move(*newResult)});
     }
 
+    // The request may publish its one-shot contribution after submission and slot publication.
+    newBufferRequest.onTransferComplete();
+
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
@@ -185,12 +188,15 @@ void TransferManagerThread::PublishFailure(InterThreadRequest &request, const co
             using DataType = std::decay_t<decltype(data)>;
             if constexpr (std::is_same_v<DataType, BufferTransferData>)
             {
-                // Legacy buffer requests publish nothing: their consumer watches the completion flag and the record's
-                // resource. Manager-owned buffers receive the failure reason through their slot.
+                // Manager-owned buffers receive the failure reason through their slot.
                 if (auto *bufferSlot = std::get_if<BufferTransferPromise>(&data.destination))
                 {
                     bufferSlot->set_value(std::unexpected(error));
                 }
+
+                // The request owns any extra promises (e.g. skybox conversion inputs); reject them too.
+                if (data.request)
+                    data.request->onTransferFailed(error.what());
             }
             else
             {

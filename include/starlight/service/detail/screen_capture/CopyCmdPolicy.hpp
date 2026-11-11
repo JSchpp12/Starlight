@@ -6,6 +6,8 @@
 #include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 
+#include <span>
+
 namespace star::service::detail::screen_capture
 {
 class CopyCmdPolicy
@@ -37,8 +39,6 @@ class CopyCmdPolicy
 
     vk::Semaphore submitBuffer(StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
                                std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
-                               std::vector<vk::Semaphore> dataSemaphores,
-                               std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                               std::vector<std::optional<uint64_t>> previousSignaledValues, StarQueue &queue);
+                               std::span<const star::StarCommandBuffer::Data> dataWaits, StarQueue &queue);
 };
 } // namespace star::service::detail::screen_capture

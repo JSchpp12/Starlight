@@ -6,11 +6,13 @@
 #include "core/logging/LoggingFactory.hpp"
 #include "device/managers/Material.hpp"
 #include "managers/ManagerRenderResource.hpp"
+#include "starlight/core/transfer/RegisterTransferWait.hpp"
 #include "virtual/StarMaterial.hpp"
 
 #include <cassert>
 #include <exception>
 #include <utility>
+#include <vector>
 #include <vulkan/vulkan.hpp>
 
 namespace star::service
@@ -90,29 +92,37 @@ void MaterialService::onMakeMaterial(command::material::MakeMaterial &cmd)
     assert(m_graphicsManagers != nullptr);
     assert(m_context != nullptr && "MaterialService requires a DeviceContext to place one-shot work");
 
-    // Prepare first: the definition is owned by the pass request, never by the material.
+    // Prepare first: the definition is owned by the pass request, never by the material. A failed prep must not
+    // register a transfer wait: a failed transfer never signals its timeline, which would hang the pass submission.
     setup::RenderResourceSetup::ResourcePrepDefinition definition;
-    if (cmd.prep.prepare)
-        cmd.prep.prepare(*m_context, definition);
-
-    if (cmd.commandBuffer.isInitialized())
+    bool prepareSucceeded = true;
+    try
     {
-        auto &request = m_context->getManagerCommandBuffer().m_manager.get(cmd.commandBuffer);
+        if (cmd.prep.prepare)
+            cmd.prep.prepare(*m_context, definition);
+    }
+    catch (const std::exception &e)
+    {
+        prepareSucceeded = false;
+        core::logging::warning("MaterialService: material resource preparation failed: ", e.what());
+    }
 
+    if (prepareSucceeded && cmd.commandBuffer.isInitialized())
+    {
+        // The pass must not submit its timeline waits until these transfer resources are CPU-published.
         for (const auto &wait : cmd.waits)
-        {
-            if (wait.semaphore.vkSemaphore == VK_NULL_HANDLE)
-                continue;
+            core::transfer::RegisterTransferWait(*m_context, cmd.commandBuffer, wait.key, wait.semaphore.vkSemaphore,
+                                                 wait.semaphore.signalValue, wait.stages);
 
-            request.oneTimeWaitSemaphoreInfo.insert(wait.key, wait.semaphore.vkSemaphore, wait.stages,
-                                                    wait.semaphore.signalValue);
-        }
-
-        request.add(std::move(definition));
+        m_context->getManagerCommandBuffer().m_manager.get(cmd.commandBuffer).add(std::move(definition));
     }
     else
     {
-        definition.cleanupRender(*m_context);
+        // No pass will record this work (or the prep failed). cleanupRender assumes device idleness at teardown only,
+        // so wait explicitly before releasing while the app is running.
+        if (m_device != nullptr)
+            m_device->getVulkanDevice().waitIdle();
+        definition.releaseAssumeDeviceIdle(*m_context);
     }
 
     const Handle handle =
@@ -154,7 +164,7 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
     }
 
     // Validate before rebinding so a failed transfer keeps the old resource bound.
-    if (!prepareSucceeded || !validateIncomingResource(cmd.newHandle))
+    if (!prepareSucceeded || !validateIncomingResource(cmd.newHandle, cmd.waits))
     {
         core::logging::warning("MaterialService: incoming resource is not usable; keeping the previous resource");
 
@@ -182,22 +192,14 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
     }
 
     // The swap command carries the owning render phase's command buffer; its one-time wait info is consumed by the
-    // submission that records that phase.
-    if (cmd.recordingCommandBuffer.isInitialized() && !cmd.waits.empty())
-    {
-        auto &request = m_context->getManagerCommandBuffer().m_manager.get(cmd.recordingCommandBuffer);
-        for (const auto &wait : cmd.waits)
-        {
-            if (wait.semaphore.vkSemaphore == VK_NULL_HANDLE)
-                continue;
-
-            request.oneTimeWaitSemaphoreInfo.insert(wait.key, wait.semaphore.vkSemaphore, wait.stages,
-                                                    wait.semaphore.signalValue);
-        }
-    }
-
+    // submission that records that phase. The pass must not submit its timeline waits until these transfer resources
+    // are CPU-published.
     if (cmd.recordingCommandBuffer.isInitialized())
     {
+        for (const auto &wait : cmd.waits)
+            core::transfer::RegisterTransferWait(*m_context, cmd.recordingCommandBuffer, wait.key,
+                                                 wait.semaphore.vkSemaphore, wait.semaphore.signalValue, wait.stages);
+
         m_context->getManagerCommandBuffer().m_manager.get(cmd.recordingCommandBuffer).add(std::move(definition));
     }
     else
@@ -211,8 +213,26 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
     cmd.getReply().set(true);
 }
 
-bool MaterialService::validateIncomingResource(const StarShaderInfo::ShaderInfo &info)
+bool MaterialService::validateIncomingResource(const StarShaderInfo::ShaderInfo &info,
+                                               const std::vector<setup::TransferWait> &waits)
 {
+    // A transfer a pass must wait on may have failed independently of the material's own resource (the GPU skybox path
+    // binds a synchronously created texture while the conversion inputs arrive through a buffer transfer). A failed
+    // buffer resolves to a blank record, so reject the swap before the material ever binds it.
+    for (const auto &wait : waits)
+    {
+        if (!wait.key.isInitialized() || wait.key.getType() != m_graphicsManagers->bufferManager.getHandleType())
+            continue;
+
+        auto &bufferManager = m_graphicsManagers->bufferManager;
+        bufferManager.waitForReady(wait.key);
+
+        const auto *record = bufferManager.get(wait.key);
+        if (record == nullptr || record->getBuffer() == nullptr ||
+            record->getBuffer()->getVulkanBuffer() == VK_NULL_HANDLE)
+            return false;
+    }
+
     if (info.textureInfo.has_value())
     {
         const auto &textureInfo = *info.textureInfo;

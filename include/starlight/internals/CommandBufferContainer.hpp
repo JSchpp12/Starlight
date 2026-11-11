@@ -4,9 +4,11 @@
 #include "StarCommandBuffer.hpp"
 #include "device/StarDevice.hpp"
 #include "device/managers/Queue.hpp"
+#include "starlight/internals/CPURecordingWaitContainer.hpp"
 #include "starlight/setup/RenderResourceSetup.hpp"
 
 #include <absl/container/flat_hash_map.h>
+#include <boost/container/small_vector.hpp>
 #include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 
@@ -23,14 +25,6 @@ namespace star
 class CommandBufferContainer
 {
   public:
-    struct SemaphoreWaitInfo
-    {
-        vk::Semaphore semaphore;
-        vk::PipelineStageFlags stageFlags;
-        std::optional<uint64_t> previousSignaledValue =
-            std::nullopt; // if this has a value, this signifies that the semaphore is a TIMELINE semaphore
-    };
-
     class SemaphoreInfo
     {
       public:
@@ -44,53 +38,45 @@ class CommandBufferContainer
         {
             if (m_semaphores.contains(handle))
             {
-                m_semaphores[handle].stageFlags |= waitPoints;
+                m_semaphores[handle].waitPoints |= waitPoints;
             }
             else
             {
-                m_semaphores[handle] = SemaphoreWaitInfo{.semaphore = std::move(semaphore),
-                                                         .stageFlags = std::move(waitPoints),
-                                                         .previousSignaledValue = std::move(signaledValue)};
+                m_semaphores[handle] = StarCommandBuffer::Data{.semaphore = std::move(semaphore),
+                                                               .waitPoints = std::move(waitPoints),
+                                                               .signaledValue = std::move(signaledValue)};
             }
         }
 
-        void giveMeOneTimeSemaphoreWaitInfo(std::vector<vk::Semaphore> &semaphores,
-                                            std::vector<vk::PipelineStageFlags> &waitPoints,
-                                            std::vector<std::optional<uint64_t>> &signaledValues)
+        void giveMeOneTimeSemaphoreWaitInfo(boost::container::small_vector<StarCommandBuffer::Data, 8> &waitData)
         {
-            size_t semaphoresStart{semaphores.size()};
-            size_t waitPointsStart{waitPoints.size()};
-            size_t signaledValuesStart{signaledValues.size()};
-            semaphores.resize(semaphores.size() + m_semaphores.size());
-            waitPoints.resize(waitPoints.size() + m_semaphores.size());
-            signaledValues.resize(signaledValues.size() + m_semaphores.size());
-
             for (auto &semaphoreInfo : m_semaphores)
             {
-                semaphores[semaphoresStart] = semaphoreInfo.second.semaphore;
-                waitPoints[waitPointsStart] = semaphoreInfo.second.stageFlags;
-                signaledValues[signaledValuesStart] = semaphoreInfo.second.previousSignaledValue;
-
-                semaphoresStart++;
-                waitPointsStart++;
-                signaledValuesStart++;
+                waitData.push_back(semaphoreInfo.second);
             }
 
             m_semaphores.clear();
         }
 
+        void erase(const Handle &handle)
+        {
+            m_semaphores.erase(handle);
+        }
+
+        void clear()
+        {
+            m_semaphores.clear();
+        }
+
       private:
-        std::unordered_map<Handle, SemaphoreWaitInfo, star::HandleHash> m_semaphores;
+        std::unordered_map<Handle, StarCommandBuffer::Data, star::HandleHash> m_semaphores;
     };
 
     struct CompleteRequest
     {
         struct PerFrameScratchData
         {
-            std::vector<vk::Semaphore> semaphores;
-            std::vector<vk::PipelineStageFlags> waitPoints;
-            std::vector<std::optional<uint64_t>> signalValues;
-            std::vector<std::pair<vk::Semaphore, vk::PipelineStageFlags>> waitTimelineInfo;
+            boost::container::small_vector<StarCommandBuffer::Data, 8> data;
         };
 
         std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback;
@@ -101,13 +87,20 @@ class CommandBufferContainer
         vk::PipelineStageFlags waitStage;
         Command_Buffer_Order order;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
-        std::optional<
-            std::function<vk::Semaphore(StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *,
-                                        std::vector<vk::Semaphore> &, std::vector<vk::PipelineStageFlags> &,
-                                        std::vector<std::optional<uint64_t>> &, star::StarQueue &queue)>>
-            overrideBufferSubmissionCallback;
+        std::optional<StarCommandBuffer::SubmissionOverride> overrideBufferSubmissionCallback;
         SemaphoreInfo oneTimeWaitSemaphoreInfo;
         PerFrameScratchData scratch;
+
+        /// @brief Host-side waits this pass must pass before it records.
+        CPURecordingWaitContainer cpuRecordingWaits;
+
+        /// @brief Run every registered wait, clear them, and return false if any resource failed.
+        /// @details On failure the failed resources' one-time Vulkan waits are erased, so no wait on a timeline that
+        /// will never signal reaches submission. Prepared definitions are left to their normal lifecycle.
+        [[nodiscard]] bool runCPURecordingWaits();
+        /// @brief Begin and end an empty recording for the given frame-in-flight slot.
+        /// @details Used when a readiness wait fails: the pass still submits so group semaphores stay valid.
+        void recordEmpty(uint8_t frameInFlightIndex);
 
         /// @brief One-shot work this pass records inline before its own commands.
         setup::RenderResourceSetup renderResourceSetup;
@@ -131,11 +124,7 @@ class CommandBufferContainer
             const vk::PipelineStageFlags &waitStage, const Command_Buffer_Order &order,
             std::optional<std::function<void(const int &)>> beforeSubmissionCallback =
                 std::optional<std::function<void(const int &)>>(),
-            std::optional<std::function<vk::Semaphore(StarCommandBuffer &, const common::FrameTracker &,
-                                                      std::vector<vk::Semaphore> *, std::vector<vk::Semaphore> &,
-                                                      std::vector<vk::PipelineStageFlags> &,
-                                                      std::vector<std::optional<uint64_t>> &, star::StarQueue &)>>
-                overrideBufferSubmissionCallback = std::nullopt);
+            std::optional<StarCommandBuffer::SubmissionOverride> overrideBufferSubmissionCallback = std::nullopt);
 
         vk::Semaphore submitCommandBuffer(core::device::StarDevice &device, const common::FrameTracker &frameTracker,
                                           absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,

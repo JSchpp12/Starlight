@@ -19,9 +19,7 @@ namespace star::core::device::manager
 class ManagerCommandBuffer
 {
   public:
-    using BufferSubmissionOverride = std::function<vk::Semaphore(
-        StarCommandBuffer &, const common::FrameTracker &, std::vector<vk::Semaphore> *, std::vector<vk::Semaphore> &,
-        std::vector<vk::PipelineStageFlags> &, std::vector<std::optional<uint64_t>> &, star::StarQueue &)>;
+    using BufferSubmissionOverride = StarCommandBuffer::SubmissionOverride;
     struct Request
     {
         // when

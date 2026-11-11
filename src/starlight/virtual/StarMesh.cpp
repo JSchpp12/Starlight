@@ -2,6 +2,8 @@
 
 #include "device/managers/Material.hpp"
 
+#include "starlight/core/transfer/RegisterTransferWait.hpp"
+
 namespace star
 {
 static void CalcBoundingBox(const std::vector<star::Vertex> &verts, glm::vec3 &upperBoundingBoxCoord,
@@ -106,20 +108,16 @@ void star::StarMesh::registerTransferWaits(core::device::DeviceContext &context,
     {
         const auto &sem =
             context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, vertBuffer)->gpuWorkDoneSignaledInfo;
-        context.getManagerCommandBuffer()
-            .m_manager.get(commandBuffer)
-            .oneTimeWaitSemaphoreInfo.insert(vertBuffer, sem.vkSemaphore, vk::PipelineStageFlagBits::eVertexInput,
-                                             sem.signalValue);
+        core::transfer::RegisterTransferWait(context, commandBuffer, vertBuffer, sem.vkSemaphore, sem.signalValue,
+                                             vk::PipelineStageFlagBits::eVertexInput);
     }
 
     if (indBuffer.isInitialized())
     {
         const auto &sem =
             context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, indBuffer)->gpuWorkDoneSignaledInfo;
-        context.getManagerCommandBuffer()
-            .m_manager.get(commandBuffer)
-            .oneTimeWaitSemaphoreInfo.insert(indBuffer, sem.vkSemaphore, vk::PipelineStageFlagBits::eVertexInput,
-                                             sem.signalValue);
+        core::transfer::RegisterTransferWait(context, commandBuffer, indBuffer, sem.vkSemaphore, sem.signalValue,
+                                             vk::PipelineStageFlagBits::eVertexInput);
     }
 }
 } // namespace star

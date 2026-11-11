@@ -2,6 +2,10 @@
 
 #include <starlight/command/frames/GetFrameTracker.hpp>
 #include <starlight/core/Exceptions.hpp>
+#include <starlight/core/logging/LoggingFactory.hpp>
+
+#include <star_common/HandleTypeRegistry.hpp>
+#include <star_common/special_types/SpecialHandleTypes.hpp>
 
 #include <absl/container/flat_hash_set.h>
 
@@ -11,15 +15,18 @@ namespace star::service
 {
 CommandOrderService::CommandOrderService()
     : m_passes(), m_listenForDeclareDependency(*this), m_listenForDeclarePass(*this), m_listenForTriggerPass(*this),
-      m_listenForGetPassInfo(*this), m_listenForInitPhaseComplete(*this), m_listenForStartOfNextFrame(*this)
+      m_listenForGetPassInfo(*this), m_listenForForceCPURecordingWait(*this), m_listenForInitPhaseComplete(*this),
+      m_listenForStartOfNextFrame(*this)
 {
 }
 
 CommandOrderService::CommandOrderService(CommandOrderService &&other)
     : m_passes(std::move(other.m_passes)), m_listenForDeclareDependency(*this), m_listenForDeclarePass(*this),
-      m_listenForTriggerPass(*this), m_listenForGetPassInfo(*this), m_listenForInitPhaseComplete(*this),
-      m_listenForStartOfNextFrame(*this), m_cmdBus(other.m_cmdBus), m_evtBus(other.m_evtBus), m_ft(other.m_ft),
-      m_sem(other.m_sem)
+      m_listenForTriggerPass(*this), m_listenForGetPassInfo(*this), m_listenForForceCPURecordingWait(*this),
+      m_listenForInitPhaseComplete(*this), m_listenForStartOfNextFrame(*this), m_cmdBus(other.m_cmdBus),
+      m_evtBus(other.m_evtBus), m_ft(other.m_ft), m_sem(other.m_sem),
+      m_commandBufferManager(other.m_commandBufferManager), m_graphicsManagers(other.m_graphicsManagers),
+      m_deviceID(other.m_deviceID)
 {
     if (m_cmdBus != nullptr && m_evtBus != nullptr)
     {
@@ -40,6 +47,9 @@ CommandOrderService &CommandOrderService::operator=(CommandOrderService &&other)
         m_evtBus = other.m_evtBus;
         m_ft = other.m_ft;
         m_sem = other.m_sem;
+        m_commandBufferManager = other.m_commandBufferManager;
+        m_graphicsManagers = other.m_graphicsManagers;
+        m_deviceID = other.m_deviceID;
 
         if (m_cmdBus != nullptr && m_evtBus != nullptr)
         {
@@ -73,6 +83,9 @@ void CommandOrderService::setInitParameters(star::service::InitParameters &param
     m_cmdBus = &params.commandBus;
     m_evtBus = &params.eventBus;
     m_sem = params.graphicsManagers.semaphoreManager.get();
+    m_commandBufferManager = &params.commandBufferManager;
+    m_graphicsManagers = &params.graphicsManagers;
+    m_deviceID = params.deviceID;
 
     star::frames::GetFrameTracker ftCmd{};
     m_cmdBus->submit(ftCmd);
@@ -216,12 +229,65 @@ void CommandOrderService::onGetPassInfo(star::command_order::GetPassInfo &cmd)
         .edges = m_edges.contains(*cmd.pass) ? &m_edges[*cmd.pass] : nullptr});
 }
 
+void CommandOrderService::onForceCPURecordingWait(star::command_order::ForceCPURecordingWait &cmd)
+{
+    if (m_commandBufferManager == nullptr || m_graphicsManagers == nullptr || !cmd.pass.isInitialized())
+        return;
+
+    if (!m_passes.contains(cmd.pass))
+    {
+        core::logging::warning("ForceCPURecordingWait: pass is not registered; ignoring");
+        return;
+    }
+
+    if (cmd.resources.empty())
+        return;
+
+    auto &request = m_commandBufferManager->get(cmd.pass);
+    using Wait = star::CPURecordingWaitContainer::CPURecordingWait;
+    using ImageReadiness = star::CPURecordingWaitContainer::ImageReadiness;
+    using BufferReadiness = star::CPURecordingWaitContainer::BufferReadiness;
+    using RenderResourceBufferReadiness = star::CPURecordingWaitContainer::RenderResourceBufferReadiness;
+
+    std::vector<Wait> waits;
+    waits.reserve(cmd.resources.size());
+
+    const uint16_t legacyBufferType =
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName);
+
+    for (const Handle &resource : cmd.resources)
+    {
+        if (!resource.isInitialized())
+            continue;
+
+        if (resource.getType() == m_graphicsManagers->imageManager.getHandleType())
+        {
+            waits.push_back(Wait{resource, ImageReadiness{&m_graphicsManagers->imageManager}});
+        }
+        else if (resource.getType() == m_graphicsManagers->bufferManager.getHandleType())
+        {
+            waits.push_back(Wait{resource, BufferReadiness{&m_graphicsManagers->bufferManager}});
+        }
+        else if (resource.getType() == legacyBufferType && m_deviceID.isInitialized())
+        {
+            waits.push_back(Wait{resource, RenderResourceBufferReadiness{m_deviceID}});
+        }
+        else
+        {
+            core::logging::warning("ForceCPURecordingWait: unsupported resource handle type; ignoring resource");
+        }
+    }
+
+    request.cpuRecordingWaits.add(std::move(waits));
+}
+
 void CommandOrderService::initListeners(core::CommandBus &cmdBus)
 {
     m_listenForDeclareDependency.init(cmdBus);
     m_listenForDeclarePass.init(cmdBus);
     m_listenForTriggerPass.init(cmdBus);
     m_listenForGetPassInfo.init(cmdBus);
+    m_listenForForceCPURecordingWait.init(cmdBus);
 }
 
 void CommandOrderService::initListeners(common::EventBus &evtBus)
@@ -236,6 +302,7 @@ void CommandOrderService::cleanupListeners(core::CommandBus &cmdBus)
     m_listenForDeclarePass.cleanup(cmdBus);
     m_listenForTriggerPass.cleanup(cmdBus);
     m_listenForGetPassInfo.cleanup(cmdBus);
+    m_listenForForceCPURecordingWait.cleanup(cmdBus);
 }
 
 void CommandOrderService::cleanupListeners(common::EventBus &evtBus)

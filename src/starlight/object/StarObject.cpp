@@ -1,7 +1,7 @@
 #include "starlight/object/StarObject.hpp"
 
-#include "starlight/command/pipeline/CreatePipeline.hpp"
 #include "starlight/command/material/MakeMaterial.hpp"
+#include "starlight/command/pipeline/CreatePipeline.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
 #include "ManagerController_RenderResource_InstanceNormalInfo.hpp"
@@ -9,6 +9,7 @@
 #include "TransferRequest_VertInfo.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "device/managers/Material.hpp"
+#include "starlight/core/transfer/RegisterTransferWait.hpp"
 #include "wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"
 
 #include "common/helpers/GeometryHelpers.hpp"
@@ -655,9 +656,6 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
 {
     bool updateInstanceModel = false, updateInstanceNormal = false;
 
-    CommandBufferContainer::CompleteRequest &request =
-        context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
-
     {
         const auto [submitted, semaphore] = m_instanceInfo.getControllerModel().submitUpdateIfNeeded(
             context, frameInFlightIndex, transferReuqestSyncInfo);
@@ -665,10 +663,10 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
         {
             updateInstanceModel = true;
 
-            request.oneTimeWaitSemaphoreInfo.insert(
-                m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex), semaphore->vkSemaphore,
-                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader,
-                semaphore->signalValue);
+            star::core::transfer::RegisterTransferWait(
+                context, targetCommandBuffer, m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex),
+                semaphore->vkSemaphore, semaphore->signalValue,
+                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
         }
     }
 
@@ -679,10 +677,10 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
         {
             updateInstanceNormal = true;
 
-            request.oneTimeWaitSemaphoreInfo.insert(
-                m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex), semaphore->vkSemaphore,
-                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader,
-                semaphore->signalValue);
+            star::core::transfer::RegisterTransferWait(
+                context, targetCommandBuffer, m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex),
+                semaphore->vkSemaphore, semaphore->signalValue,
+                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
         }
     }
 

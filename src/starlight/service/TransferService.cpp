@@ -1,5 +1,6 @@
 #include "starlight/service/TransferService.hpp"
 
+#include "core/device/managers/Image.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "starlight/core/Exceptions.hpp"
 #include "starlight/event/GetQueue.hpp"
@@ -7,6 +8,7 @@
 #include <star_common/HandleTypeRegistry.hpp>
 
 #include <future>
+#include <memory>
 #include <set>
 #include <variant>
 
@@ -195,6 +197,7 @@ void TransferService::onSubmitTexture(star::command::transfer::SubmitTextureTran
     using namespace job::tasks::transfer;
 
     assert(m_graphicsManagers && m_taskManager && "TransferService not initialized");
+    assert(cmd.request != nullptr && "SubmitTextureTransfer requires a transfer request");
 
     // The Image manager owns the texture from here on: its record holds a future the transfer worker fills with the
     // created texture (or the exception that explains why it failed). No ManagerRenderResource record is allocated for

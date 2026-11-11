@@ -109,6 +109,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/renderer/CaptureCapableRenderer.cpp"
     "src/starlight/core/renderer/EdgeSubmission.cpp"
     "src/starlight/core/renderer/RenderPhaseHelpers.cpp"
+    "src/starlight/core/transfer/RegisterTransferWait.cpp"
     "src/starlight/object/StarObject.cpp"
     "src/starlight/virtual/ModulePlug/ManagerPlug.cpp"
     "src/starlight/virtual/StarMesh.cpp"
@@ -257,6 +258,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/common/helpers/GeometryHelpers.cpp"
     "src/starlight/common/helpers/FileHelpers.cpp"
     "src/starlight/internals/CommandBufferContainer.cpp"
+    "src/starlight/internals/CPURecordingWaitContainer.cpp"
     "src/starlight/job/worker/Worker.cpp"
     "src/starlight/job/worker/DefaultWorker.cpp"
     "src/starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.cpp"
@@ -343,6 +345,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/command/command_order/DeclarePass.hpp"
     "include/starlight/command/command_order/TriggerPass.hpp"
     "include/starlight/command/command_order/GetPassInfo.hpp"
+    "include/starlight/command/command_order/ForceCPURecordingWait.hpp"
     "include/starlight/command/CreateObject.hpp"
     "include/starlight/command/detail/create_object/ObjectLoader.hpp"
     "include/starlight/command/detail/create_object/FromObjFileLoader.hpp"
@@ -379,6 +382,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/renderer/CaptureCapableRenderer.hpp"
     "include/starlight/core/renderer/EdgeSubmission.hpp"
     "include/starlight/core/renderer/RenderPhaseHelpers.hpp"
+    "include/starlight/core/transfer/RegisterTransferWait.hpp"
     "include/starlight/common/ThreadSharedResource.hpp"
     "include/starlight/common/Compiler.hpp"
     "include/starlight/common/materials/BumpMaterial.hpp"
@@ -514,6 +518,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/managers/ManagerRenderResource.hpp"
     "include/starlight/systems/StarRenderGroup.hpp"
     "include/starlight/internals/CommandBufferContainer.hpp"
+    "include/starlight/internals/CPURecordingWaitContainer.hpp"
     "include/starlight/virtual/StarEntity.hpp"
     "include/starlight/wrappers/graphics/StarTextures/FormatInfo.hpp"
     "include/starlight/wrappers/graphics/StarTextures/Texture.hpp"
@@ -644,13 +649,13 @@ target_link_libraries(${STARLIGHT_NAME}
         shaderc_combined
         GPUOpen::VulkanMemoryAllocator
         unofficial::tinyexr::tinyexr
+        Boost::container
     PRIVATE
         SPIRV-Tools
         tinyobjloader::tinyobjloader
         Boost::log
         Boost::log_setup
         Boost::thread
-        Boost::container
         Boost::filesystem
         ${CMAKE_DL_LIBS}
         KTX::ktx
