@@ -163,12 +163,8 @@ void MaterialService::onMakeMaterial(command::material::MakeMaterial &cmd)
         // The initial material has no previous resource to keep, and MakeMaterial's reply has no failure channel.
         // Release what the definition owns and fail loudly rather than record a definition whose dependencies are
         // unready.
-        if (m_device != nullptr)
-            m_device->getVulkanDevice().waitIdle();
 
-        definition.releaseAssumeDeviceIdle(*m_context);
-        core::logging::error("MaterialService: initial material readiness gate failed; aborting");
-        std::terminate();
+        STAR_THROW("MaterialService: initial material readiness gate failed; aborting");
     }
 
     if (prepareSucceeded && cmd.commandBuffer.isInitialized())
