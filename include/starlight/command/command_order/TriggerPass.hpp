@@ -5,6 +5,8 @@
 
 #include <star_common/IServiceCommand.hpp>
 
+#include <utility>
+
 namespace star::command_order
 {
 namespace trigger_pass

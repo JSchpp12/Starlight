@@ -21,7 +21,8 @@ struct SquareCreateInfo
 };
 
 std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info, ShaderResolver &shaderResolver);
-std::shared_ptr<StarObject> CreateCube(std::vector<star::primitive::cube::CubeDesc> info,
+std::shared_ptr<StarObject> CreateCube(core::device::DeviceContext &context,
+                                       std::vector<star::primitive::cube::CubeDesc> info,
                                        ShaderResolver &shaderResolver,
                                        star::primitive::CubeObject::OptionalRenderingOverrides overrides =
                                            star::primitive::CubeObject::OptionalRenderingOverrides{});

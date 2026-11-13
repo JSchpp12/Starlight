@@ -94,6 +94,9 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
         bufferSlot->set_value(std::expected<StarBuffers::Buffer, core::ResourceCreationError>{std::move(*newResult)});
     }
 
+    // The request may publish its one-shot contribution after submission and slot publication.
+    newBufferRequest.onTransferComplete();
+
     processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
@@ -106,20 +109,26 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
 {
     auto &newTextureRequest = *requestData.request;
 
-    auto transferSrcBuffer = newTextureRequest.createStagingBuffer(device);
+    std::unique_ptr<StarBuffers::Buffer> transferSrcBuffer = newTextureRequest.createStagingBuffer(device);
+    if (transferSrcBuffer && transferSrcBuffer->getBufferSize() == 0)
+        STAR_THROW("Failed to create transfer src buffer");
 
     bool newImageCreated = true;
 
     auto finalTexture = newTextureRequest.createFinal(device, allTransferQueueFamilyIndicesInUse);
 
-    newTextureRequest.writeDataToStageBuffer(*transferSrcBuffer);
-
-    if (!newImageCreated)
+    if (transferSrcBuffer)
     {
-        STAR_THROW("Unsupported image operation in transfer manager");
-    }
+        newTextureRequest.writeDataToStageBuffer(*transferSrcBuffer);
 
-    newTextureRequest.copyFromTransferSRCToDST(*transferSrcBuffer, *finalTexture, processInfo.commandBuffer->buffer(0));
+        if (!newImageCreated)
+        {
+            STAR_THROW("Unsupported image operation in transfer manager");
+        }
+
+        newTextureRequest.copyFromTransferSRCToDST(*transferSrcBuffer, *finalTexture,
+                                                   processInfo.commandBuffer->buffer(0));
+    }
 
     processInfo.commandBuffer->buffer(0).end();
 
@@ -164,9 +173,11 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
     requestData.slot.set_value(
         std::expected<StarTextures::Texture, core::ResourceCreationError>{std::move(*finalTexture)});
 
-    if (newTextureRequest.takesStagingOwnership)
-        newTextureRequest.adoptStagingBuffer(*transferSrcBuffer);
-    else
+    // The request may publish its one-shot contribution after submission.
+    newTextureRequest.onTransferComplete();
+
+    // Staging, when used, is worker-owned and fence-freed; no caller adopts it.
+    if (transferSrcBuffer)
         processInfo.setInProcessDeps(std::move(transferSrcBuffer));
 }
 
@@ -177,24 +188,21 @@ void TransferManagerThread::PublishFailure(InterThreadRequest &request, const co
             using DataType = std::decay_t<decltype(data)>;
             if constexpr (std::is_same_v<DataType, BufferTransferData>)
             {
-                // Legacy buffer requests publish nothing: their consumer watches the completion flag and the record's
-                // resource. Manager-owned buffers receive the failure reason through their slot.
+                // Manager-owned buffers receive the failure reason through their slot.
                 if (auto *bufferSlot = std::get_if<BufferTransferPromise>(&data.destination))
                 {
                     bufferSlot->set_value(std::unexpected(error));
                 }
+
+                // The request owns any extra promises (e.g. skybox conversion inputs); reject them too.
+                if (data.request)
+                    data.request->onTransferFailed(error.what());
             }
             else
             {
                 data.slot.set_value(std::unexpected(error));
 
                 auto &texture = *data.request;
-                if (texture.stagingBufferSlot.has_value())
-                {
-                    texture.stagingBufferSlot->set_value(std::unexpected(error));
-                    texture.stagingBufferSlot.reset();
-                }
-
                 texture.onTransferFailed(error.what());
             }
         },

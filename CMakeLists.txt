@@ -4,7 +4,7 @@ cmake_minimum_required (VERSION 3.26)
 SET(STARLIGHT_NAME "starlight")
 project(${STARLIGHT_NAME}
     LANGUAGES C CXX
-    VERSION 1.5.4
+    VERSION 1.6.0
 )
 
 include(CheckIncludeFile)
@@ -20,7 +20,7 @@ else()
     set(ENABLE_RTTI ON CACHE BOOL "" FORCE)
 endif()
 
-find_package(starlight_common REQUIRED)
+find_package(starlight_common REQUIRED) 
 
 # Vendored projects enable -Werror by default. Keep those flags out of
 # third-party builds; STAR_ENABLE_WARNINGS is scoped to first-party targets.
@@ -109,6 +109,8 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/renderer/CaptureCapableRenderer.cpp"
     "src/starlight/core/renderer/EdgeSubmission.cpp"
     "src/starlight/core/renderer/RenderPhaseHelpers.cpp"
+    "src/starlight/core/transfer/RegisterTransferWait.cpp"
+    "src/starlight/core/transfer/ReadinessCondition.cpp"
     "src/starlight/object/StarObject.cpp"
     "src/starlight/virtual/ModulePlug/ManagerPlug.cpp"
     "src/starlight/virtual/StarMesh.cpp"
@@ -165,6 +167,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/core/device/managers/Fence.cpp"
     "src/starlight/core/device/managers/DescriptorPool.cpp"
     "src/starlight/core/device/managers/Image.cpp"
+    "src/starlight/core/device/managers/Material.cpp"
     "src/starlight/core/device/managers/Buffer.cpp"
     "src/starlight/core/device/managers/Queue.cpp"
     "src/starlight/core/device/system/event/ShaderCompiled.cpp"
@@ -177,6 +180,10 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/event/FrameComplete.cpp"
     "src/starlight/event/RegisterMainGraphicsRenderer.cpp"
     "src/starlight/event/StartOfNextFrame.cpp"
+    "src/starlight/event/ManagerReservedMemoryUpdate.cpp"
+    "src/starlight/event/PassCPURecordingWaitResolved.cpp"
+    "src/starlight/event/MaterialSwapRolledBack.cpp"
+    "src/starlight/event/MaterialSwapCommitted.cpp"
     "src/starlight/event/GetQueue.cpp"
     "src/starlight/event/DescriptorPoolReady.cpp"
     "src/starlight/policy/command/ListenFor.cpp"
@@ -191,6 +198,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/ListenForStartOfNextFramePolicy.cpp"
     "src/starlight/core/service/Service.cpp"
     "src/starlight/service/SceneLoaderService.cpp"
+    "src/starlight/service/MaterialService.cpp"
     "src/starlight/service/detail/scene_loader/SceneObjectTracker.cpp"
     "src/starlight/service/FrameInFlightControllerService.cpp"
     "src/starlight/service/ScreenCapture.cpp"
@@ -255,6 +263,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/common/helpers/GeometryHelpers.cpp"
     "src/starlight/common/helpers/FileHelpers.cpp"
     "src/starlight/internals/CommandBufferContainer.cpp"
+    "src/starlight/internals/CPURecordingWaitContainer.cpp"
     "src/starlight/job/worker/Worker.cpp"
     "src/starlight/job/worker/DefaultWorker.cpp"
     "src/starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.cpp"
@@ -294,6 +303,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/policy/command/ListenForGetFrameTracker.cpp"
     "src/starlight/policy/event/ListenForFrameComplete.cpp"
     "src/starlight/policy/event/ListenForPrepForNextFrame.cpp"
+    "src/starlight/policy/event/ListenForManagerReservedMemoryUpdate.cpp"
     "src/starlight/core/graphics/GPUWorkSyncInfo.cpp" 
     "src/starlight/command/CreateLight.cpp" 
     "src/starlight/command/shader/CreateShader.cpp"
@@ -341,6 +351,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/command/command_order/DeclarePass.hpp"
     "include/starlight/command/command_order/TriggerPass.hpp"
     "include/starlight/command/command_order/GetPassInfo.hpp"
+    "include/starlight/command/command_order/ForceCPURecordingWait.hpp"
     "include/starlight/command/CreateObject.hpp"
     "include/starlight/command/detail/create_object/ObjectLoader.hpp"
     "include/starlight/command/detail/create_object/FromObjFileLoader.hpp"
@@ -377,6 +388,9 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/core/renderer/CaptureCapableRenderer.hpp"
     "include/starlight/core/renderer/EdgeSubmission.hpp"
     "include/starlight/core/renderer/RenderPhaseHelpers.hpp"
+    "include/starlight/core/transfer/RegisterTransferWait.hpp"
+    "include/starlight/core/transfer/ReadinessCondition.hpp"
+    "include/starlight/core/transfer/ReadinessFailurePolicy.hpp"
     "include/starlight/common/ThreadSharedResource.hpp"
     "include/starlight/common/Compiler.hpp"
     "include/starlight/common/materials/BumpMaterial.hpp"
@@ -404,6 +418,9 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/virtual/StarMesh.hpp"
     "include/starlight/virtual/StarCamera.hpp"
     "include/starlight/virtual/StarMaterial.hpp"
+    "include/starlight/material/IMaterialProvider.hpp"
+    "include/starlight/material/MaterialProvider.hpp"
+    "include/starlight/command/material/MakeMaterial.hpp"
     "include/starlight/virtual/StarPipeline.hpp"
     "include/starlight/virtual/TransferRequest_Texture.hpp"
     "include/starlight/virtual/TransferRequest_Buffer.hpp"
@@ -447,6 +464,12 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/event/FrameComplete.hpp"
     "include/starlight/event/RegisterMainGraphicsRenderer.hpp"
     "include/starlight/event/StartOfNextFrame.hpp"
+    "include/starlight/event/ManagerReservedMemoryUpdate.hpp"
+    "include/starlight/event/PassCPURecordingWaitResolved.hpp"
+    "include/starlight/event/MaterialSwapRolledBack.hpp"
+    "include/starlight/event/MaterialSwapCommitted.hpp"
+    "include/starlight/event/material_swap/SwapResultView.hpp"
+    "include/starlight/exception/SwapException.hpp"
     "include/starlight/event/GetQueue.hpp"
     "include/starlight/event/DescriptorPoolReady.hpp"
     "include/starlight/policy/command/ListenFor.hpp"
@@ -509,6 +532,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/managers/ManagerRenderResource.hpp"
     "include/starlight/systems/StarRenderGroup.hpp"
     "include/starlight/internals/CommandBufferContainer.hpp"
+    "include/starlight/internals/CPURecordingWaitContainer.hpp"
     "include/starlight/virtual/StarEntity.hpp"
     "include/starlight/wrappers/graphics/StarTextures/FormatInfo.hpp"
     "include/starlight/wrappers/graphics/StarTextures/Texture.hpp"
@@ -565,6 +589,10 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/policy/DefaultEngineLoopPolicy.hpp"
     "include/starlight/policy/ListenForRenderReadyForFinalization.hpp"
     "include/starlight/policy/event/ListenFor.hpp"
+    "include/starlight/policy/event/ListenForManagerReservedMemoryUpdate.hpp"
+    "include/starlight/policy/event/ListenForPassCPURecordingWaitResolved.hpp"
+    "include/starlight/policy/event/ListenForMaterialSwapRolledBack.hpp"
+    "include/starlight/policy/event/ListenForMaterialSwapCommitted.hpp"
     "include/starlight/core/Exceptions.hpp"
     "include/starlight/setup/RenderResourceSetup.hpp"
     "include/starlight/common/entities/Light.hpp"
@@ -580,6 +608,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/structs/ExrData.hpp"
     "include/starlight/structs/Ray.hpp"
     "include/starlight/structs/QueueFamilyOwnership.hpp"
+    "include/starlight/structs/MaterialSwapCommitInfo.hpp"
     "include/starlight/templates/StarApplication.hpp"
     "include/starlight/templates/StarResourceContainer.hpp"
     "include/starlight/templates/FileResourceManager.hpp"
@@ -639,13 +668,13 @@ target_link_libraries(${STARLIGHT_NAME}
         shaderc_combined
         GPUOpen::VulkanMemoryAllocator
         unofficial::tinyexr::tinyexr
+        Boost::container
     PRIVATE
         SPIRV-Tools
         tinyobjloader::tinyobjloader
         Boost::log
         Boost::log_setup
         Boost::thread
-        Boost::container
         Boost::filesystem
         ${CMAKE_DL_LIBS}
         KTX::ktx

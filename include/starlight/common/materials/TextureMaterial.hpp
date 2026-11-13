@@ -8,6 +8,7 @@
 #include <starlight/wrappers/graphics/StarSemaphore.hpp>
 
 #include <memory>
+#include <vector>
 
 namespace star
 {
@@ -46,13 +47,20 @@ class TextureMaterial : public StarMaterial
     Handle m_textureHandle = Handle();
     /// Semaphore the texture's transfer signals when its GPU work retires, as reported by SubmitTextureTransfer.
     star::StarSemaphore m_textureTransfer{};
+    /// Stages that consume the transferred texture; the skybox conversion dispatch needs the compute stage too.
+    vk::PipelineStageFlags m_textureTransferStages =
+        vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader;
+
     // TODO: Remove because this can also be used for regular textures which muddies the waters here.
     std::unique_ptr<SharedCompressedTexture> m_preTranscodedTexture = nullptr;
 
     /// Register the texture's GPU transfer-completion semaphore as a one-time
     /// wait on the provided render command buffer. No-op when there is no transfer to wait on.
-    static void registerTextureTransferWait(core::device::DeviceContext &context, star::Handle commandBuffer,
-                                            star::Handle textureHandle, const star::StarSemaphore &transferSemaphore);
+    static void registerTextureTransferWait(
+        core::device::DeviceContext &context, star::Handle commandBuffer, star::Handle textureHandle,
+        const star::StarSemaphore &transferSemaphore,
+        vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eVertexShader |
+                                            vk::PipelineStageFlagBits::eFragmentShader);
 
     virtual std::unique_ptr<StarShaderInfo> buildShaderInfo(core::device::DeviceContext &context,
                                                             uint8_t numFramesInFlight,

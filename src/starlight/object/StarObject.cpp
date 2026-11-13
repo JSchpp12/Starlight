@@ -1,5 +1,6 @@
 #include "starlight/object/StarObject.hpp"
 
+#include "starlight/command/material/MakeMaterial.hpp"
 #include "starlight/command/pipeline/CreatePipeline.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
@@ -7,12 +8,15 @@
 #include "TransferRequest_IndicesInfo.hpp"
 #include "TransferRequest_VertInfo.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
+#include "device/managers/Material.hpp"
+#include "starlight/core/transfer/RegisterTransferWait.hpp"
 #include "wrappers/graphics/policies/SubmitDescriptorRequestsPolicy.hpp"
 
 #include "common/helpers/GeometryHelpers.hpp"
 #include <glm/glm.hpp>
 
 #include <algorithm>
+#include <memory>
 
 std::unique_ptr<star::StarDescriptorSetLayout> star::StarObject::instanceDescriptorLayout =
     std::unique_ptr<star::StarDescriptorSetLayout>();
@@ -128,31 +132,28 @@ void star::StarObject::cleanupSharedResources(core::device::DeviceContext &devic
 
 void star::StarObject::init(core::device::DeviceContext &context)
 {
-    auto submitter =
-        std::make_shared<wrappers::graphics::policies::SubmitDescriptorRequestsPolicy>(getDescriptorRequests(1));
+    auto submitter = std::make_shared<wrappers::graphics::policies::SubmitDescriptorRequestsPolicy>(
+        getDescriptorRequests(context, 1));
 
     submitter->init(context.getEventBus());
 }
 
 void star::StarObject::cleanupRender(core::device::DeviceContext &context)
 {
-    // Drain any setup this object recorded (its release gates are waited on here).
-    if (m_setup.has_value())
-    {
-        m_setup->cleanupRender(context);
-        m_setup.reset();
-    }
+    // One-shot work is owned and cleaned by the pass request; this object only observes it.
+    m_setup = nullptr;
 
     // normalExtrusionPipeline->cleanupRender(context.getDevice());
     // this->normalExtrusionPipeline.reset();
 
     // this->setLayout.reset();
 
-    // cleanup any material
-
-    for (auto &material : m_meshMaterials)
+    // cleanup any material (the manager owns the records; this only runs each material's GPU cleanup)
+    auto &materialManager = context.getGraphicsManagers().materialManager;
+    for (const Handle &handle : m_materialHandles)
     {
-        material->cleanupRender(context);
+        if (auto *material = materialManager.getMaterial(handle))
+            material->cleanupRender(context);
     }
 
     if (m_instanceShaderInfo)
@@ -215,8 +216,24 @@ const star::StarEntity &star::StarObject::getInstance(size_t index) const
     return m_instanceInfo.getInstance(index);
 }
 
-void star::StarObject::prepRender(star::core::device::DeviceContext &context)
+void star::StarObject::prepRender(star::core::device::DeviceContext &context, Handle commandBuffer)
 {
+    // Create materials once, now that the owning pass's command buffer is known. The service applies the
+    // material's transfer waits and one-shot prep directly to that pass.
+    if (m_materialHandles.empty() && !m_materialProviders.empty())
+    {
+        for (auto &provider : m_materialProviders)
+        {
+            auto made = provider->make(context);
+            command::material::MakeMaterial cmd{std::move(made.material), std::move(made.waits), std::move(made.prep),
+                                                commandBuffer, std::move(made.conditions)};
+            context.getCmdBus().submit(cmd);
+            m_materialHandles.push_back(cmd.getReply().get());
+        }
+
+        m_materialProviders.clear();
+    }
+
     prepStarObject(context);
 }
 
@@ -282,26 +299,16 @@ star::core::renderer::RenderingContext star::StarObject::buildRenderingContext(
     return core::renderer::RenderingContext{.pipeline = &context.getPipelineManager().get(pipeline)->builtPipeline};
 }
 
-star::StarObject::StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials,
-                             star::setup::RenderResourceSetup setup)
-    : m_meshMaterials(std::move(meshMaterials))
+star::StarObject::StarObject(std::vector<std::unique_ptr<IMaterialProvider>> materialProviders)
+    : m_materialProviders(std::move(materialProviders))
 {
-    // A setup with no definitions carries no work; treat it as absent so the object draws immediately instead of
-    // waiting one frame for a no-op record.
-    if (!setup.definitions.empty())
-        m_setup.emplace(std::move(setup));
 }
 
 void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer,
                                                    const common::FrameTracker &frameTracker, uint64_t frameIndex,
                                                    const core::graphics::RecordingSubmissionInfo *recordingInfo)
 {
-    if (m_setup.has_value())
-    {
-        const core::graphics::SemaphoreInfo gate =
-            recordingInfo != nullptr ? recordingInfo->gate : core::graphics::SemaphoreInfo{};
-        m_setup->record(commandBuffer, gate);
-    }
+    (void)recordingInfo; // One-shot setup is now recorded by the owning pass, not this object.
 
     const uint8_t frameInFlightIndex = frameTracker.getCurrent().getFrameInFlightIndex();
 
@@ -314,7 +321,7 @@ void star::StarObject::recordPreRenderPassCommands(vk::CommandBuffer commandBuff
 void star::StarObject::recordRenderPassCommands(vk::CommandBuffer commandBuffer, vk::PipelineLayout pipelineLayout,
                                                 uint8_t swapChainIndexNum, uint64_t frameIndex)
 {
-    if (m_setup.has_value() && !m_setup->isDone())
+    if (m_setup && !m_setup->isDone())
         return;
 
     if (!isKnownToBeReadyForRecordRender(swapChainIndexNum))
@@ -362,14 +369,9 @@ void star::StarObject::frameUpdate(core::device::DeviceContext &context, uint8_t
                                    Handle targetCommandBuffer,
                                    const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
 {
-    if (m_setup.has_value())
-    {
-        m_setup->prepRender(context);
-
-        // Nothing left to record or release: drop the setup so its storage does not outlive its use.
-        if (m_setup->isFullyDrained())
-            m_setup.reset();
-    }
+    // Observe the owning pass's setup for the draw gate. The work itself is handed over by the app's TriggerPass.
+    if (targetCommandBuffer.isInitialized())
+        m_setup = &context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer).renderResourceSetup;
 
     if (!isReady && isRenderReady(context))
         isReady = true;
@@ -394,8 +396,17 @@ std::vector<std::shared_ptr<star::StarDescriptorSetLayout>> star::StarObject::ge
             .addBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
     allSets.emplace_back(updateSetBuilder.build());
 
-    assert(m_meshMaterials.size() > 0 && "Materials should always exist");
-    m_meshMaterials.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
+    if (!m_materialProviders.empty())
+    {
+        m_materialProviders.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
+    }
+    else
+    {
+        assert(!m_materialHandles.empty() && "Materials should always exist");
+        context.getGraphicsManagers()
+            .materialManager.getMaterial(m_materialHandles.front())
+            ->addDescriptorSetLayoutsTo(staticSetBuilder);
+    }
     auto staticSet = staticSetBuilder.build();
 
     if (staticSet->getBindings().size() > 0)
@@ -417,7 +428,7 @@ void star::StarObject::prepareMeshes(star::core::device::DeviceContext &device)
 void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
                                      star::StarShaderInfo::Builder &frameBuilder, star::Handle commandBuffer)
 {
-    assert(m_meshMaterials.size() > 0 && "Mesh materials should exist");
+    assert(!m_materialHandles.empty() && "Mesh materials should exist");
 
     const uint8_t numFramesInFlight = context.frameTracker().getSetup().getNumFramesInFlight();
 
@@ -453,8 +464,9 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
 
     // Build the per-mesh (material) set layout once. All materials in an object
     // share a compatible layout because objects in a render group share a shader.
+    auto &materialManager = context.getGraphicsManagers().materialManager;
     auto staticSetBuilder = StarDescriptorSetLayout::Builder();
-    m_meshMaterials.front()->addDescriptorSetLayoutsTo(staticSetBuilder);
+    materialManager.getMaterial(m_materialHandles.front())->addDescriptorSetLayoutsTo(staticSetBuilder);
     std::shared_ptr<StarDescriptorSetLayout> materialSetLayout = staticSetBuilder.build();
     const bool hasMaterialSet = materialSetLayout->getBindings().size() > 0;
     if (hasMaterialSet)
@@ -466,7 +478,7 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
     // Give each material its own builder containing only the material set layout
     // (if any), so the material's StarShaderInfo owns only its per-mesh set(s)
     // instead of a copy of the global + instance sets.
-    for (auto &material : m_meshMaterials)
+    for (const Handle &handle : m_materialHandles)
     {
         auto materialBuilder =
             StarShaderInfo::Builder(frameBuilder.getDeviceID(), frameBuilder.getDevice(), frameBuilder.getPool(),
@@ -474,7 +486,8 @@ void star::StarObject::prepMaterials(star::core::device::DeviceContext &context,
         if (hasMaterialSet)
             materialBuilder.addSetLayout(materialSetLayout);
 
-        material->prepRender(context, numFramesInFlight, materialBuilder, commandBuffer);
+        if (auto *material = materialManager.getMaterial(handle))
+            material->prepRender(context, numFramesInFlight, materialBuilder, commandBuffer);
     }
 }
 
@@ -567,13 +580,32 @@ void star::StarObject::calculateBoundingBox(std::vector<Vertex> &verts, std::vec
 }
 
 std::vector<std::pair<vk::DescriptorType, const uint32_t>> star::StarObject::getDescriptorRequests(
-    uint8_t numFramesInFlight)
+    core::device::DeviceContext &context, uint8_t numFramesInFlight)
 {
     std::vector<std::pair<vk::DescriptorType, const uint32_t>> requests{
         std::make_pair(vk::DescriptorType::eUniformBuffer, 2), std::make_pair(vk::DescriptorType::eStorageBuffer, 2)};
 
-    for (auto &material : m_meshMaterials)
+    if (!m_materialProviders.empty())
     {
+        for (const auto &provider : m_materialProviders)
+        {
+            auto matRequests = provider->getDescriptorRequests(numFramesInFlight);
+            for (auto &type : matRequests)
+            {
+                requests.push_back(std::move(type));
+            }
+        }
+
+        return requests;
+    }
+
+    auto &materialManager = context.getGraphicsManagers().materialManager;
+    for (const Handle &handle : m_materialHandles)
+    {
+        auto *material = materialManager.getMaterial(handle);
+        if (material == nullptr)
+            continue;
+
         auto matRequests = material->getDescriptorRequests(numFramesInFlight);
         for (auto &type : matRequests)
         {
@@ -624,9 +656,6 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
 {
     bool updateInstanceModel = false, updateInstanceNormal = false;
 
-    CommandBufferContainer::CompleteRequest &request =
-        context.getManagerCommandBuffer().m_manager.get(targetCommandBuffer);
-
     {
         const auto [submitted, semaphore] = m_instanceInfo.getControllerModel().submitUpdateIfNeeded(
             context, frameInFlightIndex, transferReuqestSyncInfo);
@@ -634,10 +663,10 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
         {
             updateInstanceModel = true;
 
-            request.oneTimeWaitSemaphoreInfo.insert(
-                m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex), semaphore->vkSemaphore,
-                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader,
-                semaphore->signalValue);
+            star::core::transfer::RegisterTransferWait(
+                context, targetCommandBuffer, m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex),
+                semaphore->vkSemaphore, semaphore->signalValue,
+                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
         }
     }
 
@@ -648,10 +677,10 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
         {
             updateInstanceNormal = true;
 
-            request.oneTimeWaitSemaphoreInfo.insert(
-                m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex), semaphore->vkSemaphore,
-                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader,
-                semaphore->signalValue);
+            star::core::transfer::RegisterTransferWait(
+                context, targetCommandBuffer, m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex),
+                semaphore->vkSemaphore, semaphore->signalValue,
+                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
         }
     }
 

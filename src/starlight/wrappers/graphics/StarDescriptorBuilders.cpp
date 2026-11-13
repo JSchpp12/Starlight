@@ -39,7 +39,6 @@ bool StarDescriptorSetLayout::isCompatibleWith(const StarDescriptorSetLayout &co
 
 void StarDescriptorSetLayout::prepRender(core::device::StarDevice &device)
 {
-    //check if this set has already been prepared, skip if so
     if (this->descriptorSetLayout != VK_NULL_HANDLE)
         return;
 
@@ -157,7 +156,7 @@ bool StarDescriptorPool::allocateDescriptorSet(const vk::DescriptorSetLayout des
         else
             msg += "Unknown error";
 
-        star::core::logging::error(msg); 
+        star::core::logging::error(msg);
 
         return false;
     }
@@ -209,6 +208,17 @@ StarDescriptorWriter &StarDescriptorWriter::writeImage(uint32_t binding, vk::Des
 
     auto &bindingDescription = setLayout.bindings[binding];
     assert(bindingDescription.descriptorCount == 1 && "Binding single descriptor info, but binding expects multiple");
+
+    // Replace an existing write for this binding: rebuilds (e.g. a material resource swap) reuse one writer for the
+    // lifetime of the set, so appending would grow writeSets without bound.
+    for (auto &set : this->writeSets)
+    {
+        if (set.binding == binding)
+        {
+            set = FullDescriptorInfo(imageInfo, bindingDescription.descriptorType, binding);
+            return *this;
+        }
+    }
 
     this->writeSets.push_back(FullDescriptorInfo(imageInfo, bindingDescription.descriptorType, binding));
 

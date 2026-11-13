@@ -6,8 +6,10 @@
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "TransferRequest_TextureFile.hpp"
 #include "core/device/managers/Image.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "starlight/command/transfer/SubmitTextureTransfer.hpp"
+#include "starlight/core/transfer/RegisterTransferWait.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 
@@ -105,27 +107,27 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, uin
                                        star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
 {
     preloadTexture(context);
+    if (!m_resourceHandle.isInitialized())
+        m_resourceHandle = m_textureHandle;
 
     if (m_textureHandle.isInitialized())
-        registerTextureTransferWait(context, commandBuffer, m_textureHandle, m_textureTransfer);
+        registerTextureTransferWait(context, commandBuffer, m_textureHandle, m_textureTransfer,
+                                    m_textureTransferStages);
 
     StarMaterial::prepRender(context, numFramesInFlight, frameBuilder, commandBuffer);
 }
 
 void star::TextureMaterial::registerTextureTransferWait(core::device::DeviceContext &context,
                                                         star::Handle commandBuffer, star::Handle textureHandle,
-                                                        const star::StarSemaphore &transferSemaphore)
+                                                        const star::StarSemaphore &transferSemaphore,
+                                                        vk::PipelineStageFlags waitStages)
 {
     // A preloaded texture has no transfer of its own, so there is nothing to wait on.
     if (!textureHandle.isInitialized() || transferSemaphore.vkSemaphore == VK_NULL_HANDLE)
         return;
 
-    context.getManagerCommandBuffer()
-        .m_manager.get(commandBuffer)
-        .oneTimeWaitSemaphoreInfo.insert(textureHandle, transferSemaphore.vkSemaphore,
-                                         vk::PipelineStageFlagBits::eFragmentShader |
-                                             vk::PipelineStageFlagBits::eVertexShader,
-                                         transferSemaphore.signalValue);
+    star::core::transfer::RegisterTransferWait(context, commandBuffer, textureHandle, transferSemaphore.vkSemaphore,
+                                               transferSemaphore.signalValue, waitStages);
 }
 
 std::unique_ptr<star::StarShaderInfo> star::TextureMaterial::buildShaderInfo(core::device::DeviceContext &context,

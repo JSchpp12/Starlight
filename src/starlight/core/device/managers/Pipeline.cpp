@@ -1,13 +1,45 @@
 #include "core/device/managers/Pipeline.hpp"
 
-#include "core/device/system/event/ShaderCompiled.hpp"
-
-#include <star_common/HandleTypeRegistry.hpp>
-
-#include <cassert>
+#include "core/logging/LoggingFactory.hpp"
 
 namespace star::core::device::manager
 {
+void PipelineRecord::resolve() const
+{
+    if (builtPipeline.isRenderReady() || !pending.has_value() || !pending->isReady())
+        return;
+
+    auto result = pending->take();
+    pending.reset();
+
+    if (result.has_value())
+        builtPipeline = std::move(*result);
+    else
+        core::logging::warning("Pipeline build failed: ", result.error().what());
+}
+
+void PipelineRecord::waitForReady() const
+{
+    if (!pending.has_value())
+        return;
+
+    pending->wait();
+    resolve();
+}
+
+void PipelineRecord::cleanupRender(core::device::StarDevice &device)
+{
+    if (pending.has_value())
+    {
+        // An unpublishing build is owned by its producer; it must publish (or be destroyed) before teardown.
+        if (!pending->isReady())
+            return;
+
+        resolve();
+    }
+
+    builtPipeline.destroy(device.getVulkanDevice());
+}
 
 void Pipeline::init(device::StarDevice *device, common::EventBus &eventBus, job::TaskManager &taskSystem)
 {
@@ -15,67 +47,15 @@ void Pipeline::init(device::StarDevice *device, common::EventBus &eventBus, job:
                                                                                                     taskSystem);
 }
 
-void Pipeline::cleanupRender()
-{
-    this->TaskCreatedResourceManager<PipelineRecord, PipelineRequest, 50, PipelineResourceTypeName>::cleanupRender();
-
-    std::vector<const Handle *> unsubscribers;
-    for (const auto &subscriberInfo : m_subscriberShaderBuildInfo)
-    {
-        if (subscriberInfo.second.isInitialized())
-        {
-            unsubscribers.push_back(&subscriberInfo.second);
-        }
-    }
-
-    for (size_t i{0}; i < unsubscribers.size(); i++)
-    {
-        this->m_eventBus->unsubscribe(*unsubscribers[i]);
-    }
-}
-
 void Pipeline::submitTask(device::StarDevice &device, const Handle &handle, job::TaskManager &taskSystem,
                           common::EventBus &eventBus, PipelineRecord *storedRecord)
 {
+    // Build submission is state-driven from ProcessPipelinesWhichAreNowReadyForBuild, called after this record is
+    // submitted and after each shader compile completes.
+    (void)device;
+    (void)handle;
+    (void)taskSystem;
+    (void)eventBus;
     (void)storedRecord;
-
-    uint16_t key = static_cast<uint16_t>(m_subscriberShaderBuildInfo.size());
-    m_subscriberShaderBuildInfo.insert(std::make_pair(key, Handle()));
-
-    if (!common::HandleTypeRegistry::instance().contains(core::device::system::event::GetShaderCompiledEventTypeName))
-    {
-        common::HandleTypeRegistry::instance().registerType(
-            core::device::system::event::GetShaderCompiledEventTypeName);
-    }
-
-    const uint16_t type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-        core::device::system::event::GetShaderCompiledEventTypeName);
-    eventBus.subscribe(type, {[this, handle](const star::common::IEvent &e, bool &keepAlive) {
-                                  const auto &event = static_cast<const system::event::ShaderCompiled &>(e);
-
-                                  auto *record = this->get(handle);
-                                  bool shouldKeepAlive = true;
-
-                                  for (const auto &shader : record->request.provider.getShaders())
-                                  {
-                                      if (shader.isSameElementAs(event.shaderHandle))
-                                      {
-                                          record->numCompiled++;
-                                          if (record->numCompiled == record->request.provider.getShaders().size())
-                                          {
-                                              shouldKeepAlive = false;
-                                          }
-                                      }
-                                  }
-
-                                  keepAlive = shouldKeepAlive;
-                              },
-                              [this, key]() -> Handle * {
-                                  assert(this->m_subscriberShaderBuildInfo.contains(key));
-                                  return &this->m_subscriberShaderBuildInfo.at(key);
-                              },
-                              [this, key](const Handle &noLongerNeededHandle) {
-                                  const auto numRemoved = this->m_subscriberShaderBuildInfo.erase(key);
-                              }});
 }
 } // namespace star::core::device::manager

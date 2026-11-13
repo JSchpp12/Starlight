@@ -3,13 +3,19 @@
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarTextures/Texture.hpp"
-#include "core/device/DeviceContext.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 #include <vector>
+
+namespace star::core::device::manager
+{
+class Buffer;
+class Image;
+} // namespace star::core::device::manager
 
 namespace star
 {
@@ -95,13 +101,28 @@ class StarShaderInfo
 
     struct ShaderInfoSet
     {
-        std::vector<ShaderInfo> shaderInfos = std::vector<ShaderInfo>();
+        /// @brief Resource slots indexed by descriptor binding. Empty = not supplied yet; the descriptor is written
+        /// lazily once the slot is filled and the set is built.
+        std::vector<std::optional<ShaderInfo>> slots;
 
         ShaderInfoSet(core::device::StarDevice &device, StarDescriptorPool &pool, StarDescriptorSetLayout &setLayout,
                       core::device::manager::Buffer *bufferManager = nullptr,
                       core::device::manager::Image *imageManager = nullptr)
             : device(device), m_pool(pool), setLayout(setLayout), m_bufferManager(bufferManager),
-              m_imageManager(imageManager) {};
+              m_imageManager(imageManager)
+        {
+            const auto &bindings = setLayout.getBindings();
+            m_bindingOrder.reserve(bindings.size());
+            for (const auto &[binding, descriptor] : bindings)
+            {
+                (void)descriptor;
+                m_bindingOrder.push_back(binding);
+            }
+            std::sort(m_bindingOrder.begin(), m_bindingOrder.end());
+
+            if (!m_bindingOrder.empty())
+                slots.resize(static_cast<size_t>(m_bindingOrder.back()) + 1);
+        }
 
         /// @brief The device buffer manager this set resolves managed-buffer handles through, or nullptr when the
         /// set was built without one.
@@ -124,7 +145,16 @@ class StarShaderInfo
 
         void setNewResource(size_t index, ShaderInfo newInfo);
 
-        void add(const ShaderInfo &shaderInfo);
+        void add(ShaderInfo shaderInfo);
+
+        /// @brief Binding indices declared by this set's layout, ascending.
+        const std::vector<uint32_t> &getBindings() const
+        {
+            return m_bindingOrder;
+        }
+
+        /// @brief True when every binding declared by the layout has a resource slot filled.
+        [[nodiscard]] bool hasAllRequiredResources() const;
 
         void buildIndex(const star::Handle &deviceID, size_t index);
 
@@ -143,6 +173,9 @@ class StarShaderInfo
         StarDescriptorSetLayout &setLayout;
         core::device::manager::Buffer *m_bufferManager = nullptr;
         core::device::manager::Image *m_imageManager = nullptr;
+        /// @brief Layout binding indices, ascending; add() fills them in this order.
+        std::vector<uint32_t> m_bindingOrder;
+        size_t m_nextAddBinding = 0;
         std::vector<size_t> m_pendingBuildIndices;
         bool setNeedsRebuild = true;
         bool isBuilt = false;

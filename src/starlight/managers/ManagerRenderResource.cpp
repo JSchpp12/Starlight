@@ -9,8 +9,6 @@
 
 std::unordered_map<star::Handle, star::core::device::StarDevice *, star::HandleHash>
     star::ManagerRenderResource::devices;
-std::unordered_map<star::Handle, std::set<boost::atomic<bool> *>, star::HandleHash>
-    star::ManagerRenderResource::highPriorityRequestCompleteFlags;
 std::unordered_map<star::Handle,
                    std::unique_ptr<star::core::ManagedHandleContainer<
                        star::ManagerRenderResource::FinalizedResourceRequest<star::StarBuffers::Buffer>>>,
@@ -28,8 +26,6 @@ void star::ManagerRenderResource::init(const Handle &deviceID, star::core::devic
             common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName), 20000,
             50)));
 
-    highPriorityRequestCompleteFlags.insert(std::make_pair(deviceID, std::set<boost::atomic<bool> *>()));
-
     s_cmdBus = &cmdBus;
 }
 
@@ -45,7 +41,7 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID)
 star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
                                                      std::unique_ptr<star::TransferRequest::Buffer> newRequest,
                                                      vk::Semaphore *consumingQueueCompleteSemaphore,
-                                                     const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
+                                                     uint32_t *outTransferQueueFamilyIndex)
 {
     assert(devices.contains(deviceID) && "Device has not been properly initialized");
 
@@ -58,15 +54,10 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
         &newFull.cpuWorkDoneByTransferThread, std::move(newRequest), newFull.resource);
 
     command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
-        job::tasks::transfer::TransferPayload{isHighPriority ? job::tasks::transfer::TransferPriority::High
-                                                             : job::tasks::transfer::TransferPriority::Standard,
-                                              std::move(request)})};
+        job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::Standard, std::move(request)})};
 
     s_cmdBus->submit(cmd);
     const auto result = cmd.getReply().get();
-
-    if (isHighPriority)
-        highPriorityRequestCompleteFlags.at(deviceID).insert(&newFull.cpuWorkDoneByTransferThread);
 
     if (outTransferQueueFamilyIndex != nullptr)
         *outTransferQueueFamilyIndex = result.queueFamilyIndex;
@@ -75,25 +66,11 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
     return newBufferHandle;
 }
 
-void star::ManagerRenderResource::frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex)
-{
-    (void)frameInFlightIndex;
-    for (auto &request : highPriorityRequestCompleteFlags.at(deviceID))
-    {
-        if (!request->load())
-        {
-            request->wait(false);
-        }
-    }
-
-    highPriorityRequestCompleteFlags.at(deviceID).clear();
-}
-
 void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                                 std::unique_ptr<TransferRequest::Buffer> newRequest,
                                                 const star::Handle &handle,
                                                 std::optional<core::graphics::SemaphoreInfo> waitInfo,
-                                                const bool &isHighPriority, uint32_t *outTransferQueueFamilyIndex)
+                                                uint32_t *outTransferQueueFamilyIndex)
 {
     assert(!waitInfo.has_value() || (waitInfo.has_value() && waitInfo.value().semaphore != VK_NULL_HANDLE) &&
                                         "Provided semaphore for waitInfo is not valid.");
@@ -135,18 +112,12 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
         &container.cpuWorkDoneByTransferThread, std::move(newRequest), container.resource, std::move(syncInfo));
     command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
-        job::tasks::transfer::TransferPayload{isHighPriority ? job::tasks::transfer::TransferPriority::High
-                                                             : job::tasks::transfer::TransferPriority::Standard,
-                                              std::move(request)})};
+        job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::Standard, std::move(request)})};
 
     s_cmdBus->submit(cmd);
     const auto result = cmd.getReply().get(); // synchronous: already populated
     container.gpuWorkDoneSignaledInfo = result.semaphore;
 
-    if (isHighPriority)
-    {
-        highPriorityRequestCompleteFlags.at(deviceID).insert(&container.cpuWorkDoneByTransferThread);
-    }
     if (outTransferQueueFamilyIndex != nullptr)
         *outTransferQueueFamilyIndex = result.queueFamilyIndex;
 }
@@ -158,12 +129,17 @@ bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &
     {
         return bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread.load();
     }
-    else
-    {
-        throw std::runtime_error("Invalid type provided");
-    }
+    STAR_THROW("Invalid type provided");
+}
 
-    return false;
+bool star::ManagerRenderResource::isPending(const Handle &deviceID, const Handle &handle)
+{
+    if (handle.getType() ==
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))
+    {
+        return !bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread.load();
+    }
+    STAR_THROW("Invalid type provided");
 }
 
 void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Handle &handle)
@@ -180,7 +156,7 @@ void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Han
     }
     else
     {
-        throw std::runtime_error("Invalid handle type");
+        STAR_THROW("Invalid handle type");
     }
 
     assert(fence != nullptr && "Fence not valid or found");

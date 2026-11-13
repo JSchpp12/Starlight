@@ -1,39 +1,57 @@
 #include "starlight/job/complete_tasks/BuildPipeline.hpp"
 
-#include "starlight/core/device/managers/GraphicsContainer.hpp"
+#include "core/device/managers/GraphicsContainer.hpp"
+#include "core/logging/LoggingFactory.hpp"
 #include "starlight/event/PipelineReady.hpp"
 
-static void SignalPipelineReady(star::common::EventBus &evtBus, star::Handle registration)
+#include <star_common/EventBus.hpp>
+#include <star_common/Handle.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
+
+#include <iostream>
+
+namespace star::job::complete_tasks
+{
+namespace
+{
+void SignalPipelineReady(star::common::EventBus &evtBus, star::Handle registration)
 {
     star::event::PipelineReady evt{std::move(registration)};
-
     evtBus.emit(evt);
 }
+} // namespace
 
-void star::job::complete_tasks::ExecuteBuildPipelineComplete(void *device, void *taskSystem, void *eventBus,
-                                                             void *graphicsManagers, void *payload)
+void ExecuteBuildPipelineComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers, void *payload)
 {
-    auto *gm = static_cast<core::device::manager::GraphicsContainer *>(graphicsManagers);
+    (void)device;
+    (void)taskSystem;
 
+    auto *gm = static_cast<core::device::manager::GraphicsContainer *>(graphicsManagers);
+    auto *eb = static_cast<star::common::EventBus *>(eventBus);
     auto *p = static_cast<PipelineBuildCompletePayload *>(payload);
 
     auto handle = Handle{
         .type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::PipelineTypeName),
         .id = p->handleID};
 
+    gm->pipelineManager->waitForReady(handle);
+
+    const auto *record = gm->pipelineManager->get(handle);
+    if (record == nullptr || !record->isReady())
+    {
+        core::logging::error("Pipeline build did not produce a usable pipeline for handle [", p->handleID, "]");
+        return;
+    }
+
     std::cout << "Pipeline at [" << p->handleID << "] is ready" << std::endl;
-
-    gm->pipelineManager->get(handle)->builtPipeline = std::move(p->pipeline);
-
-    auto *evtBus = static_cast<star::common::EventBus *>(eventBus);
-    SignalPipelineReady(*evtBus, std::move(handle));
+    SignalPipelineReady(*eb, std::move(handle));
 }
 
-star::job::complete_tasks::CompleteTask star::job::complete_tasks::CreateBuildPipelineComplete(uint32_t handleID,
-                                                                                               StarPipeline pipeline)
+complete_tasks::CompleteTask CreateBuildPipelineComplete(uint32_t handleID)
 {
-    return CompleteTask::Builder<PipelineBuildCompletePayload>()
-        .setPayload(PipelineBuildCompletePayload{.handleID = std::move(handleID), .pipeline = std::move(pipeline)})
+    return complete_tasks::CompleteTask::Builder<PipelineBuildCompletePayload>()
+        .setPayload(PipelineBuildCompletePayload{.handleID = handleID})
         .setExecuteFunction(&ExecuteBuildPipelineComplete)
         .build();
 }
+} // namespace star::job::complete_tasks

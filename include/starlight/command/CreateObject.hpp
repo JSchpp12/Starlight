@@ -46,9 +46,9 @@ struct CreateObject : public common::IServiceCommand
         assert(m_loader != nullptr);
     }
 
-    std::shared_ptr<StarObject> load()
+    std::shared_ptr<StarObject> load(core::device::DeviceContext &context)
     {
-        return m_loader->load(m_shaderResolver);
+        return m_loader->load(context, m_shaderResolver);
     }
 
     const std::string &getUniqueName() const

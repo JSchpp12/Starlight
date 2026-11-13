@@ -1,56 +1,25 @@
 #include "job/complete_tasks/CompileShader.hpp"
 
 #include "core/Exceptions.hpp"
-#include "core/device/StarDevice.hpp"
 #include "core/device/managers/GraphicsContainer.hpp"
 #include "core/device/system/event/ShaderCompiled.hpp"
-#include "job/tasks/TaskFactory.hpp"
-#include <star_common/EventBus.hpp>
+#include "core/logging/LoggingFactory.hpp"
+#include "job/tasks/BuildPipeline.hpp"
 
+#include <star_common/EventBus.hpp>
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
+#include <star_common/helper/CastHelpers.hpp>
 
 #include <vulkan/vulkan.hpp>
 
-#include <exception>
+#include <cassert>
+#include <iostream>
+#include <stdexcept>
 #include <vector>
 
 namespace star::job::complete_tasks::compile_shader
 {
-
-inline static CompileResult ExtractResultFromFuture(std::future<CompileResult> &shaderFuture)
-{
-    CompileResult result =
-        std::unexpected(CompileFailure{CompileFailureKind::incomplete, "Shader creation did not complete"});
-
-    try
-    {
-        result = shaderFuture.get();
-    }
-    catch (const std::exception &e)
-    {
-        result = std::unexpected(CompileFailure{CompileFailureKind::incomplete,
-                                                std::string("Shader creation did not complete: ") + e.what()});
-    }
-
-    return result;
-}
-
-static StarShader ExtractCompiledShader(std::future<CompileResult> &shaderFuture)
-{
-    CompileResult result = ExtractResultFromFuture(shaderFuture);
-    if (!result.has_value())
-    {
-        const auto &failure = result.error();
-        const auto kind = failure.kind == CompileFailureKind::pathResolution ? "path resolution"
-                          : failure.kind == CompileFailureKind::incomplete   ? "incomplete"
-                                                                             : "compilation";
-        STAR_THROWF("Shader creation failed (", kind, "): ", failure.message);
-    }
-
-    return std::move(result.value());
-}
-
 void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus, void *graphicsManagers, void *payload)
 {
     auto *gm = static_cast<star::core::device::manager::GraphicsContainer *>(graphicsManagers);
@@ -61,16 +30,18 @@ void ExecuteShaderCompileComplete(void *device, void *taskSystem, void *eventBus
         .type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::ShaderTypeName),
         .id = p->handleID};
 
-    StarShader compiledShader = ExtractCompiledShader(p->shaderFuture);
-    if (!compiledShader.isValid())
+    // Resolves the record-level compile future (the worker already published it).
+    gm->shaderManager->waitForReady(shader);
+
+    const auto *record = gm->shaderManager->get(shader);
+    if (record == nullptr || !record->isReady())
     {
-        const auto message =
-            star::core::make_message("Shader creation produced an invalid module for handle [", p->handleID, "]");
-        STAR_THROW(message);
+        // A failed compile must fail loudly: dependent pipeline futures can never resolve, which would otherwise hang
+        // the scene-ready wait and the material commit gate.
+        STAR_THROWF("Shader compile failed for handle [", p->handleID, "]");
     }
 
     std::cout << "Marking shader at index [" << p->handleID << "] as ready" << std::endl;
-    gm->shaderManager->get(shader)->setCompiledShader(std::move(compiledShader));
     eb->emit(core::device::system::event::ShaderCompiled{shader});
 
     ProcessPipelinesWhichAreNowReadyForBuild(device, taskSystem, graphicsManagers);
@@ -92,58 +63,73 @@ void ProcessPipelinesWhichAreNowReadyForBuild(void *device, void *taskSystem, vo
             continue;
 
         auto &record = *recordPtr;
-        if (!record.isReady() && !record.buildQueued && record.numCompiled != 0 &&
-            record.numCompiled == record.request.provider.getShaders().size())
+        if (record.isReady() || record.buildQueued)
+            continue;
+
+        const auto &shaderHandles = record.request.provider.getShaders();
+        if (shaderHandles.empty())
+            continue;
+
+        uint32_t recordHandle = 0;
+        if (!star::common::casts::SafeCast<size_t, uint32_t>(i, recordHandle))
+            throw std::runtime_error("Unknown error. Failed to process record handle");
+
+        std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
+        shaderStages.reserve(shaderHandles.size());
+
+        bool allShadersReady = true;
+        for (const auto &shaderHandle : shaderHandles)
         {
-            uint32_t recordHandle = 0;
-            if (!star::common::casts::SafeCast<size_t, uint32_t>(i, recordHandle))
+            // Manager::isReady resolves a ready record future; get() then materializes the compiled shader.
+            if (!gm->shaderManager->isReady(shaderHandle))
             {
-                throw std::runtime_error("Unknown error. Failed to process record handle");
+                allShadersReady = false;
+                break;
             }
 
-            Handle handle = Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
-                                       common::special_types::PipelineTypeName),
-                                   .id = recordHandle};
-
-            std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
-            const auto &shaderHandles = record.request.provider.getShaders();
-            shaderStages.reserve(shaderHandles.size());
-
-            bool allShadersReady = true;
-            for (const auto &shaderHandle : shaderHandles)
+            const auto *shaderRecord = gm->shaderManager->get(shaderHandle);
+            if (shaderRecord == nullptr || !shaderRecord->isReady())
             {
-                auto *shaderRecord = gm->shaderManager->get(shaderHandle);
-                if (shaderRecord == nullptr || !shaderRecord->isReady())
-                {
-                    allShadersReady = false;
-                    break;
-                }
-
-                shaderStages.push_back(shaderRecord->request.shader.getStageCreateInfo());
+                allShadersReady = false;
+                break;
             }
 
-            if (!allShadersReady)
-            {
-                continue;
-            }
-
-            star::StarPipeline::RenderResourceDependencies deps{.shaderStages = std::move(shaderStages),
-                                                                .renderingTargetInfo = record.request.renderingInfo,
-                                                                .swapChainExtent = record.request.resolution};
-
-            record.buildQueued = true;
-            ts->submitTask(tasks::build_pipeline::CreateBuildPipeline(d->getVulkanDevice(), handle, std::move(deps),
-                                                                      std::move(record.request.provider)),
-                           tasks::build_pipeline::BuildPipelineTaskName);
+            shaderStages.push_back(shaderRecord->request.shader.getStageCreateInfo());
         }
+
+        if (!allShadersReady)
+            continue;
+
+        Handle handle = Handle{.type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(
+                                   common::special_types::PipelineTypeName),
+                               .id = recordHandle};
+
+        star::StarPipeline::RenderResourceDependencies deps{.shaderStages = std::move(shaderStages),
+                                                            .renderingTargetInfo = record.request.renderingInfo,
+                                                            .swapChainExtent = record.request.resolution};
+
+        assert(record.buildPromise.has_value() && "Pipeline record is missing its build promise");
+        try
+        {
+            ts->submitTask(tasks::build_pipeline::CreateBuildPipeline(
+                               d->getVulkanDevice(), handle, std::move(deps), std::move(record.request.provider),
+                               std::move(*record.buildPromise)),
+                           tasks::build_pipeline::BuildPipelineTaskName);
+            record.buildQueued = true;
+        }
+        catch (const std::exception &e)
+        {
+            core::logging::error("Pipeline build submission failed: ", e.what());
+            throw;
+        }
+        record.buildPromise.reset();
     }
 }
 
-star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(uint32_t handleID,
-                                                                    std::future<CompileResult> shaderFuture)
+star::job::complete_tasks::CompleteTask CreateShaderCompileComplete(uint32_t handleID)
 {
     return complete_tasks::CompleteTask::Builder<CompileCompletePayload>()
-        .setPayload(CompileCompletePayload{.handleID = handleID, .shaderFuture = std::move(shaderFuture)})
+        .setPayload(CompileCompletePayload{.handleID = handleID})
         .setExecuteFunction(&ExecuteShaderCompileComplete)
         .build();
 }

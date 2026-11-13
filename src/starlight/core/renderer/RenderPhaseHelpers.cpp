@@ -115,12 +115,10 @@ makeEdgeAwareSubmissionOverride(const star::core::CommandBus *cmdBus, const star
     star::core::device::manager::ManagerCommandBuffer::BufferSubmissionOverride overrideFn =
         [cmdBus, commandBuffer, signalBinaryCompletion](
             star::StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
-            std::vector<vk::Semaphore> *previousCommandBufferSemaphores, std::vector<vk::Semaphore> &dataSemaphores,
-            std::vector<vk::PipelineStageFlags> &dataWaitPoints,
-            std::vector<std::optional<uint64_t>> &previousSignaledValues, star::StarQueue &queue) -> vk::Semaphore {
+            std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
+            std::span<const star::StarCommandBuffer::Data> dataWaits, star::StarQueue &queue) -> vk::Semaphore {
         return submitEdgeAwarePass(*cmdBus, *commandBuffer, buffer, frameTracker, previousCommandBufferSemaphores,
-                                   dataSemaphores, dataWaitPoints, previousSignaledValues, queue,
-                                   signalBinaryCompletion);
+                                   dataWaits, queue, signalBinaryCompletion);
     };
 
     return overrideFn;

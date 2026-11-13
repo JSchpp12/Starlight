@@ -3,15 +3,39 @@
 #include "StarShader.hpp"
 #include "core/ShaderMacroDefinitions.hpp"
 #include "device/managers/TaskCreatedResourceManager.hpp"
+#include "job/tasks/CompileShaderResult.hpp"
 #include "starlight/util/io/PathResolver.hpp"
 
+#include <chrono>
 #include <filesystem>
+#include <future>
+#include <optional>
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 #include <utility>
 
 namespace star::core::device::manager
 {
+/// @brief Record-level holder for a shader compile in flight. The worker publishes the result; the record resolves it
+/// on the main thread.
+struct ShaderCompileFuture
+{
+    std::future<job::tasks::compile_shader::CompileResult> future;
+
+    [[nodiscard]] bool isReady() const
+    {
+        return future.valid() && future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    }
+
+    void wait() const
+    {
+        if (future.valid())
+            future.wait();
+    }
+
+    [[nodiscard]] job::tasks::compile_shader::CompileResult take() noexcept;
+};
+
 struct ShaderRequest
 {
     std::filesystem::path path;
@@ -22,27 +46,24 @@ struct ShaderRequest
 struct ShaderRecord
 {
   public:
-    ShaderRequest request;
-
     ShaderRecord() = default;
     ShaderRecord(ShaderRequest request) : request(std::move(request))
     {
     }
 
-    bool isReady() const
-    {
-        return request.shader.isValid();
-    }
+    /// @brief True once the compiled shader has been produced (resolved or ready to resolve).
+    [[nodiscard]] bool isReady() const;
 
-    void setCompiledShader(StarShader shader)
-    {
-        request.shader = std::move(shader);
-    }
+    /// @brief Consume a ready compile result into request.shader. Never blocks; no-op while pending.
+    void resolve() const;
 
-    void cleanupRender(core::device::StarDevice &device)
-    {
-        request.shader.cleanupRender(device.getVulkanDevice());
-    }
+    /// @brief Block until the compile worker publishes, then resolve.
+    void waitForReady() const;
+
+    void cleanupRender(core::device::StarDevice &device);
+
+    mutable ShaderRequest request;
+    mutable std::optional<ShaderCompileFuture> compiled;
 };
 constexpr std::string_view GetShaderEventName = "stShdE";
 /// @brief Compile-time name of the shader resource type, used for handle registration and failure logging.

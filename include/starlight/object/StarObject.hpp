@@ -9,6 +9,7 @@
 #include "core/device/DeviceContext.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "core/renderer/RenderingContext.hpp"
+#include "starlight/material/IMaterialProvider.hpp"
 #include "starlight/setup/RenderResourceSetup.hpp"
 
 #include "ManagerController_RenderResource_InstanceModelInfo.hpp"
@@ -21,6 +22,8 @@
 #include <optional>
 #include <string>
 #include <vector>
+
+#include <cassert>
 
 namespace star
 {
@@ -40,15 +43,10 @@ class StarObject
 
     static void cleanupSharedResources(core::device::DeviceContext &device);
     StarObject() = default;
-    /// @param setup One-shot work this object's sampled resource requires. It is recorded on the first pre-pass where
-    /// every contribution is ready; the object does not draw until it reports done. A setup with no steps and no
-    /// pending-release slots carries no work and is ignored.
-    explicit StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials,
-                        star::setup::RenderResourceSetup setup = {});
 
-    StarObject(std::vector<std::shared_ptr<StarMaterial>> meshMaterials, Handle vertexShader, Handle fragmentShader)
-        : m_meshMaterials(std::move(meshMaterials)), m_vertexShaderHandle(vertexShader),
-          m_fragmentShaderHandle(fragmentShader) {};
+    /// @param materialProviders Deferred material recipes. Instances are created at prepRender, when the
+    /// owning pass's command buffer is available.
+    explicit StarObject(std::vector<std::unique_ptr<IMaterialProvider>> materialProviders);
 
     virtual ~StarObject() = default;
 
@@ -67,7 +65,7 @@ class StarObject
     /// vertex/fragment shader handles and the global VulkanVertex layout.
     virtual PipelineProvider getPipelineProvider(vk::PipelineLayout pipelineLayout);
 
-    virtual void prepRender(star::core::device::DeviceContext &context);
+    virtual void prepRender(star::core::device::DeviceContext &context, Handle commandBuffer);
 
     virtual void onDescriptorPoolReady(core::device::DeviceContext &context, StarShaderInfo::Builder fullEngineBuilder,
                                        vk::PipelineLayout pipelineLayout,
@@ -87,13 +85,6 @@ class StarObject
     virtual void recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &frameTracker,
                                              uint64_t frameIndex,
                                              const core::graphics::RecordingSubmissionInfo *recordingInfo);
-
-    /// @brief True while this object still has one-shot setup that must be recorded before it can draw.
-    /// @details Phases resolve the recording submission only while at least one object reports true.
-    virtual bool hasPendingSetup() const
-    {
-        return m_setup.has_value() && !m_setup->isDone();
-    }
 
     /// Function to contain any commands to be submitted after the end of the rendering pass this object is contained in
     virtual void recordPostRenderPassCommands(vk::CommandBuffer commandBuffer, int frameInFlightIndex) {};
@@ -141,6 +132,19 @@ class StarObject
     const Handle &getFragmentShaderHandle() const
     {
         return m_fragmentShaderHandle;
+    }
+
+    /// @brief Manager handle of a material created for this object. Available once prepRender has run.
+    const Handle &getMaterialHandle(size_t index) const
+    {
+        assert(index < m_materialHandles.size());
+        return m_materialHandles[index];
+    }
+
+    /// @brief Manager handles of every material created for this object (in mesh order).
+    const std::vector<Handle> &getMaterialHandles() const
+    {
+        return m_materialHandles;
     }
 #pragma endregion
 
@@ -204,7 +208,10 @@ class StarObject
     };
     /// pipeline + rendering infos
     // Pipeline* sharedPipeline = nullptr;
-    std::vector<std::shared_ptr<StarMaterial>> m_meshMaterials = std::vector<std::shared_ptr<StarMaterial>>();
+    /// @brief Manager handles this object's meshes bind through. Populated at prepRender.
+    std::vector<Handle> m_materialHandles;
+    /// @brief Deferred material recipes. Consumed at prepRender to produce m_materialHandles.
+    std::vector<std::unique_ptr<IMaterialProvider>> m_materialProviders;
     Handle pipeline, sharedPipeline;
     Handle m_vertexShaderHandle, m_fragmentShaderHandle;
     core::renderer::RenderingContext renderingContext;
@@ -223,8 +230,8 @@ class StarObject
     std::vector<StarMesh> meshes;
     bool isReady = false;
 
-    /// @brief One-shot GPU setup for a resource this object samples; empty when it has none.
-    std::optional<star::setup::RenderResourceSetup> m_setup;
+    /// @brief The owning pass's setup, used only to gate this object's draw.
+    star::setup::RenderResourceSetup *m_setup = nullptr;
 
     virtual std::vector<StarMesh> loadMeshes(star::core::device::DeviceContext &device) = 0;
 
@@ -232,7 +239,8 @@ class StarObject
 
     virtual void createBoundingBox(std::vector<Vertex> &verts, std::vector<uint32_t> &inds);
 
-    std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(uint8_t numFramesInFlight);
+    std::vector<std::pair<vk::DescriptorType, const uint32_t>> getDescriptorRequests(
+        core::device::DeviceContext &context, uint8_t numFramesInFlight);
 
     virtual void updateDependentData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
                                      Handle targetCommandBuffer,

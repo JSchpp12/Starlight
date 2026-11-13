@@ -1,5 +1,12 @@
 #include "starlight/object/BasicObject.hpp"
 
+#include "starlight/common/materials/BumpMaterial.hpp"
+#include "starlight/common/materials/TextureMaterial.hpp"
+#include "starlight/common/materials/VertColorMaterial.hpp"
+#include "starlight/material/MaterialProvider.hpp"
+
+#include "device/managers/Material.hpp"
+
 #include "BumpMaterial.hpp"
 #include "FileHelpers.hpp"
 #include "StarMesh.hpp"
@@ -25,7 +32,7 @@ static std::optional<std::filesystem::path> LookForTextureFile(const std::filesy
     return found;
 }
 
-static std::vector<std::shared_ptr<star::StarMaterial>> LoadMaterials(
+static std::vector<std::unique_ptr<star::StarMaterial>> LoadMaterials(
     const std::filesystem::path &filePath, std::optional<std::filesystem::path> mediaSearchPath = std::nullopt)
 {
     auto searchDir = mediaSearchPath.has_value() ? mediaSearchPath.value() : filePath.parent_path();
@@ -60,7 +67,7 @@ static std::vector<std::shared_ptr<star::StarMaterial>> LoadMaterials(
         star::core::logging::warning(oss.str());
     }
 
-    std::vector<std::shared_ptr<star::StarMaterial>> materials;
+    std::vector<std::unique_ptr<star::StarMaterial>> materials;
 
     for (auto &fMaterial : fileMaterials)
     {
@@ -89,7 +96,7 @@ static std::vector<std::shared_ptr<star::StarMaterial>> LoadMaterials(
                 STAR_THROW("Unable to find coresponding texture file for material with texture name: " +
                            fMaterial.diffuse_texname);
             }
-            materials.emplace_back(std::make_shared<star::BumpMaterial>(
+            materials.emplace_back(std::make_unique<star::BumpMaterial>(
                 bumpFile.value().string(), texFile.value().string(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
                 glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
                 glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
@@ -104,7 +111,7 @@ static std::vector<std::shared_ptr<star::StarMaterial>> LoadMaterials(
                            fMaterial.diffuse_texname);
             }
 
-            materials.emplace_back(std::make_shared<star::TextureMaterial>(
+            materials.emplace_back(std::make_unique<star::TextureMaterial>(
                 texFile.value().string(), glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
                 glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
                 glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
@@ -113,7 +120,7 @@ static std::vector<std::shared_ptr<star::StarMaterial>> LoadMaterials(
         else
         {
             // fall back to vert color material
-            materials.emplace_back(std::make_shared<star::VertColorMaterial>(
+            materials.emplace_back(std::make_unique<star::VertColorMaterial>(
                 glm::vec4(1.0), glm::vec4(1.0), glm::vec4(1.0),
                 glm::vec4{fMaterial.diffuse[0], fMaterial.diffuse[1], fMaterial.diffuse[2], 1.0f},
                 glm::vec4{fMaterial.specular[0], fMaterial.specular[1], fMaterial.specular[2], 1.0f},
@@ -124,34 +131,56 @@ static std::vector<std::shared_ptr<star::StarMaterial>> LoadMaterials(
     return materials;
 }
 
-star::BasicObject::BasicObject(std::string objFilePath, ShaderResolver &shaderResolver)
-    : StarObject(LoadMaterials(objFilePath)), m_objFilePath(std::move(objFilePath))
+std::vector<std::unique_ptr<star::IMaterialProvider>> star::BasicObject::MakeMaterialProviders(
+    core::device::DeviceContext &context, const std::string &objFilePath,
+    std::optional<std::filesystem::path> materialDir)
+{
+    (void)context;
+
+    auto materials =
+        materialDir.has_value() ? LoadMaterials(objFilePath, materialDir.value()) : LoadMaterials(objFilePath);
+
+    std::vector<std::unique_ptr<star::IMaterialProvider>> providers;
+    providers.reserve(materials.size());
+    for (auto &material : materials)
+    {
+        providers.push_back(std::make_unique<star::MaterialProvider>(std::move(material)));
+    }
+
+    return providers;
+}
+
+star::BasicObject::BasicObject(std::string objFilePath,
+                               std::vector<std::unique_ptr<star::IMaterialProvider>> materialProviders,
+                               ShaderResolver &shaderResolver)
+    : StarObject(std::move(materialProviders)), m_objFilePath(std::move(objFilePath))
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
     m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);
 }
 
 star::BasicObject::BasicObject(std::string objFilePath, const std::filesystem::path &materialDir,
+                               std::vector<std::unique_ptr<star::IMaterialProvider>> materialProviders,
                                ShaderResolver &shaderResolver)
-    : StarObject(LoadMaterials(objFilePath, materialDir)), m_objFilePath(std::move(objFilePath))
+    : StarObject(std::move(materialProviders)), m_objFilePath(std::move(objFilePath))
 {
     m_vertexShaderHandle = shaderResolver.resolve(Shader_Stage::vertex);
     m_fragmentShaderHandle = shaderResolver.resolve(Shader_Stage::fragment);
 }
 
 static std::pair<std::string, std::string> selectShaderPaths(
-    const std::vector<std::shared_ptr<star::StarMaterial>> &materials)
+    const std::vector<std::unique_ptr<star::StarMaterial>> &materials)
 {
     assert(!materials.empty() && "Mesh materials should always exist");
 
     bool isBumpyMaterial = false;
     bool isTextureMaterial = false;
 
-    if (auto bumpDerived = std::dynamic_pointer_cast<star::BumpMaterial>(materials.front()))
+    if (dynamic_cast<star::BumpMaterial *>(materials.front().get()) != nullptr)
     {
         isBumpyMaterial = true;
     }
-    else if (auto textureDerived = std::dynamic_pointer_cast<star::TextureMaterial>(materials.front()))
+    else if (dynamic_cast<star::TextureMaterial *>(materials.front().get()) != nullptr)
     {
         isTextureMaterial = true;
     }
@@ -236,7 +265,6 @@ std::vector<star::StarMesh> star::BasicObject::loadMeshes(core::device::DeviceCo
 
     tinyobj::material_t *currMaterial = nullptr;
     std::unique_ptr<StarMaterial> objectMaterial;
-    std::vector<std::shared_ptr<StarMaterial>> preparedMaterials;
 
     const auto graphicsQueueFamilyIndex =
         core::helper::GetEngineDefaultQueue(context.getEventBus(), context.getGraphicsManagers().queueManager,
@@ -299,29 +327,15 @@ std::vector<star::StarMesh> star::BasicObject::loadMeshes(core::device::DeviceCo
 
             // apply material from files to mesh -- will ignore passed values
             meshes.emplace_back(meshVertBuffer, meshIndBuffer, vertices, fullInd,
-                                m_meshMaterials.at(shape.mesh.material_ids[0]), false);
+                                m_materialHandles.at(shape.mesh.material_ids[0]), false);
         }
         shapeCounter++;
     }
 
-    if (materials.size() != meshes.size() || materials.size() != m_meshMaterials.size())
+    if (materials.size() != meshes.size() || materials.size() != m_materialHandles.size())
     {
         STAR_THROW("All properties should match with the number of meshes contained in obj file");
     }
 
     return meshes;
-}
-
-void star::BasicObject::getTypeOfMaterials(bool &isTextureMaterial, bool &isBumpMaterial) const
-{
-    assert(m_meshMaterials.size() > 0 && "Mesh materials should always exist");
-
-    if (auto bumpDerived = std::dynamic_pointer_cast<BumpMaterial>(m_meshMaterials.front()))
-    {
-        isBumpMaterial = true;
-    }
-    else if (auto textureDerived = std::dynamic_pointer_cast<TextureMaterial>(m_meshMaterials.front()))
-    {
-        isTextureMaterial = true;
-    }
 }

@@ -11,6 +11,6 @@ class ObjectLoader
 {
   public:
     virtual ~ObjectLoader() = default;
-    virtual std::shared_ptr<StarObject> load(ShaderResolver &shaderResolver) = 0;
+    virtual std::shared_ptr<StarObject> load(core::device::DeviceContext &context, ShaderResolver &shaderResolver) = 0;
 };
 } // namespace star::command::create_object

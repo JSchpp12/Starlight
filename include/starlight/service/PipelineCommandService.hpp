@@ -33,6 +33,8 @@ class PipelineCommandService
   private:
     policy::command::ListenForCreatePipeline<PipelineCommandService> m_listenForCreatePipeline;
     core::device::manager::GraphicsContainer *m_graphicsManagers = nullptr;
+    core::device::StarDevice *m_device = nullptr;
+    job::TaskManager *m_taskManager = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
 
     void initListeners(core::CommandBus &bus);

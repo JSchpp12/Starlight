@@ -1,16 +1,18 @@
 #pragma once
 
+#include <starlight/wrappers/graphics/StarCommandBuffer.hpp>
+
 #include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 
 #include <vulkan/vulkan.hpp>
 
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace star
 {
-class StarCommandBuffer;
 class StarQueue;
 namespace core
 {
@@ -34,8 +36,6 @@ namespace star::core::renderer
 vk::Semaphore submitEdgeAwarePass(const star::core::CommandBus &cmdBus, star::Handle commandBuffer,
                                   star::StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
                                   std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
-                                  std::vector<vk::Semaphore> &dataSemaphores,
-                                  std::vector<vk::PipelineStageFlags> &dataWaitPoints,
-                                  std::vector<std::optional<uint64_t>> &previousSignaledValues, star::StarQueue &queue,
+                                  std::span<const star::StarCommandBuffer::Data> dataWaits, star::StarQueue &queue,
                                   bool signalBinaryCompletion);
 } // namespace star::core::renderer

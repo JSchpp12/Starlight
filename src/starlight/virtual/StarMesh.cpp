@@ -1,5 +1,9 @@
 #include "StarMesh.hpp"
 
+#include "device/managers/Material.hpp"
+
+#include "starlight/core/transfer/RegisterTransferWait.hpp"
+
 namespace star
 {
 static void CalcBoundingBox(const std::vector<star::Vertex> &verts, glm::vec3 &upperBoundingBoxCoord,
@@ -30,19 +34,18 @@ static void CalcBoundingBox(const std::vector<star::Vertex> &verts, glm::vec3 &u
 }
 
 StarMesh::StarMesh(Handle vertBuffer, Handle indBuffer, const std::vector<Vertex> &vertices,
-                   const std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material,
-                   bool hasAdjacenciesPacked)
-    : material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), triangular(indices.size() % 3 == 0),
-      numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
+                   const std::vector<uint32_t> &indices, Handle material, bool hasAdjacenciesPacked)
+    : m_materialHandle(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked),
+      triangular(indices.size() % 3 == 0), numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
       numInds(star::common::casts::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
 {
     CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
 }
 
 StarMesh::StarMesh(Handle vertBuffer, Handle indBuffer, const std::vector<Vertex> &vertices,
-                   const std::vector<uint32_t> &indices, std::shared_ptr<StarMaterial> material,
-                   glm::vec3 boundBoxMinCoord, glm::vec3 boundBoxMaxCoord, bool packAdjacencies)
-    : material(std::move(material)), hasAdjacenciesPacked(packAdjacencies), triangular(indices.size() % 3 == 0),
+                   const std::vector<uint32_t> &indices, Handle material, glm::vec3 boundBoxMinCoord,
+                   glm::vec3 boundBoxMaxCoord, bool packAdjacencies)
+    : m_materialHandle(std::move(material)), hasAdjacenciesPacked(packAdjacencies), triangular(indices.size() % 3 == 0),
       aaboundingBoxBounds{boundBoxMinCoord, boundBoxMaxCoord},
       numVerts(star::common::casts::size_t_to_unsigned_int(vertices.size())),
       numInds(star::common::casts::size_t_to_unsigned_int(indices.size())), vertBuffer(vertBuffer), indBuffer(indBuffer)
@@ -50,18 +53,18 @@ StarMesh::StarMesh(Handle vertBuffer, Handle indBuffer, const std::vector<Vertex
     CalcBoundingBox(vertices, this->aaboundingBoxBounds[1], this->aaboundingBoxBounds[0]);
 }
 
-StarMesh::StarMesh(Handle vertBuffer, Handle indBuffer, uint32_t vertexCount, uint32_t indexCount,
-                   std::shared_ptr<StarMaterial> material, glm::vec3 boundBoxMinCoord, glm::vec3 boundBoxMaxCoord,
-                   bool hasAdjacenciesPacked)
-    : material(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked), triangular(indexCount % 3 == 0),
-      aaboundingBoxBounds{std::move(boundBoxMinCoord), std::move(boundBoxMaxCoord)}, numVerts(vertexCount),
-      numInds(indexCount), vertBuffer(vertBuffer), indBuffer(indBuffer)
+StarMesh::StarMesh(Handle vertBuffer, Handle indBuffer, uint32_t vertexCount, uint32_t indexCount, Handle material,
+                   glm::vec3 boundBoxMinCoord, glm::vec3 boundBoxMaxCoord, bool hasAdjacenciesPacked)
+    : m_materialHandle(std::move(material)), hasAdjacenciesPacked(hasAdjacenciesPacked),
+      triangular(indexCount % 3 == 0), aaboundingBoxBounds{std::move(boundBoxMinCoord), std::move(boundBoxMaxCoord)},
+      numVerts(vertexCount), numInds(indexCount), vertBuffer(vertBuffer), indBuffer(indBuffer)
 {
 }
 
 void star::StarMesh::prepRender(star::core::device::DeviceContext &context)
 {
     m_deviceID = context.getDeviceID();
+    m_material = context.getGraphicsManagers().materialManager.getMaterial(m_materialHandle);
 }
 
 bool star::StarMesh::isKnownToBeReady(uint8_t frameInFlightIndex)
@@ -71,8 +74,8 @@ bool star::StarMesh::isKnownToBeReady(uint8_t frameInFlightIndex)
 
     // need to also check if vert + ind buffers are ready
     if (ManagerRenderResource::isReady(m_deviceID, this->vertBuffer) &&
-        ManagerRenderResource::isReady(m_deviceID, this->indBuffer) &&
-        this->material->isKnownToBeReady(frameInFlightIndex))
+        ManagerRenderResource::isReady(m_deviceID, this->indBuffer) && m_material != nullptr &&
+        m_material->isKnownToBeReady(frameInFlightIndex))
     {
         this->isReady = true;
         return true;
@@ -86,7 +89,8 @@ void star::StarMesh::recordRenderPassCommands(vk::CommandBuffer commandBuffer, v
                                               uint32_t descriptorSetStartIndex, uint32_t firstInstance)
 {
 
-    this->material->bind(commandBuffer, pipelineLayout, frameInFlightIndex, descriptorSetStartIndex);
+    if (m_material != nullptr)
+        m_material->bind(commandBuffer, pipelineLayout, frameInFlightIndex, descriptorSetStartIndex);
 
     const vk::DeviceSize offset{0};
     auto &vBuff = ManagerRenderResource::getBuffer(m_deviceID, this->vertBuffer);
@@ -104,20 +108,16 @@ void star::StarMesh::registerTransferWaits(core::device::DeviceContext &context,
     {
         const auto &sem =
             context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, vertBuffer)->gpuWorkDoneSignaledInfo;
-        context.getManagerCommandBuffer()
-            .m_manager.get(commandBuffer)
-            .oneTimeWaitSemaphoreInfo.insert(vertBuffer, sem.vkSemaphore, vk::PipelineStageFlagBits::eVertexInput,
-                                             sem.signalValue);
+        core::transfer::RegisterTransferWait(context, commandBuffer, vertBuffer, sem.vkSemaphore, sem.signalValue,
+                                             vk::PipelineStageFlagBits::eVertexInput);
     }
 
     if (indBuffer.isInitialized())
     {
         const auto &sem =
             context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, indBuffer)->gpuWorkDoneSignaledInfo;
-        context.getManagerCommandBuffer()
-            .m_manager.get(commandBuffer)
-            .oneTimeWaitSemaphoreInfo.insert(indBuffer, sem.vkSemaphore, vk::PipelineStageFlagBits::eVertexInput,
-                                             sem.signalValue);
+        core::transfer::RegisterTransferWait(context, commandBuffer, indBuffer, sem.vkSemaphore, sem.signalValue,
+                                             vk::PipelineStageFlagBits::eVertexInput);
     }
 }
 } // namespace star

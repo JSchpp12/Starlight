@@ -1,4 +1,5 @@
 #include "StarMaterial.hpp"
+#include "core/device/DeviceContext.hpp"
 
 void star::StarMaterial::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                                     star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
@@ -13,9 +14,59 @@ void star::StarMaterial::prepRender(core::device::DeviceContext &context, uint8_
     }
 }
 
+void star::StarMaterial::setResourceHandle(size_t setIndex, size_t bindingIndex, StarShaderInfo::ShaderInfo newHandle,
+                                           std::optional<size_t> frameInFlightIndex)
+{
+    // m_resourceHandle is the material's primary resource, which MaterialService retires after a swap. A secondary
+    // binding (e.g. BumpMaterial's map) must not overwrite it, or a later primary swap would retire the wrong
+    // resource.
+    const bool isPrimaryBinding = setIndex == 0 && bindingIndex == 0;
+
+    if (newHandle.bufferInfo.has_value())
+    {
+        if (isPrimaryBinding)
+            m_resourceHandle = newHandle.bufferInfo->handle.value_or(Handle());
+        if (shaderInfo)
+            shaderInfo->setNewResource(setIndex, bindingIndex, std::move(newHandle.bufferInfo.value()),
+                                       frameInFlightIndex);
+    }
+    else if (newHandle.textureInfo.has_value())
+    {
+        if (isPrimaryBinding)
+            m_resourceHandle = newHandle.textureInfo->handle;
+        if (shaderInfo)
+            shaderInfo->setNewResource(setIndex, bindingIndex, std::move(newHandle.textureInfo.value()),
+                                       frameInFlightIndex);
+    }
+}
+
 void star::StarMaterial::cleanupRender(core::device::DeviceContext &context)
 {
-    shaderInfo->cleanupRender(context.getDevice());
+    if (shaderInfo)
+        shaderInfo->cleanupRender(context.getDevice());
+}
+
+std::optional<star::StarShaderInfo::ShaderInfo>
+star::StarMaterial::getResourceInfo(size_t setIndex, size_t bindingIndex,
+                                    std::optional<size_t> frameInFlightIndex) const
+{
+    if (!shaderInfo)
+        return std::nullopt;
+
+    const size_t frame = frameInFlightIndex.value_or(0);
+    const auto &frames = shaderInfo->getShaderInfoSets();
+    if (frame >= frames.size())
+        return std::nullopt;
+
+    const auto &sets = frames[frame];
+    if (setIndex >= sets.size() || sets[setIndex] == nullptr)
+        return std::nullopt;
+
+    const auto &slots = sets[setIndex]->slots;
+    if (bindingIndex >= slots.size() || !slots[bindingIndex].has_value())
+        return std::nullopt;
+
+    return slots[bindingIndex];
 }
 
 void star::StarMaterial::bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout,

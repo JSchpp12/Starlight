@@ -18,7 +18,6 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <stack>
 #include <star_common/Handle.hpp>
 #include <vector>
@@ -76,7 +75,7 @@ class ManagerRenderResource
 
     static Handle addRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
                              vk::Semaphore *consumingQueueCompleteSemaphore = nullptr,
-                             const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
+                             uint32_t *outTransferQueueFamilyIndex = nullptr);
 
     /// @brief Submit request to write new data to a buffer already created and associated to a handle
     /// @param newRequest New data request
@@ -86,11 +85,12 @@ class ManagerRenderResource
     static void updateRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
                               const Handle &handle,
                               std::optional<core::graphics::SemaphoreInfo> waitInfo = std::nullopt,
-                              const bool &isHighPriority = false, uint32_t *outTransferQueueFamilyIndex = nullptr);
-
-    static void frameUpdate(const Handle &deviceID, const uint8_t &frameInFlightIndex);
+                              uint32_t *outTransferQueueFamilyIndex = nullptr);
 
     static bool isReady(const Handle &deviceID, const Handle &handle);
+
+    /// @brief True while the transfer worker has not yet published the request's result.
+    static bool isPending(const Handle &deviceID, const Handle &handle);
 
     static void waitForReady(const Handle &deviceID, const Handle &handle);
 
@@ -118,9 +118,6 @@ class ManagerRenderResource
         Handle, std::unique_ptr<core::ManagedHandleContainer<FinalizedResourceRequest<star::StarBuffers::Buffer>>>,
         star::HandleHash>
         bufferStorage;
-
-    static std::unordered_map<Handle, std::set<boost::atomic<bool> *>, star::HandleHash>
-        highPriorityRequestCompleteFlags;
 
     static star::core::CommandBus *s_cmdBus;
 };

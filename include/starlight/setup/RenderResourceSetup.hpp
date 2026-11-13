@@ -2,18 +2,16 @@
 
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "structs/QueueFamilyOwnership.hpp"
+#include "wrappers/graphics/StarSemaphore.hpp"
 
-#include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <expected>
 #include <functional>
-#include <future>
-#include <string>
-#include <variant>
+#include <memory>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
@@ -24,12 +22,28 @@ class DeviceContext;
 
 namespace star::setup
 {
-/// @brief One-shot GPU work a render phase performs before it samples a resource.
-/// @details Work is split into two phases. prepRender() (called from the object's frameUpdate) does everything that
-/// needs the device context: resolving contribution futures, caching each dispatch's built pipeline, and polling
-/// release gates. record() then only touches Vulkan handles, so the recording path has no device dependency.
+/// @brief Stable identity for one prepared definition within a pass's setup.
+using DefinitionId = std::uint64_t;
+inline constexpr DefinitionId InvalidDefinitionId = 0;
+
+/// @brief One transfer-completion wait a pass must observe before it samples/uses a resource.
+struct TransferWait
+{
+    Handle key;
+    star::StarSemaphore semaphore;
+    vk::PipelineStageFlags stages =
+        vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader;
+};
+
+/// @brief One-shot GPU work a render phase records before it samples a resource.
+/// @details Preparation is separate from recording. A `PrepRequest` carries only the device-side prepare
+/// callback; the object that owns the material runs it and hands the prepared definition to the pass's
+/// RenderResourceSetup, which records it inline before the pass's draws.
 struct RenderResourceSetup
 {
+    using DefinitionId = star::setup::DefinitionId;
+    static constexpr DefinitionId InvalidDefinitionId = star::setup::InvalidDefinitionId;
+
     /// @brief Transition an image between layouts.
     /// @details Holds the raw image rather than a Handle: the only producer of this step for a freshly created
     /// resource is the transfer thread, which holds the vk::Image but cannot know the manager-assigned Handle.
@@ -56,27 +70,30 @@ struct RenderResourceSetup
         vk::DescriptorSet descriptorSet{};
         /// @brief Pipeline layout the set and push constants are bound through.
         vk::PipelineLayout layout{};
-        /// @brief Debug/introspection metadata: handle-addressed resources this dispatch works with.
-        /// @details Resources without a handle (worker-internal staging) are not listed; the descriptor set is the
-        /// authority for what is actually bound.
-        std::vector<Handle> resourceBindings{};
         /// @brief Opaque payload forwarded as compute-stage push constants.
         std::vector<std::byte> pushConstants{};
         std::array<uint32_t, 3> dispatchDims{1, 1, 1};
 
-        /// @brief Vulkan pipeline resolved by prepare(); record() binds it without touching the pipeline manager.
-        vk::Pipeline builtPipeline{VK_NULL_HANDLE};
+        /// @brief Device used to resolve the built pipeline at record time. Set by the producer.
+        /// @details The producer/commit gate must guarantee the pipeline is built before the definition is recorded.
+        const core::device::DeviceContext *context{nullptr};
 
-        /// @brief Resolves the built pipeline into `builtPipeline`. Called from prepRender only.
-        /// @return False while the pipeline manager has not finished building the pipeline.
-        bool prepare(const core::device::DeviceContext &context);
-
-        /// @brief Binds the cached pipeline, descriptor set and push constants, then dispatches.
+        /// @brief Resolves the built pipeline from the manager and issues the dispatch.
         void record(vk::CommandBuffer commandBuffer) const;
     };
 
     // Add further engine primitives (buffer copies, clear operations, ...) here as consumers need them.
-    using Step = std::variant<std::monostate, ImageLayoutChange, ComputeDispatch>;
+    /// @brief One record-only command.
+    struct Step
+    {
+        /// @brief Device-free recording.
+        std::function<void(vk::CommandBuffer)> record{};
+    };
+
+    /// @brief Wraps a layout transition as a Step.
+    [[nodiscard]] static Step makeStep(ImageLayoutChange change);
+    /// @brief Wraps a compute dispatch as a Step. The dispatch must carry a DeviceContext.
+    [[nodiscard]] static Step makeStep(std::shared_ptr<ComputeDispatch> dispatch);
 
     /// @brief A transient resource released once a timeline gate is observed passed.
     /// @details The gate is a generic {semaphore, value} registration, so any timeline source can gate a release.
@@ -99,84 +116,74 @@ struct RenderResourceSetup
         std::function<void(core::device::DeviceContext &)> keepAlive{};
     };
 
-    /// @brief One resource's complete preparation: the work and the cleanup/gate coupled to it.
-    /// @details A definition is published as a whole -- synchronously by the composer, or later by a worker through a
-    /// promise. Its steps record in definition order, then its release is tracked until the gate passes.
+    /// @brief One resource's prepared work: record-only steps and the cleanup/gate coupled to them.
     struct ResourcePrepDefinition
     {
         std::vector<Step> steps{};
         PendingRelease release{};
+        /// @brief Stable identity assigned by `add`; survives `pollReleases` erasure.
+        DefinitionId id{InvalidDefinitionId};
+        /// @brief Set once the steps were recorded into the pass's command buffer.
+        bool recorded{false};
+
+        [[nodiscard]] bool hasWork() const noexcept;
+        /// @brief Records the steps, stamps the release, and marks recorded.
+        /// @details The caller must have ensured every step's dependencies are ready (via the readiness conditions
+        /// registered with the commit gate / CPU-wait system).
+        [[nodiscard]] bool record(vk::CommandBuffer commandBuffer,
+                                  const core::graphics::SemaphoreInfo &recordingSubmissionGate);
+        /// @brief Non-blocking release drain: runs the keepAlive once the recorded gate has been observed passed.
+        /// @return True when recorded and the release is consumed; false while work or the gate remains.
+        [[nodiscard]] bool tryDrainRelease(core::device::DeviceContext &context);
+        /// @brief Runs the release's keepAlive assuming the caller has already made the device idle, then clears it.
+        /// @details Used when a definition will never be recorded (failed swap). Unlike cleanupRender it never calls
+        /// DeviceContext::waitIdle(), which would tear down the task manager mid-run.
+        void releaseAssumeDeviceIdle(core::device::DeviceContext &context);
+        /// @brief Waits for the release gate (or device idleness) and runs its keepAlive.
+        void cleanupRender(core::device::DeviceContext &context);
     };
 
-    /// @brief One-shot completion gate: plain bool, caller-free.
-    /// @details True once every definition has been recorded. Consumers that sample the resource can gate uniformly
-    /// on isDone().
-    bool done = false;
-    /// @brief Definitions in recording order, one future per resource.
-    /// @details Only the composer touches this vector; workers only set their promise, so no lock is needed. Each
-    /// future is resolved in prepRender and its steps recorded exactly once. Composed through Builder::add().
-    /// Cleared and released as soon as the recording pass completes.
-    std::vector<std::future<std::expected<ResourcePrepDefinition, std::string>>> definitions{};
-
-    /// @brief Composes a setup and pre-sizes its per-frame working storage.
-    /// @details Define every resource before calling build(). build() moves the definitions into the setup and
-    /// reserves the interpreter's working vectors from the definition count, so prepRender()/record() perform no heap
-    /// allocation. Adding definitions after build() is not supported.
-    class Builder
+    /// @brief The one-time device work needed before a resource can record.
+    /// @details `prepare` fills the caller-provided definition; it may block on a producer's futures. The
+    /// prepared definition is owned by the consuming pass's RenderResourceSetup, never by the producer.
+    struct PrepRequest
     {
-      public:
-        /// @brief Adds a definition that is fully known now. Its future is ready immediately.
-        Builder &add(ResourcePrepDefinition definition);
-        /// @brief Adds a definition a worker publishes later through its promise, or reports as failed.
-        Builder &add(std::future<std::expected<ResourcePrepDefinition, std::string>> definition);
-
-        [[nodiscard]] RenderResourceSetup build();
-
-      private:
-        std::vector<std::future<std::expected<ResourcePrepDefinition, std::string>>> m_definitions{};
+        std::function<void(const core::device::DeviceContext &, ResourcePrepDefinition &)> prepare{};
     };
 
-    /// @brief True once every definition has been recorded (or there were none).
-    [[nodiscard]] bool isDone() const noexcept
+    /// @brief Prepared definitions in recording order.
+    std::vector<ResourcePrepDefinition> definitions;
+
+    /// @brief Adds prepared work. Empty definitions are dropped.
+    /// @return The definition's stable id, or InvalidDefinitionId when it was dropped.
+    [[nodiscard]] DefinitionId add(ResourcePrepDefinition definition);
+
+    /// @brief Abandon an unrecorded definition (e.g. a rolled-back swap).
+    /// @details Stamps the release gate from @p gate when observable, clears the recording-submission gate, and marks
+    /// the definition recorded so `isDone()` unblocks and `pollReleases` can drain its keepAlive later.
+    void abandon(DefinitionId id, const core::graphics::SemaphoreInfo &gate);
+
+    /// @brief True when any prepared work is owned.
+    [[nodiscard]] bool hasWork() const noexcept
     {
-        return done;
+        return !definitions.empty();
     }
 
-    /// @brief True once recording happened and every release has drained; the setup owns nothing and can be dropped.
-    [[nodiscard]] bool isFullyDrained() const noexcept
-    {
-        return done && m_resolvedDefinitions.empty() && m_liveReleases.empty();
-    }
+    /// @brief True once every owned definition has been recorded (or there were none).
+    [[nodiscard]] bool isDone() const noexcept;
 
-    /// @brief Per-frame preparation. Resolves contribution futures, caches built pipelines, and polls release gates.
-    /// @details Never blocks. Called from the object's frameUpdate, before this frame's recording pass.
-    void prepRender(core::device::DeviceContext &context);
-
-    /// @brief Records every resolved step in one pass and stamps the recording-submission gate onto the releases.
-    /// @details Device-free: all pipeline handles were cached by prepRender. Does nothing until prepRender has reported
-    /// every definition resolved and recordable.
+    /// @brief Records every not-yet-recorded definition in one pass.
     void record(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingSubmissionGate);
 
-    /// @brief Teardown backstop: resolves any ready definitions, host-waits every registered gate, then drains.
-    /// @details Load-bearing, not tidiness: an undrained release is cleaned up without explicit device cleanup. A
-    /// definition still unfilled at teardown owns nothing yet; its producer must publish (and be cleaned up) before
-    /// the device goes away.
+    /// @brief Non-blocking per-frame drain: runs passed releases and erases fully drained definitions.
+    /// @details Call from the owning phase's frameUpdate. Without it, a recorded definition's keepAlive (e.g. a
+    /// per-make descriptor set) is only ever run by the teardown backstop.
+    void pollReleases(core::device::DeviceContext &context);
+
+    /// @brief Teardown backstop: host-waits every release gate, runs each keepAlive, and clears.
     void cleanupRender(core::device::DeviceContext &context);
 
   private:
-    /// @brief Moves every populated definition into m_resolvedDefinitions. Render-thread only; no blocking.
-    /// @return True when every registered definition has been resolved (or failed), i.e. the whole setup can record.
-    bool tryResolveDefinitions();
-    /// @brief Drains every live release whose gate has been observed passed. Non-destructive (counter read, not wait).
-    void pollPendingReleases(core::device::DeviceContext &context);
-
-    /// @brief Definitions whose future resolved but whose steps have not been recorded yet.
-    std::vector<ResourcePrepDefinition> m_resolvedDefinitions{};
-    /// @brief Recorded releases awaiting their gate. Render-thread only.
-    std::vector<PendingRelease> m_liveReleases{};
-    /// @brief Set by prepRender once every contribution future has been consumed.
-    bool m_allDefinitionsResolved{false};
-    /// @brief Set by prepRender once every dispatch step has a built pipeline available.
-    bool m_readyToRecord{false};
+    DefinitionId m_nextDefinitionId{InvalidDefinitionId};
 };
 } // namespace star::setup

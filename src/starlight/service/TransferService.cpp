@@ -1,5 +1,6 @@
 #include "starlight/service/TransferService.hpp"
 
+#include "core/device/managers/Image.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "starlight/core/Exceptions.hpp"
 #include "starlight/event/GetQueue.hpp"
@@ -7,6 +8,7 @@
 #include <star_common/HandleTypeRegistry.hpp>
 
 #include <future>
+#include <memory>
 #include <set>
 #include <variant>
 
@@ -117,19 +119,6 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
     auto *payload = static_cast<TransferPayload *>(task.getPayload());
     const bool high = (priority == TransferPriority::High);
 
-    // A request that keeps its staging buffer alive gets a buffer-manager slot registered here, on the submitting
-    // thread, before the task reaches a worker. The worker fills the promise once the buffer exists; the returned
-    // handle travels to the caller, which releases it after the recorded work on it has completed.
-    std::optional<Handle> stagingBuffer{};
-    if (auto *textureData = std::get_if<job::TransferManagerThread::TextureTransferData>(&payload->request->data);
-        textureData != nullptr && textureData->request->takesStagingOwnership)
-    {
-        auto stagingPromise = std::promise<core::device::manager::PendingResult<star::StarBuffers::Buffer>>{};
-        stagingBuffer =
-            m_graphicsManagers->bufferManager.submit(core::device::manager::BufferRequest{stagingPromise.get_future()});
-        textureData->request->stagingBufferSlot = std::move(stagingPromise);
-    }
-
     auto applySync = [&](uint16_t id) -> star::core::graphics::SemaphoreInfo {
         StarSemaphore *s =
             (id == 0) ? (high ? &m_workerSemaphores[1] : &m_workerSemaphores[0]) : &m_workerSemaphores[id + 1];
@@ -148,8 +137,7 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
         return star::command::transfer::SubmitTransferResult{
             .semaphore = {.vkSemaphore = sync.semaphore, .signalValue = sync.signalValue},
             .queueFamilyIndex = m_workerQueueFamilyIndices[0],
-            .workerId = uint16_t{0},
-            .stagingBuffer = stagingBuffer};
+            .workerId = uint16_t{0}};
     }
 
     // Standard: round-robin across 1..N (or worker 0 if only one worker exists).
@@ -167,8 +155,7 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
             return star::command::transfer::SubmitTransferResult{.semaphore =
                                                                      StarSemaphore{sync.semaphore, sync.signalValue},
                                                                  .queueFamilyIndex = m_workerQueueFamilyIndices[id],
-                                                                 .workerId = id,
-                                                                 .stagingBuffer = stagingBuffer};
+                                                                 .workerId = id};
         }
         return std::nullopt;
     };
@@ -194,8 +181,7 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
     return star::command::transfer::SubmitTransferResult{
         .semaphore = StarSemaphore{.vkSemaphore = sync.semaphore, .signalValue = sync.signalValue},
         .queueFamilyIndex = m_workerQueueFamilyIndices[0],
-        .workerId = uint16_t{0},
-        .stagingBuffer = stagingBuffer};
+        .workerId = uint16_t{0}};
 }
 
 void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTask &cmd)
@@ -211,6 +197,7 @@ void TransferService::onSubmitTexture(star::command::transfer::SubmitTextureTran
     using namespace job::tasks::transfer;
 
     assert(m_graphicsManagers && m_taskManager && "TransferService not initialized");
+    assert(cmd.request != nullptr && "SubmitTextureTransfer requires a transfer request");
 
     // The Image manager owns the texture from here on: its record holds a future the transfer worker fills with the
     // created texture (or the exception that explains why it failed). No ManagerRenderResource record is allocated for
@@ -225,7 +212,7 @@ void TransferService::onSubmitTexture(star::command::transfer::SubmitTextureTran
         CreateTransferTask(TransferPayload{TransferPriority::Standard, std::move(interThreadRequest)}),
         TransferPriority::Standard);
 
-    cmd.getReply().set({.image = image, .semaphore = result.semaphore, .stagingBuffer = result.stagingBuffer});
+    cmd.getReply().set({.image = image, .semaphore = result.semaphore});
 }
 
 void TransferService::onSubmitBuffer(star::command::transfer::SubmitBufferTransfer &cmd)

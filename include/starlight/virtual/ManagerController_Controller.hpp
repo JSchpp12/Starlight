@@ -66,7 +66,7 @@ template <typename TTransferType, typename TDataType> class Controller
         m_lastFrameUpdate = context.frameTracker().getCurrent().getGlobalFrameCounter();
         context.getManagerRenderResource().updateRequest(
             context.getDeviceID(), createTransferRequest(context, frameInFlightIndex),
-            m_resourceHandles[frameInFlightIndex], std::move(transferGPUWorkWaitOnSyncInfo), true);
+            m_resourceHandles[frameInFlightIndex], std::move(transferGPUWorkWaitOnSyncInfo));
         return std::make_pair(true, &getSemaphore(context, fi));
     }
 

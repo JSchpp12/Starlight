@@ -7,7 +7,6 @@
 #include <star_common/IServiceCommandWithReply.hpp>
 
 #include <memory>
-#include <optional>
 #include <string_view>
 
 namespace star::command::transfer
@@ -27,8 +26,6 @@ struct SubmitTextureResult
     star::Handle image;
     /// Semaphore the transfer signals when its GPU work retires.
     star::StarSemaphore semaphore;
-    /// Buffer-manager slot for the staging buffer, present when the request takes staging ownership.
-    std::optional<star::Handle> stagingBuffer{};
 };
 
 /// @brief Submit a texture transfer whose created texture is published into the Image manager.

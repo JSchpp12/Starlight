@@ -29,6 +29,14 @@ template <typename T> class Memory
         (void)message;
     }
 
+    /// @brief Hook for publishing request-owned success state once the transfer submission is issued and the manager
+    /// slot has been published.
+    /// @details Called by the worker after submit2 and after the manager owns the produced resource, so a concrete
+    /// request can publish derived results that depend on the published resource staying alive.
+    virtual void onTransferComplete()
+    {
+    }
+
     virtual std::unique_ptr<StarBuffers::Buffer> createStagingBuffer(core::device::StarDevice &device) const = 0;
 
     virtual std::unique_ptr<T> createFinal(core::device::StarDevice &device,

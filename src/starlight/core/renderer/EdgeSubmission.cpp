@@ -5,21 +5,22 @@
 #include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/core/CommandBus.hpp"
 
+#include <boost/container/small_vector.hpp>
+
 #include <cassert>
 
 namespace star::core::renderer
 {
+constexpr size_t k_waitInfoCacheSize = 8;
+
 vk::Semaphore submitEdgeAwarePass(const star::core::CommandBus &cmdBus, star::Handle commandBuffer,
                                   star::StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
                                   std::vector<vk::Semaphore> * /*previousCommandBufferSemaphores*/,
-                                  std::vector<vk::Semaphore> &dataSemaphores,
-                                  std::vector<vk::PipelineStageFlags> &dataWaitPoints,
-                                  std::vector<std::optional<uint64_t>> &previousSignaledValues, star::StarQueue &queue,
+                                  std::span<const star::StarCommandBuffer::Data> dataWaits, star::StarQueue &queue,
                                   bool signalBinaryCompletion)
 {
     const size_t ii = static_cast<size_t>(frameTracker.getCurrent().getFrameInFlightIndex());
-
-    std::vector<vk::SemaphoreSubmitInfo> waitInfo;
+    boost::container::small_vector<vk::SemaphoreSubmitInfo, k_waitInfoCacheSize> waitInfo;
     vk::Semaphore mySemaphore{VK_NULL_HANDLE};
     uint64_t mySignalValue{0};
 
@@ -62,14 +63,12 @@ vk::Semaphore submitEdgeAwarePass(const star::core::CommandBus &cmdBus, star::Ha
     }
 
     // Data/transfer semaphores handed in by the command-buffer manager.
-    assert(dataSemaphores.size() == dataWaitPoints.size());
-    for (size_t i{0}; i < dataWaitPoints.size(); i++)
+    for (const auto &wait : dataWaits)
     {
-        waitInfo.emplace_back(
-            vk::SemaphoreSubmitInfo()
-                .setSemaphore(dataSemaphores[i])
-                .setValue(previousSignaledValues[i].has_value() ? previousSignaledValues[i].value() : 0)
-                .setStageMask(vk::PipelineStageFlagBits2::eAllCommands));
+        waitInfo.emplace_back(vk::SemaphoreSubmitInfo()
+                                  .setSemaphore(wait.semaphore)
+                                  .setValue(wait.signaledValue.value_or(0))
+                                  .setStageMask(vk::PipelineStageFlagBits2::eAllCommands));
     }
 
     vk::Semaphore binarySemaphore{buffer.getCompleteSemaphores()[ii]};

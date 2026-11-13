@@ -66,10 +66,11 @@ template <class TFn> struct ReadPayload
     std::filesystem::path filePath;
     TFn readFunction;
     star::io::PathResolver pathResolver{};
+    star::io::PathKind kind{star::io::PathKind::file};
 
     int operator()()
     {
-        const std::filesystem::path resolved = ResolveForIo(pathResolver, filePath, star::io::PathKind::file, "read");
+        const std::filesystem::path resolved = ResolveForIo(pathResolver, filePath, kind, "read");
 
         star::core::logging::info("Starting file read: " + resolved.string());
         auto result = std::invoke(readFunction, resolved.string());

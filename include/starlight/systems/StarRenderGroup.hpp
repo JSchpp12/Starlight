@@ -25,7 +25,7 @@ class StarRenderGroup
     StarRenderGroup &operator=(const StarRenderGroup &) = default;
     ~StarRenderGroup() = default;
 
-    void prepRender(core::device::DeviceContext &context);
+    void prepRender(core::device::DeviceContext &context, Handle commandBuffer);
 
     void cleanupRender(core::device::DeviceContext &context);
 
@@ -45,9 +45,6 @@ class StarRenderGroup
                      const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
 
     void recordRenderPassCommands(vk::CommandBuffer mainDrawBuffer, uint8_t swapChainImageIndex, uint64_t frameIndex);
-
-    /// @brief True while any object in this group still has one-shot setup that must be recorded.
-    bool hasPendingSetup() const;
 
     /// @param recordingInfo Recording submission of the phase's command buffer, or null when no object in the phase
     /// has a pending setup and no completion gate is needed.
@@ -75,7 +72,7 @@ class StarRenderGroup
     std::vector<Group> m_groups;
     vk::PipelineLayout m_pipelineLayout{VK_NULL_HANDLE};
 
-    void prepareObjects(star::core::device::DeviceContext &context);
+    void prepareObjects(star::core::device::DeviceContext &context, Handle commandBuffer);
 
     vk::PipelineLayout createPipelineLayout(core::device::DeviceContext &context,
                                             std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout);

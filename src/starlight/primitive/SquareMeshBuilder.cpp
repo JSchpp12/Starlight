@@ -1,7 +1,5 @@
 #include "starlight/primitive/SquareMeshBuilder.hpp"
 
-#include "starlight/common/materials/VertColorMaterial.hpp"
-
 namespace star::primitive
 {
 MeshData BuildSquareMesh(const SquareDesc &desc)
@@ -21,9 +19,6 @@ MeshData BuildSquareMesh(const SquareDesc &desc)
         {.pos = {-halfW, halfH, 0.0f}, .normal = {0.0f, 0.0f, 1.0f}, .color = color, .texCoord = {0.0f, 0.0f}}};
 
     mesh.indices = {0, 1, 2, 2, 3, 0};
-
-    mesh.material = std::make_shared<VertColorMaterial>(glm::vec4(1.0f), glm::vec4(1.0f), glm::vec4(1.0f), desc.color,
-                                                        glm::vec4(0.0f), 1);
 
     return mesh;
 }

@@ -8,13 +8,14 @@ namespace star::command::create_object
 {
 class FromObjFileLoader : public ObjectLoader
 {
-    public:
+  public:
     explicit FromObjFileLoader(std::string objFilePath);
     virtual ~FromObjFileLoader() = default;
 
-    virtual std::shared_ptr<StarObject> load(ShaderResolver &shaderResolver) override; 
+    virtual std::shared_ptr<StarObject> load(core::device::DeviceContext &context,
+                                             ShaderResolver &shaderResolver) override;
 
-    private:
-    std::string m_objFilePath; 
+  private:
+    std::string m_objFilePath;
 };
 } // namespace star::command::create_object

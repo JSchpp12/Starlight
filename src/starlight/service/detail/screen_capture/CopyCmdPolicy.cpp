@@ -23,9 +23,12 @@ Handle CopyCmdPolicy::registerWithManager(core::device::StarDevice &device,
             .waitStage = vk::PipelineStageFlagBits::eAllCommands,
             .willBeSubmittedEachFrame = false,
             .recordOnce = false,
-            .overrideBufferSubmissionCallback = std::bind(
-                &CopyCmdPolicy::submitBuffer, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
-                std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7)});
+            .overrideBufferSubmissionCallback =
+                [this](StarCommandBuffer &buffer, const star::common::FrameTracker &ft,
+                       std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
+                       std::span<const star::StarCommandBuffer::Data> dataWaits, StarQueue &queue) {
+                    return submitBuffer(buffer, ft, previousCommandBufferSemaphores, dataWaits, queue);
+                }});
 }
 
 static vk::BufferMemoryBarrier2 GetBarrierPrepForCPURead(vk::Buffer buffer) noexcept
@@ -117,9 +120,7 @@ std::vector<vk::ImageMemoryBarrier2> CopyCmdPolicy::getImageBarriersForCleanup()
 
 vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star::common::FrameTracker &frameTracker,
                                           std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
-                                          std::vector<vk::Semaphore> dataSemaphores,
-                                          std::vector<vk::PipelineStageFlags> dataWaitPoints,
-                                          std::vector<std::optional<uint64_t>> previousSignaledValues, StarQueue &queue)
+                                          std::span<const star::StarCommandBuffer::Data> dataWaits, StarQueue &queue)
 {
     const vk::SemaphoreSubmitInfo signalInfo = vk::SemaphoreSubmitInfo()
                                                    .setSemaphore(*m_inUseInfo->timelineSemaphoreForCopyDone.semaphore)
@@ -128,14 +129,14 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
 
     std::optional<std::vector<uint64_t>> waitValues = std::nullopt;
     std::vector<vk::SemaphoreSubmitInfo> waitSemaphores = std::vector<vk::SemaphoreSubmitInfo>(1);
-    if (previousSignaledValues.size() > 0)
+    if (!dataWaits.empty())
     {
         // some callee has provided manual wait information. Respect that first
         waitSemaphores[0] =
             vk::SemaphoreSubmitInfo()
-                .setSemaphore(dataSemaphores[0])
+                .setSemaphore(dataWaits[0].semaphore)
                 .setStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                .setValue(previousSignaledValues[0].has_value() ? previousSignaledValues[0].value() : 0);
+                .setValue(dataWaits[0].signaledValue.value_or(0));
     }
     else if (m_inUseInfo->targetTextureReadySemaphore != nullptr)
     {

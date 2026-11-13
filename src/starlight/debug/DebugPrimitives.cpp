@@ -18,9 +18,12 @@ std::unique_ptr<StarObject> CreateSquare(const SquareCreateInfo &info, ShaderRes
     return square;
 }
 
-std::shared_ptr<StarObject> CreateCube(std::vector<primitive::cube::CubeDesc> info, ShaderResolver &shaderResolver,
+std::shared_ptr<StarObject> CreateCube(core::device::DeviceContext &context,
+                                       std::vector<primitive::cube::CubeDesc> info, ShaderResolver &shaderResolver,
                                        primitive::CubeObject::OptionalRenderingOverrides overrides)
 {
-    return std::make_shared<star::primitive::CubeObject>(std::move(info), shaderResolver, std::move(overrides));
+    auto materialProviders = star::primitive::CubeObject::MakeMaterialProviders(info);
+    return std::make_shared<star::primitive::CubeObject>(std::move(info), std::move(materialProviders),
+                                                         shaderResolver, std::move(overrides));
 }
 } // namespace star::debug

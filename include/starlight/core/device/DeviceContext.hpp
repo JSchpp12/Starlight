@@ -31,11 +31,12 @@ class DeviceContext : public star::common::IDeviceContext
 
         vk::Semaphore update(const common::FrameTracker &frameTracker)
         {
-            return m_manager.update(m_device, frameTracker);
+            return m_manager.update(m_device, frameTracker, m_eventBus);
         }
 
         StarDevice &m_device;
         manager::ManagerCommandBuffer &m_manager;
+        common::EventBus &m_eventBus;
     };
     DeviceContext() = default;
     explicit DeviceContext(StarDevice device) : m_device(std::move(device)) {};
@@ -116,7 +117,8 @@ class DeviceContext : public star::common::IDeviceContext
     {
         assert(m_commandBufferManager);
 
-        return ManagerCommandBufferWrapper{.m_device = m_device, .m_manager = *m_commandBufferManager};
+        return ManagerCommandBufferWrapper{
+            .m_device = m_device, .m_manager = *m_commandBufferManager, .m_eventBus = m_eventBus};
     }
 
     ManagerRenderResource &getManagerRenderResource()
@@ -125,8 +127,10 @@ class DeviceContext : public star::common::IDeviceContext
 
         return *m_renderResourceManager;
     }
-    const ManagerRenderResource &getrManagerRenderResource()
+    const ManagerRenderResource &getManagerRenderResource() const
     {
+        assert(m_renderResourceManager && "Manager not properly created");
+
         return *m_renderResourceManager;
     }
 
