@@ -104,33 +104,17 @@ void RenderResourceSetup::ImageLayoutChange::record(vk::CommandBuffer commandBuf
     commandBuffer.pipelineBarrier2(vk::DependencyInfo().setImageMemoryBarriers(barrier));
 }
 
-bool RenderResourceSetup::ComputeDispatch::ready(const core::device::DeviceContext &context) const
-{
-    if (builtPipeline && *builtPipeline != VK_NULL_HANDLE)
-        return true;
-
-    try
-    {
-        const auto *record = context.getPipelineManager().get(pipeline);
-        if (record == nullptr || !record->builtPipeline.isRenderReady())
-            return false;
-
-        *builtPipeline = record->builtPipeline.getVulkanPipeline();
-        return true;
-    }
-    catch (const std::exception &e)
-    {
-        core::logging::warning("RenderResourceSetup: pipeline lookup failed: ", e.what());
-        return false;
-    }
-}
-
 void RenderResourceSetup::ComputeDispatch::record(vk::CommandBuffer commandBuffer) const
 {
-    assert(builtPipeline && *builtPipeline != VK_NULL_HANDLE &&
-           "ComputeDispatch::record called before its prepare callback resolved the pipeline");
+    assert(context != nullptr && "ComputeDispatch requires a DeviceContext to resolve its pipeline");
 
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, *builtPipeline);
+    const auto *record = context->getPipelineManager().get(pipeline);
+    assert(record != nullptr && record->isReady() &&
+           "ComputeDispatch::record called before the pipeline was ready");
+    const vk::Pipeline builtPipeline = record->builtPipeline.getVulkanPipeline();
+    assert(builtPipeline != VK_NULL_HANDLE && "ComputeDispatch resolved a null pipeline");
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, builtPipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, layout, 0, 1, &descriptorSet, 0, nullptr);
 
     if (!pushConstants.empty())
@@ -152,7 +136,6 @@ RenderResourceSetup::Step RenderResourceSetup::makeStep(ImageLayoutChange change
 RenderResourceSetup::Step RenderResourceSetup::makeStep(std::shared_ptr<ComputeDispatch> dispatch)
 {
     Step step;
-    step.ready = [dispatch](const core::device::DeviceContext &context) { return dispatch->ready(context); };
     step.record = [dispatch = std::move(dispatch)](vk::CommandBuffer commandBuffer) {
         assert(dispatch && "ComputeDispatch step requires a dispatch");
         dispatch->record(commandBuffer);
@@ -166,30 +149,11 @@ bool RenderResourceSetup::ResourcePrepDefinition::hasWork() const noexcept
            release.timelineSemaphore != VK_NULL_HANDLE;
 }
 
-void RenderResourceSetup::ResourcePrepDefinition::prepare(const core::device::DeviceContext &context)
-{
-    if (recorded)
-        return;
-
-    ready = true;
-    for (const auto &step : steps)
-    {
-        if (step.ready && !step.ready(context))
-        {
-            ready = false;
-            return;
-        }
-    }
-}
-
 bool RenderResourceSetup::ResourcePrepDefinition::record(vk::CommandBuffer commandBuffer,
                                                          const core::graphics::SemaphoreInfo &recordingSubmissionGate)
 {
     if (recorded)
         return true;
-
-    if (!ready)
-        return false;
 
     RecordSteps(steps, commandBuffer);
     StampRelease(release, recordingSubmissionGate);
@@ -249,24 +213,41 @@ bool RenderResourceSetup::ResourcePrepDefinition::tryDrainRelease(core::device::
     return true;
 }
 
-void RenderResourceSetup::add(ResourcePrepDefinition definition)
+RenderResourceSetup::DefinitionId RenderResourceSetup::add(ResourcePrepDefinition definition)
 {
     if (!definition.hasWork())
+        return InvalidDefinitionId;
+
+    definition.id = ++m_nextDefinitionId;
+    const DefinitionId id = definition.id;
+    definitions.push_back(std::move(definition));
+    return id;
+}
+
+void RenderResourceSetup::abandon(DefinitionId id, const core::graphics::SemaphoreInfo &gate)
+{
+    if (id == InvalidDefinitionId)
         return;
 
-    definitions.push_back(std::move(definition));
+    const auto it = std::find_if(definitions.begin(), definitions.end(),
+                                 [id](const ResourcePrepDefinition &definition) { return definition.id == id; });
+    if (it == definitions.end() || it->recorded)
+        return;
+
+    // Stamp an observable gate so pollReleases can drain the keepAlive; otherwise cleanupRender owns it at teardown.
+    if (gate.semaphore != VK_NULL_HANDLE && gate.signalValue != 0)
+    {
+        it->release.timelineSemaphore = gate.semaphore;
+        it->release.waitForValue = gate.signalValue;
+    }
+    it->release.gateOnRecordingSubmission = false;
+    it->recorded = true;
 }
 
 bool RenderResourceSetup::isDone() const noexcept
 {
     return std::all_of(definitions.begin(), definitions.end(),
                        [](const auto &definition) { return definition.recorded; });
-}
-
-void RenderResourceSetup::prepare(const core::device::DeviceContext &context)
-{
-    for (auto &definition : definitions)
-        definition.prepare(context);
 }
 
 void RenderResourceSetup::record(vk::CommandBuffer commandBuffer,

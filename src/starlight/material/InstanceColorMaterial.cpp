@@ -1,6 +1,7 @@
 #include "starlight/material/InstanceColorMaterial.hpp"
 
 #include "core/helper/queue/QueueHelpers.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "starlight/common/buffers/TransferRequest_InstanceColorInfo.hpp"
 
 namespace star::material

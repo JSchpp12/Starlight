@@ -3,9 +3,6 @@
 #include "ManagerController_Controller.hpp"
 #include "StarBuffers/Buffer.hpp"
 #include "TransferRequest_Buffer.hpp"
-#include "managers/ManagerRenderResource.hpp"
-
-#include <star_common/EventBus.hpp>
 
 namespace star::ManagerController::RenderResource
 {

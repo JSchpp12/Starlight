@@ -1,16 +1,13 @@
 #pragma once
 
 #include "device/managers/ManagerEventBusTies.hpp"
+#include "virtual/StarMaterial.hpp"
 
 #include <star_common/special_types/SpecialHandleTypes.hpp>
 
 #include <memory>
 #include <string_view>
-
-namespace star
-{
-class StarMaterial;
-}
+#include <utility>
 
 namespace star::core::device::manager
 {
@@ -31,25 +28,29 @@ struct MaterialRequest
 {
     std::unique_ptr<star::StarMaterial> material;
 
-    explicit MaterialRequest(std::unique_ptr<star::StarMaterial> value);
+    explicit MaterialRequest(std::unique_ptr<star::StarMaterial> value) : material(std::move(value))
+    {
+    }
     MaterialRequest(const MaterialRequest &) = delete;
     MaterialRequest &operator=(const MaterialRequest &) = delete;
-    MaterialRequest(MaterialRequest &&other) noexcept;
-    MaterialRequest &operator=(MaterialRequest &&other) noexcept;
-    ~MaterialRequest();
+    MaterialRequest(MaterialRequest &&other) noexcept = default;
+    MaterialRequest &operator=(MaterialRequest &&other) noexcept = default;
+    ~MaterialRequest() = default;
 };
 
 struct MaterialRecord
 {
     std::unique_ptr<star::StarMaterial> material;
 
-    MaterialRecord();
-    explicit MaterialRecord(std::unique_ptr<star::StarMaterial> value);
+    MaterialRecord() = default;
+    explicit MaterialRecord(std::unique_ptr<star::StarMaterial> value) : material(std::move(value))
+    {
+    }
     MaterialRecord(const MaterialRecord &) = delete;
     MaterialRecord &operator=(const MaterialRecord &) = delete;
-    MaterialRecord(MaterialRecord &&other) noexcept;
-    MaterialRecord &operator=(MaterialRecord &&other) noexcept;
-    ~MaterialRecord();
+    MaterialRecord(MaterialRecord &&other) noexcept = default;
+    MaterialRecord &operator=(MaterialRecord &&other) noexcept = default;
+    ~MaterialRecord() = default;
 
     /// @brief Step 1 of the material-manager migration: objects still run the material's GPU cleanup.
     /// @details The manager is the owner of the material object; authoritative cleanup moves here once the

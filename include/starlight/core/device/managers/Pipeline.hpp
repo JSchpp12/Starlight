@@ -31,19 +31,33 @@ struct PipelineRecord
     PipelineRecord() = default;
     PipelineRecord(PipelineRequest request) : request(std::move(request)) {};
 
+    /// @brief True once the built pipeline is available (resolves a ready record-level future).
     bool isReady() const
     {
+        if (builtPipeline.isRenderReady())
+            return true;
+
+        if (!pending.has_value() || !pending->isReady())
+            return false;
+
+        resolve();
         return builtPipeline.isRenderReady();
     }
 
-    void cleanupRender(core::device::StarDevice &device)
-    {
-        builtPipeline.destroy(device.getVulkanDevice());
-    }
+    /// @brief Consume a ready build result into builtPipeline. Never blocks; no-op while pending.
+    void resolve() const;
+
+    /// @brief Block until the build worker publishes, then resolve.
+    void waitForReady() const;
+
+    void cleanupRender(core::device::StarDevice &device);
 
     PipelineRequest request = PipelineRequest();
-    StarPipeline builtPipeline;
-    uint8_t numCompiled = 0;
+    mutable StarPipeline builtPipeline;
+    /// @brief Record-level future for the built pipeline; created at submit, resolved by the build worker.
+    mutable std::optional<PendingResource<StarPipeline>> pending;
+    /// @brief Producer side of pending; moved into the build task when the build is queued.
+    std::optional<std::promise<PendingResult<StarPipeline>>> buildPromise;
     bool buildQueued = false;
 };
 
@@ -74,14 +88,16 @@ class Pipeline : public TaskCreatedResourceManager<PipelineRecord, PipelineReque
 
     void init(device::StarDevice *device, common::EventBus &eventBus, job::TaskManager &taskSystem) override;
 
-    virtual void cleanupRender() override;
-
   protected:
-    absl::flat_hash_map<uint16_t, Handle> m_subscriberShaderBuildInfo;
-
     PipelineRecord createRecord(PipelineRequest &&request) const override
     {
-        return PipelineRecord(std::move(request));
+        PipelineRecord record(std::move(request));
+
+        auto promise = std::promise<PendingResult<StarPipeline>>{};
+        record.pending.emplace(PendingResource<StarPipeline>{promise.get_future()});
+        record.buildPromise.emplace(std::move(promise));
+
+        return record;
     }
 
   private:

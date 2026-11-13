@@ -26,15 +26,13 @@ star::CommandBufferContainer::CompleteRequest::CompleteRequest(
     : recordBufferCallback(recordBufferCallback), commandBuffer(std::move(commandBuffer)), type(type),
       recordOnce(recordOnce), waitStage(waitStage), order(order),
       beforeBufferSubmissionCallback(beforeSubmissionCallback),
-      overrideBufferSubmissionCallback(overrideBufferSubmissionCallback)
-{
-};
+      overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
 
 vk::Semaphore star::CommandBufferContainer::CompleteRequest::submitCommandBuffer(
     core::device::StarDevice &device, const common::FrameTracker &frameTracker,
     absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues, std::vector<vk::Semaphore> *beforeSemaphores)
 {
-    assert(cpuRecordingWaits.empty() && "CPU recording waits must run before the command buffer is submitted");
+    assert(!cpuRecordingWaits.hasUnrun() && "CPU recording waits must run before the command buffer is submitted");
 
     auto &waits = scratch.data;
     waits.clear();
@@ -63,7 +61,7 @@ vk::Semaphore star::CommandBufferContainer::CompleteRequest::submitCommandBuffer
 vk::Semaphore star::CommandBufferContainer::submitGroupWhenReady(
     core::device::StarDevice &device, const star::Command_Buffer_Order &order, const common::FrameTracker &frameTracker,
     const uint64_t &currentFrameIndex, absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
-    std::vector<vk::Semaphore> *additionalWaitSemaphores)
+    std::vector<vk::Semaphore> *additionalWaitSemaphores, std::vector<WaitOutcome> *outOutcomes)
 {
     if (!this->subOrderSemaphoresUpToDate)
     {
@@ -89,13 +87,21 @@ vk::Semaphore star::CommandBufferContainer::submitGroupWhenReady(
             if (buffer->beforeBufferSubmissionCallback.has_value())
                 buffer->beforeBufferSubmissionCallback.value()(frameTracker.getCurrent().getFrameInFlightIndex());
 
-            const bool readinessOk = buffer->runCPURecordingWaits();
+            const auto waitResult = buffer->runCPURecordingWaits();
             if (!buffer->recordOnce)
             {
-                if (readinessOk)
+                if (waitResult.isReady())
                     buffer->recordBufferCallback(*buffer->commandBuffer, frameTracker, currentFrameIndex);
                 else
                     buffer->recordEmpty(static_cast<uint8_t>(frameTracker.getCurrent().getFrameInFlightIndex()));
+            }
+
+            if (outOutcomes != nullptr && waitResult.hadWaits)
+            {
+                outOutcomes->push_back(WaitOutcome{.pass = bufferGroupsWithSubOrders[order][i - 1],
+                                                   .failedResources = waitResult.failed,
+                                                   .pendingResources = waitResult.pending,
+                                                   .policy = waitResult.policy});
             }
 
             vk::Semaphore result = VK_NULL_HANDLE;
@@ -152,26 +158,31 @@ void star::CommandBufferContainer::cleanup(core::device::StarDevice &device)
     }
 }
 
-void star::CommandBufferContainer::CompleteRequest::add(setup::RenderResourceSetup::ResourcePrepDefinition definition)
+star::setup::RenderResourceSetup::DefinitionId star::CommandBufferContainer::CompleteRequest::add(
+    setup::RenderResourceSetup::ResourcePrepDefinition definition)
 {
-    renderResourceSetup.add(std::move(definition));
+    return renderResourceSetup.add(std::move(definition));
 }
 
-bool star::CommandBufferContainer::CompleteRequest::runCPURecordingWaits()
+void star::CommandBufferContainer::CompleteRequest::abandon(setup::RenderResourceSetup::DefinitionId id,
+                                                            const core::graphics::SemaphoreInfo &gate)
 {
-    const std::vector<Handle> failed = cpuRecordingWaits.runAll();
-    if (failed.empty())
-        return true;
+    renderResourceSetup.abandon(id, gate);
+}
+
+star::CPURecordingWaitContainer::Result star::CommandBufferContainer::CompleteRequest::runCPURecordingWaits()
+{
+    auto result = cpuRecordingWaits.runAll();
 
     // A failed transfer never signals its timeline, so drop its GPU wait. The pass still submits an empty
-    // recording so group semaphores stay valid. Prepared definitions stay owned by the setup and keep their normal
-    // lifecycle: each definition's own transfer was validated before it was added, so a failed waiter means the
-    // pass-level waits are not ready this frame, not that a one-shot definition references a dead resource.
-    for (const Handle &resource : failed)
+    // recording so group semaphores stay valid.
+    for (const Handle &resource : result.failed)
         oneTimeWaitSemaphoreInfo.erase(resource);
 
-    core::logging::error("CPU recording readiness failed for a transfer resource; skipping this pass's recording");
-    return false;
+    if (!result.failed.empty())
+        core::logging::error("CPU recording readiness failed for a transfer resource; skipping this pass's recording");
+
+    return result;
 }
 
 void star::CommandBufferContainer::CompleteRequest::recordEmpty(uint8_t frameInFlightIndex)
@@ -188,11 +199,6 @@ bool star::CommandBufferContainer::CompleteRequest::isDone() const
 bool star::CommandBufferContainer::CompleteRequest::hasWork() const
 {
     return renderResourceSetup.hasWork();
-}
-
-void star::CommandBufferContainer::CompleteRequest::prepareSetup(const core::device::DeviceContext &context)
-{
-    renderResourceSetup.prepare(context);
 }
 
 void star::CommandBufferContainer::CompleteRequest::recordSetup(vk::CommandBuffer commandBuffer,

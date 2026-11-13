@@ -2,8 +2,11 @@
 
 #include "core/Exceptions.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
+#include "starlight/event/PassCPURecordingWaitResolved.hpp"
 
+#include <exception>
 #include <set>
+#include <star_common/EventBus.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 
 std::stack<star::Handle> star::core::device::manager::ManagerCommandBuffer::dynamicBuffersToSubmit =
@@ -126,22 +129,48 @@ star::CommandBufferContainer::CompleteRequest &star::core::device::manager::Mana
 }
 
 vk::Semaphore star::core::device::manager::ManagerCommandBuffer::update(StarDevice &device,
-                                                                        const common::FrameTracker &frameTracker)
+                                                                        const common::FrameTracker &frameTracker,
+                                                                        common::EventBus &eventBus)
 {
     handleDynamicBufferRequests();
 
-    return submitCommandBuffers(device, frameTracker, frameTracker.getCurrent().getGlobalFrameCounter());
+    std::vector<CommandBufferContainer::WaitOutcome> outcomes;
+    const vk::Semaphore result =
+        submitCommandBuffers(device, frameTracker, frameTracker.getCurrent().getGlobalFrameCounter(), outcomes);
+
+    // Emit one event after all submissions so handlers never mutate command-buffer groups mid-iteration. The owning
+    // service applies the failure policy (for example, MaterialService terminates on its material readiness
+    // conditions).
+    if (!outcomes.empty())
+    {
+        star::event::PassCPURecordingWaitResolved::Results results;
+        results.reserve(outcomes.size());
+
+        for (const auto &outcome : outcomes)
+        {
+            results.push_back(star::event::PassWaitResultInfo{.pass = outcome.pass,
+                                                              .failedResources = outcome.failedResources,
+                                                              .pendingResources = outcome.pendingResources,
+                                                              .onFailure = outcome.policy});
+        }
+
+        eventBus.emit(star::event::PassCPURecordingWaitResolved{std::move(results)});
+    }
+
+    return result;
 }
 
 vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBuffers(
-    StarDevice &device, const common::FrameTracker &frameTracker, const uint64_t &currentFrameIndex)
+    StarDevice &device, const common::FrameTracker &frameTracker, const uint64_t &currentFrameIndex,
+    std::vector<CommandBufferContainer::WaitOutcome> &outOutcomes)
 {
     // determine the order of buffers to execute
     assert(this->mainGraphicsBufferHandle && "No main graphics buffer set -- not a valid rendering setup");
 
     // submit before
-    std::vector<vk::Semaphore> beforeSemaphores = {this->buffers.submitGroupWhenReady(
-        device, Command_Buffer_Order::before_render_pass, frameTracker, currentFrameIndex, m_preparedQueues)};
+    std::vector<vk::Semaphore> beforeSemaphores = {
+        this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::before_render_pass, frameTracker,
+                                           currentFrameIndex, m_preparedQueues, nullptr, &outOutcomes)};
 
     // need to submit each group of buffers depending on the queue family they are in
     CommandBufferContainer::CompleteRequest &mainGraphicsBuffer = this->buffers.get(*this->mainGraphicsBufferHandle);
@@ -149,15 +178,19 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
     if (mainGraphicsBuffer.beforeBufferSubmissionCallback.has_value())
         mainGraphicsBuffer.beforeBufferSubmissionCallback.value()(frameTracker.getCurrent().getFrameInFlightIndex());
 
-    const bool readinessOk = mainGraphicsBuffer.runCPURecordingWaits();
     if (!mainGraphicsBuffer.recordOnce)
     {
-        if (readinessOk)
-            mainGraphicsBuffer.recordBufferCallback(*mainGraphicsBuffer.commandBuffer, frameTracker, currentFrameIndex);
-        else
-            mainGraphicsBuffer.recordEmpty(static_cast<uint8_t>(frameTracker.getCurrent().getFrameInFlightIndex()));
+        mainGraphicsBuffer.recordBufferCallback(*mainGraphicsBuffer.commandBuffer, frameTracker, currentFrameIndex);
     }
 
+    const auto waitResult = mainGraphicsBuffer.runCPURecordingWaits();
+    if (waitResult.hadWaits)
+    {
+        outOutcomes.push_back(CommandBufferContainer::WaitOutcome{.pass = *this->mainGraphicsBufferHandle,
+                                                                  .failedResources = waitResult.failed,
+                                                                  .pendingResources = waitResult.pending,
+                                                                  .policy = waitResult.policy});
+    }
     auto mainGraphicsSemaphore =
         mainGraphicsBuffer.submitCommandBuffer(device, frameTracker, m_preparedQueues, &beforeSemaphores);
 
@@ -166,8 +199,20 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::submitCommandBu
 
     std::vector<vk::Semaphore> waitSemaphores = {mainGraphicsSemaphore};
 
-    vk::Semaphore finalSubmissionSemaphores = this->buffers.submitGroupWhenReady(
-        device, Command_Buffer_Order::end_of_frame, frameTracker, currentFrameIndex, m_preparedQueues, &waitSemaphores);
+    // Frame-wide transfer drain: wait for every registered transfer to be CPU-published immediately before the
+    // finalization phase records. The preceding before-render submits are timeline-only, so this is the first point
+    // where the binary-semaphore dependency rule requires the transfer signals to be submitted.
+    const auto frameWaitResult = m_beforeFinalizationWaits.runAll();
+    if (frameWaitResult.hadWaits)
+    {
+        outOutcomes.push_back(CommandBufferContainer::WaitOutcome{.pass = Handle{},
+                                                                  .failedResources = frameWaitResult.failed,
+                                                                  .pendingResources = frameWaitResult.pending,
+                                                                  .policy = frameWaitResult.policy});
+    }
+    vk::Semaphore finalSubmissionSemaphores =
+        this->buffers.submitGroupWhenReady(device, Command_Buffer_Order::end_of_frame, frameTracker, currentFrameIndex,
+                                           m_preparedQueues, &waitSemaphores, &outOutcomes);
 
     if (finalSubmissionSemaphores != VK_NULL_HANDLE)
     {

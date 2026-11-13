@@ -3,7 +3,6 @@
 #include "StarBuffers/Buffer.hpp"
 #include "StarDescriptorBuilders.hpp"
 #include "StarTextures/Texture.hpp"
-#include "core/device/DeviceContext.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -11,6 +10,12 @@
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 #include <vector>
+
+namespace star::core::device::manager
+{
+class Buffer;
+class Image;
+} // namespace star::core::device::manager
 
 namespace star
 {

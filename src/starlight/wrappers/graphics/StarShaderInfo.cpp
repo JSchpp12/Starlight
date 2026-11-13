@@ -3,6 +3,7 @@
 #include "core/device/managers/Buffer.hpp"
 #include "core/device/managers/Image.hpp"
 #include "core/logging/LoggingFactory.hpp"
+#include "managers/ManagerRenderResource.hpp"
 
 /// @brief Whether this handle refers to a slot in the device's Buffer manager (FrameData::BufferHandle)
 /// rather than a transfer-uploaded resource tracked by ManagerRenderResource.

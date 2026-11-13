@@ -2,6 +2,7 @@
 
 #include "starlight/command/pipeline/CreatePipeline.hpp"
 #include "starlight/core/device/managers/Pipeline.hpp"
+#include "starlight/job/complete_tasks/CompileShader.hpp"
 #include "starlight/virtual/StarPipeline.hpp"
 
 #include <utility>
@@ -14,7 +15,8 @@ PipelineCommandService::PipelineCommandService() : m_listenForCreatePipeline(*th
 }
 
 PipelineCommandService::PipelineCommandService(PipelineCommandService &&other)
-    : m_listenForCreatePipeline(*this), m_graphicsManagers(other.m_graphicsManagers), m_cmdBus(other.m_cmdBus)
+    : m_listenForCreatePipeline(*this), m_graphicsManagers(other.m_graphicsManagers), m_device(other.m_device),
+      m_taskManager(other.m_taskManager), m_cmdBus(other.m_cmdBus)
 {
     if (m_cmdBus != nullptr)
     {
@@ -28,6 +30,8 @@ PipelineCommandService &PipelineCommandService::operator=(PipelineCommandService
     if (this != &other)
     {
         m_graphicsManagers = other.m_graphicsManagers;
+        m_device = other.m_device;
+        m_taskManager = other.m_taskManager;
         m_cmdBus = other.m_cmdBus;
 
         if (m_cmdBus != nullptr)
@@ -68,6 +72,8 @@ void PipelineCommandService::setInitParameters(InitParameters &params)
 {
     m_cmdBus = &params.commandBus;
     m_graphicsManagers = &params.graphicsManagers;
+    m_device = &params.device;
+    m_taskManager = &params.taskManager;
 }
 
 static PipelineProvider CreatePipelineProviderFromCmd(star::command::pipeline::CreatePipeline &cmd)
@@ -111,5 +117,13 @@ void PipelineCommandService::onCreatePipeline(star::command::pipeline::CreatePip
                                                    cmd.getRenderingTargetInfo()};
 
     cmd.getReply().set(m_graphicsManagers->pipelineManager->submit(std::move(request)));
+
+    // Pure-state trigger: queue the build immediately when every referenced shader is already ready. Shader
+    // completion re-runs the same scan for the late case.
+    if (m_device != nullptr && m_taskManager != nullptr && m_graphicsManagers != nullptr)
+    {
+        star::job::complete_tasks::compile_shader::ProcessPipelinesWhichAreNowReadyForBuild(
+            m_device, m_taskManager, m_graphicsManagers);
+    }
 }
 } // namespace star::service

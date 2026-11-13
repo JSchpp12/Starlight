@@ -89,6 +89,9 @@ class ManagerRenderResource
 
     static bool isReady(const Handle &deviceID, const Handle &handle);
 
+    /// @brief True while the transfer worker has not yet published the request's result.
+    static bool isPending(const Handle &deviceID, const Handle &handle);
+
     static void waitForReady(const Handle &deviceID, const Handle &handle);
 
     static StarBuffers::Buffer &getBuffer(const Handle &deviceID, const Handle &handle);

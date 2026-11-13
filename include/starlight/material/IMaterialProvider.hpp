@@ -1,5 +1,6 @@
 #pragma once
 
+#include "starlight/core/transfer/ReadinessCondition.hpp"
 #include "starlight/setup/RenderResourceSetup.hpp"
 #include "starlight/virtual/StarMaterial.hpp"
 
@@ -22,6 +23,8 @@ class IMaterialProvider
         std::unique_ptr<StarMaterial> material;
         std::vector<setup::TransferWait> waits;
         setup::RenderResourceSetup::PrepRequest prep;
+        /// @brief Readiness conditions the material service must satisfy before committing the resource.
+        std::vector<ReadinessCondition> conditions;
     };
 
     virtual ~IMaterialProvider() = default;

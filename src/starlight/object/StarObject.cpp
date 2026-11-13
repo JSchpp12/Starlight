@@ -226,7 +226,7 @@ void star::StarObject::prepRender(star::core::device::DeviceContext &context, Ha
         {
             auto made = provider->make(context);
             command::material::MakeMaterial cmd{std::move(made.material), std::move(made.waits), std::move(made.prep),
-                                                commandBuffer};
+                                                commandBuffer, std::move(made.conditions)};
             context.getCmdBus().submit(cmd);
             m_materialHandles.push_back(cmd.getReply().get());
         }

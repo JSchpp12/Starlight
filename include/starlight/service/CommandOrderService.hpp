@@ -132,6 +132,7 @@ class CommandOrderService
     star::core::device::manager::Semaphore *m_sem{nullptr};
     star::core::device::manager::ManagerCommandBuffer *m_commandBufferManager{nullptr};
     star::core::device::manager::GraphicsContainer *m_graphicsManagers{nullptr};
+    star::core::device::DeviceContext *m_context{nullptr};
     Handle m_deviceID{};
 
     void initListeners(core::CommandBus &cmdBus);

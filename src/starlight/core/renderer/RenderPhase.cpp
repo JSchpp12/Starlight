@@ -97,7 +97,6 @@ void RenderPhase::frameUpdate(common::IDeviceContext &context)
     if (m_commandBuffers != nullptr)
     {
         auto &request = m_commandBuffers->get(m_commandBuffer);
-        request.prepareSetup(c);
         // Drain releases from definitions recorded on earlier frames; this is what actually runs a per-make
         // keepAlive (e.g. the skybox conversion set) while the app is running.
         request.pollSetupReleases(c);

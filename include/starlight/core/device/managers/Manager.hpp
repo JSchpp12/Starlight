@@ -89,6 +89,21 @@ concept ResourceTypeNameProvider = requires {
     { T::GetUniqueTypeName() } -> std::convertible_to<std::string_view>;
 };
 
+/// @brief Record-level async hooks. A record whose resource is published by a producer (rather than by the slot's
+/// own future) can resolve/inspect its readiness; records without them keep the slot-only behavior.
+template <typename T>
+concept RecordExposesResolve = requires(const T &record) {
+    { record.resolve() } -> std::same_as<void>;
+};
+template <typename T>
+concept RecordExposesReadiness = requires(const T &record) {
+    { record.isReady() } -> std::same_as<bool>;
+};
+template <typename T>
+concept RecordExposesWaitForReady = requires(const T &record) {
+    { record.waitForReady() } -> std::same_as<void>;
+};
+
 /// @brief A manager record that may be published asynchronously.
 /// @details A request carries either the record's resource or a future for it; the slot stores the record and converts
 /// the published resource into the record when the future resolves.
@@ -269,28 +284,70 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
     {
         auto &slot = m_records.get(handle);
         slot.resolve();
-        return slot.get();
+
+        TRecord *record = slot.get();
+        if constexpr (RecordExposesResolve<TRecord>)
+        {
+            if (record != nullptr)
+                record->resolve();
+        }
+
+        return record;
     }
 
     virtual const TRecord *get(const Handle &handle) const
     {
         const auto &slot = m_records.get(handle);
         slot.resolve();
-        return slot.get();
+
+        const TRecord *record = slot.get();
+        if constexpr (RecordExposesResolve<TRecord>)
+        {
+            if (record != nullptr)
+                record->resolve();
+        }
+
+        return record;
     }
 
-    /// @brief True once the record is concrete (a ready future counts as ready before it is consumed).
+    /// @brief True once the record is concrete (a ready future counts as ready before it is consumed) and, when the
+    /// record exposes its own readiness (e.g. a pipeline build or shader compile), that it is ready too.
     bool isReady(const Handle &handle) const
     {
-        return m_records.get(handle).isReady();
+        const auto &slot = m_records.get(handle);
+        slot.resolve();
+
+        const TRecord *record = slot.get();
+        if (record == nullptr)
+            return false;
+
+        if constexpr (RecordExposesReadiness<TRecord>)
+            return record->isReady();
+
+        return true;
+    }
+
+    /// @brief True while the slot's producer has not published (record-level pending is not considered).
+    bool isPending(const Handle &handle) const
+    {
+        return m_records.get(handle).isPending();
     }
 
     /// @brief Block until a pending resource is published, then resolve it into the record.
+    /// @details Also waits on record-level async work when the record exposes it. Do not use this for a pipeline that
+    /// may not have queued its build yet; the pipeline readiness condition pumps completion messages instead.
     void waitForReady(const Handle &handle)
     {
         auto &slot = m_records.get(handle);
         slot.wait();
         slot.resolve();
+
+        TRecord *record = slot.get();
+        if constexpr (RecordExposesWaitForReady<TRecord>)
+        {
+            if (record != nullptr)
+                record->waitForReady();
+        }
     }
 
     auto &getRecords()
@@ -309,6 +366,8 @@ class Manager : public ManagerBase<TRecord, TResourceRequest>
     void deleteRequest(device::StarDevice &device, const Handle &requestHandle)
     {
         assert(requestHandle.getType() == this->getHandleType());
+        core::logging::debug("Manager delete (", TResourceTypeName::GetUniqueTypeName(), "): handle [",
+                             requestHandle.getID(), "]");
         m_records.remove(requestHandle, &device);
     }
 

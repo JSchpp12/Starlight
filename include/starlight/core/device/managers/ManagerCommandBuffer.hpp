@@ -14,6 +14,11 @@
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
 
+namespace star::common
+{
+class EventBus;
+}
+
 namespace star::core::device::manager
 {
 class ManagerCommandBuffer
@@ -61,8 +66,14 @@ class ManagerCommandBuffer
     /// @brief Process and submit all command buffers
     /// @param frameIndexToBeDrawn
     /// @return semaphore signaling completion of submission
-    vk::Semaphore update(StarDevice &device, const common::FrameTracker &frameTracker);
+    vk::Semaphore update(StarDevice &device, const common::FrameTracker &frameTracker, common::EventBus &eventBus);
 
+    /// @brief Queue frame-wide readiness conditions drained immediately before the finalization phase records.
+    void addBeforeFinalizationCPUWait(std::vector<star::ReadinessCondition> waits,
+                                      ReadinessFailurePolicy policy = ReadinessFailurePolicy::BlockUntilReady)
+    {
+        m_beforeFinalizationWaits.add(std::move(waits), std::move(policy));
+    }
     const InUseQueueInfo *getInUseInfoForType(const star::Queue_Type &type);
 
   private:
@@ -73,9 +84,10 @@ class ManagerCommandBuffer
     uint8_t numFramesInFlight = 0;
     std::unique_ptr<star::Handle> mainGraphicsBufferHandle = std::unique_ptr<star::Handle>();
     absl::flat_hash_map<star::Queue_Type, StarQueue *> m_preparedQueues;
-
+    CPURecordingWaitContainer m_beforeFinalizationWaits;
     vk::Semaphore submitCommandBuffers(StarDevice &device, const common::FrameTracker &swapChainIndex,
-                                       const uint64_t &currentFrameIndex);
+                                       const uint64_t &currentFrameIndex,
+                                       std::vector<CommandBufferContainer::WaitOutcome> &outOutcomes);
 
     void handleDynamicBufferRequests();
 

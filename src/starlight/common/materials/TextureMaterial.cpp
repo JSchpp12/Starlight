@@ -6,6 +6,7 @@
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "TransferRequest_TextureFile.hpp"
 #include "core/device/managers/Image.hpp"
+#include "core/device/DeviceContext.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "starlight/command/transfer/SubmitTextureTransfer.hpp"
 #include "starlight/core/transfer/RegisterTransferWait.hpp"

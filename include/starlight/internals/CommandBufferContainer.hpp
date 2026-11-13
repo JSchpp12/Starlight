@@ -90,33 +90,29 @@ class CommandBufferContainer
         std::optional<StarCommandBuffer::SubmissionOverride> overrideBufferSubmissionCallback;
         SemaphoreInfo oneTimeWaitSemaphoreInfo;
         PerFrameScratchData scratch;
-
         /// @brief Host-side waits this pass must pass before it records.
         CPURecordingWaitContainer cpuRecordingWaits;
+        setup::RenderResourceSetup renderResourceSetup;
 
-        /// @brief Run every registered wait, clear them, and return false if any resource failed.
-        /// @details On failure the failed resources' one-time Vulkan waits are erased, so no wait on a timeline that
-        /// will never signal reaches submission. Prepared definitions are left to their normal lifecycle.
-        [[nodiscard]] bool runCPURecordingWaits();
+        /// @brief Run every registered wait, clear consumed ones, and report failed and pending resources.
+        /// @details Failed resources' one-time Vulkan waits are erased so no wait on a timeline that will never
+        /// signal reaches submission. Pending conditions are retained by the container for a later frame.
+        [[nodiscard]] CPURecordingWaitContainer::Result runCPURecordingWaits();
         /// @brief Begin and end an empty recording for the given frame-in-flight slot.
         /// @details Used when a readiness wait fails: the pass still submits so group semaphores stay valid.
         void recordEmpty(uint8_t frameInFlightIndex);
 
-        /// @brief One-shot work this pass records inline before its own commands.
-        setup::RenderResourceSetup renderResourceSetup;
-
-        /// @brief Adds a definition that CommandOrderService already prepared.
-        void add(setup::RenderResourceSetup::ResourcePrepDefinition definition);
+        /// @brief Adds a definition prepared by CommandOrderService and returns its stable id.
+        setup::RenderResourceSetup::DefinitionId add(setup::RenderResourceSetup::ResourcePrepDefinition definition);
+        /// @brief Abandon an unrecorded definition after a rolled-back swap.
+        void abandon(setup::RenderResourceSetup::DefinitionId id, const core::graphics::SemaphoreInfo &gate);
         [[nodiscard]] bool isDone() const;
         [[nodiscard]] bool hasWork() const;
-        /// @brief Resolves one-shot work's per-frame readiness before the pass records.
-        void prepareSetup(const core::device::DeviceContext &context);
         void recordSetup(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingGate);
         void pollSetupReleases(core::device::DeviceContext &context);
         void cleanupSetup(core::device::DeviceContext &context);
 
         ~CompleteRequest();
-
         CompleteRequest(
             std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)>
                 recordBufferCallback,
@@ -134,11 +130,20 @@ class CommandBufferContainer
     CommandBufferContainer(core::device::StarDevice &device, const uint8_t &numImagesInFlight);
 
     void cleanup(core::device::StarDevice &device);
+    /// @brief The result of a pass's CPU recording waits.
+    struct WaitOutcome
+    {
+        Handle pass;
+        std::vector<Handle> failedResources;
+        std::vector<Handle> pendingResources;
+        ReadinessFailurePolicy policy{ReadinessFailurePolicy::BlockUntilReady};
+    };
 
     vk::Semaphore submitGroupWhenReady(core::device::StarDevice &device, const star::Command_Buffer_Order &order,
                                        const common::FrameTracker &frameTracker, const uint64_t &currentFrameIndex,
                                        absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues,
-                                       std::vector<vk::Semaphore> *waitSemaphores = nullptr);
+                                       std::vector<vk::Semaphore> *waitSemaphores = nullptr,
+                                       std::vector<WaitOutcome> *outOutcomes = nullptr);
 
     star::Handle add(std::shared_ptr<CompleteRequest> newRequest, const bool &willBeSubmittedEachFrame,
                      const star::Queue_Type &type, const star::Command_Buffer_Order &order,
@@ -232,7 +237,6 @@ class CommandBufferContainer
     // 1 - dynamic submit
     // 2 - standard always submit
     std::vector<unsigned char> bufferSubmissionStatus = std::vector<unsigned char>();
-
     // Indicates if all semaphores are updated with the proper order of execution
     bool subOrderSemaphoresUpToDate = false;
 

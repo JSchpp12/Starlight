@@ -17,8 +17,10 @@ class MaterialProvider final : public IMaterialProvider
 {
   public:
     explicit MaterialProvider(std::unique_ptr<StarMaterial> material, std::vector<setup::TransferWait> waits = {},
-                              setup::RenderResourceSetup::PrepRequest prep = {})
-        : m_material(std::move(material)), m_waits(std::move(waits)), m_prep(std::move(prep))
+                              setup::RenderResourceSetup::PrepRequest prep = {},
+                              std::vector<ReadinessCondition> conditions = {})
+        : m_material(std::move(material)), m_waits(std::move(waits)), m_prep(std::move(prep)),
+          m_conditions(std::move(conditions))
     {
         assert(m_material != nullptr);
     }
@@ -43,6 +45,7 @@ class MaterialProvider final : public IMaterialProvider
         made.material = std::move(m_material);
         made.waits = std::move(m_waits);
         made.prep = std::move(m_prep);
+        made.conditions = std::move(m_conditions);
         return made;
     }
 
@@ -50,5 +53,6 @@ class MaterialProvider final : public IMaterialProvider
     std::unique_ptr<StarMaterial> m_material;
     std::vector<setup::TransferWait> m_waits;
     setup::RenderResourceSetup::PrepRequest m_prep;
+    std::vector<ReadinessCondition> m_conditions;
 };
 } // namespace star

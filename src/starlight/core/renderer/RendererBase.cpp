@@ -98,7 +98,6 @@ void RendererBase::frameUpdate(common::IDeviceContext &context)
     if (m_commandBuffers != nullptr)
     {
         auto &request = m_commandBuffers->get(m_commandBuffer);
-        request.prepareSetup(c);
         // Drain releases from definitions recorded on earlier frames (see RenderPhase::frameUpdate).
         request.pollSetupReleases(c);
         if (!request.isDone())

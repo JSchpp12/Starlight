@@ -14,8 +14,7 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
     auto *data = static_cast<CompileShaderPayload *>(p);
 
     return std::make_optional<star::job::complete_tasks::CompleteTask>(
-        job::complete_tasks::compile_shader::CreateShaderCompileComplete(data->handleID,
-                                                                         std::move(data->shaderFuture)));
+        job::complete_tasks::compile_shader::CreateShaderCompileComplete(data->handleID));
 }
 
 void Execute(void *p)
@@ -66,11 +65,9 @@ void Execute(void *p)
 
 CompileShaderTask Create(std::filesystem::path fileName, const star::Shader_Stage &stage, const Handle &shaderHandle,
                          vk::Device device, star::core::ShaderMacroDefinitions macroDefinitions,
-                         star::io::PathResolver pathResolver, bool compileDebug)
+                         star::io::PathResolver pathResolver, std::promise<CompileResult> shaderPromise,
+                         bool compileDebug)
 {
-    auto promise = std::promise<CompileResult>{};
-    auto future = promise.get_future();
-
     return CompileShaderTask::Builder<CompileShaderPayload>()
         .setPayload(CompileShaderPayload{.path = fileName,
                                          .macroDefinitions = std::move(macroDefinitions),
@@ -79,8 +76,7 @@ CompileShaderTask Create(std::filesystem::path fileName, const star::Shader_Stag
                                          .handleID = shaderHandle.getID(),
                                          .compileDebug = compileDebug,
                                          .device = device,
-                                         .shaderPromise = std::move(promise),
-                                         .shaderFuture = std::move(future)})
+                                         .shaderPromise = std::move(shaderPromise)})
         .setExecute(&Execute)
         .setCreateCompleteTaskFunction(&CreateComplete)
         .build();

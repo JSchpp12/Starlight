@@ -1,4 +1,5 @@
 #include "StarMaterial.hpp"
+#include "core/device/DeviceContext.hpp"
 
 void star::StarMaterial::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
                                     star::StarShaderInfo::Builder frameBuilder, star::Handle commandBuffer)
@@ -43,6 +44,29 @@ void star::StarMaterial::cleanupRender(core::device::DeviceContext &context)
 {
     if (shaderInfo)
         shaderInfo->cleanupRender(context.getDevice());
+}
+
+std::optional<star::StarShaderInfo::ShaderInfo>
+star::StarMaterial::getResourceInfo(size_t setIndex, size_t bindingIndex,
+                                    std::optional<size_t> frameInFlightIndex) const
+{
+    if (!shaderInfo)
+        return std::nullopt;
+
+    const size_t frame = frameInFlightIndex.value_or(0);
+    const auto &frames = shaderInfo->getShaderInfoSets();
+    if (frame >= frames.size())
+        return std::nullopt;
+
+    const auto &sets = frames[frame];
+    if (setIndex >= sets.size() || sets[setIndex] == nullptr)
+        return std::nullopt;
+
+    const auto &slots = sets[setIndex]->slots;
+    if (bindingIndex >= slots.size() || !slots[bindingIndex].has_value())
+        return std::nullopt;
+
+    return slots[bindingIndex];
 }
 
 void star::StarMaterial::bind(vk::CommandBuffer &commandBuffer, vk::PipelineLayout pipelineLayout,

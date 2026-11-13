@@ -1,69 +1,54 @@
 #pragma once
 
+#include <starlight/core/transfer/ReadinessCondition.hpp>
+#include <starlight/core/transfer/ReadinessFailurePolicy.hpp>
+
 #include <star_common/Handle.hpp>
 
-#include <variant>
 #include <vector>
-
-namespace star::core::device::manager
-{
-class Image;
-class Buffer;
-} // namespace star::core::device::manager
 
 namespace star
 {
-/// @brief Owns a pass's host-side readiness waits for transfer resources.
-/// @details Each wait is one strongly typed readiness check stored in a variant -- no type erasure and no allocation.
-/// The pass runs every registered wait on the recording thread before it records. This class only executes the host
-/// waits; the pass owns the matching GPU timeline waits and drops a failed resource's entry itself.
+/// @brief Owns a pass's one-time host-side readiness conditions.
+/// @details Conditions are strongly typed (see ReadinessCondition.hpp). A pass runs them on the recording thread
+/// before it records. Pending conditions are retained for a later frame; failed conditions are reported with the
+/// strictest policy among them so the caller can skip, roll back, or terminate.
 class CPURecordingWaitContainer
 {
   public:
-    /// @brief Readiness check for a texture published by the Image manager.
-    struct ImageReadiness
+    using ImageReadiness = star::ImageReadiness;
+    using BufferReadiness = star::BufferReadiness;
+    using RenderResourceBufferReadiness = star::RenderResourceBufferReadiness;
+    using ShaderReadiness = star::ShaderReadiness;
+    using PipelineReadiness = star::PipelineReadiness;
+    using CPURecordingWait = star::ReadinessCondition;
+
+    struct Result
     {
-        core::device::manager::Image *manager{nullptr};
+        std::vector<Handle> failed;
+        std::vector<Handle> pending;
+        ReadinessFailurePolicy policy{ReadinessFailurePolicy::BlockUntilReady};
+        /// @brief True when waits were registered for this submission (even if all were ready).
+        bool hadWaits{false};
 
-        /// @brief Block until the record's future publishes, then validate the texture exists.
-        [[nodiscard]] bool ready(const Handle &resource) const;
-    };
-
-    /// @brief Readiness check for a buffer published by the Buffer manager.
-    struct BufferReadiness
-    {
-        core::device::manager::Buffer *manager{nullptr};
-
-        /// @brief Block until the record's future publishes, then validate the buffer exists.
-        [[nodiscard]] bool ready(const Handle &resource) const;
-    };
-
-    /// @brief Readiness check for a legacy ManagerRenderResource buffer (engine vertex/instance/uniform buffers).
-    struct RenderResourceBufferReadiness
-    {
-        Handle deviceID{};
-
-        /// @brief Block until the transfer worker reports completion.
-        /// @details The worker sets the completion flag on success and failure, so this guarantees the transfer task
-        /// ran; there is no error channel to validate.
-        [[nodiscard]] bool ready(const Handle &resource) const;
-    };
-
-    /// @brief A host-side readiness wait for one transfer resource.
-    struct CPURecordingWait
-    {
-        Handle resource;
-        std::variant<ImageReadiness, BufferReadiness, RenderResourceBufferReadiness> readiness;
+        [[nodiscard]] bool isReady() const noexcept
+        {
+            return failed.empty() && pending.empty();
+        }
     };
 
     /// @brief Register waits that must pass before the pass records.
-    /// @details Deduplicated by resource handle (last registration wins).
-    void add(std::vector<CPURecordingWait> waits);
+    void add(std::vector<CPURecordingWait> waits,
+             ReadinessFailurePolicy policy = ReadinessFailurePolicy::BlockUntilReady);
+    void add(CPURecordingWait wait, ReadinessFailurePolicy policy = ReadinessFailurePolicy::BlockUntilReady);
+    /// @brief Evaluate every registered wait.
+    [[nodiscard]] Result runAll();
 
-    /// @brief Run every registered wait, clear them, and return the resources whose check failed or threw.
-    /// @details An empty result means every resource was ready. Exceptions are treated as a failed check so one bad
-    /// producer cannot abort the pass submission.
-    [[nodiscard]] std::vector<Handle> runAll();
+    /// @brief True when waits were registered but `runAll` has not evaluated them for the current submission.
+    [[nodiscard]] bool hasUnrun() const noexcept
+    {
+        return m_hasUnrun;
+    }
 
     [[nodiscard]] bool empty() const noexcept
     {
@@ -73,9 +58,19 @@ class CPURecordingWaitContainer
     void clear() noexcept
     {
         m_waits.clear();
+        m_hasUnrun = false;
     }
 
   private:
-    std::vector<CPURecordingWait> m_waits;
+    struct RegisteredWait
+    {
+        CPURecordingWait condition;
+        ReadinessFailurePolicy policy{ReadinessFailurePolicy::BlockUntilReady};
+    };
+
+    void insert(CPURecordingWait &&newWait, ReadinessFailurePolicy policy);
+
+    std::vector<RegisteredWait> m_waits;
+    bool m_hasUnrun{false};
 };
 } // namespace star

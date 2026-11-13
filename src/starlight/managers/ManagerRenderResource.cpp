@@ -129,12 +129,17 @@ bool star::ManagerRenderResource::isReady(const Handle &deviceID, const Handle &
     {
         return bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread.load();
     }
-    else
-    {
-        throw std::runtime_error("Invalid type provided");
-    }
+    STAR_THROW("Invalid type provided");
+}
 
-    return false;
+bool star::ManagerRenderResource::isPending(const Handle &deviceID, const Handle &handle)
+{
+    if (handle.getType() ==
+        common::HandleTypeRegistry::instance().getTypeGuaranteedExist(common::special_types::BufferTypeName))
+    {
+        return !bufferStorage.at(deviceID)->get(handle).cpuWorkDoneByTransferThread.load();
+    }
+    STAR_THROW("Invalid type provided");
 }
 
 void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Handle &handle)
@@ -151,7 +156,7 @@ void star::ManagerRenderResource::waitForReady(const Handle &deviceID, const Han
     }
     else
     {
-        throw std::runtime_error("Invalid handle type");
+        STAR_THROW("Invalid handle type");
     }
 
     assert(fence != nullptr && "Fence not valid or found");

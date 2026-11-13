@@ -1,23 +1,20 @@
 #pragma once
 
-#include "StarCommandBuffer.hpp"
-#include "StarShader.hpp"
 #include "StarShaderInfo.hpp"
-#include "core/device/DeviceContext.hpp"
-#include "wrappers/graphics/StarSemaphore.hpp"
 #include <star_common/Handle.hpp>
 
-#include <array>
-#include <vulkan/vulkan.hpp>
-
 #include <glm/glm.hpp>
+#include <vulkan/vulkan.hpp>
 
 #include <memory>
 #include <optional>
 #include <set>
-#include <string>
-#include <unordered_map>
 #include <vector>
+
+namespace star::core::device
+{
+class DeviceContext;
+}
 
 namespace star
 {
@@ -62,6 +59,12 @@ class StarMaterial
     {
         return m_resourceHandle;
     }
+
+    /// @brief Copy of the resource currently bound at (setIndex, bindingIndex).
+    /// @details `frameInFlightIndex == nullopt` reads frame 0; slots for all frames hold the same resource after a
+    /// swap. Returns nullopt when the material has no built shader info or the slot is empty.
+    [[nodiscard]] std::optional<StarShaderInfo::ShaderInfo> getResourceInfo(
+        size_t setIndex, size_t bindingIndex, std::optional<size_t> frameInFlightIndex = std::nullopt) const;
 
     bool isKnownToBeReady(uint8_t swapChainImageIndex);
 

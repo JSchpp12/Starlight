@@ -1,5 +1,6 @@
 #include "BumpMaterial.hpp"
 
+#include "core/device/DeviceContext.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "event/GetQueue.hpp"
 #include "starlight/command/transfer/SubmitTextureTransfer.hpp"

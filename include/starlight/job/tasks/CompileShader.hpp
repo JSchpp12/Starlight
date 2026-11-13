@@ -39,7 +39,6 @@ struct CompileShaderPayload
     bool compileDebug = defaultCompileDebug;
     vk::Device device = VK_NULL_HANDLE;
     std::promise<CompileResult> shaderPromise;
-    std::future<CompileResult> shaderFuture;
 };
 
 using CompileShaderTask = star::job::tasks::Task<sizeof(CompileShaderPayload), alignof(CompileShaderPayload)>;
@@ -50,6 +49,7 @@ void Execute(void *p);
 
 CompileShaderTask Create(std::filesystem::path fileName, const star::Shader_Stage &stage, const Handle &shaderHandle,
                          vk::Device device, star::core::ShaderMacroDefinitions macroDefinitions,
-                         star::io::PathResolver pathResolver, bool compileDebug = defaultCompileDebug);
+                         star::io::PathResolver pathResolver, std::promise<CompileResult> shaderPromise,
+                         bool compileDebug = defaultCompileDebug);
 
 } // namespace star::job::tasks::compile_shader

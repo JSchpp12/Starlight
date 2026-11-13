@@ -1,5 +1,6 @@
 #pragma once
 
+#include <starlight/core/transfer/ReadinessCondition.hpp>
 #include <starlight/setup/RenderResourceSetup.hpp>
 #include <starlight/virtual/StarMaterial.hpp>
 
@@ -32,9 +33,10 @@ struct MakeMaterial : public star::common::IServiceCommandWithReply<Handle>
     }
 
     MakeMaterial(std::unique_ptr<StarMaterial> material, std::vector<setup::TransferWait> waits,
-                 setup::RenderResourceSetup::PrepRequest prep, Handle commandBuffer)
+                 setup::RenderResourceSetup::PrepRequest prep, Handle commandBuffer,
+                 std::vector<ReadinessCondition> conditions = {})
         : material(std::move(material)), waits(std::move(waits)), prep(std::move(prep)),
-          commandBuffer(std::move(commandBuffer))
+          commandBuffer(std::move(commandBuffer)), conditions(std::move(conditions))
     {
     }
 
@@ -43,5 +45,7 @@ struct MakeMaterial : public star::common::IServiceCommandWithReply<Handle>
     setup::RenderResourceSetup::PrepRequest prep;
     /// @brief Command buffer of the pass that records this material.
     Handle commandBuffer;
+    /// @brief Readiness conditions the service must satisfy before committing the material resource.
+    std::vector<ReadinessCondition> conditions;
 };
 } // namespace star::command::material

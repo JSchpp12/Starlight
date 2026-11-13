@@ -1,80 +1,89 @@
 #include "internals/CPURecordingWaitContainer.hpp"
 
-#include "core/device/managers/Buffer.hpp"
-#include "core/device/managers/Image.hpp"
-#include "managers/ManagerRenderResource.hpp"
-
 #include <algorithm>
+#include <chrono>
 #include <utility>
+#include <vector>
 
-bool star::CPURecordingWaitContainer::ImageReadiness::ready(const Handle &resource) const
+namespace star
 {
-    if (manager == nullptr)
-        return false;
 
-    manager->waitForReady(resource);
-    const auto *record = manager->get(resource);
-    const auto *texture = record != nullptr ? record->getTexture() : nullptr;
-    return texture != nullptr && texture->getVulkanImage() != VK_NULL_HANDLE;
-}
-
-bool star::CPURecordingWaitContainer::BufferReadiness::ready(const Handle &resource) const
+void CPURecordingWaitContainer::add(std::vector<CPURecordingWait> waits, ReadinessFailurePolicy policy)
 {
-    if (manager == nullptr)
-        return false;
+    if (waits.empty())
+        return;
 
-    manager->waitForReady(resource);
-    const auto *record = manager->get(resource);
-    const auto *buffer = record != nullptr ? record->getBuffer() : nullptr;
-    return buffer != nullptr && buffer->getVulkanBuffer() != VK_NULL_HANDLE;
-}
+    m_hasUnrun = true;
 
-bool star::CPURecordingWaitContainer::RenderResourceBufferReadiness::ready(const Handle &resource) const
-{
-    ManagerRenderResource::waitForReady(deviceID, resource);
-    return true;
-}
-
-void star::CPURecordingWaitContainer::add(std::vector<CPURecordingWait> waits)
-{
     for (auto &wait : waits)
     {
-        // Deduplicate by resource: the latest wait for a handle wins. The list is small (one entry per resource the
-        // pass consumes before recording), so a linear scan is cheaper than maintaining a map alongside it.
-        const auto existing =
-            std::find_if(m_waits.begin(), m_waits.end(), [&wait](const CPURecordingWait &registered) {
-                return registered.resource == wait.resource;
-            });
-
-        if (existing != m_waits.end())
-            existing->readiness = std::move(wait.readiness);
-        else
-            m_waits.push_back(std::move(wait));
+        insert(std::move(wait), std::move(policy));
     }
 }
 
-std::vector<star::Handle> star::CPURecordingWaitContainer::runAll()
+void CPURecordingWaitContainer::add(CPURecordingWait wait, ReadinessFailurePolicy policy)
 {
-    std::vector<Handle> failed;
+    m_hasUnrun = true;
 
-    for (auto &wait : m_waits)
+    insert(std::move(wait), std::move(policy));
+}
+
+CPURecordingWaitContainer::Result CPURecordingWaitContainer::runAll()
+{
+    m_hasUnrun = false;
+
+    Result result;
+    if (m_waits.empty())
+        return result;
+
+    result.hadWaits = true;
+
+    std::vector<ReadinessCondition> conditions;
+    conditions.reserve(m_waits.size());
+    for (const auto &wait : m_waits)
+        conditions.push_back(wait.condition);
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    std::vector<ReadinessState> states;
+    (void)EvaluateReadiness(conditions, deadline, &states);
+
+    std::vector<RegisteredWait> retained;
+    retained.reserve(m_waits.size());
+
+    for (size_t i = 0; i < m_waits.size(); i++)
     {
-        bool ready = true;
-        try
+        if (states[i] == ReadinessState::Failed)
         {
-            ready = std::visit(
-                [&resource = wait.resource](const auto &readiness) { return readiness.ready(resource); },
-                wait.readiness);
+            result.failed.push_back(m_waits[i].condition.resource);
+            if (ReadinessFailurePolicyPriority(m_waits[i].policy) > ReadinessFailurePolicyPriority(result.policy))
+                result.policy = m_waits[i].policy;
         }
-        catch (...)
+        else if (states[i] == ReadinessState::Pending)
         {
-            ready = false;
+            result.pending.push_back(m_waits[i].condition.resource);
+            retained.push_back(std::move(m_waits[i]));
         }
-
-        if (!ready)
-            failed.push_back(wait.resource);
     }
 
-    m_waits.clear();
-    return failed;
+    m_waits = std::move(retained);
+    return result;
 }
+
+void CPURecordingWaitContainer::insert(CPURecordingWait &&newWait, ReadinessFailurePolicy policy)
+{
+    // Deduplicate by resource: the latest registration wins, including its policy.
+    const auto existing = std::find_if(m_waits.begin(), m_waits.end(), [&newWait](const RegisteredWait &registered) {
+        return registered.condition.resource == newWait.resource;
+    });
+
+    if (existing != m_waits.end())
+    {
+        existing->condition = std::move(newWait);
+        existing->policy = policy;
+    }
+    else
+    {
+        m_waits.push_back({std::move(newWait), policy});
+    }
+}
+} // namespace star
