@@ -15,11 +15,15 @@
 
 namespace star::TransferRequest
 {
-class Texture : private Memory<star::StarTextures::Texture>
+class Texture : public Memory<star::StarTextures::Texture>
 {
   public:
     Texture() = default;
     virtual ~Texture() = default;
+    Texture(Texture &&) = delete;
+    Texture &operator=(Texture &&) = delete;
+    Texture(const Texture &) = default;
+    Texture &operator=(const Texture &) = default;
 
     using Memory<star::StarTextures::Texture>::onTransferFailed;
 
@@ -42,10 +46,5 @@ class Texture : private Memory<star::StarTextures::Texture>
                                           vk::CommandBuffer &commandBuffer) const override = 0;
 
     virtual void writeDataToStageBuffer(star::StarBuffers::Buffer &stagingBuffer) const override = 0;
-
-    /// @brief Called by the worker once the transfer submission has been issued and the texture published.
-    virtual void onTransferComplete()
-    {
-    }
 };
 } // namespace star::TransferRequest

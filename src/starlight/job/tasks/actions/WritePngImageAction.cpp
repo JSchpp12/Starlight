@@ -8,7 +8,6 @@
 #include <star_common/helper/CastHelpers.hpp>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <stb_image_write.h>
@@ -61,7 +60,7 @@ void WritePngImageAction::operator()()
         STAR_THROW("PNG image writing requires VulkanBufferSource or RawUint8Source data source");
     }
 
-    int comp = 4;
+    const int comp = 4;
     int w = 0;
     star::common::casts::SafeCast(width, w);
     int h = 0;
@@ -70,12 +69,13 @@ void WritePngImageAction::operator()()
 
     // stbi_write_png always interprets the buffer as R,G,B,A. Vulkan
     // eB8G8R8A8* sources have the R and B bytes swapped, so normalize here.
-    const bool isBgra = imageFormat == vk::Format::eB8G8R8A8Unorm ||
-                        imageFormat == vk::Format::eB8G8R8A8Srgb;
+    const bool isBgra = imageFormat == vk::Format::eB8G8R8A8Unorm || imageFormat == vk::Format::eB8G8R8A8Srgb;
 
-    int stbiWriteResult{0}; 
+    int stbiWriteResult{0};
     if (isBgra)
     {
+        star::core::logging::debug("Image detected as BGRA format. Swizzling.");
+
         const size_t pixelCount = static_cast<size_t>(width) * static_cast<size_t>(height);
         const size_t byteCount = pixelCount * 4u;
         std::vector<uint8_t> swizzled = std::vector<uint8_t>(byteCount);
@@ -88,8 +88,11 @@ void WritePngImageAction::operator()()
             swizzled[i + 3] = src[i + 3]; // A
         }
         stbiWriteResult = stbi_write_png(path.c_str(), w, h, comp, swizzled.data(), rowStride);
-    }else{
-        stbiWriteResult = stbi_write_png(path.c_str(), w, h, comp, providedDataSource, rowStride); 
+    }
+    else
+    {
+        star::core::logging::debug("Writing image as RGBA format");
+        stbiWriteResult = stbi_write_png(path.c_str(), w, h, comp, providedDataSource, rowStride);
     }
 
     if (needsUnmap)

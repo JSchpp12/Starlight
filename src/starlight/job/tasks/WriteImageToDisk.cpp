@@ -3,6 +3,7 @@
 #include "FileHelpers.hpp"
 #include "logging/LoggingFactory.hpp"
 
+#include "job/tasks/actions/WritePngImageAction.hpp"
 #include "starlight/core/Exceptions.hpp"
 
 namespace star::job::tasks::write_image_to_disk
@@ -23,6 +24,15 @@ std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p)
     return std::nullopt;
 }
 
+static void LogImageInfo(vk::Format format, const vk::Extent3D &extent) noexcept
+{
+    std::ostringstream oss;
+    oss << "Info for image: " << std::endl
+        << "GPU Format: " << vk::to_string(format) << std::endl
+        << "GPU Extent: " << extent.width << ", " << extent.height << std::endl;
+    star::core::logging::debug(oss.str());
+}
+
 void PoolOwnedWriteImagePayload::operator()()
 {
     if (data == nullptr)
@@ -40,19 +50,23 @@ void PoolOwnedWriteImagePayload::operator()()
         star::core::logging::debug(data->path + " - Done waiting for semaphore");
     }
 
+    LogImageInfo(data->imageFormat, data->imageExtent);
     auto &buffer = data->owningObjectPool->get(data->registrationHandle);
     if (actions::IsPngFormat(data->imageFormat))
     {
+        star::core::logging::debug("Processing image as PNG regular image");
         actions::WritePngImageAction{data->imageExtent, data->imageFormat, data->path,
                                      actions::VulkanBufferSource{buffer}}();
     }
     else if (actions::IsPngMaskFormat(data->imageFormat))
     {
+        star::core::logging::debug("Writing image as PNG mask");
         actions::WritePngMaskAction{data->imageExtent, data->imageFormat, data->path,
                                     actions::VulkanBufferSource{buffer}}();
     }
     else if (actions::IsTiffFormat(data->imageFormat))
     {
+        star::core::logging::debug("Writing image as TIFF");
         actions::WriteTiffImageAction{data->imageExtent, data->imageFormat, data->path,
                                       actions::VulkanBufferSource{buffer}}();
     }
