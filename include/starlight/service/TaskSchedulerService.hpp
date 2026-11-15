@@ -2,7 +2,6 @@
 
 #include "InitParameters.hpp"
 #include "job/TaskManager.hpp"
-#include "job/worker/Worker.hpp"
 #include "starlight/command/task_scheduler/SubmitTask.hpp"
 #include "starlight/core/CommandBus.hpp"
 #include "starlight/core/WorkerPool.hpp"
@@ -15,6 +14,12 @@ using ListenForSubmitTask =
     star::policy::command::ListenFor<T, star::command::task_scheduler::SubmitTask,
                                      star::command::task_scheduler::submit_task::GetSubmitTaskCommandTypeName,
                                      &T::onSubmitTask>;
+
+template <typename T>
+using ListenForSubmitMultipleTasks =
+    star::policy::command::ListenFor<T, star::command::task_scheduler::SubmitMultipleTasks,
+                                     star::command::task_scheduler::submit_task::GetSubmitMultipleTasksCommandTypeName,
+                                     &T::onSubmitMultipleTasks>;
 
 class TaskSchedulerService
 {
@@ -36,6 +41,8 @@ class TaskSchedulerService
 
     void onSubmitTask(star::command::task_scheduler::SubmitTask &cmd);
 
+    void onSubmitMultipleTasks(star::command::task_scheduler::SubmitMultipleTasks &cmd);
+
     job::TaskManager &getTaskManager();
     const job::TaskManager &getTaskManager() const;
 
@@ -43,6 +50,7 @@ class TaskSchedulerService
     job::TaskManager *m_taskManager = nullptr;
     core::CommandBus *m_cmdBus = nullptr;
     ListenForSubmitTask<TaskSchedulerService> m_listenForSubmitTask;
+    ListenForSubmitMultipleTasks<TaskSchedulerService> m_listenForSubmitMultipleTasks;
 
     void initListeners(core::CommandBus &bus);
     void cleanupListeners(core::CommandBus &bus);

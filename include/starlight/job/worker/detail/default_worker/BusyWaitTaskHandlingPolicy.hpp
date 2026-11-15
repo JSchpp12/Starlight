@@ -6,13 +6,24 @@
 #include <boost/atomic/atomic.hpp>
 #include <boost/thread.hpp>
 
+#include <cstdint>
 #include <sstream>
+#include <string_view>
 
 namespace star::job::worker::default_worker
 {
 template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
 {
   public:
+    void setTaskTypeTag(uint16_t taskTypeTag) noexcept
+    {
+        m_taskTypeTag = taskTypeTag;
+    }
+
+    uint16_t getTaskTypeTag() const noexcept
+    {
+        return m_taskTypeTag;
+    }
     BusyWaitTaskHandlingPolicy()
         : m_waitForWorkToFinishBeforeExiting(false), m_shouldRun(std::make_shared<boost::atomic<bool>>())
     {
@@ -76,6 +87,7 @@ template <typename TTask, size_t TQueueSize> class BusyWaitTaskHandlingPolicy
     TaskContainer<complete_tasks::CompleteTask, 128> *m_completeMessages = nullptr;
     boost::thread thread;
     std::string m_workerName;
+    uint16_t m_taskTypeTag{0};
 
     void startThread()
     {

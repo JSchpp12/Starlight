@@ -4,6 +4,7 @@
 #include "starlight/core/Exceptions.hpp"
 
 #include <cassert>
+#include <cstdint>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
@@ -21,8 +22,11 @@ using CreateCompleteTaskFunction = std::optional<star::job::complete_tasks::Comp
 
 #define MAX_TASK_SIZE 128
 
+// Default inline capacity leaves room for the four function pointers, the
+// task-type tag, and the payload, so a default-constructed Task<> fits the
+// MAX_TASK_SIZE budget.
 template <size_t StorageBytes = MAX_TASK_SIZE - sizeof(ExecuteFunction) - sizeof(DestructorFunction) -
-                                sizeof(MovePayloadFunction) - sizeof(CreateCompleteTaskFunction) - sizeof(uint16_t) - 8,
+                                sizeof(MovePayloadFunction) - sizeof(CreateCompleteTaskFunction) - sizeof(uint16_t),
           size_t StorageAlign = alignof(std::max_align_t)>
 class Task
 {
@@ -53,11 +57,11 @@ class Task
             static_cast<PayloadType *>(data)->~PayloadType();
         }
 
-        //static void DefaultExecThunc(void *p) noexcept
+        // static void DefaultExecThunc(void *p) noexcept
         //{
-        //    auto *s = static_cast<PayloadType *>(p);
-        //    s->operator()();
-        //}
+        //     auto *s = static_cast<PayloadType *>(p);
+        //     s->operator()();
+        // }
         Builder &setPayload(const PayloadType &data)
         {
             m_hasData = true;
@@ -90,6 +94,12 @@ class Task
             m_createCompleteTaskFunction = completeTaskFunction;
             return *this;
         }
+        /// @brief Tag the task with the registry type id of the worker/task pool it belongs to.
+        Builder &setTypeTag(uint16_t typeTag)
+        {
+            m_taskTypeTag = typeTag;
+            return *this;
+        }
         Task<StorageBytes, StorageAlign> build()
         {
             static_assert(sizeof(PayloadType) <= StorageBytes, "Payload too large for job inline storage");
@@ -98,6 +108,11 @@ class Task
             if (!m_hasData)
             {
                 STAR_THROW("Data must be provided");
+            }
+
+            if (m_taskTypeTag == 0)
+            {
+                STAR_THROW("Task type tag must be provided");
             }
 
             if (!m_destroyPayloadFunction)
@@ -116,6 +131,7 @@ class Task
             task.m_destroyPayloadFunction = m_destroyPayloadFunction;
             task.m_movePayloadFunction = m_movePayloadFunction;
             task.m_createCompleteFunction = m_createCompleteTaskFunction;
+            task.m_taskTypeTag = m_taskTypeTag;
 
             return task;
         }
@@ -127,6 +143,7 @@ class Task
         CreateCompleteTaskFunction m_createCompleteTaskFunction = nullptr;
 
         bool m_hasData = false;
+        uint16_t m_taskTypeTag{0};
         PayloadType m_data;
     };
     Task() = default;
@@ -139,11 +156,13 @@ class Task
         m_movePayloadFunction = other.m_movePayloadFunction;
         m_destroyPayloadFunction = other.m_destroyPayloadFunction;
         m_createCompleteFunction = other.m_createCompleteFunction;
+        m_taskTypeTag = other.m_taskTypeTag;
 
         other.m_executeFunction = nullptr;
         other.m_destroyPayloadFunction = nullptr;
         other.m_movePayloadFunction = nullptr;
         other.m_createCompleteFunction = nullptr;
+        other.m_taskTypeTag = 0;
     }
     Task &operator=(Task &&other) noexcept
     {
@@ -156,6 +175,7 @@ class Task
             m_destroyPayloadFunction = other.m_destroyPayloadFunction;
             m_movePayloadFunction = other.m_movePayloadFunction;
             m_createCompleteFunction = other.m_createCompleteFunction;
+            m_taskTypeTag = other.m_taskTypeTag;
 
             if (m_movePayloadFunction)
                 m_movePayloadFunction(m_data, other.m_data);
@@ -164,6 +184,7 @@ class Task
             other.m_destroyPayloadFunction = nullptr;
             other.m_movePayloadFunction = nullptr;
             other.m_createCompleteFunction = nullptr;
+            other.m_taskTypeTag = 0;
         }
         return *this;
     }
@@ -202,6 +223,13 @@ class Task
         m_destroyPayloadFunction = nullptr;
         m_movePayloadFunction = nullptr;
         m_createCompleteFunction = nullptr;
+        m_taskTypeTag = 0;
+    }
+
+    /// @brief The worker/task-pool type tag this task must be submitted to.
+    [[nodiscard]] uint16_t getTaskTypeTag() const noexcept
+    {
+        return m_taskTypeTag;
     }
 
     /// Exposes the raw payload storage so worker policies can inspect tasks before executing them.
@@ -216,9 +244,12 @@ class Task
 
   private:
     alignas(StorageAlign) std::byte m_data[StorageBytes]{};
+    uint16_t m_taskTypeTag{0};
     ExecuteFunction m_executeFunction = nullptr;
     DestructorFunction m_destroyPayloadFunction = nullptr;
     MovePayloadFunction m_movePayloadFunction = nullptr;
     CreateCompleteTaskFunction m_createCompleteFunction = nullptr;
 };
+
+static_assert(sizeof(Task<>) <= MAX_TASK_SIZE, "Task<> must fit within the MAX_TASK_SIZE budget");
 } // namespace star::job::tasks

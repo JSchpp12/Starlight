@@ -9,6 +9,7 @@
 #include "starlight/util/io/PathResolver.hpp"
 
 #include <star_common/Handle.hpp>
+#include <star_common/HandleTypeRegistry.hpp>
 
 #include <filesystem>
 #include <future>
@@ -20,6 +21,13 @@
 namespace star::job::tasks::compile_shader
 {
 constexpr std::string_view CompileShaderTypeName = "star::job::tasks::compile_shader";
+
+/// @brief Registry id of the shader-compilation task pool, resolved once and cached.
+inline uint16_t GetCompileShaderTaskTypeTag()
+{
+    static const uint16_t id = star::common::HandleTypeRegistry::instance().registerType(CompileShaderTypeName);
+    return id;
+}
 
 /// Whether debug info is generated for compiled shaders by default. Derived
 /// from NDEBUG so debug builds opt in and release builds opt out.

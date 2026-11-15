@@ -26,8 +26,7 @@ void Execute(void *p)
         core::logging::log(boost::log::trivial::info, msg);
     }
 
-    CompileResult result = [&]() -> CompileResult
-    {
+    CompileResult result = [&]() -> CompileResult {
         // Resolve on the worker thread: the caller only had to hand over a
         // value copy of the resolver, never the IOService (which belongs to
         // the main thread).
@@ -79,6 +78,7 @@ CompileShaderTask Create(std::filesystem::path fileName, const star::Shader_Stag
                                          .shaderPromise = std::move(shaderPromise)})
         .setExecute(&Execute)
         .setCreateCompleteTaskFunction(&CreateComplete)
+        .setTypeTag(GetCompileShaderTaskTypeTag())
         .build();
 }
 } // namespace star::job::tasks::compile_shader

@@ -4,6 +4,8 @@
 #include "job/complete_tasks/CompleteTask.hpp"
 #include "job/tasks/Task.hpp"
 
+#include <star_common/HandleTypeRegistry.hpp>
+
 #include <boost/atomic.hpp>
 #include <vulkan/vulkan.hpp>
 
@@ -14,6 +16,13 @@
 namespace star::job::tasks::transfer
 {
 inline static constexpr std::string_view TransferTaskName = "stTP";
+
+/// @brief Registry id of the transfer task pool, resolved once and cached.
+inline uint16_t GetTransferTaskTypeTag()
+{
+    static const uint16_t id = star::common::HandleTypeRegistry::instance().registerType(TransferTaskName);
+    return id;
+}
 
 enum class TransferPriority
 {
@@ -39,7 +48,7 @@ struct TransferPayload
     ~TransferPayload() = default;
 };
 
-using TransferTask = star::job::tasks::Task<128, alignof(std::max_align_t)>;
+using TransferTask = star::job::tasks::Task<>;
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateTransferComplete(void *p);
 
@@ -47,12 +56,11 @@ void ExecuteTransferTask(void *p);
 
 inline TransferTask CreateTransferTask(TransferPayload payload)
 {
-    static_assert(sizeof(TransferPayload) <= 128, "TransferPayload exceeds inline task storage");
-
     return TransferTask::Builder<TransferPayload>()
         .setPayload(std::move(payload))
         .setExecute(&ExecuteTransferTask)
         .setCreateCompleteTaskFunction(&CreateTransferComplete)
+        .setTypeTag(GetTransferTaskTypeTag())
         .build();
 }
 } // namespace star::job::tasks::transfer

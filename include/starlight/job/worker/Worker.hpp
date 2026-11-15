@@ -5,6 +5,7 @@
 
 #include <boost/lockfree/stack.hpp>
 
+#include <cstdint>
 #include <memory>
 
 namespace star::job::worker
@@ -16,6 +17,8 @@ class Worker
     {
         virtual ~WorkerConcept() = default;
         virtual bool doIsTaskQueueFull(const void *task) const noexcept = 0;
+        virtual void doSetTaskTypeTag(uint16_t taskTypeTag) noexcept = 0;
+        virtual uint16_t doGetTaskTypeTag() const noexcept = 0;
         virtual void doCleanup() = 0;
         virtual void doQueueTask(void *task) = 0;
         virtual void doSetCompleteMessageCommunicationStructure(
@@ -58,6 +61,16 @@ class Worker
         return m_pimpl->doIsTaskQueueFull(task);
     }
 
+    uint16_t getTaskTypeTag() const noexcept
+    {
+        return m_pimpl->doGetTaskTypeTag();
+    }
+
+    void setTaskTypeTag(uint16_t taskTypeTag) noexcept
+    {
+        m_pimpl->doSetTaskTypeTag(taskTypeTag);
+    }
+
   private:
     template <typename TWorker> struct WorkerModel : public WorkerConcept
     {
@@ -82,6 +95,16 @@ class Worker
         bool doIsTaskQueueFull(const void *task) const noexcept override
         {
             return m_worker.isTaskQueueFull(task);
+        }
+
+        uint16_t doGetTaskTypeTag() const noexcept override
+        {
+            return m_worker.getTaskTypeTag();
+        }
+
+        void doSetTaskTypeTag(uint16_t taskTypeTag) noexcept override
+        {
+            m_worker.setTaskTypeTag(taskTypeTag);
         }
 
         void doSetCompleteMessageCommunicationStructure(

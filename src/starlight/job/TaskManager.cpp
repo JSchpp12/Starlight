@@ -29,6 +29,9 @@ Handle TaskManager::registerNewTaskType(std::string_view taskName) noexcept
 
 void TaskManager::registerWorker(worker::Worker newWorker, Handle &registeredTaskTypeHandle) noexcept
 {
+    // The pool is identified by the registration handle's type id; bind it to the
+    // worker so submission can reject tasks belonging to a different pool.
+    newWorker.setTaskTypeTag(registeredTaskTypeHandle.getType());
     newWorker.setCompleteMessageCommunicationStructure(m_completeTasks.get());
 
     m_workers[registeredTaskTypeHandle.getType()].emplace_back(std::move(newWorker));
