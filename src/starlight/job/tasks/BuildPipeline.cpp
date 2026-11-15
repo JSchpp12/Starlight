@@ -14,14 +14,12 @@ void ExecuteBuildPipeline(void *p)
 
     try
     {
-        star::StarPipeline built =
-            payload->data->provider.createPipeline(payload->data->device, payload->data->deps);
+        star::StarPipeline built = payload->data->provider.createPipeline(payload->data->device, payload->data->deps);
         payload->data->pipelinePromise.set_value(std::move(built));
     }
     catch (const std::exception &e)
     {
-        payload->data->pipelinePromise.set_value(
-            std::unexpected(star::core::ResourceCreationError{e.what()}));
+        payload->data->pipelinePromise.set_value(std::unexpected(star::core::ResourceCreationError{e.what()}));
     }
     catch (...)
     {
@@ -44,14 +42,15 @@ BuildPipelineTask CreateBuildPipeline(
     std::promise<star::core::device::manager::PendingResult<star::StarPipeline>> pipelinePromise)
 {
     return BuildPipelineTask::Builder<PipelineBuildPayload>()
-        .setPayload(PipelineBuildPayload{std::make_unique<PipelineData>(PipelineData{
-            .deps = std::move(buildDeps),
-            .provider = std::move(provider),
-            .device = device,
-            .handleID = handle.getID(),
-            .pipelinePromise = std::move(pipelinePromise)})})
+        .setPayload(PipelineBuildPayload{
+            std::make_unique<PipelineData>(PipelineData{.deps = std::move(buildDeps),
+                                                        .provider = std::move(provider),
+                                                        .device = device,
+                                                        .handleID = handle.getID(),
+                                                        .pipelinePromise = std::move(pipelinePromise)})})
         .setExecute(&ExecuteBuildPipeline)
         .setCreateCompleteTaskFunction(&CreateBuildComplete)
+        .setTypeTag(GetBuildPipelineTaskTypeTag())
         .build();
 }
 } // namespace star::job::tasks::build_pipeline

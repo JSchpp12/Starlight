@@ -4,6 +4,8 @@
 
 #include <star_common/IServiceCommand.hpp>
 
+#include <array>
+
 #include <string_view>
 
 namespace star::command::task_scheduler
@@ -14,6 +16,11 @@ inline constexpr const char *GetSubmitTaskCommandTypeName()
 {
     return "tsST";
 }
+
+inline constexpr const char *GetSubmitMultipleTasksCommandTypeName()
+{
+    return "tsSTs";
+}
 } // namespace submit_task
 
 struct SubmitTask : public common::IServiceCommand
@@ -23,17 +30,33 @@ struct SubmitTask : public common::IServiceCommand
         return submit_task::GetSubmitTaskCommandTypeName();
     }
 
-    SubmitTask(job::tasks::Task<128> task, std::string_view taskTypeName)
-        : common::IServiceCommand(), task(std::move(task)), taskTypeName(std::move(taskTypeName))
+    explicit SubmitTask(job::tasks::Task<> t) : common::IServiceCommand(), task({std::move(t)})
     {
     }
 
-    SubmitTask(job::tasks::Task<128> task, std::string_view taskTypeName, uint16_t type)
-        : common::IServiceCommand(type), task(std::move(task)), taskTypeName(std::move(taskTypeName))
-    {
-    }
-
-    job::tasks::Task<128> task;
-    std::string_view taskTypeName;
+    job::tasks::Task<> task;
 };
+
+struct SubmitMultipleTasks : public common::IServiceCommand
+{
+    static inline constexpr std::string_view GetUniqueTypeName()
+    {
+        return submit_task::GetSubmitMultipleTasksCommandTypeName();
+    }
+    static constexpr std::size_t k_max = 4;
+
+    bool add(job::tasks::Task<> t) noexcept
+    {
+        if (count < k_max)
+        {
+            tasks[count++] = std::move(t);
+            return true;
+        }
+        return false;
+    }
+
+    std::array<job::tasks::Task<>, k_max> tasks;
+    size_t count{0};
+};
+
 } // namespace star::command::task_scheduler

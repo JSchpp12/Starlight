@@ -3,6 +3,8 @@
 #include "BusyWaitTaskHandlingPolicy.hpp"
 #include "starlight/core/logging/LoggingFactory.hpp"
 
+#include <string_view>
+
 namespace star::job::worker::default_worker
 {
 template <typename TTask, size_t TQueueSize>

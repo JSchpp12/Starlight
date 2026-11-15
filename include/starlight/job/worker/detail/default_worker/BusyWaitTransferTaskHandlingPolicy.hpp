@@ -11,8 +11,10 @@
 #include <boost/atomic/atomic.hpp>
 #include <boost/thread.hpp>
 
+#include <cstdint>
 #include <queue>
 #include <sstream>
+#include <string_view>
 #include <variant>
 
 namespace star::job::worker::default_worker
@@ -20,6 +22,16 @@ namespace star::job::worker::default_worker
 template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
 {
   public:
+    void setTaskTypeTag(uint16_t taskTypeTag) noexcept
+    {
+        m_taskTypeTag = taskTypeTag;
+    }
+
+    uint16_t getTaskTypeTag() const noexcept
+    {
+        return m_taskTypeTag;
+    }
+
     using TransferTask = job::tasks::transfer::TransferTask;
     using TransferPayload = job::tasks::transfer::TransferPayload;
 
@@ -101,6 +113,7 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
     TaskContainer<complete_tasks::CompleteTask, 128> *m_completeMessages = nullptr;
     boost::thread thread;
     std::string m_workerName;
+    uint16_t m_taskTypeTag{0};
 
     std::shared_ptr<StarCommandPool> m_commandPool = nullptr;
     std::queue<std::unique_ptr<job::TransferManagerThread::ProcessRequestInfo>> m_processRequestInfos;

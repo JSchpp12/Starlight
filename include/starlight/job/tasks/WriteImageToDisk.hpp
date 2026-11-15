@@ -8,10 +8,11 @@
 #include "starlight/maker/buffer/MakeBuffer.hpp"
 #include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
-
 #include "StarBuffers/Buffer.hpp"
 
 #include <boost/atomic/atomic.hpp>
+
+#include <star_common/HandleTypeRegistry.hpp>
 
 #include <optional>
 
@@ -19,6 +20,13 @@ namespace star::job::tasks::write_image_to_disk
 {
 
 inline static constexpr std::string_view WriteImageTypeName = "star::job::tasks::write_image_to_disk";
+
+/// @brief Registry id of the image-writing task pool, resolved once and cached.
+inline uint16_t GetWriteImageTaskTypeTag()
+{
+    static const uint16_t id = star::common::HandleTypeRegistry::instance().registerType(WriteImageTypeName);
+    return id;
+}
 
 struct PoolOwnedWriteImagePayload
 {
@@ -58,7 +66,7 @@ struct DirectWriteImagePayload
     void operator()();
 };
 
-using WriteImageTask = star::job::tasks::Task<128, alignof(std::max_align_t)>;
+using WriteImageTask = star::job::tasks::Task<>;
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateComplete(void *p);
 
@@ -74,6 +82,7 @@ template <typename T> WriteImageTask Create(T payload)
         .setPayload(std::move(payload))
         .setCreateCompleteTaskFunction(&CreateComplete)
         .setExecute(&Execute<T>)
+        .setTypeTag(GetWriteImageTaskTypeTag())
         .build();
 }
 

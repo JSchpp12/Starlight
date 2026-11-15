@@ -2,9 +2,12 @@
 
 #include "BusyWaitTaskHandlingPolicy.hpp"
 
+#include <string_view>
+
 namespace star::job::worker::default_worker
 {
-template <typename TTask, size_t TQueueSize> class SpinWaitTaskHandlingPolicy : public BusyWaitTaskHandlingPolicy<TTask, TQueueSize>
+template <typename TTask, size_t TQueueSize>
+class SpinWaitTaskHandlingPolicy : public BusyWaitTaskHandlingPolicy<TTask, TQueueSize>
 {
   private:
     using Parent = BusyWaitTaskHandlingPolicy<TTask, TQueueSize>;

@@ -2,13 +2,13 @@
 
 namespace star::service
 {
-TaskSchedulerService::TaskSchedulerService() : m_listenForSubmitTask(*this)
+TaskSchedulerService::TaskSchedulerService() : m_listenForSubmitTask(*this), m_listenForSubmitMultipleTasks(*this)
 {
 }
 
 TaskSchedulerService::TaskSchedulerService(TaskSchedulerService &&other)
-    : m_taskManager(other.m_taskManager), m_cmdBus(other.m_cmdBus),
-      m_listenForSubmitTask(*this)
+    : m_taskManager(other.m_taskManager), m_cmdBus(other.m_cmdBus), m_listenForSubmitTask(*this),
+      m_listenForSubmitMultipleTasks(*this)
 {
     if (m_cmdBus != nullptr)
     {
@@ -62,7 +62,15 @@ void TaskSchedulerService::shutdown()
 
 void TaskSchedulerService::onSubmitTask(star::command::task_scheduler::SubmitTask &cmd)
 {
-    m_taskManager->submitTaskRoundRobin(std::move(cmd.task), cmd.taskTypeName);
+    m_taskManager->submitTaskRoundRobin(std::move(cmd.task));
+}
+
+void TaskSchedulerService::onSubmitMultipleTasks(star::command::task_scheduler::SubmitMultipleTasks &cmd)
+{
+    for (size_t i = 0; i < cmd.count; i++)
+    {
+        m_taskManager->submitTaskRoundRobin(std::move(cmd.tasks[i]));
+    }
 }
 
 job::TaskManager &TaskSchedulerService::getTaskManager()
@@ -78,10 +86,12 @@ const job::TaskManager &TaskSchedulerService::getTaskManager() const
 void TaskSchedulerService::initListeners(core::CommandBus &bus)
 {
     m_listenForSubmitTask.init(bus);
+    m_listenForSubmitMultipleTasks.init(bus);
 }
 
 void TaskSchedulerService::cleanupListeners(core::CommandBus &bus)
 {
     m_listenForSubmitTask.cleanup(bus);
+    m_listenForSubmitMultipleTasks.cleanup(bus);
 }
 } // namespace star::service

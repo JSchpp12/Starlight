@@ -8,12 +8,21 @@
 #include <future>
 #include <vulkan/vulkan.hpp>
 
+#include <star_common/HandleTypeRegistry.hpp>
+
 #include <memory>
 
 namespace star::job::tasks::build_pipeline
 {
 
 constexpr std::string_view BuildPipelineTaskName = "star::job::tasks::build_pipeline";
+
+/// @brief Registry id of the pipeline-building task pool, resolved once and cached.
+inline uint16_t GetBuildPipelineTaskTypeTag()
+{
+    static const uint16_t id = star::common::HandleTypeRegistry::instance().registerType(BuildPipelineTaskName);
+    return id;
+}
 
 struct PipelineData
 {

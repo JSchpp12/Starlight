@@ -5,6 +5,8 @@
 #include "starlight/core/logging/LoggingFactory.hpp"
 #include "starlight/util/io/PathResolver.hpp"
 
+#include <star_common/HandleTypeRegistry.hpp>
+
 #include <filesystem>
 #include <functional>
 #include <string_view>
@@ -13,6 +15,13 @@
 namespace star::job::tasks::io
 {
 inline static constexpr std::string_view IOTaskName = "star::job::tasks::io";
+
+/// @brief Registry id of the IO task pool, resolved once and cached.
+inline uint16_t GetIOTaskTypeTag()
+{
+    static const uint16_t id = star::common::HandleTypeRegistry::instance().registerType(IOTaskName);
+    return id;
+}
 
 static std::filesystem::path ResolveForIo(const star::io::PathResolver &pathResolver,
                                           const std::filesystem::path &candidate, star::io::PathKind kind,
@@ -80,7 +89,7 @@ template <class TFn> struct ReadPayload
     }
 };
 
-using IOTask = star::job::tasks::Task<128, alignof(std::max_align_t)>;
+using IOTask = star::job::tasks::Task<>;
 
 std::optional<star::job::complete_tasks::CompleteTask> CreateWriteTaskComplete(void *p);
 
@@ -101,6 +110,7 @@ template <class TFn> IOTask CreateWriteTask(WritePayload<TFn> writePayload)
     return IOTask::Builder<WritePayload<TFn>>()
         .setPayload(std::move(writePayload))
         .setExecute(&ExecuteWriteTask<TFn>)
+        .setTypeTag(GetIOTaskTypeTag())
         .build();
 }
 
@@ -109,6 +119,7 @@ template <class TFn> IOTask CreateReadTask(ReadPayload<TFn> readPayload)
     return IOTask::Builder<ReadPayload<TFn>>()
         .setPayload(std::move(readPayload))
         .setExecute(&ExecuteReadTask<TFn>)
+        .setTypeTag(GetIOTaskTypeTag())
         .build();
 }
 

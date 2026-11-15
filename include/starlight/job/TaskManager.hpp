@@ -3,6 +3,8 @@
 #include "FrameScheduler.hpp"
 #include "complete_tasks/CompleteTask.hpp"
 #include "job/worker/Worker.hpp"
+#include "starlight/core/Exceptions.hpp"
+#include "starlight/core/logging/LoggingFactory.hpp"
 
 #include <star_common/Handle.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
@@ -11,6 +13,7 @@
 
 #include <atomic>
 #include <memory>
+#include <sstream>
 #include <string_view>
 #include <typeindex>
 
@@ -19,7 +22,9 @@ namespace star::job
 class TaskManager
 {
   public:
-    TaskManager() : m_completeTasks(std::make_unique<job::TaskContainer<job::complete_tasks::CompleteTask, 128>>()){};
+    TaskManager()
+        : m_workers(), m_nextWorkerIndex(),
+          m_completeTasks(std::make_unique<job::TaskContainer<job::complete_tasks::CompleteTask, 128>>()) {};
     TaskManager(const TaskManager &) = delete;
     TaskManager &operator=(const TaskManager &) = delete;
     TaskManager(TaskManager &&) = default;
@@ -31,7 +36,7 @@ class TaskManager
 
     void registerWorker(worker::Worker newWorker, Handle &registeredTaskTypeHanle) noexcept;
 
-    void removeWorker(const Handle &worker); 
+    void removeWorker(const Handle &worker);
 
     void cleanup() noexcept;
 
@@ -55,11 +60,21 @@ class TaskManager
             STAR_THROW(oss.str());
         }
 
+        const uint16_t taskTag = newTask.getTaskTypeTag();
+        const uint16_t workerTag = worker->getTaskTypeTag();
+        if (taskTag != workerTag)
+        {
+            std::ostringstream oss;
+            oss << "Task type tag '" << taskTag << "' does not match worker tag '" << workerTag
+                << "' for registered task type: " << registeredTaskType.getType();
+            star::core::logging::error(oss.str());
+            STAR_THROW(oss.str());
+        }
+
         worker->queueTask(static_cast<void *>(&newTask));
     }
 
-    template <typename TTask>
-    bool getIsWorkerQueueFull(const TTask& task, const Handle& registeredTaskType)
+    template <typename TTask> bool getIsWorkerQueueFull(const TTask &task, const Handle &registeredTaskType)
     {
         const worker::Worker *worker = getWorker(registeredTaskType);
         if (worker == nullptr)
@@ -67,6 +82,16 @@ class TaskManager
             std::ostringstream oss;
             oss << "Failed to find corresponding worker for the task type provided: " << registeredTaskType.getType();
             STAR_THROW(oss.str());
+        }
+
+        if (task.getTaskTypeTag() != worker->getTaskTypeTag())
+        {
+            std::ostringstream oss;
+            oss << "Task type tag '" << task.getTaskTypeTag() << "' does not match worker tag '"
+                << worker->getTaskTypeTag() << "' for registered task type: " << registeredTaskType.getType()
+                << "; refusing the task";
+            star::core::logging::error(oss.str());
+            return true;
         }
 
         return worker->isTaskQueueFull(static_cast<const void *>(&task));
@@ -79,33 +104,23 @@ class TaskManager
         submitTask<TTask>(std::forward<TTask>(newTask), handle);
     }
 
-    /// <summary>
-    /// Submit a task to the next available worker in the pool for the given task type name, using round-robin
-    /// distribution
-    /// </summary>
-    template <typename TTask>
-    void submitTaskRoundRobin(TTask &&newTask, std::string_view taskName)
+    /// @brief  Submit a task to the next available worker in the pool identified by the task's own type tag, using
+    /// round-robin.
+    /// @tparam TTask
+    /// @param newTask
+    template <typename TTask> void submitTaskRoundRobin(TTask &&newTask)
     {
-        const uint16_t type = common::HandleTypeRegistry::instance().getTypeGuaranteedExist(taskName);
+        submitTaskRoundRobinByType(newTask.getTaskTypeTag(), std::forward<TTask>(newTask));
+    }
 
-        auto *pool = getWorkerPool(type);
-        if (pool == nullptr || pool->empty())
-        {
-            throw std::runtime_error("No workers registered for task type: " + std::string(taskName));
-        }
-
-        auto it = m_nextWorkerIndex.find(type);
-        if (it == m_nextWorkerIndex.end())
-        {
-            it = m_nextWorkerIndex.emplace(type, 0).first;
-        }
-
-        const size_t index = it->second;
-        it->second = (index + 1) % pool->size();
-
-        worker::Worker *worker = &pool->at(index);
-
-        worker->queueTask(static_cast<void *>(&newTask));
+    /// @brief Submit a task to the next available worker in the pool for the given task type name, using round-robin.
+    /// @tparam TTask
+    /// @param newTask
+    /// @param taskName
+    template <typename TTask> void submitTaskRoundRobin(TTask &&newTask, std::string_view taskName)
+    {
+        submitTaskRoundRobinByType(common::HandleTypeRegistry::instance().getTypeGuaranteedExist(taskName),
+                                   std::forward<TTask>(newTask));
     }
 
     job::TaskContainer<job::complete_tasks::CompleteTask, 128> *getCompleteMessages() noexcept
@@ -120,13 +135,44 @@ class TaskManager
 
   private:
     absl::flat_hash_map<uint16_t, std::vector<worker::Worker>> m_workers;
-
-    std::unique_ptr<job::TaskContainer<job::complete_tasks::CompleteTask, 128>> m_completeTasks = nullptr;
-
     absl::flat_hash_map<uint16_t, size_t> m_nextWorkerIndex;
+    std::unique_ptr<job::TaskContainer<job::complete_tasks::CompleteTask, 128>> m_completeTasks = nullptr;
 
     std::vector<worker::Worker> *getWorkerPool(const uint16_t &registeredType) noexcept;
 
     const std::vector<worker::Worker> *getWorkerPool(const uint16_t &registeredType) const noexcept;
+
+    template <typename TTask> void submitTaskRoundRobinByType(uint16_t type, TTask &&newTask)
+    {
+        auto *pool = getWorkerPool(type);
+        if (pool == nullptr || pool->empty())
+        {
+            std::ostringstream oss;
+            oss << "No workers registered for task type id: " << type;
+            STAR_THROW(oss.str());
+        }
+
+        auto it = m_nextWorkerIndex.find(type);
+        if (it == m_nextWorkerIndex.end())
+        {
+            it = m_nextWorkerIndex.emplace(type, 0).first;
+        }
+
+        const size_t index = it->second;
+        it->second = (index + 1) % pool->size();
+
+        worker::Worker *worker = &pool->at(index);
+
+        if (newTask.getTaskTypeTag() != worker->getTaskTypeTag())
+        {
+            std::ostringstream oss;
+            oss << "Task type tag '" << newTask.getTaskTypeTag() << "' does not match worker tag '"
+                << worker->getTaskTypeTag() << "' for task type id: " << type;
+            star::core::logging::error(oss.str());
+            STAR_THROW(oss.str());
+        }
+
+        worker->queueTask(static_cast<void *>(&newTask));
+    }
 };
 } // namespace star::job

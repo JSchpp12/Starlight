@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <concepts>
+#include <cstdint>
 #include <memory>
 
 namespace star::job::worker
@@ -19,6 +20,8 @@ concept ThreadFunctionPolicyLike =
         { threadPolicy.isTaskQueueFull(rawTask) } -> std::same_as<bool>;
         { threadPolicy.queueTask(rawTask) } -> std::same_as<void>;
         { threadPolicy.cleanup() } -> std::same_as<void>;
+        { threadPolicy.setTaskTypeTag(uint16_t{}) } -> std::same_as<void>;
+        { threadPolicy.getTaskTypeTag() } -> std::same_as<uint16_t>;
     };
 
 template <ThreadFunctionPolicyLike TThreadPolicy> class DefaultWorker
@@ -47,6 +50,16 @@ template <ThreadFunctionPolicyLike TThreadPolicy> class DefaultWorker
     bool isTaskQueueFull(const void *task) const noexcept
     {
         return m_threadPolicy.isTaskQueueFull(task);
+    }
+
+    uint16_t getTaskTypeTag() const noexcept
+    {
+        return m_threadPolicy.getTaskTypeTag();
+    }
+
+    void setTaskTypeTag(uint16_t taskTypeTag) noexcept
+    {
+        m_threadPolicy.setTaskTypeTag(taskTypeTag);
     }
 
     void setCompleteMessageCommunicationStructure(TaskContainer<complete_tasks::CompleteTask, 128> *completeMessages)
