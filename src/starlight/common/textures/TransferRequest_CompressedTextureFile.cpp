@@ -83,6 +83,8 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
         STAR_THROW(msg);
     }
 
+    const std::string name = std::filesystem::path(this->compressedTexture->getPathToFile()).filename().string();
+
     star::StarTextures::Texture builtTexture;
     const auto makeResult =
         star::maker::texture::MakeTexture(device)
@@ -103,7 +105,7 @@ std::unique_ptr<star::StarTextures::Texture> star::TransferRequest::CompressedTe
                     .setInitialLayout(vk::ImageLayout::eUndefined)
                     .setSamples(vk::SampleCountFlagBits::e1)
                     .setSharingMode(vk::SharingMode::eConcurrent),
-                "compresesd_texture")
+                name)
             .setBaseFormat(static_cast<vk::Format>(texture->vkFormat))
             .setMipmapLevels(texture->numLevels)
             .addViewInfo(vk::ImageViewCreateInfo()

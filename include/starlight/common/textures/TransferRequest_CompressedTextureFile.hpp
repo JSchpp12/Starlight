@@ -38,7 +38,5 @@ class CompressedTextureFile : public TransferRequest::Texture
     uint32_t graphicsQueueFamilyIndex;
     vk::PhysicalDeviceProperties deviceProperties;
     std::unique_ptr<SharedCompressedTexture> compressedTexture = nullptr;
-
-    static void getTextureInfo(const std::string &imagePath, int &width, int &height, int &channels);
 };
 } // namespace star::TransferRequest
