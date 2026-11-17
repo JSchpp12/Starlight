@@ -166,6 +166,8 @@ void DefaultRenderPhase::Builder::buildInto(DefaultRenderPhase &target)
     target.m_frameData->prepRender(m_context, m_context.frameTracker().getSetup().getNumFramesInFlight());
 
     target.m_renderingContext.targetResolution = m_context.getEngineResolution();
+    // Subscribe before the targets are registered, so every reallocation during registration refreshes the cache.
+    target.m_renderingContext.initListener(m_context.getEventBus());
     if (m_renderTargetsFactory)
         target.m_renderTargets = m_renderTargetsFactory(target.m_renderingContext);
     else
@@ -198,10 +200,13 @@ void DefaultRenderPhase::frameUpdate(common::IDeviceContext &context)
 
 void DefaultRenderPhase::cleanupRender(common::IDeviceContext &context)
 {
+    auto &c = static_cast<core::device::DeviceContext &>(context);
+
+    m_renderingContext.cleanupListener(c.getEventBus());
+
     // Clean the render groups first: this destroys every pipeline layout, which references the global set layout. Only
     // after the pipeline layouts are gone is it safe to release the global set layout owned by m_globalShaderInfo.
     RenderPhase::cleanupRender(context);
-    auto &c = static_cast<core::device::DeviceContext &>(context);
     if (m_globalShaderInfo)
     {
         m_globalShaderInfo->cleanupRender(c.getDevice());

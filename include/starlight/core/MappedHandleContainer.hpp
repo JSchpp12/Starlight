@@ -24,6 +24,11 @@ template <typename TData> class MappedHandleContainer : public HandleContainer<T
         return m_records.contains(handle);
     }
 
+    absl::flat_hash_map<Handle, TData, star::HandleHash> &getRecords()
+    {
+        return m_records;
+    }
+
     const absl::flat_hash_map<Handle, TData, star::HandleHash> &getRecords() const
     {
         return m_records;
