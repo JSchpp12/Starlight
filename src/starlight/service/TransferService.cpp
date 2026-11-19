@@ -9,7 +9,6 @@
 
 #include <future>
 #include <memory>
-#include <set>
 #include <variant>
 
 namespace star::service
@@ -120,12 +119,16 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
     const bool high = (priority == TransferPriority::High);
 
     auto applySync = [&](uint16_t id) -> star::core::graphics::SemaphoreInfo {
-        StarSemaphore *s =
-            (id == 0) ? (high ? &m_workerSemaphores[1] : &m_workerSemaphores[0]) : &m_workerSemaphores[id + 1];
-        ++s->signalValue;
-        payload->request->workSignalWhenDone = {.signalValue = s->signalValue,
-                                                             .semaphore = s->vkSemaphore};
-        return star::core::graphics::SemaphoreInfo{.signalValue = s->signalValue, .semaphore = s->vkSemaphore};
+        const size_t index = (id == 0) ? (high ? 1 : 0) : static_cast<size_t>(id + 1);
+        auto *record = m_graphicsManagers->semaphoreManager->get(m_workerSemaphores[index]);
+        assert(record != nullptr && "Transfer worker semaphore is not registered with the semaphore manager");
+        assert(record->isTimelineSemaphore() && "Transfer worker semaphore must be a timeline semaphore");
+
+        // The manager record carries the last value allocated to this worker's timeline; the next submission signals
+        // the following value.
+        const uint64_t signalValue = ++record->timelineValue.value();
+        payload->request->workSignalWhenDone = {.signalValue = signalValue, .semaphore = record->semaphore};
+        return star::core::graphics::SemaphoreInfo{.signalValue = signalValue, .semaphore = record->semaphore};
     };
 
     // High priority -> dedicated worker 0.
@@ -148,18 +151,16 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
 
     auto tryWorker = [&](uint16_t id) -> std::optional<star::command::transfer::SubmitTransferResult> {
         const Handle h = transferWorkerHandle(id);
-        if (!m_taskManager->getIsWorkerQueueFull(task, h))
-        {
-            auto sync = applySync(id);
-            m_taskManager->submitTask(std::move(task), h);
-            return star::command::transfer::SubmitTransferResult{.semaphore =
-                                                                     StarSemaphore{sync.semaphore, sync.signalValue},
-                                                                 .queueFamilyIndex = m_workerQueueFamilyIndices[id],
-                                                                 .workerId = id};
-        }
-        return std::nullopt;
-    };
+        if (m_taskManager->getIsWorkerQueueFull(task, h))
+            return std::nullopt;
 
+        const auto sync = applySync(id);
+        m_taskManager->submitTask(std::move(task), h);
+        return star::command::transfer::SubmitTransferResult{.semaphore =
+                                                                 StarSemaphore{sync.semaphore, sync.signalValue},
+                                                             .queueFamilyIndex = m_workerQueueFamilyIndices[id],
+                                                             .workerId = id};
+    };
     if (auto result = tryWorker(initialWorkerId))
         return *result;
 
@@ -203,10 +204,10 @@ void TransferService::onSubmitTexture(star::command::transfer::SubmitTextureTran
     const Handle image =
         m_graphicsManagers->imageManager.submit(core::device::manager::ImageRequest{texturePromise.get_future()});
 
-    auto interThreadRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        job::TransferManagerThread::InterThreadRequest{
-            .data = job::TransferManagerThread::TextureTransferData{
-                .request = std::move(cmd.request), .slot = std::move(texturePromise)},
+    auto interThreadRequest =
+        std::make_unique<job::TransferManagerThread::InterThreadRequest>(job::TransferManagerThread::InterThreadRequest{
+            .data = job::TransferManagerThread::TextureTransferData{.request = std::move(cmd.request),
+                                                                    .slot = std::move(texturePromise)},
         });
     const auto result = submitTransferTask(
         CreateTransferTask(TransferPayload{TransferPriority::Standard, std::move(interThreadRequest)}),
@@ -228,10 +229,10 @@ void TransferService::onSubmitBuffer(star::command::transfer::SubmitBufferTransf
     const Handle buffer =
         m_graphicsManagers->bufferManager.submit(core::device::manager::BufferRequest{bufferPromise.get_future()});
 
-    auto interThreadRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        job::TransferManagerThread::InterThreadRequest{
-            .data = job::TransferManagerThread::BufferTransferData{
-                .request = std::move(cmd.request), .destination = std::move(bufferPromise)},
+    auto interThreadRequest =
+        std::make_unique<job::TransferManagerThread::InterThreadRequest>(job::TransferManagerThread::InterThreadRequest{
+            .data = job::TransferManagerThread::BufferTransferData{.request = std::move(cmd.request),
+                                                                   .destination = std::move(bufferPromise)},
         });
     const auto result = submitTransferTask(
         CreateTransferTask(TransferPayload{cmd.priority, std::move(interThreadRequest)}), cmd.priority);
@@ -325,17 +326,18 @@ Handle TransferService::transferWorkerHandle(uint16_t workerIndex) const noexcep
 void TransferService::initSemaphores()
 {
     // One semaphore per worker plus one: worker 0 uses [0] for standard and [1] for
-    // high-priority submissions; worker N uses [N + 1] (see applySync in onSubmitTransfer).
+    // high-priority submissions; worker N uses [N + 1] (see TransferService::applySync).
     const size_t numWorkers = m_taskManager->getNumOfWorkersForType(transferWorkerHandle(0));
     m_workerSemaphores.resize(numWorkers + 1);
 
-    for (size_t i{0}; i < m_workerSemaphores.size(); i++)
+    for (auto &handle : m_workerSemaphores)
     {
-        const auto nS =
+        handle =
             m_graphicsManagers->semaphoreManager->submit(star::core::device::manager::SemaphoreRequest(uint64_t{0}));
-        const auto *r = m_graphicsManagers->semaphoreManager->get(nS);
-        m_workerSemaphores[i] =
-            star::StarSemaphore{.vkSemaphore = r->semaphore, .signalValue = r->timelineValue.value()};
+
+        const auto *record = m_graphicsManagers->semaphoreManager->get(handle);
+        assert(record != nullptr && record->isTimelineSemaphore() &&
+               "TransferService requires timeline semaphores from the semaphore manager");
     }
 }
 
