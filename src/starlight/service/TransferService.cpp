@@ -123,7 +123,7 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
         StarSemaphore *s =
             (id == 0) ? (high ? &m_workerSemaphores[1] : &m_workerSemaphores[0]) : &m_workerSemaphores[id + 1];
         ++s->signalValue;
-        payload->request->workSyncInfo.workSignalWhenDone = {.signalValue = s->signalValue,
+        payload->request->workSignalWhenDone = {.signalValue = s->signalValue,
                                                              .semaphore = s->vkSemaphore};
         return star::core::graphics::SemaphoreInfo{.signalValue = s->signalValue, .semaphore = s->vkSemaphore};
     };
@@ -199,15 +199,15 @@ void TransferService::onSubmitTexture(star::command::transfer::SubmitTextureTran
     assert(m_graphicsManagers && m_taskManager && "TransferService not initialized");
     assert(cmd.request != nullptr && "SubmitTextureTransfer requires a transfer request");
 
-    // The Image manager owns the texture from here on: its record holds a future the transfer worker fills with the
-    // created texture (or the exception that explains why it failed). No ManagerRenderResource record is allocated for
-    // it.
     std::promise<core::device::manager::PendingResult<star::StarTextures::Texture>> texturePromise{};
     const Handle image =
         m_graphicsManagers->imageManager.submit(core::device::manager::ImageRequest{texturePromise.get_future()});
 
     auto interThreadRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        nullptr, std::move(cmd.request), std::move(texturePromise));
+        job::TransferManagerThread::InterThreadRequest{
+            .data = job::TransferManagerThread::TextureTransferData{
+                .request = std::move(cmd.request), .slot = std::move(texturePromise)},
+        });
     const auto result = submitTransferTask(
         CreateTransferTask(TransferPayload{TransferPriority::Standard, std::move(interThreadRequest)}),
         TransferPriority::Standard);
@@ -229,7 +229,10 @@ void TransferService::onSubmitBuffer(star::command::transfer::SubmitBufferTransf
         m_graphicsManagers->bufferManager.submit(core::device::manager::BufferRequest{bufferPromise.get_future()});
 
     auto interThreadRequest = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        nullptr, std::move(cmd.request), std::move(bufferPromise));
+        job::TransferManagerThread::InterThreadRequest{
+            .data = job::TransferManagerThread::BufferTransferData{
+                .request = std::move(cmd.request), .destination = std::move(bufferPromise)},
+        });
     const auto result = submitTransferTask(
         CreateTransferTask(TransferPayload{cmd.priority, std::move(interThreadRequest)}), cmd.priority);
 

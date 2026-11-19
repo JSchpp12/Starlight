@@ -15,7 +15,8 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
                                          const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                          ProcessRequestInfo &processInfo, BufferTransferData &requestData,
                                          boost::atomic<bool> *gpuDoneSignalMain,
-                                         core::graphics::GPUWorkSyncInfo &syncInfo)
+                                         const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
+                                         const core::graphics::SemaphoreInfo &workSignalWhenDone)
 {
     auto &newBufferRequest = *requestData.request;
 
@@ -53,14 +54,15 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
 
     {
         const auto signalInfo = vk::SemaphoreSubmitInfo()
-                                    .setSemaphore(syncInfo.workSignalWhenDone.semaphore)
-                                    .setValue(syncInfo.workSignalWhenDone.signalValue)
+                                    .setSemaphore(workSignalWhenDone.semaphore)
+                                    .setValue(workSignalWhenDone.signalValue)
                                     .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
+        const uint8_t waitCount = workWaitOn.has_value() ? workWaitOn->count : 0;
         std::array<vk::SemaphoreSubmitInfo, 2> waitInfos{};
-        for (uint8_t i = 0; i < syncInfo.workWaitOnCount; ++i)
+        for (uint8_t i = 0; i < waitCount; ++i)
         {
-            const auto &wait = syncInfo.workWaitOn[i];
+            const auto &wait = workWaitOn->waits[i];
             waitInfos[i].setSemaphore(wait.semaphore).setValue(wait.signalValue).setStageMask(wait.where);
         }
 
@@ -68,7 +70,7 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
 
         const auto submitInfo = vk::SubmitInfo2()
                                     .setPWaitSemaphoreInfos(waitInfos.data())
-                                    .setWaitSemaphoreInfoCount(syncInfo.workWaitOnCount)
+                                    .setWaitSemaphoreInfoCount(waitCount)
                                     .setPCommandBufferInfos(&cbInfo)
                                     .setCommandBufferInfoCount(1)
                                     .setPSignalSemaphoreInfos(&signalInfo)
@@ -105,7 +107,8 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
                                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                           ProcessRequestInfo &processInfo, TextureTransferData &requestData,
                                           boost::atomic<bool> *gpuDoneSignalToMain,
-                                          core::graphics::GPUWorkSyncInfo &syncInfo)
+                                          const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
+                                          const core::graphics::SemaphoreInfo &workSignalWhenDone)
 {
     auto &newTextureRequest = *requestData.request;
 
@@ -134,14 +137,15 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
 
     {
         const auto signalInfo = vk::SemaphoreSubmitInfo()
-                                    .setSemaphore(syncInfo.workSignalWhenDone.semaphore)
-                                    .setValue(syncInfo.workSignalWhenDone.signalValue)
+                                    .setSemaphore(workSignalWhenDone.semaphore)
+                                    .setValue(workSignalWhenDone.signalValue)
                                     .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
+        const uint8_t waitCount = workWaitOn.has_value() ? workWaitOn->count : 0;
         std::array<vk::SemaphoreSubmitInfo, 2> waitInfos{};
-        for (uint8_t i = 0; i < syncInfo.workWaitOnCount; ++i)
+        for (uint8_t i = 0; i < waitCount; ++i)
         {
-            const auto &wait = syncInfo.workWaitOn[i];
+            const auto &wait = workWaitOn->waits[i];
             waitInfos[i].setSemaphore(wait.semaphore).setValue(wait.signalValue).setStageMask(wait.where);
         }
 
@@ -149,7 +153,7 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
 
         const auto submitInfo = vk::SubmitInfo2()
                                     .setPWaitSemaphoreInfos(waitInfos.data())
-                                    .setWaitSemaphoreInfoCount(syncInfo.workWaitOnCount)
+                                    .setWaitSemaphoreInfoCount(waitCount)
                                     .setPCommandBufferInfos(&cbInfo)
                                     .setCommandBufferInfoCount(1)
                                     .setPSignalSemaphoreInfos(&signalInfo)

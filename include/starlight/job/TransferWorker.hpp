@@ -16,6 +16,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
+#include <optional>
 #include <queue>
 #include <variant>
 #include <vector>
@@ -45,57 +46,22 @@ class TransferManagerThread
     /// @brief One of the two transfer paths a request can describe.
     using TransferData = std::variant<BufferTransferData, TextureTransferData>;
 
+    /// @brief One transfer submission, aggregate-initialized by the submitter.
+    /// @details workWaitOn is the caller's optional list of submissions to wait on; workSignalWhenDone is stamped by
+    /// TransferService before dispatch. Legacy ManagerRenderResource buffers also pass the completion flag; manager-owned
+    /// buffers and textures publish through their slot and leave gpuDoneNotificationToMain null.
     struct InterThreadRequest
     {
-        core::graphics::GPUWorkSyncInfo workSyncInfo;
-        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
         TransferData data;
-
-        InterThreadRequest() = default;
-
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
-                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           std::unique_ptr<StarBuffers::Buffer> &resultingBuffer)
-            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              data(BufferTransferData{std::move(bufferTransferRequest), &resultingBuffer})
-        {
-        }
-
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
-                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
-                           core::graphics::GPUWorkSyncInfo workSyncInfo)
-            : workSyncInfo(std::move(workSyncInfo)), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              data(BufferTransferData{std::move(bufferTransferRequest), &resultingBuffer})
-        {
-        }
-
-        /// @brief Manager-owned buffer: the worker publishes through the buffer-manager slot.
-        /// @details No ManagerRenderResource record and no completion flag exist; the Pending future is the readiness
-        /// signal, so gpuDoneNotificationToMain may be null.
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
-                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           BufferTransferPromise bufferSlot)
-            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              data(BufferTransferData{std::move(bufferTransferRequest), std::move(bufferSlot)})
-        {
-        }
-
-        /// @brief Manager-owned texture: the worker publishes through the request's image-manager slot.
-        /// @details No ManagerRenderResource record and no completion flag exist; the Pending future is the readiness
-        /// signal, so gpuDoneNotificationToMain may be null.
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
-                           std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
-                           TextureTransferPromise textureSlot)
-            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              data(TextureTransferData{std::move(textureTransferRequest), std::move(textureSlot)})
-        {
-        }
+        std::optional<core::graphics::WorkWaitInfo> workWaitOn;
+        core::graphics::SemaphoreInfo workSignalWhenDone;
+        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
 
         void reset()
         {
+            workWaitOn.reset();
+            workSignalWhenDone = {};
             gpuDoneNotificationToMain = nullptr;
-            workSyncInfo = core::graphics::GPUWorkSyncInfo{};
             data = BufferTransferData{};
         }
     };
@@ -140,14 +106,18 @@ class TransferManagerThread
                              const vk::PhysicalDeviceProperties &deviceProperties,
                              const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                              ProcessRequestInfo &processInfo, BufferTransferData &requestData,
-                             boost::atomic<bool> *gpuDoneSignalMain, core::graphics::GPUWorkSyncInfo &syncInfo);
+                             boost::atomic<bool> *gpuDoneSignalMain,
+                             const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
+                             const core::graphics::SemaphoreInfo &workSignalWhenDone);
 
     /// @brief Create the texture described by a texture transfer request and publish it into its slot.
     static void CreateTexture(core::device::StarDevice &device, StarQueue &queue,
                               const vk::PhysicalDeviceProperties &deviceProperties,
                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                               ProcessRequestInfo &processInfo, TextureTransferData &requestData,
-                              boost::atomic<bool> *gpuDoneSignalToMain, core::graphics::GPUWorkSyncInfo &syncInfo);
+                              boost::atomic<bool> *gpuDoneSignalToMain,
+                              const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
+                              const core::graphics::SemaphoreInfo &workSignalWhenDone);
 
     static void CheckForCleanups(vk::Device device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
 

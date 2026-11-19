@@ -231,7 +231,8 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
 
                 job::TransferManagerThread::CreateBuffer(
                     device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
-                    *workingInfo, *bufferData, request.gpuDoneNotificationToMain, request.workSyncInfo);
+                    *workingInfo, *bufferData, request.gpuDoneNotificationToMain, request.workWaitOn,
+                    request.workSignalWhenDone);
             }
             else if (auto *textureData = std::get_if<job::TransferManagerThread::TextureTransferData>(&request.data))
             {
@@ -244,7 +245,8 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
 
                 job::TransferManagerThread::CreateTexture(
                     device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
-                    *workingInfo, *textureData, request.gpuDoneNotificationToMain, request.workSyncInfo);
+                    *workingInfo, *textureData, request.gpuDoneNotificationToMain, request.workWaitOn,
+                    request.workSignalWhenDone);
             }
         }
         catch (const std::exception &e)

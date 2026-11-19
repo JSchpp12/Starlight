@@ -94,12 +94,7 @@ class CommandBufferContainer
         CPURecordingWaitContainer cpuRecordingWaits;
         setup::RenderResourceSetup renderResourceSetup;
 
-        /// @brief Run every registered wait, clear consumed ones, and report failed and pending resources.
-        /// @details Failed resources' one-time Vulkan waits are erased so no wait on a timeline that will never
-        /// signal reaches submission. Pending conditions are retained by the container for a later frame.
         [[nodiscard]] CPURecordingWaitContainer::Result runCPURecordingWaits();
-        /// @brief Begin and end an empty recording for the given frame-in-flight slot.
-        /// @details Used when a readiness wait fails: the pass still submits so group semaphores stay valid.
         void recordEmpty(uint8_t frameInFlightIndex);
 
         /// @brief Adds a definition prepared by CommandOrderService and returns its stable id.

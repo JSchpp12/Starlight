@@ -21,18 +21,14 @@ struct SemaphoreInfo
     vk::PipelineStageFlags2 where{vk::PipelineStageFlagBits2::eAllCommands};
 };
 
-struct GPUWorkSyncInfo
+/// @brief Up to two submissions a transfer must wait on before its own work may execute.
+struct WorkWaitInfo
 {
-    // A resource update needs at most two dependencies: the prior transfer write and the graphics/compute submission
-    // still consuming the resource.
-    std::array<SemaphoreInfo, 2> workWaitOn{};
-    uint8_t workWaitOnCount{0};
-    SemaphoreInfo workSignalWhenDone;
+    std::array<SemaphoreInfo, 2> waits{};
+    uint8_t count{0};
 };
 
 /// @brief Completion timeline of the submission that will execute the commands currently being recorded.
-/// @details Resolved once per render phase per frame from the phase's command-buffer pass registration. The gate lets
-/// object setup releases wait for the recording submission.
 struct RecordingSubmissionInfo
 {
     SemaphoreInfo gate;

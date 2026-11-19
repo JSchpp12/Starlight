@@ -51,7 +51,11 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
     newFull.cpuWorkDoneByTransferThread.store(false);
 
     auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &newFull.cpuWorkDoneByTransferThread, std::move(newRequest), newFull.resource);
+        job::TransferManagerThread::InterThreadRequest{
+            .data = job::TransferManagerThread::BufferTransferData{
+                .request = std::move(newRequest), .destination = &newFull.resource},
+            .gpuDoneNotificationToMain = &newFull.cpuWorkDoneByTransferThread,
+        });
 
     command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
         job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::Standard, std::move(request)})};
@@ -83,18 +87,18 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     }
     container.cpuWorkDoneByTransferThread.store(false);
 
-    star::core::graphics::GPUWorkSyncInfo syncInfo;
-    const auto addWait = [&syncInfo](const star::core::graphics::SemaphoreInfo &info) {
+    star::core::graphics::WorkWaitInfo workWaitOn;
+    const auto addWait = [&workWaitOn](const star::core::graphics::SemaphoreInfo &info) {
         if (info.semaphore == VK_NULL_HANDLE)
             return;
 
         const auto existing =
-            std::find_if(syncInfo.workWaitOn.begin(), syncInfo.workWaitOn.begin() + syncInfo.workWaitOnCount,
+            std::find_if(workWaitOn.waits.begin(), workWaitOn.waits.begin() + workWaitOn.count,
                          [&info](const auto &wait) { return wait.semaphore == info.semaphore; });
-        if (existing == syncInfo.workWaitOn.begin() + syncInfo.workWaitOnCount)
+        if (existing == workWaitOn.waits.begin() + workWaitOn.count)
         {
-            assert(syncInfo.workWaitOnCount < syncInfo.workWaitOn.size() && "Too many transfer wait dependencies");
-            syncInfo.workWaitOn[syncInfo.workWaitOnCount++] = info;
+            assert(workWaitOn.count < workWaitOn.waits.size() && "Too many transfer wait dependencies");
+            workWaitOn.waits[workWaitOn.count++] = info;
         }
         else if (existing->signalValue < info.signalValue)
         {
@@ -110,7 +114,12 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
         addWait(waitInfo.value());
 
     auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        &container.cpuWorkDoneByTransferThread, std::move(newRequest), container.resource, std::move(syncInfo));
+        job::TransferManagerThread::InterThreadRequest{
+            .data = job::TransferManagerThread::BufferTransferData{
+                .request = std::move(newRequest), .destination = &container.resource},
+            .workWaitOn = std::move(workWaitOn),
+            .gpuDoneNotificationToMain = &container.cpuWorkDoneByTransferThread,
+        });
     command::transfer::SubmitTransferTask cmd{job::tasks::transfer::CreateTransferTask(
         job::tasks::transfer::TransferPayload{job::tasks::transfer::TransferPriority::Standard, std::move(request)})};
 

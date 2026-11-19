@@ -161,9 +161,6 @@ void MaterialService::onMakeMaterial(command::material::MakeMaterial &cmd)
     if (prepareSucceeded && !cmd.conditions.empty() && !star::WaitForReadiness(cmd.conditions, kInitialGateTimeout))
     {
         // The initial material has no previous resource to keep, and MakeMaterial's reply has no failure channel.
-        // Release what the definition owns and fail loudly rather than record a definition whose dependencies are
-        // unready.
-
         STAR_THROW("MaterialService: initial material readiness gate failed; aborting");
     }
 
