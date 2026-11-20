@@ -28,33 +28,43 @@ star::CommandBufferContainer::CompleteRequest::CompleteRequest(
       beforeBufferSubmissionCallback(beforeSubmissionCallback),
       overrideBufferSubmissionCallback(overrideBufferSubmissionCallback) {};
 
+void star::CommandBufferContainer::prepRender(core::device::manager::Semaphore &semaphoreManager)
+{
+    for (auto &buffer : allBuffers)
+    {
+        if (buffer != nullptr)
+            buffer->oneTimeWaitSemaphoreInfo.prepRender(semaphoreManager);
+    }
+}
+
 vk::Semaphore star::CommandBufferContainer::CompleteRequest::submitCommandBuffer(
     core::device::StarDevice &device, const common::FrameTracker &frameTracker,
     absl::flat_hash_map<star::Queue_Type, StarQueue *> &queues, std::vector<vk::Semaphore> *beforeSemaphores)
 {
     assert(!cpuRecordingWaits.hasUnrun() && "CPU recording waits must run before the command buffer is submitted");
 
-    auto &waits = scratch.data;
-    waits.clear();
-    oneTimeWaitSemaphoreInfo.giveMeOneTimeSemaphoreWaitInfo(waits);
-
     if (overrideBufferSubmissionCallback.has_value())
     {
         StarQueue *queue{queues[commandBuffer->getType()]};
         assert(queue != nullptr);
 
-        return overrideBufferSubmissionCallback.value()(
-            *commandBuffer, frameTracker, beforeSemaphores,
-            std::span<const StarCommandBuffer::Data>{waits.data(), waits.size()}, *queue);
+        const auto waits = oneTimeWaitSemaphoreInfo.drain();
+        const auto result =
+            overrideBufferSubmissionCallback.value()(*commandBuffer, frameTracker, beforeSemaphores, waits, *queue);
+        oneTimeWaitSemaphoreInfo.clearOutput();
+        return result;
     }
 
     if (beforeSemaphores != nullptr && beforeSemaphores->front() != VK_NULL_HANDLE)
-        waits.push_back(StarCommandBuffer::Data{beforeSemaphores->front(), waitStage, std::nullopt});
+        oneTimeWaitSemaphoreInfo.manual_add_data(StarCommandBuffer::Data{
+            .semaphore = beforeSemaphores->front(), .waitPoints = waitStage, .signaledValue = std::nullopt});
+
+    const auto waits = oneTimeWaitSemaphoreInfo.drain();
 
     commandBuffer->submit(frameTracker.getCurrent().getFrameInFlightIndex(),
-                          queues[commandBuffer->getType()]->getVulkanQueue(),
-                          std::span<const StarCommandBuffer::Data>{waits.data(), waits.size()});
+                          queues[commandBuffer->getType()]->getVulkanQueue(), waits);
 
+    oneTimeWaitSemaphoreInfo.clearOutput();
     return commandBuffer->getCompleteSemaphores().at(frameTracker.getCurrent().getFrameInFlightIndex());
 }
 
@@ -165,7 +175,7 @@ star::setup::RenderResourceSetup::DefinitionId star::CommandBufferContainer::Com
 }
 
 void star::CommandBufferContainer::CompleteRequest::abandon(setup::RenderResourceSetup::DefinitionId id,
-                                                            const core::graphics::SemaphoreInfo &gate)
+                                                            const core::graphics::SemaphoreSyncPoint &gate)
 {
     renderResourceSetup.abandon(id, gate);
 }
@@ -174,11 +184,8 @@ star::CPURecordingWaitContainer::Result star::CommandBufferContainer::CompleteRe
 {
     auto result = cpuRecordingWaits.runAll();
 
-    // A failed transfer never signals its timeline, so drop its GPU wait. The pass still submits an empty
-    // recording so group semaphores stay valid.
-    for (const Handle &resource : result.failed)
-        oneTimeWaitSemaphoreInfo.erase(resource);
-
+    // A failed transfer host-signals its allocated timeline value, so the GPU wait stays valid; the pass still
+    // submits an empty recording so group semaphores stay valid.
     if (!result.failed.empty())
         core::logging::error("CPU recording readiness failed for a transfer resource; skipping this pass's recording");
 
@@ -202,7 +209,7 @@ bool star::CommandBufferContainer::CompleteRequest::hasWork() const
 }
 
 void star::CommandBufferContainer::CompleteRequest::recordSetup(vk::CommandBuffer commandBuffer,
-                                                                const core::graphics::SemaphoreInfo &recordingGate)
+                                                                const core::graphics::SemaphoreSyncPoint &recordingGate)
 {
     renderResourceSetup.record(commandBuffer, recordingGate);
 }

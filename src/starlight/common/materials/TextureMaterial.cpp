@@ -5,8 +5,8 @@
 #include "StarShaderInfo.hpp"
 #include "TransferRequest_CompressedTextureFile.hpp"
 #include "TransferRequest_TextureFile.hpp"
-#include "core/device/managers/Image.hpp"
 #include "core/device/DeviceContext.hpp"
+#include "core/device/managers/Image.hpp"
 #include "core/helper/queue/QueueHelpers.hpp"
 #include "starlight/command/transfer/SubmitTextureTransfer.hpp"
 #include "starlight/core/transfer/RegisterTransferWait.hpp"
@@ -100,7 +100,7 @@ void star::TextureMaterial::preloadTexture(core::device::DeviceContext &context)
     const auto submission = transfer.getReply().get();
 
     m_textureHandle = submission.image;
-    m_textureTransfer = submission.semaphore;
+    m_textureTransferSemaphore = submission.semaphoreRecord;
 }
 
 void star::TextureMaterial::prepRender(core::device::DeviceContext &context, uint8_t numFramesInFlight,
@@ -111,7 +111,7 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, uin
         m_resourceHandle = m_textureHandle;
 
     if (m_textureHandle.isInitialized())
-        registerTextureTransferWait(context, commandBuffer, m_textureHandle, m_textureTransfer,
+        registerTextureTransferWait(context, commandBuffer, m_textureHandle, m_textureTransferSemaphore,
                                     m_textureTransferStages);
 
     StarMaterial::prepRender(context, numFramesInFlight, frameBuilder, commandBuffer);
@@ -119,15 +119,15 @@ void star::TextureMaterial::prepRender(core::device::DeviceContext &context, uin
 
 void star::TextureMaterial::registerTextureTransferWait(core::device::DeviceContext &context,
                                                         star::Handle commandBuffer, star::Handle textureHandle,
-                                                        const star::StarSemaphore &transferSemaphore,
+                                                        star::Handle transferSemaphoreRecord,
                                                         vk::PipelineStageFlags waitStages)
 {
     // A preloaded texture has no transfer of its own, so there is nothing to wait on.
-    if (!textureHandle.isInitialized() || transferSemaphore.vkSemaphore == VK_NULL_HANDLE)
+    if (!textureHandle.isInitialized() || !transferSemaphoreRecord.isInitialized())
         return;
 
-    star::core::transfer::RegisterTransferWait(context, commandBuffer, textureHandle, transferSemaphore.vkSemaphore,
-                                               transferSemaphore.signalValue, waitStages);
+    star::core::transfer::RegisterTransferWait(context, commandBuffer, textureHandle, transferSemaphoreRecord,
+                                               waitStages);
 }
 
 std::unique_ptr<star::StarShaderInfo> star::TextureMaterial::buildShaderInfo(core::device::DeviceContext &context,

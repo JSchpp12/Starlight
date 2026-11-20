@@ -12,6 +12,8 @@ set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(STARLIGHT_BUILD_TESTS "Build starlight unit tests" OFF)
+
 if (APPLE)
     set(CMAKE_MACOSX_RPATH 1)
 elseif(WIN32)
@@ -264,6 +266,7 @@ set(${STARLIGHT_NAME}_SOURCE
     "src/starlight/common/helpers/FileHelpers.cpp"
     "src/starlight/internals/CommandBufferContainer.cpp"
     "src/starlight/internals/CPURecordingWaitContainer.cpp"
+    "src/starlight/internals/OneTimeCommandBufferSynchronizer.cpp"
     "src/starlight/job/worker/Worker.cpp"
     "src/starlight/job/worker/DefaultWorker.cpp"
     "src/starlight/job/worker/detail/default_worker/BusyWaitTaskHandlingPolicy.cpp"
@@ -533,6 +536,7 @@ set(${STARLIGHT_NAME}_HEADERS
     "include/starlight/systems/StarRenderGroup.hpp"
     "include/starlight/internals/CommandBufferContainer.hpp"
     "include/starlight/internals/CPURecordingWaitContainer.hpp"
+    "include/starlight/internals/OneTimeCommandBufferSynchronizer.hpp"
     "include/starlight/virtual/StarEntity.hpp"
     "include/starlight/wrappers/graphics/StarTextures/FormatInfo.hpp"
     "include/starlight/wrappers/graphics/StarTextures/Texture.hpp"
@@ -816,3 +820,8 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/starlightConfigVersion.cmake
        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/starlight
 )
+
+if(STARLIGHT_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

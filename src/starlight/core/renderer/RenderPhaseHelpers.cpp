@@ -10,7 +10,9 @@
 #include "starlight/core/renderer/EdgeSubmission.hpp"
 #include "starlight/wrappers/graphics/StarCommandBuffer.hpp"
 #include "starlight/wrappers/graphics/StarQueue.hpp"
+#include <starlight/core/CommandBus.hpp>
 
+#include <star_common/FrameTracker.hpp>
 #include <star_common/HandleTypeRegistry.hpp>
 
 #include <cassert>
@@ -124,8 +126,8 @@ makeEdgeAwareSubmissionOverride(const star::core::CommandBus *cmdBus, const star
     return overrideFn;
 }
 
-std::optional<star::core::graphics::SemaphoreInfo> GetNeighborConsumerSyncInfo(const star::core::CommandBus &cmdBus,
-                                                                               const star::Handle &myCommandBuffer)
+std::optional<star::core::graphics::SemaphoreSyncPoint> GetNeighborConsumerSyncInfo(
+    const star::core::CommandBus &cmdBus, const star::Handle &myCommandBuffer)
 {
     auto cmd = star::command_order::GetPassInfo{myCommandBuffer};
     cmdBus.submit(cmd);
@@ -145,7 +147,7 @@ std::optional<star::core::graphics::SemaphoreInfo> GetNeighborConsumerSyncInfo(c
                        "Neighbor last submission records was not provided by command_order service. This indicates a "
                        "bug in that service.");
 
-                return star::core::graphics::SemaphoreInfo{
+                return star::core::graphics::SemaphoreSyncPoint{
                     .signalValue = nr.currentSignalValue,
                     .semaphore = nr.signaledSemaphore,
                 };

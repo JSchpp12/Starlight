@@ -4,8 +4,6 @@
 #include "starlight/command/material/MakeMaterial.hpp"
 #include "starlight/command/material/SetMaterialResource.hpp"
 #include "starlight/core/WorkerPool.hpp"
-#include "starlight/core/transfer/ReadinessCondition.hpp"
-#include "starlight/core/transfer/ReadinessFailurePolicy.hpp"
 #include "starlight/event/MaterialSwapCommitted.hpp"
 #include "starlight/event/PassCPURecordingWaitResolved.hpp"
 #include "starlight/event/StartOfNextFrame.hpp"
@@ -49,7 +47,7 @@ struct SwapTransaction
     Handle newResource;
     Handle previousResource;
     command::material::SwapFailureHandler onFailure{nullptr};
-    std::optional<core::graphics::SemaphoreInfo> gate;
+    std::optional<core::graphics::SemaphoreSyncPoint> gate;
     setup::RenderResourceSetup::DefinitionId definition{setup::RenderResourceSetup::InvalidDefinitionId};
     std::vector<Handle> conditionResources;
     bool sawResult{false};
@@ -98,14 +96,14 @@ class MaterialService
         bool isImage{false};
         /// @brief Recording-submission gate captured at swap time. Empty when the pass could not report one, in
         /// which case the entry is held for the teardown backstop.
-        std::optional<core::graphics::SemaphoreInfo> gate;
+        std::optional<core::graphics::SemaphoreSyncPoint> gate;
     };
 
     void initListeners(core::CommandBus &bus);
     void initListeners(common::EventBus &bus);
     void cleanupListeners(core::CommandBus &bus);
     void cleanupListeners(common::EventBus &bus);
-    void queueRetire(const Handle &resource, std::optional<core::graphics::SemaphoreInfo> gate);
+    void queueRetire(const Handle &resource, std::optional<core::graphics::SemaphoreSyncPoint> gate);
     /// @brief Build and bind the new resource, then retire the previous one.
     void commitSwap(SwapTransaction &transaction);
     /// @brief Append a committed swap to the reusable dispatch buffer.

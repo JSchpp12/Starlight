@@ -15,7 +15,7 @@ RecordingSubmissionInfo GetRecordingSubmissionInfo(core::device::DeviceContext &
     const auto &reply = info.getReply().get();
 
     return RecordingSubmissionInfo{
-        .gate = SemaphoreInfo{.signalValue = reply.toSignalValue, .semaphore = reply.signaledSemaphore},
+        .gate = SemaphoreSyncPoint{.signalValue = reply.toSignalValue, .semaphore = reply.signaledSemaphore},
     };
 }
 } // namespace star::core::graphics

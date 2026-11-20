@@ -48,36 +48,35 @@ template <typename TTransferType, typename TDataType> class Controller
         return m_resourceHandles[index];
     }
 
-    /// Call any frame updates. Returns true if the controller submitted an update
-    std::pair<bool, const star::StarSemaphore *> submitUpdateIfNeeded(
+    std::pair<bool, star::Handle> submitUpdateIfNeeded(
         core::device::DeviceContext &context, uint8_t frameInFlightIndex,
-        std::optional<star::core::graphics::SemaphoreInfo> transferGPUWorkWaitOnSyncInfo = std::nullopt)
+        std::optional<star::core::graphics::SemaphoreSyncPoint> transferGPUWorkWaitOnSyncInfo = std::nullopt)
     {
         const size_t fi = static_cast<size_t>(context.frameTracker().getCurrent().getFrameInFlightIndex());
 
         assert(fi < m_resourceHandles.size() && m_resourceHandles[fi].isInitialized() &&
                "Resources must be properly prepared before use");
         if (!doesFrameInFlightDataNeedUpdated(context.frameTracker()))
-            return std::make_pair(false, nullptr);
+            return std::make_pair(false, star::Handle{});
 
         if (hasAlreadyBeenUpdatedThisFrame(context.frameTracker().getCurrent().getGlobalFrameCounter()))
-            return std::make_pair(true, &getSemaphore(context, fi));
+            return std::make_pair(true, getSemaphoreRecord(context, fi));
 
         m_lastFrameUpdate = context.frameTracker().getCurrent().getGlobalFrameCounter();
         context.getManagerRenderResource().updateRequest(
             context.getDeviceID(), createTransferRequest(context, frameInFlightIndex),
             m_resourceHandles[frameInFlightIndex], std::move(transferGPUWorkWaitOnSyncInfo));
-        return std::make_pair(true, &getSemaphore(context, fi));
+        return std::make_pair(true, getSemaphoreRecord(context, fi));
     }
 
-    const star::StarSemaphore &getSemaphore(star::core::device::DeviceContext &context, size_t frameInFlightIndex) const
+    star::Handle getSemaphoreRecord(star::core::device::DeviceContext &context, size_t frameInFlightIndex) const
     {
         const auto *record = context.getManagerRenderResource().get<TDataType>(context.getDeviceID(),
                                                                                m_resourceHandles[frameInFlightIndex]);
 
         assert(record != nullptr && "Failed to get record from managerRenderResource during request for semaphore");
 
-        return record->gpuWorkDoneSignaledInfo;
+        return record->gpuWorkDoneSignal.has_value() ? record->gpuWorkDoneSignal->record : star::Handle{};
     }
 
   protected:

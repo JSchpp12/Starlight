@@ -1,6 +1,8 @@
 #include "job/TransferWorker.hpp"
 
 #include "core/Exceptions.hpp"
+
+#include "device/StarDevice.hpp"
 #include "logging/LoggingFactory.hpp"
 
 #include <sstream>
@@ -16,7 +18,7 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
                                          ProcessRequestInfo &processInfo, BufferTransferData &requestData,
                                          boost::atomic<bool> *gpuDoneSignalMain,
                                          const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
-                                         const core::graphics::SemaphoreInfo &workSignalWhenDone)
+                                         const core::graphics::SemaphoreSyncPoint &workSignalWhenDone)
 {
     auto &newBufferRequest = *requestData.request;
 
@@ -88,7 +90,7 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
         }
     }
 
-    processInfo.commandBuffer->markSubmitted();
+    processInfo.submitted = true;
 
     // The Buffer manager owns the buffer from here on: publish it into the pending record the caller registered.
     if (auto *bufferSlot = std::get_if<BufferTransferPromise>(&requestData.destination))
@@ -108,7 +110,7 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
                                           ProcessRequestInfo &processInfo, TextureTransferData &requestData,
                                           boost::atomic<bool> *gpuDoneSignalToMain,
                                           const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
-                                          const core::graphics::SemaphoreInfo &workSignalWhenDone)
+                                          const core::graphics::SemaphoreSyncPoint &workSignalWhenDone)
 {
     auto &newTextureRequest = *requestData.request;
 
@@ -171,7 +173,7 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
         }
     }
 
-    processInfo.commandBuffer->markSubmitted();
+    processInfo.submitted = true;
 
     // The Image manager owns the texture from here on: publish it into the pending record the caller registered.
     requestData.slot.set_value(
@@ -183,6 +185,33 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
     // Staging, when used, is worker-owned and fence-freed; no caller adopts it.
     if (transferSrcBuffer)
         processInfo.setInProcessDeps(std::move(transferSrcBuffer));
+}
+
+void TransferManagerThread::SignalFailedSubmission(core::device::StarDevice &device, StarQueue &queue,
+                                                   const core::graphics::SemaphoreSyncPoint &signalInfo)
+{
+    if (signalInfo.semaphore == VK_NULL_HANDLE || signalInfo.signalValue == 0)
+        return;
+
+    core::logging::warning("Transfer submission failed; signaling timeline value ", signalInfo.signalValue,
+                           " so chained transfers are not blocked");
+
+    try
+    {
+        // Host signals are not ordered against device submissions. Drain this worker's queue so every signal already
+        // submitted to the timeline has been applied before advancing past the failed value.
+        queue.getVulkanQueue().waitIdle();
+
+        device.getVulkanDevice().signalSemaphore(
+            vk::SemaphoreSignalInfo().setSemaphore(signalInfo.semaphore).setValue(signalInfo.signalValue));
+    }
+    catch (const std::exception &e)
+    {
+        std::ostringstream oss;
+        oss << "Failed to signal timeline value " << signalInfo.signalValue
+            << " after a transfer failure; chained transfers will block: " << e.what();
+        STAR_THROW(oss.str());
+    }
 }
 
 void TransferManagerThread::PublishFailure(InterThreadRequest &request, const core::ResourceCreationError &error)

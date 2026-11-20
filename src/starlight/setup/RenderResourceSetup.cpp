@@ -67,7 +67,7 @@ void RecordSteps(const std::vector<RenderResourceSetup::Step> &steps, vk::Comman
 }
 
 void StampRelease(RenderResourceSetup::PendingRelease &release,
-                  const core::graphics::SemaphoreInfo &recordingSubmissionGate)
+                  const core::graphics::SemaphoreSyncPoint &recordingSubmissionGate)
 {
     if (!release.gateOnRecordingSubmission)
         return;
@@ -109,8 +109,7 @@ void RenderResourceSetup::ComputeDispatch::record(vk::CommandBuffer commandBuffe
     assert(context != nullptr && "ComputeDispatch requires a DeviceContext to resolve its pipeline");
 
     const auto *record = context->getPipelineManager().get(pipeline);
-    assert(record != nullptr && record->isReady() &&
-           "ComputeDispatch::record called before the pipeline was ready");
+    assert(record != nullptr && record->isReady() && "ComputeDispatch::record called before the pipeline was ready");
     const vk::Pipeline builtPipeline = record->builtPipeline.getVulkanPipeline();
     assert(builtPipeline != VK_NULL_HANDLE && "ComputeDispatch resolved a null pipeline");
 
@@ -149,8 +148,8 @@ bool RenderResourceSetup::ResourcePrepDefinition::hasWork() const noexcept
            release.timelineSemaphore != VK_NULL_HANDLE;
 }
 
-bool RenderResourceSetup::ResourcePrepDefinition::record(vk::CommandBuffer commandBuffer,
-                                                         const core::graphics::SemaphoreInfo &recordingSubmissionGate)
+bool RenderResourceSetup::ResourcePrepDefinition::record(
+    vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreSyncPoint &recordingSubmissionGate)
 {
     if (recorded)
         return true;
@@ -224,7 +223,7 @@ RenderResourceSetup::DefinitionId RenderResourceSetup::add(ResourcePrepDefinitio
     return id;
 }
 
-void RenderResourceSetup::abandon(DefinitionId id, const core::graphics::SemaphoreInfo &gate)
+void RenderResourceSetup::abandon(DefinitionId id, const core::graphics::SemaphoreSyncPoint &gate)
 {
     if (id == InvalidDefinitionId)
         return;
@@ -251,7 +250,7 @@ bool RenderResourceSetup::isDone() const noexcept
 }
 
 void RenderResourceSetup::record(vk::CommandBuffer commandBuffer,
-                                 const core::graphics::SemaphoreInfo &recordingSubmissionGate)
+                                 const core::graphics::SemaphoreSyncPoint &recordingSubmissionGate)
 {
     for (auto &definition : definitions)
         (void)definition.record(commandBuffer, recordingSubmissionGate);

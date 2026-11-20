@@ -6,7 +6,6 @@
 #include "starlight/command/transfer/SubmitTextureTransfer.hpp"
 #include "starlight/command/transfer/SubmitTransferTask.hpp"
 #include "starlight/core/WorkerPool.hpp"
-#include "starlight/core/device/StarDevice.hpp"
 #include "starlight/core/device/managers/GraphicsContainer.hpp"
 #include "starlight/job/TaskManager.hpp"
 #include "starlight/job/worker/DefaultWorker.hpp"
@@ -18,9 +17,13 @@
 
 #include <absl/container/flat_hash_map.h>
 
-#include <optional>
 #include <sstream>
 #include <vector>
+
+namespace star::core::device
+{
+class StarDevice;
+}
 
 namespace star::service
 {
@@ -206,15 +209,6 @@ class TransferService
     /// @brief Route a transfer task to a worker and return the submission's sync/staging information.
     star::command::transfer::SubmitTransferResult submitTransferTask(job::tasks::transfer::TransferTask task,
                                                                      job::tasks::transfer::TransferPriority priority);
-
-    /// @brief Allocate the next signal value on the target worker's timeline and stamp it into the request.
-    star::core::graphics::SemaphoreInfo applySync(job::TransferManagerThread::InterThreadRequest &request,
-                                                  bool highPriority, uint16_t workerId);
-
-    /// @brief Queue the task on `workerId` if its queue has room, allocating the signal value only on success.
-    std::optional<star::command::transfer::SubmitTransferResult> tryWorker(
-        job::tasks::transfer::TransferTask &task, job::tasks::transfer::TransferPayload &payload, bool highPriority,
-        uint16_t workerId);
 
     void cleanupListeners(star::core::CommandBus &cmdBus);
 

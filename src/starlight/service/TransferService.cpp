@@ -3,13 +3,14 @@
 #include "core/device/managers/Image.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "starlight/core/Exceptions.hpp"
+#include "starlight/core/device/StarDevice.hpp"
 #include "starlight/event/GetQueue.hpp"
 
 #include <star_common/HandleTypeRegistry.hpp>
 
 #include <future>
 #include <memory>
-#include <variant>
+#include <utility>
 
 namespace star::service
 {
@@ -118,7 +119,7 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
     auto *payload = static_cast<TransferPayload *>(task.getPayload());
     const bool high = (priority == TransferPriority::High);
 
-    auto applySync = [&](uint16_t id) -> star::core::graphics::SemaphoreInfo {
+    auto applySync = [&](uint16_t id) -> std::pair<core::graphics::SemaphoreSyncPoint, Handle> {
         const size_t index = (id == 0) ? (high ? 1 : 0) : static_cast<size_t>(id + 1);
         auto *record = m_graphicsManagers->semaphoreManager->get(m_workerSemaphores[index]);
         assert(record != nullptr && "Transfer worker semaphore is not registered with the semaphore manager");
@@ -127,20 +128,21 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
         // The manager record carries the last value allocated to this worker's timeline; the next submission signals
         // the following value.
         const uint64_t signalValue = ++record->timelineValue.value();
-        payload->request->workSignalWhenDone = {.signalValue = signalValue, .semaphore = record->semaphore};
-        return star::core::graphics::SemaphoreInfo{.signalValue = signalValue, .semaphore = record->semaphore};
+        core::graphics::SemaphoreSyncPoint signal{.signalValue = signalValue, .semaphore = record->semaphore};
+        payload->request->workSignalWhenDone = signal;
+        return {signal, m_workerSemaphores[index]};
     };
 
     // High priority -> dedicated worker 0.
     if (high)
     {
-        auto sync = applySync(0);
+        const auto [signal, semaphoreRecord] = applySync(0);
 
         m_taskManager->submitTask(std::move(task), transferWorkerHandle(0));
-        return star::command::transfer::SubmitTransferResult{
-            .semaphore = {.vkSemaphore = sync.semaphore, .signalValue = sync.signalValue},
-            .queueFamilyIndex = m_workerQueueFamilyIndices[0],
-            .workerId = uint16_t{0}};
+        return star::command::transfer::SubmitTransferResult{.semaphore = signal,
+                                                             .semaphoreRecord = semaphoreRecord,
+                                                             .queueFamilyIndex = m_workerQueueFamilyIndices[0],
+                                                             .workerId = uint16_t{0}};
     }
 
     // Standard: round-robin across 1..N (or worker 0 if only one worker exists).
@@ -154,10 +156,10 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
         if (m_taskManager->getIsWorkerQueueFull(task, h))
             return std::nullopt;
 
-        const auto sync = applySync(id);
+        const auto [signal, semaphoreRecord] = applySync(id);
         m_taskManager->submitTask(std::move(task), h);
-        return star::command::transfer::SubmitTransferResult{.semaphore =
-                                                                 StarSemaphore{sync.semaphore, sync.signalValue},
+        return star::command::transfer::SubmitTransferResult{.semaphore = signal,
+                                                             .semaphoreRecord = semaphoreRecord,
                                                              .queueFamilyIndex = m_workerQueueFamilyIndices[id],
                                                              .workerId = id};
     };
@@ -177,12 +179,12 @@ star::command::transfer::SubmitTransferResult TransferService::submitTransferTas
     }
 
     // All standard workers full -> fall back to worker 0 (blocks there; its loop drains HP first).
-    auto sync = applySync(0);
+    const auto [signal, semaphoreRecord] = applySync(0);
     m_taskManager->submitTask(std::move(task), transferWorkerHandle(uint16_t{0}));
-    return star::command::transfer::SubmitTransferResult{
-        .semaphore = StarSemaphore{.vkSemaphore = sync.semaphore, .signalValue = sync.signalValue},
-        .queueFamilyIndex = m_workerQueueFamilyIndices[0],
-        .workerId = uint16_t{0}};
+    return star::command::transfer::SubmitTransferResult{.semaphore = signal,
+                                                         .semaphoreRecord = semaphoreRecord,
+                                                         .queueFamilyIndex = m_workerQueueFamilyIndices[0],
+                                                         .workerId = uint16_t{0}};
 }
 
 void TransferService::onSubmitTransfer(star::command::transfer::SubmitTransferTask &cmd)
@@ -213,7 +215,7 @@ void TransferService::onSubmitTexture(star::command::transfer::SubmitTextureTran
         CreateTransferTask(TransferPayload{TransferPriority::Standard, std::move(interThreadRequest)}),
         TransferPriority::Standard);
 
-    cmd.getReply().set({.image = image, .semaphore = result.semaphore});
+    cmd.getReply().set({.image = image, .semaphore = result.semaphore, .semaphoreRecord = result.semaphoreRecord});
 }
 
 void TransferService::onSubmitBuffer(star::command::transfer::SubmitBufferTransfer &cmd)
@@ -237,7 +239,7 @@ void TransferService::onSubmitBuffer(star::command::transfer::SubmitBufferTransf
     const auto result = submitTransferTask(
         CreateTransferTask(TransferPayload{cmd.priority, std::move(interThreadRequest)}), cmd.priority);
 
-    cmd.getReply().set({.buffer = buffer, .semaphore = result.semaphore});
+    cmd.getReply().set({.buffer = buffer, .semaphore = result.semaphore, .semaphoreRecord = result.semaphoreRecord});
 }
 
 void TransferService::dispatchCreateWorkersFromConfig()
@@ -326,7 +328,7 @@ Handle TransferService::transferWorkerHandle(uint16_t workerIndex) const noexcep
 void TransferService::initSemaphores()
 {
     // One semaphore per worker plus one: worker 0 uses [0] for standard and [1] for
-    // high-priority submissions; worker N uses [N + 1] (see TransferService::applySync).
+    // high-priority submissions; worker N uses [N + 1] (see the applySync helper in submitTransferTask).
     const size_t numWorkers = m_taskManager->getNumOfWorkersForType(transferWorkerHandle(0));
     m_workerSemaphores.resize(numWorkers + 1);
 

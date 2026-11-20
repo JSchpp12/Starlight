@@ -45,11 +45,11 @@ void star::BumpMaterial::prepRender(core::device::DeviceContext &context, uint8_
         const auto submission = transfer.getReply().get();
 
         m_bumpMap = submission.image;
-        m_bumpMapTransfer = submission.semaphore;
+        m_bumpMapTransferRecord = submission.semaphoreRecord;
     }
 
     if (m_bumpMap.isInitialized())
-        registerTextureTransferWait(context, commandBuffer, m_bumpMap, m_bumpMapTransfer);
+        registerTextureTransferWait(context, commandBuffer, m_bumpMap, m_bumpMapTransferRecord);
 
     TextureMaterial::prepRender(context, numFramesInFlight, frameBuilder, commandBuffer);
 }

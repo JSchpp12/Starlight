@@ -1,6 +1,6 @@
 #pragma once
 
-#include "starlight/wrappers/graphics/StarSemaphore.hpp"
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "starlight/wrappers/graphics/StarTextures/Texture.hpp"
 
 #include <star_common/Handle.hpp>
@@ -28,7 +28,7 @@ struct InUseResourceInformation
     GatheredSemaphoreInfo timelineSemaphoreForCopyDone;
     vk::Buffer buffer{VK_NULL_HANDLE};
     vk::Semaphore *binarySemaphoreForCopyDone{nullptr};
-    star::StarSemaphore *targetTextureReadySemaphore{nullptr};
+    star::core::graphics::SemaphoreSyncPoint *targetTextureReadySemaphore{nullptr};
     vk::Queue queueToUse{VK_NULL_HANDLE};
 };
 } // namespace star::service::detail::screen_capture::common

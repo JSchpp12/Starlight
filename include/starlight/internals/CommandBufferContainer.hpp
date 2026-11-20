@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MappedHandleContainer.hpp"
+#include "OneTimeCommandBufferSynchronizer.hpp"
 #include "StarCommandBuffer.hpp"
 #include "device/StarDevice.hpp"
 #include "device/managers/Queue.hpp"
@@ -22,63 +23,16 @@
 
 namespace star
 {
+namespace core::device::manager
+{
+class Semaphore;
+}
+
 class CommandBufferContainer
 {
   public:
-    class SemaphoreInfo
-    {
-      public:
-        SemaphoreInfo()
-        {
-            m_semaphores.reserve(16);
-        }
-
-        void insert(const Handle &handle, vk::Semaphore semaphore, vk::PipelineStageFlags waitPoints,
-                    std::optional<uint64_t> signaledValue = std::nullopt)
-        {
-            if (m_semaphores.contains(handle))
-            {
-                m_semaphores[handle].waitPoints |= waitPoints;
-            }
-            else
-            {
-                m_semaphores[handle] = StarCommandBuffer::Data{.semaphore = std::move(semaphore),
-                                                               .waitPoints = std::move(waitPoints),
-                                                               .signaledValue = std::move(signaledValue)};
-            }
-        }
-
-        void giveMeOneTimeSemaphoreWaitInfo(boost::container::small_vector<StarCommandBuffer::Data, 8> &waitData)
-        {
-            for (auto &semaphoreInfo : m_semaphores)
-            {
-                waitData.push_back(semaphoreInfo.second);
-            }
-
-            m_semaphores.clear();
-        }
-
-        void erase(const Handle &handle)
-        {
-            m_semaphores.erase(handle);
-        }
-
-        void clear()
-        {
-            m_semaphores.clear();
-        }
-
-      private:
-        std::unordered_map<Handle, StarCommandBuffer::Data, star::HandleHash> m_semaphores;
-    };
-
     struct CompleteRequest
     {
-        struct PerFrameScratchData
-        {
-            boost::container::small_vector<StarCommandBuffer::Data, 8> data;
-        };
-
         std::function<void(StarCommandBuffer &, const common::FrameTracker &, const uint64_t &)> recordBufferCallback;
         std::unique_ptr<StarCommandBuffer> commandBuffer;
         Queue_Type type;
@@ -88,8 +42,7 @@ class CommandBufferContainer
         Command_Buffer_Order order;
         std::optional<std::function<void(const int &)>> beforeBufferSubmissionCallback;
         std::optional<StarCommandBuffer::SubmissionOverride> overrideBufferSubmissionCallback;
-        SemaphoreInfo oneTimeWaitSemaphoreInfo;
-        PerFrameScratchData scratch;
+        OneTimeCommandBufferSynchronizer oneTimeWaitSemaphoreInfo;
         /// @brief Host-side waits this pass must pass before it records.
         CPURecordingWaitContainer cpuRecordingWaits;
         setup::RenderResourceSetup renderResourceSetup;
@@ -100,10 +53,10 @@ class CommandBufferContainer
         /// @brief Adds a definition prepared by CommandOrderService and returns its stable id.
         setup::RenderResourceSetup::DefinitionId add(setup::RenderResourceSetup::ResourcePrepDefinition definition);
         /// @brief Abandon an unrecorded definition after a rolled-back swap.
-        void abandon(setup::RenderResourceSetup::DefinitionId id, const core::graphics::SemaphoreInfo &gate);
+        void abandon(setup::RenderResourceSetup::DefinitionId id, const core::graphics::SemaphoreSyncPoint &gate);
         [[nodiscard]] bool isDone() const;
         [[nodiscard]] bool hasWork() const;
-        void recordSetup(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingGate);
+        void recordSetup(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreSyncPoint &recordingGate);
         void pollSetupReleases(core::device::DeviceContext &context);
         void cleanupSetup(core::device::DeviceContext &context);
 
@@ -123,6 +76,10 @@ class CommandBufferContainer
     };
 
     CommandBufferContainer(core::device::StarDevice &device, const uint8_t &numImagesInFlight);
+
+    /// @brief Resolve every registered one-time wait for the coming submissions.
+    /// @details Called by ManagerCommandBuffer each frame before any buffer is submitted.
+    void prepRender(core::device::manager::Semaphore &semaphoreManager);
 
     void cleanup(core::device::StarDevice &device);
     /// @brief The result of a pass's CPU recording waits.

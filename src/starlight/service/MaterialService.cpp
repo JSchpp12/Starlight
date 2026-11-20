@@ -168,8 +168,8 @@ void MaterialService::onMakeMaterial(command::material::MakeMaterial &cmd)
     {
         // The pass must not submit its timeline waits until these transfer resources are CPU-published.
         for (const auto &wait : cmd.waits)
-            core::transfer::RegisterTransferWait(*m_context, cmd.commandBuffer, wait.key, wait.semaphore.vkSemaphore,
-                                                 wait.semaphore.signalValue, wait.stages);
+            core::transfer::RegisterTransferWait(*m_context, cmd.commandBuffer, wait.key, wait.semaphoreRecord,
+                                                 wait.stages);
 
         auto &record = m_context->getManagerCommandBuffer().m_manager.get(cmd.commandBuffer);
         // Initial material setup has no rollback transaction; the pass's one-shot setup owns the definition.
@@ -256,7 +256,7 @@ void MaterialService::onSetMaterialResource(command::material::SetMaterialResour
     for (const auto &condition : cmd.incoming.readiness)
         conditionResources.push_back(condition.resource);
 
-    std::optional<core::graphics::SemaphoreInfo> gate;
+    std::optional<core::graphics::SemaphoreSyncPoint> gate;
     if (pass.isInitialized())
     {
         const auto recordingInfo = core::graphics::GetRecordingSubmissionInfo(*m_context, pass);
@@ -428,7 +428,7 @@ void MaterialService::RollbackSwap(MaterialService &service, SwapTransaction &tr
     {
         service.m_context->getManagerCommandBuffer()
             .m_manager.get(transaction.pass)
-            .abandon(transaction.definition, transaction.gate.value_or(core::graphics::SemaphoreInfo{}));
+            .abandon(transaction.definition, transaction.gate.value_or(core::graphics::SemaphoreSyncPoint{}));
     }
 
     if (transaction.newResource.isInitialized())
@@ -462,7 +462,7 @@ void MaterialService::finalizeTransactions()
     }
 }
 
-void MaterialService::queueRetire(const Handle &resource, std::optional<core::graphics::SemaphoreInfo> gate)
+void MaterialService::queueRetire(const Handle &resource, std::optional<core::graphics::SemaphoreSyncPoint> gate)
 {
     if (m_graphicsManagers == nullptr || !resource.isInitialized())
         return;

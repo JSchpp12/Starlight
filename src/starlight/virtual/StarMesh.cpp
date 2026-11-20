@@ -1,7 +1,7 @@
 #include "StarMesh.hpp"
 
+#include "core/device/DeviceContext.hpp"
 #include "device/managers/Material.hpp"
-
 #include "starlight/core/transfer/RegisterTransferWait.hpp"
 
 namespace star
@@ -106,18 +106,20 @@ void star::StarMesh::registerTransferWaits(core::device::DeviceContext &context,
 
     if (vertBuffer.isInitialized())
     {
-        const auto &sem =
-            context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, vertBuffer)->gpuWorkDoneSignaledInfo;
-        core::transfer::RegisterTransferWait(context, commandBuffer, vertBuffer, sem.vkSemaphore, sem.signalValue,
-                                             vk::PipelineStageFlagBits::eVertexInput);
+        const auto &signal =
+            context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, vertBuffer)->gpuWorkDoneSignal;
+        if (signal.has_value())
+            core::transfer::RegisterTransferWait(context, commandBuffer, vertBuffer, signal->record,
+                                                 vk::PipelineStageFlagBits::eVertexInput);
     }
 
     if (indBuffer.isInitialized())
     {
-        const auto &sem =
-            context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, indBuffer)->gpuWorkDoneSignaledInfo;
-        core::transfer::RegisterTransferWait(context, commandBuffer, indBuffer, sem.vkSemaphore, sem.signalValue,
-                                             vk::PipelineStageFlagBits::eVertexInput);
+        const auto &signal =
+            context.getManagerRenderResource().get<StarBuffers::Buffer>(deviceID, indBuffer)->gpuWorkDoneSignal;
+        if (signal.has_value())
+            core::transfer::RegisterTransferWait(context, commandBuffer, indBuffer, signal->record,
+                                                 vk::PipelineStageFlagBits::eVertexInput);
     }
 }
 } // namespace star

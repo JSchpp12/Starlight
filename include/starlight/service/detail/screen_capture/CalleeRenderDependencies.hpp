@@ -2,7 +2,7 @@
 
 #include "StarTextures/Texture.hpp"
 
-#include "starlight/wrappers/graphics/StarSemaphore.hpp"
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 
 #include <star_common/Handle.hpp>
 
@@ -27,8 +27,9 @@ struct CalleeRenderDependencies
         }
         Builder &setTargetTextureReadySemaphore(vk::Semaphore targetTextureReadySemaphore, uint64_t signalValue)
         {
-            m_targetTextureReadySemaphore = std::make_optional<star::StarSemaphore>(
-                star::StarSemaphore{.vkSemaphore = targetTextureReadySemaphore, .signalValue = signalValue});
+            m_targetTextureReadySemaphore =
+                std::make_optional<star::core::graphics::SemaphoreSyncPoint>(star::core::graphics::SemaphoreSyncPoint{
+                    .signalValue = signalValue, .semaphore = targetTextureReadySemaphore});
             return *this;
         }
         CalleeRenderDependencies build()
@@ -41,7 +42,7 @@ struct CalleeRenderDependencies
       private:
         Handle m_commandBufferContainingTarget;
         StarTextures::Texture m_targetTexture;
-        std::optional<star::StarSemaphore> m_targetTextureReadySemaphore;
+        std::optional<star::core::graphics::SemaphoreSyncPoint> m_targetTextureReadySemaphore;
     };
 
     void cleanupRender()
@@ -49,7 +50,7 @@ struct CalleeRenderDependencies
     }
     Handle commandBufferContainingTarget;
     StarTextures::Texture targetTexture;
-    std::optional<star::StarSemaphore> targetTextureReadySemaphore;
+    std::optional<star::core::graphics::SemaphoreSyncPoint> targetTextureReadySemaphore;
 };
 
 } // namespace star::service::detail::screen_capture

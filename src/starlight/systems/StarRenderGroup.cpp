@@ -1,5 +1,8 @@
 #include "StarRenderGroup.hpp"
 
+#include "core/device/DeviceContext.hpp"
+#include <star_common/Handle.hpp>
+
 namespace star
 {
 
@@ -40,7 +43,7 @@ void StarRenderGroup::cleanupRender(core::device::DeviceContext &context)
 void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &context,
                                             StarShaderInfo::Builder rendererBuilder,
                                             star::core::renderer::RenderingTargetInfo &rendererInfo,
-                                            star::Handle commandBuffer)
+                                            const star::Handle &commandBuffer)
 {
     // create shared pipeline layout
     uint32_t globalSetCount = 0;
@@ -71,20 +74,20 @@ void StarRenderGroup::onDescriptorPoolReady(star::core::device::DeviceContext &c
 }
 
 void StarRenderGroup::frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
-                                  Handle targetCommandBuffer,
-                                  const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
+                                  const Handle &targetCommandBuffer,
+                                  const star::core::graphics::SemaphoreSyncPoint &transferRequestSyncInfo)
 {
     for (auto &group : m_groups)
     {
-        group.baseObject.object->frameUpdate(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
+        group.baseObject.object->frameUpdate(context, frameInFlightIndex, targetCommandBuffer, transferRequestSyncInfo);
         for (auto &obj : group.objects)
         {
-            obj.object->frameUpdate(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
+            obj.object->frameUpdate(context, frameInFlightIndex, targetCommandBuffer, transferRequestSyncInfo);
         }
     }
 }
 
-void StarRenderGroup::prepRender(core::device::DeviceContext &context, Handle commandBuffer)
+void StarRenderGroup::prepRender(core::device::DeviceContext &context, const Handle &commandBuffer)
 {
     prepareObjects(context, commandBuffer);
 }
@@ -214,7 +217,7 @@ bool StarRenderGroup::isObjectCompatible(StarObject &object, core::device::Devic
     return true;
 }
 
-void StarRenderGroup::prepareObjects(star::core::device::DeviceContext &context, Handle commandBuffer)
+void StarRenderGroup::prepareObjects(star::core::device::DeviceContext &context, const Handle &commandBuffer)
 {
     // get descriptor sets from objects and place into render structs
     for (auto &group : m_groups)

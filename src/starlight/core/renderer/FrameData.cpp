@@ -1,7 +1,6 @@
 #include "core/renderer/FrameData.hpp"
 
 #include "core/device/DeviceContext.hpp"
-#include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
 #include <star_common/TypeRegistry.hpp>
 
@@ -73,7 +72,7 @@ void FrameData::prepRender(core::device::DeviceContext &context, uint8_t numFram
 }
 
 FrameData::FrameUpdateResult FrameData::frameUpdate(core::device::DeviceContext &context,
-                                                    std::optional<core::graphics::SemaphoreInfo> priorSync)
+                                                    std::optional<core::graphics::SemaphoreSyncPoint> priorSync)
 {
     const uint8_t fi = context.frameTracker().getCurrent().getFrameInFlightIndex();
     m_pending.clear();
@@ -86,12 +85,11 @@ FrameData::FrameUpdateResult FrameData::frameUpdate(core::device::DeviceContext 
         if (!d)
             continue;
 
-        const auto [submitted, semaphore] = d->controller->submitUpdateIfNeeded(context, fi, priorSync);
+        const auto [submitted, semaphoreRecord] = d->controller->submitUpdateIfNeeded(context, fi, priorSync);
         if (submitted)
         {
-            m_pending.push_back(PendingWait{.handle = d->controller->getHandle(fi),
-                                            .signalValue = semaphore->signalValue,
-                                            .semaphore = semaphore->vkSemaphore,
+            m_pending.push_back(PendingWait{.transferTargetResource = d->controller->getHandle(fi),
+                                            .record = semaphoreRecord,
                                             .waitStage = d->controller->waitStage()});
         }
     }

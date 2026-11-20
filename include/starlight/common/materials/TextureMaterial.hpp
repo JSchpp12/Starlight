@@ -5,8 +5,6 @@
 
 #include <star_common/Handle.hpp>
 
-#include <starlight/wrappers/graphics/StarSemaphore.hpp>
-
 #include <memory>
 #include <vector>
 
@@ -45,8 +43,9 @@ class TextureMaterial : public StarMaterial
   protected:
     std::string m_texturePath = "";
     Handle m_textureHandle = Handle();
-    /// Semaphore the texture's transfer signals when its GPU work retires, as reported by SubmitTextureTransfer.
-    star::StarSemaphore m_textureTransfer{};
+    /// Semaphore-manager record of the timeline the texture's transfer signals when its GPU work retires, as reported
+    /// by SubmitTextureTransfer.
+    star::Handle m_textureTransferSemaphore{};
     /// Stages that consume the transferred texture; the skybox conversion dispatch needs the compute stage too.
     vk::PipelineStageFlags m_textureTransferStages =
         vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader;
@@ -58,7 +57,7 @@ class TextureMaterial : public StarMaterial
     /// wait on the provided render command buffer. No-op when there is no transfer to wait on.
     static void registerTextureTransferWait(
         core::device::DeviceContext &context, star::Handle commandBuffer, star::Handle textureHandle,
-        const star::StarSemaphore &transferSemaphore,
+        star::Handle transferSemaphoreRecord,
         vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eVertexShader |
                                             vk::PipelineStageFlagBits::eFragmentShader);
 

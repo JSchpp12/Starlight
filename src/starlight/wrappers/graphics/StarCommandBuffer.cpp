@@ -64,8 +64,6 @@ void star::StarCommandBuffer::begin(int buffIndex)
     if (this->readyFence.size() > 0)
         wait(buffIndex);
 
-    this->m_submitted = false;
-
     vk::CommandBufferBeginInfo beginInfo{};
     beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
 
@@ -95,7 +93,6 @@ void star::StarCommandBuffer::begin(const int buffIndex, const vk::CommandBuffer
         wait(buffIndex);
 
     this->recorded = true;
-    this->m_submitted = false;
 
     // create begin
     this->commandBuffers[buffIndex].begin(beginInfo);
@@ -146,16 +143,15 @@ void star::StarCommandBuffer::reset(int bufferIndex)
     this->commandBuffers.at(bufferIndex).reset();
 
     this->recorded = false;
-    this->m_submitted = false;
 }
 
-void star::StarCommandBuffer::abandonRecording(int bufferIndex)
+void star::StarCommandBuffer::abandonRecording(int bufferIndex, bool wasSubmitted)
 {
     assert(bufferIndex < this->commandBuffers.size() && "Requested buffer does not exist");
 
     // A submitted buffer's fence will signal; wait for it before discarding. An unsubmitted recording never signals,
     // so waiting on it would hang.
-    if (m_submitted && bufferIndex < this->readyFence.size())
+    if (wasSubmitted && bufferIndex < this->readyFence.size())
     {
         (void)this->vulkanDevice.waitForFences(this->readyFence.at(bufferIndex), VK_TRUE, UINT64_MAX);
     }
@@ -174,13 +170,11 @@ void star::StarCommandBuffer::abandonRecording(int bufferIndex)
         this->readyFence[bufferIndex] = this->vulkanDevice.createFence(fenceInfo);
     }
 
-    this->m_submitted = false;
     this->recorded = false;
 }
 
-void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
-                                     std::span<const Data> additionalWaits, vk::Fence *overrideFence,
-                                     std::vector<vk::Semaphore> *additionalSignalSemaphores)
+void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue, std::span<const Data> additionalWaits,
+                                     vk::Fence *overrideFence, std::vector<vk::Semaphore> *additionalSignalSemaphores)
 {
     boost::container::small_vector<vk::Semaphore, 8> waits;
     boost::container::small_vector<vk::PipelineStageFlags, 8> waitPoints;
@@ -258,8 +252,6 @@ void star::StarCommandBuffer::submit(int bufferIndex, vk::Queue &targetQueue,
     {
         targetQueue.submit(submitInfo);
     }
-
-    this->m_submitted = true;
 }
 
 bool star::StarCommandBuffer::isFenceReady(const int &bufferIndex)

@@ -6,22 +6,22 @@
 #include "TransferRequest_Buffer.hpp"
 #include "TransferRequest_Texture.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
-#include "device/StarDevice.hpp"
 #include "job/TaskManager.hpp"
 #include "job/tasks/TransferTask.hpp"
 #include "starlight/core/CommandBus.hpp"
-#include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
-#include <atomic>
 #include <boost/atomic.hpp>
 #include <cstdint>
-#include <map>
 #include <memory>
 #include <optional>
 #include <stack>
 #include <star_common/Handle.hpp>
-#include <vector>
 #include <vulkan/vulkan.hpp>
+
+namespace star::core::device
+{
+class StarDevice;
+}
 
 namespace star
 {
@@ -38,26 +38,35 @@ class ManagerRenderResource
         }
     };
 
+    /// @brief A submitted upload's signal: the raw descriptor used to wait on it, plus the semaphore-manager identity
+    /// of its timeline.
+    struct UploadSignal
+    {
+        core::graphics::SemaphoreSyncPoint signal;
+        /// Semaphore-manager record of the timeline `signal` belongs to.
+        Handle record;
+    };
+
     template <typename T> struct FinalizedResourceRequest : public FinalizedRequest
     {
         std::unique_ptr<T> resource = std::unique_ptr<T>();
-        star::StarSemaphore gpuWorkDoneSignaledInfo;
+        std::optional<UploadSignal> gpuWorkDoneSignal;
 
         FinalizedResourceRequest() = default;
         FinalizedResourceRequest(const FinalizedResourceRequest &) = delete;
         FinalizedResourceRequest operator=(const FinalizedResourceRequest &) = delete;
-        FinalizedResourceRequest(FinalizedResourceRequest &&other) noexcept
-            : resource(other.resource ? std::move(other.resource) : nullptr)
+        FinalizedResourceRequest(FinalizedResourceRequest &&other) noexcept : resource(std::move(other.resource))
         {
+            cpuWorkDoneByTransferThread.store(other.cpuWorkDoneByTransferThread.load());
+            gpuWorkDoneSignal = other.gpuWorkDoneSignal;
         }
         FinalizedResourceRequest &operator=(FinalizedResourceRequest &&other) noexcept
         {
             if (this != &other)
             {
-                if (other.resource)
-                {
-                    resource = std::move(other.resource);
-                }
+                resource = std::move(other.resource);
+                cpuWorkDoneByTransferThread.store(other.cpuWorkDoneByTransferThread.load());
+                gpuWorkDoneSignal = other.gpuWorkDoneSignal;
             }
             return *this;
         }
@@ -84,7 +93,7 @@ class ManagerRenderResource
     /// @param handle Handle to resource
     static void updateRequest(const Handle &deviceID, std::unique_ptr<TransferRequest::Buffer> newRequest,
                               const Handle &handle,
-                              std::optional<core::graphics::SemaphoreInfo> waitInfo = std::nullopt,
+                              std::optional<core::graphics::SemaphoreSyncPoint> waitInfo = std::nullopt,
                               uint32_t *outTransferQueueFamilyIndex = nullptr);
 
     static bool isReady(const Handle &deviceID, const Handle &handle);

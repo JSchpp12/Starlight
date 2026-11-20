@@ -22,12 +22,12 @@ static std::tuple<vk::Semaphore, uint64_t> GetCurrentSyncInfo(const star::Handle
     return std::make_tuple(r.signaledSemaphore, r.currentSignalValue);
 }
 
-static star::core::graphics::SemaphoreInfo GetTransferRequestSyncToPreviousDraw(const star::Handle &registration,
-                                                                                const star::core::CommandBus &cmdBus)
+static star::core::graphics::SemaphoreSyncPoint GetTransferRequestSyncToPreviousDraw(
+    const star::Handle &registration, const star::core::CommandBus &cmdBus)
 {
     auto [semaphore, currentSignalValue] = GetCurrentSyncInfo(registration, cmdBus);
 
-    return star::core::graphics::SemaphoreInfo{.signalValue = currentSignalValue, .semaphore = semaphore};
+    return star::core::graphics::SemaphoreSyncPoint{.signalValue = currentSignalValue, .semaphore = semaphore};
 }
 
 void RenderPhase::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, const common::FrameTracker &ft)
@@ -35,8 +35,8 @@ void RenderPhase::recordPreRenderPassCommands(vk::CommandBuffer commandBuffer, c
     // One-shot setup records inline, before the pass's own commands. This runs inside the caller's begin()/end().
     if (m_commandBuffers != nullptr)
     {
-        const core::graphics::SemaphoreInfo gate =
-            m_recordingInfo.has_value() ? m_recordingInfo->gate : core::graphics::SemaphoreInfo{};
+        const core::graphics::SemaphoreSyncPoint gate =
+            m_recordingInfo.has_value() ? m_recordingInfo->gate : core::graphics::SemaphoreSyncPoint{};
         m_commandBuffers->get(m_commandBuffer).recordSetup(commandBuffer, gate);
     }
 
@@ -123,9 +123,8 @@ void RenderPhase::updateDependentData(core::device::DeviceContext &context)
     auto result = m_frameData->frameUpdate(context);
     for (const auto &w : result.waits)
     {
-        core::transfer::RegisterTransferWait(context, m_commandBuffer, w.handle, w.semaphore, w.signalValue,
-                                             w.waitStage);
-        m_renderingContext.addBufferToRenderingContext(context, w.handle);
+        core::transfer::RegisterTransferWait(context, m_commandBuffer, w.transferTargetResource, w.record, w.waitStage);
+        m_renderingContext.addBufferToRenderingContext(context, w.transferTargetResource);
     }
 }
 } // namespace star::core::renderer

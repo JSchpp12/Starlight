@@ -1,6 +1,7 @@
 #include "managers/ManagerRenderResource.hpp"
 
 #include "core/logging/LoggingFactory.hpp"
+#include "device/StarDevice.hpp"
 #include "job/TransferWorker.hpp"
 #include "job/tasks/TransferTask.hpp"
 #include "starlight/command/transfer/SubmitTransferTask.hpp"
@@ -50,10 +51,10 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
 
     newFull.cpuWorkDoneByTransferThread.store(false);
 
-    auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        job::TransferManagerThread::InterThreadRequest{
-            .data = job::TransferManagerThread::BufferTransferData{
-                .request = std::move(newRequest), .destination = &newFull.resource},
+    auto request =
+        std::make_unique<job::TransferManagerThread::InterThreadRequest>(job::TransferManagerThread::InterThreadRequest{
+            .data = job::TransferManagerThread::BufferTransferData{.request = std::move(newRequest),
+                                                                   .destination = &newFull.resource},
             .gpuDoneNotificationToMain = &newFull.cpuWorkDoneByTransferThread,
         });
 
@@ -66,14 +67,14 @@ star::Handle star::ManagerRenderResource::addRequest(const Handle &deviceID,
     if (outTransferQueueFamilyIndex != nullptr)
         *outTransferQueueFamilyIndex = result.queueFamilyIndex;
 
-    newFull.gpuWorkDoneSignaledInfo = result.semaphore;
+    newFull.gpuWorkDoneSignal = UploadSignal{.signal = result.semaphore, .record = result.semaphoreRecord};
     return newBufferHandle;
 }
 
 void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
                                                 std::unique_ptr<TransferRequest::Buffer> newRequest,
                                                 const star::Handle &handle,
-                                                std::optional<core::graphics::SemaphoreInfo> waitInfo,
+                                                std::optional<core::graphics::SemaphoreSyncPoint> waitInfo,
                                                 uint32_t *outTransferQueueFamilyIndex)
 {
     assert(!waitInfo.has_value() || (waitInfo.has_value() && waitInfo.value().semaphore != VK_NULL_HANDLE) &&
@@ -88,13 +89,12 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
     container.cpuWorkDoneByTransferThread.store(false);
 
     star::core::graphics::WorkWaitInfo workWaitOn;
-    const auto addWait = [&workWaitOn](const star::core::graphics::SemaphoreInfo &info) {
+    const auto addWait = [&workWaitOn](const star::core::graphics::SemaphoreSyncPoint &info) {
         if (info.semaphore == VK_NULL_HANDLE)
             return;
 
-        const auto existing =
-            std::find_if(workWaitOn.waits.begin(), workWaitOn.waits.begin() + workWaitOn.count,
-                         [&info](const auto &wait) { return wait.semaphore == info.semaphore; });
+        const auto existing = std::find_if(workWaitOn.waits.begin(), workWaitOn.waits.begin() + workWaitOn.count,
+                                           [&info](const auto &wait) { return wait.semaphore == info.semaphore; });
         if (existing == workWaitOn.waits.begin() + workWaitOn.count)
         {
             assert(workWaitOn.count < workWaitOn.waits.size() && "Too many transfer wait dependencies");
@@ -106,17 +106,19 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
         }
     };
 
-    // Reused buffers must serialize their writes even when no consumer wait was supplied.  Retain a caller-provided
+    // Reused buffers must serialize their writes even when no consumer wait was supplied. Retain a caller-provided
     // wait as well: it protects a graphics or compute submission which may still be reading this buffer.
-    addWait({.signalValue = container.gpuWorkDoneSignaledInfo.signalValue,
-             .semaphore = container.gpuWorkDoneSignaledInfo.vkSemaphore});
+    // The stored signal carries the exact value this buffer's own upload raises, so the rewrite waits for that upload
+    // only rather than for everything allocated on that worker's timeline since.
+    if (container.gpuWorkDoneSignal.has_value())
+        addWait(container.gpuWorkDoneSignal->signal);
     if (waitInfo.has_value())
         addWait(waitInfo.value());
 
-    auto request = std::make_unique<job::TransferManagerThread::InterThreadRequest>(
-        job::TransferManagerThread::InterThreadRequest{
-            .data = job::TransferManagerThread::BufferTransferData{
-                .request = std::move(newRequest), .destination = &container.resource},
+    auto request =
+        std::make_unique<job::TransferManagerThread::InterThreadRequest>(job::TransferManagerThread::InterThreadRequest{
+            .data = job::TransferManagerThread::BufferTransferData{.request = std::move(newRequest),
+                                                                   .destination = &container.resource},
             .workWaitOn = std::move(workWaitOn),
             .gpuDoneNotificationToMain = &container.cpuWorkDoneByTransferThread,
         });
@@ -125,7 +127,7 @@ void star::ManagerRenderResource::updateRequest(const Handle &deviceID,
 
     s_cmdBus->submit(cmd);
     const auto result = cmd.getReply().get(); // synchronous: already populated
-    container.gpuWorkDoneSignaledInfo = result.semaphore;
+    container.gpuWorkDoneSignal = UploadSignal{.signal = result.semaphore, .record = result.semaphoreRecord};
 
     if (outTransferQueueFamilyIndex != nullptr)
         *outTransferQueueFamilyIndex = result.queueFamilyIndex;
