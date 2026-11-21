@@ -1,8 +1,8 @@
 #pragma once
 
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "starlight/job/tasks/TransferTask.hpp"
 #include "starlight/virtual/TransferRequest_Buffer.hpp"
-#include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
 #include <star_common/Handle.hpp>
 #include <star_common/IServiceCommandWithReply.hpp>
@@ -25,14 +25,13 @@ struct SubmitBufferResult
 {
     /// Buffer-manager record the transfer worker publishes the buffer into.
     star::Handle buffer;
-    /// Semaphore the transfer signals when its GPU work retires.
-    star::StarSemaphore semaphore;
+    /// Signal raised when the transfer's GPU work retires.
+    star::core::graphics::SemaphoreSyncPoint semaphore;
+    /// Semaphore-manager record of the timeline `semaphore` belongs to.
+    star::Handle semaphoreRecord;
 };
 
 /// @brief Submit a buffer transfer whose created buffer is published into the Buffer manager.
-/// @details The TransferService creates the Buffer manager record (with a pending future) on the submitting thread and
-/// hands the request's slot to the transfer worker, which fills it once the buffer exists. No ManagerRenderResource
-/// record is allocated for the buffer; readiness is the Buffer record's future.
 struct SubmitBufferTransfer : public star::common::IServiceCommandWithReply<SubmitBufferResult>
 {
     static inline constexpr std::string_view GetUniqueTypeName()

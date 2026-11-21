@@ -34,7 +34,6 @@ struct IncomingResource
 {
     /// @brief Initialized Image-manager or Buffer-manager handle. The handle type is the resource kind.
     Handle handle;
-    /// @brief All dependencies: transfer conditions carry `timelineWait`; pipeline/shader conditions do not.
     std::vector<ReadinessCondition> readiness;
 };
 } // namespace set_material_resource
@@ -57,9 +56,8 @@ enum class SwapStatus : std::uint8_t
     Pending
 };
 
-/// @brief Retarget a material's primary resource and carry the one-shot work and readiness it needs.
-/// @details The material keeps its previous binding until the owning pass confirms the swap. The service records a
-/// transaction and creates/binds the new StarShaderInfo only on commit.
+/// @brief Retarget a material's primary resource and carry the one-shot work and readiness it needs. The material keeps
+/// its previous binding until the owning pass confirms the swap.
 struct SetMaterialResource
     : public star::common::IServiceCommandWithReply<std::expected<SwapStatus, exception::SwapException>>
 {

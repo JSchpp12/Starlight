@@ -1,14 +1,13 @@
 #pragma once
 
-#include "ManagedHandleContainer.hpp"
 #include "detail/screen_capture/CalleeRenderDependencies.hpp"
 #include "detail/screen_capture/Common.hpp"
 #include "detail/screen_capture/CopyPlan.hpp"
 #include "detail/screen_capture/DeviceInfo.hpp"
-#include "detail/screen_capture/PerExtentResources.hpp"
 #include "detail/screen_capture/GPUSynchronizationInfo.hpp"
+#include "detail/screen_capture/PerExtentResources.hpp"
 #include "event/TriggerScreenshot.hpp"
-#include "job/tasks/TaskFactory.hpp"
+#include "job/tasks/WriteImageToDisk.hpp"
 #include "logging/LoggingFactory.hpp"
 #include "policy/command/ListenForGetScreenCaptureSyncInfo.hpp"
 #include "service/InitParameters.hpp"
@@ -17,7 +16,6 @@
 #include "starlight/core/waiter/sync_renderer/Factory.hpp"
 #include "starlight/job/worker/DefaultWorker.hpp"
 #include "starlight/job/worker/detail/default_worker/SleepWaitTaskHandlingPolicy.hpp"
-#include "wrappers/graphics/StarBuffers/Buffer.hpp"
 #include "wrappers/graphics/StarTextures/Texture.hpp"
 
 #include <star_common/Handle.hpp>
@@ -253,12 +251,11 @@ class ScreenCapture
         }
 
         auto &calleeDependencies = m_calleeDependencyTracker.get(screenEvent.getCalleeRegistration());
-        const vk::Extent2D targetExtent =
-            vk::Extent2D()
-                .setHeight(calleeDependencies.targetTexture.getBaseExtent().height)
-                .setWidth(calleeDependencies.targetTexture.getBaseExtent().width);
-        auto copyPlan = detail::screen_capture::CopyPlan{
-            .resources = m_resourceContainer.giveMeResource(targetExtent), .calleeDependencies = &calleeDependencies};
+        const vk::Extent2D targetExtent = vk::Extent2D()
+                                              .setHeight(calleeDependencies.targetTexture.getBaseExtent().height)
+                                              .setWidth(calleeDependencies.targetTexture.getBaseExtent().width);
+        auto copyPlan = detail::screen_capture::CopyPlan{.resources = m_resourceContainer.giveMeResource(targetExtent),
+                                                         .calleeDependencies = &calleeDependencies};
 
         // need way to wait for commands to be submitted BEFORE telling worker to start?
         detail::screen_capture::GPUSynchronizationInfo syncInfo = m_copyPolicy.triggerSubmission(copyPlan);
@@ -271,15 +268,16 @@ class ScreenCapture
                                              syncInfo.signalValue);
 
         using WritePayload = job::tasks::write_image_to_disk::PoolOwnedWriteImagePayload;
-        WritePayload payload{.data = std::make_unique<WritePayload::Data>(WritePayload::Data{
-                                 .path = screenEvent.getPath(),
-                                 .imageExtent = copyPlan.calleeDependencies->targetTexture.getBaseExtent(),
-                                 .imageFormat = copyPlan.calleeDependencies->targetTexture.getBaseFormat(),
-                                 .device = m_deviceInfo.device->getVulkanDevice(),
-                                 .waitInfo = std::make_optional<star::StarSemaphore>(
-                                     syncInfo.timelineSemaphoreForMainCopyCommandsDone, signalValue),
-                                 .registrationHandle = copyPlan.resources.bufferInfo.containerRegistration,
-                                 .owningObjectPool = &copyPlan.resources.bufferInfo.container->getBufferPool()})};
+        WritePayload payload{
+            .data = std::make_unique<WritePayload::Data>(WritePayload::Data{
+                .path = screenEvent.getPath(),
+                .imageExtent = copyPlan.calleeDependencies->targetTexture.getBaseExtent(),
+                .imageFormat = copyPlan.calleeDependencies->targetTexture.getBaseFormat(),
+                .device = m_deviceInfo.device->getVulkanDevice(),
+                .waitInfo = std::make_optional(star::core::graphics::SemaphoreSyncPoint{
+                    .signalValue = signalValue, .semaphore = syncInfo.timelineSemaphoreForMainCopyCommandsDone}),
+                .registrationHandle = copyPlan.resources.bufferInfo.containerRegistration,
+                .owningObjectPool = &copyPlan.resources.bufferInfo.container->getBufferPool()})};
 
         m_workerPolicy.addWriteTask(job::tasks::write_image_to_disk::Create(std::move(payload)));
         keepAlive = true;

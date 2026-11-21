@@ -23,12 +23,12 @@ Handle CopyCmdPolicy::registerWithManager(core::device::StarDevice &device,
             .waitStage = vk::PipelineStageFlagBits::eAllCommands,
             .willBeSubmittedEachFrame = false,
             .recordOnce = false,
-            .overrideBufferSubmissionCallback =
-                [this](StarCommandBuffer &buffer, const star::common::FrameTracker &ft,
-                       std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
-                       std::span<const star::StarCommandBuffer::Data> dataWaits, StarQueue &queue) {
-                    return submitBuffer(buffer, ft, previousCommandBufferSemaphores, dataWaits, queue);
-                }});
+            .overrideBufferSubmissionCallback = [this](StarCommandBuffer &buffer, const star::common::FrameTracker &ft,
+                                                       std::vector<vk::Semaphore> *previousCommandBufferSemaphores,
+                                                       std::span<const star::StarCommandBuffer::Data> dataWaits,
+                                                       StarQueue &queue) {
+                return submitBuffer(buffer, ft, previousCommandBufferSemaphores, dataWaits, queue);
+            }});
 }
 
 static vk::BufferMemoryBarrier2 GetBarrierPrepForCPURead(vk::Buffer buffer) noexcept
@@ -47,8 +47,7 @@ void CopyCmdPolicy::addMemoryDependenciesToCleanupFromCopy(vk::CommandBuffer &co
 {
     const vk::BufferMemoryBarrier2 buffBarrier[1]{GetBarrierPrepForCPURead(m_inUseInfo->buffer)};
 
-    commandBuffer.pipelineBarrier2(
-        vk::DependencyInfo().setBufferMemoryBarriers(buffBarrier));
+    commandBuffer.pipelineBarrier2(vk::DependencyInfo().setBufferMemoryBarriers(buffBarrier));
 }
 
 void CopyCmdPolicy::init(core::device::StarDevice &device)
@@ -132,16 +131,15 @@ vk::Semaphore CopyCmdPolicy::submitBuffer(StarCommandBuffer &buffer, const star:
     if (!dataWaits.empty())
     {
         // some callee has provided manual wait information. Respect that first
-        waitSemaphores[0] =
-            vk::SemaphoreSubmitInfo()
-                .setSemaphore(dataWaits[0].semaphore)
-                .setStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                .setValue(dataWaits[0].signaledValue.value_or(0));
+        waitSemaphores[0] = vk::SemaphoreSubmitInfo()
+                                .setSemaphore(dataWaits[0].semaphore)
+                                .setStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                                .setValue(dataWaits[0].signaledValue.value_or(0));
     }
     else if (m_inUseInfo->targetTextureReadySemaphore != nullptr)
     {
         waitSemaphores[0] = vk::SemaphoreSubmitInfo()
-                                .setSemaphore(m_inUseInfo->targetTextureReadySemaphore->vkSemaphore)
+                                .setSemaphore(m_inUseInfo->targetTextureReadySemaphore->semaphore)
                                 .setStageMask(vk::PipelineStageFlagBits2::eAllCommands)
                                 .setValue(m_inUseInfo->targetTextureReadySemaphore->signalValue);
     }

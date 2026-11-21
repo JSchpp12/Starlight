@@ -2,7 +2,6 @@
 
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "structs/QueueFamilyOwnership.hpp"
-#include "wrappers/graphics/StarSemaphore.hpp"
 
 #include <star_common/Handle.hpp>
 
@@ -30,23 +29,19 @@ inline constexpr DefinitionId InvalidDefinitionId = 0;
 struct TransferWait
 {
     Handle key;
-    star::StarSemaphore semaphore;
+    /// Semaphore-manager record of the transfer's timeline; resolved to the live semaphore state on submission.
+    Handle semaphoreRecord;
     vk::PipelineStageFlags stages =
         vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader;
 };
 
 /// @brief One-shot GPU work a render phase records before it samples a resource.
-/// @details Preparation is separate from recording. A `PrepRequest` carries only the device-side prepare
-/// callback; the object that owns the material runs it and hands the prepared definition to the pass's
-/// RenderResourceSetup, which records it inline before the pass's draws.
 struct RenderResourceSetup
 {
     using DefinitionId = star::setup::DefinitionId;
     static constexpr DefinitionId InvalidDefinitionId = star::setup::InvalidDefinitionId;
 
     /// @brief Transition an image between layouts.
-    /// @details Holds the raw image rather than a Handle: the only producer of this step for a freshly created
-    /// resource is the transfer thread, which holds the vk::Image but cannot know the manager-assigned Handle.
     struct ImageLayoutChange
     {
         vk::Image image{};
@@ -96,13 +91,7 @@ struct RenderResourceSetup
     [[nodiscard]] static Step makeStep(std::shared_ptr<ComputeDispatch> dispatch);
 
     /// @brief A transient resource released once a timeline gate is observed passed.
-    /// @details The gate is a generic {semaphore, value} registration, so any timeline source can gate a release.
-    /// The one value that cannot be known at composition time -- the submission that records the setup -- is marked
-    /// gateOnRecordingSubmission and stamped when the definition that owns the release is recorded. Registered
-    /// semaphores must outlive their release: register engine-long-lived timelines (the transfer-service shared
-    /// timeline, a render phase timeline), never a request-scoped semaphore.
-    /// @note A PendingRelease destroyed without draining skips its cleanup, so cleanupRender() must run while the
-    /// device is alive.
+
     struct PendingRelease
     {
         vk::Semaphore timelineSemaphore{};
@@ -110,9 +99,6 @@ struct RenderResourceSetup
         /// @brief Stamp {semaphore, value} from the recording submission when this release is recorded.
         bool gateOnRecordingSubmission{};
         /// @brief Cleanup for the resource this release owns, invoked once the gate passes (or at teardown).
-        /// @details The device context is supplied by the interpreter, so the producer only captures the resource
-        /// identity (e.g. a manager handle) and can reach the matching manager through the context. Empty when the
-        /// definition owns nothing.
         std::function<void(core::device::DeviceContext &)> keepAlive{};
     };
 
@@ -131,7 +117,7 @@ struct RenderResourceSetup
         /// @details The caller must have ensured every step's dependencies are ready (via the readiness conditions
         /// registered with the commit gate / CPU-wait system).
         [[nodiscard]] bool record(vk::CommandBuffer commandBuffer,
-                                  const core::graphics::SemaphoreInfo &recordingSubmissionGate);
+                                  const core::graphics::SemaphoreSyncPoint &recordingSubmissionGate);
         /// @brief Non-blocking release drain: runs the keepAlive once the recorded gate has been observed passed.
         /// @return True when recorded and the release is consumed; false while work or the gate remains.
         [[nodiscard]] bool tryDrainRelease(core::device::DeviceContext &context);
@@ -161,7 +147,7 @@ struct RenderResourceSetup
     /// @brief Abandon an unrecorded definition (e.g. a rolled-back swap).
     /// @details Stamps the release gate from @p gate when observable, clears the recording-submission gate, and marks
     /// the definition recorded so `isDone()` unblocks and `pollReleases` can drain its keepAlive later.
-    void abandon(DefinitionId id, const core::graphics::SemaphoreInfo &gate);
+    void abandon(DefinitionId id, const core::graphics::SemaphoreSyncPoint &gate);
 
     /// @brief True when any prepared work is owned.
     [[nodiscard]] bool hasWork() const noexcept
@@ -173,7 +159,7 @@ struct RenderResourceSetup
     [[nodiscard]] bool isDone() const noexcept;
 
     /// @brief Records every not-yet-recorded definition in one pass.
-    void record(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreInfo &recordingSubmissionGate);
+    void record(vk::CommandBuffer commandBuffer, const core::graphics::SemaphoreSyncPoint &recordingSubmissionGate);
 
     /// @brief Non-blocking per-frame drain: runs passed releases and erases fully drained definitions.
     /// @details Call from the owning phase's frameUpdate. Without it, a recorded definition's keepAlive (e.g. a

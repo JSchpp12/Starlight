@@ -1,7 +1,5 @@
 #pragma once
 
-#include "core/graphics/GPUWorkSyncInfo.hpp"
-
 #include <star_common/Handle.hpp>
 
 #include <chrono>
@@ -26,8 +24,6 @@ class Pipeline;
 } // namespace core::device::manager
 
 /// @brief Outcome of one readiness check.
-/// @details `Pending` means the producer has not published yet; `Failed` means it published an unusable result or the
-/// condition itself is invalid. A condition that blocks internally never returns `Pending`.
 enum class ReadinessState : std::uint8_t
 {
     Ready,
@@ -81,9 +77,9 @@ struct ReadinessCondition
     std::variant<ImageReadiness, BufferReadiness, RenderResourceBufferReadiness, ShaderReadiness, PipelineReadiness>
         readiness;
 
-    /// @brief Set for transfer-produced resources: the GPU timeline the owning pass must wait on.
-    /// @details The CPU publication check is expressed by `readiness`; this is the matching GPU-side wait.
-    std::optional<core::graphics::SemaphoreInfo> timelineWait;
+    /// @brief Set for transfer-produced resources: the semaphore-manager record of the GPU timeline the owning pass
+    /// must wait on.
+    std::optional<Handle> semaphoreRecord;
     vk::PipelineStageFlags waitStages =
         vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader;
 

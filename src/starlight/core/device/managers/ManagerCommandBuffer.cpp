@@ -14,8 +14,8 @@ std::stack<star::Handle> star::core::device::manager::ManagerCommandBuffer::dyna
 
 star::core::device::manager::ManagerCommandBuffer::ManagerCommandBuffer(
     StarDevice &device, core::device::manager::Queue &queueManager, const uint8_t &numFramesInFlight,
-    const absl::flat_hash_map<star::Queue_Type, Handle> &queuesToUse)
-    : numFramesInFlight(numFramesInFlight), buffers(device, numFramesInFlight)
+    const absl::flat_hash_map<star::Queue_Type, Handle> &queuesToUse, Semaphore *semaphoreManager)
+    : numFramesInFlight(numFramesInFlight), buffers(device, numFramesInFlight), m_semaphoreManager(semaphoreManager)
 {
     for (auto &ele : queuesToUse)
     {
@@ -133,6 +133,9 @@ vk::Semaphore star::core::device::manager::ManagerCommandBuffer::update(StarDevi
                                                                         common::EventBus &eventBus)
 {
     handleDynamicBufferRequests();
+
+    assert(m_semaphoreManager != nullptr && "ManagerCommandBuffer requires the semaphore manager");
+    buffers.prepRender(*m_semaphoreManager);
 
     std::vector<CommandBufferContainer::WaitOutcome> outcomes;
     const vk::Semaphore result =

@@ -1,12 +1,10 @@
 #pragma once
 
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "starlight/job/tasks/TransferTask.hpp"
-#include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
 #include <star_common/Handle.hpp>
 #include <star_common/IServiceCommandWithReply.hpp>
-
-#include <optional>
 
 namespace star::command::transfer
 {
@@ -20,7 +18,10 @@ inline constexpr const char *GetUniqueTypeName()
 
 struct SubmitTransferResult
 {
-    star::StarSemaphore semaphore;
+    /// Signal raised when this submission's GPU work retires.
+    star::core::graphics::SemaphoreSyncPoint semaphore;
+    /// Semaphore-manager record of the timeline `semaphore` belongs to.
+    star::Handle semaphoreRecord;
     uint32_t queueFamilyIndex{0};
     uint32_t workerId{0};
 };

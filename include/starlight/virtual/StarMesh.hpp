@@ -4,7 +4,7 @@
 #include "StarDescriptorBuilders.hpp"
 #include "StarMaterial.hpp"
 #include "Vertex.hpp"
-#include "core/device/DeviceContext.hpp"
+
 #include <star_common/Handle.hpp>
 #include <star_common/helper/CastHelpers.hpp>
 
@@ -12,6 +12,11 @@
 
 #include <array>
 #include <cassert>
+
+namespace star::core::device
+{
+class DeviceContext;
+}
 
 namespace star
 {

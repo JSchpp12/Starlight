@@ -49,7 +49,7 @@ class ManagerCommandBuffer
 
     ManagerCommandBuffer(StarDevice &device, core::device::manager::Queue &queueManager,
                          const uint8_t &numFramesInFlight,
-                         const absl::flat_hash_map<star::Queue_Type, Handle> &queuesToUse);
+                         const absl::flat_hash_map<star::Queue_Type, Handle> &queuesToUse, Semaphore *semaphoreManager);
 
     void init(core::device::manager::Queue &queueManager);
 
@@ -84,6 +84,7 @@ class ManagerCommandBuffer
     uint8_t numFramesInFlight = 0;
     std::unique_ptr<star::Handle> mainGraphicsBufferHandle = std::unique_ptr<star::Handle>();
     absl::flat_hash_map<star::Queue_Type, StarQueue *> m_preparedQueues;
+    Semaphore *m_semaphoreManager{nullptr};
     CPURecordingWaitContainer m_beforeFinalizationWaits;
     vk::Semaphore submitCommandBuffers(StarDevice &device, const common::FrameTracker &swapChainIndex,
                                        const uint64_t &currentFrameIndex,

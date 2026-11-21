@@ -15,7 +15,9 @@ SyncTargetRendererBinary::SyncTargetRendererBinary(star::common::EventBus &event
 void SyncTargetRendererBinary::registerWaitWithManager()
 {
     m_commandBufferManager.get(m_targetCommandBuffer)
-        .oneTimeWaitSemaphoreInfo.insert(m_sourceCommandBuffer, m_targetSemaphore,
-                                         vk::PipelineStageFlagBits::eFragmentShader);
+        .oneTimeWaitSemaphoreInfo.manual_add_data(
+            StarCommandBuffer::Data{.semaphore = m_targetSemaphore,
+                                    .waitPoints = vk::PipelineStageFlagBits::eFragmentShader,
+                                    .signaledValue = std::nullopt});
 }
 } // namespace star::core::waiter::sync_renderer

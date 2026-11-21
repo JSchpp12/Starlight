@@ -38,13 +38,13 @@ Handle roleHandle(std::string_view roleName);
 class FrameData
 {
   public:
-    /// Per-phase sync info for a resource that was updated this frame; the phase
-    /// must wire these waits before recording against the updated resource.
     struct PendingWait
     {
-        Handle handle;
-        uint64_t signalValue;
-        vk::Semaphore semaphore;
+        /// Resource whose transfer just completed.
+        Handle transferTargetResource;
+        /// Semaphore-manager record of the transfer's timeline.
+        Handle record;
+        /// Pipeline stages that consume the resource.
         vk::PipelineStageFlags waitStage;
     };
 
@@ -182,7 +182,7 @@ class FrameData
     /// Submit each driven buffer controller's per-frame update and collect the sync
     /// the owner must wire. Binding-only resources are not touched.
     FrameUpdateResult frameUpdate(core::device::DeviceContext &context,
-                                  std::optional<core::graphics::SemaphoreInfo> priorSync = std::nullopt);
+                                  std::optional<core::graphics::SemaphoreSyncPoint> priorSync = std::nullopt);
     const Resource *resource(Handle role) const noexcept;
     bool isResourceDriven(Handle role) const noexcept;
     /// The buffer controller registered under `role` (driven or borrowed). Asserts

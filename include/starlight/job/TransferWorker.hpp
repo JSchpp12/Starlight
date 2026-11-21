@@ -10,16 +10,20 @@
 #include "TransferRequest_Texture.hpp"
 #include "core/exceptions/ResourceCreationError.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
-#include "device/StarDevice.hpp"
 
 #include <boost/atomic.hpp>
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
+#include <optional>
 #include <queue>
 #include <variant>
 #include <vector>
 
+namespace star::core::device
+{
+class StarDevice;
+}
 namespace star::job
 {
 
@@ -45,57 +49,19 @@ class TransferManagerThread
     /// @brief One of the two transfer paths a request can describe.
     using TransferData = std::variant<BufferTransferData, TextureTransferData>;
 
+    /// @brief One transfer submission, aggregate-initialized by the submitter.
     struct InterThreadRequest
     {
-        core::graphics::GPUWorkSyncInfo workSyncInfo;
-        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
         TransferData data;
-
-        InterThreadRequest() = default;
-
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
-                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           std::unique_ptr<StarBuffers::Buffer> &resultingBuffer)
-            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              data(BufferTransferData{std::move(bufferTransferRequest), &resultingBuffer})
-        {
-        }
-
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
-                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           std::unique_ptr<StarBuffers::Buffer> &resultingBuffer,
-                           core::graphics::GPUWorkSyncInfo workSyncInfo)
-            : workSyncInfo(std::move(workSyncInfo)), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              data(BufferTransferData{std::move(bufferTransferRequest), &resultingBuffer})
-        {
-        }
-
-        /// @brief Manager-owned buffer: the worker publishes through the buffer-manager slot.
-        /// @details No ManagerRenderResource record and no completion flag exist; the Pending future is the readiness
-        /// signal, so gpuDoneNotificationToMain may be null.
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
-                           std::unique_ptr<TransferRequest::Buffer> bufferTransferRequest,
-                           BufferTransferPromise bufferSlot)
-            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              data(BufferTransferData{std::move(bufferTransferRequest), std::move(bufferSlot)})
-        {
-        }
-
-        /// @brief Manager-owned texture: the worker publishes through the request's image-manager slot.
-        /// @details No ManagerRenderResource record and no completion flag exist; the Pending future is the readiness
-        /// signal, so gpuDoneNotificationToMain may be null.
-        InterThreadRequest(boost::atomic<bool> *gpuDoneNotificationToMain,
-                           std::unique_ptr<TransferRequest::Texture> textureTransferRequest,
-                           TextureTransferPromise textureSlot)
-            : workSyncInfo(), gpuDoneNotificationToMain(gpuDoneNotificationToMain),
-              data(TextureTransferData{std::move(textureTransferRequest), std::move(textureSlot)})
-        {
-        }
+        std::optional<core::graphics::WorkWaitInfo> workWaitOn;
+        core::graphics::SemaphoreSyncPoint workSignalWhenDone;
+        boost::atomic<bool> *gpuDoneNotificationToMain = nullptr;
 
         void reset()
         {
+            workWaitOn.reset();
+            workSignalWhenDone = {};
             gpuDoneNotificationToMain = nullptr;
-            workSyncInfo = core::graphics::GPUWorkSyncInfo{};
             data = BufferTransferData{};
         }
     };
@@ -105,6 +71,9 @@ class TransferManagerThread
       public:
         std::shared_ptr<StarCommandPool> commandPool = nullptr;
         std::unique_ptr<StarCommandBuffer> commandBuffer = nullptr;
+        /// @brief Whether the current recording reached the queue. A failed submission never signals its allocated
+        /// timeline value, so the worker host-signals it instead.
+        bool submitted = false;
 
         ProcessRequestInfo(std::shared_ptr<StarCommandPool> commandPool,
                            std::unique_ptr<StarCommandBuffer> commandBuffer)
@@ -140,16 +109,26 @@ class TransferManagerThread
                              const vk::PhysicalDeviceProperties &deviceProperties,
                              const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                              ProcessRequestInfo &processInfo, BufferTransferData &requestData,
-                             boost::atomic<bool> *gpuDoneSignalMain, core::graphics::GPUWorkSyncInfo &syncInfo);
+                             boost::atomic<bool> *gpuDoneSignalMain,
+                             const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
+                             const core::graphics::SemaphoreSyncPoint &workSignalWhenDone);
 
     /// @brief Create the texture described by a texture transfer request and publish it into its slot.
     static void CreateTexture(core::device::StarDevice &device, StarQueue &queue,
                               const vk::PhysicalDeviceProperties &deviceProperties,
                               const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                               ProcessRequestInfo &processInfo, TextureTransferData &requestData,
-                              boost::atomic<bool> *gpuDoneSignalToMain, core::graphics::GPUWorkSyncInfo &syncInfo);
+                              boost::atomic<bool> *gpuDoneSignalToMain,
+                              const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
+                              const core::graphics::SemaphoreSyncPoint &workSignalWhenDone);
 
     static void CheckForCleanups(vk::Device device, std::queue<std::unique_ptr<ProcessRequestInfo>> &processingInfos);
+
+    /// @brief Signal the timeline value allocated for a submission that never reached the queue.
+    /// @details Waits for the worker queue to drain so the host signal cannot jump ahead of pending device signals,
+    /// then signals the value. Without this, later transfers chained on that value would block forever.
+    static void SignalFailedSubmission(core::device::StarDevice &device, StarQueue &queue,
+                                       const core::graphics::SemaphoreSyncPoint &signalInfo);
 
     /// @brief Publish a terminal transfer failure into any manager slot the request owns.
     /// @details Called on the worker's outermost failure boundary so consumers receive a blank resource plus the

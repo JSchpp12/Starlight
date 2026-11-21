@@ -217,6 +217,8 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             std::move(m_processRequestInfos.front());
         m_processRequestInfos.pop();
 
+        workingInfo->submitted = false;
+
         auto vkDevice = device.getVulkanDevice();
 
         EnsureInfoReady(vkDevice, *workingInfo);
@@ -229,9 +231,10 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
 
                 bufferData->request->prep();
 
-                job::TransferManagerThread::CreateBuffer(
-                    device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
-                    *workingInfo, *bufferData, request.gpuDoneNotificationToMain, request.workSyncInfo);
+                job::TransferManagerThread::CreateBuffer(device, m_queue, m_device.getPhysicalDevice().getProperties(),
+                                                         m_allTransferQueueFamilyIndicesInUse, *workingInfo,
+                                                         *bufferData, request.gpuDoneNotificationToMain,
+                                                         request.workWaitOn, request.workSignalWhenDone);
             }
             else if (auto *textureData = std::get_if<job::TransferManagerThread::TextureTransferData>(&request.data))
             {
@@ -242,9 +245,10 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
 
                 core::logging::debug("Creating texture: ", textureData->request->getDebugDescription());
 
-                job::TransferManagerThread::CreateTexture(
-                    device, m_queue, m_device.getPhysicalDevice().getProperties(), m_allTransferQueueFamilyIndicesInUse,
-                    *workingInfo, *textureData, request.gpuDoneNotificationToMain, request.workSyncInfo);
+                job::TransferManagerThread::CreateTexture(device, m_queue, m_device.getPhysicalDevice().getProperties(),
+                                                          m_allTransferQueueFamilyIndicesInUse, *workingInfo,
+                                                          *textureData, request.gpuDoneNotificationToMain,
+                                                          request.workWaitOn, request.workSignalWhenDone);
             }
         }
         catch (const std::exception &e)
@@ -252,18 +256,32 @@ template <size_t TQueueSize> class BusyWaitTransferTaskHandlingPolicy
             // Fail soft: publish the reason into whatever promises the request owns so consumers receive a blank
             // resource instead of a broken promise, then let the worker keep running.
             core::logging::warning("Transfer worker failed: ", e.what());
-            job::TransferManagerThread::PublishFailure(request, core::ResourceCreationError{e.what()});
+
+            const bool submitted = workingInfo->submitted;
 
             // The command buffer may have been begun and never submitted; restore it so this pool slot is reusable.
-            workingInfo->commandBuffer->abandonRecording(0);
+            workingInfo->commandBuffer->abandonRecording(0, submitted);
+
+            // A submission that never reached the queue will never signal its timeline value. Signal it here so later
+            // transfers chained on that value are not blocked.
+            if (!submitted)
+                job::TransferManagerThread::SignalFailedSubmission(m_device, m_queue, request.workSignalWhenDone);
+
+            job::TransferManagerThread::PublishFailure(request, core::ResourceCreationError{e.what()});
         }
         catch (...)
         {
             core::logging::warning("Transfer worker failed with a non-standard exception");
+
+            const bool submitted = workingInfo->submitted;
+
+            workingInfo->commandBuffer->abandonRecording(0, submitted);
+
+            if (!submitted)
+                job::TransferManagerThread::SignalFailedSubmission(m_device, m_queue, request.workSignalWhenDone);
+
             job::TransferManagerThread::PublishFailure(
                 request, core::ResourceCreationError{"non-standard transfer worker exception"});
-
-            workingInfo->commandBuffer->abandonRecording(0);
         }
 
         m_processRequestInfos.push(std::move(workingInfo));

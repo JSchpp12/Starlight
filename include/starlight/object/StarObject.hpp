@@ -6,7 +6,6 @@
 #include "StarMesh.hpp"
 #include "StarPipeline.hpp"
 #include "StarShaderInfo.hpp"
-#include "core/device/DeviceContext.hpp"
 #include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "core/renderer/RenderingContext.hpp"
 #include "starlight/material/IMaterialProvider.hpp"
@@ -27,6 +26,11 @@
 
 namespace star
 {
+namespace core::device
+{
+class DeviceContext;
+}
+
 /// <summary>
 /// Base class for renderable objects.
 /// </summary>
@@ -112,7 +116,7 @@ class StarObject
 
     virtual void frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
                              Handle targetCommandBuffer,
-                             const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
+                             const star::core::graphics::SemaphoreSyncPoint &transferReuqestSyncInfo);
 
     /// @brief Create descriptor set layouts for this object.
     /// @param device
@@ -244,7 +248,7 @@ class StarObject
 
     virtual void updateDependentData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
                                      Handle targetCommandBuffer,
-                                     const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
+                                     const star::core::graphics::SemaphoreSyncPoint &transferReuqestSyncInfo);
 
   private:
     static std::unique_ptr<StarDescriptorSetLayout> instanceDescriptorLayout;
@@ -280,7 +284,7 @@ class StarObject
 
     void updateInstanceData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
                             Handle targetCommandBuffer,
-                            const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
+                            const star::core::graphics::SemaphoreSyncPoint &transferReuqestSyncInfo);
 
     bool isKnownToBeReadyForRecordRender(uint8_t frameInFlightIndex);
 

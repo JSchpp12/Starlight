@@ -1,5 +1,6 @@
 #include "starlight/object/StarObject.hpp"
 
+#include "core/device/DeviceContext.hpp"
 #include "starlight/command/material/MakeMaterial.hpp"
 #include "starlight/command/pipeline/CreatePipeline.hpp"
 
@@ -367,7 +368,7 @@ star::StarEntity &star::StarObject::createInstance()
 
 void star::StarObject::frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
                                    Handle targetCommandBuffer,
-                                   const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
+                                   const star::core::graphics::SemaphoreSyncPoint &transferReuqestSyncInfo)
 {
     // Observe the owning pass's setup for the draw gate. The work itself is handed over by the app's TriggerPass.
     if (targetCommandBuffer.isInitialized())
@@ -645,19 +646,19 @@ bool star::StarObject::isRenderReady(core::device::DeviceContext &context)
 
 void star::StarObject::updateDependentData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
                                            Handle targetCommandBuffer,
-                                           const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
+                                           const star::core::graphics::SemaphoreSyncPoint &transferReuqestSyncInfo)
 {
     updateInstanceData(context, frameInFlightIndex, targetCommandBuffer, transferReuqestSyncInfo);
 }
 
 void star::StarObject::updateInstanceData(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
                                           Handle targetCommandBuffer,
-                                          const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo)
+                                          const star::core::graphics::SemaphoreSyncPoint &transferReuqestSyncInfo)
 {
     bool updateInstanceModel = false, updateInstanceNormal = false;
 
     {
-        const auto [submitted, semaphore] = m_instanceInfo.getControllerModel().submitUpdateIfNeeded(
+        const auto [submitted, semaphoreRecord] = m_instanceInfo.getControllerModel().submitUpdateIfNeeded(
             context, frameInFlightIndex, transferReuqestSyncInfo);
         if (submitted)
         {
@@ -665,13 +666,12 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
 
             star::core::transfer::RegisterTransferWait(
                 context, targetCommandBuffer, m_instanceInfo.getControllerModel().getHandle(frameInFlightIndex),
-                semaphore->vkSemaphore, semaphore->signalValue,
-                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
+                semaphoreRecord, vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
         }
     }
 
     {
-        const auto [submitted, semaphore] = m_instanceInfo.getControllerNormal().submitUpdateIfNeeded(
+        const auto [submitted, semaphoreRecord] = m_instanceInfo.getControllerNormal().submitUpdateIfNeeded(
             context, frameInFlightIndex, transferReuqestSyncInfo);
         if (submitted)
         {
@@ -679,8 +679,7 @@ void star::StarObject::updateInstanceData(core::device::DeviceContext &context, 
 
             star::core::transfer::RegisterTransferWait(
                 context, targetCommandBuffer, m_instanceInfo.getControllerNormal().getHandle(frameInFlightIndex),
-                semaphore->vkSemaphore, semaphore->signalValue,
-                vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
+                semaphoreRecord, vk::PipelineStageFlagBits::eVertexShader | vk::PipelineStageFlagBits::eFragmentShader);
         }
     }
 

@@ -1,12 +1,12 @@
 #pragma once
 
+#include "core/graphics/GPUWorkSyncInfo.hpp"
 #include "data_structure/dynamic/ThreadSharedObjectPool.hpp"
 #include "job/tasks/Task.hpp"
 #include "job/tasks/actions/WritePngImageAction.hpp"
 #include "job/tasks/actions/WritePngMaskAction.hpp"
 #include "job/tasks/actions/WriteTiffImageAction.hpp"
 #include "starlight/maker/buffer/MakeBuffer.hpp"
-#include "starlight/wrappers/graphics/StarSemaphore.hpp"
 
 #include "StarBuffers/Buffer.hpp"
 
@@ -39,7 +39,7 @@ struct PoolOwnedWriteImagePayload
         vk::Extent3D imageExtent;
         vk::Format imageFormat;
         vk::Device device{VK_NULL_HANDLE};
-        std::optional<star::StarSemaphore> waitInfo;
+        std::optional<star::core::graphics::SemaphoreSyncPoint> waitInfo;
         Handle registrationHandle;
         PoolType *owningObjectPool = nullptr;
     };
@@ -57,7 +57,7 @@ struct DirectWriteImagePayload
         vk::Extent3D imageExtent;
         vk::Format imageFormat;
         vk::Device device{VK_NULL_HANDLE};
-        std::optional<star::StarSemaphore> waitInfo;
+        std::optional<star::core::graphics::SemaphoreSyncPoint> waitInfo;
     };
 
     std::unique_ptr<Data> data;

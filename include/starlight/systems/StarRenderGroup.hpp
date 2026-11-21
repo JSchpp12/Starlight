@@ -2,14 +2,22 @@
 
 #include "StarDescriptorBuilders.hpp"
 #include "StarShaderInfo.hpp"
-#include "core/device/DeviceContext.hpp"
 #include "starlight/object/StarObject.hpp"
-#include <star_common/Handle.hpp>
 
 #include <vulkan/vulkan.hpp>
 
 #include <memory>
 #include <vector>
+
+namespace star
+{
+struct Handle;
+}
+
+namespace star::core::device
+{
+class DeviceContext;
+}
 
 namespace star
 {
@@ -25,7 +33,7 @@ class StarRenderGroup
     StarRenderGroup &operator=(const StarRenderGroup &) = default;
     ~StarRenderGroup() = default;
 
-    void prepRender(core::device::DeviceContext &context, Handle commandBuffer);
+    void prepRender(core::device::DeviceContext &context, const Handle &commandBuffer);
 
     void cleanupRender(core::device::DeviceContext &context);
 
@@ -34,15 +42,17 @@ class StarRenderGroup
     void addObject(std::shared_ptr<StarObject> newRenderObject, core::device::DeviceContext &context);
 
     void onDescriptorPoolReady(star::core::device::DeviceContext &context, StarShaderInfo::Builder initEngineBuilder,
-                               star::core::renderer::RenderingTargetInfo &rendererInfo, star::Handle commandBuffer);
+                               star::core::renderer::RenderingTargetInfo &rendererInfo,
+                               const star::Handle &commandBuffer);
 
     vk::PipelineLayout getPipelineLayout() const
     {
         return m_pipelineLayout;
     }
 
-    void frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex, Handle targetCommandBuffer,
-                     const star::core::graphics::SemaphoreInfo &transferReuqestSyncInfo);
+    void frameUpdate(core::device::DeviceContext &context, uint8_t frameInFlightIndex,
+                     const Handle &targetCommandBuffer,
+                     const star::core::graphics::SemaphoreSyncPoint &transferRequestSyncInfo);
 
     void recordRenderPassCommands(vk::CommandBuffer mainDrawBuffer, uint8_t swapChainImageIndex, uint64_t frameIndex);
 
@@ -60,9 +70,7 @@ class StarRenderGroup
         uint32_t startVBIndex = 0, startIBIndex = 0;
     };
 
-    /// <summary>
-    /// Groups of objects that can share a pipeline -- they have the same shader
-    /// </summary>
+    /// @brief Groups of objects that can share a pipeline -- they have the same shader
     struct Group
     {
         RenderObjectInfo baseObject;
@@ -72,7 +80,7 @@ class StarRenderGroup
     std::vector<Group> m_groups;
     vk::PipelineLayout m_pipelineLayout{VK_NULL_HANDLE};
 
-    void prepareObjects(star::core::device::DeviceContext &context, Handle commandBuffer);
+    void prepareObjects(star::core::device::DeviceContext &context, const Handle &commandBuffer);
 
     vk::PipelineLayout createPipelineLayout(core::device::DeviceContext &context,
                                             std::vector<std::shared_ptr<StarDescriptorSetLayout>> &fullSetLayout);

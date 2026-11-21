@@ -6,7 +6,6 @@
 #include "starlight/command/transfer/SubmitTextureTransfer.hpp"
 #include "starlight/command/transfer/SubmitTransferTask.hpp"
 #include "starlight/core/WorkerPool.hpp"
-#include "starlight/core/device/StarDevice.hpp"
 #include "starlight/core/device/managers/GraphicsContainer.hpp"
 #include "starlight/job/TaskManager.hpp"
 #include "starlight/job/worker/DefaultWorker.hpp"
@@ -20,6 +19,11 @@
 
 #include <sstream>
 #include <vector>
+
+namespace star::core::device
+{
+class StarDevice;
+}
 
 namespace star::service
 {
@@ -68,7 +72,7 @@ class TransferService
     void onSubmitBuffer(star::command::transfer::SubmitBufferTransfer &cmd);
 
   private:
-    std::vector<StarSemaphore> m_workerSemaphores;
+    std::vector<Handle> m_workerSemaphores;
     std::vector<uint32_t> m_workerQueueFamilyIndices;
     size_t m_numStandardTransferWorkers = 0;
     size_t m_nextStandardWorker{0};

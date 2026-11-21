@@ -1,10 +1,7 @@
 #pragma once
 
-#include <star_common/EventBus.hpp>
-#include <star_common/FrameTracker.hpp>
 #include <star_common/Handle.hpp>
 
-#include <starlight/core/CommandBus.hpp>
 #include <starlight/core/device/managers/ManagerCommandBuffer.hpp>
 #include <starlight/core/device/managers/Queue.hpp>
 #include <starlight/core/graphics/GPUWorkSyncInfo.hpp>
@@ -16,6 +13,12 @@
 #include <memory>
 #include <optional>
 #include <vector>
+
+namespace star::common
+{
+class EventBus;
+class FrameTracker;
+} // namespace star::common
 
 namespace star::core::device
 {
@@ -69,6 +72,6 @@ makeEdgeAwareSubmissionOverride(const star::core::CommandBus *cmdBus, const star
 /// @param cmdBus
 /// @param myCommandBuffer
 /// @return
-std::optional<star::core::graphics::SemaphoreInfo> GetNeighborConsumerSyncInfo(const star::core::CommandBus &cmdBus,
-                                                                               const star::Handle &myCommandBuffer);
+std::optional<star::core::graphics::SemaphoreSyncPoint> GetNeighborConsumerSyncInfo(
+    const star::core::CommandBus &cmdBus, const star::Handle &myCommandBuffer);
 } // namespace star::core::renderer

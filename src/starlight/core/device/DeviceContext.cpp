@@ -1,5 +1,6 @@
 #include "core/device/DeviceContext.hpp"
 
+#include "core/device/managers/Semaphore.hpp"
 #include "core/logging/LoggingFactory.hpp"
 #include "event/PrepForNextFrame.hpp"
 #include "event/StartOfNextFrame.hpp"
@@ -119,7 +120,8 @@ void star::core::device::DeviceContext::init(const Handle &deviceID, common::Fra
     auto availableQueues = processAvailableQueues();
     auto engineReservedQueues = selectEngineReservedQueues(availableQueues);
     m_commandBufferManager = std::make_unique<core::device::manager::ManagerCommandBuffer>(
-        m_device, m_graphicsManagers.queueManager, setup.getNumFramesInFlight(), engineReservedQueues);
+        m_device, m_graphicsManagers.queueManager, setup.getNumFramesInFlight(), engineReservedQueues,
+        m_graphicsManagers.semaphoreManager.get());
     m_commandBufferManager->init(m_graphicsManagers.queueManager);
     m_renderResourceManager = std::make_unique<ManagerRenderResource>();
 

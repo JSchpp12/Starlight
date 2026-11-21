@@ -5,19 +5,23 @@
 #include "core/device/managers/Image.hpp"
 #include "starlight/command/command_order/ForceCPURecordingWait.hpp"
 #include "starlight/core/device/DeviceContext.hpp"
+#include "starlight/core/transfer/ReadinessCondition.hpp"
+#include "starlight/setup/RenderResourceSetup.hpp"
+
+#include <star_common/Handle.hpp>
 
 #include <utility>
 
 namespace star::core::transfer
 {
-void RegisterTransferWait(core::device::DeviceContext &context, Handle pass, Handle resource, vk::Semaphore semaphore,
-                          uint64_t signalValue, vk::PipelineStageFlags stages)
+void RegisterTransferWait(core::device::DeviceContext &context, Handle pass, Handle resource, Handle semaphoreRecord,
+                          vk::PipelineStageFlags stages)
 {
-    if (!pass.isInitialized() || !resource.isInitialized() || semaphore == VK_NULL_HANDLE)
+    if (!pass.isInitialized() || !resource.isInitialized() || !semaphoreRecord.isInitialized())
         return;
 
-    context.getManagerCommandBuffer().m_manager.get(pass).oneTimeWaitSemaphoreInfo.insert(resource, semaphore, stages,
-                                                                                          signalValue);
+    context.getManagerCommandBuffer().m_manager.get(pass).oneTimeWaitSemaphoreInfo.registerWait(semaphoreRecord,
+                                                                                                stages);
 
     // Frame-wide transfer waits are drained by ManagerCommandBuffer immediately before the finalization phase
     // records; an unset pass marks this wait for that container.
@@ -34,12 +38,11 @@ void RegisterPassConditions(core::device::DeviceContext &context, Handle pass,
 
     for (const auto &condition : conditions)
     {
-        if (!condition.timelineWait.has_value())
+        if (!condition.semaphoreRecord.has_value())
             continue;
 
-        context.getManagerCommandBuffer().m_manager.get(pass).oneTimeWaitSemaphoreInfo.insert(
-            condition.resource, condition.timelineWait->semaphore, condition.waitStages,
-            condition.timelineWait->signalValue);
+        context.getManagerCommandBuffer().m_manager.get(pass).oneTimeWaitSemaphoreInfo.registerWait(
+            *condition.semaphoreRecord, condition.waitStages);
     }
 
     star::command_order::ForceCPURecordingWait command{pass};
@@ -64,8 +67,10 @@ ReadinessCondition MakeTransferReadinessCondition(core::device::DeviceContext &c
     else
         condition.readiness = RenderResourceBufferReadiness{context.getDeviceID()};
 
-    condition.timelineWait = core::graphics::SemaphoreInfo{.signalValue = wait.semaphore.signalValue,
-                                                           .semaphore = wait.semaphore.vkSemaphore};
+    // An absent record means the transfer has no GPU timeline to wait on; leave `semaphoreRecord` unset rather than
+    // staging an empty handle.
+    if (wait.semaphoreRecord.isInitialized())
+        condition.semaphoreRecord = wait.semaphoreRecord;
     condition.waitStages = wait.stages;
     return condition;
 }

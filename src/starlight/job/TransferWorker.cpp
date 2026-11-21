@@ -1,6 +1,8 @@
 #include "job/TransferWorker.hpp"
 
 #include "core/Exceptions.hpp"
+
+#include "device/StarDevice.hpp"
 #include "logging/LoggingFactory.hpp"
 
 #include <sstream>
@@ -15,7 +17,8 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
                                          const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                          ProcessRequestInfo &processInfo, BufferTransferData &requestData,
                                          boost::atomic<bool> *gpuDoneSignalMain,
-                                         core::graphics::GPUWorkSyncInfo &syncInfo)
+                                         const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
+                                         const core::graphics::SemaphoreSyncPoint &workSignalWhenDone)
 {
     auto &newBufferRequest = *requestData.request;
 
@@ -53,14 +56,15 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
 
     {
         const auto signalInfo = vk::SemaphoreSubmitInfo()
-                                    .setSemaphore(syncInfo.workSignalWhenDone.semaphore)
-                                    .setValue(syncInfo.workSignalWhenDone.signalValue)
+                                    .setSemaphore(workSignalWhenDone.semaphore)
+                                    .setValue(workSignalWhenDone.signalValue)
                                     .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
+        const uint8_t waitCount = workWaitOn.has_value() ? workWaitOn->count : 0;
         std::array<vk::SemaphoreSubmitInfo, 2> waitInfos{};
-        for (uint8_t i = 0; i < syncInfo.workWaitOnCount; ++i)
+        for (uint8_t i = 0; i < waitCount; ++i)
         {
-            const auto &wait = syncInfo.workWaitOn[i];
+            const auto &wait = workWaitOn->waits[i];
             waitInfos[i].setSemaphore(wait.semaphore).setValue(wait.signalValue).setStageMask(wait.where);
         }
 
@@ -68,7 +72,7 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
 
         const auto submitInfo = vk::SubmitInfo2()
                                     .setPWaitSemaphoreInfos(waitInfos.data())
-                                    .setWaitSemaphoreInfoCount(syncInfo.workWaitOnCount)
+                                    .setWaitSemaphoreInfoCount(waitCount)
                                     .setPCommandBufferInfos(&cbInfo)
                                     .setCommandBufferInfoCount(1)
                                     .setPSignalSemaphoreInfos(&signalInfo)
@@ -86,7 +90,7 @@ void TransferManagerThread::CreateBuffer(core::device::StarDevice &device, StarQ
         }
     }
 
-    processInfo.commandBuffer->markSubmitted();
+    processInfo.submitted = true;
 
     // The Buffer manager owns the buffer from here on: publish it into the pending record the caller registered.
     if (auto *bufferSlot = std::get_if<BufferTransferPromise>(&requestData.destination))
@@ -105,7 +109,8 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
                                           const std::vector<uint32_t> &allTransferQueueFamilyIndicesInUse,
                                           ProcessRequestInfo &processInfo, TextureTransferData &requestData,
                                           boost::atomic<bool> *gpuDoneSignalToMain,
-                                          core::graphics::GPUWorkSyncInfo &syncInfo)
+                                          const std::optional<core::graphics::WorkWaitInfo> &workWaitOn,
+                                          const core::graphics::SemaphoreSyncPoint &workSignalWhenDone)
 {
     auto &newTextureRequest = *requestData.request;
 
@@ -134,14 +139,15 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
 
     {
         const auto signalInfo = vk::SemaphoreSubmitInfo()
-                                    .setSemaphore(syncInfo.workSignalWhenDone.semaphore)
-                                    .setValue(syncInfo.workSignalWhenDone.signalValue)
+                                    .setSemaphore(workSignalWhenDone.semaphore)
+                                    .setValue(workSignalWhenDone.signalValue)
                                     .setStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
+        const uint8_t waitCount = workWaitOn.has_value() ? workWaitOn->count : 0;
         std::array<vk::SemaphoreSubmitInfo, 2> waitInfos{};
-        for (uint8_t i = 0; i < syncInfo.workWaitOnCount; ++i)
+        for (uint8_t i = 0; i < waitCount; ++i)
         {
-            const auto &wait = syncInfo.workWaitOn[i];
+            const auto &wait = workWaitOn->waits[i];
             waitInfos[i].setSemaphore(wait.semaphore).setValue(wait.signalValue).setStageMask(wait.where);
         }
 
@@ -149,7 +155,7 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
 
         const auto submitInfo = vk::SubmitInfo2()
                                     .setPWaitSemaphoreInfos(waitInfos.data())
-                                    .setWaitSemaphoreInfoCount(syncInfo.workWaitOnCount)
+                                    .setWaitSemaphoreInfoCount(waitCount)
                                     .setPCommandBufferInfos(&cbInfo)
                                     .setCommandBufferInfoCount(1)
                                     .setPSignalSemaphoreInfos(&signalInfo)
@@ -167,7 +173,7 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
         }
     }
 
-    processInfo.commandBuffer->markSubmitted();
+    processInfo.submitted = true;
 
     // The Image manager owns the texture from here on: publish it into the pending record the caller registered.
     requestData.slot.set_value(
@@ -179,6 +185,33 @@ void TransferManagerThread::CreateTexture(core::device::StarDevice &device, Star
     // Staging, when used, is worker-owned and fence-freed; no caller adopts it.
     if (transferSrcBuffer)
         processInfo.setInProcessDeps(std::move(transferSrcBuffer));
+}
+
+void TransferManagerThread::SignalFailedSubmission(core::device::StarDevice &device, StarQueue &queue,
+                                                   const core::graphics::SemaphoreSyncPoint &signalInfo)
+{
+    if (signalInfo.semaphore == VK_NULL_HANDLE || signalInfo.signalValue == 0)
+        return;
+
+    core::logging::warning("Transfer submission failed; signaling timeline value ", signalInfo.signalValue,
+                           " so chained transfers are not blocked");
+
+    try
+    {
+        // Host signals are not ordered against device submissions. Drain this worker's queue so every signal already
+        // submitted to the timeline has been applied before advancing past the failed value.
+        queue.getVulkanQueue().waitIdle();
+
+        device.getVulkanDevice().signalSemaphore(
+            vk::SemaphoreSignalInfo().setSemaphore(signalInfo.semaphore).setValue(signalInfo.signalValue));
+    }
+    catch (const std::exception &e)
+    {
+        std::ostringstream oss;
+        oss << "Failed to signal timeline value " << signalInfo.signalValue
+            << " after a transfer failure; chained transfers will block: " << e.what();
+        STAR_THROW(oss.str());
+    }
 }
 
 void TransferManagerThread::PublishFailure(InterThreadRequest &request, const core::ResourceCreationError &error)
