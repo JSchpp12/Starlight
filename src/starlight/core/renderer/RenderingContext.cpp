@@ -1,5 +1,6 @@
 #include "core/renderer/RenderingContext.hpp"
 
+#include "core/device/DeviceContext.hpp"
 #include "core/device/managers/Image.hpp"
 
 namespace star::core::renderer
@@ -46,5 +47,14 @@ void RenderingContext::onManagerReservedMemoryUpdate(const star::event::ManagerR
 
         cached = record->getTexture();
     }
+}
+
+void RenderingContext::addBufferToRenderingContext(star::core::device::DeviceContext& context, const Handle& handle)
+{
+    assert(handle.getType() ==
+           common::HandleTypeRegistry::instance().getType(common::special_types::BufferTypeName).value());
+
+    bufferTransferRecords.manualInsert(
+        handle, context.getManagerRenderResource().getBuffer(context.getDeviceID(), handle).getVulkanBuffer());
 }
 } // namespace star::core::renderer

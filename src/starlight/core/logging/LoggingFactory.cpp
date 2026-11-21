@@ -20,7 +20,8 @@ namespace keywords = boost::log::keywords;
 
 static void InitializeLogging(const std::string &)
 {
-    const auto baseDir = star::common::paths::GetRuntimePath().parent_path() / star::common::strings::GetStartTime();
+    const auto runName = star::common::strings::GetStartTime() + "_pid" + star::common::strings::GetPID();
+    const auto baseDir = star::common::paths::GetRuntimePath().parent_path() / runName;
     auto backend = boost::make_shared<LoggerFileBackend>(baseDir);
     auto sink = boost::make_shared<sinks::synchronous_sink<LoggerFileBackend>>(backend);
     logging::core::get()->add_sink(sink);

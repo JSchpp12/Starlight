@@ -3,13 +3,18 @@
 // row-major notation
 
 #include "StarEntity.hpp"
-#include "core/device/DeviceContext.hpp"
 
 #include <glm/glm.hpp>
+
+namespace star::core::device
+{
+class DeviceContext;
+}
 
 // Note: this camera system will fail if the user looks up the +y-axis
 namespace star
 {
+
 // Camera object which will be used during rendering
 class StarCamera : public StarEntity
 {
