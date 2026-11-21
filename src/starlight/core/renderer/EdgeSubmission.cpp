@@ -4,10 +4,9 @@
 #include "StarQueue.hpp"
 #include "starlight/command/command_order/GetPassInfo.hpp"
 #include "starlight/core/CommandBus.hpp"
+#include "starlight/core/logging/LoggingFactory.hpp"
 
 #include <boost/container/small_vector.hpp>
-
-#include <cassert>
 
 namespace star::core::renderer
 {
